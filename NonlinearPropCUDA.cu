@@ -104,7 +104,7 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
             + kL * a[19] / (a[20] - omega * omega - ii * a[21] * omega));
         no[0] = na;
         ne[0] = 1.0 / cuCsqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
-        return na;
+        return ne[0];
     }
     else {
         //later, implement biaxial crystals, for now just return 1;
@@ -275,7 +275,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
 
 
     //initialize and take values from the struct handed over by the dispatcher
-    long long i, j;
+    long long i;
     s.Ntime = (*sCPU).Ntime;
     s.Nspace = (*sCPU).Nspace;
     s.dt = (*sCPU).tStep;
@@ -486,19 +486,15 @@ int rkstep(struct cudaLoop s, int stepNumber) {
 }
 
 int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
-    long long i, j;
-    int posf;
-    double rB, zB, r, z, kr; //r and z in the Beam and lab coordinates, respectively.
+    long long i,j;
+    double rB, zB, r, z; //r and z in the Beam and lab coordinates, respectively.
     double w0, wz, zR, Rz, phi; //Gaussian beam parameters
     double theta = 0; //rotation angle of the current beam
     double pulseSum = 0;
     std::complex<double> ne, no, n0; //active refractive index;
-    ne = 0;
-    no = 0;
-    n0 = 0;
     double f, w; //active frequency;
     double pulseEnergySum;
-    std::complex<double> ke, ko, k0, specfac;
+    std::complex<double> ko, k0, specfac;
     double c = 2.99792458e8; //speed of light
     double eps0 = 8.8541878128e-12; //vacuum permittivity
     double pi = 3.14159265358979323846264338327950288; // pi to unneccessary precision
@@ -509,13 +505,10 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     pulse2 = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
     pulse1f = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
     pulse2f = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
-    std::complex<double> *Es, *Ep; //field pointers
     std::complex<double> Eb;
     std::complex<double> ii = 0; //imaginary unit
     ii.imag(1.);
-    double IRcutoff = (*s).absorptionParameters[2];
-    double IRcutoffstrength = (*s).absorptionParameters[3];
-    double kIRabs = 0;
+
 
 
     std::complex<double> polFactor1, polFactor2; //complex phase/amplitude factors for the polarization components
@@ -531,8 +524,6 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     polFactor2 = sin((*s).polarizationAngle1) + ii * (*s).circularity1 * cos((*s).polarizationAngle1);
     theta = (*s).propagationAngle1;
     zB = (*s).z01;
-    Es = &(*s).Ext[0];
-    Ep = &(*s).Ext[(*s).Ngrid];
     w0 = (*s).beamwaist1;
 
     for (i = 1; i < (*s).Ntime; i++) {
@@ -552,10 +543,8 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
         specfac *= -1;
         specfac = exp(specfac);
 
-        kIRabs = ((2 * pi * abs(f) / c) * IRcutoffstrength * (abs(f) < IRcutoff));
         ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
         no = (*s).refractiveIndex2[i + (*s).Ntime * j];
-        ke = 2 * pi * ne * f / c;
         ko = 2 * pi * no * f / c;
         k0 = 2 * pi * real(n0) * f / c;
         zR = pi * w0 * w0 * real(ne) * f / c;
@@ -564,9 +553,6 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
         }
 
         for (j = 0; j < (*s).Nspace; j++) {
-            //kr = j * (*s).kStep - (j>=((*s).Nspace/2))*((*s).kStep * (*s).Nspace); //frequency grid in transverse direction
-            posf = (int)(f < -20e12);
-            
             rB = (*s).x01 + (*s).rStep * j - (*s).Nspace* (*s).rStep / 2.;
             r = rB * cos(theta) - zB * sin(theta);
             z = rB * sin(theta) + zB * cos(theta);
@@ -642,8 +628,6 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     polFactor2 = sin((*s).polarizationAngle2) + ii * (*s).circularity2 * cos((*s).polarizationAngle2);
     theta = (*s).propagationAngle2;
     zB = (*s).z02;
-    Es = &(*s).Ext[0];
-    Ep = &(*s).Ext[(*s).Ngrid];
     w0 = (*s).beamwaist2;
 
     for (i = 1; i < (*s).Ntime; i++) {
@@ -662,11 +646,8 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
         specfac += ii * ((*s).cephase2 + w * (*s).delay2 - (*s).gdd2 * w * w - (*s).tod2 * w * w * w);
         specfac *= -1;
         specfac = exp(specfac);
-
-        kIRabs = ((2 * pi * abs(f) / c) * IRcutoffstrength * (abs(f) < IRcutoff));
         ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
         no = (*s).refractiveIndex2[i + (*s).Ntime * j];
-        ke = 2 * pi * ne * f / c;
         ko = 2 * pi * no * f / c;
         k0 = 2 * pi * real(n0) * f / c;
         zR = pi * w0 * w0 * real(ne) * f / c;
@@ -675,8 +656,6 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
         }
 
         for (j = 0; j < (*s).Nspace; j++) {
-            //kr = j * (*s).kStep - (j>=((*s).Nspace/2))*((*s).kStep * (*s).Nspace); //frequency grid in transverse direction
-            posf = (int)(f < -20e12);
 
             rB = (*s).x01 + (*s).rStep * j - (*s).Nspace * (*s).rStep / 2.;
             r = rB * cos(theta) - zB * sin(theta);
@@ -773,12 +752,11 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
     ne = 0;
     no = 0;
     n0 = 0;
-    double f, w, kr; //active frequency;
+    double f, kr; //active frequency;
     std::complex<double> ke, ko, k0;
     double c = 2.99792458e8; //speed of light
-    double eps0 = 8.8541878128e-12; //vacuum permittivity
     double pi = 3.14159265358979323846264338327950288; // pi to unneccessary precision
-    std::complex<double>* propFactor1, * propFactor2, * pulse1, * pulse2, * pulse1f, * pulse2f;
+    std::complex<double>* propFactor1, * propFactor2;
 
     propFactor1 = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
     propFactor2 = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
@@ -786,14 +764,13 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
     std::complex<double> ii = 0; //imaginary unit
     ii.imag(1.);
 
-    double IRcutoff = (*s).absorptionParameters[2];
-    double IRcutoffstrength = (*s).absorptionParameters[3];
-    double kIRabs = 0;
+
     sellmeier(&n0, &no, (*s).sellmeierCoefficients, (*s).frequency1, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
     (*s).neref = real(n0);
     (*s).noref = imag(n0);
 
-    
+    //Run the math to find the in-crystal propagation angles (needed for the treatment of walkoff)
+    //on the GPU: in the future, this whole calculation should be done on GPU!
     double* alphaGPU = (double*)(*sc).k1;
     double* sellmeierCoefficients = (double*)(*sc).k2;
     double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
@@ -805,14 +782,10 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
     sellmeierCoefficientsAugmentedCPU[70] = (*s).kStep;
     sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep; 
     sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-    //cudaMalloc((void**)alphaGPU, sizeof(double) * (*s).Ngrid);
-    //cudaMalloc((void**)sellmeierCoefficients, sizeof(double) * (66 + 8));
     cudaMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66+8) * sizeof(double), cudaMemcpyHostToDevice);
     thetasearchKernel <<<(*s).Nspace, (*s).Ntime >>> ((*s).Ntime, (*s).Nspace, alphaGPU, sellmeierCoefficients, (*s).axesNumber, (*s).sellmeierType);
     cudaDeviceSynchronize();
     cudaMemcpy(alpha, alphaGPU, (*s).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-    //cudaFree(alphaGPU);
-    //cudaFree(sellmeierCoefficients);
     free(sellmeierCoefficientsAugmentedCPU);
     
     ne = n0;
@@ -822,9 +795,8 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
             f -= (*s).fStep * (*s).Ntime;
         }
         f *= -1;
-        w = 2 * pi * (f - (*s).frequency1);
 
-        kIRabs = ((2 * pi * abs(f) / c) * IRcutoffstrength * (abs(f) < IRcutoff));
+
         k0 = 2 * pi * real(n0) * f / c;
         
 
@@ -839,9 +811,6 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
             }
             (*s).refractiveIndex1[i + (*s).Ntime * j] = ne;
             (*s).refractiveIndex2[i + (*s).Ntime * j] = no;
-            //ke = cos(alpha) * 2 * pi * ne * f / c;
-            //ko = cos(asin(kr/ (2 * pi * no * f / c))) * 2. * pi * no * f / c;
-
             ke = 2 * pi * ne * f / c;
             ko =  2 * pi * no * f / c;
 
@@ -863,9 +832,6 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
                 propFactor2[i + (*s).Ntime * j + (*s).Ngrid] = -ii * (posf * 2 * pi * f) / (2. * real(no) * c) * (*s).propagationStep;
             }
 
-
-
-
         }
     }
 
@@ -877,7 +843,7 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
 
     free(propFactor1);
     free(propFactor2);
-    //free(alpha);
+    free(alpha);
     return 0;
 }
 
