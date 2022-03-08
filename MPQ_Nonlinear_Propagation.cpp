@@ -21,7 +21,7 @@
 
 
 using namespace std::literals;
-#define MAX_LOADSTRING 256
+#define MAX_LOADSTRING 512
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111
 #define ID_BTNGETFILENAME 11112

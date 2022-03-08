@@ -8,9 +8,7 @@
 #include "cufft.h"
 
 
-//    cufftHandle fftPlan, polfftPlan;
-// cuDoubleComplex* gridETime, * gridEFrequency, * gridPropagationFactor, * gridPolarizationFactor, * gridPolarizationFrequency, * k1, * k2, * k3, * k4;
-// double* gridPolarizationTime;
+
 struct cudaLoop {
 	cuDoubleComplex* gridETime;
 	cuDoubleComplex* gridETime2;
@@ -52,7 +50,6 @@ struct cudaLoop {
 	long long Nsteps;
 };
 
-DWORD WINAPI	fftTestCode(LPVOID lpParam);
 DWORD WINAPI	propagationLoop(LPVOID lpParam);
 int				rkstep(struct cudaLoop s, int stepNumber);
 int				pulsegenerator(struct propthread* s, struct cudaLoop* sc);
@@ -63,3 +60,4 @@ int				fftshiftZflip(std::complex<double>* A, std::complex<double>* B, long long
 std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn);
 int				preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc);
 double			thetasearch(struct propthread* s, double dk, double f, double tol);
+int				loadfrogspeck(char* frogFilePath, struct propthread* s, int fieldIndex);

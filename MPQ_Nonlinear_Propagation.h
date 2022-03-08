@@ -61,6 +61,12 @@ struct propthread {
     double tod1;
     double tod2;
 
+    //loaded FROG/EOS fields
+    std::complex<double>* loadedField1;
+    std::complex<double>* loadedField2;
+    bool field1IsAllocated = 0;
+    bool field2IsAllocated = 0;
+
 
 
     //polarization properties

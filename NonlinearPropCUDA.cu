@@ -11,7 +11,7 @@
 //#include <complex.h>
 
 #define THREADS_PER_BLOCK 64
-
+#define MAX_LOADSTRING 512
 //overload the math operators for cuda complex numbers so this code fits inside the observable universe
 __device__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
 __device__ cuDoubleComplex operator+(cuDoubleComplex a, cuDoubleComplex b) { return cuCadd(a, b); }
@@ -1078,4 +1078,84 @@ std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* n
         //later, implement biaxial crystals, for now just return 1;
         return 1;
     }
+}
+
+int loadfrogspeck(char* frogFilePath, struct propthread* s, int fieldIndex) {
+    FILE* fp;
+    int maxFileSize = 16384;
+    double wavelength, R, phi, complexX, complexY, f, f0, f1, fmax;
+    int i, k0, k1;
+    double c = 1e9*2.99792458e8; //for conversion of wavelength in nm to frequency
+    double df = 0;
+    double fmin = 0;
+    int currentRow = 0;
+    std::complex<double>* E = (std::complex<double>*)calloc(maxFileSize, sizeof(std::complex<double>));
+
+    //read the data
+    fp = fopen(frogFilePath, "r");
+    while (fscanf(fp, "%lf %lf %lf %lf %lf", &wavelength, &R, &phi, &complexX, &complexY) == 5 && currentRow < maxFileSize) {
+        //get the complex field from the data
+        E[currentRow].real(complexX);
+        E[currentRow].imag(complexY);
+
+        //keep track of the frequency step of the grid (running sum, divide by number of rows at end to get average)
+        if (currentRow > 0) df += c / wavelength - fmax;
+
+        //keep track of the highest frequency in the data
+        fmax = c / wavelength;
+        
+        //store the lowest frequency in the data
+        if (currentRow == 0) fmin = fmax;
+        
+        currentRow++;
+    }
+    fclose(fp);
+
+    //return an error if nothing was loaded
+    if (currentRow == 0) {
+        free(E);
+        return -1;
+    }
+
+    df /= currentRow; //average frequency step
+
+    //interpolate the FROG data onto the simulation grid
+    
+    //allocate the grid
+    //NOTE THAT THIS WILL NOT BE FREED, IT IS UP TO THE CALLING FUNCTION TO DO SO
+    std::complex<double>* Egrid = (std::complex<double>*)malloc((*s).Ntime * sizeof(std::complex<double>));
+
+    //fill the simulation grid based on the data
+    for (i = 0; i < (*s).Ntime; i++) {
+        f = i * (*s).fStep;
+        k0 = (int)floor((f - fmin) / df);
+        k1 = (int)ceil((f - fmin) / df);
+        if (k0 < 0 || k1 >= currentRow) {
+            Egrid[i] = 0; //field is zero outside of data range
+        }
+        else {
+            f0 = fmin + k0 * df;
+            f1 = fmin + k1 * df;
+            Egrid[i] = (E[k0] * (f1 - f) + E[k1] * (f - f0)) / df; //linear interpolation
+        }
+    }
+
+    //resolve pointers and allocation flags
+    if (fieldIndex == 1) {
+        (*s).loadedField1 = Egrid;
+        (*s).field1IsAllocated = TRUE;
+    }
+    else if (fieldIndex == 2) {
+        (*s).loadedField2 = Egrid;
+        (*s).field2IsAllocated = TRUE;
+    }
+    else {
+        //free allocated grid if resolution fails
+        free(Egrid);
+        free(E);
+        return -2;
+    }
+
+    free(E);
+    return currentRow;
 }
