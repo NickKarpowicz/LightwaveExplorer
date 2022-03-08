@@ -21,82 +21,17 @@
 
 
 using namespace std::literals;
-#define MAX_LOADSTRING 512
+#define MAX_LOADSTRING 1024
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111
 #define ID_BTNGETFILENAME 11112
 #define ID_BTNREFRESHDB 11114
 #define ID_CBSAVEPSI 11113
 #define ID_BTNSTOP 11115
+#define ID_BTNPULSE1 11116
+#define ID_BTNPULSE2 11117
 
 
-struct guiStruct {
-    HWND mainWindow;
-
-    HWND tbMaterialIndex;
-    HWND tbCrystalTheta;
-    HWND tbCrystalPhi;
-    HWND tbCrystalThickness;
-
-    HWND tbGridXdim;
-    HWND tbRadialStepSize;
-    HWND tbTimeStepSize;
-
-    HWND tbTimeSpan;
-    HWND tbXstep;
-    HWND tbBatchMode;
-    HWND tbNumberSims;
-    HWND tbBatchDestination;
-
-    HWND tbPulse1Delay;
-    HWND tbPulse2Delay;
-    HWND tbFieldStrength1;
-    HWND tbFieldStrength2;
-    HWND tbBandwidth1;
-    HWND tbBandwidth2;
-    HWND tbFrequency1;
-    HWND tbFrequency2;
-    HWND tbCEPhase1;
-    HWND tbCEPhase2;
-    HWND tbPulseType;
-
-
-    HWND tbGDD1;
-    HWND tbGDD2;
-    HWND tbTOD1;
-    HWND tbTOD2;
-
-    HWND tbXoffset1;
-    HWND tbXoffset2;
-    HWND tbZoffset1;
-    HWND tbZoffset2;
-    HWND tbBeamwaist1;
-    HWND tbBeamwaist2;
-    HWND tbPropagationAngle1;
-    HWND tbPropagationAngle2;
-    HWND tbPolarizationAngle1;
-    HWND tbPolarizationAngle2;
-    HWND tbCircularity1;
-    HWND tbCircularity2;
-
-
-    HWND pdPropagationMode;
-    HWND pdBatchMode;
-    HWND pdPulseType;
-    HWND pdRStep;
-
-    HWND cbSavePsi;
-    HWND tbFileNameBase;
-    HWND tbPulse1Path;
-    HWND tbPulse2Path;
-    HWND buttonRun;
-    HWND buttonFile;
-    HWND buttonPlot;
-    HWND buttonRefreshDB;
-    HWND buttonStop;
-    HWND tbWhichSimToPlot;
-    HWND textboxSims;
-};
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -108,25 +43,15 @@ struct crystalentry* crystalDatabasePtr;        // Crystal info database
 int isRunning = 0;
 int isGridAllocated = 0;
 int cancellationCalled = 0;
+
+
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
-double              vmaxa(double* v, int vlength);
-DWORD WINAPI        mainsimthread(LPVOID lpParam);
-int                 DrawLabels(HDC hdc);
-int                 LabelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset);
-int                 HWNDToString(HWND inputA, char* outputString);
-double              HWNDToDouble(HWND inputA);
-int                 AppendTextToWindow(HWND inputA, wchar_t* messagebuffer, int buffersize);
-int                 getFileNameBaseFromDlg(HWND hWnd);
-int                 DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm);
-double              cmodulussquared(std::complex<double>complexNumber);
-int                 drawsimplots(int simIndex);
-int                 linearremap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp);
-int                 readcrystaldatabase(struct crystalentry* db, bool isVerbose);
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR    lpCmdLine,
@@ -212,11 +137,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance; // Store instance handle in our global variable
-    
-
-
-
-
     int xOffsetRow1 = 160;
     int xOffsetRow2 = 430 + 50;
     int xOffsetRow3 = 540 + 100;
@@ -231,7 +151,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     int consoleSize = 420;
     int textboxwidth = 150;
     maingui.mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_EX_CONTROLPARENT,
-        CW_USEDEFAULT, CW_USEDEFAULT, 2245, 27 * vs + consoleSize + 60, nullptr, nullptr, hInstance, nullptr);
+        CW_USEDEFAULT, CW_USEDEFAULT, 2245, 33 * vs + consoleSize + 60, nullptr, nullptr, hInstance, nullptr);
     SetMenu(maingui.mainWindow, NULL);
     SetWindowTextA(maingui.mainWindow, "Nick's nonlinear propagator");
     //text boxes for input parameters
@@ -297,7 +217,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     //maingui.buttonPlot = CreateWindow(TEXT("button"), TEXT("Plot"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 17 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
     //maingui.tbWhichSimToPlot = CreateWindow(TEXT("Edit"), TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 17 * vs, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonRefreshDB = CreateWindow(TEXT("button"), TEXT("Refresh DB"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 20 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
-    maingui.buttonRefreshDB = CreateWindow(TEXT("button"), TEXT("Stop"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 18 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
+    maingui.buttonStop = CreateWindow(TEXT("button"), TEXT("Stop"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 18 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
 
 
     int k = 0;
@@ -313,19 +233,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     SendMessage(maingui.pdPropagationMode, CB_SETCURSEL, (WPARAM)0, 0);
 
-    /*
-    maingui.pdPulseType = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow1, 9 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
-    TCHAR pulseTypeNames[7][64] = {
-        TEXT("Sin^2 (0.364 x L)"), TEXT("Nuttall (0.243 x L)"), TEXT("B-Harris (0.244 x L)"), TEXT("B-Nuttall (0.247 x L)"),
-        TEXT("Blackman (0.290 x L)"), TEXT("Flattop (0.168 x L)"), TEXT("Load ASCII (not yet implemented)")
-    };
-    memset(&A, 0, sizeof(A));
-    for (k = 0; k < 7; k++) {
-        wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)pulseTypeNames[k]);
-        SendMessage(maingui.pdPulseType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
-    }
-    SendMessage(maingui.pdPulseType, CB_SETCURSEL, (WPARAM)1, 0);
-    */
     maingui.pdBatchMode = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow2, 11 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR batchModeNames[7][64] = {
         TEXT("none"), TEXT("Pulse 2 delay"), TEXT("Pulse 1 Energy"), TEXT("CEP"), TEXT("Propagation"), TEXT("Theta"), TEXT("Pulse 1 GDD")
@@ -337,20 +244,35 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     SendMessage(maingui.pdBatchMode, CB_SETCURSEL, (WPARAM)0, 0);
 
-    /*
-    maingui.pdRStep = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow2, 6 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
-    TCHAR rstepNames[5][64] = {
-        TEXT("0.2"), TEXT("0.15"), TEXT("0.1"), TEXT("0.05"), TEXT("0.005")
+    maingui.pdPulse1Type = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow1, 27 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    TCHAR pdPulse1Names[3][64] = {
+        TEXT("Synthetic"), TEXT("load FROG"), TEXT("load EOS")
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 5; k++) {
-        wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)rstepNames[k]);
-        SendMessage(maingui.pdRStep, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    for (k = 0; k < 3; k++) {
+        wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)pdPulse1Names[k]);
+        SendMessage(maingui.pdPulse1Type, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
-    SendMessage(maingui.pdRStep, CB_SETCURSEL, (WPARAM)0, 0);
-    */
+    SendMessage(maingui.pdPulse1Type, CB_SETCURSEL, (WPARAM)0, 0);
+    maingui.tbPulse1Path = CreateWindow(TEXT("Edit"), TEXT("pulse1.speck.dat"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 0, 28 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonPulse1Path = CreateWindow(TEXT("button"), TEXT("Set path 1"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1 + textboxwidth +5, 27 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE1, hInstance, NULL);
+
+    maingui.pdPulse2Type = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow1, 30 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    TCHAR pdPulse2Names[3][64] = {
+        TEXT("Synthetic"), TEXT("load FROG"), TEXT("load EOS")
+    };
+    memset(&A, 0, sizeof(A));
+    for (k = 0; k < 3; k++) {
+        wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)pdPulse2Names[k]);
+        SendMessage(maingui.pdPulse2Type, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    }
+    SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)0, 0);
+    maingui.tbPulse2Path = CreateWindow(TEXT("Edit"), TEXT("pulse2.speck.dat"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 0, 31 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonPulse2Path = CreateWindow(TEXT("button"), TEXT("Set path 2"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1 + textboxwidth + 5, 30 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE2, hInstance, NULL);
+
+
     //Text message window
-    maingui.textboxSims = CreateWindow(TEXT("Edit"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | WS_VSCROLL | WS_HSCROLL, 0, 27 * vs, xOffsetRow2 + 150, consoleSize, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.textboxSims = CreateWindow(TEXT("Edit"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | WS_VSCROLL | WS_HSCROLL, 0, 33 * vs, xOffsetRow2 + 150, consoleSize, maingui.mainWindow, NULL, hInstance, NULL);
 
     if (!maingui.mainWindow)
     {
@@ -432,7 +354,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             break;
         case ID_BTNGETFILENAME:
-            getFileNameBaseFromDlg(hWnd);
+            getFileNameBaseFromDlg(hWnd, maingui.tbFileNameBase);
+            break;
+        case ID_BTNPULSE1:
+            getFileNameBaseFromDlgDat(hWnd, maingui.tbPulse1Path);
+            break;
+        case ID_BTNPULSE2:
+            getFileNameBaseFromDlgDat(hWnd, maingui.tbPulse2Path);
             break;
         case ID_BTNREFRESHDB:
             memset(crystalDatabasePtr, 0, 512 * sizeof(struct crystalentry));
@@ -491,6 +419,7 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
 
     //struct propthread threads[256];
     struct propthread* threads = (struct propthread*)malloc(1024 * sizeof(struct propthread));
+    std::complex<double>* loadedField1, * loadedField2;
     wchar_t* messagebuffer;
     activeSetPtr = threads;
     int j, k;
@@ -574,8 +503,49 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     if (batchindex == 0 || batchindex == 4 || Nsims < 1) {
         Nsims = 1;
     }
- 
+    loadedField1 = (std::complex<double>*)calloc(Ntime, sizeof(std::complex<double>));
+    loadedField2 = (std::complex<double>*)calloc(Ntime, sizeof(std::complex<double>));
+    int pulse1FileType = SendMessage(maingui.pdPulse1Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    int pulse2FileType = SendMessage(maingui.pdPulse2Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    
+    bool isPulse1Allocated = FALSE;
+    bool isPulse2Allocated = FALSE;
 
+    int frogLines = 0;
+    if (pulse1FileType == 1) {
+        char pulse1Path[MAX_LOADSTRING];
+        HWNDToString(maingui.tbPulse1Path, pulse1Path);
+        
+        
+        frogLines = loadfrogspeck(pulse1Path, loadedField1, Ntime, fStep, 0.0, 1);
+        if (frogLines > 0) isPulse1Allocated = TRUE;
+        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        swprintf_s(messagebuffer, 1024,
+            _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, isPulse1Allocated);
+        AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
+        free(messagebuffer);
+        /*
+        for (j = 0; j < Ntime; j++) {
+            messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+            swprintf_s(messagebuffer, 1024,
+                _T("%e %lf %lf\r\n"),fStep*j,real(loadedField1[j]), imag(loadedField1[j]));
+            AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
+            free(messagebuffer);
+        }
+        */
+    }
+    if (pulse2FileType == 1) {
+        char pulse2Path[MAX_LOADSTRING];
+        HWNDToString(maingui.tbPulse2Path, pulse2Path);
+        
+        frogLines = loadfrogspeck(pulse2Path, loadedField2, Ntime, fStep, 0.0, 1);
+        if (frogLines > 0) isPulse2Allocated = TRUE;
+        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        swprintf_s(messagebuffer, 1024,
+            _T("loaded FROG file 2 (%i lines).\r\n"), frogLines);
+        AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
+        free(messagebuffer);
+    }
 
 
     int InfoVecSize = 20;
@@ -589,9 +559,6 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     std::complex<double>* EkwOut = (std::complex<double>*)calloc(Ngrid * 2 * Nsims, sizeof(std::complex<double>));
 
     isGridAllocated = 1;
-    //double* chi2Tensor = (double*)calloc(18, sizeof(double));
-    //chi2Tensor[0] = 1e-35;
-    //double* sellmeierCoefficients = (double*)calloc(1024, sizeof(double));
     std::complex<double>* refractiveIndex1 = (std::complex<double>*)calloc(Ngrid*Nsims, sizeof(std::complex<double>));
     std::complex<double>* refractiveIndex2 = (std::complex<double>*)calloc(Ngrid * Nsims, sizeof(std::complex<double>));
     double* deffTensor = (double*)calloc(9 * Nsims, sizeof(double));
@@ -699,6 +666,10 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
         threads[j].InfoVec = &InfoVec[j * InfoVecSize];
         threads[j].imdone = &imdone[j];
 
+        threads[j].field1IsAllocated = isPulse1Allocated;
+        threads[j].field2IsAllocated = isPulse2Allocated;
+        threads[j].loadedField1 = loadedField1;
+        threads[j].loadedField2 = loadedField2;
         threads[j].NSims = Nsims;
         threads[j].Ext = &Ext[j * Ngrid * 2];
         threads[j].Ekw = &Ekw[j * Ngrid * 2];
@@ -746,7 +717,7 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
 
     messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
     swprintf_s(messagebuffer, 1024,
-        _T("Finished after %i s. \r\nne: %lf, no:%e\r\ndeff: %lf %lf %lf %lf %lf %lf\r\n"), (int)(tthreadmid - tstart),(*activeSetPtr).neref,(*activeSetPtr).noref, 1e12 * (*activeSetPtr).deffTensor[0], 1e12*(*activeSetPtr).deffTensor[1], 1e12 * (*activeSetPtr).deffTensor[2], 1e12 * (*activeSetPtr).deffTensor[3], 1e12 * (*activeSetPtr).deffTensor[4], 1e12 * (*activeSetPtr).deffTensor[5]);
+        _T("Finished after %i s. \r\n"), (int)(tthreadmid - tstart));
     AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
     free(messagebuffer);
 
@@ -828,6 +799,8 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     free(EkwOut);
     free(imdone);
     free(deffTensor);
+    free(loadedField1);
+    free(loadedField2);
     //(SettingsVector);
     free(threads);
     isGridAllocated = 0;
@@ -959,7 +932,7 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
         if (isVerbose) {
             messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
             swprintf_s(messagebuffer, 1024,
-                _T("Material %i name: %s\r\nSellmeier reference: %s\r\nChi2 reference: %s\r\nChi3 reference: %s\r\nnonlinear switches: %i %i %i\r\nBand gap: %lf %e\r\nLorentzian: %e %e %e\r\n"), i, db[i].crystalNameW, db[i].sellmeierReference, db[i].dReference, db[i].chi3Reference,db[i].nonlinearSwitches[0],db[i].nonlinearSwitches[1], db[i].nonlinearSwitches[2],db[i].absorptionParameters[0], db[i].absorptionParameters[1],db[i].sellmeierCoefficients[19],db[i].sellmeierCoefficients[20],db[i].sellmeierCoefficients[21]);
+                _T("Material %i name: %s\r\nSellmeier reference: %s\r\nChi2 reference: %s\r\nChi3 reference: %s\r\n\r\n"), i, db[i].crystalNameW, db[i].sellmeierReference, db[i].dReference, db[i].chi3Reference);
             AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
             free(messagebuffer);
         }
@@ -1041,6 +1014,8 @@ int DrawLabels(HDC hdc) {
     LabelTextBox(hdc, maingui.mainWindow, maingui.tbPolarizationAngle2, _T("Polarization 2 (deg)"), labos, 0);
     LabelTextBox(hdc, maingui.mainWindow, maingui.tbCircularity1, _T("Circularity 1"), labos, 0);
     LabelTextBox(hdc, maingui.mainWindow, maingui.tbCircularity2, _T("Circularity 2"), labos, 0);
+    LabelTextBox(hdc, maingui.mainWindow, maingui.pdPulse1Type, _T("Pulse 1 type:"), labos, 4);
+    LabelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2 type:"), labos, 4);
     LabelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 4);
 
     //plot labels
@@ -1054,7 +1029,7 @@ int DrawLabels(HDC hdc) {
     return 0;
 }
 
-int getFileNameBaseFromDlg(HWND hWnd) {
+int getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox) {
 
     //create the dialog box and get the file path
     OPENFILENAME ofn;
@@ -1084,9 +1059,37 @@ int getFileNameBaseFromDlg(HWND hWnd) {
             fbasedirend = ofn.nFileOffset;
         }
         _tcsncpy_s(szFileNameNoExt, szFileName, fbaseloc);
-        SetWindowText(maingui.tbFileNameBase, szFileNameNoExt);
-        //char* outputbase = (char*)calloc(MAX_PATH, sizeof(char));
-        //wcstombs_s(&fstringbaselocsize, outputbase, (size_t)MAX_PATH, szFileNameNoExt, MAX_PATH);
+        SetWindowText(outputTextbox, szFileNameNoExt);
+    }
+
+    return 0;
+}
+
+
+int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
+
+    //create the dialog box and get the file path
+    OPENFILENAME ofn;
+    TCHAR szFileName[MAX_PATH];
+    ZeroMemory(&ofn, sizeof(ofn));
+    WORD fbasedirend;
+    WORD fbaseloc = 0;
+    size_t fstringbaselocsize;
+    size_t fstringinputlocsize;
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = hWnd;
+    ofn.lpstrFilter = TEXT("Dat Files (*.dat)\0*.dat\0All Files (*.*)\0*.*\0");
+    ofn.lpstrFile = szFileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_EXPLORER;
+    ofn.lpstrDefExt = TEXT("dat");
+    ofn.lpstrFile[0] = '\0';
+    ofn.nFileExtension = 0;
+    ofn.nFileOffset = 0;
+
+    if (GetSaveFileNameW(&ofn)) {
+
+        SetWindowText(outputTextbox, szFileName);
     }
 
     return 0;

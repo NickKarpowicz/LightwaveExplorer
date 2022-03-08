@@ -104,4 +104,89 @@ struct crystalentry {
     double spectralData[2048];
 };
 
+struct guiStruct {
+    HWND mainWindow;
+
+    HWND tbMaterialIndex;
+    HWND tbCrystalTheta;
+    HWND tbCrystalPhi;
+    HWND tbCrystalThickness;
+
+    HWND tbGridXdim;
+    HWND tbRadialStepSize;
+    HWND tbTimeStepSize;
+
+    HWND tbTimeSpan;
+    HWND tbXstep;
+    HWND tbBatchMode;
+    HWND tbNumberSims;
+    HWND tbBatchDestination;
+
+    HWND tbPulse1Delay;
+    HWND tbPulse2Delay;
+    HWND tbFieldStrength1;
+    HWND tbFieldStrength2;
+    HWND tbBandwidth1;
+    HWND tbBandwidth2;
+    HWND tbFrequency1;
+    HWND tbFrequency2;
+    HWND tbCEPhase1;
+    HWND tbCEPhase2;
+    HWND tbPulseType;
+
+
+    HWND tbGDD1;
+    HWND tbGDD2;
+    HWND tbTOD1;
+    HWND tbTOD2;
+
+    HWND tbXoffset1;
+    HWND tbXoffset2;
+    HWND tbZoffset1;
+    HWND tbZoffset2;
+    HWND tbBeamwaist1;
+    HWND tbBeamwaist2;
+    HWND tbPropagationAngle1;
+    HWND tbPropagationAngle2;
+    HWND tbPolarizationAngle1;
+    HWND tbPolarizationAngle2;
+    HWND tbCircularity1;
+    HWND tbCircularity2;
+
+
+    HWND pdPropagationMode;
+    HWND pdBatchMode;
+    HWND pdPulseType;
+    HWND pdRStep;
+
+    HWND cbSavePsi;
+    HWND tbFileNameBase;
+    HWND tbPulse1Path;
+    HWND pdPulse1Type;
+    HWND tbPulse2Path;
+    HWND pdPulse2Type;
+    HWND buttonPulse1Path;
+    HWND buttonPulse2Path;
+    HWND buttonRun;
+    HWND buttonFile;
+    HWND buttonPlot;
+    HWND buttonRefreshDB;
+    HWND buttonStop;
+    HWND tbWhichSimToPlot;
+    HWND textboxSims;
+};
+
+double              vmaxa(double* v, int vlength);
+DWORD WINAPI        mainsimthread(LPVOID lpParam);
+int                 DrawLabels(HDC hdc);
+int                 LabelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset);
+int                 HWNDToString(HWND inputA, char* outputString);
+double              HWNDToDouble(HWND inputA);
+int                 AppendTextToWindow(HWND inputA, wchar_t* messagebuffer, int buffersize);
+int                 getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox);
+int                 getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox);
+int                 DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm);
 double              cmodulussquared(std::complex<double>complexNumber);
+int                 drawsimplots(int simIndex);
+int                 linearremap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp);
+int                 readcrystaldatabase(struct crystalentry* db, bool isVerbose);

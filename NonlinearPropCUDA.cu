@@ -11,7 +11,7 @@
 //#include <complex.h>
 
 #define THREADS_PER_BLOCK 64
-#define MAX_LOADSTRING 512
+#define MAX_LOADSTRING 1024
 //overload the math operators for cuda complex numbers so this code fits inside the observable universe
 __device__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
 __device__ cuDoubleComplex operator+(cuDoubleComplex a, cuDoubleComplex b) { return cuCadd(a, b); }
@@ -494,7 +494,7 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     std::complex<double> ne, no, n0; //active refractive index;
     double f, w; //active frequency;
     double pulseEnergySum;
-    std::complex<double> ko, k0, specfac;
+    std::complex<double> ko, k0, specfac, specphase;
     double c = 2.99792458e8; //speed of light
     double eps0 = 8.8541878128e-12; //vacuum permittivity
     double pi = 3.14159265358979323846264338327950288; // pi to unneccessary precision
@@ -539,9 +539,12 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
         for (j = 0; j < (*s).sgOrder1; j++) {
             specfac *= specfac;
         }
-        specfac += ii * ((*s).cephase1 + w * (*s).delay1 - (*s).gdd1 * w * w - (*s).tod1 * w * w * w);
-        specfac *= -1;
-        specfac = exp(specfac);
+        specphase = ii * ((*s).cephase1 + w * (*s).delay1 - (*s).gdd1 * w * w - (*s).tod1 * w * w * w);
+        specfac = exp(-specfac - specphase);
+
+        if ((*s).field1IsAllocated) {
+            specfac = (*s).loadedField1[i] * exp(-specphase);
+        }
 
         ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
         no = (*s).refractiveIndex2[i + (*s).Ntime * j];
@@ -643,9 +646,14 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
         for (j = 0; j < (*s).sgOrder1; j++) {
             specfac *= specfac;
         }
-        specfac += ii * ((*s).cephase2 + w * (*s).delay2 - (*s).gdd2 * w * w - (*s).tod2 * w * w * w);
-        specfac *= -1;
-        specfac = exp(specfac);
+        specphase = ii * ((*s).cephase2 + w * (*s).delay2 - (*s).gdd2 * w * w - (*s).tod2 * w * w * w);
+        specfac = exp(-specfac - specphase);
+
+        if ((*s).field2IsAllocated) {
+            specfac = (*s).loadedField2[i] * exp(-specphase);
+        }
+
+
         ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
         no = (*s).refractiveIndex2[i + (*s).Ntime * j];
         ko = 2 * pi * no * f / c;
@@ -1080,7 +1088,7 @@ std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* n
     }
 }
 
-int loadfrogspeck(char* frogFilePath, struct propthread* s, int fieldIndex) {
+int loadfrogspeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex) {
     FILE* fp;
     int maxFileSize = 16384;
     double wavelength, R, phi, complexX, complexY, f, f0, f1, fmax;
@@ -1121,13 +1129,15 @@ int loadfrogspeck(char* frogFilePath, struct propthread* s, int fieldIndex) {
 
     //interpolate the FROG data onto the simulation grid
     
-    //allocate the grid
-    //NOTE THAT THIS WILL NOT BE FREED, IT IS UP TO THE CALLING FUNCTION TO DO SO
-    std::complex<double>* Egrid = (std::complex<double>*)malloc((*s).Ntime * sizeof(std::complex<double>));
-
     //fill the simulation grid based on the data
-    for (i = 0; i < (*s).Ntime; i++) {
-        f = i * (*s).fStep;
+    for (i = 0; i < Ntime; i++) {
+
+        f = i * fStep;
+        if (i >= Ntime / 2) {
+            f -= fStep * Ntime;
+        }
+        f *= -1;
+
         k0 = (int)floor((f - fmin) / df);
         k1 = (int)ceil((f - fmin) / df);
         if (k0 < 0 || k1 >= currentRow) {
@@ -1137,23 +1147,8 @@ int loadfrogspeck(char* frogFilePath, struct propthread* s, int fieldIndex) {
             f0 = fmin + k0 * df;
             f1 = fmin + k1 * df;
             Egrid[i] = (E[k0] * (f1 - f) + E[k1] * (f - f0)) / df; //linear interpolation
+            Egrid[i] *= (abs(Egrid[i]) > gateLevel);
         }
-    }
-
-    //resolve pointers and allocation flags
-    if (fieldIndex == 1) {
-        (*s).loadedField1 = Egrid;
-        (*s).field1IsAllocated = TRUE;
-    }
-    else if (fieldIndex == 2) {
-        (*s).loadedField2 = Egrid;
-        (*s).field2IsAllocated = TRUE;
-    }
-    else {
-        //free allocated grid if resolution fails
-        free(Egrid);
-        free(E);
-        return -2;
     }
 
     free(E);

@@ -60,4 +60,4 @@ int				fftshiftZflip(std::complex<double>* A, std::complex<double>* B, long long
 std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn);
 int				preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc);
 double			thetasearch(struct propthread* s, double dk, double f, double tol);
-int				loadfrogspeck(char* frogFilePath, struct propthread* s, int fieldIndex);
+int				loadfrogspeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex);
