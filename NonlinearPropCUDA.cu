@@ -116,14 +116,11 @@ __global__ void thetasearchKernel(long long Ntime, long long Nspace, double* the
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j, k;
 
-
     j = i / Ntime; //spatial coordinate
     k = i - j*Ntime; //temporal coordinate
     
     double crystalTheta = sellmeierCoefficients[66];
     double crystalPhi = sellmeierCoefficients[67];
-    //int axesNumber = (int)sellmeierCoefficients[68];
-    //int sellmeierType = (int)sellmeierCoefficients[69];
     double kStep = sellmeierCoefficients[70];
     double fStep = sellmeierCoefficients[71];
     double tol = sellmeierCoefficients[72];
@@ -135,8 +132,6 @@ __global__ void thetasearchKernel(long long Ntime, long long Nspace, double* the
 	f *= -1;
 	double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 
-
-    
     theta[i] = 0;
     double dTheta = 0.1;
     double err, errPlus, errMinus;
@@ -185,12 +180,6 @@ __global__ void thetasearchKernel(long long Ntime, long long Nspace, double* the
     
 }
 
-//adds scalar x array to another array, used in RK4 propagation to give the current estimate of the field
-__global__ void addkKernel(cuDoubleComplex* gridETemp, cuDoubleComplex* E, cuDoubleComplex* k, double kfac) {
-    long long i = threadIdx.x + blockIdx.x * blockDim.x;
-    gridETemp[i] = E[i] + kfac * k[i];
-}
-
 //replaces E with its complex conjugate
 __global__ void conjugateKernel(cuDoubleComplex* E) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -203,7 +192,7 @@ __global__ void nonlinearpolarizationKernel(struct cudaLoop s) {
     //The d2eff tensor has the form
     // | d_xxx d_xyx d_yyx |
     // | d_xxy d_xyy d_yyy |
-    double Ex = cuCreal(s.gridETime[i])/s.propagationInts[0];
+    double Ex = cuCreal(s.gridETime[i]) / s.propagationInts[0];
     double Ey = cuCreal(s.gridETime2[i] / s.propagationInts[0]);
     double Ps = 0.;
     double Pp = 0.;
@@ -236,20 +225,17 @@ __global__ void nonlinearpolarizationKernel(struct cudaLoop s) {
         Pp += s.absorptionParameters[1] * Eyi;
     }
 
-    //Plasma response with time-dependent carrier density
-    //This polarization needs a different factor in the nonlinear wave equation
-    //to account for the integration
 
-    //Note that the polarization is real but I make it complex, then use complex-complex FFT
-    //Would be faster in the future if I can figure out the pattern for real-complex FFT
-    //s.gridPolarizationTime[i] = make_cuDoubleComplex(Ps,0);
-    //s.gridPolarizationTime2[i] = make_cuDoubleComplex(Pp,0);
+
     s.gridPolarizationTime[i] = Ps;
     s.gridPolarizationTime2[i] = Pp;
 
 }
 
-
+//Plasma response with time-dependent carrier density
+//This polarization needs a different factor in the nonlinear wave equation
+//to account for the integration
+//TO BE IMPLEMENTED!
 __global__ void plasmaCurrentKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     int j,k,l;
@@ -276,15 +262,17 @@ __global__ void plasmaCurrentKernel(struct cudaLoop s) {
 }
 
 
-//Calculate the k=dE/dz propagation factors for RK4
-//Navigating the data layout of the nonlinear polarization's Fourier transform in the
-//data layout of cuFFT double->complex.
+//Main kernel for RK4 propagation of the field
 __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
     long long h = i - j * s.Ntime; //temporal coordinate
     cuDoubleComplex* k1;
     cuDoubleComplex* k2;
+
+    //k1 and k2 are the intermediate values of the derivatives used in constructing
+    //the solution in the RK4 scheme. In this step, we first resolve which pointers
+    //to use based on which substep we are on
     if (stepNumber == 0) {
         k1 = s.k01;
         k2 = s.k02;
@@ -319,16 +307,19 @@ __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
         k2[i] = s.gridPropagationFactor2[i] * s.gridETemp2[i] + s.gridPolarizationFactor2[i] * s.gridPolarizationFrequency2[h];
     }
 
-
-
+    //in the first substep, first construct the next intermediate field value
+    //which will be used in the next substep. Once that memory will not be used anymore
+    //it is recycled to store the RK4 solution to the next time step as it is built up
+    //over the substeps.
     if (stepNumber == 0) {
         s.gridETemp[i] = s.gridEFrequency[i] + 0.5 * k1[i];
         s.gridETemp2[i] = s.gridEFrequency2[i] + 0.5 * k2[i];
-
        
         s.k01[i] = k1[i] / 6 + s.gridEFrequency[i];
         s.k02[i] = k2[i] / 6 + s.gridEFrequency2[i];
     }
+
+    //in the next substep, again construct the next intermediate field and add k/3 to solution
     if (stepNumber == 1) {
         s.gridETemp[i] = s.gridEFrequency[i] + 0.5 * k1[i];
         s.gridETemp2[i] = s.gridEFrequency2[i] + 0.5 * k2[i];
@@ -337,15 +328,21 @@ __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
         s.k02[i] = s.k02[i] + k2[i] / 3;
 
     }
+
+    //same action as previous substep, except the weight of k in the intermediate solution is 1 instead of 0.5
     if (stepNumber == 2) {
         s.gridETemp[i] = s.gridEFrequency[i] + k1[i];
         s.gridETemp2[i] = s.gridEFrequency2[i] + k2[i];
         s.k01[i] = s.k01[i] + k1[i] / 3;
         s.k02[i] = s.k02[i] + k2[i] / 3;
     }
+
+    //last substep. Solution is now complete and may be copied directly into the field arrays
     if (stepNumber == 3) {
-        s.k01[i] = s.k01[i] + k1[i] / 6;
-        s.k02[i] = s.k02[i] + k2[i] / 6;
+        s.gridEFrequency[i] = s.k01[i] + k1[i] / 6;
+        s.gridEFrequency2[i] = s.k02[i] + k2[i] / 6;
+        s.gridETemp[i] = s.gridEFrequency[i];
+        s.gridETemp[i] = s.gridEFrequency[i];
     }
 
 }
@@ -404,12 +401,8 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
 
     cudaMalloc((void**)&s.k01, sizeof(cuDoubleComplex) * s.Ntime * s.Nspace);
     cudaMalloc((void**)&s.k11, sizeof(cuDoubleComplex) * s.Ntime * s.Nspace);
-    //cudaMalloc((void**)&s.k3, sizeof(cuDoubleComplex) * s.Ntime * s.Nspace);
-    //cudaMalloc((void**)&s.k4, sizeof(cuDoubleComplex) * s.Ntime * s.Nspace);
     cudaMalloc((void**)&s.k02, sizeof(cuDoubleComplex) * s.Ntime * s.Nspace);
     cudaMalloc((void**)&s.k12, sizeof(cuDoubleComplex) * s.Ntime * s.Nspace);
-    //cudaMalloc((void**)&s.k32, sizeof(cuDoubleComplex) * s.Ntime * s.Nspace);
-    //cudaMalloc((void**)&s.k42, sizeof(cuDoubleComplex) * s.Ntime * s.Nspace);
 
     cudaMalloc((void**)&s.gridPolarizationTime, sizeof(double) * s.Ntime * s.Nspace);
     cudaMalloc((void**)&s.gridPolarizationTime2, sizeof(double) * s.Ntime * s.Nspace);
@@ -420,17 +413,6 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     cudaMalloc((void**)&s.absorptionParameters, sizeof(double) * 6);
     cudaMalloc((void**)&s.propagationInts, sizeof(int) * 3);
 
-    //temporary zeroing
-    cudaMemset(s.gridPolarizationTime, 0, s.Nspace * s.Ntime * sizeof(double));
-    cudaMemset(s.gridEFrequency, 0, s.Nspace * s.Ntime * sizeof(cuDoubleComplex));
-    cudaMemset(s.gridPropagationFactor, 0, s.Nspace * s.Ntime * sizeof(cuDoubleComplex));
-    cudaMemset(s.gridPolarizationFactor, 0, s.Nspace * s.Ntime * sizeof(cuDoubleComplex));
-    cudaMemset(s.gridPolarizationTime2, 0, s.Nspace * s.Ntime * sizeof(double));
-    cudaMemset(s.gridEFrequency2, 0, s.Nspace * s.Ntime * sizeof(cuDoubleComplex));
-    cudaMemset(s.gridETemp, 0, s.Ngrid * sizeof(cuDoubleComplex));
-    cudaMemset(s.gridETemp2, 0, s.Ngrid * sizeof(cuDoubleComplex));
-    cudaMemset(s.gridPropagationFactor2, 0, s.Nspace * s.Ntime * sizeof(cuDoubleComplex));
-    cudaMemset(s.gridPolarizationFactor2, 0, s.Nspace * s.Ntime * sizeof(cuDoubleComplex));
     long long propagationIntsCPU[3] = { s.Ngrid, s.Ntime, s.Nspace };
 
 
@@ -444,13 +426,17 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
 
     //prepare FFT plans
     cufftPlan2d(&s.fftPlan, s.Nspace, s.Ntime, CUFFT_Z2Z);
-    //cufftPlan2d(&s.polfftPlan, s.Nspace, s.Ntime, CUFFT_Z2Z);
     cufftPlan2d(&s.polfftPlan, s.Nspace, s.Ntime, CUFFT_D2Z);
+
     //prepare the propagation arrays
     preparepropagation2Dcartesian(sCPU, &s);
 
     //generate the pulses - later on, add a switch to make this optional in case a field has been loaded
     pulsegenerator(sCPU, &s);
+
+    //Copy the field into the temporary array
+    cudaMemcpy(s.gridETemp, s.gridEFrequency, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
+    cudaMemcpy(s.gridETemp2, s.gridEFrequency2, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
 
     //Core propagation loop
     for (i = 0; i < s.Nsteps; i++) {
@@ -462,10 +448,6 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
         rkstep(s, 2);
         //calculate k4
         rkstep(s, 3);
-
-        //Copy the new step that was stored in k0 to the current step field
-        cudaMemcpy(s.gridEFrequency, s.k01, s.Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
-        cudaMemcpy(s.gridEFrequency2, s.k02, s.Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
 
         if ((*sCPU).imdone[0] == 2) {
             break;
@@ -512,7 +494,6 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     cufftDestroy(s.polfftPlan);
 
     //Free CPU memory
-
     free(gridPropagationFactorCPU);
     free(gridPolarizationFactorCPU);
     
@@ -522,13 +503,6 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
 int rkstep(struct cudaLoop s, int stepNumber) {
-
-    //resolve the substep step
-    if (stepNumber == 0) {
-        //E(n) = E(n-1)
-        cudaMemcpy(s.gridETemp, s.gridEFrequency, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
-        cudaMemcpy(s.gridETemp2, s.gridEFrequency2, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
-    }
 
     //calculate nonlinear polarization
     if (s.isNonLinear) {
@@ -571,8 +545,7 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     pulse1f = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
     pulse2f = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
     std::complex<double> Eb;
-    std::complex<double> ii = 0; //imaginary unit
-    ii.imag(1.);
+    std::complex<double> ii(0, 1);
 
 
 
@@ -834,8 +807,7 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
     propFactor1 = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
     propFactor2 = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
 
-    std::complex<double> ii = 0; //imaginary unit
-    ii.imag(1.);
+    std::complex<double> ii(0, 1);
 
 
     sellmeier(&n0, &no, (*s).sellmeierCoefficients, (*s).frequency1, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
@@ -868,10 +840,7 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
             f -= (*s).fStep * (*s).Ntime;
         }
         f *= -1;
-
-
         k0 = 2 * pi * real(n0) * f / c;
-        
 
         for (j = 0; j < (*s).Nspace; j++) {
             kr = j * (*s).kStep - (j >= ((*s).Nspace / 2)) * ((*s).kStep * (*s).Nspace); //frequency grid in transverse direction
@@ -886,8 +855,6 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop* sc) {
             (*s).refractiveIndex2[i + (*s).Ntime * j] = no;
             ke = 2 * pi * ne * f / c;
             ko =  2 * pi * no * f / c;
-
-            
 
             if (real(ke) < 0 && real(ko) < 0) {
                 propFactor1[i + (*s).Ntime * j] = ii * (ke - k0 + kr * kr / (2. * real(ke))) * (*s).propagationStep;
@@ -1118,8 +1085,6 @@ std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* n
         if (isnan(real(ne[0]))) {
             ne[0] = 1;
         }
-        //ne[0] = real(ne[0]);
-        //ne[0].imag(0.0);
         no[0] = ne[0];
         return ne[0];
     }
@@ -1197,6 +1162,7 @@ int loadfrogspeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
     //fill the simulation grid based on the data
     for (i = 0; i < Ntime; i++) {
 
+        //frequency grid used in the simulation
         f = i * fStep;
         if (i >= Ntime / 2) {
             f -= fStep * Ntime;
