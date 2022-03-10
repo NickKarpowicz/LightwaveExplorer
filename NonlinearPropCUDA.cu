@@ -185,6 +185,14 @@ __global__ void conjugateKernel(cuDoubleComplex* E) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     E[i] = cuConj(E[i]);
 }
+
+//replaces NaN values with 0
+__global__ void fixnanKernel(cuDoubleComplex* E) {
+    long long i = threadIdx.x + blockIdx.x * blockDim.x;
+    if (isnan(cuCreal(E[i])) || isnan(cuCimag(E[i]))) {
+        E[i] = make_cuDoubleComplex(0., 0.);
+    }
+}
 __global__ void nonlinearpolarizationKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     double Ex = cuCreal(s.gridETime[i]) / s.propagationInts[0];
@@ -351,36 +359,42 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     std::complex<double>* gridPolarizationFactorCPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
 
     //GPU allocations
-    cudaMalloc((void**)&s.gridETime, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridETime2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridETemp, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridETemp2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridEFrequency, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridEFrequency2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridPropagationFactor, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridPolarizationFactor, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridPropagationFactor2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridPolarizationFactor2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridEFrequencyNext1, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridEFrequencyNext2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.k1, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.k2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMalloc((void**)&s.gridPolarizationFrequency, sizeof(cuDoubleComplex) * (s.Ntime / 2 + 1) * s.Nspace);
-    cudaMalloc((void**)&s.gridPolarizationFrequency2, sizeof(cuDoubleComplex) * (s.Ntime / 2 + 1) * s.Nspace);
-    cudaMalloc((void**)&s.gridPolarizationTime, sizeof(double) * s.Ngrid);
-    cudaMalloc((void**)&s.gridPolarizationTime2, sizeof(double) * s.Ngrid);
+    int memErrors = 0;
+    memErrors += cudaMalloc((void**)&s.gridETime, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridETime2, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridETemp, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridETemp2, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridEFrequency, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridEFrequency2, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPropagationFactor, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPolarizationFactor, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPropagationFactor2, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPolarizationFactor2, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridEFrequencyNext1, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridEFrequencyNext2, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.k1, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.k2, sizeof(cuDoubleComplex) * s.Ngrid);
+    //the following two should have a size (s.Ntime / 2 + 1) * s.Nspace, but I get overruns during
+    //the ffts if they're not larger. If I figure this out, it will save a complex grid worth of memory...
+    memErrors += cudaMalloc((void**)&s.gridPolarizationFrequency, sizeof(cuDoubleComplex) * s.Ngrid); 
+    memErrors += cudaMalloc((void**)&s.gridPolarizationFrequency2, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPolarizationTime, sizeof(double) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPolarizationTime2, sizeof(double) * s.Ngrid);
 
-    cudaMalloc((void**)&s.chi2Tensor, sizeof(double) * 9);
-    cudaMalloc((void**)&s.chi3Tensor, sizeof(double) * 81);
-    cudaMalloc((void**)&s.nonlinearSwitches, sizeof(int) * 4);
-    cudaMalloc((void**)&s.absorptionParameters, sizeof(double) * 6);
-    cudaMalloc((void**)&s.propagationInts, sizeof(long long) * 4);
+    memErrors += cudaMalloc((void**)&s.chi2Tensor, sizeof(double) * 9);
+    memErrors += cudaMalloc((void**)&s.chi3Tensor, sizeof(double) * 81);
+    memErrors += cudaMalloc((void**)&s.nonlinearSwitches, sizeof(int) * 4);
+    memErrors += cudaMalloc((void**)&s.absorptionParameters, sizeof(double) * 6);
+    memErrors += cudaMalloc((void**)&s.propagationInts, sizeof(long long) * 4);
+    (*sCPU).memoryError = memErrors;
 
     cudaMemset(s.gridPolarizationFrequency, 0, (s.Ntime / 2 + 1) * s.Nspace * sizeof(cuDoubleComplex));
     cudaMemset(s.gridPolarizationFrequency2, 0, (s.Ntime / 2 + 1) * s.Nspace * sizeof(cuDoubleComplex));
     cudaMemset(s.gridPropagationFactor, 0, s.Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(s.gridPropagationFactor2, 0, s.Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(s.gridPolarizationFactor, 0, s.Ngrid * sizeof(cuDoubleComplex));
+    cudaMemset(s.gridEFrequency, 0, s.Ngrid * sizeof(cuDoubleComplex));
+    cudaMemset(s.gridEFrequency2, 0, s.Ngrid * sizeof(cuDoubleComplex));
 
     long long propagationIntsCPU[4] = { s.Ngrid, s.Ntime, s.Nspace, (s.Ntime / 2 + 1) };
 
@@ -432,19 +446,21 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
             break;
         }
     }
-    
+    cudaDeviceSynchronize();
     //transform final result
+    fixnanKernel<<<s.Nspace, s.Ntime>>>(s.gridEFrequency);
+    fixnanKernel << <s.Nspace, s.Ntime >> > (s.gridEFrequency2);
     cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency, (cufftDoubleComplex*)s.gridETime, CUFFT_INVERSE);
     cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
     fftNormalizeKernel<<<s.Nspace, s.Ntime>>>(s.gridETime, s.propagationInts);
     fftNormalizeKernel<<<s.Nspace, s.Ntime>>>(s.gridETime2, s.propagationInts);
-
+    cudaDeviceSynchronize();
     //copy the field arrays from the GPU to CPU memory
     cudaMemcpy((*sCPU).ExtOut, s.gridETime, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&(*sCPU).ExtOut[s.Ngrid], s.gridETime2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridEFrequency2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-
+    cudaDeviceSynchronize();
     //Free GPU memory
     cudaFree(s.propagationInts);
     cudaFree(s.nonlinearSwitches);

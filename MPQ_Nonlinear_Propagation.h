@@ -83,6 +83,7 @@ struct propthread {
     std::complex<double>* ExtOut;
     std::complex<double>* EkwOut;
     int* imdone;
+    int memoryError;
     
     struct crystalentry* crystalDatabase;
 

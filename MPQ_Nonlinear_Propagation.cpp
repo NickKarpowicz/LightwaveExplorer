@@ -301,7 +301,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         wchar_t wcstring[newsize];
         mbstowcs_s(&convertedChars, wcstring, origsize, activeCUDADeviceProp.name, _TRUNCATE);
         AppendTextToWindow(maingui.textboxSims, wcstring, 256);
-
+        
         swprintf_s(messagebuffer, 1024, TEXT("\r\n\r\n"));
         AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
         free(messagebuffer);
@@ -559,8 +559,10 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     int sequenceCount = sscanf(sequenceString, "%lf %lf %lf %lf %lf %lf", &sequenceArray[0], &sequenceArray[1], &sequenceArray[2], &sequenceArray[3], &sequenceArray[4], &sequenceArray[5]);
     
     tokToken = strtok(NULL, ";");
-    while (tokToken != NULL && sequenceCount > 4) {
-        sequenceCount += sscanf(tokToken, "%lf %lf %lf %lf %lf %lf", &sequenceArray[sequenceCount], &sequenceArray[sequenceCount + 1], &sequenceArray[sequenceCount + 2], &sequenceArray[sequenceCount + 3], &sequenceArray[sequenceCount + 4], &sequenceArray[sequenceCount + 5]);
+    int lastread = sequenceCount;
+    while (tokToken != NULL && lastread == 6) {
+        lastread = sscanf(tokToken, "%lf %lf %lf %lf %lf %lf", &sequenceArray[sequenceCount], &sequenceArray[sequenceCount + 1], &sequenceArray[sequenceCount + 2], &sequenceArray[sequenceCount + 3], &sequenceArray[sequenceCount + 4], &sequenceArray[sequenceCount + 5]);
+        sequenceCount += lastread;
         tokToken = strtok(NULL, ";");
     }
 
@@ -704,7 +706,7 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
         threads[j].isInSequence = isInSequence;
         threads[j].isFollowerInSequence = FALSE;
         threads[j].sequenceArray = sequenceArray;
-
+        threads[j].memoryError = 0;
         if (batchindex == 1) {
             delay2 += ((-1e-15*batchdestination) - batchstart) / (Nsims - 1);
         }
@@ -733,6 +735,13 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
                 resolvesequence(k, &threads[j]);
                 propagationLoop(&threads[j]);
                 drawsimplots(j);
+                if (threads[j].memoryError > 0) {
+                    messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+                    swprintf_s(messagebuffer, 1024,
+                        _T("Warning: device memory error (%i).\r\n"), threads[j].memoryError);
+                    AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
+                    free(messagebuffer);
+                }
             }
         }
         else {
