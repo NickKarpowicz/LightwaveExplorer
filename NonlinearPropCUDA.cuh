@@ -22,11 +22,11 @@ struct cudaLoop {
 	cuDoubleComplex* gridPropagationFactor2;
 	cuDoubleComplex* gridPolarizationFactor2;
 	cuDoubleComplex* gridPolarizationFrequency2;
-	cuDoubleComplex* k01;
-	cuDoubleComplex* k02;
+	cuDoubleComplex* gridEFrequencyNext1;
+	cuDoubleComplex* gridEFrequencyNext2;
 
-	cuDoubleComplex* k11;
-	cuDoubleComplex* k12;
+	cuDoubleComplex* k1;
+	cuDoubleComplex* k2;
 
 	double* gridPolarizationTime; //future optimization: this could be double rather than complex, if I can figure out the data layout of D2Z cufft
 	double* gridPolarizationTime2;

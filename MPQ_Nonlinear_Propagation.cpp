@@ -212,12 +212,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 
 
-    maingui.buttonRun = CreateWindow(TEXT("button"), TEXT("Run"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 16 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
+    maingui.buttonRun = CreateWindow(TEXT("button"), TEXT("Run"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 20 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
+    maingui.buttonStop = CreateWindow(TEXT("button"), TEXT("Stop"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 21 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
+    maingui.buttonRefreshDB = CreateWindow(TEXT("button"), TEXT("Refresh DB"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
+
+    maingui.tbSequence = CreateWindow(TEXT("Edit"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, xOffsetRow1 + textboxwidth + 4, 15 * vs-2, xOffsetRow2-xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
+
+
     maingui.buttonFile = CreateWindow(TEXT("button"), TEXT("Set Path"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow3, 0 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
     //maingui.buttonPlot = CreateWindow(TEXT("button"), TEXT("Plot"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 17 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
     //maingui.tbWhichSimToPlot = CreateWindow(TEXT("Edit"), TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 17 * vs, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.buttonRefreshDB = CreateWindow(TEXT("button"), TEXT("Refresh DB"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 20 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
-    maingui.buttonStop = CreateWindow(TEXT("button"), TEXT("Stop"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 18 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
 
 
     int k = 0;
@@ -415,7 +419,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 DWORD WINAPI mainsimthread(LPVOID lpParam) {
     cancellationCalled = 0;
     char outputbase[MAX_LOADSTRING];
-    HWNDToString(maingui.tbFileNameBase, outputbase);
+    HWNDToString(maingui.tbFileNameBase, outputbase, MAX_LOADSTRING);
 
     //struct propthread threads[256];
     struct propthread* threads = (struct propthread*)malloc(1024 * sizeof(struct propthread));
@@ -514,7 +518,7 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     int frogLines = 0;
     if (pulse1FileType == 1) {
         char pulse1Path[MAX_LOADSTRING];
-        HWNDToString(maingui.tbPulse1Path, pulse1Path);
+        HWNDToString(maingui.tbPulse1Path, pulse1Path, MAX_LOADSTRING);
         
         
         frogLines = loadfrogspeck(pulse1Path, loadedField1, Ntime, fStep, 0.0, 1);
@@ -536,7 +540,7 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     }
     if (pulse2FileType == 1) {
         char pulse2Path[MAX_LOADSTRING];
-        HWNDToString(maingui.tbPulse2Path, pulse2Path);
+        HWNDToString(maingui.tbPulse2Path, pulse2Path, MAX_LOADSTRING);
         
         frogLines = loadfrogspeck(pulse2Path, loadedField2, Ntime, fStep, 0.0, 1);
         if (frogLines > 0) isPulse2Allocated = TRUE;
@@ -546,6 +550,22 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
         AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
         free(messagebuffer);
     }
+
+    char *sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
+    double* sequenceArray = (double*)calloc(256 * MAX_LOADSTRING, sizeof(double));
+    HWNDToString(maingui.tbSequence, sequenceString, MAX_LOADSTRING * 256);
+    
+    char* tokToken = strtok(sequenceString, ";");
+    int sequenceCount = sscanf(sequenceString, "%lf %lf %lf %lf %lf %lf", &sequenceArray[0], &sequenceArray[1], &sequenceArray[2], &sequenceArray[3], &sequenceArray[4], &sequenceArray[5]);
+    
+    tokToken = strtok(NULL, ";");
+    while (tokToken != NULL && sequenceCount > 4) {
+        sequenceCount += sscanf(tokToken, "%lf %lf %lf %lf %lf %lf", &sequenceArray[sequenceCount], &sequenceArray[sequenceCount + 1], &sequenceArray[sequenceCount + 2], &sequenceArray[sequenceCount + 3], &sequenceArray[sequenceCount + 4], &sequenceArray[sequenceCount + 5]);
+        tokToken = strtok(NULL, ";");
+    }
+
+    int Nsequence = sequenceCount / 6;
+    bool isInSequence = (Nsequence>0);
 
 
     int InfoVecSize = 20;
@@ -586,6 +606,11 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     fprintf(textfile, "Crystal theta: %e\nCrystal phi: %e\nGrid width: %e\ndx: %e\nTime span: %e\ndt: %e\nThickness: %e\ndz: %e\n", crystalTheta, crystalPhi, spatialWidth, rStep, timeSpan, tStep, crystalThickness, propagationStep);
     fprintf(textfile, "Propagation mode: %i\n", symmetryType);
     fprintf(textfile, "Batch mode: %i\nBatch destination: %e\nBatch steps: %i\n", batchindex, batchdestination, Nsims);
+    if (isInSequence) {
+        HWNDToString(maingui.tbSequence, sequenceString, MAX_LOADSTRING * 256);
+        fprintf(textfile, "Sequence: %s\n", sequenceString);
+    }
+    
     fprintf(textfile, "Code version: 0.00 Feb. 15, 2022\n");
 
     fclose(textfile);
@@ -676,6 +701,10 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
         threads[j].ExtOut = &ExtOut[j * Ngrid * 2];
         threads[j].EkwOut = &EkwOut[j * Ngrid * 2];
 
+        threads[j].isInSequence = isInSequence;
+        threads[j].isFollowerInSequence = FALSE;
+        threads[j].sequenceArray = sequenceArray;
+
         if (batchindex == 1) {
             delay2 += ((-1e-15*batchdestination) - batchstart) / (Nsims - 1);
         }
@@ -697,10 +726,20 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     time(&tstart);
     int useWinThreads = 1;
     //run the simulations
-
+    
     for (j = 0; j < Nsims; j++) {
-        propagationLoop(&threads[j]);
-        drawsimplots(j);
+        if (isInSequence) {
+            for (k = 0; k < Nsequence; k++) {
+                resolvesequence(k, &threads[j]);
+                propagationLoop(&threads[j]);
+                drawsimplots(j);
+            }
+        }
+        else {
+            propagationLoop(&threads[j]);
+            drawsimplots(j);
+        }
+
         if (cancellationCalled == 1) {
             messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
             swprintf_s(messagebuffer, 1024,
@@ -791,6 +830,8 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     //free(outputpath);
     //free(chi2Tensor);
     //free(sellmeierCoefficients);
+    free(sequenceString);
+    free(sequenceArray);
     free(refractiveIndex1);
     free(refractiveIndex2);
     free(Ext);
@@ -830,6 +871,39 @@ double vmaxa(double* v, int vlength) {
     return maxval;
 }
 
+int resolvesequence(int currentIndex, struct propthread* s) {
+    double pi = 3.1415926535897932384626433832795;
+    
+    //sequence format
+    //material index, theta, phi, crystal length, propagation step, rotation angle
+    int materialIndex = (int)(*s).sequenceArray[0 + 6*currentIndex];
+    double crystalTheta = (pi/180) * (*s).sequenceArray[1 + 6 * currentIndex];
+    double crystalPhi = (pi/180) * (*s).sequenceArray[2 + 6 * currentIndex];
+    double propagationStep = 1e-9 * (*s).sequenceArray[4 + 6 * currentIndex];
+    long long Npropagation = (long long)(1e-6*(*s).sequenceArray[3 + 6 * currentIndex]/propagationStep);
+    double rotationAngle = (pi / 180) * (*s).sequenceArray[5 + 6 * currentIndex];
+
+    if (currentIndex > 0) {
+        (*s).isFollowerInSequence = TRUE;
+    }
+
+    (*s).propagationStep = propagationStep;
+    (*s).Npropagation = Npropagation;
+
+
+    (*s).materialIndex = materialIndex;
+    (*s).crystalTheta = crystalTheta;
+    (*s).crystalPhi = crystalPhi;
+    (*s).chi2Tensor = crystalDatabasePtr[materialIndex].d;
+    (*s).chi3Tensor = crystalDatabasePtr[materialIndex].chi3;
+    (*s).nonlinearSwitches = crystalDatabasePtr[materialIndex].nonlinearSwitches;
+    (*s).absorptionParameters = crystalDatabasePtr[materialIndex].absorptionParameters;
+    (*s).sellmeierCoefficients = crystalDatabasePtr[materialIndex].sellmeierCoefficients;
+
+    (*s).sellmeierType = crystalDatabasePtr[materialIndex].sellmeierType;
+    (*s).axesNumber = crystalDatabasePtr[materialIndex].axisType;
+    return 0;
+}
 //quality of life function - put a text label on a text box window, relative to its position
 int LabelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset) {
     RECT rectTextBox;
@@ -952,13 +1026,13 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
 }
 
 //returns a string containing the text in a text box
-int HWNDToString(HWND inputA, char* outputString)
+int HWNDToString(HWND inputA, char* outputString, int bufferSize)
 {
 
     int len = GetWindowTextLength(inputA);
     if (len > 0)
     {
-        len = GetWindowTextA(inputA, outputString, MAX_LOADSTRING);
+        len = GetWindowTextA(inputA, outputString, bufferSize);
     }
     return 0;
 }
@@ -1017,6 +1091,9 @@ int DrawLabels(HDC hdc) {
     LabelTextBox(hdc, maingui.mainWindow, maingui.pdPulse1Type, _T("Pulse 1 type:"), labos, 4);
     LabelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2 type:"), labos, 4);
     LabelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 4);
+
+
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -24);
 
     //plot labels
     int dx = 775;

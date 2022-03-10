@@ -86,6 +86,12 @@ struct propthread {
     
     struct crystalentry* crystalDatabase;
 
+    //sequence
+    bool isInSequence;
+    bool isFollowerInSequence;
+    double* sequenceArray;
+    int Nsequence;
+
 };
 
 struct crystalentry {
@@ -159,6 +165,8 @@ struct guiStruct {
     HWND pdPulseType;
     HWND pdRStep;
 
+    HWND tbSequence;
+
     HWND cbSavePsi;
     HWND tbFileNameBase;
     HWND tbPulse1Path;
@@ -180,7 +188,7 @@ double              vmaxa(double* v, int vlength);
 DWORD WINAPI        mainsimthread(LPVOID lpParam);
 int                 DrawLabels(HDC hdc);
 int                 LabelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset);
-int                 HWNDToString(HWND inputA, char* outputString);
+int                 HWNDToString(HWND inputA, char* outputString, int bufferSize);
 double              HWNDToDouble(HWND inputA);
 int                 AppendTextToWindow(HWND inputA, wchar_t* messagebuffer, int buffersize);
 int                 getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox);
@@ -190,3 +198,4 @@ double              cmodulussquared(std::complex<double>complexNumber);
 int                 drawsimplots(int simIndex);
 int                 linearremap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp);
 int                 readcrystaldatabase(struct crystalentry* db, bool isVerbose);
+int                 resolvesequence(int currentIndex, struct propthread* s);
