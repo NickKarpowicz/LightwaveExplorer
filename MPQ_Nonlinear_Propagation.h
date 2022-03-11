@@ -41,7 +41,7 @@ struct propthread {
     double x02;
     double propagationAngle1;
     double propagationAngle2;
-    int isCylindric;
+    bool isCylindric;
 
     //spectral/temporal field properties
     double pulseEnergy1;

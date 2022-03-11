@@ -494,8 +494,8 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     //int nthreads = HWNDToDouble(maingui.tbXstep);
     int batchindex = SendMessage(maingui.pdBatchMode, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     int symmetryType = SendMessage(maingui.pdPropagationMode, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-    int isCylindric = symmetryType==1;
-    if (isCylindric == 1) {
+    bool isCylindric = symmetryType==1;
+    if (isCylindric) {
         xOffset1 = 0;
         xOffset2 = 0;
         propagationAngle1 = 0;
@@ -643,7 +643,7 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
         threads[j].Ntime = Ntime;
         threads[j].Nspace = Nspace;
         threads[j].Ngrid = Ngrid;
-
+        threads[j].isCylindric = isCylindric;
         threads[j].materialIndex = materialIndex;
         threads[j].crystalTheta = crystalTheta;
         threads[j].crystalPhi = crystalPhi;
