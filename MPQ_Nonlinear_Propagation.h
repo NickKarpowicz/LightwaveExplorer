@@ -200,3 +200,4 @@ int                 drawsimplots(int simIndex);
 int                 linearremap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp);
 int                 readcrystaldatabase(struct crystalentry* db, bool isVerbose);
 int                 resolvesequence(int currentIndex, struct propthread* s);
+int                 drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv);

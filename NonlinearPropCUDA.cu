@@ -124,6 +124,7 @@ __global__ void radialLaplacianKernel(struct cudaLoop s) {
         s.gridRadialLaplacian2[i] = make_cuDoubleComplex(0, 0);
     }
     else {
+        rho *= s.Ngrid;
         s.gridRadialLaplacian1[i] = (s.firstDerivativeOperation[0] * s.gridETime[i - 3 * s.Ntime]
             + s.firstDerivativeOperation[1] * s.gridETime[i - 2 * s.Ntime]
             + s.firstDerivativeOperation[2] * s.gridETime[i - s.Ntime]
@@ -495,6 +496,74 @@ __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
 
 }
 
+__global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, double markerWidth, int sizeData, double* plotGrid, double normFactorX, double normFactorY, double offsetX, double offsetY, int sizeX, int sizeY, double* xTicks, int NxTicks, double* yTicks, int NyTicks) {
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
+    int j = i / sizeX;
+    int k = i - j * sizeX;
+    double x1, x2, y1, y2;
+    int c;
+    int tickLength = 12;
+    double positionNormalization;
+    double lineDistance;
+    bool insidePoints;
+    double pointDistance;
+    plotGrid[i] = 0;
+
+    //draw y ticks
+    for (c = 0; c < NyTicks; c++) {
+        x1 = 0;
+        x2 = tickLength;
+        y1 = normFactorY * (yTicks[c] + offsetY);
+        y2 = y1;
+        if (k < x1 || k > x2) {
+            lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+        }
+        else {
+            positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+            lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
+        }
+        lineDistance /= lineWidth;
+        plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
+    }
+
+    //draw y ticks
+    for (c = 0; c < NxTicks; c++) {
+        x1 = normFactorX * (xTicks[c] + offsetX);
+        x2 = x1;
+        y1 = 0;
+        y2 = tickLength;
+        if (k < x1 - 1 || k > x2+1 || ((j > (y1 + 1)) && (j > (y2 + 1))) || ((j < (y1 - 1)) && (j < (y2 - 1)))) {
+            lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+        }
+        else {
+            positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+            lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
+        }
+        lineDistance /= lineWidth;
+        plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
+    }
+
+    for (c = 0; c < sizeData-1; c++) {
+        x1 = normFactorX*(dataX[c] + offsetX);
+        x2 = normFactorX*(dataX[c + 1] + offsetX);
+        y1 = normFactorY*(dataY[c] + offsetY);
+        y2 = normFactorY*(dataY[c + 1] + offsetY);
+        pointDistance = sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j));
+        if (k < x1 || k > x2 || ((j>(y1+1)) && (j>(y2+1))) || ((j<(y1-1))&&(j<(y2-1)))) {
+            lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+        }
+        else {
+            positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+            lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
+        }
+        lineDistance /= lineWidth;
+        pointDistance /= markerWidth;
+        plotGrid[i] = max(plotGrid[i], exp(-lineDistance*lineDistance));
+        plotGrid[i] = max(plotGrid[i], exp(-pointDistance*pointDistance*pointDistance*pointDistance));
+
+    }
+
+}
 
 //Take absolute value of complex array
 __global__ void absKernel(double* absOut, cuDoubleComplex* complexIn) {
@@ -1348,5 +1417,40 @@ int loadfrogspeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 
     free(E);
     return currentRow;
+}
+
+int plotDataXY(double* X, double* Y, double minX, double maxX, double minY, double maxY, int N, int plotSizeX, int plotSizeY, double lineWidth, double markerWidth, double* plotGrid, double* xTicks, int NxTicks, double* yTicks, int NyTicks) {
+    double normFactorX = plotSizeX/(maxX - minX);
+    double normFactorY = plotSizeY/(maxY - minY);
+    double offsetY = -minY;
+    double offsetX = -minX;
+    int i, j, k;
+
+    double* plotGridGPU;
+    double* dataX;
+    double* dataY;
+    double* xTicksGPU;
+    double* yTicksGPU;
+
+    cudaMalloc((void**)&plotGridGPU, plotSizeX * plotSizeY * sizeof(double));
+    cudaMalloc((void**)&dataX, N * sizeof(double));
+    cudaMalloc((void**)&dataY, N * sizeof(double));
+    cudaMalloc((void**)&xTicksGPU, NxTicks * sizeof(double));
+    cudaMalloc((void**)&yTicksGPU, NyTicks * sizeof(double));
+    cudaMemcpy(xTicksGPU, xTicks, NxTicks * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(yTicksGPU, yTicks, NyTicks * sizeof(double), cudaMemcpyHostToDevice);
+
+    cudaMemcpy(dataX, X, N * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(dataY, Y, N * sizeof(double), cudaMemcpyHostToDevice);
+    plotDataKernel<<<(plotSizeX*plotSizeY)/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(dataX, dataY, lineWidth, markerWidth, N, plotGridGPU, normFactorX, normFactorY, offsetX, offsetY, plotSizeX, plotSizeY, xTicksGPU, NxTicks, yTicksGPU, NyTicks);
+    cudaMemcpy(plotGrid, plotGridGPU, (plotSizeX * plotSizeY) * sizeof(double), cudaMemcpyDeviceToHost);
+
+    cudaFree(plotGridGPU);
+    cudaFree(yTicksGPU);
+    cudaFree(xTicksGPU);
+    cudaFree(dataX);
+    cudaFree(dataY);
+
+    return 0;
 }
 

@@ -151,7 +151,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     int consoleSize = 420;
     int textboxwidth = 150;
     maingui.mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_EX_CONTROLPARENT,
-        CW_USEDEFAULT, CW_USEDEFAULT, 2245, 33 * vs + consoleSize + 60, nullptr, nullptr, hInstance, nullptr);
+        CW_USEDEFAULT, CW_USEDEFAULT, 2200, 33 * vs + consoleSize + 60, nullptr, nullptr, hInstance, nullptr);
     SetMenu(maingui.mainWindow, NULL);
     SetWindowTextA(maingui.mainWindow, "Nick's nonlinear propagator");
     //text boxes for input parameters
@@ -1105,13 +1105,23 @@ int DrawLabels(HDC hdc) {
     LabelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -24);
 
     //plot labels
-    int dx = 775;
-    int dy = 508;
-    int spacer = 25;
+    int x = 690;
+    int y = 125;
+    int dx = 64 * 11;
+    int dy = 256;
+    int plotMargin = 0;
+    int spacerX = 50;
+    int spacerY = 40;
     LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization, space/time:"), 0, 32);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, space/time:"), 0, 32+dy+spacer);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization, Fourier, Log:"), 0+dx+spacer, 32);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, Fourier, Log:"), 0+dx+spacer, 32+dy+spacer);
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, space/time:"), 0, 32+dy+spacerY);
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization waveform (GV/m):"), 0, 32 + 2*(dy + spacerY));
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization waveform (GV/m):"), 0, 32 + 3*(dy + spacerY));
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("Time (fs)"), dx/2, 36 + 4 * (dy + spacerY));
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization, Fourier, Log:"), 0+dx+spacerX, 32);
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, Fourier, Log:"), 0+dx+spacerX, 32+dy+spacerY);
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization spectrum, log-scale:"), 0 + dx + spacerX, 32 + 2*(dy + spacerY));
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization spectrum, log-scale:"), 0 + dx + spacerX, 32 + 3*(dy + spacerY));
+    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("Frequency (THz)"), dx / 2 + 0 + dx + spacerX, 36 + 4 * (dy + spacerY));
     return 0;
 }
 
@@ -1278,11 +1288,13 @@ int DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
 
 int drawsimplots(int simIndex) {
     if (isGridAllocated == 1) {
-        int x = 650;
+        int x = 690;
         int y = 125;
-        int dx = 775;
-        int dy = 508;
-        int spacer = 25;
+        int dx = 64*11;
+        int dy = 256;
+        int plotMargin = 0;
+        int spacerX = 50;
+        int spacerY = 40;
         int i,j;
         HDC hdc;
 
@@ -1301,7 +1313,8 @@ int drawsimplots(int simIndex) {
         double* plotarr2 = (double*)calloc(dx * dy, sizeof(double));
         
         std::complex<double>* shiftedFFT = (std::complex<double>*)calloc((*activeSetPtr).Ngrid, sizeof(std::complex<double>));
-
+        double maxY = 0;
+        double minY = 0;
         //Plot Time Domain, s-polarization
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
             plotarr[i] = (real((*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2]));
@@ -1310,6 +1323,7 @@ int drawsimplots(int simIndex) {
         
         linearremap(plotarr, (*activeSetPtr).Nspace, (*activeSetPtr).Ntime, plotarr2, dy, dx, 0);
         DrawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 1);
+        drawLabeledXYPlot(hdc, (*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 2 * dy + 2 * spacerY, dx, dy, 0, 0, 1e9);
 
         //Plot Time Domain, p-polarization
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
@@ -1317,7 +1331,8 @@ int drawsimplots(int simIndex) {
         }
 
         linearremap(plotarr, (*activeSetPtr).Nspace, (*activeSetPtr).Ntime, plotarr2, dy, dx, 0);
-        DrawArrayAsBitmap(hdc, dx, dy, x, y + dy + spacer, dy, dx, plotarr2, 1);
+        DrawArrayAsBitmap(hdc, dx, dy, x, y + dy + spacerY, dy, dx, plotarr2, 1);
+        drawLabeledXYPlot(hdc, (*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 3 * dy + 3 * spacerY, dx, dy, 0, 0, 1e9);
 
         //Plot Fourier Domain, s-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
@@ -1333,7 +1348,10 @@ int drawsimplots(int simIndex) {
 
         linearremap(plotarrC, (*activeSetPtr).Nspace, (*activeSetPtr).Ntime / 2, plotarr2, dy, dx, 0);
         //linearremap(plotarr, (*activeSetPtr).Nspace, (*activeSetPtr).Ntime, plotarr2, dy, dx, 0);
-        DrawArrayAsBitmap(hdc, dx, dy, x + dx + spacer, y, dy, dx, plotarr2, 1);
+        DrawArrayAsBitmap(hdc, dx, dy, x + dx + spacerX, y, dy, dx, plotarr2, 1);
+        drawLabeledXYPlot(hdc, (*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
+
+
 
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
@@ -1348,8 +1366,43 @@ int drawsimplots(int simIndex) {
         
         linearremap(plotarrC, (*activeSetPtr).Nspace, (*activeSetPtr).Ntime/2, plotarr2, dy, dx, 0);
 
-        DrawArrayAsBitmap(hdc, dx, dy, x + dx + spacer, y + dy + spacer, dy, dx, plotarr2, 1);
+        DrawArrayAsBitmap(hdc, dx, dy, x + dx + spacerX, y + dy + spacerY, dy, dx, plotarr2, 1);
 
+        drawLabeledXYPlot(hdc, (*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, dx, dy, 2, 8, 1);
+        /*
+        maxY = 0;
+        minY = 0;
+        for (i = 0; i < (*activeSetPtr).Ntime/2; i++) {
+            plotarrC[i] = (*activeSetPtr).fStep * i;
+            maxY = max(plotarrC[i + (*activeSetPtr).Ngrid/4], maxY);
+            minY = min(plotarrC[i + (*activeSetPtr).Ngrid / 4], minY);
+        }
+
+
+        double xTicks1[3] = { 0.25*(*activeSetPtr).fStep*(*activeSetPtr).Ntime / 2, 0.5*(*activeSetPtr).fStep*(*activeSetPtr).Ntime / 2, 0.75*(*activeSetPtr).fStep*(*activeSetPtr).Ntime / 2 };
+        double yTicks1[2] = { maxY, maxY - 4 };
+        plotDataXY(plotarrC, &plotarrC[(*activeSetPtr).Ngrid / 4], 0, (*activeSetPtr).fStep * (*activeSetPtr).Ntime/2, maxY-8, 1.02 * maxY, (*activeSetPtr).Ntime/2, x, y, dx-plotMargin, dy-plotMargin, 1, 2.2, plotarr2, xTicks1, 3, yTicks1, 2);
+        const wchar_t labelText[4] = _T("0.5");
+   
+        
+        DrawArrayAsBitmap(hdc, dx-plotMargin, dy-plotMargin, x + dx + spacer+plotMargin, y+2*dy+2*spacer, dy-plotMargin, dx-plotMargin, plotarr2, 0);
+        wchar_t* messagebuffer;
+        for (i = 0; i < 2; i++) {
+            messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+            swprintf_s(messagebuffer, 1024,
+                _T("%1.1f"), yTicks1[i]);
+            TextOutW(hdc, x + dx + spacer + plotMargin - 32, y + 2 * dy + 2 * spacer + i*0.96*dy/2, messagebuffer, (int)_tcslen(messagebuffer));
+            free(messagebuffer);
+        }
+        for (i = 0; i < 3; i++) {
+            messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+            swprintf_s(messagebuffer, 1024,
+                _T("%3.0f"), xTicks1[i]/1e12);
+            TextOutW(hdc, x + dx + spacer + plotMargin + 0.25*dx*(i+1) - 12, y + 3 * dy + 2 * spacer, messagebuffer, (int)_tcslen(messagebuffer));
+            free(messagebuffer);
+        }
+        */
+        
         free(shiftedFFT);
         free(plotarr);
         free(plotarr2);
@@ -1360,7 +1413,60 @@ int drawsimplots(int simIndex) {
     }
     return 0;
 }
+int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv) {
+    double maxY = 0;
+    double minY = 0;
+    int i;
+    double* X = (double*)calloc(N, sizeof(double));
+    double* plotArray = (double*)calloc(pixelsWide * pixelsTall, sizeof(double));
+    for (i = 0; i < N; i++) {
+        X[i] = xStep * i;
+        maxY = max(Y[i], maxY);
+        minY = min(Y[i], minY);
+    }
 
+    int NyTicks = 3;
+    double yTicks1[3] = { maxY, 0, minY };
+    if (forceYOrigin == 2) {
+        minY = maxY - YOrigin;
+        NyTicks = 2;
+        yTicks1[1] = minY;
+
+    }
+    else if (forceYOrigin == 1) {
+        minY = YOrigin;
+        NyTicks = 2;
+        yTicks1[1] = minY;
+    }
+
+
+    double xTicks1[3] = { 0.25 * xStep * N, 0.5 * xStep * N, 0.75 * xStep * N };
+
+    
+    plotDataXY(X, Y, 0, xStep * N, minY, 1.02 * maxY, N, pixelsWide, pixelsTall, 1, 2.2, plotArray, xTicks1, 3, yTicks1, NyTicks);
+    const wchar_t labelText[4] = _T("0.5");
+
+
+    DrawArrayAsBitmap(hdc, pixelsWide, pixelsTall, posX, posY, pixelsTall, pixelsWide, plotArray, 0);
+    wchar_t* messagebuffer;
+    for (i = 0; i < NyTicks; i++) {
+        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        swprintf_s(messagebuffer, 1024,
+            _T("%1.1f"), yTicks1[i]/yDiv);
+        TextOutW(hdc, posX - 32, posY + i * 0.96 * pixelsTall / 2, messagebuffer, (int)_tcslen(messagebuffer));
+        free(messagebuffer);
+    }
+    for (i = 0; i < 3; i++) {
+        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        swprintf_s(messagebuffer, 1024,
+            _T("%3.0f"), xTicks1[i]);
+        TextOutW(hdc, posX + 0.25 * pixelsWide * (i + 1) - 12, posY + pixelsTall, messagebuffer, (int)_tcslen(messagebuffer));
+        free(messagebuffer);
+    }
+    free(X);
+    free(plotArray);
+    return 0;
+}
 //calculates the squard modulus of a complex number, under the assumption that the
 //machine's complex number format is interleaved doubles.
 //Orders of magnitude faster than the standard library abs()

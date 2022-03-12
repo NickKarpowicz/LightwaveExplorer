@@ -75,3 +75,4 @@ int				preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop sc);
 int				preparepropagation3Dcylindric(struct propthread* s, struct cudaLoop sc);
 double			thetasearch(struct propthread* s, double dk, double f, double tol);
 int				loadfrogspeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex);
+int				plotDataXY(double* X, double* Y, double minX, double maxX, double minY, double maxY, int N, int plotSizeX, int plotSizeY, double lineWidth, double markerWidth, double* plotGrid, double* xTicks, int NxTicks, double* yTicks, int NyTicks);
