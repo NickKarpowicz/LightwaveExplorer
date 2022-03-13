@@ -84,7 +84,7 @@ struct propthread {
     std::complex<double>* EkwOut;
     int* imdone;
     int memoryError;
-    
+    int currentSim;
     struct crystalentry* crystalDatabase;
 
     //sequence
@@ -196,7 +196,7 @@ int                 getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox);
 int                 getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox);
 int                 DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm);
 double              cmodulussquared(std::complex<double>complexNumber);
-int                 drawsimplots(int simIndex);
+DWORD WINAPI        drawsimplots(LPVOID lpParam);
 int                 linearremap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp);
 int                 readcrystaldatabase(struct crystalentry* db, bool isVerbose);
 int                 resolvesequence(int currentIndex, struct propthread* s);

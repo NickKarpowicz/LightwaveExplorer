@@ -51,6 +51,7 @@
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <UseIntelMKL>Sequential</UseIntelMKL>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -168,15 +169,11 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="MPQ_Nonlinear_Propagation.h" />
     <ClInclude Include="NonlinearPropCUDA.cuh" />
-    <ClInclude Include="qr_solve.hpp" />
-    <ClInclude Include="r8lib.hpp" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MPQ_Nonlinear_Propagation.cpp" />
-    <ClCompile Include="qr_solve.cpp" />
-    <ClCompile Include="r8lib.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MPQ_Nonlinear_Propagation.rc" />

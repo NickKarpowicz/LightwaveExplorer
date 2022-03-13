@@ -6,7 +6,7 @@
 #include "MPQ_Nonlinear_Propagation.h"
 #include <cuComplex.h>
 #include <cufft.h>
-#include "qr_solve.hpp"
+#include "include/mkl/mkl.h"
 #include "MPQ_Nonlinear_Propagation.h"
 //#include <complex.h>
 
@@ -607,6 +607,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     std::complex<double>* gridPolarizationFactorCPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
 
     //GPU allocations
+    //I shouldn't need all these memsets but, they make me feel better
     int memErrors = 0;
     memErrors += cudaMalloc((void**)&s.gridETime, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridETime, 0, sizeof(cuDoubleComplex) * s.Ngrid);
@@ -857,7 +858,7 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
         for (j = 0; j < (*s).sgOrder1; j++) {
             specfac *= specfac;
         }
-        specphase = ii * ((*s).cephase1 + w * (*s).delay1 - (*s).gdd1 * w * w - (*s).tod1 * w * w * w);
+        specphase = ii * ((*s).cephase1 + 2*pi*f * (*s).delay1 - (*s).gdd1 * w * w - (*s).tod1 * w * w * w);
         specfac = exp(-specfac - specphase);
 
         if ((*s).field1IsAllocated) {
@@ -964,7 +965,7 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
         for (j = 0; j < (*s).sgOrder1; j++) {
             specfac *= specfac;
         }
-        specphase = ii * ((*s).cephase2 + w * (*s).delay2 - (*s).gdd2 * w * w - (*s).tod2 * w * w * w);
+        specphase = ii * ((*s).cephase2 + 2*pi*f * (*s).delay2 - (*s).gdd2 * w * w - (*s).tod2 * w * w * w);
         specfac = exp(-specfac - specphase);
 
         if ((*s).field2IsAllocated) {
@@ -1197,6 +1198,7 @@ int swaprc(double* M, int dim1, int dim2) {
     return 0;
 }
 
+
 int deff(double* defftensor, double* dtensor, double theta, double phi) {
     double delta = 0.; //this angle is used for biaxial crystals, but I'm ignorning it for the moment
     int i, j, k;
@@ -1209,7 +1211,9 @@ int deff(double* defftensor, double* dtensor, double theta, double phi) {
     double Ore[] = { R[0] * R[0], R[1] * R[1], R[2] * R[2], 2 * R[1] * R[2], 2 * R[0] * R[2], 2 * R[0] * R[1],
         2 * R[0] * R[3], 2 * R[1] * R[4], 2 * R[2] * R[5], 2 * (R[4] * R[2] + R[1] * R[5]), 2 * (R[3] * R[2] + R[0] * R[5]), 2 * (R[3] * R[1] + R[0] * R[4]),
         R[3] * R[3], R[4] * R[4], R[5] * R[5], 2 * R[4] * R[5], 2 * R[3] * R[5], 2 * R[3] * R[4]
-};
+    };
+
+
 
     //The deff tensor is given by the equation R deff = d Ore, solve for deff, find d Ore first
     double dOre[9] = { 0 };
@@ -1220,8 +1224,20 @@ int deff(double* defftensor, double* dtensor, double theta, double phi) {
             }
         }
     }
+
+
     //Least squares solution to get the deff tensor
-    qr_solve_mat(3, 2, 3, R, dOre, defftensor);
+    double* work = (double*)malloc(128 * sizeof(double));
+    int dgelsInfo;
+    int dgelsParams[6] = { 3,2,3,3,3,128 };
+    dgels("N", &dgelsParams[0], &dgelsParams[1], &dgelsParams[2], R, &dgelsParams[3], dOre, &dgelsParams[4], work, &dgelsParams[5], &dgelsInfo);
+    defftensor[0] = dOre[0];
+    defftensor[1] = dOre[1];
+    defftensor[2] = dOre[3];
+    defftensor[3] = dOre[4];
+    defftensor[4] = dOre[6];
+    defftensor[5] = dOre[7];
+    free(work);
 
     //correct cross-terms
     for (i = 2; i < 4; i++) {
@@ -1231,7 +1247,7 @@ int deff(double* defftensor, double* dtensor, double theta, double phi) {
     for (i = 0; i < 6; i++) {
         defftensor[i] *= 2e-12; //change from pm/V to m/V and multiply by 2 for chi(2) instead of d
     }
-    return 0;
+    return dgelsInfo;
 }
 //c implementation of fftshift, working on complex double precision
 //A is the input array, B is the output

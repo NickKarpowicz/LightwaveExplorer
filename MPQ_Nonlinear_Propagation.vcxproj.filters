@@ -30,21 +30,9 @@
     <ClInclude Include="NonlinearPropCUDA.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="r8lib.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="qr_solve.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MPQ_Nonlinear_Propagation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="r8lib.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="qr_solve.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

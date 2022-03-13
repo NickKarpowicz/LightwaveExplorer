@@ -66,7 +66,6 @@ struct cudaLoop {
 DWORD WINAPI	propagationLoop(LPVOID lpParam);
 int				rkstep(struct cudaLoop s, int stepNumber);
 int				pulsegenerator(struct propthread* s, struct cudaLoop* sc);
-DWORD WINAPI	propagationLoop(LPVOID lpParam);
 int				deff(double* defftensor, double* dtensor, double theta, double phi);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int				fftshiftZflip(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
