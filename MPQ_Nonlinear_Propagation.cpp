@@ -19,8 +19,6 @@
 #include<Windows.h>
 #include<CommCtrl.h>
 
-
-using namespace std::literals;
 #define MAX_LOADSTRING 1024
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111
@@ -32,7 +30,6 @@ using namespace std::literals;
 #define ID_BTNPULSE2 11117
 
 
-
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -40,9 +37,9 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 struct guiStruct maingui;                       // struct containing all of the GUI elements
 struct propthread* activeSetPtr;                // Main structure containing simulation parameters and pointers
 struct crystalentry* crystalDatabasePtr;        // Crystal info database
-int isRunning = 0;
-int isGridAllocated = 0;
-int cancellationCalled = 0;
+bool isRunning = FALSE;
+bool isGridAllocated = FALSE;
+bool cancellationCalled = FALSE;
 
 
 // Forward declarations of functions included in this code module:
@@ -341,17 +338,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
             break;
         case IDM_EXIT:
+            if (isGridAllocated) {
+                free((*activeSetPtr).ExtOut);
+                free((*activeSetPtr).EkwOut);
+                free((*activeSetPtr).Ext);
+                free((*activeSetPtr).Ekw);
+                free(activeSetPtr);
+            }
             DestroyWindow(hWnd);
             break;
         case ID_BTNRUN:
-            if (isRunning != 1) {
-                isRunning = 1;
+            if (!isRunning) {
+                isRunning = TRUE;
                 mainthread = CreateThread(NULL, 0, mainsimthread, activeSetPtr, 0, &hMainThread);
             }
             break;
         case ID_BTNSTOP:
-            if (isRunning == 1) {
-                cancellationCalled = 1;
+            if (isRunning) {
+                cancellationCalled = TRUE;
                 for (int i = 0; i < (*activeSetPtr).NSims; i++) {
                     (*activeSetPtr).imdone[i] = 2;
                 }
@@ -416,7 +420,16 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 DWORD WINAPI mainsimthread(LPVOID lpParam) {
-    cancellationCalled = 0;
+    cancellationCalled = FALSE;
+    if (isGridAllocated) {
+        isGridAllocated = FALSE;
+        free((*activeSetPtr).ExtOut);
+        free((*activeSetPtr).EkwOut);
+        free((*activeSetPtr).Ext);
+        free((*activeSetPtr).Ekw);
+        free(activeSetPtr);
+        
+    }
     char outputbase[MAX_LOADSTRING];
     HWNDToString(maingui.tbFileNameBase, outputbase, MAX_LOADSTRING);
 
@@ -573,13 +586,14 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     double NFramesTimeProp = 1.;
     //Memory allocations
     double* InfoVec = (double*)calloc(Nsims * InfoVecSize, sizeof(double));
+
     std::complex<double>* Ext = (std::complex<double>*)calloc(Ngrid * 2 * Nsims, sizeof(std::complex<double>));
     std::complex<double>* Ekw = (std::complex<double>*)calloc(Ngrid * 2 * Nsims, sizeof(std::complex<double>));
 
     std::complex<double>* ExtOut = (std::complex<double>*)calloc(Ngrid * 2 * Nsims, sizeof(std::complex<double>));
     std::complex<double>* EkwOut = (std::complex<double>*)calloc(Ngrid * 2 * Nsims, sizeof(std::complex<double>));
 
-    isGridAllocated = 1;
+    isGridAllocated = TRUE;
     std::complex<double>* refractiveIndex1 = (std::complex<double>*)calloc(Ngrid*Nsims, sizeof(std::complex<double>));
     std::complex<double>* refractiveIndex2 = (std::complex<double>*)calloc(Ngrid * Nsims, sizeof(std::complex<double>));
     double* deffTensor = (double*)calloc(9 * Nsims, sizeof(double));
@@ -750,9 +764,10 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
             propagationLoop(&threads[j]);
             (*activeSetPtr).plotSim = j;
             plotThread = CreateThread(NULL, 0, drawsimplots, activeSetPtr, 0, &hplotThread);
+            //drawsimplots(activeSetPtr);
         }
 
-        if (cancellationCalled == 1) {
+        if (cancellationCalled) {
             messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
             swprintf_s(messagebuffer, 1024,
                 _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j+1);
@@ -773,8 +788,8 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     free(messagebuffer);
 
     //Save the results
-    double* saveEout = (double*)&EkwOut[0];
-    double* saveEin = (double*)&Ekw[0];
+    double* saveEout = (double*)&refractiveIndex1[0];
+    double* saveEin = (double*)&refractiveIndex2[0];
     for (j = 0; j < (Ngrid * Nsims * 2); j++) {
         saveEout[j] = real(ExtOut[j]);
         saveEin[j] = real(Ext[j]);
@@ -846,18 +861,18 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     free(sequenceArray);
     free(refractiveIndex1);
     free(refractiveIndex2);
-    free(Ext);
-    free(Ekw);
-    free(ExtOut);
-    free(EkwOut);
+    //free(Ext);
+    //free(Ekw);
+    //free(ExtOut);
+    //free(EkwOut);
     free(imdone);
     free(deffTensor);
     free(loadedField1);
     free(loadedField2);
     //(SettingsVector);
-    free(threads);
-    isGridAllocated = 0;
-    isRunning = 0;
+    //free(threads);
+    //isGridAllocated = 0;
+    isRunning = FALSE;
     return 0;
 }
 
@@ -1290,8 +1305,9 @@ int DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
 }
 
 DWORD WINAPI drawsimplots(LPVOID lpParam) {
-    int simIndex = (*activeSetPtr).plotSim;
-    if (isGridAllocated == 1) {
+    
+    if (isGridAllocated) {
+        int simIndex = (*activeSetPtr).plotSim;
         int x = 690;
         int y = 125;
         int dx = 64*11;

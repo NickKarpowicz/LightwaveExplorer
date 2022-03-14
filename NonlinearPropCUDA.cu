@@ -43,7 +43,7 @@ __device__ __forceinline__ bool checkIfInBox(int xi, int yi, int x1, int y1, int
     int xmin = min(x1, x2) - tolerance;
     int ymax = max(y1, y2) + tolerance;
     int ymin = min(y1, y2) - tolerance;
-    return xi > xmin && xi<xmax&& yi>ymin && yi < ymax;
+    return xi > xmin && xi< xmax && yi > ymin && yi < ymax;
 }
 
 //copy and paste from
