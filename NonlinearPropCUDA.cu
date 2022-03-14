@@ -1,17 +1,18 @@
 #include "NonlinearPropCUDA.cuh"
 #include "framework.h"
-#include<complex>
-#include<cstdlib>
-#include<math.h>
+#include <complex>
+#include <cstdlib>
+#include <math.h>
 #include "MPQ_Nonlinear_Propagation.h"
 #include <cuComplex.h>
 #include <cufft.h>
 #include "include/mkl/mkl.h"
-#include "MPQ_Nonlinear_Propagation.h"
+
 //#include <complex.h>
 
 #define THREADS_PER_BLOCK 64
 #define MAX_LOADSTRING 1024
+
 //overload the math operators for cuda complex numbers so this code fits inside the observable universe
 __device__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
 __device__ cuDoubleComplex operator+(cuDoubleComplex a, cuDoubleComplex b) { return cuCadd(a, b); }
@@ -35,6 +36,14 @@ __device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z)
     res.x *= t;
     res.y *= t;
     return res;
+}
+
+__device__ __forceinline__ bool checkIfInBox(int xi, int yi, int x1, int y1, int x2, int y2, int tolerance) {
+    int xmax = max(x1, x2) + tolerance;
+    int xmin = min(x1, x2) - tolerance;
+    int ymax = max(y1, y2) + tolerance;
+    int ymin = min(y1, y2) - tolerance;
+    return xi > xmin && xi<xmax&& yi>ymin && yi < ymax;
 }
 
 //copy and paste from
@@ -515,15 +524,17 @@ __global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, d
         x2 = tickLength;
         y1 = normFactorY * (yTicks[c] + offsetY);
         y2 = y1;
-        if (k < x1 || k > x2) {
-            lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+        if (checkIfInBox(k, j, (int)x1, (int)y1, (int)x2, (int)y2, (int)(6*lineWidth))) {
+            if (k < x1 || k > x2) {
+                lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+            }
+            else {
+                positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+                lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
+            }
+            lineDistance /= lineWidth;
+            plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
         }
-        else {
-            positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-            lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
-        }
-        lineDistance /= lineWidth;
-        plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
     }
 
     //draw y ticks
@@ -532,15 +543,17 @@ __global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, d
         x2 = x1;
         y1 = 0;
         y2 = tickLength;
-        if (k < x1 - 1 || k > x2+1 || ((j > (y1 + 1)) && (j > (y2 + 1))) || ((j < (y1 - 1)) && (j < (y2 - 1)))) {
-            lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+        if (checkIfInBox(k, j, (int)x1, (int)y1, (int)x2, (int)y2, (int)(6 * lineWidth))) {
+            if (k < x1 || k > x2) {
+                lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+            }
+            else {
+                positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+                lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
+            }
+            lineDistance /= lineWidth;
+            plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
         }
-        else {
-            positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-            lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
-        }
-        lineDistance /= lineWidth;
-        plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
     }
 
     for (c = 0; c < sizeData-1; c++) {
@@ -549,18 +562,19 @@ __global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, d
         y1 = normFactorY*(dataY[c] + offsetY);
         y2 = normFactorY*(dataY[c + 1] + offsetY);
         pointDistance = sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j));
-        if (k < x1 || k > x2 || ((j>(y1+1)) && (j>(y2+1))) || ((j<(y1-1))&&(j<(y2-1)))) {
-            lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+        if (checkIfInBox(k, j, (int)x1, (int)y1, (int)x2, (int)y2, (int)(6 * lineWidth))) {
+            if (k < x1 || k > x2 || ((j > (y1 + 1)) && (j > (y2 + 1))) || ((j < (y1 - 1)) && (j < (y2 - 1)))) {
+                lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
+            }
+            else {
+                positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+                lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
+            }
+            lineDistance /= lineWidth;
+            pointDistance /= markerWidth;
+            plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
+            plotGrid[i] = max(plotGrid[i], exp(-pointDistance * pointDistance * pointDistance * pointDistance));
         }
-        else {
-            positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-            lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
-        }
-        lineDistance /= lineWidth;
-        pointDistance /= markerWidth;
-        plotGrid[i] = max(plotGrid[i], exp(-lineDistance*lineDistance));
-        plotGrid[i] = max(plotGrid[i], exp(-pointDistance*pointDistance*pointDistance*pointDistance));
-
     }
 
 }
