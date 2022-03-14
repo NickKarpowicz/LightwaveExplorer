@@ -726,14 +726,17 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     time_t tstart, tfinish, tthreadmid;
     time(&tstart);
     int useWinThreads = 1;
+    HANDLE plotThread;
+    DWORD hplotThread;
     //run the simulations
     for (j = 0; j < Nsims; j++) {
-        (*activeSetPtr).currentSim = j;
+        
         if (isInSequence) {
             for (k = 0; k < Nsequence; k++) {
                 resolvesequence(k, &threads[j]);
                 propagationLoop(&threads[j]);
-                drawsimplots(activeSetPtr);
+                (*activeSetPtr).plotSim = j;
+                plotThread = CreateThread(NULL, 0, drawsimplots, activeSetPtr, 0, &hplotThread);
                 if (threads[j].memoryError > 0) {
                     messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
                     swprintf_s(messagebuffer, 1024,
@@ -745,7 +748,8 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
         }
         else {
             propagationLoop(&threads[j]);
-            drawsimplots(activeSetPtr);
+            (*activeSetPtr).plotSim = j;
+            plotThread = CreateThread(NULL, 0, drawsimplots, activeSetPtr, 0, &hplotThread);
         }
 
         if (cancellationCalled == 1) {
@@ -1286,7 +1290,7 @@ int DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
 }
 
 DWORD WINAPI drawsimplots(LPVOID lpParam) {
-    int simIndex = (*activeSetPtr).currentSim;
+    int simIndex = (*activeSetPtr).plotSim;
     if (isGridAllocated == 1) {
         int x = 690;
         int y = 125;

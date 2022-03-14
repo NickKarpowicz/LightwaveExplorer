@@ -84,7 +84,7 @@ struct propthread {
     std::complex<double>* EkwOut;
     int* imdone;
     int memoryError;
-    int currentSim;
+    int plotSim;
     struct crystalentry* crystalDatabase;
 
     //sequence
