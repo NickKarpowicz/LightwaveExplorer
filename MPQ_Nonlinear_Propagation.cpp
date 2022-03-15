@@ -326,8 +326,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 free((*activeSetPtr).EkwOut);
                 free((*activeSetPtr).Ext);
                 free((*activeSetPtr).Ekw);
-                free(activeSetPtr);
             }
+            free(activeSetPtr);
+            free(crystalDatabasePtr);
             DestroyWindow(hWnd);
             break;
         case ID_BTNRUN:

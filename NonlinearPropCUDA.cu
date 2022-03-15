@@ -729,7 +729,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
         }
     }
     cudaDeviceSynchronize();
-
+    
     //transform final result
     fixnanKernel<<<s.Nblock, s.Nthread>>>(s.gridEFrequency);
     fixnanKernel << <s.Nblock, s.Nthread >> > (s.gridEFrequency2);
@@ -1026,8 +1026,6 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     // 1D fft (k,t)->(k,f), copied to Fourier space beam
     // 2D fft (k,f)->(x,t), copied to real space beam
 
-    cufftPlan1d(&plan1, (int)(*sc).Ntime, CUFFT_Z2Z, (int)(*sc).Nspace);
-    cufftPlan2d(&plan2, (int)(*sc).Nspace, (int)(*sc).Ntime, CUFFT_Z2Z);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime, (cufftDoubleComplex*)(*sc).gridETemp, CUFFT_FORWARD);
     cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp, (cufftDoubleComplex*)(*sc).gridEFrequency, CUFFT_FORWARD);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency, (cufftDoubleComplex*)(*sc).gridETime, CUFFT_INVERSE);
@@ -1074,6 +1072,10 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     cufftDestroy(plan1);
     cufftDestroy(plan2);
 
+    free(pulse1);
+    free(pulse2);
+    free(pulse1f);
+    free(pulse2f);
 
     return 0;
 }
