@@ -40,7 +40,7 @@ struct crystalentry* crystalDatabasePtr;        // Crystal info database
 bool isRunning = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
-wchar_t messagebuffer[1024];
+wchar_t messageBuffer[1024];
 
 // Forward declarations of (Microsoft) functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -269,10 +269,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     struct cudaDeviceProp activeCUDADeviceProp;
     cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
     if (cuErr == cudaSuccess) {
-        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
         flushMessageBuffer();
-        swprintf_s(messagebuffer, 1024, TEXT("Found GPU: "));
-        AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
+        swprintf_s(messageBuffer, 1024, TEXT("Found GPU: "));
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
         size_t origsize = 256 + 1;
         const size_t newsize = 256;
         size_t convertedChars = 0;
@@ -280,9 +279,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         mbstowcs_s(&convertedChars, wcstring, origsize, activeCUDADeviceProp.name, _TRUNCATE);
         AppendTextToWindow(maingui.textboxSims, wcstring, 256);
         flushMessageBuffer();
-        swprintf_s(messagebuffer, 1024, TEXT("\r\n\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        //free(messagebuffer);
+        swprintf_s(messageBuffer, 1024, TEXT("\r\n\r\n"));
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
     }
     
     //read the crystal database
@@ -421,12 +419,10 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
                 (*activeSetPtr).plotSim = j;
                 plotThread = CreateThread(NULL, 0, drawsimplots, activeSetPtr, 0, &hplotThread);
                 if (activeSetPtr[j].memoryError > 0) {
-                    //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
                     flushMessageBuffer();
-                    swprintf_s(messagebuffer, 1024,
+                    swprintf_s(messageBuffer, 1024,
                         _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
-                    AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-                    //free(messagebuffer);
+                    AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
                 }
             }
         }
@@ -437,23 +433,19 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
         }
 
         if (cancellationCalled) {
-            //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
             flushMessageBuffer();
-            swprintf_s(messagebuffer, 1024,
+            swprintf_s(messageBuffer, 1024,
                 _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j+1);
-            AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-            //free(messagebuffer);
+            AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
             break;
         }
     }
     time(&tthreadmid);
 
-    //essagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
     flushMessageBuffer();
-    swprintf_s(messagebuffer, 1024,
+    swprintf_s(messageBuffer, 1024,
         _T("Finished after %i s. \r\n"), (int)(tthreadmid - tstart));
-    AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-    //free(messagebuffer);
+    AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
 
     saveDataSet();
 
@@ -564,12 +556,10 @@ int readParametersFromInterfaceAndAllocate() {
 
         frogLines = loadfrogspeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field1IsAllocated = TRUE;
-       //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
         flushMessageBuffer();
-        swprintf_s(messagebuffer, 1024,
+        swprintf_s(messageBuffer, 1024,
             _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
-        AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        //free(messagebuffer);
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
 
     }
     if (pulse2FileType == 1) {
@@ -579,11 +569,9 @@ int readParametersFromInterfaceAndAllocate() {
         frogLines = loadfrogspeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
         flushMessageBuffer();
-        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
-        swprintf_s(messagebuffer, 1024,
+        swprintf_s(messageBuffer, 1024,
             _T("loaded FROG file 2 (%i lines).\r\n"), frogLines);
-        AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        //free(messagebuffer);
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
     }
 
     (*activeSetPtr).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
@@ -845,7 +833,7 @@ double HWNDToDouble(HWND inputA)
     }
 }
 
-//Add a text string contained in messagebuffer to the text box inputA
+//Add a text string contained in messageBuffer to the text box inputA
 int AppendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
     int len = (int)GetWindowTextLength(inputA);
     wchar_t* newbuffer = (wchar_t*)calloc(2 * ((long long)(len) + buffersize), sizeof(wchar_t));
@@ -868,21 +856,17 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
     FILE* fp;
     fp = fopen("CrystalDatabase.txt","r");
     if (fp == NULL) {
-        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
         flushMessageBuffer();
-        swprintf_s(messagebuffer, 1024,
+        swprintf_s(messageBuffer, 1024,
             _T("Could not open database!\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        //free(messagebuffer);
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
         return 1;
     }
     if (isVerbose) {
-        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
         flushMessageBuffer();
-        swprintf_s(messagebuffer, 1024,
+        swprintf_s(messageBuffer, 1024,
             _T("Reading crystal database file in verbose mode\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        //free(messagebuffer);
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
     }
     //read the entries line
     int readErrors = 0;
@@ -915,23 +899,20 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
         readErrors += 1 == fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
         readErrors += 1 == fscanf(fp, "~~~crystal end~~~\n");
         if (isVerbose) {
-            //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
             flushMessageBuffer();
-            swprintf_s(messagebuffer, 1024,
+            swprintf_s(messageBuffer, 1024,
                 _T("Material %i name: %s\r\nSellmeier reference: %s\r\nChi2 reference: %s\r\nChi3 reference: %s\r\n\r\n"), i, db[i].crystalNameW, db[i].sellmeierReference, db[i].dReference, db[i].chi3Reference);
-            AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-            //free(messagebuffer);
+            AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+
         }
 
 
     }
-
-    //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
     flushMessageBuffer();
-    swprintf_s(messagebuffer, 1024,
+    swprintf_s(messageBuffer, 1024,
         _T("Read %i entries\r\n"), (int)(maxEntries));
-    AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-    //free(messagebuffer);
+    AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+
 
     fclose(fp);
 
@@ -1279,7 +1260,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
 }
 
 void flushMessageBuffer() {
-    memset(messagebuffer, 0, 1024 * sizeof(wchar_t));
+    memset(messageBuffer, 0, 1024 * sizeof(wchar_t));
 }
 
 int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv) {
@@ -1318,20 +1299,16 @@ int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int pos
 
     DrawArrayAsBitmap(hdc, pixelsWide, pixelsTall, posX, posY, pixelsTall, pixelsWide, plotArray, 0);
     for (i = 0; i < NyTicks; i++) {
-        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
         flushMessageBuffer();
-        swprintf_s(messagebuffer, 1024,
+        swprintf_s(messageBuffer, 1024,
             _T("%1.1f"), yTicks1[i]/yDiv);
-        TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messagebuffer, (int)_tcslen(messagebuffer));
-        //free(messagebuffer);
+        TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
     }
     for (i = 0; i < 3; i++) {
-        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
         flushMessageBuffer();
-        swprintf_s(messagebuffer, 1024,
+        swprintf_s(messageBuffer, 1024,
             _T("%3.0f"), xTicks1[i]);
-        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((long long)(i) + 1) - 12), posY + pixelsTall, messagebuffer, (int)_tcslen(messagebuffer));
-        //free(messagebuffer);
+        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((long long)(i) + 1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));
     }
     free(X);
     free(plotArray);
