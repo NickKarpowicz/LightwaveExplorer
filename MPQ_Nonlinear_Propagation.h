@@ -14,6 +14,8 @@ struct propthread {
     long long Nspace;
     long long Ngrid;
     int NSims;
+    double spatialWidth;
+    double timeSpan;
 
     int materialIndex;
     double crystalTheta;
@@ -42,6 +44,7 @@ struct propthread {
     double propagationAngle1;
     double propagationAngle2;
     bool isCylindric;
+    int symmetryType;
 
     //spectral/temporal field properties
     double pulseEnergy1;
@@ -86,10 +89,13 @@ struct propthread {
     int memoryError;
     int plotSim;
     struct crystalentry* crystalDatabase;
+    int batchIndex;
+    double batchDestination;
 
     //sequence
     bool isInSequence;
     bool isFollowerInSequence;
+    char* sequenceString;
     double* sequenceArray;
     int Nsequence;
 
@@ -201,3 +207,5 @@ int                 linearremap(double* A, int nax, int nay, double* B, int nbx,
 int                 readcrystaldatabase(struct crystalentry* db, bool isVerbose);
 int                 resolvesequence(int currentIndex, struct propthread* s);
 int                 drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv);
+int                 saveDataSet();
+int                 readParametersFromInterfaceAndAllocate();

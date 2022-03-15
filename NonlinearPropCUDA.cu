@@ -124,7 +124,6 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
 __global__ void radialLaplacianKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
-    long long k = i - j * s.Ntime; //temporal coordinate
     double rho = s.dx * j - (s.dx / 2) * s.Nspace;
 
     //zero at edges of grid and at origin
@@ -290,9 +289,6 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struc
     double crystalPhi = sellmeierCoefficients[67];
     double kStep = sellmeierCoefficients[70];
     double fStep = sellmeierCoefficients[71];
-    double tol = sellmeierCoefficients[72];
-    double dTheta = 0.1;
-    double err, errPlus, errMinus;
 
     cuDoubleComplex ne, no, n0;
 
@@ -514,7 +510,6 @@ __global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, d
     int tickLength = 12;
     double positionNormalization;
     double lineDistance;
-    bool insidePoints;
     double pointDistance;
     plotGrid[i] = 0;
 
@@ -612,14 +607,14 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     s.sellmeierType = (*sCPU).sellmeierType;
     s.f0 = (*sCPU).frequency1;
     s.Nthread = THREADS_PER_BLOCK;
-    s.Nblock = s.Ngrid / THREADS_PER_BLOCK;
+    s.Nblock = (int)(s.Ngrid / THREADS_PER_BLOCK);
     s.isCylindric =(*sCPU).isCylindric;
     s.isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1] + (*sCPU).nonlinearSwitches[2]) > 0;
     (*sCPU).nonlinearSwitches[3] = (int)ceil((*sCPU).absorptionParameters[0] * 241.79893e12 / (*sCPU).frequency1) - 1;
     //CPU allocations
     std::complex<double>* gridPropagationFactorCPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
     std::complex<double>* gridPolarizationFactorCPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
-
+    
     //GPU allocations
     //I shouldn't need all these memsets but, they make me feel better
     int memErrors = 0;
@@ -690,9 +685,9 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     cudaMemcpy(s.firstDerivativeOperation, firstDerivativeOperation, 6 * sizeof(double), cudaMemcpyHostToDevice);
 
     //prepare FFT plans
-    cufftPlan2d(&s.fftPlan, s.Nspace, s.Ntime, CUFFT_Z2Z);
-    cufftPlan2d(&s.polfftPlan, s.Nspace, s.Ntime, CUFFT_D2Z);
-
+    cufftPlan2d(&s.fftPlan, (int)s.Nspace, (int)s.Ntime, CUFFT_Z2Z);
+    cufftPlan2d(&s.polfftPlan, (int)s.Nspace, (int)s.Ntime, CUFFT_D2Z);
+    
     //prepare the propagation arrays
     if (s.isCylindric) {
         preparepropagation3Dcylindric(sCPU, s);
@@ -782,7 +777,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     cudaFree(s.chi3Tensor);
     cufftDestroy(s.fftPlan);
     cufftDestroy(s.polfftPlan);
-
+    
     //Free CPU memory
     free(gridPropagationFactorCPU);
     free(gridPolarizationFactorCPU);
@@ -923,8 +918,8 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     // 1D fft (k,t)->(k,f), copied to Fourier space beam
     // 2D fft (k,f)->(x,t), copied to real space beam
 
-    cufftPlan1d(&plan1, (*sc).Ntime, CUFFT_Z2Z, (*sc).Nspace);
-    cufftPlan2d(&plan2, (*sc).Nspace, (*sc).Ntime, CUFFT_Z2Z);
+    cufftPlan1d(&plan1, (int)(*sc).Ntime, CUFFT_Z2Z, (int)(*sc).Nspace);
+    cufftPlan2d(&plan2, (int)(*sc).Nspace, (int)(*sc).Ntime, CUFFT_Z2Z);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime, (cufftDoubleComplex*)(*sc).gridETemp, CUFFT_FORWARD);
     cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp, (cufftDoubleComplex*)(*sc).gridEFrequency, CUFFT_FORWARD);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency, (cufftDoubleComplex*)(*sc).gridETime, CUFFT_INVERSE);
@@ -1031,8 +1026,8 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     // 1D fft (k,t)->(k,f), copied to Fourier space beam
     // 2D fft (k,f)->(x,t), copied to real space beam
 
-    cufftPlan1d(&plan1, (*sc).Ntime, CUFFT_Z2Z, (*sc).Nspace);
-    cufftPlan2d(&plan2, (*sc).Nspace, (*sc).Ntime, CUFFT_Z2Z);
+    cufftPlan1d(&plan1, (int)(*sc).Ntime, CUFFT_Z2Z, (int)(*sc).Nspace);
+    cufftPlan2d(&plan2, (int)(*sc).Nspace, (int)(*sc).Ntime, CUFFT_Z2Z);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime, (cufftDoubleComplex*)(*sc).gridETemp, CUFFT_FORWARD);
     cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp, (cufftDoubleComplex*)(*sc).gridEFrequency, CUFFT_FORWARD);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency, (cufftDoubleComplex*)(*sc).gridETime, CUFFT_INVERSE);
@@ -1122,7 +1117,6 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop sc) {
 
 int preparepropagation3Dcylindric(struct propthread* s, struct cudaLoop sc) {
     //recycle allocated device memory for the grids needed
-    double* alphaGPU = (double*)sc.gridEFrequencyNext1;
     double* sellmeierCoefficients = (double*)sc.k1;
     sc.ne = sc.gridEFrequencyNext2;
     sc.no = sc.k2;
@@ -1476,7 +1470,6 @@ int plotDataXY(double* X, double* Y, double minX, double maxX, double minY, doub
     double normFactorY = plotSizeY/(maxY - minY);
     double offsetY = -minY;
     double offsetX = -minX;
-    int i, j, k;
 
     double* plotGridGPU;
     double* dataX;
