@@ -8,10 +8,7 @@
 #include <cufft.h>
 #include "include/mkl/mkl.h"
 
-//#include <complex.h>
-
 #define THREADS_PER_BLOCK 64
-#define MAX_LOADSTRING 1024
 
 //overload the math operators for cuda complex numbers so this code fits inside the observable universe
 __device__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
@@ -25,7 +22,6 @@ __device__ cuDoubleComplex operator/(double b, cuDoubleComplex a) { return cuCdi
 __device__ cuDoubleComplex operator*(cuDoubleComplex a, double b) { return cuCmul(a, make_cuDoubleComplex(b, 0.0)); }
 __device__ cuDoubleComplex operator*(double b, cuDoubleComplex a) { return cuCmul(a, make_cuDoubleComplex(b, 0.0)); }
 
-
 //complex exponential function for CUDA
 __device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z)
 {
@@ -38,6 +34,7 @@ __device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z)
     return res;
 }
 
+//check if the pixel (xi,yi) is in the box defined by points (x1,y1) and (x2,y2)
 __device__ __forceinline__ bool checkIfInBox(int xi, int yi, int x1, int y1, int x2, int y2, int tolerance) {
     int xmax = max(x1, x2) + tolerance;
     int xmin = min(x1, x2) - tolerance;
@@ -46,7 +43,7 @@ __device__ __forceinline__ bool checkIfInBox(int xi, int yi, int x1, int y1, int
     return xi > xmin && xi< xmax && yi > ymin && yi < ymax;
 }
 
-//copy and paste from
+//sqrt for complex doubles on CUDA, copy and paste from
 // https://forums.developer.nvidia.com/t/additional-cucomplex-functions-cucnorm-cucsqrt-cucexp-and-some-complex-double-functions/36892 
 __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
 {
@@ -62,7 +59,7 @@ __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
     return out;
 }
 
-
+//Sellmeier equations on CUDA (see the C function for details)
 __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
     if (f == 0) return make_cuDoubleComplex(1.0,0.0); //exit immediately for f=0
     
@@ -121,6 +118,9 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
         return one;
     }
 }
+
+//Radial laplacian term of the nonlinear wave equation
+// e.g., apply the 1/rho * d/drho operator
 __global__ void radialLaplacianKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
@@ -148,6 +148,7 @@ __global__ void radialLaplacianKernel(struct cudaLoop s) {
     }
 }
 
+//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
 __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoefficients, struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j, k;
@@ -159,7 +160,7 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     double pi = 3.14159265358979323846264338327950288; // pi to unneccessary precision
     cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
     j = i / Ntime; //spatial coordinate
-    k = i - j*Ntime; //temporal coordinate
+    k = i - j * Ntime; //temporal coordinate
     cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
     double crystalTheta = sellmeierCoefficients[66];
     double crystalPhi = sellmeierCoefficients[67];
@@ -168,27 +169,25 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     double tol = sellmeierCoefficients[72];
     double dTheta = 0.1;
     double err, errPlus, errMinus;
-    
+
     cuDoubleComplex ne, no, n0;
     double nePlus, neMinus;
 
-
-
     //frequency being resolved by current thread
     double f = k * fStep;
-	if (k >= Ntime / 2) {
-		f -= fStep * Ntime;
-	}
-	f *= -1;
+    if (k >= Ntime / 2) {
+        f -= fStep * Ntime;
+    }
+    f *= -1;
 
     //transverse wavevector being resolved
-	double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
+    double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 
 
     //Find walkoff angle, starting from zero
     theta[i] = 0;
     double rhs = 2.99792458e8 * dk / (2 * 3.14159265358979323846264338327950288 * f);
-    sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta + theta[i], crystalPhi, axesNumber, sellmeierType);    
+    sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta + theta[i], crystalPhi, axesNumber, sellmeierType);
     nePlus = cuCreal(ne);
     err = abs(nePlus * sin(theta[i]) - rhs);
 
@@ -222,7 +221,7 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
         else {
             dTheta *= 0.5;
         }
-        
+
     }
 
 
@@ -236,13 +235,13 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     sellmeierCuda(&n0, &no, sellmeierCoefficients, abs(s.f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
     sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta + theta[i], crystalPhi, axesNumber, sellmeierType);
     if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
-        ne = make_cuDoubleComplex(1,0);
+        ne = make_cuDoubleComplex(1, 0);
         no = make_cuDoubleComplex(1, 0);
     }
     s.ne[i] = ne;
     s.no[i] = no;
 
-    cuDoubleComplex k0 = make_cuDoubleComplex(2 * pi * cuCreal(n0) * f / c,0);
+    cuDoubleComplex k0 = make_cuDoubleComplex(2 * pi * cuCreal(n0) * f / c, 0);
     cuDoubleComplex ke = 2 * pi * ne * f / c;
     cuDoubleComplex ko = 2 * pi * no * f / c;
 
@@ -261,17 +260,16 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
         s.gridPolarizationFactor[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(ne) * c) * s.h;
         s.gridPolarizationFactor2[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(no) * c) * s.h;
     }
-    
+
     else {
         s.gridPropagationFactor[i] = cuZero;
         s.gridPropagationFactor2[i] = cuZero;
         s.gridPolarizationFactor[i] = cuZero;
         s.gridPolarizationFactor2[i] = cuZero;
     }
-    
-    
 }
-
+    
+//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
 __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j, k;
@@ -363,6 +361,8 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
     }
 }
 
+//calculate the nonlinear polarization, after FFT to get the field
+//in the time domain
 __global__ void nonlinearpolarizationKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     double Ex = cuCreal(s.gridETime[i]) / s.propagationInts[0];
@@ -503,6 +503,8 @@ __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
 
 }
 
+//Line plot calculation kernel
+//runs through all the points and figures out the color of the current pixel
 __global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, double markerWidth, int sizeData, double* plotGrid, double normFactorX, double normFactorY, double offsetX, double offsetY, int sizeX, int sizeY, double* xTicks, int NxTicks, double* yTicks, int NyTicks) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = i / sizeX;
@@ -588,6 +590,7 @@ __global__ void fftNormalizeKernel(cuDoubleComplex* A, long long* fftSize) {
     A[i] = A[i] / fftSize[0];
 }
 
+//main thread of the nonlinear wave equation implemented on CUDA
 DWORD WINAPI propagationLoop(LPVOID lpParam) {
 
     //the struct s contains most of the simulation variables and pointers
@@ -692,14 +695,14 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     
     //prepare the propagation arrays
     if (s.isCylindric) {
-        preparepropagation3Dcylindric(sCPU, s);
+        preparePropagation3DCylindric(sCPU, s);
     }
     else {
-        preparepropagation2Dcartesian(sCPU, s);
+        preparePropagation2DCartesian(sCPU, s);
     }
     
 
-    //generate the pulses, either through pulsegenerator() if this is the first in the series, or by copying
+    //generate the pulses, either through pulseGenerator() if this is the first in the series, or by copying
     //the output of the last simulation in the sequence
     if ((*sCPU).isFollowerInSequence) {
         cudaMemcpy(s.gridETime, (*sCPU).ExtOut, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
@@ -708,7 +711,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
         cudaMemcpy(s.gridEFrequency2, &(*sCPU).EkwOut[(*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     }
     else {
-        pulsegenerator(sCPU, &s);
+        pulseGenerator(sCPU, &s);
     }
     
     //Copy the field into the temporary array
@@ -816,7 +819,7 @@ int rkstep(struct cudaLoop s, int stepNumber) {
     return 0;
 }
 
-int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
+int pulseGenerator(struct propthread* s, struct cudaLoop *sc) {
     long long i,j;
     double rB, zB, r, z; //r and z in the Beam and lab coordinates, respectively.
     double w0, wz, zR, Rz, phi; //Gaussian beam parameters
@@ -1082,7 +1085,7 @@ int pulsegenerator(struct propthread* s, struct cudaLoop *sc) {
     return 0;
 }
 
-int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop sc) {
+int preparePropagation2DCartesian(struct propthread* s, struct cudaLoop sc) {
     //recycle allocated device memory for the grids needed
     double* alphaGPU = (double*)sc.gridEFrequencyNext1;
     double* sellmeierCoefficients = (double*)sc.k1;
@@ -1119,7 +1122,7 @@ int preparepropagation2Dcartesian(struct propthread* s, struct cudaLoop sc) {
     return 0;
 }
 
-int preparepropagation3Dcylindric(struct propthread* s, struct cudaLoop sc) {
+int preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc) {
     //recycle allocated device memory for the grids needed
     double* sellmeierCoefficients = (double*)sc.k1;
     sc.ne = sc.gridEFrequencyNext2;
@@ -1261,6 +1264,7 @@ int deff(double* defftensor, double* dtensor, double theta, double phi) {
     }
     return dgelsInfo;
 }
+
 //c implementation of fftshift, working on complex double precision
 //A is the input array, B is the output
 //dim1: column length
@@ -1401,7 +1405,7 @@ std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* n
     }
 }
 
-int loadfrogspeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex) {
+int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex) {
     FILE* fp;
     int maxFileSize = 16384;
     double wavelength, R, phi, complexX, complexY, f, f0, f1, fmax;

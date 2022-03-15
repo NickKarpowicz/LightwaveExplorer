@@ -555,7 +555,7 @@ int readParametersFromInterfaceAndAllocate() {
         HWNDToString(maingui.tbPulse1Path, pulse1Path, MAX_LOADSTRING);
 
 
-        frogLines = loadfrogspeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
+        frogLines = loadFrogSpeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field1IsAllocated = TRUE;
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING,
@@ -567,7 +567,7 @@ int readParametersFromInterfaceAndAllocate() {
         char pulse2Path[MAX_LOADSTRING];
         HWNDToString(maingui.tbPulse2Path, pulse2Path, MAX_LOADSTRING);
 
-        frogLines = loadfrogspeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
+        frogLines = loadFrogSpeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING,
