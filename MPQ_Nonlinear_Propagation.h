@@ -191,13 +191,12 @@ struct guiStruct {
     HWND textboxSims;
 };
 
-double              vmaxa(double* v, int vlength);
 DWORD WINAPI        mainsimthread(LPVOID lpParam);
 int                 DrawLabels(HDC hdc);
 int                 LabelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset);
 int                 HWNDToString(HWND inputA, char* outputString, int bufferSize);
 double              HWNDToDouble(HWND inputA);
-int                 AppendTextToWindow(HWND inputA, wchar_t* messagebuffer, int buffersize);
+int                 AppendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize);
 int                 getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox);
 int                 getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox);
 int                 DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm);
@@ -209,3 +208,4 @@ int                 resolvesequence(int currentIndex, struct propthread* s);
 int                 drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv);
 int                 saveDataSet();
 int                 readParametersFromInterfaceAndAllocate();
+void                flushMessageBuffer();

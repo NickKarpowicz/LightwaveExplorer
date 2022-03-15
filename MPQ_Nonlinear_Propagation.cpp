@@ -40,7 +40,7 @@ struct crystalentry* crystalDatabasePtr;        // Crystal info database
 bool isRunning = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
-
+wchar_t messagebuffer[1024];
 
 // Forward declarations of (Microsoft) functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -269,24 +269,29 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     struct cudaDeviceProp activeCUDADeviceProp;
     cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
     if (cuErr == cudaSuccess) {
-        wchar_t* messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        flushMessageBuffer();
         swprintf_s(messagebuffer, 1024, TEXT("Found GPU: "));
         AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
         size_t origsize = 256 + 1;
         const size_t newsize = 256;
         size_t convertedChars = 0;
-        wchar_t wcstring[newsize];
+        wchar_t wcstring[514];
         mbstowcs_s(&convertedChars, wcstring, origsize, activeCUDADeviceProp.name, _TRUNCATE);
         AppendTextToWindow(maingui.textboxSims, wcstring, 256);
-        
+        flushMessageBuffer();
         swprintf_s(messagebuffer, 1024, TEXT("\r\n\r\n"));
         AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        free(messagebuffer);
+        //free(messagebuffer);
     }
     
     //read the crystal database
     crystalDatabasePtr = (struct crystalentry*)calloc(512, sizeof(struct crystalentry));
     readcrystaldatabase(crystalDatabasePtr, TRUE);
+
+    //make the active set pointer
+    activeSetPtr = (struct propthread*)calloc(2048, sizeof(struct propthread));
+
     return TRUE;
 }
 
@@ -400,15 +405,11 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 DWORD WINAPI mainsimthread(LPVOID lpParam) {
     cancellationCalled = FALSE;
-    wchar_t* messagebuffer;
     int j, k;
     time_t tstart, tthreadmid;
     time(&tstart);
     HANDLE plotThread;
     DWORD hplotThread;
-
-    activeSetPtr = (struct propthread*)malloc(1024 * sizeof(struct propthread));
-
     readParametersFromInterfaceAndAllocate();
     
     //run the simulations
@@ -420,11 +421,12 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
                 (*activeSetPtr).plotSim = j;
                 plotThread = CreateThread(NULL, 0, drawsimplots, activeSetPtr, 0, &hplotThread);
                 if (activeSetPtr[j].memoryError > 0) {
-                    messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+                    //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+                    flushMessageBuffer();
                     swprintf_s(messagebuffer, 1024,
                         _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
                     AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-                    free(messagebuffer);
+                    //free(messagebuffer);
                 }
             }
         }
@@ -435,21 +437,23 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
         }
 
         if (cancellationCalled) {
-            messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+            //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+            flushMessageBuffer();
             swprintf_s(messagebuffer, 1024,
                 _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j+1);
             AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-            free(messagebuffer);
+            //free(messagebuffer);
             break;
         }
     }
     time(&tthreadmid);
 
-    messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+    //essagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+    flushMessageBuffer();
     swprintf_s(messagebuffer, 1024,
         _T("Finished after %i s. \r\n"), (int)(tthreadmid - tstart));
     AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-    free(messagebuffer);
+    //free(messagebuffer);
 
     saveDataSet();
 
@@ -466,14 +470,12 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     return 0;
 }
 int readParametersFromInterfaceAndAllocate() {
-    wchar_t* messagebuffer;
     if (isGridAllocated) {
         isGridAllocated = FALSE;
         free((*activeSetPtr).ExtOut);
         free((*activeSetPtr).EkwOut);
         free((*activeSetPtr).Ext);
         free((*activeSetPtr).Ekw);
-        free(activeSetPtr);
     }
     int j;
     const double pi = 3.1415926535897932384626433832795;
@@ -562,11 +564,12 @@ int readParametersFromInterfaceAndAllocate() {
 
         frogLines = loadfrogspeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field1IsAllocated = TRUE;
-        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+       //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        flushMessageBuffer();
         swprintf_s(messagebuffer, 1024,
             _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
         AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        free(messagebuffer);
+        //free(messagebuffer);
 
     }
     if (pulse2FileType == 1) {
@@ -575,11 +578,12 @@ int readParametersFromInterfaceAndAllocate() {
 
         frogLines = loadfrogspeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
-        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        flushMessageBuffer();
+        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
         swprintf_s(messagebuffer, 1024,
             _T("loaded FROG file 2 (%i lines).\r\n"), frogLines);
         AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        free(messagebuffer);
+        //free(messagebuffer);
     }
 
     (*activeSetPtr).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
@@ -610,7 +614,7 @@ int readParametersFromInterfaceAndAllocate() {
     isGridAllocated = TRUE;
     (*activeSetPtr).refractiveIndex1 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).NSims, sizeof(std::complex<double>));
     (*activeSetPtr).refractiveIndex2 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).NSims, sizeof(std::complex<double>));
-    (*activeSetPtr).deffTensor = (double*)calloc(9 * (*activeSetPtr).NSims, sizeof(double));
+    (*activeSetPtr).deffTensor = (double*)calloc(9 * (long long)((*activeSetPtr).NSims), sizeof(double));
     (*activeSetPtr).imdone = (int*)calloc((*activeSetPtr).NSims, sizeof(int));
 
 
@@ -645,8 +649,10 @@ int readParametersFromInterfaceAndAllocate() {
             memcpy(&activeSetPtr[j], activeSetPtr, sizeof(struct propthread));
         }
 
-
-        activeSetPtr[j].deffTensor = &(*activeSetPtr).deffTensor[9 * j];
+        if ((*activeSetPtr).deffTensor != NULL) {
+            activeSetPtr[j].deffTensor = &(*activeSetPtr).deffTensor[9 * j];;
+        }
+        
         activeSetPtr[j].Ext = &(*activeSetPtr).Ext[j * (*activeSetPtr).Ngrid * 2];
         activeSetPtr[j].Ekw = &(*activeSetPtr).Ekw[j * (*activeSetPtr).Ngrid * 2];
         activeSetPtr[j].ExtOut = &(*activeSetPtr).ExtOut[j * (*activeSetPtr).Ngrid * 2];
@@ -656,19 +662,19 @@ int readParametersFromInterfaceAndAllocate() {
         activeSetPtr[j].isFollowerInSequence = FALSE;
 
         if ((*activeSetPtr).batchIndex == 1) {
-            activeSetPtr[j].delay2 += j * ((-1e-15 * (*activeSetPtr).batchDestination) - batchstart) / ((*activeSetPtr).NSims - 1);
+            activeSetPtr[j].delay2 += j * ((-1e-15 * (*activeSetPtr).batchDestination) - batchstart) / ((*activeSetPtr).NSims - 1.);
         }
         if ((*activeSetPtr).batchIndex == 2) {
-            activeSetPtr[j].pulseEnergy1 += j * ((*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1);
+            activeSetPtr[j].pulseEnergy1 += j * ((*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1.);
         }
         if ((*activeSetPtr).batchIndex == 3) {
-            activeSetPtr[j].cephase1 += j * (pi * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1);
+            activeSetPtr[j].cephase1 += j * (pi * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1.);
         }
         if ((*activeSetPtr).batchIndex == 5) {
-            activeSetPtr[j].crystalTheta += j * ((pi / 180) * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1);
+            activeSetPtr[j].crystalTheta += j * ((pi / 180) * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1.);
         }
         if ((*activeSetPtr).batchIndex == 6) {
-            activeSetPtr[j].gdd1 += j * (1e-30 * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1);
+            activeSetPtr[j].gdd1 += j * (1e-30 * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1.);
         }
     }
     return 0;
@@ -775,26 +781,6 @@ int saveDataSet() {
     return 0;
 }
 
-double vmaxa(double* v, int vlength) {
-    double maxval = fabs(v[0]);
-    int i;
-    int imax = 0;
-    for (i = 1; i < (vlength - 1); i++) {
-        if (fabs(v[i]) > maxval) {
-            maxval = fabs(v[i]);
-            imax = i;
-        }
-    }
-
-    if (imax > 0) {
-        double no = fabs(v[imax]) / maxval;
-        double np = fabs(v[imax + 1]) / maxval;
-        double nm = fabs(v[imax - 1]) / maxval;
-        maxval *= abs(2.0 * no * sqrt(no * no - nm * np) / sqrt(-(nm - 2.0 * no + np) * (nm + 2.0 * no + np)));
-    }
-
-    return maxval;
-}
 
 int resolvesequence(int currentIndex, struct propthread* s) {
     double pi = 3.1415926535897932384626433832795;
@@ -860,18 +846,18 @@ double HWNDToDouble(HWND inputA)
 }
 
 //Add a text string contained in messagebuffer to the text box inputA
-int AppendTextToWindow(HWND inputA, wchar_t* messagebuffer, int buffersize) {
-    int len = GetWindowTextLength(inputA);
-    wchar_t* newbuffer = (wchar_t*)calloc(2 * len + 2 * buffersize, sizeof(wchar_t));
-    if (len > 0) {
-        len = GetWindowText(inputA, (LPWSTR)&newbuffer[0], len + 1);
+int AppendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
+    int len = (int)GetWindowTextLength(inputA);
+    wchar_t* newbuffer = (wchar_t*)calloc(2 * ((long long)(len) + buffersize), sizeof(wchar_t));
+    if (newbuffer != NULL) {
+        if (len > 0) {
+            len = GetWindowText(inputA, newbuffer, len + 1);
+        }
+        memcpy(newbuffer + len, messageString, buffersize * sizeof(wchar_t));
+        SetWindowText(inputA, newbuffer);
+        SendMessage(inputA, EM_LINESCROLL, 0, 99999);
+        free(newbuffer);
     }
-    for (int i = 0; i < buffersize; i++) {
-        newbuffer[len + i] = messagebuffer[i];
-    }
-    SetWindowText(inputA, newbuffer);
-    SendMessage(inputA, EM_LINESCROLL, 0, 99999);
-    free(newbuffer);
     return 0;
 }
 
@@ -879,69 +865,73 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
     int maxEntries = 64;
     int i;
     double* fd;
-    wchar_t* messagebuffer;
     FILE* fp;
     fp = fopen("CrystalDatabase.txt","r");
     if (fp == NULL) {
-        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        flushMessageBuffer();
         swprintf_s(messagebuffer, 1024,
             _T("Could not open database!\r\n"));
         AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        free(messagebuffer);
+        //free(messagebuffer);
         return 1;
     }
     if (isVerbose) {
-        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        flushMessageBuffer();
         swprintf_s(messagebuffer, 1024,
             _T("Reading crystal database file in verbose mode\r\n"));
         AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-        free(messagebuffer);
+        //free(messagebuffer);
     }
     //read the entries line
-    fscanf(fp, "Total entries: %d\n", &maxEntries);
+    int readErrors = 0;
+    readErrors += 1==fscanf(fp, "Total entries: %d\n", &maxEntries);
 
     for (i = 0; i < maxEntries; i++){
-        fwscanf(fp, _T("Name:\n%[^\n]\n"), db[i].crystalNameW);
-        fscanf(fp, "Type:\n%d\n", &db[i].axisType);
-        fscanf(fp, "Sellmeier equation:\n%d\n", &db[i].sellmeierType);
+        readErrors += 1 == fwscanf(fp, _T("Name:\n%[^\n]\n"), db[i].crystalNameW);
+        readErrors += 1 == fscanf(fp, "Type:\n%d\n", &db[i].axisType);
+        readErrors += 1 == fscanf(fp, "Sellmeier equation:\n%d\n", &db[i].sellmeierType);
         fd = &db[i].sellmeierCoefficients[0];
-        fscanf(fp, "1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 22 == fscanf(fp, "1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         fd = &db[i].sellmeierCoefficients[22];
-        fscanf(fp, "2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 22 == fscanf(fp, "2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         fd = &db[i].sellmeierCoefficients[44];
-        fscanf(fp, "3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-        fwscanf(fp, _T("Sellmeier reference:\n%[^\n]\n"), db[i].sellmeierReference);
-        fscanf(fp, "chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
+        readErrors += 22 == fscanf(fp, "3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 1 == fwscanf(fp, _T("Sellmeier reference:\n%[^\n]\n"), db[i].sellmeierReference);
+        readErrors += 1 == fscanf(fp, "chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
         fd = &db[i].d[0];
-        fscanf(fp, "d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
-        fwscanf(fp, _T("d reference:\n%[^\n]\n"), db[i].dReference);
-        fscanf(fp, "chi3 type:\n%d\n", &db[i].nonlinearSwitches[1]);
+        readErrors += 18 == fscanf(fp, "d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
+        readErrors += 1 == fwscanf(fp, _T("d reference:\n%[^\n]\n"), db[i].dReference);
+        readErrors += 1 == fscanf(fp, "chi3 type:\n%d\n", &db[i].nonlinearSwitches[1]);
         fd = &db[i].chi3[0];
-        fscanf(fp, "chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 9 == fscanf(fp, "chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
         fd = &db[i].chi3[9];
-        fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 9 == fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
         fd = &db[i].chi3[18];
-        fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
-        fwscanf(fp, _T("chi3 reference:\n%[^\n]\n"), db[i].chi3Reference);
-        fscanf(fp, "Nonlinear absorption type:\n%d\nAbsorption parameters:\n%lf %lf %lf %lf %lf %lf\n", &db[i].nonlinearSwitches[2], &db[i].absorptionParameters[0], &db[i].absorptionParameters[1], &db[i].absorptionParameters[2], &db[i].absorptionParameters[3], &db[i].absorptionParameters[4], &db[i].absorptionParameters[5]);
-        fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
-        fscanf(fp, "~~~crystal end~~~\n");
+        readErrors += 9 == fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 1 == fwscanf(fp, _T("chi3 reference:\n%[^\n]\n"), db[i].chi3Reference);
+        readErrors += 6 == fscanf(fp, "Nonlinear absorption type:\n%d\nAbsorption parameters:\n%lf %lf %lf %lf %lf %lf\n", &db[i].nonlinearSwitches[2], &db[i].absorptionParameters[0], &db[i].absorptionParameters[1], &db[i].absorptionParameters[2], &db[i].absorptionParameters[3], &db[i].absorptionParameters[4], &db[i].absorptionParameters[5]);
+        readErrors += 1 == fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
+        readErrors += 1 == fscanf(fp, "~~~crystal end~~~\n");
         if (isVerbose) {
-            messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+            //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+            flushMessageBuffer();
             swprintf_s(messagebuffer, 1024,
                 _T("Material %i name: %s\r\nSellmeier reference: %s\r\nChi2 reference: %s\r\nChi3 reference: %s\r\n\r\n"), i, db[i].crystalNameW, db[i].sellmeierReference, db[i].dReference, db[i].chi3Reference);
             AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-            free(messagebuffer);
+            //free(messagebuffer);
         }
 
 
     }
 
-    messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+    //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+    flushMessageBuffer();
     swprintf_s(messagebuffer, 1024,
         _T("Read %i entries\r\n"), (int)(maxEntries));
     AppendTextToWindow(maingui.textboxSims, messagebuffer, 1024);
-    free(messagebuffer);
+    //free(messagebuffer);
 
     fclose(fp);
 
@@ -1063,6 +1053,7 @@ int getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox) {
             fbasedirend = ofn.nFileOffset;
         }
         _tcsncpy_s(szFileNameNoExt, szFileName, fbaseloc);
+        szFileNameNoExt[MAX_PATH - 1] = 0;
         SetWindowText(outputTextbox, szFileNameNoExt);
     }
 
@@ -1104,6 +1095,9 @@ int DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
 
     // creating input
     unsigned char* pixels = (unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
+    if (pixels == NULL) {
+        return 1;
+    }
     INT64 i;
     INT64 Ntot = Nx * Ny;
     double nval;
@@ -1217,8 +1211,8 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
 
         hdc = GetWindowDC(maingui.mainWindow);
         double* plotarr = (double*)calloc((*activeSetPtr).Ngrid, sizeof(double));
-        double* plotarrC = (double*)calloc((*activeSetPtr).Ngrid, sizeof(double));
-        double* plotarr2 = (double*)calloc(dx * dy, sizeof(double));
+        double* plotarrC = (double*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(double));
+        double* plotarr2 = (double*)calloc((long long)(dx) * (long long)(dy), sizeof(double));
         
         std::complex<double>* shiftedFFT = (std::complex<double>*)calloc((*activeSetPtr).Ngrid, sizeof(std::complex<double>));
 
@@ -1238,7 +1232,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
         }
 
         linearremap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
-        DrawArrayAsBitmap(hdc, dx, dy, x, y + dy + spacerY, dy, dx, plotarr2, 1);
+        DrawArrayAsBitmap(hdc, dx, dy, x, (long long)(y) + (long long)(dy) + spacerY, dy, dx, plotarr2, 1);
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
 
         //Plot Fourier Domain, s-polarization
@@ -1254,7 +1248,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
         }
 
         linearremap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
-        DrawArrayAsBitmap(hdc, dx, dy, x + dx + spacerX, y, dy, dx, plotarr2, 1);
+        DrawArrayAsBitmap(hdc, dx, dy, (long long)(x) + (long long)(dx) + (long long)(spacerX), y, dy, dx, plotarr2, 1);
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
 
         //Plot Fourier Domain, p-polarization
@@ -1270,7 +1264,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
         
         linearremap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx, 0);
 
-        DrawArrayAsBitmap(hdc, dx, dy, x + dx + spacerX, y + dy + spacerY, dy, dx, plotarr2, 1);
+        DrawArrayAsBitmap(hdc, dx, dy, (long long)(x) + (long long)(dx) + (long long)(spacerX), (long long)(y) + (long long)(dy) + (long long)(spacerY), dy, dx, plotarr2, 1);
 
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 2, 8, 1);
         
@@ -1283,12 +1277,17 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
     isRunning = wasRunning;
     return 0;
 }
+
+void flushMessageBuffer() {
+    memset(messagebuffer, 0, 1024 * sizeof(wchar_t));
+}
+
 int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv) {
     double maxY = 0;
     double minY = 0;
     int i;
     double* X = (double*)calloc(N, sizeof(double));
-    double* plotArray = (double*)calloc(pixelsWide * pixelsTall, sizeof(double));
+    double* plotArray = (double*)calloc((long long)(pixelsWide) * pixelsTall, sizeof(double));
     for (i = 0; i < N; i++) {
         X[i] = xStep * i;
         maxY = max(Y[i], maxY);
@@ -1318,20 +1317,21 @@ int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int pos
 
 
     DrawArrayAsBitmap(hdc, pixelsWide, pixelsTall, posX, posY, pixelsTall, pixelsWide, plotArray, 0);
-    wchar_t* messagebuffer;
     for (i = 0; i < NyTicks; i++) {
-        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        flushMessageBuffer();
         swprintf_s(messagebuffer, 1024,
             _T("%1.1f"), yTicks1[i]/yDiv);
         TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messagebuffer, (int)_tcslen(messagebuffer));
-        free(messagebuffer);
+        //free(messagebuffer);
     }
     for (i = 0; i < 3; i++) {
-        messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        //messagebuffer = (wchar_t*)calloc(1024, sizeof(wchar_t));
+        flushMessageBuffer();
         swprintf_s(messagebuffer, 1024,
             _T("%3.0f"), xTicks1[i]);
-        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * (i + 1) - 12), posY + pixelsTall, messagebuffer, (int)_tcslen(messagebuffer));
-        free(messagebuffer);
+        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((long long)(i) + 1) - 12), posY + pixelsTall, messagebuffer, (int)_tcslen(messagebuffer));
+        //free(messagebuffer);
     }
     free(X);
     free(plotArray);
