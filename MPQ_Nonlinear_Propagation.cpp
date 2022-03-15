@@ -40,7 +40,7 @@ struct crystalentry* crystalDatabasePtr;        // Crystal info database
 bool isRunning = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
-wchar_t messageBuffer[1024];
+wchar_t messageBuffer[MAX_LOADSTRING];
 
 // Forward declarations of (Microsoft) functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -270,8 +270,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
     if (cuErr == cudaSuccess) {
         flushMessageBuffer();
-        swprintf_s(messageBuffer, 1024, TEXT("Found GPU: "));
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+        swprintf_s(messageBuffer, MAX_LOADSTRING, TEXT("Found GPU: "));
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
         size_t origsize = 256 + 1;
         const size_t newsize = 256;
         size_t convertedChars = 0;
@@ -279,8 +279,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         mbstowcs_s(&convertedChars, wcstring, origsize, activeCUDADeviceProp.name, _TRUNCATE);
         AppendTextToWindow(maingui.textboxSims, wcstring, 256);
         flushMessageBuffer();
-        swprintf_s(messageBuffer, 1024, TEXT("\r\n\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+        swprintf_s(messageBuffer, MAX_LOADSTRING, TEXT("\r\n\r\n"));
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
     }
     
     //read the crystal database
@@ -340,7 +340,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_BTNSTOP:
             if (isRunning) {
                 cancellationCalled = TRUE;
-                for (int i = 0; i < (*activeSetPtr).NSims; i++) {
+                for (int i = 0; i < (*activeSetPtr).Nsims; i++) {
                     (*activeSetPtr).imdone[i] = 2;
                 }
             }
@@ -368,7 +368,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
-        DrawLabels(hdc);
+        drawLabels(hdc);
         EndPaint(hWnd, &ps);
     }
     break;
@@ -412,41 +412,41 @@ DWORD WINAPI mainsimthread(LPVOID lpParam) {
     readParametersFromInterfaceAndAllocate();
     
     //run the simulations
-    for (j = 0; j < (*activeSetPtr).NSims; j++) {
+    for (j = 0; j < (*activeSetPtr).Nsims; j++) {
         if ((*activeSetPtr).isInSequence) {
             for (k = 0; k < (*activeSetPtr).Nsequence; k++) {
                 resolvesequence(k, &activeSetPtr[j]);
                 propagationLoop(&activeSetPtr[j]);
                 (*activeSetPtr).plotSim = j;
-                plotThread = CreateThread(NULL, 0, drawsimplots, activeSetPtr, 0, &hplotThread);
+                plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
                 if (activeSetPtr[j].memoryError > 0) {
                     flushMessageBuffer();
-                    swprintf_s(messageBuffer, 1024,
+                    swprintf_s(messageBuffer, MAX_LOADSTRING,
                         _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
-                    AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+                    AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
                 }
             }
         }
         else {
             propagationLoop(&activeSetPtr[j]);
             (*activeSetPtr).plotSim = j;
-            plotThread = CreateThread(NULL, 0, drawsimplots, activeSetPtr, 0, &hplotThread);
+            plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
         }
 
         if (cancellationCalled) {
             flushMessageBuffer();
-            swprintf_s(messageBuffer, 1024,
+            swprintf_s(messageBuffer, MAX_LOADSTRING,
                 _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j+1);
-            AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+            AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
             break;
         }
     }
     time(&tthreadmid);
 
     flushMessageBuffer();
-    swprintf_s(messageBuffer, 1024,
+    swprintf_s(messageBuffer, MAX_LOADSTRING,
         _T("Finished after %i s. \r\n"), (int)(tthreadmid - tstart));
-    AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+    AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
     saveDataSet();
 
@@ -535,9 +535,9 @@ int readParametersFromInterfaceAndAllocate() {
     }
     (*activeSetPtr).batchDestination = HWNDToDouble(maingui.tbBatchDestination);
 
-    (*activeSetPtr).NSims = (int)HWNDToDouble(maingui.tbNumberSims);
-    if ((*activeSetPtr).batchIndex == 0 || (*activeSetPtr).batchIndex == 4 || (*activeSetPtr).NSims < 1) {
-        (*activeSetPtr).NSims = 1;
+    (*activeSetPtr).Nsims = (int)HWNDToDouble(maingui.tbNumberSims);
+    if ((*activeSetPtr).batchIndex == 0 || (*activeSetPtr).batchIndex == 4 || (*activeSetPtr).Nsims < 1) {
+        (*activeSetPtr).Nsims = 1;
     }
 
 
@@ -558,9 +558,9 @@ int readParametersFromInterfaceAndAllocate() {
         frogLines = loadfrogspeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field1IsAllocated = TRUE;
         flushMessageBuffer();
-        swprintf_s(messageBuffer, 1024,
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
     }
     if (pulse2FileType == 1) {
@@ -570,9 +570,9 @@ int readParametersFromInterfaceAndAllocate() {
         frogLines = loadfrogspeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
         flushMessageBuffer();
-        swprintf_s(messageBuffer, 1024,
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("loaded FROG file 2 (%i lines).\r\n"), frogLines);
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
     }
 
     (*activeSetPtr).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
@@ -594,17 +594,17 @@ int readParametersFromInterfaceAndAllocate() {
     (*activeSetPtr).isInSequence = ((*activeSetPtr).Nsequence > 0);
 
 
-    (*activeSetPtr).Ext = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).NSims, sizeof(std::complex<double>));
-    (*activeSetPtr).Ekw = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).NSims, sizeof(std::complex<double>));
+    (*activeSetPtr).Ext = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+    (*activeSetPtr).Ekw = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
 
-    (*activeSetPtr).ExtOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).NSims, sizeof(std::complex<double>));
-    (*activeSetPtr).EkwOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).NSims, sizeof(std::complex<double>));
+    (*activeSetPtr).ExtOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+    (*activeSetPtr).EkwOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
 
     isGridAllocated = TRUE;
-    (*activeSetPtr).refractiveIndex1 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).NSims, sizeof(std::complex<double>));
-    (*activeSetPtr).refractiveIndex2 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).NSims, sizeof(std::complex<double>));
-    (*activeSetPtr).deffTensor = (double*)calloc(9 * (long long)((*activeSetPtr).NSims), sizeof(double));
-    (*activeSetPtr).imdone = (int*)calloc((*activeSetPtr).NSims, sizeof(int));
+    (*activeSetPtr).refractiveIndex1 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+    (*activeSetPtr).refractiveIndex2 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+    (*activeSetPtr).deffTensor = (double*)calloc(9 * (long long)((*activeSetPtr).Nsims), sizeof(double));
+    (*activeSetPtr).imdone = (int*)calloc((*activeSetPtr).Nsims, sizeof(int));
 
 
     (*activeSetPtr).chi2Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].d;
@@ -616,24 +616,7 @@ int readParametersFromInterfaceAndAllocate() {
     (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
 
 
-    double batchstart = 0;
-    if ((*activeSetPtr).batchIndex == 1) {
-        batchstart = (*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2;
-    }
-    if ((*activeSetPtr).batchIndex == 2) {
-        batchstart = (*activeSetPtr).pulseEnergy1;
-    }
-    if ((*activeSetPtr).batchIndex == 3) {
-        batchstart = (*activeSetPtr).cephase1;
-    }
-    if ((*activeSetPtr).batchIndex == 5) {
-        batchstart = (*activeSetPtr).crystalTheta;
-    }
-    if ((*activeSetPtr).batchIndex == 6) {
-        batchstart = (*activeSetPtr).gdd1;
-    }
-
-    for (j = 0; j < (*activeSetPtr).NSims; j++) {
+    for (j = 0; j < (*activeSetPtr).Nsims; j++) {
         if (j > 0) {
             memcpy(&activeSetPtr[j], activeSetPtr, sizeof(struct propthread));
         }
@@ -651,19 +634,19 @@ int readParametersFromInterfaceAndAllocate() {
         activeSetPtr[j].isFollowerInSequence = FALSE;
 
         if ((*activeSetPtr).batchIndex == 1) {
-            activeSetPtr[j].delay2 += j * ((-1e-15 * (*activeSetPtr).batchDestination) - batchstart) / ((*activeSetPtr).NSims - 1.);
+            activeSetPtr[j].delay2 += j * ((-1e-15 * (*activeSetPtr).batchDestination) - ((*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2)) / ((*activeSetPtr).Nsims - 1.);
         }
         if ((*activeSetPtr).batchIndex == 2) {
-            activeSetPtr[j].pulseEnergy1 += j * ((*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1.);
+            activeSetPtr[j].pulseEnergy1 += j * ((*activeSetPtr).batchDestination - (*activeSetPtr).pulseEnergy1) / ((*activeSetPtr).Nsims - 1.);
         }
         if ((*activeSetPtr).batchIndex == 3) {
-            activeSetPtr[j].cephase1 += j * (pi * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1.);
+            activeSetPtr[j].cephase1 += j * (pi * (*activeSetPtr).batchDestination - (*activeSetPtr).cephase1) / ((*activeSetPtr).Nsims - 1.);
         }
         if ((*activeSetPtr).batchIndex == 5) {
-            activeSetPtr[j].crystalTheta += j * ((pi / 180) * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1.);
+            activeSetPtr[j].crystalTheta += j * ((pi / 180) * (*activeSetPtr).batchDestination - (*activeSetPtr).crystalTheta) / ((*activeSetPtr).Nsims - 1.);
         }
         if ((*activeSetPtr).batchIndex == 6) {
-            activeSetPtr[j].gdd1 += j * (1e-30 * (*activeSetPtr).batchDestination - batchstart) / ((*activeSetPtr).NSims - 1.);
+            activeSetPtr[j].gdd1 += j * (1e-30 * (*activeSetPtr).batchDestination - (*activeSetPtr).gdd1) / ((*activeSetPtr).Nsims - 1.);
         }
     }
     return 0;
@@ -674,7 +657,7 @@ int saveDataSet() {
     //Save the results as double instead of complex
     double* saveEout = (double*)&(*activeSetPtr).refractiveIndex1[0];
     double* saveEin = (double*)&(*activeSetPtr).refractiveIndex2[0];
-    for (j = 0; j < ((*activeSetPtr).Ngrid * (*activeSetPtr).NSims * 2); j++) {
+    for (j = 0; j < ((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims * 2); j++) {
         saveEout[j] = real((*activeSetPtr).ExtOut[j]);
         saveEin[j] = real((*activeSetPtr).Ext[j]);
     }
@@ -702,7 +685,7 @@ int saveDataSet() {
     }
     fprintf(textfile, "Crystal theta: %e\nCrystal phi: %e\nGrid width: %e\ndx: %e\nTime span: %e\ndt: %e\nThickness: %e\ndz: %e\n", (*activeSetPtr).crystalTheta, (*activeSetPtr).crystalPhi, (*activeSetPtr).spatialWidth, (*activeSetPtr).rStep, (*activeSetPtr).timeSpan, (*activeSetPtr).tStep, (*activeSetPtr).crystalThickness, (*activeSetPtr).propagationStep);
     fprintf(textfile, "Propagation mode: %i\n", (*activeSetPtr).symmetryType);
-    fprintf(textfile, "Batch mode: %i\nBatch destination: %e\nBatch steps: %i\n", (*activeSetPtr).batchIndex, (*activeSetPtr).batchDestination, (*activeSetPtr).NSims);
+    fprintf(textfile, "Batch mode: %i\nBatch destination: %e\nBatch steps: %i\n", (*activeSetPtr).batchIndex, (*activeSetPtr).batchDestination, (*activeSetPtr).Nsims);
     if ((*activeSetPtr).isInSequence) {
         HWNDToString(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
         fprintf(textfile, "Sequence: %s\n", (*activeSetPtr).sequenceString);
@@ -716,14 +699,14 @@ int saveDataSet() {
     strcpy(outputpath, outputbase);
     strcat(outputpath, "_ExtOut.dat");
     ExtOutFile = fopen(outputpath, "wb");
-    fwrite(saveEout, sizeof(double), 2 * ((*activeSetPtr).Ngrid * (*activeSetPtr).NSims) + 1024, ExtOutFile);
+    fwrite(saveEout, sizeof(double), 2 * ((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims) + 1024, ExtOutFile);
     fclose(ExtOutFile);
 
     FILE* ExtInFile;
     strcpy(outputpath, outputbase);
     strcat(outputpath, "_ExtIn.dat");
     ExtInFile = fopen(outputpath, "wb");
-    fwrite(saveEin, sizeof(double), 2 * ((*activeSetPtr).Ngrid * (*activeSetPtr).NSims) + 1024, ExtInFile);
+    fwrite(saveEin, sizeof(double), 2 * ((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims) + 1024, ExtInFile);
     fclose(ExtInFile);
 
 
@@ -741,13 +724,13 @@ int saveDataSet() {
 
     matlabfile = fopen(outputpath, "w");
     fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
-    fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).NSims);
-    fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %i]); \n", outputbaseVar, outputbaseVar, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).NSims);
+    fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).Nsims);
+    fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %i]); \n", outputbaseVar, outputbaseVar, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).Nsims);
     fprintf(matlabfile, "fclose(fid); \n");
 
     fprintf(matlabfile, "fid = fopen('%s_ExtOut.dat','rb'); \n", outputbaseVar);
-    fprintf(matlabfile, "%s_ExtOut = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).NSims);
-    fprintf(matlabfile, "%s_ExtOut = reshape(%s_ExtOut,[%lli %lli %i]); \n", outputbaseVar, outputbaseVar, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).NSims);
+    fprintf(matlabfile, "%s_ExtOut = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).Nsims);
+    fprintf(matlabfile, "%s_ExtOut = reshape(%s_ExtOut,[%lli %lli %i]); \n", outputbaseVar, outputbaseVar, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).Nsims);
     fprintf(matlabfile, "fclose(fid); \n");
     fclose(matlabfile);
 
@@ -762,10 +745,10 @@ int saveDataSet() {
     fprintf(scriptfile, "dt = %e\ndz = %e\ndx = %e\n", (*activeSetPtr).tStep, (*activeSetPtr).propagationStep, (*activeSetPtr).rStep);
     fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
     fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
-    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%i),order='F')\n", 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).NSims, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).NSims);
+    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%i),order='F')\n", 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).Nsims);
     fprintf(scriptfile, "%s_ExtOut = np.reshape(np.fromfile(\"", outputbaseVar);
     fprintf(scriptfile, "%s_ExtOut.dat", outputbaseVar);
-    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%i),order='F')\n", 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).NSims, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).NSims);
+    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%i),order='F')\n", 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).Nsims);
     fclose(scriptfile);
     return 0;
 }
@@ -806,7 +789,7 @@ int resolvesequence(int currentIndex, struct propthread* s) {
 }
 
 //quality of life function - put a text label on a text box window, relative to its position
-int LabelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset) {
+int labelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset) {
     RECT rectTextBox;
     POINT positionTextBox;
     GetWindowRect(targetTextBox, &rectTextBox);
@@ -858,16 +841,16 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
     fp = fopen("CrystalDatabase.txt","r");
     if (fp == NULL) {
         flushMessageBuffer();
-        swprintf_s(messageBuffer, 1024,
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("Could not open database!\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
         return 1;
     }
     if (isVerbose) {
         flushMessageBuffer();
-        swprintf_s(messageBuffer, 1024,
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("Reading crystal database file in verbose mode\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
     }
     //read the entries line
     int readErrors = 0;
@@ -898,26 +881,25 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
         readErrors += 1 == fwscanf(fp, _T("chi3 reference:\n%[^\n]\n"), db[i].chi3Reference);
         readErrors += 6 == fscanf(fp, "Nonlinear absorption type:\n%d\nAbsorption parameters:\n%lf %lf %lf %lf %lf %lf\n", &db[i].nonlinearSwitches[2], &db[i].absorptionParameters[0], &db[i].absorptionParameters[1], &db[i].absorptionParameters[2], &db[i].absorptionParameters[3], &db[i].absorptionParameters[4], &db[i].absorptionParameters[5]);
         readErrors += 1 == fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
-        readErrors += 1 == fscanf(fp, "~~~crystal end~~~\n");
+        readErrors += 0 == fscanf(fp, "~~~crystal end~~~\n");
         if (isVerbose) {
             flushMessageBuffer();
-            swprintf_s(messageBuffer, 1024,
+            swprintf_s(messageBuffer, MAX_LOADSTRING,
                 _T("Material %i name: %s\r\nSellmeier reference: %s\r\nChi2 reference: %s\r\nChi3 reference: %s\r\n\r\n"), i, db[i].crystalNameW, db[i].sellmeierReference, db[i].dReference, db[i].chi3Reference);
-            AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
+            AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
         }
 
 
     }
-    flushMessageBuffer();
-    swprintf_s(messageBuffer, 1024,
-        _T("Read %i entries\r\n"), (int)(maxEntries));
-    AppendTextToWindow(maingui.textboxSims, messageBuffer, 1024);
-
-
     fclose(fp);
 
-    return 0;
+    flushMessageBuffer();
+    swprintf_s(messageBuffer, MAX_LOADSTRING,
+        _T("Read %i entries\r\n"), (int)(maxEntries));
+    AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+
+    return readErrors;
 }
 
 //returns a string containing the text in a text box
@@ -931,60 +913,60 @@ int HWNDToString(HWND inputA, char* outputString, int bufferSize)
     return 0;
 }
 
-int DrawLabels(HDC hdc) {
+int drawLabels(HDC hdc) {
     int labos = -160;
     int x0plots = 380;
     int dxplots = 404;
     int dyplots = 214;
     int vs = 26;
 
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbMaterialIndex, _T("Material index"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalTheta, _T("Crystal theta (deg)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalPhi, _T("Crystal phi (deg)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbBeamwaist1, _T("Beamwaist 1 (mcr.)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbBeamwaist2, _T("Beamwaist 2 (mcr.)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbGridXdim, _T("Grid width (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbMaterialIndex, _T("Material index"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalTheta, _T("Crystal theta (deg)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalPhi, _T("Crystal phi (deg)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbBeamwaist1, _T("Beamwaist 1 (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbBeamwaist2, _T("Beamwaist 2 (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbGridXdim, _T("Grid width (mcr.)"), labos, 0);
 
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbTimeStepSize, _T("dt (fs)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbRadialStepSize, _T("dx or dr (mcr.)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbTimeSpan, _T("Time span (fs)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbXstep, _T("dz (nm)"), labos, 0); 
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalThickness, _T("Thickness (mcr.)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.pdBatchMode, _T("Batch mode"), labos, 4);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbNumberSims, _T("Batch steps"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbBatchDestination, _T("Batch end"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbTimeStepSize, _T("dt (fs)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbRadialStepSize, _T("dx or dr (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbTimeSpan, _T("Time span (fs)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbXstep, _T("dz (nm)"), labos, 0); 
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalThickness, _T("Thickness (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.pdBatchMode, _T("Batch mode"), labos, 4);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbNumberSims, _T("Batch steps"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbBatchDestination, _T("Batch end"), labos, 0);
 
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbPulse1Delay, _T("Delay 1 (fs)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbPulse2Delay, _T("Delay 2 (fs)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFieldStrength1, _T("Energy 1 (J)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFieldStrength2, _T("Energy 2 (J)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbBandwidth1, _T("Bandwidth 1 (THz)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbBandwidth2, _T("Bandwidth 2 (THz)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFrequency1, _T("Frequency 1 (THz)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFrequency2, _T("Frequency 2 (THz)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbCEPhase1, _T("CEP/pi 1"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbCEPhase2, _T("CEP/pi 2"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbPulseType, _T("SG order"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPulse1Delay, _T("Delay 1 (fs)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPulse2Delay, _T("Delay 2 (fs)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFieldStrength1, _T("Energy 1 (J)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFieldStrength2, _T("Energy 2 (J)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbBandwidth1, _T("Bandwidth 1 (THz)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbBandwidth2, _T("Bandwidth 2 (THz)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFrequency1, _T("Frequency 1 (THz)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFrequency2, _T("Frequency 2 (THz)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbCEPhase1, _T("CEP/pi 1"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbCEPhase2, _T("CEP/pi 2"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPulseType, _T("SG order"), labos, 0);
     
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbGDD1, _T("GDD 1 (fs^2)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbGDD2, _T("GDD 2 (fs^2)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbTOD1, _T("TOD 1 (fs^3)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbTOD2, _T("TOD 2 (fs^3)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbXoffset1, _T("x offset 1 (mcr.)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbXoffset2, _T("x offset 2 (mcr.)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbZoffset1, _T("z offset 1 (mcr.)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbZoffset2, _T("z offset 2 (mcr.)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbPropagationAngle1, _T("NC angle 1 (deg)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbPropagationAngle2, _T("NC angle 2 (deg)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbPolarizationAngle1, _T("Polarization 1 (deg)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbPolarizationAngle2, _T("Polarization 2 (deg)"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbCircularity1, _T("Circularity 1"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbCircularity2, _T("Circularity 2"), labos, 0);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.pdPulse1Type, _T("Pulse 1 type:"), labos, 4);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2 type:"), labos, 4);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 4);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbGDD1, _T("GDD 1 (fs^2)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbGDD2, _T("GDD 2 (fs^2)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbTOD1, _T("TOD 1 (fs^3)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbTOD2, _T("TOD 2 (fs^3)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbXoffset1, _T("x offset 1 (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbXoffset2, _T("x offset 2 (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbZoffset1, _T("z offset 1 (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbZoffset2, _T("z offset 2 (mcr.)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPropagationAngle1, _T("NC angle 1 (deg)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPropagationAngle2, _T("NC angle 2 (deg)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPolarizationAngle1, _T("Polarization 1 (deg)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPolarizationAngle2, _T("Polarization 2 (deg)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbCircularity1, _T("Circularity 1"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbCircularity2, _T("Circularity 2"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse1Type, _T("Pulse 1 type:"), labos, 4);
+    labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2 type:"), labos, 4);
+    labelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 4);
 
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -24);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -24);
 
     //plot labels
     int x = 690;
@@ -994,16 +976,16 @@ int DrawLabels(HDC hdc) {
     int plotMargin = 0;
     int spacerX = 50;
     int spacerY = 40;
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization, space/time:"), 0, 32);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, space/time:"), 0, 32+dy+spacerY);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization waveform (GV/m):"), 0, 32 + 2*(dy + spacerY));
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization waveform (GV/m):"), 0, 32 + 3*(dy + spacerY));
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("Time (fs)"), dx/2, 36 + 4 * (dy + spacerY));
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization, Fourier, Log:"), 0+dx+spacerX, 32);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, Fourier, Log:"), 0+dx+spacerX, 32+dy+spacerY);
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization spectrum, log-scale:"), 0 + dx + spacerX, 32 + 2*(dy + spacerY));
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization spectrum, log-scale:"), 0 + dx + spacerX, 32 + 3*(dy + spacerY));
-    LabelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("Frequency (THz)"), dx / 2 + 0 + dx + spacerX, 36 + 4 * (dy + spacerY));
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization, space/time:"), 0, 32);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, space/time:"), 0, 32+dy+spacerY);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization waveform (GV/m):"), 0, 32 + 2*(dy + spacerY));
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization waveform (GV/m):"), 0, 32 + 3*(dy + spacerY));
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("Time (fs)"), dx/2, 36 + 4 * (dy + spacerY));
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization, Fourier, Log:"), 0+dx+spacerX, 32);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, Fourier, Log:"), 0+dx+spacerX, 32+dy+spacerY);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization spectrum, log-scale:"), 0 + dx + spacerX, 32 + 2*(dy + spacerY));
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization spectrum, log-scale:"), 0 + dx + spacerX, 32 + 3*(dy + spacerY));
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("Frequency (THz)"), dx / 2 + 0 + dx + spacerX, 36 + 4 * (dy + spacerY));
     return 0;
 }
 
@@ -1167,7 +1149,7 @@ int DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
     return 0;
 }
 
-DWORD WINAPI drawsimplots(LPVOID lpParam) {
+DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     bool wasRunning = isRunning;
     isRunning = TRUE; //this locks the grid memory so it doesn't get freed while plotting, set back to wasRunning at the end
     if (isGridAllocated) {
@@ -1187,8 +1169,8 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
         if (simIndex < 0) {
             simIndex = 0;
         }
-        if (simIndex > (*activeSetPtr).NSims) {
-            simIndex = (*activeSetPtr).NSims - 1;
+        if (simIndex > (*activeSetPtr).Nsims) {
+            simIndex = (*activeSetPtr).Nsims - 1;
         }
 
         hdc = GetWindowDC(maingui.mainWindow);
@@ -1204,7 +1186,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
         }
 
         
-        linearremap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
+        linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
         DrawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 1);
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 2 * dy + 2 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
 
@@ -1213,7 +1195,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
             plotarr[i] = (real((*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2]));
         }
 
-        linearremap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
+        linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
         DrawArrayAsBitmap(hdc, dx, dy, x, (long long)(y) + (long long)(dy) + spacerY, dy, dx, plotarr2, 1);
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
 
@@ -1229,7 +1211,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
             }
         }
 
-        linearremap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
+        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
         DrawArrayAsBitmap(hdc, dx, dy, (long long)(x) + (long long)(dx) + (long long)(spacerX), y, dy, dx, plotarr2, 1);
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
 
@@ -1244,7 +1226,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
             }
         }
         
-        linearremap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx, 0);
+        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx, 0);
 
         DrawArrayAsBitmap(hdc, dx, dy, (long long)(x) + (long long)(dx) + (long long)(spacerX), (long long)(y) + (long long)(dy) + (long long)(spacerY), dy, dx, plotarr2, 1);
 
@@ -1261,7 +1243,7 @@ DWORD WINAPI drawsimplots(LPVOID lpParam) {
 }
 
 void flushMessageBuffer() {
-    memset(messageBuffer, 0, 1024 * sizeof(wchar_t));
+    memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
 }
 
 int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv) {
@@ -1301,13 +1283,13 @@ int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int pos
     DrawArrayAsBitmap(hdc, pixelsWide, pixelsTall, posX, posY, pixelsTall, pixelsWide, plotArray, 0);
     for (i = 0; i < NyTicks; i++) {
         flushMessageBuffer();
-        swprintf_s(messageBuffer, 1024,
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("%1.1f"), yTicks1[i]/yDiv);
         TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
     }
     for (i = 0; i < 3; i++) {
         flushMessageBuffer();
-        swprintf_s(messageBuffer, 1024,
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("%3.0f"), xTicks1[i]);
         TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((long long)(i) + 1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));
     }
@@ -1327,7 +1309,7 @@ double cmodulussquared(std::complex<double>complexNumber) {
 
 //use linear interpolation to resize matrix A to the size of matrix B
 //B is overwritten with the resized matrix
-int linearremap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp) {
+int linearRemap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp) {
     int i, j;
     double a, b, c, d;
     double d00, d01, d10, d11;

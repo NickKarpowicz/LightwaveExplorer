@@ -13,7 +13,7 @@ struct propthread {
     long long Ntime;
     long long Nspace;
     long long Ngrid;
-    int NSims;
+    int Nsims;
     double spatialWidth;
     double timeSpan;
 
@@ -192,8 +192,8 @@ struct guiStruct {
 };
 
 DWORD WINAPI        mainsimthread(LPVOID lpParam);
-int                 DrawLabels(HDC hdc);
-int                 LabelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset);
+int                 drawLabels(HDC hdc);
+int                 labelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset);
 int                 HWNDToString(HWND inputA, char* outputString, int bufferSize);
 double              HWNDToDouble(HWND inputA);
 int                 AppendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize);
@@ -201,8 +201,8 @@ int                 getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox);
 int                 getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox);
 int                 DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm);
 double              cmodulussquared(std::complex<double>complexNumber);
-DWORD WINAPI        drawsimplots(LPVOID lpParam);
-int                 linearremap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp);
+DWORD WINAPI        drawSimPlots(LPVOID lpParam);
+int                 linearRemap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp);
 int                 readcrystaldatabase(struct crystalentry* db, bool isVerbose);
 int                 resolvesequence(int currentIndex, struct propthread* s);
 int                 drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv);

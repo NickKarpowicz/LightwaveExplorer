@@ -348,6 +348,7 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struc
 
 
 }
+
 //replaces E with its complex conjugate
 __global__ void conjugateKernel(cuDoubleComplex* E) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -361,6 +362,7 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
         E[i] = make_cuDoubleComplex(0., 0.);
     }
 }
+
 __global__ void nonlinearpolarizationKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     double Ex = cuCreal(s.gridETime[i]) / s.propagationInts[0];
