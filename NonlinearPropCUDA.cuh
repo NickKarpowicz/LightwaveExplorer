@@ -63,15 +63,15 @@ struct cudaLoop {
 	int Nblock;
 };
 
-DWORD WINAPI	propagationLoop(LPVOID lpParam);
-int				rkstep(struct cudaLoop s, int stepNumber);
-int				pulseGenerator(struct propthread* s, struct cudaLoop* sc);
-int				deff(double* defftensor, double* dtensor, double theta, double phi);
+DWORD WINAPI	solveNonlinearWaveEquation(LPVOID lpParam);
+int				runRK4Step(struct cudaLoop s, int stepNumber);
+int				prepareElectricFieldArrays(struct propthread* s, struct cudaLoop* sc);
+int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int				fftshiftZflip(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
+int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn);
 int				preparePropagation2DCartesian(struct propthread* s, struct cudaLoop sc);
 int				preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc);
-double			thetasearch(struct propthread* s, double dk, double f, double tol);
+double			findWalkoffAngles(struct propthread* s, double dk, double f, double tol);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex);
 int				plotDataXY(double* X, double* Y, double minX, double maxX, double minY, double maxY, int N, int plotSizeX, int plotSizeY, double lineWidth, double markerWidth, double* plotGrid, double* xTicks, int NxTicks, double* yTicks, int NyTicks);

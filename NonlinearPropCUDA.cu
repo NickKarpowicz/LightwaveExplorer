@@ -363,7 +363,7 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
 
 //calculate the nonlinear polarization, after FFT to get the field
 //in the time domain
-__global__ void nonlinearpolarizationKernel(struct cudaLoop s) {
+__global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     double Ex = cuCreal(s.gridETime[i]) / s.propagationInts[0];
     double Ey = cuCreal(s.gridETime2[i]) / s.propagationInts[0];
@@ -591,7 +591,7 @@ __global__ void fftNormalizeKernel(cuDoubleComplex* A, long long* fftSize) {
 }
 
 //main thread of the nonlinear wave equation implemented on CUDA
-DWORD WINAPI propagationLoop(LPVOID lpParam) {
+DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
 
     //the struct s contains most of the simulation variables and pointers
     struct cudaLoop s;
@@ -681,7 +681,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     //prepare effective nonlinearity tensors and put them on the GPU
     long long propagationIntsCPU[4] = { s.Ngrid, s.Ntime, s.Nspace, (s.Ntime / 2 + 1) };
     double firstDerivativeOperation[6] = { -(1/s.dx) / 60, (1 / s.dx) * 3 / 20, (1 / s.dx) * -3 / 4, (1 / s.dx) * 3 / 4, (1 / s.dx) * -3 / 20, (1 / s.dx) / 60 };
-    deff((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
+    calcEffectiveChi2Tensor((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
     cudaMemcpy(s.chi2Tensor, (*sCPU).deffTensor, 9 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(s.propagationInts, propagationIntsCPU, 4 * sizeof(long long), cudaMemcpyHostToDevice);
@@ -702,7 +702,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     }
     
 
-    //generate the pulses, either through pulseGenerator() if this is the first in the series, or by copying
+    //generate the pulses, either through prepareElectricFieldArrays() if this is the first in the series, or by copying
     //the output of the last simulation in the sequence
     if ((*sCPU).isFollowerInSequence) {
         cudaMemcpy(s.gridETime, (*sCPU).ExtOut, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
@@ -711,7 +711,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
         cudaMemcpy(s.gridEFrequency2, &(*sCPU).EkwOut[(*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     }
     else {
-        pulseGenerator(sCPU, &s);
+        prepareElectricFieldArrays(sCPU, &s);
     }
     
     //Copy the field into the temporary array
@@ -721,13 +721,13 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
     //Core propagation loop
     for (i = 0; i < s.Nsteps; i++) {
         //calculate k1
-        rkstep(s, 0);
+        runRK4Step(s, 0);
         //calculate k2
-        rkstep(s, 1);
+        runRK4Step(s, 1);
         //calculate k3
-        rkstep(s, 2);
+        runRK4Step(s, 2);
         //calculate k4
-        rkstep(s, 3);
+        runRK4Step(s, 3);
 
         if ((*sCPU).imdone[0] == 2) {
             break;
@@ -792,7 +792,7 @@ DWORD WINAPI propagationLoop(LPVOID lpParam) {
 
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
-int rkstep(struct cudaLoop s, int stepNumber) {
+int runRK4Step(struct cudaLoop s, int stepNumber) {
 
     //operations involving FFT
     if (s.isNonLinear || s.isCylindric) {
@@ -801,7 +801,7 @@ int rkstep(struct cudaLoop s, int stepNumber) {
         cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
         
         if (s.isNonLinear) {
-            nonlinearpolarizationKernel << <s.Nblock, s.Nthread >> > (s);
+            nonlinearPolarizationKernel << <s.Nblock, s.Nthread >> > (s);
             cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime, (cufftDoubleComplex*)s.gridPolarizationFrequency);
             cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime2, (cufftDoubleComplex*)s.gridPolarizationFrequency2);
         }
@@ -819,7 +819,7 @@ int rkstep(struct cudaLoop s, int stepNumber) {
     return 0;
 }
 
-int pulseGenerator(struct propthread* s, struct cudaLoop *sc) {
+int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
     long long i,j;
     double rB, zB, r, z; //r and z in the Beam and lab coordinates, respectively.
     double w0, wz, zR, Rz, phi; //Gaussian beam parameters
@@ -903,13 +903,13 @@ int pulseGenerator(struct propthread* s, struct cudaLoop *sc) {
             //z = 0;
             Eb = (w0 / wz) * exp(-ii * (real(ko) * (z-zB) + real(ko) * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
             Eb *= specfac;
-            if (isnan(cmodulussquared(Eb)) || f<=0) {
+            if (isnan(cModulusSquared(Eb)) || f<=0) {
                 Eb = 0;
             }
             
             pulse1[i + (*s).Ntime * j] = polFactor1 * Eb;
             pulse1[i + (*s).Ntime * j + (*s).Ngrid] = polFactor2 * Eb;
-            pulseSum += abs(r)*(real(ne)*cmodulussquared(pulse1[i + (*s).Ntime * j]) + real(no)*cmodulussquared(pulse1[i + (*s).Ntime * j + (*s).Ngrid]));
+            pulseSum += abs(r)*(real(ne)*cModulusSquared(pulse1[i + (*s).Ntime * j]) + real(no)*cModulusSquared(pulse1[i + (*s).Ntime * j + (*s).Ngrid]));
         }
     }
     
@@ -1011,13 +1011,13 @@ int pulseGenerator(struct propthread* s, struct cudaLoop *sc) {
             phi = atan(z / zR);
             Eb = (w0 / wz) * exp(-ii * (real(ko) * (z - zB) + real(ko) * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
             Eb *= specfac;
-            if (isnan(cmodulussquared(Eb)) || f <= 0) {
+            if (isnan(cModulusSquared(Eb)) || f <= 0) {
                 Eb = 0;
             }
 
             pulse2[i + (*s).Ntime * j] = polFactor1 * Eb;
             pulse2[i + (*s).Ntime * j + (*s).Ngrid] = polFactor2 * Eb;
-            pulseSum += abs(r) * (real(ne) * cmodulussquared(pulse2[i + (*s).Ntime * j]) + real(no) * cmodulussquared(pulse2[i + (*s).Ntime * j + (*s).Ngrid]));
+            pulseSum += abs(r) * (real(ne) * cModulusSquared(pulse2[i + (*s).Ntime * j]) + real(no) * cModulusSquared(pulse2[i + (*s).Ntime * j + (*s).Ngrid]));
         }
     }
 
@@ -1158,7 +1158,7 @@ int preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc) {
     return 0;
 }
 
-double thetasearch(struct propthread* s, double dk, double f, double tol) {
+double findWalkoffAngles(struct propthread* s, double dk, double f, double tol) {
     double theta=0;
     double dTheta = 0.1;
     double err, errPlus, errMinus;
@@ -1214,7 +1214,7 @@ int swaprc(double* M, int dim1, int dim2) {
 }
 
 
-int deff(double* defftensor, double* dtensor, double theta, double phi) {
+int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi) {
     double delta = 0.; //this angle is used for biaxial crystals, but I'm ignorning it for the moment
     int i, j, k;
     //Rotation matrix between the angles of the electric field and the crystal axes
@@ -1301,7 +1301,7 @@ int fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, 
 }
 
 //same as fftshiftZ, but flips the output array columns
-int fftshiftZflip(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2) {
+int fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2) {
     long long i, j;
     long long div1 = dim1 / 2;
     long long div2 = dim2 / 2;

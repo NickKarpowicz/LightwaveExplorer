@@ -1,5 +1,3 @@
-// WinTDSE.cpp : Defines the entry point for the application.
-//
 #define _CRT_SECURE_NO_DEPRECATE
 #define _CRT_SECURE_NO_WARNINGS
 #include "framework.h"
@@ -49,6 +47,73 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 
+DWORD WINAPI mainSimThread(LPVOID lpParam) {
+    cancellationCalled = FALSE;
+    int j, k;
+    time_t tstart, tthreadmid;
+    time(&tstart);
+    HANDLE plotThread;
+    DWORD hplotThread;
+
+    readParametersFromInterfaceAndAllocate();
+
+    //run the simulations
+    for (j = 0; j < (*activeSetPtr).Nsims; j++) {
+        if ((*activeSetPtr).isInSequence) {
+            for (k = 0; k < (*activeSetPtr).Nsequence; k++) {
+                resolveSequence(k, &activeSetPtr[j]);
+                solveNonlinearWaveEquation(&activeSetPtr[j]);
+                (*activeSetPtr).plotSim = j;
+                plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+                if (activeSetPtr[j].memoryError > 0) {
+                    flushMessageBuffer();
+                    swprintf_s(messageBuffer, MAX_LOADSTRING,
+                        _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+                }
+            }
+        }
+        else {
+            solveNonlinearWaveEquation(&activeSetPtr[j]);
+            (*activeSetPtr).plotSim = j;
+            plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+            if (activeSetPtr[j].memoryError > 0) {
+                flushMessageBuffer();
+                swprintf_s(messageBuffer, MAX_LOADSTRING,
+                    _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+            }
+        }
+
+        if (cancellationCalled) {
+            flushMessageBuffer();
+            swprintf_s(messageBuffer, MAX_LOADSTRING,
+                _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
+            appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+            break;
+        }
+    }
+    time(&tthreadmid);
+
+    flushMessageBuffer();
+    swprintf_s(messageBuffer, MAX_LOADSTRING,
+        _T("Finished after %i s. \r\n"), (int)(tthreadmid - tstart));
+    appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+
+    saveDataSet();
+
+    free((*activeSetPtr).sequenceString);
+    free((*activeSetPtr).sequenceArray);
+    free((*activeSetPtr).refractiveIndex1);
+    free((*activeSetPtr).refractiveIndex2);
+    free((*activeSetPtr).imdone);
+    free((*activeSetPtr).deffTensor);
+    free((*activeSetPtr).loadedField1);
+    free((*activeSetPtr).loadedField2);
+
+    isRunning = FALSE;
+    return 0;
+}
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR    lpCmdLine,
@@ -271,21 +336,21 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     if (cuErr == cudaSuccess) {
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING, TEXT("Found GPU: "));
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
         size_t origsize = 256 + 1;
         const size_t newsize = 256;
         size_t convertedChars = 0;
         wchar_t wcstring[514];
         mbstowcs_s(&convertedChars, wcstring, origsize, activeCUDADeviceProp.name, _TRUNCATE);
-        AppendTextToWindow(maingui.textboxSims, wcstring, 256);
+        appendTextToWindow(maingui.textboxSims, wcstring, 256);
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING, TEXT("\r\n\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
     }
     
     //read the crystal database
     crystalDatabasePtr = (struct crystalentry*)calloc(512, sizeof(struct crystalentry));
-    readcrystaldatabase(crystalDatabasePtr, TRUE);
+    readCrystalDatabase(crystalDatabasePtr, TRUE);
 
     //make the active set pointer
     activeSetPtr = (struct propthread*)calloc(2048, sizeof(struct propthread));
@@ -334,7 +399,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_BTNRUN:
             if (!isRunning) {
                 isRunning = TRUE;
-                mainthread = CreateThread(NULL, 0, mainsimthread, activeSetPtr, 0, &hMainThread);
+                mainthread = CreateThread(NULL, 0, mainSimThread, activeSetPtr, 0, &hMainThread);
             }
             break;
         case ID_BTNSTOP:
@@ -356,7 +421,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case ID_BTNREFRESHDB:
             memset(crystalDatabasePtr, 0, 512 * sizeof(struct crystalentry));
-            readcrystaldatabase(crystalDatabasePtr, TRUE);
+            readCrystalDatabase(crystalDatabasePtr, TRUE);
             break;
 
         default:
@@ -402,66 +467,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return (INT_PTR)FALSE;
 }
 
-DWORD WINAPI mainsimthread(LPVOID lpParam) {
-    cancellationCalled = FALSE;
-    int j, k;
-    time_t tstart, tthreadmid;
-    time(&tstart);
-    HANDLE plotThread;
-    DWORD hplotThread;
-    readParametersFromInterfaceAndAllocate();
-    
-    //run the simulations
-    for (j = 0; j < (*activeSetPtr).Nsims; j++) {
-        if ((*activeSetPtr).isInSequence) {
-            for (k = 0; k < (*activeSetPtr).Nsequence; k++) {
-                resolvesequence(k, &activeSetPtr[j]);
-                propagationLoop(&activeSetPtr[j]);
-                (*activeSetPtr).plotSim = j;
-                plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-                if (activeSetPtr[j].memoryError > 0) {
-                    flushMessageBuffer();
-                    swprintf_s(messageBuffer, MAX_LOADSTRING,
-                        _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
-                    AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
-                }
-            }
-        }
-        else {
-            propagationLoop(&activeSetPtr[j]);
-            (*activeSetPtr).plotSim = j;
-            plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-        }
-
-        if (cancellationCalled) {
-            flushMessageBuffer();
-            swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j+1);
-            AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
-            break;
-        }
-    }
-    time(&tthreadmid);
-
-    flushMessageBuffer();
-    swprintf_s(messageBuffer, MAX_LOADSTRING,
-        _T("Finished after %i s. \r\n"), (int)(tthreadmid - tstart));
-    AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
-
-    saveDataSet();
-
-    free((*activeSetPtr).sequenceString);
-    free((*activeSetPtr).sequenceArray);
-    free((*activeSetPtr).refractiveIndex1);
-    free((*activeSetPtr).refractiveIndex2);
-    free((*activeSetPtr).imdone);
-    free((*activeSetPtr).deffTensor);
-    free((*activeSetPtr).loadedField1);
-    free((*activeSetPtr).loadedField2);
-
-    isRunning = FALSE;
-    return 0;
-}
 int readParametersFromInterfaceAndAllocate() {
     if (isGridAllocated) {
         isGridAllocated = FALSE;
@@ -473,57 +478,57 @@ int readParametersFromInterfaceAndAllocate() {
     int j;
     const double pi = 3.1415926535897932384626433832795;
 
-    (*activeSetPtr).materialIndex = (int)HWNDToDouble(maingui.tbMaterialIndex);;
-    (*activeSetPtr).crystalTheta = (pi / 180) * HWNDToDouble(maingui.tbCrystalTheta);
-    (*activeSetPtr).crystalPhi = (pi / 180) * HWNDToDouble(maingui.tbCrystalPhi);
-    (*activeSetPtr).crystalThickness = 1e-6 * HWNDToDouble(maingui.tbCrystalThickness);
+    (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);;
+    (*activeSetPtr).crystalTheta = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalTheta);
+    (*activeSetPtr).crystalPhi = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalPhi);
+    (*activeSetPtr).crystalThickness = 1e-6 * getDoubleFromHWND(maingui.tbCrystalThickness);
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
 
-    (*activeSetPtr).beamwaist1 = 1e-6 * HWNDToDouble(maingui.tbBeamwaist1);
-    (*activeSetPtr).beamwaist2 = 1e-6 * HWNDToDouble(maingui.tbBeamwaist2);
-    (*activeSetPtr).x01 = 1e-6 * HWNDToDouble(maingui.tbXoffset1);
-    (*activeSetPtr).x02 = 1e-6 * HWNDToDouble(maingui.tbXoffset2);
-    (*activeSetPtr).z01 = 1e-6 * HWNDToDouble(maingui.tbZoffset1);
-    (*activeSetPtr).z02 = 1e-6 * HWNDToDouble(maingui.tbZoffset2);
-    (*activeSetPtr).propagationAngle1 = (pi / 180) * HWNDToDouble(maingui.tbPropagationAngle1);
-    (*activeSetPtr).propagationAngle2 = (pi / 180) * HWNDToDouble(maingui.tbPropagationAngle2);
+    (*activeSetPtr).beamwaist1 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist1);
+    (*activeSetPtr).beamwaist2 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist2);
+    (*activeSetPtr).x01 = 1e-6 * getDoubleFromHWND(maingui.tbXoffset1);
+    (*activeSetPtr).x02 = 1e-6 * getDoubleFromHWND(maingui.tbXoffset2);
+    (*activeSetPtr).z01 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset1);
+    (*activeSetPtr).z02 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset2);
+    (*activeSetPtr).propagationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle1);
+    (*activeSetPtr).propagationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle2);
 
 
-    (*activeSetPtr).spatialWidth = 1e-6 * HWNDToDouble(maingui.tbGridXdim);
-    (*activeSetPtr).rStep = 1e-6 * HWNDToDouble(maingui.tbRadialStepSize);
+    (*activeSetPtr).spatialWidth = 1e-6 * getDoubleFromHWND(maingui.tbGridXdim);
+    (*activeSetPtr).rStep = 1e-6 * getDoubleFromHWND(maingui.tbRadialStepSize);
     (*activeSetPtr).Nspace = (long long)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
-    (*activeSetPtr).timeSpan = 1e-15 * HWNDToDouble(maingui.tbTimeSpan);
-    (*activeSetPtr).tStep = 1e-15 * HWNDToDouble(maingui.tbTimeStepSize);
+    (*activeSetPtr).timeSpan = 1e-15 * getDoubleFromHWND(maingui.tbTimeSpan);
+    (*activeSetPtr).tStep = 1e-15 * getDoubleFromHWND(maingui.tbTimeStepSize);
     (*activeSetPtr).Ntime = (long long)round((*activeSetPtr).timeSpan / (*activeSetPtr).tStep);
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
     (*activeSetPtr).kStep = 2 * pi / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
     (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
-    (*activeSetPtr).propagationStep = 1e-9 * HWNDToDouble(maingui.tbXstep);
+    (*activeSetPtr).propagationStep = 1e-9 * getDoubleFromHWND(maingui.tbXstep);
     (*activeSetPtr).Npropagation = (long long)round((*activeSetPtr).crystalThickness / (*activeSetPtr).propagationStep);
-    (*activeSetPtr).pulseEnergy1 = HWNDToDouble(maingui.tbFieldStrength1);
-    (*activeSetPtr).pulseEnergy2 = HWNDToDouble(maingui.tbFieldStrength2);
-    (*activeSetPtr).frequency1 = 1e12 * HWNDToDouble(maingui.tbFrequency1);
-    (*activeSetPtr).frequency2 = 1e12 * HWNDToDouble(maingui.tbFrequency2);
-    (*activeSetPtr).bandwidth1 = 1e12 * HWNDToDouble(maingui.tbBandwidth1);
-    (*activeSetPtr).bandwidth2 = 1e12 * HWNDToDouble(maingui.tbBandwidth2);
-    (*activeSetPtr).cephase1 = HWNDToDouble(maingui.tbCEPhase1);
-    (*activeSetPtr).cephase2 = HWNDToDouble(maingui.tbCEPhase2);
-    (*activeSetPtr).delay1 = -1e-15 * HWNDToDouble(maingui.tbPulse1Delay) + (*activeSetPtr).timeSpan / 2;
-    (*activeSetPtr).delay2 = -1e-15 * HWNDToDouble(maingui.tbPulse2Delay) + (*activeSetPtr).timeSpan / 2;
-    (*activeSetPtr).gdd1 = 1e-30 * HWNDToDouble(maingui.tbGDD1);
-    (*activeSetPtr).gdd2 = 1e-30 * HWNDToDouble(maingui.tbGDD2);
-    (*activeSetPtr).tod1 = 1e-45 * HWNDToDouble(maingui.tbTOD1);
-    (*activeSetPtr).tod2 = 1e-45 * HWNDToDouble(maingui.tbTOD2);
-    (*activeSetPtr).sgOrder1 = 2 * ((int)ceil(HWNDToDouble(maingui.tbPulseType) / 2));
+    (*activeSetPtr).pulseEnergy1 = getDoubleFromHWND(maingui.tbFieldStrength1);
+    (*activeSetPtr).pulseEnergy2 = getDoubleFromHWND(maingui.tbFieldStrength2);
+    (*activeSetPtr).frequency1 = 1e12 * getDoubleFromHWND(maingui.tbFrequency1);
+    (*activeSetPtr).frequency2 = 1e12 * getDoubleFromHWND(maingui.tbFrequency2);
+    (*activeSetPtr).bandwidth1 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth1);
+    (*activeSetPtr).bandwidth2 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth2);
+    (*activeSetPtr).cephase1 = getDoubleFromHWND(maingui.tbCEPhase1);
+    (*activeSetPtr).cephase2 = getDoubleFromHWND(maingui.tbCEPhase2);
+    (*activeSetPtr).delay1 = -1e-15 * getDoubleFromHWND(maingui.tbPulse1Delay) + (*activeSetPtr).timeSpan / 2;
+    (*activeSetPtr).delay2 = -1e-15 * getDoubleFromHWND(maingui.tbPulse2Delay) + (*activeSetPtr).timeSpan / 2;
+    (*activeSetPtr).gdd1 = 1e-30 * getDoubleFromHWND(maingui.tbGDD1);
+    (*activeSetPtr).gdd2 = 1e-30 * getDoubleFromHWND(maingui.tbGDD2);
+    (*activeSetPtr).tod1 = 1e-45 * getDoubleFromHWND(maingui.tbTOD1);
+    (*activeSetPtr).tod2 = 1e-45 * getDoubleFromHWND(maingui.tbTOD2);
+    (*activeSetPtr).sgOrder1 = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType) / 2));
     if ((*activeSetPtr).sgOrder1 < 2) {
         (*activeSetPtr).sgOrder1 = 2;
     }
     (*activeSetPtr).sgOrder2 = (*activeSetPtr).sgOrder1;
-    (*activeSetPtr).polarizationAngle1 = (pi / 180) * HWNDToDouble(maingui.tbPolarizationAngle1);
-    (*activeSetPtr).polarizationAngle2 = (pi / 180) * HWNDToDouble(maingui.tbPolarizationAngle2);
-    (*activeSetPtr).circularity1 = HWNDToDouble(maingui.tbCircularity1);
-    (*activeSetPtr).circularity2 = HWNDToDouble(maingui.tbCircularity2);
+    (*activeSetPtr).polarizationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPolarizationAngle1);
+    (*activeSetPtr).polarizationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPolarizationAngle2);
+    (*activeSetPtr).circularity1 = getDoubleFromHWND(maingui.tbCircularity1);
+    (*activeSetPtr).circularity2 = getDoubleFromHWND(maingui.tbCircularity2);
     (*activeSetPtr).batchIndex = (int)SendMessage(maingui.pdBatchMode, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     (*activeSetPtr).symmetryType = (int)SendMessage(maingui.pdPropagationMode, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     (*activeSetPtr).isCylindric = (*activeSetPtr).symmetryType == 1;
@@ -533,9 +538,9 @@ int readParametersFromInterfaceAndAllocate() {
         (*activeSetPtr).propagationAngle1 = 0;
         (*activeSetPtr).propagationAngle2 = 0;
     }
-    (*activeSetPtr).batchDestination = HWNDToDouble(maingui.tbBatchDestination);
+    (*activeSetPtr).batchDestination = getDoubleFromHWND(maingui.tbBatchDestination);
 
-    (*activeSetPtr).Nsims = (int)HWNDToDouble(maingui.tbNumberSims);
+    (*activeSetPtr).Nsims = (int)getDoubleFromHWND(maingui.tbNumberSims);
     if ((*activeSetPtr).batchIndex == 0 || (*activeSetPtr).batchIndex == 4 || (*activeSetPtr).Nsims < 1) {
         (*activeSetPtr).Nsims = 1;
     }
@@ -552,7 +557,7 @@ int readParametersFromInterfaceAndAllocate() {
     int frogLines = 0;
     if (pulse1FileType == 1) {
         char pulse1Path[MAX_LOADSTRING];
-        HWNDToString(maingui.tbPulse1Path, pulse1Path, MAX_LOADSTRING);
+        getStringFromHWND(maingui.tbPulse1Path, pulse1Path, MAX_LOADSTRING);
 
 
         frogLines = loadFrogSpeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
@@ -560,24 +565,24 @@ int readParametersFromInterfaceAndAllocate() {
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
     }
     if (pulse2FileType == 1) {
         char pulse2Path[MAX_LOADSTRING];
-        HWNDToString(maingui.tbPulse2Path, pulse2Path, MAX_LOADSTRING);
+        getStringFromHWND(maingui.tbPulse2Path, pulse2Path, MAX_LOADSTRING);
 
         frogLines = loadFrogSpeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("loaded FROG file 2 (%i lines).\r\n"), frogLines);
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
     }
 
     (*activeSetPtr).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
     (*activeSetPtr).sequenceArray = (double*)calloc(256 * MAX_LOADSTRING, sizeof(double));
-    HWNDToString(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
+    getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
 
     char* tokToken = strtok((*activeSetPtr).sequenceString, ";");
     int sequenceCount = sscanf((*activeSetPtr).sequenceString, "%lf %lf %lf %lf %lf %lf", (*activeSetPtr).sequenceArray, &(*activeSetPtr).sequenceArray[1], &(*activeSetPtr).sequenceArray[2], &(*activeSetPtr).sequenceArray[3], &(*activeSetPtr).sequenceArray[4], &(*activeSetPtr).sequenceArray[5]);
@@ -663,7 +668,7 @@ int saveDataSet() {
     }
 
     char outputbase[MAX_LOADSTRING];
-    HWNDToString(maingui.tbFileNameBase, outputbase, MAX_LOADSTRING);
+    getStringFromHWND(maingui.tbFileNameBase, outputbase, MAX_LOADSTRING);
 
     FILE* textfile;
     char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
@@ -687,7 +692,7 @@ int saveDataSet() {
     fprintf(textfile, "Propagation mode: %i\n", (*activeSetPtr).symmetryType);
     fprintf(textfile, "Batch mode: %i\nBatch destination: %e\nBatch steps: %i\n", (*activeSetPtr).batchIndex, (*activeSetPtr).batchDestination, (*activeSetPtr).Nsims);
     if ((*activeSetPtr).isInSequence) {
-        HWNDToString(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
+        getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
         fprintf(textfile, "Sequence: %s\n", (*activeSetPtr).sequenceString);
     }
 
@@ -754,7 +759,7 @@ int saveDataSet() {
 }
 
 
-int resolvesequence(int currentIndex, struct propthread* s) {
+int resolveSequence(int currentIndex, struct propthread* s) {
     double pi = 3.1415926535897932384626433832795;
     
     //sequence format
@@ -801,7 +806,7 @@ int labelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* 
 }
 
 //reads the content of a text box and returns a double containing its numerical value
-double HWNDToDouble(HWND inputA)
+double getDoubleFromHWND(HWND inputA)
 {
     double sdata;
     int len = GetWindowTextLength(inputA);
@@ -818,7 +823,7 @@ double HWNDToDouble(HWND inputA)
 }
 
 //Add a text string contained in messageBuffer to the text box inputA
-int AppendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
+int appendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
     int len = (int)GetWindowTextLength(inputA);
     wchar_t* newbuffer = (wchar_t*)calloc(2 * ((long long)(len) + buffersize), sizeof(wchar_t));
     if (newbuffer != NULL) {
@@ -833,7 +838,7 @@ int AppendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
     return 0;
 }
 
-int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
+int readCrystalDatabase(struct crystalentry* db, bool isVerbose) {
     int maxEntries = 64;
     int i;
     double* fd;
@@ -843,14 +848,14 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("Could not open database!\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
         return 1;
     }
     if (isVerbose) {
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("Reading crystal database file in verbose mode\r\n"));
-        AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
     }
     //read the entries line
     int readErrors = 0;
@@ -886,7 +891,7 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
             flushMessageBuffer();
             swprintf_s(messageBuffer, MAX_LOADSTRING,
                 _T("Material %i name: %s\r\nSellmeier reference: %s\r\nChi2 reference: %s\r\nChi3 reference: %s\r\n\r\n"), i, db[i].crystalNameW, db[i].sellmeierReference, db[i].dReference, db[i].chi3Reference);
-            AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+            appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
         }
 
@@ -897,13 +902,13 @@ int readcrystaldatabase(struct crystalentry* db, bool isVerbose) {
     flushMessageBuffer();
     swprintf_s(messageBuffer, MAX_LOADSTRING,
         _T("Read %i entries\r\n"), (int)(maxEntries));
-    AppendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+    appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
     return readErrors;
 }
 
 //returns a string containing the text in a text box
-int HWNDToString(HWND inputA, char* outputString, int bufferSize)
+int getStringFromHWND(HWND inputA, char* outputString, int bufferSize)
 {
     int len = GetWindowTextLength(inputA);
     if (len > 0)
@@ -1055,7 +1060,7 @@ int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
 //Color maps:
 //  cm = 1: grayscale
 //  cm = 2: similar to matlab's jet
-int DrawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm) {
+int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm) {
 
     // creating input
     unsigned char* pixels = (unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
@@ -1164,7 +1169,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         int i,j;
         HDC hdc;
 
-        //int simIndex = (int)HWNDToDouble(maingui.tbWhichSimToPlot);
+        //int simIndex = (int)getDoubleFromHWND(maingui.tbWhichSimToPlot);
         //simIndex--;
         if (simIndex < 0) {
             simIndex = 0;
@@ -1187,7 +1192,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
-        DrawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 1);
+        drawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 1);
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 2 * dy + 2 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
 
         //Plot Time Domain, p-polarization
@@ -1196,13 +1201,13 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
 
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
-        DrawArrayAsBitmap(hdc, dx, dy, x, (long long)(y) + (long long)(dy) + spacerY, dy, dx, plotarr2, 1);
+        drawArrayAsBitmap(hdc, dx, dy, x, (long long)(y) + (long long)(dy) + spacerY, dy, dx, plotarr2, 1);
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
 
         //Plot Fourier Domain, s-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = log10(cmodulussquared(shiftedFFT[i]) + 1e-0);
+            plotarr[i] = log10(cModulusSquared(shiftedFFT[i]) + 1e-0);
         }
 
         for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
@@ -1212,13 +1217,13 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
 
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
-        DrawArrayAsBitmap(hdc, dx, dy, (long long)(x) + (long long)(dx) + (long long)(spacerX), y, dy, dx, plotarr2, 1);
+        drawArrayAsBitmap(hdc, dx, dy, (long long)(x) + (long long)(dx) + (long long)(spacerX), y, dy, dx, plotarr2, 1);
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
 
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = log10(cmodulussquared(shiftedFFT[i]) + 1e-0);
+            plotarr[i] = log10(cModulusSquared(shiftedFFT[i]) + 1e-0);
         }
         for (i = 0; i < ((*activeSetPtr).Ntime/2); i++) {
             for (j = 0; j < (*activeSetPtr).Nspace; j++) {
@@ -1228,7 +1233,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx, 0);
 
-        DrawArrayAsBitmap(hdc, dx, dy, (long long)(x) + (long long)(dx) + (long long)(spacerX), (long long)(y) + (long long)(dy) + (long long)(spacerY), dy, dx, plotarr2, 1);
+        drawArrayAsBitmap(hdc, dx, dy, (long long)(x) + (long long)(dx) + (long long)(spacerX), (long long)(y) + (long long)(dy) + (long long)(spacerY), dy, dx, plotarr2, 1);
 
         drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 2, 8, 1);
         
@@ -1280,7 +1285,7 @@ int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int pos
     const wchar_t labelText[4] = _T("0.5");
 
 
-    DrawArrayAsBitmap(hdc, pixelsWide, pixelsTall, posX, posY, pixelsTall, pixelsWide, plotArray, 0);
+    drawArrayAsBitmap(hdc, pixelsWide, pixelsTall, posX, posY, pixelsTall, pixelsWide, plotArray, 0);
     for (i = 0; i < NyTicks; i++) {
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING,
@@ -1299,11 +1304,10 @@ int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int pos
 }
 //calculates the squard modulus of a complex number, under the assumption that the
 //machine's complex number format is interleaved doubles.
-//Orders of magnitude faster than the standard library abs()
-double cmodulussquared(std::complex<double>complexNumber) {
+//c forced to run in c++ for nostalgia reasons
+double cModulusSquared(std::complex<double>complexNumber) {
     double* xy = (double*)&complexNumber;
-    double modulusSquared = xy[0] * xy[0] + xy[1] * xy[1];
-    return modulusSquared;
+    return xy[0] * xy[0] + xy[1] * xy[1];
 }
 
 
