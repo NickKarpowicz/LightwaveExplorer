@@ -9,15 +9,18 @@ struct propthread {
     double fStep;
     double kStep;
     double propagationStep;
-    long long Npropagation;
-    long long Ntime;
-    long long Nspace;
-    long long Ngrid;
-    int Nsims;
+    size_t Npropagation;
+    size_t Ntime;
+    size_t Nspace;
+    size_t Ngrid;
+    size_t Nsims;
     double spatialWidth;
     double timeSpan;
-
     int materialIndex;
+    double bandGapElectronVolts;
+    double effectiveMass;
+    double nonlinearAbsorptionStrength;
+    double drudeGamma;
     double crystalTheta;
     double crystalPhi;
     double crystalThickness;
@@ -33,6 +36,7 @@ struct propthread {
     double neref;
     double noref;
     int* nonlinearSwitches;
+    double pulse1measEnergy;
 
     //spatial beam properties;
     double beamwaist1;
@@ -124,6 +128,10 @@ struct guiStruct {
     HWND tbCrystalTheta;
     HWND tbCrystalPhi;
     HWND tbCrystalThickness;
+    HWND tbNonlinearAbsortion;
+    HWND tbDrudeGamma;
+    HWND tbBandGap;
+    HWND tbEffectiveMass;
 
     HWND tbGridXdim;
     HWND tbRadialStepSize;
@@ -137,8 +145,8 @@ struct guiStruct {
 
     HWND tbPulse1Delay;
     HWND tbPulse2Delay;
-    HWND tbFieldStrength1;
-    HWND tbFieldStrength2;
+    HWND tbPulseEnergy1;
+    HWND tbPulseEnergy2;
     HWND tbBandwidth1;
     HWND tbBandwidth2;
     HWND tbFrequency1;

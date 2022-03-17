@@ -119,6 +119,8 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
     }
 }
 
+
+
 //Radial laplacian term of the nonlinear wave equation
 // e.g., apply the 1/rho * d/drho operator
 __global__ void radialLaplacianKernel(struct cudaLoop s) {
@@ -127,25 +129,68 @@ __global__ void radialLaplacianKernel(struct cudaLoop s) {
     double rho = s.dx * j - (s.dx / 2) * s.Nspace;
 
     //zero at edges of grid and at origin
-    if (abs(rho<1e-15) || j<3 || j>(s.Nspace-4)) {
+    if ( j<3 || j>(s.Nspace-4)) {
         s.gridRadialLaplacian1[i] = make_cuDoubleComplex(0, 0);
         s.gridRadialLaplacian2[i] = make_cuDoubleComplex(0, 0);
     }
-    else {
-        rho *= s.Ngrid;
-        s.gridRadialLaplacian1[i] = (s.firstDerivativeOperation[0] * s.gridETime[i - 3 * s.Ntime]
-            + s.firstDerivativeOperation[1] * s.gridETime[i - 2 * s.Ntime]
-            + s.firstDerivativeOperation[2] * s.gridETime[i - s.Ntime]
-            + s.firstDerivativeOperation[3] * s.gridETime[i + s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime[i + 2 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime[i + 3 * s.Ntime])/rho;
-        s.gridRadialLaplacian2[i] = (s.firstDerivativeOperation[0] * s.gridETime2[i - 3 * s.Ntime]
+    else if (rho != 0.){
+        rho = 1.0/rho;
+        s.gridRadialLaplacian1[i] = rho*(s.firstDerivativeOperation[0] * s.gridETime1[i - 3 * s.Ntime]
+            + s.firstDerivativeOperation[1] * s.gridETime1[i - 2 * s.Ntime]
+            + s.firstDerivativeOperation[2] * s.gridETime1[i - s.Ntime]
+            + s.firstDerivativeOperation[3] * s.gridETime1[i + s.Ntime]
+            + s.firstDerivativeOperation[4] * s.gridETime1[i + 2 * s.Ntime]
+            + s.firstDerivativeOperation[5] * s.gridETime1[i + 3 * s.Ntime]);
+        s.gridRadialLaplacian2[i] = rho*(s.firstDerivativeOperation[0] * s.gridETime2[i - 3 * s.Ntime]
             + s.firstDerivativeOperation[1] * s.gridETime2[i - 2 * s.Ntime]
             + s.firstDerivativeOperation[2] * s.gridETime2[i - s.Ntime]
             + s.firstDerivativeOperation[3] * s.gridETime2[i + s.Ntime]
             + s.firstDerivativeOperation[4] * s.gridETime2[i + 2 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime2[i + 3 * s.Ntime]) / rho;
+            + s.firstDerivativeOperation[5] * s.gridETime2[i + 3 * s.Ntime]);
     }
+    else {
+        //handle rho = 0 by Fornberg extrapolation from surrounding 3 points
+        //r[0]= 1.5 r[1] - 0.6 r[2] + 0.1 r[3]
+        s.gridRadialLaplacian1[i] = (1.5/(rho+s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime1[i - 2 * s.Ntime]
+            + s.firstDerivativeOperation[1] * s.gridETime1[i - 1 * s.Ntime]
+            + s.firstDerivativeOperation[2] * s.gridETime1[i]
+            + s.firstDerivativeOperation[3] * s.gridETime1[i + 2 *s.Ntime]
+            + s.firstDerivativeOperation[4] * s.gridETime1[i + 3 * s.Ntime]
+            + s.firstDerivativeOperation[5] * s.gridETime1[i + 4 * s.Ntime]);
+        s.gridRadialLaplacian2[i] = (1.5 / (rho + s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime2[i - 2 * s.Ntime]
+            + s.firstDerivativeOperation[1] * s.gridETime2[i - 1 * s.Ntime]
+            + s.firstDerivativeOperation[2] * s.gridETime2[i]
+            + s.firstDerivativeOperation[3] * s.gridETime2[i + 2*s.Ntime]
+            + s.firstDerivativeOperation[4] * s.gridETime2[i + 3 * s.Ntime]
+            + s.firstDerivativeOperation[5] * s.gridETime2[i + 4 * s.Ntime]);
+
+        s.gridRadialLaplacian1[i] = s.gridRadialLaplacian1[i] + (-0.6 / (rho + 2 * s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime1[i - s.Ntime]
+            + s.firstDerivativeOperation[1] * s.gridETime1[i]
+            + s.firstDerivativeOperation[2] * s.gridETime1[i + s.Ntime]
+            + s.firstDerivativeOperation[3] * s.gridETime1[i + 3 * s.Ntime]
+            + s.firstDerivativeOperation[4] * s.gridETime1[i + 4 * s.Ntime]
+            + s.firstDerivativeOperation[5] * s.gridETime1[i + 5 * s.Ntime]);
+        s.gridRadialLaplacian2[i] = s.gridRadialLaplacian2[i] + (-0.6 / (rho + 2*s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime2[i -  s.Ntime]
+            + s.firstDerivativeOperation[1] * s.gridETime2[i]
+            + s.firstDerivativeOperation[2] * s.gridETime2[i + s.Ntime]
+            + s.firstDerivativeOperation[3] * s.gridETime2[i + 3 * s.Ntime]
+            + s.firstDerivativeOperation[4] * s.gridETime2[i + 4 * s.Ntime]
+            + s.firstDerivativeOperation[5] * s.gridETime2[i + 5 * s.Ntime]);
+
+        s.gridRadialLaplacian1[i] = s.gridRadialLaplacian1[i] + (0.1 / (rho + 3*s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime1[i]
+            + s.firstDerivativeOperation[1] * s.gridETime1[i + 1 * s.Ntime]
+            + s.firstDerivativeOperation[2] * s.gridETime1[i + 2 * s.Ntime]
+            + s.firstDerivativeOperation[3] * s.gridETime1[i + 4 * s.Ntime]
+            + s.firstDerivativeOperation[4] * s.gridETime1[i + 5 * s.Ntime]
+            + s.firstDerivativeOperation[5] * s.gridETime1[i + 6 * s.Ntime]);
+        s.gridRadialLaplacian2[i] = s.gridRadialLaplacian2[i] + (0.1 / (rho + 3*s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime2[i]
+            + s.firstDerivativeOperation[1] * s.gridETime2[i + 1 * s.Ntime]
+            + s.firstDerivativeOperation[2] * s.gridETime2[i + 2 * s.Ntime]
+            + s.firstDerivativeOperation[3] * s.gridETime2[i + 4 * s.Ntime]
+            + s.firstDerivativeOperation[4] * s.gridETime2[i + 5 * s.Ntime]
+            + s.firstDerivativeOperation[5] * s.gridETime2[i + 6 * s.Ntime]);
+    }
+
 }
 
 //prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
@@ -246,9 +291,9 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     cuDoubleComplex ko = 2 * pi * no * f / c;
 
     if (cuCreal(ke) < 0 && cuCreal(ko) < 0) {
-        s.gridPropagationFactor[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
-        if (isnan(cuCreal(s.gridPropagationFactor[i]))) {
-            s.gridPropagationFactor[i] = cuZero;
+        s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
+        if (isnan(cuCreal(s.gridPropagationFactor1[i]))) {
+            s.gridPropagationFactor1[i] = cuZero;
         }
 
         s.gridPropagationFactor2[i] = ii * (ko - k0 + dk * dk / (2. * cuCreal(ko))) * s.h;
@@ -257,14 +302,14 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
         }
 
         int posf = (int)(f < -20e12);
-        s.gridPolarizationFactor[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(ne) * c) * s.h;
+        s.gridPolarizationFactor1[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(ne) * c) * s.h;
         s.gridPolarizationFactor2[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(no) * c) * s.h;
     }
 
     else {
-        s.gridPropagationFactor[i] = cuZero;
+        s.gridPropagationFactor1[i] = cuZero;
         s.gridPropagationFactor2[i] = cuZero;
-        s.gridPolarizationFactor[i] = cuZero;
+        s.gridPolarizationFactor1[i] = cuZero;
         s.gridPolarizationFactor2[i] = cuZero;
     }
 }
@@ -316,32 +361,32 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struc
     cuDoubleComplex ko = 2 * pi * no * f / c;
 
     if (cuCreal(ke) < 0 && cuCreal(ko) < 0) {
-        s.gridPropagationFactor[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
-        s.gridPropagationFactorRho1[i] = ii * (1 / (2. * cuCreal(ke))) * s.h;
-        if (isnan(cuCreal(s.gridPropagationFactor[i]))) {
-            s.gridPropagationFactor[i] = cuZero;
-            s.gridPropagationFactorRho1[i] = cuZero;
+        s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
+        s.gridPropagationFactor1Rho1[i] = ii * (1 / (2. * cuCreal(ke))) * s.h;
+        if (isnan(cuCreal(s.gridPropagationFactor1[i]))) {
+            s.gridPropagationFactor1[i] = cuZero;
+            s.gridPropagationFactor1Rho1[i] = cuZero;
         }
 
         s.gridPropagationFactor2[i] = ii * (ko - k0 + dk * dk / (2. * cuCreal(ko))) * s.h;
-        s.gridPropagationFactorRho2[i] = ii * (1 / (2. * cuCreal(ko))) * s.h;
+        s.gridPropagationFactor1Rho2[i] = ii * (1 / (2. * cuCreal(ko))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor2[i]))) {
             s.gridPropagationFactor2[i] = cuZero;
-            s.gridPropagationFactorRho2[i] = cuZero;
+            s.gridPropagationFactor1Rho2[i] = cuZero;
         }
 
         int posf = (int)(f < -20e12);
-        s.gridPolarizationFactor[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(ne) * c) * s.h;
+        s.gridPolarizationFactor1[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(ne) * c) * s.h;
         s.gridPolarizationFactor2[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(no) * c) * s.h;
     }
 
     else {
-        s.gridPropagationFactor[i] = cuZero;
+        s.gridPropagationFactor1[i] = cuZero;
         s.gridPropagationFactor2[i] = cuZero;
-        s.gridPolarizationFactor[i] = cuZero;
+        s.gridPolarizationFactor1[i] = cuZero;
         s.gridPolarizationFactor2[i] = cuZero;
-        s.gridPropagationFactor[i] = cuZero;
-        s.gridPropagationFactorRho2[i] = cuZero;
+        s.gridPropagationFactor1[i] = cuZero;
+        s.gridPropagationFactor1Rho2[i] = cuZero;
     }
 
 
@@ -365,16 +410,16 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
 //in the time domain
 __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
-    double Ex = cuCreal(s.gridETime[i]) / s.propagationInts[0];
+    double Ex = cuCreal(s.gridETime1[i]) / s.propagationInts[0];
     double Ey = cuCreal(s.gridETime2[i]) / s.propagationInts[0];
-    s.gridPolarizationTime[i] = 0.;
+    s.gridPolarizationTime1[i] = 0.;
     s.gridPolarizationTime2[i] = 0.;
 
     //The d2eff tensor has the form
     // | d_xxx d_xyx d_yyx |
     // | d_xxy d_xyy d_yyy |
     if (s.nonlinearSwitches[0] == 1) {
-        s.gridPolarizationTime[i] += s.chi2Tensor[0] * Ex * Ex + s.chi2Tensor[2] * Ex * Ey + s.chi2Tensor[4] * Ey * Ey;
+        s.gridPolarizationTime1[i] += s.chi2Tensor[0] * Ex * Ex + s.chi2Tensor[2] * Ex * Ey + s.chi2Tensor[4] * Ey * Ey;
         s.gridPolarizationTime2[i] += s.chi2Tensor[1] * Ex * Ex + s.chi2Tensor[3] * Ex * Ey + s.chi2Tensor[5] * Ey * Ey;
     }
     
@@ -382,14 +427,14 @@ __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
 
     //using only one value of chi3, under assumption of centrosymmetry
     if (s.nonlinearSwitches[1] == 2) {
-        s.gridPolarizationTime[i] += s.chi3Tensor[0] * (Ex * Ex * Ex + Ey * Ey * Ex / 3.);
+        s.gridPolarizationTime1[i] += s.chi3Tensor[0] * (Ex * Ex * Ex + Ey * Ey * Ex / 3.);
         s.gridPolarizationTime2[i] += s.chi3Tensor[0] * (Ey * Ey * Ey + Ex * Ex * Ey / 3.);
     }
-
+    /* old nonlinear absorption - remove once plasma kernel works
     //Nonlinear absorption
     if (s.nonlinearSwitches[2] == 1) {
         
-        double Exi = cuCimag(s.gridETime[i]) / s.propagationInts[0];
+        double Exi = cuCimag(s.gridETime1[i]) / s.propagationInts[0];
         double Eyi = cuCimag(s.gridETime2[i]) / s.propagationInts[0];
         double fieldAmp2 = Exi * Exi + Eyi * Eyi;
         int j;
@@ -397,15 +442,24 @@ __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
             Exi *= fieldAmp2;
             Eyi *= fieldAmp2;
         }
-        s.gridPolarizationTime[i] += s.absorptionParameters[1] * Exi;
+        s.gridPolarizationTime1[i] += s.absorptionParameters[1] * Exi;
         s.gridPolarizationTime2[i] += s.absorptionParameters[1] * Eyi;
     }
+    */
 }
 
 //Plasma response with time-dependent carrier density
 //This polarization needs a different factor in the nonlinear wave equation
 //to account for the integration
 //TO BE IMPLEMENTED!
+//plasmaParameters vector:
+// 0    e^2/m_eff
+// 1    gamma_drude
+// 2    ionization rate/E^N
+// 3    absorption strength
+//equation for the plasma current:
+//J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
+//J_absorption(t) = beta*E^(2*Nphot-2)*E
 __global__ void plasmaCurrentKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     int j,k,l;
@@ -413,21 +467,42 @@ __global__ void plasmaCurrentKernel(struct cudaLoop s) {
     double integralx = 0;
     double integraly = 0;
     double t, w, Esquared, Ex, Ey;
+    double tEnd = s.dt * s.Ntime;
     for (j = 0; j < s.Ntime; j++) {
-        Ex = cuCreal(s.gridETime[l]);
-        Ey = cuCreal(s.gridETime2[l]);
-        l = j + i * s.Nspace;
+
+        l = j + i * s.Ntime;
         t = j * s.dt;
+
+        Ex = cuCreal(s.gridETime1[l]) / s.propagationInts[0];
+        Ey = cuCreal(s.gridETime2[l]) / s.propagationInts[0];
         Esquared = Ex * Ex + Ey * Ey;
-        w = Esquared;
+        //plasmaParameters[0] is the nonlinear absorption parameter
+        w = s.plasmaParameters[0]*Esquared;
+        //nonlinearSwitches[3] is Nphotons-2
         for (k = 0; k < s.nonlinearSwitches[3]; k++) {
             w *= Esquared;
         }
-        N += w;
-        integralx += exp(-s.plasmaParameters[1] * t) * N * Ex;
-        integraly += exp(-s.plasmaParameters[1] * t) * N * Ey;
-        s.plasmaCurrent1[l] = s.plasmaParameters[0] * exp(-s.plasmaParameters[1] * t) * integralx;
-        s.plasmaCurrent2[l] = s.plasmaParameters[0] * exp(-s.plasmaParameters[1] * t) * integraly;
+        //absorption currents
+        s.gridPlasmaCurrent1[l] = w * Ex;
+        s.gridPlasmaCurrent2[l] = w * Ey;
+
+        //plasmaParameters[2] is the 1/photon energy, translating the loss of power
+        //from the field to the number of free carriers
+        //extra factor of (dt^2e^2/m) included as it is needed for the amplitude
+        //of the plasma current
+        N += s.plasmaParameters[2] * (s.gridPlasmaCurrent1[l]*Ex + s.gridPlasmaCurrent2[l] * Ey);
+        
+        integralx += exp(s.plasmaParameters[1] * t) * N * Ex;
+        integraly += exp(s.plasmaParameters[1] * t) * N * Ey;
+
+
+         
+        //from here on Esquared in the current amplitude factor (recycling memory)
+        //plasmaParameters[1] is the Drude momentum damping (gamma)
+        Esquared = exp(-s.plasmaParameters[1] * t);
+        
+        s.gridPlasmaCurrent1[l] += Esquared * integralx;
+        s.gridPlasmaCurrent2[l] += Esquared * integraly;
     }
 }
 
@@ -437,12 +512,43 @@ __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
     long long h = i - j * s.Ntime; //temporal coordinate
+    cuDoubleComplex plasmaJ1 = make_cuDoubleComplex(0, 0);
+    cuDoubleComplex plasmaJ2 = make_cuDoubleComplex(0, 0);
 
 
     if (s.isCylindric) {
-        s.gridRadialLaplacian1[i] = s.gridPropagationFactorRho1[i] * s.k1[i];
-        s.gridRadialLaplacian2[i] = s.gridPropagationFactorRho2[i] * s.k2[i];
+        s.gridRadialLaplacian1[i] = s.gridPropagationFactor1Rho1[i] * s.k1[i];
+        s.gridRadialLaplacian2[i] = s.gridPropagationFactor1Rho2[i] * s.k2[i];
     }
+
+    if (s.hasPlasma) {
+        double f = h * s.fStep;
+        long long hp = h;
+        if (h >= s.Ntime / 2) {
+            f -= s.fStep * s.Ntime;
+        }
+        f *= -6.28318530718;
+        cuDoubleComplex jfac = make_cuDoubleComplex(0, 1.0 / f);
+        if (h > s.propagationInts[3]) {
+            hp = s.Ntime - hp;
+            j = s.Nspace - j;
+            hp += j * s.propagationInts[3];
+
+            if (f != 0) {
+                plasmaJ1 = jfac * s.gridPolarizationFactor1[i] * cuConj(s.gridPlasmaCurrentFrequency1[hp]);
+                plasmaJ2 = jfac * s.gridPolarizationFactor2[i] * cuConj(s.gridPlasmaCurrentFrequency2[hp]);
+            }
+        }
+        else {
+            hp += j * s.propagationInts[3];
+            if (f != 0) {
+                plasmaJ1 = jfac * s.gridPolarizationFactor1[i] * s.gridPlasmaCurrentFrequency1[hp];
+                plasmaJ2 = jfac * s.gridPolarizationFactor2[i] * s.gridPlasmaCurrentFrequency2[hp];
+            }
+        }
+
+    }
+
 
     //polarization is stored in a reduced format by cuFFT because the FFT is from real to complex, meaning if the output grid
     //were to be N_time x N_space, half of the points would be redundant. The extra steps below are to determine where in the grid the 
@@ -452,12 +558,14 @@ __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
         h = s.Ntime - h;
         j = s.Nspace - j;
         h += j * s.propagationInts[3];
-        s.k1[i] = s.gridPropagationFactor[i] * s.gridETemp[i] +s.gridPolarizationFactor[i] * cuConj(s.gridPolarizationFrequency[i]);
-        s.k2[i] = s.gridPropagationFactor2[i] * s.gridETemp2[i] +s.gridPolarizationFactor2[i] * cuConj(s.gridPolarizationFrequency2[i]);
+
+        s.k1[i] = s.gridPropagationFactor1[i] * s.gridETemp1[i] +s.gridPolarizationFactor1[i] * cuConj(s.gridPolarizationFrequency1[h]);
+        s.k2[i] = s.gridPropagationFactor2[i] * s.gridETemp2[i] +s.gridPolarizationFactor2[i] * cuConj(s.gridPolarizationFrequency2[h]);
     }
     else {
         h += j * s.propagationInts[3];
-        s.k1[i] = s.gridPropagationFactor[i] * s.gridETemp[i] +s.gridPolarizationFactor[i] * s.gridPolarizationFrequency[h];
+
+        s.k1[i] = s.gridPropagationFactor1[i] * s.gridETemp1[i] +s.gridPolarizationFactor1[i] * s.gridPolarizationFrequency1[h];
         s.k2[i] = s.gridPropagationFactor2[i] * s.gridETemp2[i] +s.gridPolarizationFactor2[i] * s.gridPolarizationFrequency2[h];
     }
     if (s.isCylindric) {
@@ -465,39 +573,44 @@ __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
         s.k2[i] = s.k2[i] + s.gridRadialLaplacian2[i];
     }
 
+    if (s.hasPlasma) {
+        s.k1[i] = s.k1[i] + plasmaJ1;
+        s.k2[i] = s.k2[i] + plasmaJ2;
+    }
+
     //in the first substep, first construct the next intermediate field value
     //which will be used in the next substep. 
     if (stepNumber == 0) {
-        s.gridETemp[i] = s.gridEFrequency[i] + 0.5 * s.k1[i];
+        s.gridETemp1[i] = s.gridEFrequency1[i] + 0.5 * s.k1[i];
         s.gridETemp2[i] = s.gridEFrequency2[i] + 0.5 * s.k2[i];
        
-        s.gridEFrequencyNext1[i] = s.k1[i] / 6 + s.gridEFrequency[i];
-        s.gridEFrequencyNext2[i] = s.k2[i] / 6 + s.gridEFrequency2[i];
+        s.gridEFrequency1Next1[i] = s.k1[i] / 6 + s.gridEFrequency1[i];
+        s.gridEFrequency1Next2[i] = s.k2[i] / 6 + s.gridEFrequency2[i];
     }
 
     //in the next substep, again construct the next intermediate field and add k/3 to solution
     else if (stepNumber == 1) {
-        s.gridETemp[i] = s.gridEFrequency[i] + 0.5 * s.k1[i];
+        s.gridETemp1[i] = s.gridEFrequency1[i] + 0.5 * s.k1[i];
         s.gridETemp2[i] = s.gridEFrequency2[i] + 0.5 * s.k2[i];
 
-        s.gridEFrequencyNext1[i] = s.gridEFrequencyNext1[i] + s.k1[i] / 3;
-        s.gridEFrequencyNext2[i] = s.gridEFrequencyNext2[i] + s.k2[i] / 3;
+        s.gridEFrequency1Next1[i] = s.gridEFrequency1Next1[i] + s.k1[i] / 3;
+        s.gridEFrequency1Next2[i] = s.gridEFrequency1Next2[i] + s.k2[i] / 3;
 
     }
 
     //same action as previous substep, except the weight of k in the intermediate solution is 1 instead of 0.5
     else if (stepNumber == 2) {
-        s.gridETemp[i] = s.gridEFrequency[i] + s.k1[i];
+        s.gridETemp1[i] = s.gridEFrequency1[i] + s.k1[i];
         s.gridETemp2[i] = s.gridEFrequency2[i] + s.k2[i];
-        s.gridEFrequencyNext1[i] = s.gridEFrequencyNext1[i] + s.k1[i] / 3;
-        s.gridEFrequencyNext2[i] = s.gridEFrequencyNext2[i] + s.k2[i] / 3;
+        s.gridEFrequency1Next1[i] = s.gridEFrequency1Next1[i] + s.k1[i] / 3;
+        s.gridEFrequency1Next2[i] = s.gridEFrequency1Next2[i] + s.k2[i] / 3;
     }
 
     //last substep. Solution is now complete and may be copied directly into the field arrays
     else {
-        s.gridEFrequency[i] = s.gridEFrequencyNext1[i] + s.k1[i] / 6;
-        s.gridEFrequency2[i] = s.gridEFrequencyNext2[i] + s.k2[i] / 6;
-        s.gridETemp[i] = s.gridEFrequency[i];
+        s.gridEFrequency1[i] = s.gridEFrequency1Next1[i] + s.k1[i] / 6;
+        s.gridEFrequency2[i] = s.gridEFrequency1Next2[i] + s.k2[i] / 6;
+        s.gridETemp1[i] = s.gridEFrequency1[i];
         s.gridETemp2[i] = s.gridEFrequency2[i];
     }
 
@@ -615,78 +728,113 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     s.Nblock = (int)(s.Ngrid / THREADS_PER_BLOCK);
     s.isCylindric =(*sCPU).isCylindric;
     s.isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1] + (*sCPU).nonlinearSwitches[2]) > 0;
-    (*sCPU).nonlinearSwitches[3] = (int)ceil((*sCPU).absorptionParameters[0] * 241.79893e12 / (*sCPU).frequency1) - 1;
+    
+
+
+
     //CPU allocations
-    std::complex<double>* gridPropagationFactorCPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
-    std::complex<double>* gridPolarizationFactorCPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
+    std::complex<double>* gridPropagationFactor1CPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
+    std::complex<double>* gridPolarizationFactor1CPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
     
     //GPU allocations
     //I shouldn't need all these memsets but, they make me feel better
     int memErrors = 0;
-    memErrors += cudaMalloc((void**)&s.gridETime, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridETime, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridETime1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridETime1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridETime2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridETime2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridETemp, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridETemp, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridETemp1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridETemp1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridETemp2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridETemp2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridEFrequency, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridEFrequency, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridEFrequency1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridEFrequency1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridEFrequency2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridEFrequency2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridPropagationFactor, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridPropagationFactor, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridPolarizationFactor, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridPolarizationFactor, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPropagationFactor1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridPropagationFactor1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPolarizationFactor1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridPolarizationFactor1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridPropagationFactor2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridPropagationFactor2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridPolarizationFactor2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridPolarizationFactor2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridPropagationFactorRho1, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridPropagationFactorRho1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridPropagationFactorRho2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridPropagationFactorRho2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPropagationFactor1Rho1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridPropagationFactor1Rho1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPropagationFactor1Rho2, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridPropagationFactor1Rho2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridRadialLaplacian1, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridRadialLaplacian1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridRadialLaplacian2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridRadialLaplacian2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridEFrequencyNext1, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridEFrequencyNext1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridEFrequencyNext2, sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridEFrequencyNext2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridEFrequency1Next1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridEFrequency1Next1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridEFrequency1Next2, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridEFrequency1Next2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.k1, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.k1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.k2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.k2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     //the following two should have a size (s.Ntime / 2 + 1) * s.Nspace, but I get overruns during
     //the ffts if they're not larger. If I figure this out, it will save a complex grid worth of memory...
-    memErrors += cudaMalloc((void**)&s.gridPolarizationFrequency, sizeof(cuDoubleComplex) * s.Ngrid); 
-    cudaMemset(s.gridPolarizationFrequency, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPolarizationFrequency1, sizeof(cuDoubleComplex) * s.Ngrid); 
+    cudaMemset(s.gridPolarizationFrequency1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridPolarizationFrequency2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridPolarizationFrequency2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridPolarizationTime, sizeof(double) * s.Ngrid);
-    cudaMemset(s.gridPolarizationTime, 0, sizeof(double) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPlasmaCurrentFrequency1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridPlasmaCurrentFrequency1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPlasmaCurrentFrequency2, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.gridPlasmaCurrentFrequency2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPolarizationTime1, sizeof(double) * s.Ngrid);
+    cudaMemset(s.gridPolarizationTime1, 0, sizeof(double) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridPolarizationTime2, sizeof(double) * s.Ngrid);
     cudaMemset(s.gridPolarizationTime2, 0, sizeof(double) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPlasmaCurrent1, sizeof(double) * s.Ngrid);
+    cudaMemset(s.gridPlasmaCurrent1, 0, sizeof(double) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.gridPlasmaCurrent2, sizeof(double) * s.Ngrid);
+    cudaMemset(s.gridPlasmaCurrent2, 0, sizeof(double) * s.Ngrid);
 
     memErrors += cudaMalloc((void**)&s.chi2Tensor, sizeof(double) * 9);
     memErrors += cudaMalloc((void**)&s.firstDerivativeOperation, sizeof(double) * 6);
     memErrors += cudaMalloc((void**)&s.chi3Tensor, sizeof(double) * 81);
     memErrors += cudaMalloc((void**)&s.nonlinearSwitches, sizeof(int) * 4);
     memErrors += cudaMalloc((void**)&s.absorptionParameters, sizeof(double) * 6);
+    memErrors += cudaMalloc((void**)&s.plasmaParameters, sizeof(double) * 6);
     memErrors += cudaMalloc((void**)&s.propagationInts, sizeof(long long) * 4);
     (*sCPU).memoryError = memErrors;
 
     //prepare effective nonlinearity tensors and put them on the GPU
-    long long propagationIntsCPU[4] = { s.Ngrid, s.Ntime, s.Nspace, (s.Ntime / 2 + 1) };
-    double firstDerivativeOperation[6] = { -(1/s.dx) / 60, (1 / s.dx) * 3 / 20, (1 / s.dx) * -3 / 4, (1 / s.dx) * 3 / 4, (1 / s.dx) * -3 / 20, (1 / s.dx) / 60 };
+    size_t propagationIntsCPU[4] = { s.Ngrid, s.Ntime, s.Nspace, (s.Ntime / 2 + 1) };
+    double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
+    for (i = 0; i < 6; i++) {
+        firstDerivativeOperation[i] *= (-1.0/(s.Ngrid * s.dx));
+        //firstDerivativeOperation[i] = 1;
+    }
+
+    //set nonlinearSwitches[3] to the number of photons needed to overcome bandgap
+    (*sCPU).nonlinearSwitches[3] = (int)ceil((*sCPU).bandGapElectronVolts * 241.79893e12 / (*sCPU).frequency1) - 2;
+
+    double plasmaParametersCPU[6] = { 0 };
+    
+    if ((*sCPU).nonlinearAbsorptionStrength != 0.) {
+        s.hasPlasma = TRUE;
+    }
+    else {
+        s.hasPlasma = FALSE;
+    }
+    
+    plasmaParametersCPU[0] = (*sCPU).nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
+    plasmaParametersCPU[1] = (*sCPU).drudeGamma; //gamma
+    plasmaParametersCPU[2] = (*sCPU).tStep * (*sCPU).tStep * 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * photon energy));
+    //plasmaParametersCPU[2] = 0;
+    //plasmaParametersCPU[3] = 0*1e-12*(*sCPU).frequency2;
     calcEffectiveChi2Tensor((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
     cudaMemcpy(s.chi2Tensor, (*sCPU).deffTensor, 9 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(s.propagationInts, propagationIntsCPU, 4 * sizeof(long long), cudaMemcpyHostToDevice);
+    cudaMemcpy(s.propagationInts, propagationIntsCPU, 4 * sizeof(size_t), cudaMemcpyHostToDevice);
     cudaMemcpy(s.chi3Tensor, (*sCPU).chi3Tensor, 27 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.absorptionParameters, (*sCPU).absorptionParameters, 6 * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(s.plasmaParameters, plasmaParametersCPU, 6 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.firstDerivativeOperation, firstDerivativeOperation, 6 * sizeof(double), cudaMemcpyHostToDevice);
 
     //prepare FFT plans
@@ -705,9 +853,9 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     //generate the pulses, either through prepareElectricFieldArrays() if this is the first in the series, or by copying
     //the output of the last simulation in the sequence
     if ((*sCPU).isFollowerInSequence) {
-        cudaMemcpy(s.gridETime, (*sCPU).ExtOut, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+        cudaMemcpy(s.gridETime1, (*sCPU).ExtOut, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
         cudaMemcpy(s.gridETime2, &(*sCPU).ExtOut[(*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
-        cudaMemcpy(s.gridEFrequency, (*sCPU).EkwOut, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+        cudaMemcpy(s.gridEFrequency1, (*sCPU).EkwOut, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
         cudaMemcpy(s.gridEFrequency2, &(*sCPU).EkwOut[(*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     }
     else {
@@ -715,7 +863,7 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     }
     
     //Copy the field into the temporary array
-    cudaMemcpy(s.gridETemp, s.gridEFrequency, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
+    cudaMemcpy(s.gridETemp1, s.gridEFrequency1, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
     cudaMemcpy(s.gridETemp2, s.gridEFrequency2, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
 
     //Core propagation loop
@@ -736,56 +884,70 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     cudaDeviceSynchronize();
     
     //transform final result
-    fixnanKernel<<<s.Nblock, s.Nthread>>>(s.gridEFrequency);
+    fixnanKernel<<<s.Nblock, s.Nthread>>>(s.gridEFrequency1);
     fixnanKernel << <s.Nblock, s.Nthread >> > (s.gridEFrequency2);
-    cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency, (cufftDoubleComplex*)s.gridETime, CUFFT_INVERSE);
+    cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
     cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
-    fftNormalizeKernel<<<s.Nblock, s.Nthread >>>(s.gridETime, s.propagationInts);
+    fftNormalizeKernel << <s.Nblock, s.Nthread >> >(s.gridETime1, s.propagationInts);
     fftNormalizeKernel<<<s.Nblock, s.Nthread >>>(s.gridETime2, s.propagationInts);
     cudaDeviceSynchronize();
 
     //copy the field arrays from the GPU to CPU memory
-    cudaMemcpy((*sCPU).ExtOut, s.gridETime, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-    cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    cudaMemcpy((*sCPU).ExtOut, s.gridETime1, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&(*sCPU).ExtOut[s.Ngrid], s.gridETime2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridEFrequency2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+
+    /* diagnosis of plasma current
+    cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridPlasmaCurrent1, (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
+    double* plasmaPointer = (double*)&(*sCPU).EkwOut[s.Ngrid];
+    for (i = 0; i < s.Ngrid; i++) {
+        (*sCPU).ExtOut[s.Ngrid + i] = plasmaPointer[i];
+    }
+    cudaMemcpy(&(*sCPU).ExtOut[s.Ngrid], s.gridRadialLaplacian1, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    */
     cudaDeviceSynchronize();
     
     //Free GPU memory
     cudaFree(s.propagationInts);
     cudaFree(s.nonlinearSwitches);
     cudaFree(s.absorptionParameters);
-    cudaFree(s.gridETime); 
-    cudaFree(s.gridETemp);
-    cudaFree(s.gridPolarizationFrequency);
-    cudaFree(s.gridEFrequency);
-    cudaFree(s.gridPropagationFactor);
-    cudaFree(s.gridPropagationFactorRho1);
-    cudaFree(s.gridPropagationFactorRho2);
+    cudaFree(s.gridETime1); 
+    cudaFree(s.gridETemp1);
+    cudaFree(s.gridPolarizationFrequency1);
+    cudaFree(s.gridEFrequency1);
+    cudaFree(s.gridPropagationFactor1);
+    cudaFree(s.gridPropagationFactor1Rho1);
+    cudaFree(s.gridPropagationFactor1Rho2);
     cudaFree(s.gridRadialLaplacian1);
     cudaFree(s.gridRadialLaplacian2);
     cudaFree(s.firstDerivativeOperation);
-    cudaFree(s.gridPolarizationFactor);
-    cudaFree(s.gridEFrequencyNext1);
+    cudaFree(s.gridPolarizationFactor1);
+    cudaFree(s.gridEFrequency1Next1);
     cudaFree(s.k1);
-    cudaFree(s.gridPolarizationTime);
+    cudaFree(s.gridPolarizationTime1);
     cudaFree(s.gridETime2);
     cudaFree(s.gridETemp2);
     cudaFree(s.gridPolarizationFrequency2);
     cudaFree(s.gridEFrequency2);
     cudaFree(s.gridPropagationFactor2);
     cudaFree(s.gridPolarizationFactor2);
-    cudaFree(s.gridEFrequencyNext2);
+    cudaFree(s.gridEFrequency1Next2);
     cudaFree(s.k2);
     cudaFree(s.gridPolarizationTime2);
     cudaFree(s.chi2Tensor);
     cudaFree(s.chi3Tensor);
     cufftDestroy(s.fftPlan);
     cufftDestroy(s.polfftPlan);
+    cudaFree(s.plasmaParameters);
+    cudaFree(s.gridPlasmaCurrent1);
+    cudaFree(s.gridPlasmaCurrent2);
+    cudaFree(s.gridPlasmaCurrentFrequency1);
+    cudaFree(s.gridPlasmaCurrentFrequency2);
     
     //Free CPU memory
-    free(gridPropagationFactorCPU);
-    free(gridPolarizationFactorCPU);
+    free(gridPropagationFactor1CPU);
+    free(gridPolarizationFactor1CPU);
     
     return 0;
 }
@@ -797,19 +959,26 @@ int runRK4Step(struct cudaLoop s, int stepNumber) {
     //operations involving FFT
     if (s.isNonLinear || s.isCylindric) {
         //perform inverse FFT to get time-space electric field
-        cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp, (cufftDoubleComplex*)s.gridETime, CUFFT_INVERSE);
+        cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
         cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
         
         if (s.isNonLinear) {
             nonlinearPolarizationKernel << <s.Nblock, s.Nthread >> > (s);
-            cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime, (cufftDoubleComplex*)s.gridPolarizationFrequency);
+            cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime1, (cufftDoubleComplex*)s.gridPolarizationFrequency1);
             cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime2, (cufftDoubleComplex*)s.gridPolarizationFrequency2);
         }
 
         if (s.isCylindric) {
+            radialLaplacianKernel << <s.Nblock, s.Nthread >> > (s);
             cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridRadialLaplacian1, (cufftDoubleComplex*)s.k1, CUFFT_FORWARD);
             cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridRadialLaplacian2, (cufftDoubleComplex*)s.k2, CUFFT_FORWARD);
-            radialLaplacianKernel<<<s.Nblock, s.Nthread >>>(s);
+            
+        }
+
+        if (s.hasPlasma) {
+            cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent1, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency1);
+            cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent2, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency2);
+            plasmaCurrentKernel<<<s.Nspace, 1>>>(s);
         }
     }
 
@@ -820,7 +989,7 @@ int runRK4Step(struct cudaLoop s, int stepNumber) {
 }
 
 int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
-    long long i,j;
+    size_t i,j;
     double rB, zB, r, z; //r and z in the Beam and lab coordinates, respectively.
     double w0, wz, zR, Rz, phi; //Gaussian beam parameters
     double theta = 0; //rotation angle of the current beam
@@ -914,7 +1083,7 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
     }
     
     // copy the field and propagation grids to the GPU
-    cudaMemcpy((*sc).gridETime, pulse1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+    cudaMemcpy((*sc).gridETime1, pulse1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     cudaMemcpy((*sc).gridETime2, &pulse1[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
 
     // fft along spatial dimention to get Fourier space beam
@@ -925,33 +1094,33 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
 
     cufftPlan1d(&plan1, (int)(*sc).Ntime, CUFFT_Z2Z, (int)(*sc).Nspace);
     cufftPlan2d(&plan2, (int)(*sc).Nspace, (int)(*sc).Ntime, CUFFT_Z2Z);
-    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime, (cufftDoubleComplex*)(*sc).gridETemp, CUFFT_FORWARD);
-    cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp, (cufftDoubleComplex*)(*sc).gridEFrequency, CUFFT_FORWARD);
-    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency, (cufftDoubleComplex*)(*sc).gridETime, CUFFT_INVERSE);
+    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridETemp1, CUFFT_FORWARD);
+    cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_FORWARD);
+    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency1, (cufftDoubleComplex*)(*sc).gridETime1, CUFFT_INVERSE);
 
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridETemp2, CUFFT_FORWARD);
     cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp2, (cufftDoubleComplex*)(*sc).gridEFrequency2, CUFFT_FORWARD);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency2, (cufftDoubleComplex*)(*sc).gridETime2, CUFFT_INVERSE);
 
     //Take the conjugate of the field because me and cufft have different ideas of time
-    conjugateKernel<<<(*sc).Nblock, (*sc).Nthread >>>((*sc).gridETime);
+    conjugateKernel<<<(*sc).Nblock, (*sc).Nthread >>>((*sc).gridETime1);
     conjugateKernel<<<(*sc).Nblock, (*sc).Nthread >>>((*sc).gridETime2);
-    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime, (cufftDoubleComplex*)(*sc).gridEFrequency, CUFFT_INVERSE);
+    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_INVERSE);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridEFrequency2, CUFFT_INVERSE);
     cudaDeviceSynchronize();
 
     //Copy the GPU grids to the CPU memory
-    cudaMemcpy(pulse1, (*sc).gridETime, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    cudaMemcpy(pulse1, (*sc).gridETime1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&pulse1[(*s).Ngrid], (*sc).gridETime2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-    cudaMemcpy(pulse1f, (*sc).gridEFrequency, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    cudaMemcpy(pulse1f, (*sc).gridEFrequency1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&pulse1f[(*s).Ngrid], (*sc).gridEFrequency2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
     //normalize the pulse energy and set it to the input value
     pulseSum *= c * eps0;
-    pulseSum *= 59.958 * pi; //59.958 is emperical factor
+    pulseSum *= pi; //59.958 is emperical factor
     pulseSum *= (*s).rStep / (*s).fStep;
     pulseEnergySum = sqrt((*s).pulseEnergy1/pulseSum)/(*s).Ngrid;
-    
+    (*s).pulse1measEnergy = pulseEnergySum;
     for (i = 0; i < (*s).Ngrid * 2; i++) {
         pulse1[i] = pulse1[i] * pulseEnergySum;
         pulse1f[i] = pulse1f[i] * pulseEnergySum;
@@ -1022,7 +1191,7 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
     }
 
     // copy the field and propagation grids to the GPU
-    cudaMemcpy((*sc).gridETime, pulse2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+    cudaMemcpy((*sc).gridETime1, pulse2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     cudaMemcpy((*sc).gridETime2, &pulse2[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
 
     // fft along spatial dimention to get Fourier space beam
@@ -1031,30 +1200,30 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
     // 1D fft (k,t)->(k,f), copied to Fourier space beam
     // 2D fft (k,f)->(x,t), copied to real space beam
 
-    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime, (cufftDoubleComplex*)(*sc).gridETemp, CUFFT_FORWARD);
-    cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp, (cufftDoubleComplex*)(*sc).gridEFrequency, CUFFT_FORWARD);
-    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency, (cufftDoubleComplex*)(*sc).gridETime, CUFFT_INVERSE);
+    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridETemp1, CUFFT_FORWARD);
+    cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_FORWARD);
+    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency1, (cufftDoubleComplex*)(*sc).gridETime1, CUFFT_INVERSE);
 
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridETemp2, CUFFT_FORWARD);
     cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp2, (cufftDoubleComplex*)(*sc).gridEFrequency2, CUFFT_FORWARD);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency2, (cufftDoubleComplex*)(*sc).gridETime2, CUFFT_INVERSE);
 
     //Take the conjugate of the field because me and cufft have different ideas of time
-    conjugateKernel << <(*sc).Nblock, (*sc).Nthread >> > ((*sc).gridETime);
+    conjugateKernel << <(*sc).Nblock, (*sc).Nthread >> > ((*sc).gridETime1);
     conjugateKernel << <(*sc).Nblock, (*sc).Nthread >> > ((*sc).gridETime2);
-    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime, (cufftDoubleComplex*)(*sc).gridEFrequency, CUFFT_INVERSE);
+    cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_INVERSE);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridEFrequency2, CUFFT_INVERSE);
     cudaDeviceSynchronize();
 
     //Copy the GPU grids to the CPU memory
-    cudaMemcpy(pulse2, (*sc).gridETime, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    cudaMemcpy(pulse2, (*sc).gridETime1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&pulse2[(*s).Ngrid], (*sc).gridETime2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-    cudaMemcpy(pulse2f, (*sc).gridEFrequency, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    cudaMemcpy(pulse2f, (*sc).gridEFrequency1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&pulse2f[(*s).Ngrid], (*sc).gridEFrequency2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
     //normalize the pulse energy and set it to the input value
     pulseSum *= c * eps0;
-    pulseSum *= 59.958 * pi; //59.958 is emperical factor
+    pulseSum *= pi; //59.958 is emperical factor
     pulseSum *= (*s).rStep / (*s).fStep;
     pulseEnergySum = sqrt((*s).pulseEnergy2 / pulseSum) / (*s).Ngrid;
 
@@ -1070,9 +1239,9 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
         (*s).Ekw[i] = pulse1f[i] + pulse2f[i];
     }
     //Copy the grids back to the GPU
-    cudaMemcpy((*sc).gridETime, (*s).Ext, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+    cudaMemcpy((*sc).gridETime1, (*s).Ext, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     cudaMemcpy((*sc).gridETime2, &(*s).Ext[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
-    cudaMemcpy((*sc).gridEFrequency, (*s).Ekw, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+    cudaMemcpy((*sc).gridEFrequency1, (*s).Ekw, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     cudaMemcpy((*sc).gridEFrequency2, &(*s).Ekw[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     cufftDestroy(plan1);
     cufftDestroy(plan2);
@@ -1087,9 +1256,9 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
 
 int preparePropagation2DCartesian(struct propthread* s, struct cudaLoop sc) {
     //recycle allocated device memory for the grids needed
-    double* alphaGPU = (double*)sc.gridEFrequencyNext1;
+    double* alphaGPU = (double*)sc.gridEFrequency1Next1;
     double* sellmeierCoefficients = (double*)sc.k1;
-    sc.ne = sc.gridEFrequencyNext2;
+    sc.ne = sc.gridEFrequency1Next2;
     sc.no = sc.k2;
 
     //construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
@@ -1114,8 +1283,8 @@ int preparePropagation2DCartesian(struct propthread* s, struct cudaLoop sc) {
 
     
     //clean up
-    cudaMemset(sc.gridEFrequencyNext1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
-    cudaMemset(sc.gridEFrequencyNext2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
+    cudaMemset(sc.gridEFrequency1Next1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
+    cudaMemset(sc.gridEFrequency1Next2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.k1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.k2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     free(sellmeierCoefficientsAugmentedCPU);
@@ -1125,7 +1294,7 @@ int preparePropagation2DCartesian(struct propthread* s, struct cudaLoop sc) {
 int preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc) {
     //recycle allocated device memory for the grids needed
     double* sellmeierCoefficients = (double*)sc.k1;
-    sc.ne = sc.gridEFrequencyNext2;
+    sc.ne = sc.gridEFrequency1Next2;
     sc.no = sc.k2;
 
     //construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
@@ -1150,7 +1319,7 @@ int preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc) {
 
 
     //clean up
-    cudaMemset(sc.gridEFrequency, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
+    cudaMemset(sc.gridEFrequency1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.gridEFrequency2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.k1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.k2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
