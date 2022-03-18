@@ -1239,6 +1239,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         int plotMargin = 0;
         int spacerX = 50;
         int spacerY = 40;
+        double logPlotOffset = 1e11;
         int i,j;
         HDC hdc;
 
@@ -1280,7 +1281,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         //Plot Fourier Domain, s-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = log10(cModulusSquared(shiftedFFT[i]) + (*activeSetPtr).Ngrid);
+            plotarr[i] = log10(cModulusSquared(shiftedFFT[i]) + logPlotOffset);
         }
 
         for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
@@ -1296,7 +1297,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = log10(cModulusSquared(shiftedFFT[i]) + (*activeSetPtr).Ngrid);
+            plotarr[i] = log10(cModulusSquared(shiftedFFT[i]) + logPlotOffset);
         }
         for (i = 0; i < ((*activeSetPtr).Ntime/2); i++) {
             for (j = 0; j < (*activeSetPtr).Nspace; j++) {

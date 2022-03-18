@@ -62,17 +62,16 @@ __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
 //Sellmeier equations on CUDA (see the C function for details)
 __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
     if (f == 0) return make_cuDoubleComplex(1.0,0.0); //exit immediately for f=0
-    
-    double c = 2.99792458e8; //speed of light
-    double l = 1e6 * c / f; //wavelength in microns
+
+    double l = 2.99792458e14 / f; //wavelength in microns
     double ls = l * l;
     cuDoubleComplex ii = make_cuDoubleComplex(0.0, 1.0);
-    double pi = 3.14159265358979323846264338327950288;
-    double omega = 2 * pi * abs(f);
+    double omega = 6.28318530718 * abs(f);
     double kL = 3183.9; //(e * e / (e_o *m_e)
     cuDoubleComplex one = make_cuDoubleComplex(1.0, 0);
     cuDoubleComplex na = one;
     cuDoubleComplex nb = one;
+
     //option 0: isotropic
     if (type == 0) {
         ne[0] = make_cuDoubleComplex(a[0]
@@ -149,7 +148,7 @@ __global__ void radialLaplacianKernel(struct cudaLoop s) {
             + s.firstDerivativeOperation[5] * s.gridETime2[i + 3 * s.Ntime]);
     }
     else {
-        //handle rho = 0 by Fornberg extrapolation from surrounding 3 points
+        //handle rho = 0 by Fornberg interpolation from surrounding points
         //r[0]= 1.5 r[1] - 0.6 r[2] + 0.1 r[3]
         s.gridRadialLaplacian1[i] = (1.5/(rho+s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime1[i - 2 * s.Ntime]
             + s.firstDerivativeOperation[1] * s.gridETime1[i - 1 * s.Ntime]
@@ -430,28 +429,11 @@ __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
         s.gridPolarizationTime1[i] += s.chi3Tensor[0] * (Ex * Ex * Ex + Ey * Ey * Ex / 3.);
         s.gridPolarizationTime2[i] += s.chi3Tensor[0] * (Ey * Ey * Ey + Ex * Ex * Ey / 3.);
     }
-    /* old nonlinear absorption - remove once plasma kernel works
-    //Nonlinear absorption
-    if (s.nonlinearSwitches[2] == 1) {
-        
-        double Exi = cuCimag(s.gridETime1[i]) / s.propagationInts[0];
-        double Eyi = cuCimag(s.gridETime2[i]) / s.propagationInts[0];
-        double fieldAmp2 = Exi * Exi + Eyi * Eyi;
-        int j;
-        for (j = 0; j < s.nonlinearSwitches[3]; j++) {
-            Exi *= fieldAmp2;
-            Eyi *= fieldAmp2;
-        }
-        s.gridPolarizationTime1[i] += s.absorptionParameters[1] * Exi;
-        s.gridPolarizationTime2[i] += s.absorptionParameters[1] * Eyi;
-    }
-    */
 }
 
 //Plasma response with time-dependent carrier density
 //This polarization needs a different factor in the nonlinear wave equation
 //to account for the integration
-//TO BE IMPLEMENTED!
 //plasmaParameters vector:
 // 0    e^2/m_eff
 // 1    gamma_drude
@@ -467,7 +449,7 @@ __global__ void plasmaCurrentKernel(struct cudaLoop s) {
     double integralx = 0;
     double integraly = 0;
     double t, w, Esquared, Ex, Ey;
-    double tEnd = s.dt * s.Ntime;
+
     for (j = 0; j < s.Ntime; j++) {
 
         l = j + i * s.Ntime;
@@ -491,15 +473,14 @@ __global__ void plasmaCurrentKernel(struct cudaLoop s) {
         //extra factor of (dt^2e^2/m) included as it is needed for the amplitude
         //of the plasma current
         N += s.plasmaParameters[2] * (s.gridPlasmaCurrent1[l]*Ex + s.gridPlasmaCurrent2[l] * Ey);
-        
-        integralx += exp(s.plasmaParameters[1] * t) * N * Ex;
-        integraly += exp(s.plasmaParameters[1] * t) * N * Ey;
 
-
-         
-        //from here on Esquared in the current amplitude factor (recycling memory)
+        //from here on Esquared in the current amplitude factor
         //plasmaParameters[1] is the Drude momentum damping (gamma)
-        Esquared = exp(-s.plasmaParameters[1] * t);
+        Esquared = exp(s.plasmaParameters[1] * t);
+        integralx += Esquared * N * Ex;
+        integraly += Esquared * N * Ey;
+
+        Esquared = 1/Esquared;
         
         s.gridPlasmaCurrent1[l] += Esquared * integralx;
         s.gridPlasmaCurrent2[l] += Esquared * integraly;
@@ -515,7 +496,8 @@ __global__ void rkKernel(struct cudaLoop s, int stepNumber) {
     cuDoubleComplex plasmaJ1 = make_cuDoubleComplex(0, 0);
     cuDoubleComplex plasmaJ2 = make_cuDoubleComplex(0, 0);
 
-
+    //note that the FFT of the radial laplacian is stored in k1 and k2
+    //so that memory shouldn't be used for anything else
     if (s.isCylindric) {
         s.gridRadialLaplacian1[i] = s.gridPropagationFactor1Rho1[i] * s.k1[i];
         s.gridRadialLaplacian2[i] = s.gridPropagationFactor1Rho2[i] * s.k2[i];
