@@ -78,3 +78,4 @@ int				preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc);
 double			findWalkoffAngles(struct propthread* s, double dk, double f, double tol);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex);
 int				plotDataXY(double* X, double* Y, double minX, double maxX, double minY, double maxY, int N, int plotSizeX, int plotSizeY, double lineWidth, double markerWidth, double* plotGrid, double* xTicks, int NxTicks, double* yTicks, int NyTicks);
+int				rotateField(struct propthread* s, double rotationAngle);

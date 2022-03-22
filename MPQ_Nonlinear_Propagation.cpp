@@ -46,6 +46,8 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
     int j, k;
+    double rotationAngle;
+    const double pi = 3.1415926535897932384626433832795;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     HANDLE plotThread;
     DWORD hplotThread;
@@ -57,7 +59,12 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         if ((*activeSetPtr).isInSequence) {
             for (k = 0; k < (*activeSetPtr).Nsequence; k++) {
                 resolveSequence(k, &activeSetPtr[j]);
+                rotationAngle = (pi / 180) * (*activeSetPtr).sequenceArray[5 + 6 * k];
                 solveNonlinearWaveEquation(&activeSetPtr[j]);
+                if (rotationAngle != 0.0) {
+                    rotateField(activeSetPtr, rotationAngle);
+                }
+                
                 (*activeSetPtr).plotSim = j;
                 plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
                 if (activeSetPtr[j].memoryError > 0) {
@@ -72,6 +79,11 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             solveNonlinearWaveEquation(&activeSetPtr[j]);
             (*activeSetPtr).plotSim = j;
             plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+            flushMessageBuffer();
+            swprintf_s(messageBuffer, MAX_LOADSTRING,
+                _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12*activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
+            appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+            
             if (activeSetPtr[j].memoryError > 0) {
                 flushMessageBuffer();
                 swprintf_s(messageBuffer, MAX_LOADSTRING,
@@ -223,7 +235,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbPulseType = CreateWindow(TEXT("Edit"), TEXT("2"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 6 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCEPhase1 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCEPhase2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPulse1Delay = CreateWindow(TEXT("Edit"), TEXT("-40"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPulse1Delay = CreateWindow(TEXT("Edit"), TEXT("-90"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbPulse2Delay = CreateWindowW(TEXT("Edit"), TEXT("-20"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbGDD1 = CreateWindow(TEXT("Edit"), TEXT("65"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbGDD2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -253,9 +265,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbDrudeGamma = CreateWindow(TEXT("Edit"), TEXT("10"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 5 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbEffectiveMass = CreateWindow(TEXT("Edit"), TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 6 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbGridXdim = CreateWindow(TEXT("Edit"), TEXT("144"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbRadialStepSize = CreateWindow(TEXT("Edit"), TEXT("0.75"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTimeSpan = CreateWindow(TEXT("Edit"), TEXT("256"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbGridXdim = CreateWindow(TEXT("Edit"), TEXT("179.2"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbRadialStepSize = CreateWindow(TEXT("Edit"), TEXT("0.7"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbTimeSpan = CreateWindow(TEXT("Edit"), TEXT("448"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbTimeStepSize = CreateWindow(TEXT("Edit"), TEXT("0.5"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalThickness = CreateWindow(TEXT("Edit"), TEXT("400"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbXstep = CreateWindow(TEXT("Edit"), TEXT("25"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -953,13 +965,12 @@ int readCrystalDatabase(struct crystalentry* db, bool isVerbose) {
         fd = &db[i].chi3[18];
         readErrors += 9 == fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
         readErrors += 1 == fwscanf(fp, _T("chi3 reference:\n%[^\n]\n"), db[i].chi3Reference);
-        readErrors += 6 == fscanf(fp, "Nonlinear absorption type:\n%d\nAbsorption parameters:\n%lf %lf %lf %lf %lf %lf\n", &db[i].nonlinearSwitches[2], &db[i].absorptionParameters[0], &db[i].absorptionParameters[1], &db[i].absorptionParameters[2], &db[i].absorptionParameters[3], &db[i].absorptionParameters[4], &db[i].absorptionParameters[5]);
         readErrors += 1 == fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
         readErrors += 0 == fscanf(fp, "~~~crystal end~~~\n");
         if (isVerbose) {
             flushMessageBuffer();
             swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("Material %i name: %s\r\nSellmeier reference: %s\r\nChi2 reference: %s\r\nChi3 reference: %s\r\n\r\n"), i, db[i].crystalNameW, db[i].sellmeierReference, db[i].dReference, db[i].chi3Reference);
+                _T("Material %i name: %s\r\n"), i, db[i].crystalNameW);
             appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
         }

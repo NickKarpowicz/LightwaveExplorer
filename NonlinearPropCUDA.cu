@@ -40,7 +40,7 @@ __device__ __forceinline__ bool checkIfInBox(int xi, int yi, int x1, int y1, int
     int xmin = min(x1, x2) - tolerance;
     int ymax = max(y1, y2) + tolerance;
     int ymin = min(y1, y2) - tolerance;
-    return xi > xmin && xi< xmax && yi > ymin && yi < ymax;
+    return xi >= xmin && xi <= xmax && yi >= ymin && yi <= ymax;
 }
 
 //sqrt for complex doubles on CUDA, copy and paste from
@@ -59,6 +59,14 @@ __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
     return out;
 }
 
+__device__ __inline__ cuDoubleComplex sellmeierSubfunctionCuda(double* a, double ls, double omega, cuDoubleComplex ii, double kL) {
+    return  cuCsqrt(a[0]
+        + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6]) + (a[7]
+            + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12])
+        + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls
+        + kL * a[16] / (a[17] - omega * omega + ii * a[18] * omega)
+        + kL * a[19] / (a[20] - omega * omega + ii * a[21] * omega));
+}
 //Sellmeier equations on CUDA (see the C function for details)
 __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
     if (f == 0) return make_cuDoubleComplex(1.0,0.0); //exit immediately for f=0
@@ -94,31 +102,42 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
     //option 1: uniaxial
     else if (type == 1) {
         
-        na = cuCsqrt(a[0]
-            + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6]) + (a[7]
-                + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12])
-            + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls
-            + kL * a[16] / (a[17] - omega * omega + ii * a[18] * omega)
-            + kL * a[19] / (a[20] - omega * omega + ii * a[21] * omega));
-        
-        a = &a[22];
-        nb = cuCsqrt(a[0]
-            + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6]) + (a[7]
-                + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12])
-            + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls
-            + kL * a[16] / (a[17] - omega * omega - ii * a[18] * omega)
-            + kL * a[19] / (a[20] - omega * omega - ii * a[21] * omega));
+        na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);;
+        nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
         no[0] = na;
         ne[0] = 1.0 / cuCsqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
         return ne[0];
     }
     else {
-        //later, implement biaxial crystals, for now just return 1;
-        return one;
+        //type == 2: biaxial
+        // X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
+        // I am sorry if there is a bug and you're trying to find it, i did my best.
+        na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
+        nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
+        cuDoubleComplex nc = sellmeierSubfunctionCuda(&a[44], ls, omega, ii, kL);
+
+        double delta = 0.5 * atan(-((1. / cuCreal(na)*cuCreal(na) - 1. / (cuCreal(nb)*cuCreal(nb))) 
+            * sin(2 * phi) * cos(theta)) / ((cos(phi)*cos(phi) / (cuCreal(na) * cuCreal(na)) + sin(phi)*sin(phi) / (cuCreal(nb) * cuCreal(nb))) 
+            + ((sin(phi)*sin(phi) /(cuCreal(na) * cuCreal(na)) + cos(phi)*cos(phi) / (cuCreal(nb) * cuCreal(nb))) 
+                * cos(theta)*cos(theta) + sin(theta)*sin(theta) / (cuCreal(nc) * cuCreal(nc)))));
+        ne[0] = 1.0/cuCsqrt(cos(delta) * cos(delta) * (cos(theta) * cos(theta) * (cos(phi)*cos(phi) / (na * na) 
+            + sin(phi) *sin(phi) / (nb * nb)) + sin(theta) * sin(theta) / (nc*nc)) 
+            + sin(delta) * sin(delta) * (sin(phi) * sin(phi) / (na*na) + cos(phi)*cos(phi) / (nb*nb)) 
+            - 0.5*sin(2 * phi)*cos(theta)*sin(2 * delta)*(1. / (na*na) - 1. / (nb*nb)));
+
+        no[0] = 1.0/cuCsqrt(sin(delta) * sin(delta) * (cos(theta) * cos(theta) * (cos(phi) * cos(phi) / (na * na) 
+            + sin(phi) *sin(phi) / (nb * nb)) + sin(theta)*sin(theta) / (nc*nc)) 
+            + cos(delta)*cos(delta) * (sin(phi)*sin(phi) / (na*na) + cos(phi)*cos(phi) / (nb*nb)) 
+            + 0.5 * sin(2 * phi)*cos(theta)*sin(2 * delta)*(1. / (na*na) - 1. / (nb*nb)));
+        return ne[0];
     }
 }
 
-
+__global__ void rotateFieldKernel(cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, cuDoubleComplex* Eout1, cuDoubleComplex* Eout2, double rotationAngle) {
+    long long i = threadIdx.x + blockIdx.x * blockDim.x;
+    Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
+    Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
+}
 
 //Radial laplacian term of the nonlinear wave equation
 // e.g., apply the 1/rho * d/drho operator
@@ -201,7 +220,7 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     int axesNumber = s.axesNumber;
     int sellmeierType = s.sellmeierType;
     double c = 2.99792458e8; //speed of light
-    double pi = 3.14159265358979323846264338327950288; // pi to unneccessary precision
+    double twoPi = 2 * 3.14159265358979323846264338327950288;
     cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
     j = i / Ntime; //spatial coordinate
     k = i - j * Ntime; //temporal coordinate
@@ -230,7 +249,7 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
 
     //Find walkoff angle, starting from zero
     theta[i] = 0;
-    double rhs = 2.99792458e8 * dk / (2 * 3.14159265358979323846264338327950288 * f);
+    double rhs = 2.99792458e8 * dk / (twoPi * f);
     sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta + theta[i], crystalPhi, axesNumber, sellmeierType);
     nePlus = cuCreal(ne);
     err = abs(nePlus * sin(theta[i]) - rhs);
@@ -285,9 +304,9 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     s.ne[i] = ne;
     s.no[i] = no;
 
-    cuDoubleComplex k0 = make_cuDoubleComplex(2 * pi * cuCreal(n0) * f / c, 0);
-    cuDoubleComplex ke = 2 * pi * ne * f / c;
-    cuDoubleComplex ko = 2 * pi * no * f / c;
+    cuDoubleComplex k0 = make_cuDoubleComplex(twoPi * cuCreal(n0) * f / c, 0);
+    cuDoubleComplex ke = twoPi * ne * f / c;
+    cuDoubleComplex ko = twoPi * no * f / c;
 
     if (cuCreal(ke) < 0 && cuCreal(ko) < 0) {
         s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
@@ -300,9 +319,8 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
             s.gridPropagationFactor2[i] = cuZero;
         }
 
-        int posf = (int)(f < -20e12);
-        s.gridPolarizationFactor1[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(ne) * c) * s.h;
-        s.gridPolarizationFactor2[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(no) * c) * s.h;
+        s.gridPolarizationFactor1[i] = ii * (twoPi * f) / (2. * cuCreal(ne) * c) * s.h;
+        s.gridPolarizationFactor2[i] = ii * (twoPi * f) / (2. * cuCreal(no) * c) * s.h;
     }
 
     else {
@@ -322,7 +340,7 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struc
     int axesNumber = s.axesNumber;
     int sellmeierType = s.sellmeierType;
     double c = 2.99792458e8; //speed of light
-    double pi = 3.14159265358979323846264338327950288; // pi to unneccessary precision
+    double twoPi = 2 * 3.14159265358979323846264338327950288;
     cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
     j = i / Ntime; //spatial coordinate
     k = i - j * Ntime; //temporal coordinate
@@ -355,9 +373,9 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struc
     s.ne[i] = ne;
     s.no[i] = no;
 
-    cuDoubleComplex k0 = make_cuDoubleComplex(2 * pi * cuCreal(n0) * f / c, 0);
-    cuDoubleComplex ke = 2 * pi * ne * f / c;
-    cuDoubleComplex ko = 2 * pi * no * f / c;
+    cuDoubleComplex k0 = make_cuDoubleComplex(twoPi * cuCreal(n0) * f / c, 0);
+    cuDoubleComplex ke = twoPi * ne * f / c;
+    cuDoubleComplex ko = twoPi * no * f / c;
 
     if (cuCreal(ke) < 0 && cuCreal(ko) < 0) {
         s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
@@ -374,9 +392,8 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struc
             s.gridPropagationFactor1Rho2[i] = cuZero;
         }
 
-        int posf = (int)(f < -20e12);
-        s.gridPolarizationFactor1[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(ne) * c) * s.h;
-        s.gridPolarizationFactor2[i] = ii * (posf * 2 * pi * f) / (2. * cuCreal(no) * c) * s.h;
+        s.gridPolarizationFactor1[i] = ii * (twoPi * f) / (2. * cuCreal(ne) * c) * s.h;
+        s.gridPolarizationFactor2[i] = ii * (twoPi * f) / (2. * cuCreal(no) * c) * s.h;
     }
 
     else {
@@ -1256,7 +1273,7 @@ int preparePropagation2DCartesian(struct propthread* s, struct cudaLoop sc) {
     cudaMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66+8) * sizeof(double), cudaMemcpyHostToDevice);
 
     //prepare the propagation grids
-    prepareCartesianGridsKernel <<<sc.Nblock, sc.Nthread >>> (alphaGPU, sellmeierCoefficients, sc);
+    prepareCartesianGridsKernel <<<sc.Nblock, sc.Nthread>>> (alphaGPU, sellmeierCoefficients, sc);
     cudaDeviceSynchronize();
 
     //copy the retrieved refractive indicies to the cpu
@@ -1298,7 +1315,7 @@ int preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc) {
     //copy the retrieved refractive indicies to the cpu
     cudaMemcpy((*s).refractiveIndex1, sc.ne, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy((*s).refractiveIndex2, sc.no, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-
+    cudaDeviceSynchronize();
 
     //clean up
     cudaMemset(sc.gridEFrequency1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
@@ -1658,3 +1675,30 @@ int plotDataXY(double* X, double* Y, double minX, double maxX, double minY, doub
     return 0;
 }
 
+//Rotate the field on the GPU
+//Allocates memory and copies from CPU, then copies back to CPU and deallocates
+// - inefficient but the general principle is that only the CPU memory is preserved
+// after simulations finish... and this only runs at the end of the simulation
+int rotateField(struct propthread *s, double rotationAngle) {
+    cuDoubleComplex* Ein1, * Eout1, * Ein2, * Eout2;
+    cudaMalloc((void**)&Ein1,  (*s).Ngrid * sizeof(cuDoubleComplex));
+    cudaMalloc((void**)&Ein2, (*s).Ngrid * sizeof(cuDoubleComplex));
+    cudaMalloc((void**)&Eout1, (*s).Ngrid * sizeof(cuDoubleComplex));
+    cudaMalloc((void**)&Eout2, (*s).Ngrid * sizeof(cuDoubleComplex));
+    size_t Nthread = THREADS_PER_BLOCK;
+    size_t Nblock = (size_t)((*s).Ngrid / THREADS_PER_BLOCK);
+
+    cudaMemcpy(Ein1, (*s).EkwOut, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+    cudaMemcpy(Ein2, &(*s).EkwOut[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+
+    rotateFieldKernel<<<Nblock, Nthread>>>(Ein1, Ein2, Eout1, Eout2, rotationAngle);
+
+    cudaMemcpy((*s).EkwOut, Eout1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&(*s).EkwOut[(*s).Ngrid], Eout2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+
+    cudaFree(Ein1);
+    cudaFree(Ein2);
+    cudaFree(Eout1);
+    cudaFree(Eout2);
+    return 0;
+}
