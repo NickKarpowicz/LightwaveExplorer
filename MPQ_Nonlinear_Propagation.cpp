@@ -729,7 +729,7 @@ int saveDataSet() {
         fprintf(textfile, "Sequence: %s\n", (*activeSetPtr).sequenceString);
     }
 
-    fprintf(textfile, "Code version: 0.00 Feb. 15, 2022\n");
+    fprintf(textfile, "Code version: 0.1 Mar. 24, 2022\n");
 
     fclose(textfile);
     /*

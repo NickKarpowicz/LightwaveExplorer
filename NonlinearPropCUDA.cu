@@ -59,51 +59,52 @@ __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
     return out;
 }
 
-__device__ __inline__ cuDoubleComplex sellmeierSubfunctionCuda(double* a, double ls, double omega, cuDoubleComplex ii, double kL) {
-    return  cuCsqrt(a[0]
-        + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6]) + (a[7]
-            + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12])
-        + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls
+//Inner function for the Sellmeier equation to provide the refractive indicies
+//current equation form:
+//n^2 = a[0] //background (high freq) contribution
+//      + four resonances, purely real contribution
+//      + parametrized low-frequency correction
+//      + 2 complex-valued Lorenzian contribution
+__device__ __forceinline__ cuDoubleComplex sellmeierSubfunctionCuda(double* a, double ls, double omega, cuDoubleComplex ii, double kL) {
+    double realPart = a[0]
+        + (a[1] + a[2] * ls) / (ls + a[3])
+        + (a[4] + a[5] * ls) / (ls + a[6])
+        + (a[7] + a[8] * ls) / (ls + a[9])
+        + (a[10] + a[11] * ls) / (ls + a[12])
+        + a[13] * ls
+        + a[14] * ls * ls
+        + a[15] * ls * ls * ls;
+
+    //traditional sellmeier part is not allowed to give complex values because that almost always
+    //means it's out of range and causes instability
+    if (realPart < 0) realPart = 1;
+
+    return cuCsqrt(realPart
         + kL * a[16] / (a[17] - omega * omega + ii * a[18] * omega)
         + kL * a[19] / (a[20] - omega * omega + ii * a[21] * omega));
 }
-//Sellmeier equations on CUDA (see the C function for details)
+//Sellmeier equation for refractive indicies
 __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
-    if (f == 0) return make_cuDoubleComplex(1.0,0.0); //exit immediately for f=0
+    if (f==0) return make_cuDoubleComplex(1.0,0.0); //exit immediately for f=0
 
-    double l = 2.99792458e14 / f; //wavelength in microns
-    double ls = l * l;
+    double ls = 2.99792458e14 / f; //wavelength in microns
+    ls *= ls; //only wavelength^2 is ever used
     cuDoubleComplex ii = make_cuDoubleComplex(0.0, 1.0);
     double omega = 6.28318530718 * abs(f);
-    double kL = 3183.9; //(e * e / (e_o *m_e)
-    cuDoubleComplex one = make_cuDoubleComplex(1.0, 0);
-    cuDoubleComplex na = one;
-    cuDoubleComplex nb = one;
+    double kL = 3183.9; //(e * e / (epsilon_o * m_e)
+
 
     //option 0: isotropic
     if (type == 0) {
-        ne[0] = make_cuDoubleComplex(a[0]
-            + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6])
-            + (a[7] + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12])
-            + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls, 0.0);
-        if (cuCreal(ne[0]) < 1) {
-            ne[0] = one;
-        }
-        ne[0] = ne[0] + kL * a[16] / (a[17] - omega * omega - ii * a[18] * omega)
-            + kL * a[19] / (a[20] - omega * omega - ii * a[21] * omega);
-        ne[0] = cuConj(cuCsqrt(ne[0]));
-        if (isnan(cuCreal(ne[0]))) {
-            ne[0] = one;
-        }
-
+        ne[0] = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
         no[0] = ne[0];
         return ne[0];
     }
     //option 1: uniaxial
     else if (type == 1) {
         
-        na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);;
-        nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
+        cuDoubleComplex na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
+        cuDoubleComplex nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
         no[0] = na;
         ne[0] = 1.0 / cuCsqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
         return ne[0];
@@ -112,14 +113,15 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
         //type == 2: biaxial
         // X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
         // I am sorry if there is a bug and you're trying to find it, i did my best.
-        na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
-        nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
+        cuDoubleComplex na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
+        cuDoubleComplex nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
         cuDoubleComplex nc = sellmeierSubfunctionCuda(&a[44], ls, omega, ii, kL);
 
         double delta = 0.5 * atan(-((1. / cuCreal(na)*cuCreal(na) - 1. / (cuCreal(nb)*cuCreal(nb))) 
             * sin(2 * phi) * cos(theta)) / ((cos(phi)*cos(phi) / (cuCreal(na) * cuCreal(na)) + sin(phi)*sin(phi) / (cuCreal(nb) * cuCreal(nb))) 
             + ((sin(phi)*sin(phi) /(cuCreal(na) * cuCreal(na)) + cos(phi)*cos(phi) / (cuCreal(nb) * cuCreal(nb))) 
                 * cos(theta)*cos(theta) + sin(theta)*sin(theta) / (cuCreal(nc) * cuCreal(nc)))));
+
         ne[0] = 1.0/cuCsqrt(cos(delta) * cos(delta) * (cos(theta) * cos(theta) * (cos(phi)*cos(phi) / (na * na) 
             + sin(phi) *sin(phi) / (nb * nb)) + sin(theta) * sin(theta) / (nc*nc)) 
             + sin(delta) * sin(delta) * (sin(phi) * sin(phi) / (na*na) + cos(phi)*cos(phi) / (nb*nb)) 
@@ -133,6 +135,7 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
     }
 }
 
+//rotate the field around the propagation axis (basis change)
 __global__ void rotateFieldKernel(cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, cuDoubleComplex* Eout1, cuDoubleComplex* Eout2, double rotationAngle) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
@@ -286,7 +289,6 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
         }
 
     }
-
 
     //walkoff angle has been found, generate the rest of the grids
     f = k * fStep;
@@ -674,13 +676,18 @@ __global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, d
         y2 = normFactorY*(dataY[c + 1] + offsetY);
         pointDistance = sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j));
         if (checkIfInBox(k, j, (int)x1, (int)y1, (int)x2, (int)y2, (int)(6 * lineWidth))) {
-            if (k < x1 || k > x2 || ((j > (y1 + 1)) && (j > (y2 + 1))) || ((j < (y1 - 1)) && (j < (y2 - 1)))) {
+            
+            //if (k < x1 || k > x2 || ((j > (y1 + 1)) && (j > (y2 + 1))) || ((j < (y1 - 1)) && (j < (y2 - 1)))) {
+            if ((k < x1-1) || (k > x2+1) || ((j > (y1 + 1)) && (j > (y2 + 1))) || ((j < (y1 - 1)) && (j < (y2 - 1)))){
                 lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
             }
             else {
                 positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
                 lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
             }
+            
+
+            //end add
             lineDistance /= lineWidth;
             pointDistance /= markerWidth;
             plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
@@ -977,7 +984,7 @@ int runRK4Step(struct cudaLoop s, int stepNumber) {
         if (s.hasPlasma) {
             cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent1, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency1);
             cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent2, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency2);
-            plasmaCurrentKernel<<<s.Nspace, 1>>>(s);
+            plasmaCurrentKernel<<<(unsigned int)s.Nspace, 1>>>(s);
         }
     }
 
@@ -993,10 +1000,10 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
     double w0, wz, zR, Rz, phi; //Gaussian beam parameters
     double theta = 0; //rotation angle of the current beam
     double pulseSum = 0;
-    std::complex<double> ne, no, n0; //active refractive index;
+    std::complex<double> ne, no; //active refractive index;
     double f, w; //active frequency;
     double pulseEnergySum;
-    std::complex<double> ko, k0, specfac, specphase;
+    std::complex<double> ko, specfac, specphase;
     double c = 2.99792458e8; //speed of light
     double eps0 = 8.8541878128e-12; //vacuum permittivity
     double pi = 3.14159265358979323846264338327950288; // pi to unneccessary precision
@@ -1009,13 +1016,7 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
     pulse2f = (std::complex<double>*)calloc((*s).Ngrid * 2, sizeof(std::complex<double>));
     std::complex<double> Eb;
     std::complex<double> ii(0, 1);
-
-
-
     std::complex<double> polFactor1, polFactor2; //complex phase/amplitude factors for the polarization components
-    sellmeier(&n0, &no, (*s).sellmeierCoefficients, (*s).frequency1, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-    (*s).neref = real(n0);
-    (*s).noref = imag(n0);
 
 
     //define pulse 1 in mixed space
@@ -1050,7 +1051,6 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
         ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
         no = (*s).refractiveIndex2[i + (*s).Ntime * j];
         ko = 2 * pi * no * f / c;
-        k0 = 2 * pi * real(n0) * f / c;
         zR = pi * w0 * w0 * real(ne) * f / c;
         if (f == 0) {
             zR = 1e3;
@@ -1068,7 +1068,6 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
                 Rz = 1.0e15;
             }
             phi = atan(z / zR);
-            //z = 0;
             Eb = (w0 / wz) * exp(-ii * (real(ko) * (z-zB) + real(ko) * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
             Eb *= specfac;
             if (isnan(cModulusSquared(Eb)) || f<=0) {
@@ -1158,7 +1157,6 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
         ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
         no = (*s).refractiveIndex2[i + (*s).Ntime * j];
         ko = 2 * pi * no * f / c;
-        k0 = 2 * pi * real(n0) * f / c;
         zR = pi * w0 * w0 * real(ne) * f / c;
         if (f == 0) {
             zR = 1e3;
@@ -1508,13 +1506,7 @@ int fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long 
 //phi is the other crystal angle (currently unused because biaxials haven't been implemented)
 //type is the kind of crystal (0: isotropic, 1: uniaxial, 2:biaxial) 
 //eqn will switch to a different equation, in the future, currently not implemented
-//current equation form:
-//n^2 = a[0] //background (high freq) contribution
-//      + (a[1] + a[2] * lambda^2) / (lambda^2 + a[3]) + (a[4] + a[5] * lambda^2)/ (lambda^2 + a[6]) //two resonances, purely real contribution
-//      + (a[7] + a[8] * lambda^2) / (lambda^2 + a[9]) + (a[10] + a[11] * lambda^2) / (lambda^2 + a[12]) //two more resonances
-//      + a[13] * lambda^2 + a[14] * lambda^4 + a[15] * lambda^6 //parametrized low-frequency correction
-//      + 4*pi*e^2*a[16]/(a[17] - omega^2 + i * a[18] * omega) // complex-valued Lorenzian contribution (a[17] to zero for Drude)
-//      + 4*pi*e^2*a[19]/(a[20] - omega^2 + i * a[21] * omega) // complex-valued Lorenzian contribution (a[21] to zero for Drude)
+//REPLACED BY CUDA VERSION, DELETE LATER
 std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn) {
     if (f == 0) return 1; //exit immediately for f=0
 
