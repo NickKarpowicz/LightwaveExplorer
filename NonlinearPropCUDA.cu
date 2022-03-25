@@ -23,15 +23,14 @@ __device__ cuDoubleComplex operator*(cuDoubleComplex a, double b) { return cuCmu
 __device__ cuDoubleComplex operator*(double b, cuDoubleComplex a) { return cuCmul(a, make_cuDoubleComplex(b, 0.0)); }
 
 //complex exponential function for CUDA
-__device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z)
-{
-    cuDoubleComplex res;
-    double t = exp(z.x);
-    res.y = sin(z.y);
-    res.x = cos(z.y);
-    res.x *= t;
-    res.y *= t;
-    return res;
+__device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z){
+    cuDoubleComplex expZ;
+    double r = exp(z.x);
+    expZ.y = sin(z.y);
+    expZ.x = cos(z.y);
+    expZ.x *= r;
+    expZ.y *= r;
+    return expZ;
 }
 
 //check if the pixel (xi,yi) is in the box defined by points (x1,y1) and (x2,y2)
@@ -116,21 +115,31 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
         cuDoubleComplex na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
         cuDoubleComplex nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
         cuDoubleComplex nc = sellmeierSubfunctionCuda(&a[44], ls, omega, ii, kL);
+        double cosTheta = cos(theta);
+        double cosTheta2 = cosTheta * cosTheta;
+        double sinTheta = sin(theta);
+        double sinTheta2 = sinTheta * sinTheta;
+        double sinPhi = sin(phi);
+        double sinPhi2 = sinPhi * sinPhi;
+        double cosPhi = cos(phi);
+        double cosPhi2 = cosPhi * cosPhi;
+        double realna2 = cuCreal(na) * cuCreal(na);
+        double realnb2 = cuCreal(nb) * cuCreal(nb);
 
-        double delta = 0.5 * atan(-((1. / cuCreal(na)*cuCreal(na) - 1. / (cuCreal(nb)*cuCreal(nb))) 
-            * sin(2 * phi) * cos(theta)) / ((cos(phi)*cos(phi) / (cuCreal(na) * cuCreal(na)) + sin(phi)*sin(phi) / (cuCreal(nb) * cuCreal(nb))) 
-            + ((sin(phi)*sin(phi) /(cuCreal(na) * cuCreal(na)) + cos(phi)*cos(phi) / (cuCreal(nb) * cuCreal(nb))) 
-                * cos(theta)*cos(theta) + sin(theta)*sin(theta) / (cuCreal(nc) * cuCreal(nc)))));
+        double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2) 
+            * sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2) 
+            + ((sinPhi2 /realna2 + cosPhi2 / realnb2) 
+                * cosTheta2 + sinTheta2 / (cuCreal(nc) * cuCreal(nc)))));
 
-        ne[0] = 1.0/cuCsqrt(cos(delta) * cos(delta) * (cos(theta) * cos(theta) * (cos(phi)*cos(phi) / (na * na) 
-            + sin(phi) *sin(phi) / (nb * nb)) + sin(theta) * sin(theta) / (nc*nc)) 
-            + sin(delta) * sin(delta) * (sin(phi) * sin(phi) / (na*na) + cos(phi)*cos(phi) / (nb*nb)) 
-            - 0.5*sin(2 * phi)*cos(theta)*sin(2 * delta)*(1. / (na*na) - 1. / (nb*nb)));
+        ne[0] = 1.0/cuCsqrt(cos(delta) * cos(delta) * (cosTheta2 * (cosPhi2 / (na * na) 
+            + sinPhi2 / (nb * nb)) + sinTheta2 / (nc*nc)) 
+            + sin(delta) * sin(delta) * (sinPhi2 / (na*na) + cosPhi2 / (nb*nb)) 
+            - 0.5*sin(2 * phi)*cosTheta*sin(2 * delta)*(1. / (na*na) - 1. / (nb*nb)));
 
-        no[0] = 1.0/cuCsqrt(sin(delta) * sin(delta) * (cos(theta) * cos(theta) * (cos(phi) * cos(phi) / (na * na) 
-            + sin(phi) *sin(phi) / (nb * nb)) + sin(theta)*sin(theta) / (nc*nc)) 
-            + cos(delta)*cos(delta) * (sin(phi)*sin(phi) / (na*na) + cos(phi)*cos(phi) / (nb*nb)) 
-            + 0.5 * sin(2 * phi)*cos(theta)*sin(2 * delta)*(1. / (na*na) - 1. / (nb*nb)));
+        no[0] = 1.0/cuCsqrt(sin(delta) * sin(delta) * (cosTheta2 * (cosPhi2 / (na * na) 
+            + sinPhi2 / (nb * nb)) + sinTheta2 / (nc*nc)) 
+            + cos(delta)*cos(delta) * (sinPhi2 / (na*na) + cosPhi2 / (nb*nb)) 
+            + 0.5 * sin(2 * phi)*cosTheta*sin(2 * delta)*(1. / (na*na) - 1. / (nb*nb)));
         return ne[0];
     }
 }
@@ -363,9 +372,6 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struc
 
     //transverse wavevector being resolved
     double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
-
-
-
     sellmeierCuda(&n0, &no, sellmeierCoefficients, abs(s.f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
     sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
     if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
@@ -445,8 +451,8 @@ __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
 
     //using only one value of chi3, under assumption of centrosymmetry
     if (s.nonlinearSwitches[1] == 2) {
-        s.gridPolarizationTime1[i] += s.chi3Tensor[0] * (Ex * Ex * Ex + Ey * Ey * Ex / 3.);
-        s.gridPolarizationTime2[i] += s.chi3Tensor[0] * (Ey * Ey * Ey + Ex * Ex * Ey / 3.);
+        s.gridPolarizationTime1[i] += s.chi3Tensor[0] * (Ex * Ex * Ex + (2. / 3.) * Ey * Ey * Ex);
+        s.gridPolarizationTime2[i] += s.chi3Tensor[0] * (Ey * Ey * Ey + (2. / 3.) * Ex * Ex * Ey);
     }
 }
 
@@ -808,13 +814,15 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     memErrors += cudaMalloc((void**)&s.plasmaParameters, sizeof(double) * 6);
     memErrors += cudaMalloc((void**)&s.propagationInts, sizeof(long long) * 4);
     (*sCPU).memoryError = memErrors;
+    if (memErrors > 0) {
+        return memErrors;
+    }
 
     //prepare effective nonlinearity tensors and put them on the GPU
     size_t propagationIntsCPU[4] = { s.Ngrid, s.Ntime, s.Nspace, (s.Ntime / 2 + 1) };
     double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
     for (i = 0; i < 6; i++) {
         firstDerivativeOperation[i] *= (-1.0/(s.Ngrid * s.dx));
-        //firstDerivativeOperation[i] = 1;
     }
 
     //set nonlinearSwitches[3] to the number of photons needed to overcome bandgap
@@ -832,8 +840,7 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     plasmaParametersCPU[0] = (*sCPU).nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
     plasmaParametersCPU[1] = (*sCPU).drudeGamma; //gamma
     plasmaParametersCPU[2] = (*sCPU).tStep * (*sCPU).tStep * 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * photon energy));
-    //plasmaParametersCPU[2] = 0;
-    //plasmaParametersCPU[3] = 0*1e-12*(*sCPU).frequency2;
+
     calcEffectiveChi2Tensor((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
     cudaMemcpy(s.chi2Tensor, (*sCPU).deffTensor, 9 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int), cudaMemcpyHostToDevice);
@@ -855,7 +862,6 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
         preparePropagation2DCartesian(sCPU, s);
     }
     
-
     //generate the pulses, either through prepareElectricFieldArrays() if this is the first in the series, or by copying
     //the output of the last simulation in the sequence
     if ((*sCPU).isFollowerInSequence) {
@@ -904,14 +910,6 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     cudaMemcpy(&(*sCPU).ExtOut[s.Ngrid], s.gridETime2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridEFrequency2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
-    /* diagnosis of plasma current
-    cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridPlasmaCurrent1, (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-    double* plasmaPointer = (double*)&(*sCPU).EkwOut[s.Ngrid];
-    for (i = 0; i < s.Ngrid; i++) {
-        (*sCPU).ExtOut[s.Ngrid + i] = plasmaPointer[i];
-    }
-    cudaMemcpy(&(*sCPU).ExtOut[s.Ngrid], s.gridRadialLaplacian1, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-    */
     cudaDeviceSynchronize();
     
     //Free GPU memory
@@ -1678,7 +1676,7 @@ int rotateField(struct propthread *s, double rotationAngle) {
     cudaMalloc((void**)&Eout1, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMalloc((void**)&Eout2, (*s).Ngrid * sizeof(cuDoubleComplex));
     size_t Nthread = THREADS_PER_BLOCK;
-    size_t Nblock = (size_t)((*s).Ngrid / THREADS_PER_BLOCK);
+    size_t Nblock = (unsigned int)((*s).Ngrid / THREADS_PER_BLOCK);
 
     cudaMemcpy(Ein1, (*s).EkwOut, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     cudaMemcpy(Ein2, &(*s).EkwOut[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);

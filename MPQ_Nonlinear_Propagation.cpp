@@ -1,5 +1,4 @@
 #define _CRT_SECURE_NO_DEPRECATE
-#define _CRT_SECURE_NO_WARNINGS
 #include "framework.h"
 #include "MPQ_Nonlinear_Propagation.h"
 #include "NonlinearPropCUDA.cuh"
@@ -17,12 +16,10 @@
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111
 #define ID_BTNGETFILENAME 11112
-#define ID_BTNREFRESHDB 11114
-#define ID_CBSAVEPSI 11113
-#define ID_BTNSTOP 11115
-#define ID_BTNPULSE1 11116
-#define ID_BTNPULSE2 11117
-
+#define ID_BTNREFRESHDB 11113
+#define ID_BTNSTOP 11114
+#define ID_BTNPULSE1 11115
+#define ID_BTNPULSE2 11116
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -41,7 +38,6 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
 
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
@@ -256,7 +252,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbCircularity2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 26 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbFileNameBase = CreateWindow(TEXT("Edit"), TEXT("TestFile"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow3, 1 * vs, 775, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
-    maingui.tbMaterialIndex = CreateWindow(TEXT("Edit"), TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbMaterialIndex = CreateWindow(TEXT("Edit"), TEXT("2"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalTheta = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalPhi = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
@@ -270,7 +266,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbTimeSpan = CreateWindow(TEXT("Edit"), TEXT("448"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbTimeStepSize = CreateWindow(TEXT("Edit"), TEXT("0.5"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalThickness = CreateWindow(TEXT("Edit"), TEXT("400"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbXstep = CreateWindow(TEXT("Edit"), TEXT("25"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbXstep = CreateWindow(TEXT("Edit"), TEXT("50"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
     maingui.tbBatchDestination = CreateWindow(TEXT("Edit"), TEXT("20"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 16 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbNumberSims = CreateWindow(TEXT("Edit"), TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 17 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -364,7 +360,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     
     //read the crystal database
-    crystalDatabasePtr = (struct crystalentry*)calloc(512, sizeof(struct crystalentry));
+    crystalDatabasePtr = (struct crystalentry*)calloc(MAX_LOADSTRING, sizeof(struct crystalentry));
     readCrystalDatabase(crystalDatabasePtr, TRUE);
 
     //make the active set pointer
@@ -920,8 +916,7 @@ int appendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
 }
 
 int readCrystalDatabase(struct crystalentry* db, bool isVerbose) {
-    int maxEntries = 64;
-    int i;
+    int i = -1;
     double* fd;
     FILE* fp;
     fp = fopen("CrystalDatabase.txt","r");
@@ -935,56 +930,54 @@ int readCrystalDatabase(struct crystalentry* db, bool isVerbose) {
     if (isVerbose) {
         flushMessageBuffer();
         swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("Reading crystal database file in verbose mode\r\n"));
+            _T("Reading crystal database file\r\n"));
         appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
     }
     //read the entries line
     int readErrors = 0;
-    readErrors += 1==fscanf(fp, "Total entries: %d\n", &maxEntries);
 
-    for (i = 0; i < maxEntries; i++){
-        readErrors += 1 == fwscanf(fp, _T("Name:\n%[^\n]\n"), db[i].crystalNameW);
-        readErrors += 1 == fscanf(fp, "Type:\n%d\n", &db[i].axisType);
-        readErrors += 1 == fscanf(fp, "Sellmeier equation:\n%d\n", &db[i].sellmeierType);
+    while(readErrors == 0 && i<MAX_LOADSTRING){
+        i++;
+        readErrors += 1 != fwscanf(fp, _T("Name:\n%[^\n]\n"), db[i].crystalNameW);
+        readErrors += 1 != fscanf(fp, "Type:\n%d\n", &db[i].axisType);
+        readErrors += 1 != fscanf(fp, "Sellmeier equation:\n%d\n", &db[i].sellmeierType);
         fd = &db[i].sellmeierCoefficients[0];
-        readErrors += 22 == fscanf(fp, "1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 22 != fscanf(fp, "1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         fd = &db[i].sellmeierCoefficients[22];
-        readErrors += 22 == fscanf(fp, "2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 22 != fscanf(fp, "2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         fd = &db[i].sellmeierCoefficients[44];
-        readErrors += 22 == fscanf(fp, "3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-        readErrors += 1 == fwscanf(fp, _T("Sellmeier reference:\n%[^\n]\n"), db[i].sellmeierReference);
-        readErrors += 1 == fscanf(fp, "chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
+        readErrors += 22 != fscanf(fp, "3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 1 != fwscanf(fp, _T("Sellmeier reference:\n%[^\n]\n"), db[i].sellmeierReference);
+        readErrors += 1 != fscanf(fp, "chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
         fd = &db[i].d[0];
-        readErrors += 18 == fscanf(fp, "d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
-        readErrors += 1 == fwscanf(fp, _T("d reference:\n%[^\n]\n"), db[i].dReference);
-        readErrors += 1 == fscanf(fp, "chi3 type:\n%d\n", &db[i].nonlinearSwitches[1]);
+        readErrors += 18 != fscanf(fp, "d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
+        readErrors += 1 != fwscanf(fp, _T("d reference:\n%[^\n]\n"), db[i].dReference);
+        readErrors += 1 != fscanf(fp, "chi3 type:\n%d\n", &db[i].nonlinearSwitches[1]);
         fd = &db[i].chi3[0];
-        readErrors += 9 == fscanf(fp, "chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 9 != fscanf(fp, "chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
         fd = &db[i].chi3[9];
-        readErrors += 9 == fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 9 != fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
         fd = &db[i].chi3[18];
-        readErrors += 9 == fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
-        readErrors += 1 == fwscanf(fp, _T("chi3 reference:\n%[^\n]\n"), db[i].chi3Reference);
-        readErrors += 1 == fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
-        readErrors += 0 == fscanf(fp, "~~~crystal end~~~\n");
-        if (isVerbose) {
+        readErrors += 9 != fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 1 != fwscanf(fp, _T("chi3 reference:\n%[^\n]\n"), db[i].chi3Reference);
+        readErrors += 1 != fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
+        readErrors += 0 != fscanf(fp, "~~~crystal end~~~\n");
+        if (isVerbose && readErrors == 0) {
             flushMessageBuffer();
             swprintf_s(messageBuffer, MAX_LOADSTRING,
                 _T("Material %i name: %s\r\n"), i, db[i].crystalNameW);
             appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
         }
-
-
     }
     fclose(fp);
 
     flushMessageBuffer();
     swprintf_s(messageBuffer, MAX_LOADSTRING,
-        _T("Read %i entries\r\n"), (int)(maxEntries));
+        _T("Read %i entries\r\n"), i);
     appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
 
-    return readErrors;
+    return i;
 }
 
 //returns a string containing the text in a text box

@@ -1,0 +1,198 @@
+Name:
+Vacuum
+Type:
+0
+Sellmeier equation:
+0
+1st axis coefficients:
+1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+None.
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+None.
+chi3 type:
+0
+chi3:
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+None.
+Spectral file:
+None
+~~~crystal end~~~
+Name:
+BBO
+Type:
+1
+Sellmeier equation:
+0
+1st axis coefficients:
+2.7359 0.01878 0 -0.01822 0 0 1 0 0 1 0 0 1 -0.01471 0.0006081 -0.00006740 0 0 0 0 0 0
+2nd axis coefficients:
+2.3753 0.01224 0 -0.01667 0 0 1 0 0 1 0 0 1 -0.01627 0.0005716 -0.00006305 0 0 0 0 0 0
+3rd axis coefficients:
+2.3753 0.01224 0 -0.01667 0 0 1 0 0 1 0 0 1 -0.01627 0.0005716 -0.00006305 0 0 0 0 0 0
+Sellmeier reference:
+D. Zhang et al., Optics Communications 184, 485 (2000).
+chi2 type:
+1
+d:
+0 0 0 0 0.08 2.2
+2.2 -2.2 0 0.08 0 0
+0.08 0.08 0 0 0 0
+d reference:
+SNLO
+chi3 type:
+0
+chi3:
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Empty matrix awaiting input
+Spectral file:
+None
+~~~crystal end~~~
+Name:
+TiO2 Rutile (Absorption on, o-axis only)
+Type:
+0
+Sellmeier equation:
+0
+1st axis coefficients:
+0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 2e22 3.46498338898e+29 1e13
+2nd axis coefficients:
+0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 2e22 3.46498338898e+29 1e13
+3rd axis coefficients:
+0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 2e22 3.46498338898e+29 1e13
+Sellmeier reference:
+Fit based on DeVore and Del Mar Photonics data
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+None
+chi3 type:
+2
+chi3:
+1e-19 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Single isotropic value
+Spectral file:
+None
+~~~crystal end~~~
+Name:
+BiBO
+Type:
+2
+Sellmeier equation:
+0
+1st axis coefficients:
+3.07403 0.03231 0 -0.03163 0 0 1 0 0 1 0 0 1 -0.013376 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+3.16940 0.03717 0 -0.03483 0 0 1 0 0 1 0 0 1 -0.01827 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+3.6545 0.05112 0 -0.03713 0 0 1 0 0 1 0 0 1 -0.02261 0 0 0 0 0 0 0 0
+Sellmeier reference:
+Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007)
+chi2 type:
+1
+d:
+2.53 2.93 -1.93 1.63 0 0  
+0 0 0 0 1.67 3.48
+0 0 0 0 -1.58 1.67
+d reference:
+M. Ghotbi and M. Ebrahim-Zadeh, Optics Express 12, 6002-6019 (2004).
+chi3 type:
+0
+chi3:
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Empty matrix awaiting input
+Spectral file:
+None
+~~~crystal end~~~
+Name:
+alpha Quartz (SiO2)
+Type:
+2
+Sellmeier equation:
+0
+1st axis coefficients:
+1.28604141 0 1.07044083 -1.00585997e-2 0 1.19292242 -100 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1.28604141 0 1.07044083 -1.00585997e-2 0 1.19292242 -100 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1.28851804 0 1.09509924 -1.02101864e-2 0 1.15662475 -100 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+G. Ghosh, Optics Communications 163, 95-102 (1999).
+chi2 type:
+1
+d:
+0.18 -0.18 0 0 0 0
+0 0 0 0 0 -0.18
+0 0 0 0 0 0
+d reference:
+(old code, look up later)
+chi3 type:
+1
+chi3:
+2.6e-22 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Empty matrix awaiting input
+Spectral file:
+None
+~~~crystal end~~~
+Name:
+Fused silica
+Type:
+0
+Sellmeier equation:
+0
+1st axis coefficients:
+1 0 0.6961663 -0.00467914825849 0 0.4079426 -0.013512063074 0 0.8974794 -97.9340025379 0 0 1 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1 0 0.6961663 -0.00467914825849 0 0.4079426 -0.013512063074 0 0.8974794 -97.9340025379 0 0 1 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1 0 0.6961663 -0.00467914825849 0 0.4079426 -0.013512063074 0 0.8974794 -97.9340025379 0 0 1 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+I. H. Malitson, JOSA 55, 1205-1208 (1965).
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+none
+chi3 type:
+1
+chi3:
+2.5e-22 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+single value
+Spectral file:
+None
+~~~crystal end~~~
