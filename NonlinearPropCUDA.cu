@@ -456,6 +456,7 @@ __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
     }
 }
 
+
 //Plasma response with time-dependent carrier density
 //This polarization needs a different factor in the nonlinear wave equation
 //to account for the integration
@@ -467,51 +468,6 @@ __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
 //equation for the plasma current:
 //J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
 //J_absorption(t) = beta*E^(2*Nphot-2)*E
-__global__ void plasmaCurrentKernel(struct cudaLoop s) {
-    long long i = threadIdx.x + blockIdx.x * blockDim.x;
-    int j,k,l;
-    double N = 0;
-    double integralx = 0;
-    double integraly = 0;
-    double t, w, Esquared, Ex, Ey;
-
-    for (j = 0; j < s.Ntime; j++) {
-
-        l = j + i * s.Ntime;
-        t = j * s.dt;
-
-        Ex = cuCreal(s.gridETime1[l]) / s.propagationInts[0];
-        Ey = cuCreal(s.gridETime2[l]) / s.propagationInts[0];
-        Esquared = Ex * Ex + Ey * Ey;
-        //plasmaParameters[0] is the nonlinear absorption parameter
-        w = s.plasmaParameters[0]*Esquared;
-        //nonlinearSwitches[3] is Nphotons-2
-        for (k = 0; k < s.nonlinearSwitches[3]; k++) {
-            w *= Esquared;
-        }
-        //absorption currents
-        s.gridPlasmaCurrent1[l] = w * Ex;
-        s.gridPlasmaCurrent2[l] = w * Ey;
-
-        //plasmaParameters[2] is the 1/photon energy, translating the loss of power
-        //from the field to the number of free carriers
-        //extra factor of (dt^2e^2/m) included as it is needed for the amplitude
-        //of the plasma current
-        N += s.plasmaParameters[2] * (s.gridPlasmaCurrent1[l]*Ex + s.gridPlasmaCurrent2[l] * Ey);
-
-        //from here on Esquared in the current amplitude factor
-        //plasmaParameters[1] is the Drude momentum damping (gamma)
-        Esquared = exp(s.plasmaParameters[1] * t);
-        integralx += Esquared * N * Ex;
-        integraly += Esquared * N * Ey;
-
-        Esquared = 1/Esquared;
-        
-        s.gridPlasmaCurrent1[l] += Esquared * integralx;
-        s.gridPlasmaCurrent2[l] += Esquared * integraly;
-    }
-}
-
 __global__ void plasmaCurrentKernelPrep(struct cudaLoop s, double* workN, double* workEx) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -533,7 +489,7 @@ __global__ void plasmaCurrentKernelPrep(struct cudaLoop s, double* workN, double
 
     //plasmaParameters[2] is the 1/photon energy, translating the loss of power
     //from the field to the number of free carriers
-    //extra factor of (dt^2e^2/m) included as it is needed for the amplitude
+    //extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
     //of the plasma current
     workN[i] = s.plasmaParameters[2] * (s.gridPlasmaCurrent1[i] * Ex + s.gridPlasmaCurrent2[i] * Ey);
     workEx[i] = Ex;
@@ -549,15 +505,12 @@ __global__ void plasmaCurrentKernel2(struct cudaLoop s, double* workN, double* w
     double* expMinusGammaT = &s.expGammaT[s.Ntime];
 
     long long k, l;
-    //j = i / s.Ntime; //spatial coordinate
     j *= s.Ntime;
     for (k = 0; k < s.Ntime; k++) {
 
         l = j + k;
         N += workN[l];
 
-        //from here on Esquared in the current amplitude factor
-        //plasmaParameters[1] is the Drude momentum damping (gamma)
         integralx += s.expGammaT[k] * N * workEx[l];
         integraly += s.expGammaT[k] * N * workEy[l];
 
@@ -779,7 +732,7 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
 
 
     //initialize and take values from the struct handed over by the dispatcher
-    long long i;
+    unsigned long long i;
     s.Ntime = (*sCPU).Ntime;
     s.Nspace = (*sCPU).Nspace;
     s.dt = (*sCPU).tStep;
@@ -903,7 +856,7 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     
     plasmaParametersCPU[0] = (*sCPU).nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
     plasmaParametersCPU[1] = (*sCPU).drudeGamma; //gamma
-    plasmaParametersCPU[2] = (*sCPU).tStep * (*sCPU).tStep * 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * photon energy));
+    plasmaParametersCPU[2] = (1. / 8.8541878128e-12)*(*sCPU).tStep * (*sCPU).tStep * 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * band gap));
 
     calcEffectiveChi2Tensor((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
     cudaMemcpy(s.chi2Tensor, (*sCPU).deffTensor, 9 * sizeof(double), cudaMemcpyHostToDevice);
@@ -1743,8 +1696,8 @@ int rotateField(struct propthread *s, double rotationAngle) {
     cudaMalloc((void**)&Ein2, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMalloc((void**)&Eout1, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMalloc((void**)&Eout2, (*s).Ngrid * sizeof(cuDoubleComplex));
-    size_t Nthread = THREADS_PER_BLOCK;
-    size_t Nblock = (unsigned int)((*s).Ngrid / THREADS_PER_BLOCK);
+    unsigned int Nthread = THREADS_PER_BLOCK;
+    unsigned int Nblock = (unsigned int)((*s).Ngrid / THREADS_PER_BLOCK);
 
     cudaMemcpy(Ein1, (*s).EkwOut, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     cudaMemcpy(Ein2, &(*s).EkwOut[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
