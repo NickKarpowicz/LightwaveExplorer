@@ -434,8 +434,8 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
 //in the time domain
 __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
-    double Ex = cuCreal(s.gridETime1[i]) / s.propagationInts[0];
-    double Ey = cuCreal(s.gridETime2[i]) / s.propagationInts[0];
+    double Ex = 2*cuCreal(s.gridETime1[i]) / s.propagationInts[0];
+    double Ey = 2*cuCreal(s.gridETime2[i]) / s.propagationInts[0];
     s.gridPolarizationTime1[i] = 0.;
     s.gridPolarizationTime2[i] = 0.;
 
@@ -509,6 +509,61 @@ __global__ void plasmaCurrentKernel(struct cudaLoop s) {
         
         s.gridPlasmaCurrent1[l] += Esquared * integralx;
         s.gridPlasmaCurrent2[l] += Esquared * integraly;
+    }
+}
+
+__global__ void plasmaCurrentKernelPrep(struct cudaLoop s, double* workN, double* workEx) {
+    long long i = threadIdx.x + blockIdx.x * blockDim.x;
+
+    int k;
+    double* workEy = &workEx[s.Ngrid];
+    double w, Esquared, Ex, Ey;
+    Ex = cuCreal(s.gridETime1[i]) / s.propagationInts[0];
+    Ey = cuCreal(s.gridETime2[i]) / s.propagationInts[0];
+    Esquared = Ex * Ex + Ey * Ey;
+    //plasmaParameters[0] is the nonlinear absorption parameter
+    w = s.plasmaParameters[0] * Esquared;
+    //nonlinearSwitches[3] is Nphotons-2
+    for (k = 0; k < s.nonlinearSwitches[3]; k++) {
+        w *= Esquared;
+    }
+    //absorption currents
+    s.gridPlasmaCurrent1[i] = w * Ex;
+    s.gridPlasmaCurrent2[i] = w * Ey;
+
+    //plasmaParameters[2] is the 1/photon energy, translating the loss of power
+    //from the field to the number of free carriers
+    //extra factor of (dt^2e^2/m) included as it is needed for the amplitude
+    //of the plasma current
+    workN[i] = s.plasmaParameters[2] * (s.gridPlasmaCurrent1[i] * Ex + s.gridPlasmaCurrent2[i] * Ey);
+    workEx[i] = Ex;
+    workEy[i] = Ey;
+
+}
+__global__ void plasmaCurrentKernel2(struct cudaLoop s, double* workN, double* workEx) {
+    long long j = threadIdx.x + blockIdx.x * blockDim.x;
+    double N = 0;
+    double integralx = 0;
+    double integraly = 0;
+    double* workEy = &workEx[s.Ngrid];
+    double* expMinusGammaT = &s.expGammaT[s.Ntime];
+
+    long long k, l;
+    //j = i / s.Ntime; //spatial coordinate
+    j *= s.Ntime;
+    for (k = 0; k < s.Ntime; k++) {
+
+        l = j + k;
+        N += workN[l];
+
+        //from here on Esquared in the current amplitude factor
+        //plasmaParameters[1] is the Drude momentum damping (gamma)
+        integralx += s.expGammaT[k] * N * workEx[l];
+        integraly += s.expGammaT[k] * N * workEy[l];
+
+
+        s.gridPlasmaCurrent1[l] += expMinusGammaT[k] * integralx;
+        s.gridPlasmaCurrent2[l] += expMinusGammaT[k] * integraly;
     }
 }
 
@@ -806,6 +861,15 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     memErrors += cudaMalloc((void**)&s.gridPlasmaCurrent2, sizeof(double) * s.Ngrid);
     cudaMemset(s.gridPlasmaCurrent2, 0, sizeof(double) * s.Ngrid);
 
+    memErrors += cudaMalloc((void**)&s.expGammaT, 2 * sizeof(double) * s.Ntime);
+    double* expGammaTCPU = (double*)malloc(2 * sizeof(double) * s.Ntime);
+    for (i = 0; i < s.Ntime; i++) {
+        expGammaTCPU[i] = exp(s.dt * i * (*sCPU).drudeGamma);
+        expGammaTCPU[i + s.Ntime] = exp(-s.dt * i * (*sCPU).drudeGamma);
+    }
+    cudaMemcpy(s.expGammaT, expGammaTCPU, 2 * sizeof(double) * s.Ntime, cudaMemcpyHostToDevice);
+    free(expGammaTCPU);
+
     memErrors += cudaMalloc((void**)&s.chi2Tensor, sizeof(double) * 9);
     memErrors += cudaMalloc((void**)&s.firstDerivativeOperation, sizeof(double) * 6);
     memErrors += cudaMalloc((void**)&s.chi3Tensor, sizeof(double) * 81);
@@ -941,6 +1005,7 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
     cudaFree(s.gridPolarizationTime2);
     cudaFree(s.chi2Tensor);
     cudaFree(s.chi3Tensor);
+    cudaFree(s.expGammaT);
     cufftDestroy(s.fftPlan);
     cufftDestroy(s.polfftPlan);
     cudaFree(s.plasmaParameters);
@@ -980,9 +1045,12 @@ int runRK4Step(struct cudaLoop s, int stepNumber) {
         }
 
         if (s.hasPlasma) {
+            plasmaCurrentKernelPrep << <s.Nblock, s.Nthread >> > (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
+            plasmaCurrentKernel2 << <(unsigned int)s.Nspace, 1 >> > (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
+            //plasmaCurrentKernel << <(unsigned int)s.Nspace, 1 >> > (s);
             cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent1, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency1);
             cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent2, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency2);
-            plasmaCurrentKernel<<<(unsigned int)s.Nspace, 1>>>(s);
+            
         }
     }
 

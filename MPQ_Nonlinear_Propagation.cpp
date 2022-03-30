@@ -222,7 +222,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 
     //text boxes for input parameters
-    maingui.tbPulseEnergy1 = CreateWindow(TEXT("Edit"), TEXT("240e-9"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPulseEnergy1 = CreateWindow(TEXT("Edit"), TEXT("24e-9"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbPulseEnergy2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbFrequency1 = CreateWindow(TEXT("Edit"), TEXT("130"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbFrequency2 = CreateWindow(TEXT("Edit"), TEXT("200"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -233,16 +233,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbCEPhase2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbPulse1Delay = CreateWindow(TEXT("Edit"), TEXT("-90"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbPulse2Delay = CreateWindowW(TEXT("Edit"), TEXT("-20"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbGDD1 = CreateWindow(TEXT("Edit"), TEXT("65"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbGDD1 = CreateWindow(TEXT("Edit"), TEXT("20"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbGDD2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTOD1 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 13 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbTOD1 = CreateWindow(TEXT("Edit"), TEXT("65"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 13 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbTOD2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 14 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
     maingui.tbBeamwaist1 = CreateWindow(TEXT("Edit"), TEXT("4"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 15 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbBeamwaist2 = CreateWindow(TEXT("Edit"), TEXT("50"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 16 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbXoffset1 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 17 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbXoffset2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 18 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbZoffset1 = CreateWindow(TEXT("Edit"), TEXT("-250"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 19 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbZoffset1 = CreateWindow(TEXT("Edit"), TEXT("-100"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 19 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbZoffset2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 20 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbPropagationAngle1 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 21 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbPropagationAngle2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 22 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -252,21 +252,21 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbCircularity2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 26 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbFileNameBase = CreateWindow(TEXT("Edit"), TEXT("TestFile"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow3, 1 * vs, 775, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
-    maingui.tbMaterialIndex = CreateWindow(TEXT("Edit"), TEXT("2"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbMaterialIndex = CreateWindow(TEXT("Edit"), TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalTheta = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalPhi = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
-    maingui.tbNonlinearAbsortion = CreateWindow(TEXT("Edit"), TEXT("0.5e-78"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbNonlinearAbsortion = CreateWindow(TEXT("Edit"), TEXT("3e-80"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbBandGap = CreateWindow(TEXT("Edit"), TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 4 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbDrudeGamma = CreateWindow(TEXT("Edit"), TEXT("10"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 5 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbEffectiveMass = CreateWindow(TEXT("Edit"), TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 6 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbGridXdim = CreateWindow(TEXT("Edit"), TEXT("179.2"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbRadialStepSize = CreateWindow(TEXT("Edit"), TEXT("0.7"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTimeSpan = CreateWindow(TEXT("Edit"), TEXT("448"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTimeStepSize = CreateWindow(TEXT("Edit"), TEXT("0.5"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbGridXdim = CreateWindow(TEXT("Edit"), TEXT("198.4"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbRadialStepSize = CreateWindow(TEXT("Edit"), TEXT("0.62"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbTimeSpan = CreateWindow(TEXT("Edit"), TEXT("358.4"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbTimeStepSize = CreateWindow(TEXT("Edit"), TEXT("0.7"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalThickness = CreateWindow(TEXT("Edit"), TEXT("400"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbXstep = CreateWindow(TEXT("Edit"), TEXT("50"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbXstep = CreateWindow(TEXT("Edit"), TEXT("12.5"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
     maingui.tbBatchDestination = CreateWindow(TEXT("Edit"), TEXT("20"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 16 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbNumberSims = CreateWindow(TEXT("Edit"), TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 17 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -703,7 +703,7 @@ int saveDataSet() {
     strcpy(outputpath, outputbase);
     strcat(outputpath, ".txt");
     textfile = fopen(outputpath, "w");
-    fprintf(textfile, "Amplitude 1: %e\nAmplitude 2: %e\nFrequency 1: %e\nFrequency 2: %e\nBandwidth 1: %e\nBandwidth 2: %e\n", (*activeSetPtr).pulseEnergy1, (*activeSetPtr).pulseEnergy2, (*activeSetPtr).frequency1, (*activeSetPtr).frequency2, (*activeSetPtr).bandwidth1, (*activeSetPtr).bandwidth2);
+    fprintf(textfile, "Pulse energy 1: %e\nPulse energy 2: %e\nFrequency 1: %e\nFrequency 2: %e\nBandwidth 1: %e\nBandwidth 2: %e\n", (*activeSetPtr).pulseEnergy1, (*activeSetPtr).pulseEnergy2, (*activeSetPtr).frequency1, (*activeSetPtr).frequency2, (*activeSetPtr).bandwidth1, (*activeSetPtr).bandwidth2);
     fprintf(textfile, "SG order: %i\nCEP 1: %e\nCEP 2: %e\nDelay 1: %e\nDelay 2: %e\nGDD 1: %e\nGDD 2: %e\nTOD 1: %e\nTOD 2: %e\n", (*activeSetPtr).sgOrder1, (*activeSetPtr).cephase1, (*activeSetPtr).cephase2, (*activeSetPtr).delay1, (*activeSetPtr).delay2, (*activeSetPtr).gdd1, (*activeSetPtr).gdd2, (*activeSetPtr).tod1, (*activeSetPtr).tod2);
     fprintf(textfile, "Beamwaist 1: %e\nBeamwaist 2: %e\nx offset 1: %e\nx offset 2: %e\nz offset 1: %e\nz offset 2: %e\nNC angle 1: %e\nNC angle 2: %e\n", (*activeSetPtr).beamwaist1, (*activeSetPtr).beamwaist2, (*activeSetPtr).x01, (*activeSetPtr).x02, (*activeSetPtr).z01, (*activeSetPtr).z02, (*activeSetPtr).propagationAngle1, (*activeSetPtr).propagationAngle2);
     fprintf(textfile, "Polarization 1: %e\nPolarization 2: %e\nCircularity 1: %e\nCircularity 2: %e\n", (*activeSetPtr).polarizationAngle1, (*activeSetPtr).polarizationAngle2, (*activeSetPtr).circularity1, (*activeSetPtr).circularity2);

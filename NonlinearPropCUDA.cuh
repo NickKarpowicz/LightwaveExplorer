@@ -46,6 +46,7 @@ struct cudaLoop {
 	double* gridPlasmaCurrent1;
 	double* gridPlasmaCurrent2;
 	double* absorptionParameters;
+	double* expGammaT;
 	int* nonlinearSwitches;
 	long long* propagationInts;
 	cufftHandle fftPlan;
