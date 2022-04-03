@@ -31,7 +31,6 @@ struct crystalentry* crystalDatabasePtr;        // Crystal info database
 bool isRunning = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
-wchar_t messageBuffer[MAX_LOADSTRING];
 
 // Forward declarations of (Microsoft) functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -64,10 +63,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
                 (*activeSetPtr).plotSim = j;
                 plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
                 if (activeSetPtr[j].memoryError > 0) {
-                    flushMessageBuffer();
-                    swprintf_s(messageBuffer, MAX_LOADSTRING,
-                        _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
-                    appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+                    printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
                 }
             }
         }
@@ -75,34 +71,21 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             solveNonlinearWaveEquation(&activeSetPtr[j]);
             (*activeSetPtr).plotSim = j;
             plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-            flushMessageBuffer();
-            swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12*activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
-            appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+            printToConsole(maingui.textboxSims, _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12 * activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
             
             if (activeSetPtr[j].memoryError > 0) {
-                flushMessageBuffer();
-                swprintf_s(messageBuffer, MAX_LOADSTRING,
-                    _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
-                appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+                printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
             }
         }
 
         if (cancellationCalled) {
-            flushMessageBuffer();
-            swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
-            appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+            printToConsole(maingui.textboxSims, _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
             break;
         }
     }
 
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    flushMessageBuffer();
-    swprintf_s(messageBuffer, MAX_LOADSTRING,
-        _T("Finished after %8.4lf s. \r\n"), 1e-6*(double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-    appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
-
+    printToConsole(maingui.textboxSims, _T("Finished after %8.4lf s. \r\n"), 1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet();
 
     free((*activeSetPtr).sequenceString);
@@ -189,16 +172,11 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
+// InitInstance is called by Windows when the program starts, this creates the main application window and
+// populates it with elements, and does initial preparations:
+// - dynamic allocations of crystal database and main struct pointer
+// - loading crystal database
+// - identify GPU
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance; // Store instance handle in our global variable
@@ -345,18 +323,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     struct cudaDeviceProp activeCUDADeviceProp;
     cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
     if (cuErr == cudaSuccess) {
-        flushMessageBuffer();
-        swprintf_s(messageBuffer, MAX_LOADSTRING, TEXT("Found GPU: "));
-        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        printToConsole(maingui.textboxSims, _T("Found GPU:"));
         size_t origsize = 256 + 1;
         const size_t newsize = 256;
         size_t convertedChars = 0;
         wchar_t wcstring[514];
         mbstowcs_s(&convertedChars, wcstring, origsize, activeCUDADeviceProp.name, _TRUNCATE);
         appendTextToWindow(maingui.textboxSims, wcstring, 256);
-        flushMessageBuffer();
-        swprintf_s(messageBuffer, MAX_LOADSTRING, TEXT("\r\n\r\n"));
-        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        printToConsole(maingui.textboxSims, _T("\r\n\r\n"));
     }
     
     //read the crystal database
@@ -369,16 +343,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     return TRUE;
 }
 
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE: Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
+// This function handles button presses and other interaction with the application window
+// to add a button, just give it an ID number and add it to the case structure
+// then put whatever code should run when the button is pressed in that case
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     HANDLE mainthread;
@@ -480,7 +447,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 int readParametersFromInterfaceAndAllocate() {
     if (isGridAllocated) {
-        isGridAllocated = FALSE;
+        isGridAllocated = TRUE;
         free((*activeSetPtr).ExtOut);
         free((*activeSetPtr).EkwOut);
         free((*activeSetPtr).Ext);
@@ -570,6 +537,8 @@ int readParametersFromInterfaceAndAllocate() {
     (*activeSetPtr).field1IsAllocated = FALSE;
     (*activeSetPtr).field2IsAllocated = FALSE;
 
+    //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
+    //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
     int frogLines = 0;
     if (pulse1FileType == 1) {
         char pulse1Path[MAX_LOADSTRING];
@@ -578,10 +547,7 @@ int readParametersFromInterfaceAndAllocate() {
 
         frogLines = loadFrogSpeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field1IsAllocated = TRUE;
-        flushMessageBuffer();
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
-        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        printToConsole(maingui.textboxSims, _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
 
     }
     if (pulse2FileType == 1) {
@@ -590,12 +556,11 @@ int readParametersFromInterfaceAndAllocate() {
 
         frogLines = loadFrogSpeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
         if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
-        flushMessageBuffer();
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("loaded FROG file 2 (%i lines).\r\n"), frogLines);
-        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        printToConsole(maingui.textboxSims, _T("loaded FROG file 2 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
     }
 
+
+    //read the sequence string (if there is one), convert it into an array if it exists
     (*activeSetPtr).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
     (*activeSetPtr).sequenceArray = (double*)calloc(256 * MAX_LOADSTRING, sizeof(double));
     getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
@@ -615,6 +580,9 @@ int readParametersFromInterfaceAndAllocate() {
     (*activeSetPtr).isInSequence = ((*activeSetPtr).Nsequence > 0);
 
 
+
+
+    //Allocations
     (*activeSetPtr).Ext = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
     (*activeSetPtr).Ekw = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
 
@@ -627,7 +595,7 @@ int readParametersFromInterfaceAndAllocate() {
     (*activeSetPtr).deffTensor = (double*)calloc(9 * (*activeSetPtr).Nsims, sizeof(double));
     (*activeSetPtr).imdone = (int*)calloc((*activeSetPtr).Nsims, sizeof(int));
 
-
+    //crystal from database (database must be loaded!)
     (*activeSetPtr).chi2Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].d;
     (*activeSetPtr).chi3Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].chi3;
     (*activeSetPtr).nonlinearSwitches = crystalDatabasePtr[(*activeSetPtr).materialIndex].nonlinearSwitches;
@@ -636,7 +604,7 @@ int readParametersFromInterfaceAndAllocate() {
     (*activeSetPtr).sellmeierType = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierType;
     (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
 
-
+    //Configure the struct array if in a batch
     for (j = 0; j < (*activeSetPtr).Nsims; j++) {
         if (j > 0) {
             memcpy(&activeSetPtr[j], activeSetPtr, sizeof(struct propthread));
@@ -731,15 +699,7 @@ int saveDataSet() {
     fprintf(textfile, "Code version: 0.1 Mar. 24, 2022\n");
 
     fclose(textfile);
-    /*
-    FILE* ExtOutFile;
-    int writeSize = (int)(2 * ((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims) + 1024);
-    strcpy(outputpath, outputbase);
-    strcat(outputpath, "_ExtOut.dat");
-    ExtOutFile = fopen(outputpath, "wb");
-    int fwriteErr = fwrite(saveEout, writeSize, sizeof(double), ExtOutFile);
-    fclose(ExtOutFile);
-    */
+
     //write output field as binary, in chunks (I don't know why it fails for more than MaxChunk
     size_t charswritten = 0;
     size_t MaxChunk = 65536;
@@ -781,16 +741,6 @@ int saveDataSet() {
     //fwrite(&(*saveset).Psi[0], sizeof(std::complex<double>), Psisize, Psifile);
     fwrite(matlabpadding, sizeof(double), 1024, ExtInFile);
     fclose(ExtInFile);
-
-
-    /*
-    FILE* ExtInFile;
-    strcpy(outputpath, outputbase);
-    strcat(outputpath, "_ExtIn.dat");
-    ExtInFile = fopen(outputpath, "wb");
-    fwrite(saveEin, sizeof(double), 2 * ((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims) + 1024, ExtInFile);
-    fclose(ExtInFile);
-    */
 
     FILE* matlabfile;
     strcpy(outputpath, outputbase);
@@ -924,17 +874,11 @@ int readCrystalDatabase(struct crystalentry* db, bool isVerbose) {
     FILE* fp;
     fp = fopen("CrystalDatabase.txt","r");
     if (fp == NULL) {
-        flushMessageBuffer();
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("Could not open database!\r\n"));
-        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        printToConsole(maingui.textboxSims, _T("Could not open database!\r\n"));
         return 1;
     }
     if (isVerbose) {
-        flushMessageBuffer();
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("Reading crystal database file\r\n"));
-        appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+        printToConsole(maingui.textboxSims, _T("Reading crystal database file\r\n"));
     }
     //read the entries line
     int readErrors = 0;
@@ -966,22 +910,22 @@ int readCrystalDatabase(struct crystalentry* db, bool isVerbose) {
         readErrors += 1 != fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
         readErrors += 0 != fscanf(fp, "~~~crystal end~~~\n");
         if (isVerbose && readErrors == 0) {
-            flushMessageBuffer();
-            swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("Material %i name: %s\r\n"), i, db[i].crystalNameW);
-            appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
-
+            printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, db[i].crystalNameW);
         }
     }
     fclose(fp);
-
-    flushMessageBuffer();
-    swprintf_s(messageBuffer, MAX_LOADSTRING,
-        _T("Read %i entries\r\n"), i);
-    appendTextToWindow(maingui.textboxSims, messageBuffer, MAX_LOADSTRING);
+    printToConsole(maingui.textboxSims, _T("Read %i entries\r\n"), i);
 
     return i;
 }
+//template function that works as a wrapper for swprintf_s, for writing to a text control working as a console
+//don't give it a format string approaching the size of MAX_LOADSTRING, but come on, that's over a thousand characters
+template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args) {
+    wchar_t newBuffer[MAX_LOADSTRING] = { 0 };
+    swprintf_s(newBuffer, MAX_LOADSTRING, format, args...);
+    appendTextToWindow(console, newBuffer, MAX_LOADSTRING);
+}
+
 
 //returns a string containing the text in a text box
 int getStringFromHWND(HWND inputA, char* outputString, int bufferSize)
@@ -1324,13 +1268,10 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         free(plotarrC);
         ReleaseDC(maingui.mainWindow, hdc);
     }
-    //isRunning = wasRunning;
     return 0;
 }
 
-void flushMessageBuffer() {
-    memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-}
+
 
 int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv) {
     double maxY = 0;
@@ -1365,16 +1306,16 @@ int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int pos
     plotDataXY(X, Y, 0, xStep * N, minY, 1.02 * maxY, N, pixelsWide, pixelsTall, 1, 2.2, plotArray, xTicks1, 3, yTicks1, NyTicks);
     const wchar_t labelText[4] = _T("0.5");
 
-
+    wchar_t messageBuffer[MAX_LOADSTRING] = { 0 };
     drawArrayAsBitmap(hdc, pixelsWide, pixelsTall, posX, posY, pixelsTall, pixelsWide, plotArray, 0);
     for (i = 0; i < NyTicks; i++) {
-        flushMessageBuffer();
+        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
         swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("%1.1f"), yTicks1[i]/yDiv);
         TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
     }
     for (i = 0; i < 3; i++) {
-        flushMessageBuffer();
+        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
         swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("%3.0f"), xTicks1[i]);
         TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i) + 1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));

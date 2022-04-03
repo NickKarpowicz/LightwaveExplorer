@@ -216,4 +216,4 @@ int                 resolveSequence(int currentIndex, struct propthread* s);
 int                 drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv);
 int                 saveDataSet();
 int                 readParametersFromInterfaceAndAllocate();
-void                flushMessageBuffer();
+template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args);
