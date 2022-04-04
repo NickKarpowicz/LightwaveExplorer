@@ -1,14 +1,24 @@
 #include "NonlinearPropCUDA.cuh"
-#include "framework.h"
 #include <complex>
 #include <cstdlib>
+#include <stdlib.h>
 #include <math.h>
-#include "MPQ_Nonlinear_Propagation.h"
 #include <cuComplex.h>
 #include <cufft.h>
 #include "include/mkl/mkl.h"
 
 #define THREADS_PER_BLOCK 64
+#define FALSE 0
+#define TRUE 1
+#define MAX_LOADSTRING 1024
+
+#ifndef max
+#define max(a,b)            (((a) > (b)) ? (a) : (b))
+#endif
+
+#ifndef min
+#define min(a,b)            (((a) < (b)) ? (a) : (b))
+#endif
 
 //overload the math operators for cuda complex numbers so this code fits inside the observable universe
 __device__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
@@ -64,6 +74,12 @@ __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
 //      + four resonances, purely real contribution
 //      + parametrized low-frequency correction
 //      + 2 complex-valued Lorenzian contribution
+//inputs:
+//a: 22 component array of the coefficients
+//ls: lamda^2 (microns^2)
+//omega: frequency (rad/s)
+//ii: sqrt(-1)
+//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
 __device__ __forceinline__ cuDoubleComplex sellmeierSubfunctionCuda(double* a, double ls, double omega, cuDoubleComplex ii, double kL) {
     double realPart = a[0]
         + (a[1] + a[2] * ls) / (ls + a[3])
@@ -153,7 +169,8 @@ __global__ void rotateFieldKernel(cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, 
 
 //Radial laplacian term of the nonlinear wave equation
 // e.g., apply the 1/rho * d/drho operator
-__global__ void radialLaplacianKernel(struct cudaLoop s) {
+// this isn't really the optimal way to do this; revisit later
+__global__ void radialLaplacianKernel(struct cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
     double rho = s.dx * j - (s.dx / 2) * s.Nspace;
@@ -224,7 +241,7 @@ __global__ void radialLaplacianKernel(struct cudaLoop s) {
 }
 
 //prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
-__global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoefficients, struct cudaLoop s) {
+__global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoefficients, struct cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j, k;
     long long Ntime = s.Ntime;
@@ -343,7 +360,7 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
 }
     
 //prepare the propagation constants under the assumption of cylindrical symmetry of the beam
-__global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struct cudaLoop s) {
+__global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struct cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j, k;
     long long Ntime = s.Ntime;
@@ -432,7 +449,7 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
 
 //calculate the nonlinear polarization, after FFT to get the field
 //in the time domain
-__global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
+__global__ void nonlinearPolarizationKernel(struct cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     double Ex = 2*cuCreal(s.gridETime1[i]) / s.propagationInts[0];
     double Ey = 2*cuCreal(s.gridETime2[i]) / s.propagationInts[0];
@@ -468,7 +485,7 @@ __global__ void nonlinearPolarizationKernel(struct cudaLoop s) {
 //equation for the plasma current:
 //J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
 //J_absorption(t) = beta*E^(2*Nphot-2)*E
-__global__ void plasmaCurrentKernelPrep(struct cudaLoop s, double* workN, double* workEx) {
+__global__ void plasmaCurrentKernelPrep(struct cudaParameterSet s, double* workN, double* workEx) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
 
     int k;
@@ -496,7 +513,7 @@ __global__ void plasmaCurrentKernelPrep(struct cudaLoop s, double* workN, double
     workEy[i] = Ey;
 
 }
-__global__ void plasmaCurrentKernel2(struct cudaLoop s, double* workN, double* workEx) {
+__global__ void plasmaCurrentKernel2(struct cudaParameterSet s, double* workN, double* workEx) {
     long long j = threadIdx.x + blockIdx.x * blockDim.x;
     double N = 0;
     double integralx = 0;
@@ -522,7 +539,7 @@ __global__ void plasmaCurrentKernel2(struct cudaLoop s, double* workN, double* w
 
 
 //Main kernel for RK4 propagation of the field
-__global__ void rkKernel(struct cudaLoop s, int stepNumber) {
+__global__ void rkKernel(struct cudaParameterSet s, int stepNumber) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
     long long h = i - j * s.Ntime; //temporal coordinate
@@ -723,13 +740,80 @@ __global__ void fftNormalizeKernel(cuDoubleComplex* A, long long* fftSize) {
     A[i] = A[i] / fftSize[0];
 }
 
+//main function for running on CLI
+//to be filled in!
+int main() {
+
+    int j, k;
+    double rotationAngle;
+    const double pi = 3.1415926535897932384626433832795;
+
+    // allocate databases, main structs
+    struct simulationParameterSet* sCPU = (struct simulationParameterSet*)calloc(512, sizeof(struct simulationParameterSet));
+    struct crystalEntry* crystalDatabasePtr = (struct crystalEntry*)calloc(512, sizeof(struct crystalEntry));
+    (*sCPU).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
+    (*sCPU).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+
+    // read crystal database
+    readCrystalDatabase(crystalDatabasePtr);
+
+    // read from settings files
+    char filePath[] = "inputFile.txt";
+    readInputParametersFile(sCPU, crystalDatabasePtr, filePath);
+
+    allocateGrids(sCPU);
+    // load pulse files
+
+    readSequenceString(sCPU);
+
+    configureBatchMode(sCPU);
+
+    // run simulations
+    for (j = 0; j < (*sCPU).Nsims; j++) {
+        if ((*sCPU).isInSequence) {
+            for (k = 0; k < (*sCPU).Nsequence; k++) {
+                resolveSequence(k, &sCPU[j], crystalDatabasePtr);
+                rotationAngle = (pi / 180) * (*sCPU).sequenceArray[5 + 6 * k];
+                solveNonlinearWaveEquation(&sCPU[j]);
+                if (rotationAngle != 0.0) {
+                    rotateField(sCPU, rotationAngle);
+                }
+
+                if (sCPU[j].memoryError > 0) {
+                    printf("Warning: device memory error (%i).\n", sCPU[j].memoryError);
+                }
+            }
+        }
+        else {
+            solveNonlinearWaveEquation(&sCPU[j]);
+            if (sCPU[j].memoryError > 0) {
+                printf("Warning: device memory error (%i).\n", sCPU[j].memoryError);
+            }
+        }
+    }
+    saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath);
+    //free
+
+    free((*sCPU).sequenceString);
+    free((*sCPU).sequenceArray);
+    free((*sCPU).refractiveIndex1);
+    free((*sCPU).refractiveIndex2);
+    free((*sCPU).imdone);
+    free((*sCPU).deffTensor);
+    free((*sCPU).loadedField1);
+    free((*sCPU).loadedField2);
+    free((*sCPU).outputBasePath);
+    free(sCPU);
+    free(crystalDatabasePtr);
+    return 0;
+}
+
 //main thread of the nonlinear wave equation implemented on CUDA
-DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
+unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
     //the struct s contains most of the simulation variables and pointers
-    struct cudaLoop s;
-    struct propthread* sCPU = (struct propthread*)lpParam;
-
+    struct cudaParameterSet s;
+    struct simulationParameterSet* sCPU = (struct simulationParameterSet*)lpParam;
 
     //initialize and take values from the struct handed over by the dispatcher
     unsigned long long i;
@@ -976,7 +1060,7 @@ DWORD WINAPI solveNonlinearWaveEquation(LPVOID lpParam) {
 
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
-int runRK4Step(struct cudaLoop s, int stepNumber) {
+int runRK4Step(struct cudaParameterSet s, int stepNumber) {
 
     //operations involving FFT
     if (s.isNonLinear || s.isCylindric) {
@@ -1013,7 +1097,7 @@ int runRK4Step(struct cudaLoop s, int stepNumber) {
     return 0;
 }
 
-int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
+int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaParameterSet *sc) {
     size_t i,j;
     double rB, zB, r, z; //r and z in the Beam and lab coordinates, respectively.
     double w0, wz, zR, Rz, phi; //Gaussian beam parameters
@@ -1270,7 +1354,7 @@ int prepareElectricFieldArrays(struct propthread* s, struct cudaLoop *sc) {
     return 0;
 }
 
-int preparePropagation2DCartesian(struct propthread* s, struct cudaLoop sc) {
+int preparePropagation2DCartesian(struct simulationParameterSet* s, struct cudaParameterSet sc) {
     //recycle allocated device memory for the grids needed
     double* alphaGPU = (double*)sc.gridEFrequency1Next1;
     double* sellmeierCoefficients = (double*)sc.k1;
@@ -1307,7 +1391,7 @@ int preparePropagation2DCartesian(struct propthread* s, struct cudaLoop sc) {
     return 0;
 }
 
-int preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc) {
+int preparePropagation3DCylindric(struct simulationParameterSet* s, struct cudaParameterSet sc) {
     //recycle allocated device memory for the grids needed
     double* sellmeierCoefficients = (double*)sc.k1;
     sc.ne = sc.gridEFrequency1Next2;
@@ -1343,7 +1427,7 @@ int preparePropagation3DCylindric(struct propthread* s, struct cudaLoop sc) {
     return 0;
 }
 
-double findWalkoffAngles(struct propthread* s, double dk, double f, double tol) {
+double findWalkoffAngles(struct simulationParameterSet* s, double dk, double f, double tol) {
     double theta=0;
     double dTheta = 0.1;
     double err, errPlus, errMinus;
@@ -1385,19 +1469,6 @@ double findWalkoffAngles(struct propthread* s, double dk, double f, double tol) 
     }
     return theta;
 }
-//rearrange a matrix from row major order to column major (not used, maybe broken)
-int swaprc(double* M, int dim1, int dim2) {
-    double* Ms = (double*)malloc(dim1 * dim2 * sizeof(double));
-    int i, j;
-    for (i = 0; i < dim1; i++) {
-        for (j = 0; j < dim2; j++) {
-            Ms[i + j * dim1] = M[j + i * dim2];
-        }
-    }
-    free(Ms);
-    return 0;
-}
-
 
 int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi) {
     double delta = 0.; //this angle is used for biaxial crystals, but I'm ignorning it for the moment
@@ -1429,7 +1500,7 @@ int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, d
     //Least squares solution to get the deff tensor
     double* work = (double*)malloc(128 * sizeof(double));
     int dgelsInfo;
-    int dgelsParams[6] = { 3,2,3,3,3,128 };
+    int dgelsParams[6] = { 3,2,3,3,3,64 };
     dgels("N", &dgelsParams[0], &dgelsParams[1], &dgelsParams[2], R, &dgelsParams[3], dOre, &dgelsParams[4], work, &dgelsParams[5], &dgelsInfo);
     defftensor[0] = dOre[0];
     defftensor[1] = dOre[1];
@@ -1690,7 +1761,7 @@ int plotDataXY(double* X, double* Y, double minX, double maxX, double minY, doub
 //Allocates memory and copies from CPU, then copies back to CPU and deallocates
 // - inefficient but the general principle is that only the CPU memory is preserved
 // after simulations finish... and this only runs at the end of the simulation
-int rotateField(struct propthread *s, double rotationAngle) {
+int rotateField(struct simulationParameterSet *s, double rotationAngle) {
     cuDoubleComplex* Ein1, * Eout1, * Ein2, * Eout2;
     cudaMalloc((void**)&Ein1,  (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMalloc((void**)&Ein2, (*s).Ngrid * sizeof(cuDoubleComplex));
@@ -1705,11 +1776,395 @@ int rotateField(struct propthread *s, double rotationAngle) {
     rotateFieldKernel<<<Nblock, Nthread>>>(Ein1, Ein2, Eout1, Eout2, rotationAngle);
 
     cudaMemcpy((*s).EkwOut, Eout1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&(*s).EkwOut[(*s).Ngrid], Eout2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+cudaMemcpy(&(*s).EkwOut[(*s).Ngrid], Eout2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
-    cudaFree(Ein1);
-    cudaFree(Ein2);
-    cudaFree(Eout1);
-    cudaFree(Eout2);
+cudaFree(Ein1);
+cudaFree(Ein2);
+cudaFree(Eout1);
+cudaFree(Eout2);
+return 0;
+}
+
+//calculates the squard modulus of a complex number, under the assumption that the
+//machine's complex number format is interleaved doubles.
+//c forced to run in c++ for nostalgia reasons
+double cModulusSquared(std::complex<double>complexNumber) {
+    double* xy = (double*)&complexNumber;
+    return xy[0] * xy[0] + xy[1] * xy[1];
+}
+
+int allocateGrids(struct simulationParameterSet* sCPU) {
+
+    (*sCPU).loadedField1 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
+    (*sCPU).loadedField2 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
+
+    (*sCPU).sequenceArray = (double*)calloc(256 * MAX_LOADSTRING, sizeof(double));
+
+    (*sCPU).Ext = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
+    (*sCPU).Ekw = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
+
+    (*sCPU).ExtOut = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
+    (*sCPU).EkwOut = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
+
+    (*sCPU).refractiveIndex1 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims, sizeof(std::complex<double>));
+    (*sCPU).refractiveIndex2 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims, sizeof(std::complex<double>));
+    (*sCPU).deffTensor = (double*)calloc(9 * (*sCPU).Nsims, sizeof(double));
+    (*sCPU).imdone = (int*)calloc((*sCPU).Nsims, sizeof(int));
+
+    return 0;
+}
+
+int readCrystalDatabase(struct crystalEntry* db) {
+    int i = -1;
+    double* fd;
+    FILE* fp;
+    fp = fopen("CrystalDatabase.txt", "r");
+    if (fp == NULL) {
+        return 1;
+    }
+    //read the entries line
+    int readErrors = 0;
+
+    while (readErrors == 0 && i < MAX_LOADSTRING) {
+        i++;
+        readErrors += 1 != fwscanf(fp, L"Name:\n%[^\n]\n", db[i].crystalNameW);
+        readErrors += 1 != fscanf(fp, "Type:\n%d\n", &db[i].axisType);
+        readErrors += 1 != fscanf(fp, "Sellmeier equation:\n%d\n", &db[i].sellmeierType);
+        fd = &db[i].sellmeierCoefficients[0];
+        readErrors += 22 != fscanf(fp, "1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        fd = &db[i].sellmeierCoefficients[22];
+        readErrors += 22 != fscanf(fp, "2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        fd = &db[i].sellmeierCoefficients[44];
+        readErrors += 22 != fscanf(fp, "3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 1 != fwscanf(fp, L"Sellmeier reference:\n%[^\n]\n", db[i].sellmeierReference);
+        readErrors += 1 != fscanf(fp, "chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
+        fd = &db[i].d[0];
+        readErrors += 18 != fscanf(fp, "d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
+        readErrors += 1 != fwscanf(fp, L"d reference:\n%[^\n]\n", db[i].dReference);
+        readErrors += 1 != fscanf(fp, "chi3 type:\n%d\n", &db[i].nonlinearSwitches[1]);
+        fd = &db[i].chi3[0];
+        readErrors += 9 != fscanf(fp, "chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        fd = &db[i].chi3[9];
+        readErrors += 9 != fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        fd = &db[i].chi3[18];
+        readErrors += 9 != fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 1 != fwscanf(fp, L"chi3 reference:\n%[^\n]\n", db[i].chi3Reference);
+        readErrors += 1 != fwscanf(fp, L"Spectral file:\n%[^\n]\n", db[i].spectralFile);
+        readErrors += 0 != fscanf(fp, "~~~crystal end~~~\n");
+    }
+    db[0].numberOfEntries = i;
+    fclose(fp);
+
+
+    return i;
+}
+
+int readSequenceString(struct simulationParameterSet* sCPU) {
+    //read the sequence string (if there is one), convert it into an array if it exists
+
+    char* tokToken = strtok((*sCPU).sequenceString, ";");
+    int sequenceCount = sscanf((*sCPU).sequenceString, "%lf %lf %lf %lf %lf %lf", (*sCPU).sequenceArray, &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2], &(*sCPU).sequenceArray[3], &(*sCPU).sequenceArray[4], &(*sCPU).sequenceArray[5]);
+
+    tokToken = strtok(NULL, ";");
+    int lastread = sequenceCount;
+    while (tokToken != NULL && lastread == 6) {
+        lastread = sscanf(tokToken, "%lf %lf %lf %lf %lf %lf", &(*sCPU).sequenceArray[sequenceCount], &(*sCPU).sequenceArray[sequenceCount + 1], &(*sCPU).sequenceArray[sequenceCount + 2], &(*sCPU).sequenceArray[sequenceCount + 3], &(*sCPU).sequenceArray[sequenceCount + 4], &(*sCPU).sequenceArray[sequenceCount + 5]);
+        sequenceCount += lastread;
+        tokToken = strtok(NULL, ";");
+    }
+
+    (*sCPU).Nsequence = sequenceCount / 6;
+    (*sCPU).isInSequence = ((*sCPU).Nsequence > 0);
+
+    if (!(*sCPU).isInSequence) {
+        char nopeString[] = "None.";
+        strcpy((*sCPU).sequenceString, nopeString);
+    }
+    return 0;
+}
+
+int configureBatchMode(struct simulationParameterSet* sCPU) {
+    int j;
+    const double pi = 3.1415926535897932384626433832795;
+
+    //Configure the struct array if in a batch
+    for (j = 0; j < (*sCPU).Nsims; j++) {
+        if (j > 0) {
+            memcpy(&sCPU[j], sCPU, sizeof(struct simulationParameterSet));
+        }
+        
+        if ((*sCPU).deffTensor != NULL) {
+            sCPU[j].deffTensor = &(*sCPU).deffTensor[9 * j];;
+        }
+
+        sCPU[j].Ext = &(*sCPU).Ext[j * (*sCPU).Ngrid * 2];
+        sCPU[j].Ekw = &(*sCPU).Ekw[j * (*sCPU).Ngrid * 2];
+        sCPU[j].ExtOut = &(*sCPU).ExtOut[j * (*sCPU).Ngrid * 2];
+        sCPU[j].EkwOut = &(*sCPU).EkwOut[j * (*sCPU).Ngrid * 2];
+        
+
+        sCPU[j].isFollowerInSequence = FALSE;
+        
+        if ((*sCPU).batchIndex == 1) {
+            sCPU[j].delay2 += j * ((-1e-15 * (*sCPU).batchDestination) - ((*sCPU).delay2 - (*sCPU).timeSpan / 2)) / ((*sCPU).Nsims - 1.);
+        }
+        if ((*sCPU).batchIndex == 2) {
+            sCPU[j].pulseEnergy1 += j * ((*sCPU).batchDestination - (*sCPU).pulseEnergy1) / ((*sCPU).Nsims - 1.);
+        }
+        if ((*sCPU).batchIndex == 3) {
+            sCPU[j].cephase1 += j * (pi * (*sCPU).batchDestination - (*sCPU).cephase1) / ((*sCPU).Nsims - 1.);
+        }
+        if ((*sCPU).batchIndex == 5) {
+            sCPU[j].crystalTheta += j * ((pi / 180) * (*sCPU).batchDestination - (*sCPU).crystalTheta) / ((*sCPU).Nsims - 1.);
+        }
+        if ((*sCPU).batchIndex == 6) {
+            sCPU[j].gdd1 += j * (1e-30 * (*sCPU).batchDestination - (*sCPU).gdd1) / ((*sCPU).Nsims - 1.);
+        }
+
+        if ((*sCPU).batchIndex == 7) {
+            sCPU[j].z01 += j * (1e-6 * (*sCPU).batchDestination - (*sCPU).z01) / ((*sCPU).Nsims - 1.);
+        }
+
+        if ((*sCPU).batchIndex == 8) {
+            sCPU[j].drudeGamma += j * (1e12 * (*sCPU).batchDestination - (*sCPU).drudeGamma) / ((*sCPU).Nsims - 1.);
+        }
+
+        if ((*sCPU).batchIndex == 9) {
+            sCPU[j].nonlinearAbsorptionStrength += j * ((*sCPU).batchDestination - (*sCPU).nonlinearAbsorptionStrength) / ((*sCPU).Nsims - 1.);
+        }
+        if ((*sCPU).batchIndex == 10) {
+            sCPU[j].beamwaist1 += j * (1e-6 * (*sCPU).batchDestination - (*sCPU).beamwaist1) / ((*sCPU).Nsims - 1.);
+        }
+        
+    }
+    return 0;
+}
+int readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* filePath) {
+    FILE* textfile;
+    double pi = 3.1415926535897932384626433832795;
+    textfile = fopen(filePath, "r");
+
+    //read parameters using fscanf:
+    //recipie for programming: copy/paste the block of fprintf statements in the saveDataSet() function,
+    //then find/replace:
+    // fprintf->fscanf
+    // (*CPU). -> &(*CPU).
+    // %e -> %lf
+    // &(*sCPU).sequenceString -> (*sCPU).sequenceString
+    // &(*sCPU).outputBasePath -> (*sCPU).outputBasePath
+    fscanf(textfile, "Pulse energy 1 (J): %lf\nPulse energy 2(J): %lf\nFrequency 1 (Hz): %lf\nFrequency 2 (Hz): %lf\nBandwidth 1 (Hz): %lf\nBandwidth 2 (Hz): %lf\n", &(*sCPU).pulseEnergy1, &(*sCPU).pulseEnergy2, &(*sCPU).frequency1, &(*sCPU).frequency2, &(*sCPU).bandwidth1, &(*sCPU).bandwidth2);
+    fscanf(textfile, "SG order: %i\nCEP 1 (rad): %lf\nCEP 2 (rad): %lf\nDelay 1 (s): %lf\nDelay 2 (s): %lf\nGDD 1 (s^-2): %lf\nGDD 2 (s^-2): %lf\nTOD 1 (s^-3): %lf\nTOD 2(s^-3): %lf\n", &(*sCPU).sgOrder1, &(*sCPU).cephase1, &(*sCPU).cephase2, &(*sCPU).delay1, &(*sCPU).delay2, &(*sCPU).gdd1, &(*sCPU).gdd2, &(*sCPU).tod1, &(*sCPU).tod2);
+    fscanf(textfile, "Beamwaist 1 (m): %lf\nBeamwaist 2 (m): %lf\nx offset 1 (m): %lf\nx offset 2 (m): %lf\nz offset 1 (m): %lf\nz offset 2 (m): %lf\nNC angle 1 (rad): %lf\nNC angle 2 (rad): %lf\n", &(*sCPU).beamwaist1, &(*sCPU).beamwaist2, &(*sCPU).x01, &(*sCPU).x02, &(*sCPU).z01, &(*sCPU).z02, &(*sCPU).propagationAngle1, &(*sCPU).propagationAngle2);
+    fscanf(textfile, "Polarization 1 (rad): %lf\nPolarization 2 (rad): %lf\nCircularity 1: %lf\nCircularity 2: %lf\n", &(*sCPU).polarizationAngle1, &(*sCPU).polarizationAngle2, &(*sCPU).circularity1, &(*sCPU).circularity2);
+    fscanf(textfile, "Material index: %i\n", &(*sCPU).materialIndex);
+    fscanf(textfile, "Crystal theta (rad): %lf\nCrystal phi (rad): %lf\nGrid width (m): %lf\ndx (m): %lf\nTime span (s): %lf\ndt (s): %lf\nThickness (m): %lf\ndz (m): %lf\n", &(*sCPU).crystalTheta, &(*sCPU).crystalPhi, &(*sCPU).spatialWidth, &(*sCPU).rStep, &(*sCPU).timeSpan, &(*sCPU).tStep, &(*sCPU).crystalThickness, &(*sCPU).propagationStep);
+    fscanf(textfile, "Nonlinear absorption parameter: %lf\nBand gap (eV): %lf\nEffective mass (relative): %lf\nDrude gamma (Hz): %lf\n", &(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).bandGapElectronVolts, &(*sCPU).effectiveMass, &(*sCPU).drudeGamma);
+    fscanf(textfile, "Propagation mode: %i\n", &(*sCPU).symmetryType);
+    fscanf(textfile, "Batch mode: %i\nBatch destination: %lf\nBatch steps: %lli\n", &(*sCPU).batchIndex, &(*sCPU).batchDestination, &(*sCPU).Nsims);
+    fscanf(textfile, "Sequence: %s\n", (*sCPU).sequenceString);
+    fscanf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
+
+
+    //derived parameters and cleanup:
+    (*sCPU).sellmeierType = 0;
+    (*sCPU).axesNumber = 0;
+    (*sCPU).sgOrder2 = (*sCPU).sgOrder1;
+    (*sCPU).Ntime = (size_t)round((*sCPU).timeSpan / (*sCPU).tStep);
+    (*sCPU).Nspace = (size_t)round((*sCPU).spatialWidth / (*sCPU).rStep);
+    (*sCPU).Ngrid = (*sCPU).Ntime * (*sCPU).Nspace;
+    (*sCPU).kStep = 2 * pi / ((*sCPU).Nspace * (*sCPU).rStep);
+    (*sCPU).fStep = 1.0 / ((*sCPU).Ntime * (*sCPU).tStep);
+    (*sCPU).Npropagation = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
+
+    (*sCPU).isCylindric = (*sCPU).symmetryType == 1;
+    if ((*sCPU).isCylindric) {
+        (*sCPU).x01 = 0;
+        (*sCPU).x02 = 0;
+        (*sCPU).propagationAngle1 = 0;
+        (*sCPU).propagationAngle2 = 0;
+    }
+
+    if ((*sCPU).batchIndex == 0 || (*sCPU).batchIndex == 4 || (*sCPU).Nsims < 1) {
+        (*sCPU).Nsims = 1;
+    }
+
+    (*sCPU).field1IsAllocated = FALSE;
+    (*sCPU).field2IsAllocated = FALSE;
+
+    //crystal from database (database must be loaded!)
+    (*sCPU).chi2Tensor = crystalDatabasePtr[(*sCPU).materialIndex].d;
+    (*sCPU).chi3Tensor = crystalDatabasePtr[(*sCPU).materialIndex].chi3;
+    (*sCPU).nonlinearSwitches = crystalDatabasePtr[(*sCPU).materialIndex].nonlinearSwitches;
+    (*sCPU).absorptionParameters = crystalDatabasePtr[(*sCPU).materialIndex].absorptionParameters;
+    (*sCPU).sellmeierCoefficients = crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients;
+    (*sCPU).sellmeierType = crystalDatabasePtr[(*sCPU).materialIndex].sellmeierType;
+    (*sCPU).axesNumber = crystalDatabasePtr[(*sCPU).materialIndex].axisType;
+
+
+    fclose(textfile);
+    return 0;
+}
+int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* outputbase) {
+    int j, k;
+
+    //Save the results as double instead of complex
+    double* saveEout = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(double));
+    double* saveEin = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(double));
+    for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
+        saveEout[j] = real((*sCPU).ExtOut[j]);
+        saveEin[j] = real((*sCPU).Ext[j]);
+    }
+
+
+
+    FILE* textfile;
+    char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    strcpy(outputpath, outputbase);
+    strcat(outputpath, ".txt");
+    textfile = fopen(outputpath, "w");
+    fprintf(textfile, "Pulse energy 1 (J): %e\nPulse energy 2(J): %e\nFrequency 1 (Hz): %e\nFrequency 2 (Hz): %e\nBandwidth 1 (Hz): %e\nBandwidth 2 (Hz): %e\n", (*sCPU).pulseEnergy1, (*sCPU).pulseEnergy2, (*sCPU).frequency1, (*sCPU).frequency2, (*sCPU).bandwidth1, (*sCPU).bandwidth2);
+    fprintf(textfile, "SG order: %i\nCEP 1 (rad): %e\nCEP 2 (rad): %e\nDelay 1 (s): %e\nDelay 2 (s): %e\nGDD 1 (s^-2): %e\nGDD 2 (s^-2): %e\nTOD 1 (s^-3): %e\nTOD 2(s^-3): %e\n", (*sCPU).sgOrder1, (*sCPU).cephase1, (*sCPU).cephase2, (*sCPU).delay1, (*sCPU).delay2, (*sCPU).gdd1, (*sCPU).gdd2, (*sCPU).tod1, (*sCPU).tod2);
+    fprintf(textfile, "Beamwaist 1 (m): %e\nBeamwaist 2 (m): %e\nx offset 1 (m): %e\nx offset 2 (m): %e\nz offset 1 (m): %e\nz offset 2 (m): %e\nNC angle 1 (rad): %e\nNC angle 2 (rad): %e\n", (*sCPU).beamwaist1, (*sCPU).beamwaist2, (*sCPU).x01, (*sCPU).x02, (*sCPU).z01, (*sCPU).z02, (*sCPU).propagationAngle1, (*sCPU).propagationAngle2);
+    fprintf(textfile, "Polarization 1 (rad): %e\nPolarization 2 (rad): %e\nCircularity 1: %e\nCircularity 2: %e\n", (*sCPU).polarizationAngle1, (*sCPU).polarizationAngle2, (*sCPU).circularity1, (*sCPU).circularity2);
+    fprintf(textfile, "Material index: %i\n", (*sCPU).materialIndex);
+    fprintf(textfile, "Crystal theta (rad): %e\nCrystal phi (rad): %e\nGrid width (m): %e\ndx (m): %e\nTime span (s): %e\ndt (s): %e\nThickness (m): %e\ndz (m): %e\n", (*sCPU).crystalTheta, (*sCPU).crystalPhi, (*sCPU).spatialWidth, (*sCPU).rStep, (*sCPU).timeSpan, (*sCPU).tStep, (*sCPU).crystalThickness, (*sCPU).propagationStep);
+    fprintf(textfile, "Nonlinear absorption parameter: %e\nBand gap (eV): %e\nEffective mass (relative): %e\nDrude gamma (Hz): %e\n", (*sCPU).nonlinearAbsorptionStrength, (*sCPU).bandGapElectronVolts, (*sCPU).effectiveMass, (*sCPU).drudeGamma);
+    fprintf(textfile, "Propagation mode: %i\n", (*sCPU).symmetryType);
+    fprintf(textfile, "Batch mode: %i\nBatch destination: %e\nBatch steps: %lli\n", (*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
+    fprintf(textfile, "Sequence: %s\n", (*sCPU).sequenceString);
+    fprintf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
+
+
+    fwprintf(textfile, L"Material name: %s\nSellmeier reference: %s\nChi2 reference: %s\nChi3 reference: %s\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
+    fprintf(textfile, "Sellmeier coefficients: \n");
+    for (j = 0; j < 3; j++) {
+        for (k = 0; k < 22; k++) {
+            fprintf(textfile, "%e ", crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients[j * 22 + k]);
+        }
+        fprintf(textfile, "\n");
+    }
+    fprintf(textfile, "Code version: 0.11 April 4, 2022\n");
+
+    fclose(textfile);
+
+    //write output field as binary, in chunks (I don't know why it fails for more than MaxChunk
+    size_t charswritten = 0;
+    size_t MaxChunk = 65536;
+    double* matlabpadding = (double*)calloc(1024, sizeof(double));
+    FILE* ExtOutFile;
+    size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims) + 1024;
+    strcpy(outputpath, outputbase);
+    strcat(outputpath, "_ExtOut.dat");
+    ExtOutFile = fopen(outputpath, "wb");
+    while (charswritten < writeSize) {
+        if (writeSize - MaxChunk - charswritten > 0) {
+            fwrite(&saveEout[charswritten], sizeof(double), MaxChunk, ExtOutFile);
+            charswritten += MaxChunk;
+        }
+        else {
+            fwrite(&saveEout[charswritten], sizeof(double), writeSize - charswritten, ExtOutFile);
+            charswritten += writeSize - charswritten;
+        }
+    }
+    //fwrite(&(*saveset).Psi[0], sizeof(std::complex<double>), Psisize, Psifile);
+    fwrite(matlabpadding, sizeof(double), 1024, ExtOutFile);
+    fclose(ExtOutFile);
+
+    charswritten = 0;
+    FILE* ExtInFile;
+    strcpy(outputpath, outputbase);
+    strcat(outputpath, "_ExtIn.dat");
+    ExtInFile = fopen(outputpath, "wb");
+    while (charswritten < writeSize) {
+        if (writeSize - MaxChunk - charswritten > 0) {
+            fwrite(&saveEin[charswritten], sizeof(double), MaxChunk, ExtInFile);
+            charswritten += MaxChunk;
+        }
+        else {
+            fwrite(&saveEin[charswritten], sizeof(double), writeSize - charswritten, ExtInFile);
+            charswritten += writeSize - charswritten;
+        }
+    }
+    //fwrite(&(*saveset).Psi[0], sizeof(std::complex<double>), Psisize, Psifile);
+    fwrite(matlabpadding, sizeof(double), 1024, ExtInFile);
+    fclose(ExtInFile);
+
+    FILE* matlabfile;
+    strcpy(outputpath, outputbase);
+    strcat(outputpath, ".m");
+
+    char* outputbaseVar = strrchr(outputbase, '\\');
+    if (!outputbaseVar) {
+        outputbaseVar = outputbase;
+    }
+    else {
+        outputbaseVar++;
+    }
+
+    matlabfile = fopen(outputpath, "w");
+    fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
+    fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
+    fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    fprintf(matlabfile, "fclose(fid); \n");
+
+    fprintf(matlabfile, "fid = fopen('%s_ExtOut.dat','rb'); \n", outputbaseVar);
+    fprintf(matlabfile, "%s_ExtOut = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
+    fprintf(matlabfile, "%s_ExtOut = reshape(%s_ExtOut,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    fprintf(matlabfile, "fclose(fid); \n");
+    fclose(matlabfile);
+
+    /*write a python script for loading the output fields in a proper shape*/
+
+    char scriptfilename[MAX_LOADSTRING];
+    strcpy(scriptfilename, outputbase);
+    strcat(scriptfilename, ".py");
+    FILE* scriptfile;
+    scriptfile = fopen(scriptfilename, "w");
+    fprintf(scriptfile, "#!/usr/bin/python\nimport numpy as np\n");
+    fprintf(scriptfile, "dt = %e\ndz = %e\ndx = %e\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep);
+    fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
+    fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
+    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    fprintf(scriptfile, "%s_ExtOut = np.reshape(np.fromfile(\"", outputbaseVar);
+    fprintf(scriptfile, "%s_ExtOut.dat", outputbaseVar);
+    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    fclose(scriptfile);
+    free(saveEout);
+    free(saveEin);
+    free(matlabpadding);
+    return 0;
+}
+
+int resolveSequence(int currentIndex, struct simulationParameterSet* s, struct crystalEntry* db) {
+    double pi = 3.1415926535897932384626433832795;
+
+    //sequence format
+    //material index, theta, phi, crystal length, propagation step, rotation angle
+    int materialIndex = (int)(*s).sequenceArray[0 + 6 * currentIndex];
+    double crystalTheta = (pi / 180) * (*s).sequenceArray[1 + 6 * currentIndex];
+    double crystalPhi = (pi / 180) * (*s).sequenceArray[2 + 6 * currentIndex];
+    double propagationStep = 1e-9 * (*s).sequenceArray[4 + 6 * currentIndex];
+    size_t Npropagation = (size_t)(1e-6 * (*s).sequenceArray[3 + 6 * currentIndex] / propagationStep);
+    double rotationAngle = (pi / 180) * (*s).sequenceArray[5 + 6 * currentIndex];
+
+    if (currentIndex > 0) {
+        (*s).isFollowerInSequence = TRUE;
+    }
+
+    (*s).propagationStep = propagationStep;
+    (*s).Npropagation = Npropagation;
+
+
+    (*s).materialIndex = materialIndex;
+    (*s).crystalTheta = crystalTheta;
+    (*s).crystalPhi = crystalPhi;
+    (*s).chi2Tensor = db[materialIndex].d;
+    (*s).chi3Tensor = db[materialIndex].chi3;
+    (*s).nonlinearSwitches = db[materialIndex].nonlinearSwitches;
+    (*s).absorptionParameters = db[materialIndex].absorptionParameters;
+    (*s).sellmeierCoefficients = db[materialIndex].sellmeierCoefficients;
+
+    (*s).sellmeierType = db[materialIndex].sellmeierType;
+    (*s).axesNumber = db[materialIndex].axisType;
     return 0;
 }

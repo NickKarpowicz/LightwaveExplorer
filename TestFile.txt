@@ -1,0 +1,55 @@
+Pulse energy 1 (J): 2.400000e-08
+Pulse energy 2(J): 0.000000e+00
+Frequency 1 (Hz): 1.300000e+14
+Frequency 2 (Hz): 2.000000e+14
+Bandwidth 1 (Hz): 4.000000e+13
+Bandwidth 2 (Hz): 4.000000e+13
+SG order: 2
+CEP 1 (rad): 0.000000e+00
+CEP 2 (rad): 0.000000e+00
+Delay 1 (s): 9.000000e-14
+Delay 2 (s): 2.000000e-14
+GDD 1 (s^-2): -2.726200e-29
+GDD 2 (s^-2): 0.000000e+00
+TOD 1 (s^-3): 2.305700e-43
+TOD 2(s^-3): 0.000000e+00
+Beamwaist 1 (m): 2.800000e-06
+Beamwaist 2 (m): 5.000000e-05
+x offset 1 (m): 0.000000e+00
+x offset 2 (m): 0.000000e+00
+z offset 1 (m): -1.000000e-04
+z offset 2 (m): 0.000000e+00
+NC angle 1 (rad): 0.000000e+00
+NC angle 2 (rad): 0.000000e+00
+Polarization 1 (rad): 0.000000e+00
+Polarization 2 (rad): 1.570796e+00
+Circularity 1: 0.000000e+00
+Circularity 2: 0.000000e+00
+Material index: 3
+Crystal theta (rad): 0.000000e+00
+Crystal phi (rad): 0.000000e+00
+Grid width (m): 1.984000e-04
+dx (m): 6.200000e-07
+Time span (s): 3.584000e-13
+dt (s): 7.000000e-16
+Thickness (m): 1.000000e-06
+dz (m): 2.500000e-08
+Nonlinear absorption parameter: 2.000000e-87
+Band gap (eV): 3.000000e+00
+Effective mass (relative): 8.100000e-02
+Drude gamma (Hz): 1.000000e+13
+Propagation mode: 1
+Batch mode: 0
+Batch destination: 2.000000e+01
+Batch steps: 1
+Sequence: 
+Output base path: TestFile
+Material name: BiBO
+Sellmeier reference: Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007)
+Chi2 reference: M. Ghotbi and M. Ebrahim-Zadeh, Optics Express 12, 6002-6019 (2004).
+Chi3 reference: Empty matrix awaiting input
+Sellmeier coefficients: 
+3.074030e+00 3.231000e-02 0.000000e+00 -3.163000e-02 0.000000e+00 0.000000e+00 1.000000e+00 0.000000e+00 0.000000e+00 1.000000e+00 0.000000e+00 0.000000e+00 1.000000e+00 -1.337600e-02 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 
+3.169400e+00 3.717000e-02 0.000000e+00 -3.483000e-02 0.000000e+00 0.000000e+00 1.000000e+00 0.000000e+00 0.000000e+00 1.000000e+00 0.000000e+00 0.000000e+00 1.000000e+00 -1.827000e-02 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 
+3.654500e+00 5.112000e-02 0.000000e+00 -3.713000e-02 0.000000e+00 0.000000e+00 1.000000e+00 0.000000e+00 0.000000e+00 1.000000e+00 0.000000e+00 0.000000e+00 1.000000e+00 -2.261000e-02 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00 
+Code version: 0.11 April 4, 2022

@@ -26,15 +26,15 @@ HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 struct guiStruct maingui;                       // struct containing all of the GUI elements
-struct propthread* activeSetPtr;                // Main structure containing simulation parameters and pointers
-struct crystalentry* crystalDatabasePtr;        // Crystal info database
+struct simulationParameterSet* activeSetPtr;                // Main structure containing simulation parameters and pointers
+struct crystalEntry* crystalDatabasePtr;        // Crystal info database
 bool isRunning = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
 
 // Forward declarations of (Microsoft) functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
+bool                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
@@ -48,16 +48,23 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     DWORD hplotThread;
     
     readParametersFromInterface();
-    allocateGrids();
-    loadPulseFiles();
-    readSequenceString();
-    configureBatchMode();
 
+    if (isGridAllocated) {
+        freeSemipermanentGrids();
+    }
+
+    allocateGrids(activeSetPtr);
+    isGridAllocated = TRUE;
+
+    loadPulseFiles();
+    readSequenceString(activeSetPtr);
+    configureBatchMode(activeSetPtr);
+    (*activeSetPtr).isInSequence = FALSE;
     //run the simulations
     for (j = 0; j < (*activeSetPtr).Nsims; j++) {
         if ((*activeSetPtr).isInSequence) {
             for (k = 0; k < (*activeSetPtr).Nsequence; k++) {
-                resolveSequence(k, &activeSetPtr[j]);
+                resolveSequence(k, &activeSetPtr[j], crystalDatabasePtr);
                 rotationAngle = (pi / 180) * (*activeSetPtr).sequenceArray[5 + 6 * k];
                 solveNonlinearWaveEquation(&activeSetPtr[j]);
                 if (rotationAngle != 0.0) {
@@ -90,9 +97,13 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     printToConsole(maingui.textboxSims, _T("Finished after %8.4lf s. \r\n"), 1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-    saveDataSet();
+    
+    //char basepath[MAX_LOADSTRING];
+    
+    //getStringFromHWND(maingui.tbFileNameBase, basepath, MAX_LOADSTRING);
+    //strcpy((*activeSetPtr).outputBasePath, basepath);
+    saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath);
 
-    free((*activeSetPtr).sequenceString);
     free((*activeSetPtr).sequenceArray);
     free((*activeSetPtr).refractiveIndex1);
     free((*activeSetPtr).refractiveIndex2);
@@ -100,7 +111,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     free((*activeSetPtr).deffTensor);
     free((*activeSetPtr).loadedField1);
     free((*activeSetPtr).loadedField2);
-
+    
     isRunning = FALSE;
     return 0;
 }
@@ -129,7 +140,7 @@ DWORD WINAPI runOnCluster(LPVOID lpParam) {
     TCHAR szCmdline[] = TEXT("ssh");
     PROCESS_INFORMATION piProcInfo;
     STARTUPINFO siStartInfo;
-    BOOL bSuccess = FALSE;
+    bool bSuccess = FALSE;
     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
     ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
@@ -259,7 +270,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 // - dynamic allocations of crystal database and main struct pointer
 // - loading crystal database
 // - identify GPU
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance; // Store instance handle in our global variable
     int xOffsetRow1 = 160;
@@ -417,12 +428,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     
     //read the crystal database
-    crystalDatabasePtr = (struct crystalentry*)calloc(MAX_LOADSTRING, sizeof(struct crystalentry));
-    readCrystalDatabase(crystalDatabasePtr, TRUE);
-
+    crystalDatabasePtr = (struct crystalEntry*)calloc(MAX_LOADSTRING, sizeof(struct crystalEntry));
+    readCrystalDatabase(crystalDatabasePtr);
+    printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+    for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
+        printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+    }
     //make the active set pointer
-    activeSetPtr = (struct propthread*)calloc(2048, sizeof(struct propthread));
-
+    activeSetPtr = (struct simulationParameterSet*)calloc(2048, sizeof(struct simulationParameterSet));
+    (*activeSetPtr).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    (*activeSetPtr).sequenceString = (char*)calloc(MAX_LOADSTRING * 256, sizeof(char));
     return TRUE;
 }
 
@@ -453,6 +468,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 free((*activeSetPtr).Ext);
                 free((*activeSetPtr).Ekw);
             }
+            free((*activeSetPtr).outputBasePath);
             free(activeSetPtr);
             free(crystalDatabasePtr);
             DestroyWindow(hWnd);
@@ -487,8 +503,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             getFileNameBaseFromDlgDat(hWnd, maingui.tbPulse2Path);
             break;
         case ID_BTNREFRESHDB:
-            memset(crystalDatabasePtr, 0, 512 * sizeof(struct crystalentry));
-            readCrystalDatabase(crystalDatabasePtr, TRUE);
+            memset(crystalDatabasePtr, 0, 512 * sizeof(struct crystalEntry));
+            readCrystalDatabase(crystalDatabasePtr);
+            printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+            for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
+                printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+            }
             break;
 
         default:
@@ -533,33 +553,12 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return (INT_PTR)FALSE;
 }
-
-int allocateGrids() {
-    if (isGridAllocated) {
-        isGridAllocated = FALSE;
-        free((*activeSetPtr).ExtOut);
-        free((*activeSetPtr).EkwOut);
-        free((*activeSetPtr).Ext);
-        free((*activeSetPtr).Ekw);
-    }
-
-    (*activeSetPtr).loadedField1 = (std::complex<double>*)calloc((*activeSetPtr).Ntime, sizeof(std::complex<double>));
-    (*activeSetPtr).loadedField2 = (std::complex<double>*)calloc((*activeSetPtr).Ntime, sizeof(std::complex<double>));
-
-    (*activeSetPtr).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
-    (*activeSetPtr).sequenceArray = (double*)calloc(256 * MAX_LOADSTRING, sizeof(double));
-
-    (*activeSetPtr).Ext = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-    (*activeSetPtr).Ekw = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-
-    (*activeSetPtr).ExtOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-    (*activeSetPtr).EkwOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-
-    isGridAllocated = TRUE;
-    (*activeSetPtr).refractiveIndex1 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-    (*activeSetPtr).refractiveIndex2 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-    (*activeSetPtr).deffTensor = (double*)calloc(9 * (*activeSetPtr).Nsims, sizeof(double));
-    (*activeSetPtr).imdone = (int*)calloc((*activeSetPtr).Nsims, sizeof(int));
+int freeSemipermanentGrids() {
+    isGridAllocated = FALSE;
+    free((*activeSetPtr).ExtOut);
+    free((*activeSetPtr).EkwOut);
+    free((*activeSetPtr).Ext);
+    free((*activeSetPtr).Ekw);
     return 0;
 }
 
@@ -590,98 +589,26 @@ int loadPulseFiles() {
     return 0;
 }
 
-int readSequenceString() {
-    //read the sequence string (if there is one), convert it into an array if it exists
-
-    getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
-
-    char* tokToken = strtok((*activeSetPtr).sequenceString, ";");
-    int sequenceCount = sscanf((*activeSetPtr).sequenceString, "%lf %lf %lf %lf %lf %lf", (*activeSetPtr).sequenceArray, &(*activeSetPtr).sequenceArray[1], &(*activeSetPtr).sequenceArray[2], &(*activeSetPtr).sequenceArray[3], &(*activeSetPtr).sequenceArray[4], &(*activeSetPtr).sequenceArray[5]);
-
-    tokToken = strtok(NULL, ";");
-    int lastread = sequenceCount;
-    while (tokToken != NULL && lastread == 6) {
-        lastread = sscanf(tokToken, "%lf %lf %lf %lf %lf %lf", &(*activeSetPtr).sequenceArray[sequenceCount], &(*activeSetPtr).sequenceArray[sequenceCount + 1], &(*activeSetPtr).sequenceArray[sequenceCount + 2], &(*activeSetPtr).sequenceArray[sequenceCount + 3], &(*activeSetPtr).sequenceArray[sequenceCount + 4], &(*activeSetPtr).sequenceArray[sequenceCount + 5]);
-        sequenceCount += lastread;
-        tokToken = strtok(NULL, ";");
-    }
-
-    (*activeSetPtr).Nsequence = sequenceCount / 6;
-    (*activeSetPtr).isInSequence = ((*activeSetPtr).Nsequence > 0);
-    return 0;
-}
-
-int configureBatchMode() {
-    int j;
-    const double pi = 3.1415926535897932384626433832795;
-
-    //Configure the struct array if in a batch
-    for (j = 0; j < (*activeSetPtr).Nsims; j++) {
-        if (j > 0) {
-            memcpy(&activeSetPtr[j], activeSetPtr, sizeof(struct propthread));
-        }
-
-        if ((*activeSetPtr).deffTensor != NULL) {
-            activeSetPtr[j].deffTensor = &(*activeSetPtr).deffTensor[9 * j];;
-        }
-
-        activeSetPtr[j].Ext = &(*activeSetPtr).Ext[j * (*activeSetPtr).Ngrid * 2];
-        activeSetPtr[j].Ekw = &(*activeSetPtr).Ekw[j * (*activeSetPtr).Ngrid * 2];
-        activeSetPtr[j].ExtOut = &(*activeSetPtr).ExtOut[j * (*activeSetPtr).Ngrid * 2];
-        activeSetPtr[j].EkwOut = &(*activeSetPtr).EkwOut[j * (*activeSetPtr).Ngrid * 2];
-
-
-        activeSetPtr[j].isFollowerInSequence = FALSE;
-
-        if ((*activeSetPtr).batchIndex == 1) {
-            activeSetPtr[j].delay2 += j * ((-1e-15 * (*activeSetPtr).batchDestination) - ((*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2)) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 2) {
-            activeSetPtr[j].pulseEnergy1 += j * ((*activeSetPtr).batchDestination - (*activeSetPtr).pulseEnergy1) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 3) {
-            activeSetPtr[j].cephase1 += j * (pi * (*activeSetPtr).batchDestination - (*activeSetPtr).cephase1) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 5) {
-            activeSetPtr[j].crystalTheta += j * ((pi / 180) * (*activeSetPtr).batchDestination - (*activeSetPtr).crystalTheta) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 6) {
-            activeSetPtr[j].gdd1 += j * (1e-30 * (*activeSetPtr).batchDestination - (*activeSetPtr).gdd1) / ((*activeSetPtr).Nsims - 1.);
-        }
-
-        if ((*activeSetPtr).batchIndex == 7) {
-            activeSetPtr[j].z01 += j * (1e-6 * (*activeSetPtr).batchDestination - (*activeSetPtr).z01) / ((*activeSetPtr).Nsims - 1.);
-        }
-
-        if ((*activeSetPtr).batchIndex == 8) {
-            activeSetPtr[j].drudeGamma += j * (1e12 * (*activeSetPtr).batchDestination - (*activeSetPtr).drudeGamma) / ((*activeSetPtr).Nsims - 1.);
-        }
-
-        if ((*activeSetPtr).batchIndex == 9) {
-            activeSetPtr[j].nonlinearAbsorptionStrength += j * ((*activeSetPtr).batchDestination - (*activeSetPtr).nonlinearAbsorptionStrength) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 10) {
-            activeSetPtr[j].beamwaist1 += j * (1e-6 * (*activeSetPtr).batchDestination - (*activeSetPtr).beamwaist1) / ((*activeSetPtr).Nsims - 1.);
-        }
-    }
-    return 0;
-}
-
-
 int readParametersFromInterface() {
     const double pi = 3.1415926535897932384626433832795;
-
-    (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);;
-    (*activeSetPtr).crystalTheta = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalTheta);
-    (*activeSetPtr).crystalPhi = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalPhi);
-    (*activeSetPtr).crystalThickness = 1e-6 * getDoubleFromHWND(maingui.tbCrystalThickness);
-    (*activeSetPtr).sellmeierType = 0;
-    (*activeSetPtr).axesNumber = 0;
-
-    (*activeSetPtr).nonlinearAbsorptionStrength = getDoubleFromHWND(maingui.tbNonlinearAbsortion);
-    (*activeSetPtr).bandGapElectronVolts = getDoubleFromHWND(maingui.tbBandGap);
-    (*activeSetPtr).effectiveMass = getDoubleFromHWND(maingui.tbEffectiveMass);
-    (*activeSetPtr).drudeGamma = 1e12*getDoubleFromHWND(maingui.tbDrudeGamma);
+    (*activeSetPtr).pulseEnergy1 = getDoubleFromHWND(maingui.tbPulseEnergy1);
+    (*activeSetPtr).pulseEnergy2 = getDoubleFromHWND(maingui.tbPulseEnergy2);
+    (*activeSetPtr).frequency1 = 1e12 * getDoubleFromHWND(maingui.tbFrequency1);
+    (*activeSetPtr).frequency2 = 1e12 * getDoubleFromHWND(maingui.tbFrequency2);
+    (*activeSetPtr).bandwidth1 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth1);
+    (*activeSetPtr).bandwidth2 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth2);
+    (*activeSetPtr).sgOrder1 = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType) / 2));
+    if ((*activeSetPtr).sgOrder1 < 2) {
+        (*activeSetPtr).sgOrder1 = 2;
+    }
+    (*activeSetPtr).cephase1 = getDoubleFromHWND(maingui.tbCEPhase1);
+    (*activeSetPtr).cephase2 = getDoubleFromHWND(maingui.tbCEPhase2);
+    (*activeSetPtr).delay1 = -1e-15 * getDoubleFromHWND(maingui.tbPulse1Delay); 
+    (*activeSetPtr).delay2 = -1e-15 * getDoubleFromHWND(maingui.tbPulse2Delay);
+    (*activeSetPtr).gdd1 = 1e-30 * getDoubleFromHWND(maingui.tbGDD1);
+    (*activeSetPtr).gdd2 = 1e-30 * getDoubleFromHWND(maingui.tbGDD2);
+    (*activeSetPtr).tod1 = 1e-45 * getDoubleFromHWND(maingui.tbTOD1);
+    (*activeSetPtr).tod2 = 1e-45 * getDoubleFromHWND(maingui.tbTOD2);
 
     (*activeSetPtr).beamwaist1 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist1);
     (*activeSetPtr).beamwaist2 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist2);
@@ -691,44 +618,55 @@ int readParametersFromInterface() {
     (*activeSetPtr).z02 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset2);
     (*activeSetPtr).propagationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle1);
     (*activeSetPtr).propagationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle2);
-
-
-    (*activeSetPtr).spatialWidth = 1e-6 * getDoubleFromHWND(maingui.tbGridXdim);
-    (*activeSetPtr).rStep = 1e-6 * getDoubleFromHWND(maingui.tbRadialStepSize);
-    (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
-    (*activeSetPtr).timeSpan = 1e-15 * getDoubleFromHWND(maingui.tbTimeSpan);
-    (*activeSetPtr).tStep = 1e-15 * getDoubleFromHWND(maingui.tbTimeStepSize);
-    (*activeSetPtr).Ntime = (size_t)round((*activeSetPtr).timeSpan / (*activeSetPtr).tStep);
-    (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
-    (*activeSetPtr).kStep = 2 * pi / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
-    (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
-    (*activeSetPtr).propagationStep = 1e-9 * getDoubleFromHWND(maingui.tbXstep);
-    (*activeSetPtr).Npropagation = (size_t)round((*activeSetPtr).crystalThickness / (*activeSetPtr).propagationStep);
-    (*activeSetPtr).pulseEnergy1 = getDoubleFromHWND(maingui.tbPulseEnergy1);
-    (*activeSetPtr).pulseEnergy2 = getDoubleFromHWND(maingui.tbPulseEnergy2);
-    (*activeSetPtr).frequency1 = 1e12 * getDoubleFromHWND(maingui.tbFrequency1);
-    (*activeSetPtr).frequency2 = 1e12 * getDoubleFromHWND(maingui.tbFrequency2);
-    (*activeSetPtr).bandwidth1 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth1);
-    (*activeSetPtr).bandwidth2 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth2);
-    (*activeSetPtr).cephase1 = getDoubleFromHWND(maingui.tbCEPhase1);
-    (*activeSetPtr).cephase2 = getDoubleFromHWND(maingui.tbCEPhase2);
-    (*activeSetPtr).delay1 = -1e-15 * getDoubleFromHWND(maingui.tbPulse1Delay) + (*activeSetPtr).timeSpan / 2;
-    (*activeSetPtr).delay2 = -1e-15 * getDoubleFromHWND(maingui.tbPulse2Delay) + (*activeSetPtr).timeSpan / 2;
-    (*activeSetPtr).gdd1 = 1e-30 * getDoubleFromHWND(maingui.tbGDD1);
-    (*activeSetPtr).gdd2 = 1e-30 * getDoubleFromHWND(maingui.tbGDD2);
-    (*activeSetPtr).tod1 = 1e-45 * getDoubleFromHWND(maingui.tbTOD1);
-    (*activeSetPtr).tod2 = 1e-45 * getDoubleFromHWND(maingui.tbTOD2);
-    (*activeSetPtr).sgOrder1 = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType) / 2));
-    if ((*activeSetPtr).sgOrder1 < 2) {
-        (*activeSetPtr).sgOrder1 = 2;
-    }
-    (*activeSetPtr).sgOrder2 = (*activeSetPtr).sgOrder1;
     (*activeSetPtr).polarizationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPolarizationAngle1);
     (*activeSetPtr).polarizationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPolarizationAngle2);
     (*activeSetPtr).circularity1 = getDoubleFromHWND(maingui.tbCircularity1);
     (*activeSetPtr).circularity2 = getDoubleFromHWND(maingui.tbCircularity2);
+
+    (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);;
+    (*activeSetPtr).crystalTheta = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalTheta);
+    (*activeSetPtr).crystalPhi = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalPhi);
+
+    (*activeSetPtr).spatialWidth = 1e-6 * getDoubleFromHWND(maingui.tbGridXdim);
+    (*activeSetPtr).rStep = 1e-6 * getDoubleFromHWND(maingui.tbRadialStepSize);
+    (*activeSetPtr).timeSpan = 1e-15 * getDoubleFromHWND(maingui.tbTimeSpan);
+    (*activeSetPtr).tStep = 1e-15 * getDoubleFromHWND(maingui.tbTimeStepSize);
+    
+ 
+    (*activeSetPtr).crystalThickness = 1e-6 * getDoubleFromHWND(maingui.tbCrystalThickness);
+    (*activeSetPtr).propagationStep = 1e-9 * getDoubleFromHWND(maingui.tbXstep);
+
+    (*activeSetPtr).nonlinearAbsorptionStrength = getDoubleFromHWND(maingui.tbNonlinearAbsortion);
+    (*activeSetPtr).bandGapElectronVolts = getDoubleFromHWND(maingui.tbBandGap);
+    (*activeSetPtr).effectiveMass = getDoubleFromHWND(maingui.tbEffectiveMass);
+    (*activeSetPtr).drudeGamma = 1e12 * getDoubleFromHWND(maingui.tbDrudeGamma);
+
     (*activeSetPtr).batchIndex = (int)SendMessage(maingui.pdBatchMode, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     (*activeSetPtr).symmetryType = (int)SendMessage(maingui.pdPropagationMode, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+
+    memset((*activeSetPtr).sequenceString, 0, 256 * MAX_LOADSTRING * sizeof(char));
+    getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
+
+
+    memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING * sizeof(char));
+    getStringFromHWND(maingui.tbFileNameBase, (*activeSetPtr).outputBasePath, MAX_LOADSTRING);
+
+    (*activeSetPtr).batchDestination = getDoubleFromHWND(maingui.tbBatchDestination);
+    (*activeSetPtr).Nsims = (size_t)getDoubleFromHWND(maingui.tbNumberSims);
+
+    //derived parameters and cleanup:
+    (*activeSetPtr).delay1 += (*activeSetPtr).timeSpan / 2;
+    (*activeSetPtr).delay2 += (*activeSetPtr).timeSpan / 2;
+    (*activeSetPtr).sellmeierType = 0;
+    (*activeSetPtr).axesNumber = 0;
+    (*activeSetPtr).sgOrder2 = (*activeSetPtr).sgOrder1;
+    (*activeSetPtr).Ntime = (size_t)round((*activeSetPtr).timeSpan / (*activeSetPtr).tStep);
+    (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
+    (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
+    (*activeSetPtr).kStep = 2 * pi / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
+    (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
+    (*activeSetPtr).Npropagation = (size_t)round((*activeSetPtr).crystalThickness / (*activeSetPtr).propagationStep);
+
     (*activeSetPtr).isCylindric = (*activeSetPtr).symmetryType == 1;
     if ((*activeSetPtr).isCylindric) {
         (*activeSetPtr).x01 = 0;
@@ -736,16 +674,13 @@ int readParametersFromInterface() {
         (*activeSetPtr).propagationAngle1 = 0;
         (*activeSetPtr).propagationAngle2 = 0;
     }
-    (*activeSetPtr).batchDestination = getDoubleFromHWND(maingui.tbBatchDestination);
 
-    (*activeSetPtr).Nsims = (size_t)getDoubleFromHWND(maingui.tbNumberSims);
     if ((*activeSetPtr).batchIndex == 0 || (*activeSetPtr).batchIndex == 4 || (*activeSetPtr).Nsims < 1) {
         (*activeSetPtr).Nsims = 1;
     }
 
     (*activeSetPtr).field1IsAllocated = FALSE;
     (*activeSetPtr).field2IsAllocated = FALSE;
-
 
     //crystal from database (database must be loaded!)
     (*activeSetPtr).chi2Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].d;
@@ -756,174 +691,8 @@ int readParametersFromInterface() {
     (*activeSetPtr).sellmeierType = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierType;
     (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
 
-    
-    return 0;
-}
-int saveDataSet() {
-    int j, k;
-
-    //Save the results as double instead of complex
-    double* saveEout = (double*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(double));
-    double* saveEin = (double*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(double));
-    for (j = 0; j < ((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims * 2); j++) {
-        saveEout[j] = real((*activeSetPtr).ExtOut[j]);
-        saveEin[j] = real((*activeSetPtr).Ext[j]);
-    }
-
-    char outputbase[MAX_LOADSTRING];
-    getStringFromHWND(maingui.tbFileNameBase, outputbase, MAX_LOADSTRING);
-
-    FILE* textfile;
-    char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-    strcpy(outputpath, outputbase);
-    strcat(outputpath, ".txt");
-    textfile = fopen(outputpath, "w");
-    fprintf(textfile, "Pulse energy 1: %e\nPulse energy 2: %e\nFrequency 1: %e\nFrequency 2: %e\nBandwidth 1: %e\nBandwidth 2: %e\n", (*activeSetPtr).pulseEnergy1, (*activeSetPtr).pulseEnergy2, (*activeSetPtr).frequency1, (*activeSetPtr).frequency2, (*activeSetPtr).bandwidth1, (*activeSetPtr).bandwidth2);
-    fprintf(textfile, "SG order: %i\nCEP 1: %e\nCEP 2: %e\nDelay 1: %e\nDelay 2: %e\nGDD 1: %e\nGDD 2: %e\nTOD 1: %e\nTOD 2: %e\n", (*activeSetPtr).sgOrder1, (*activeSetPtr).cephase1, (*activeSetPtr).cephase2, (*activeSetPtr).delay1, (*activeSetPtr).delay2, (*activeSetPtr).gdd1, (*activeSetPtr).gdd2, (*activeSetPtr).tod1, (*activeSetPtr).tod2);
-    fprintf(textfile, "Beamwaist 1: %e\nBeamwaist 2: %e\nx offset 1: %e\nx offset 2: %e\nz offset 1: %e\nz offset 2: %e\nNC angle 1: %e\nNC angle 2: %e\n", (*activeSetPtr).beamwaist1, (*activeSetPtr).beamwaist2, (*activeSetPtr).x01, (*activeSetPtr).x02, (*activeSetPtr).z01, (*activeSetPtr).z02, (*activeSetPtr).propagationAngle1, (*activeSetPtr).propagationAngle2);
-    fprintf(textfile, "Polarization 1: %e\nPolarization 2: %e\nCircularity 1: %e\nCircularity 2: %e\n", (*activeSetPtr).polarizationAngle1, (*activeSetPtr).polarizationAngle2, (*activeSetPtr).circularity1, (*activeSetPtr).circularity2);
-    fprintf(textfile, "Material index: %i\n", (*activeSetPtr).materialIndex);
-    fwprintf(textfile, _T("Material name: %s\nSellmeier reference: %s\nChi2 reference: %s\nChi3 reference: %s\n"), crystalDatabasePtr[(*activeSetPtr).materialIndex].crystalNameW, crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierReference, crystalDatabasePtr[(*activeSetPtr).materialIndex].dReference, crystalDatabasePtr[(*activeSetPtr).materialIndex].chi3Reference);
-    fprintf(textfile, "Sellmeier coefficients: \n");
-    for (j = 0; j < 3; j++) {
-        for (k = 0; k < 22; k++) {
-            fprintf(textfile, "%e ", crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierCoefficients[j * 22 + k]);
-        }
-        fprintf(textfile, "\n");
-    }
-    fprintf(textfile, "Crystal theta: %e\nCrystal phi: %e\nGrid width: %e\ndx: %e\nTime span: %e\ndt: %e\nThickness: %e\ndz: %e\n", (*activeSetPtr).crystalTheta, (*activeSetPtr).crystalPhi, (*activeSetPtr).spatialWidth, (*activeSetPtr).rStep, (*activeSetPtr).timeSpan, (*activeSetPtr).tStep, (*activeSetPtr).crystalThickness, (*activeSetPtr).propagationStep);
-    fprintf(textfile, "Nonlinear absorption parameter: %e\nBand gap (eV): %e\nEffective mass (relative): %e\nDrude gamma (Hz): %e\n", (*activeSetPtr).nonlinearAbsorptionStrength, (*activeSetPtr).bandGapElectronVolts, (*activeSetPtr).effectiveMass, (*activeSetPtr).drudeGamma);
-    fprintf(textfile, "Propagation mode: %i\n", (*activeSetPtr).symmetryType);
-    fprintf(textfile, "Batch mode: %i\nBatch destination: %e\nBatch steps: %lli\n", (*activeSetPtr).batchIndex, (*activeSetPtr).batchDestination, (*activeSetPtr).Nsims);
-    if ((*activeSetPtr).isInSequence) {
-        getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
-        fprintf(textfile, "Sequence: %s\n", (*activeSetPtr).sequenceString);
-    }
-
-    fprintf(textfile, "Code version: 0.1 Mar. 24, 2022\n");
-
-    fclose(textfile);
-
-    //write output field as binary, in chunks (I don't know why it fails for more than MaxChunk
-    size_t charswritten = 0;
-    size_t MaxChunk = 65536;
-    double* matlabpadding = (double*)calloc(1024, sizeof(double));
-    FILE* ExtOutFile;
-    size_t writeSize = 2 * ((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims) + 1024;
-    strcpy(outputpath, outputbase);
-    strcat(outputpath, "_ExtOut.dat");
-    ExtOutFile = fopen(outputpath, "wb");
-    while (charswritten < writeSize) {
-        if (writeSize - MaxChunk - charswritten > 0) {
-            fwrite(&saveEout[charswritten], sizeof(double), MaxChunk, ExtOutFile);
-            charswritten += MaxChunk;
-        }
-        else {
-            fwrite(&saveEout[charswritten], sizeof(double), writeSize - charswritten, ExtOutFile);
-            charswritten += writeSize - charswritten;
-        }
-    }
-    //fwrite(&(*saveset).Psi[0], sizeof(std::complex<double>), Psisize, Psifile);
-    fwrite(matlabpadding, sizeof(double), 1024, ExtOutFile);
-    fclose(ExtOutFile);
-
-    charswritten = 0;
-    FILE* ExtInFile;
-    strcpy(outputpath, outputbase);
-    strcat(outputpath, "_ExtIn.dat");
-    ExtInFile = fopen(outputpath, "wb");
-    while (charswritten < writeSize) {
-        if (writeSize - MaxChunk - charswritten > 0) {
-            fwrite(&saveEin[charswritten], sizeof(double), MaxChunk, ExtInFile);
-            charswritten += MaxChunk;
-        }
-        else {
-            fwrite(&saveEin[charswritten], sizeof(double), writeSize - charswritten, ExtInFile);
-            charswritten += writeSize - charswritten;
-        }
-    }
-    //fwrite(&(*saveset).Psi[0], sizeof(std::complex<double>), Psisize, Psifile);
-    fwrite(matlabpadding, sizeof(double), 1024, ExtInFile);
-    fclose(ExtInFile);
-
-    FILE* matlabfile;
-    strcpy(outputpath, outputbase);
-    strcat(outputpath, ".m");
-
-    char* outputbaseVar = strrchr(outputbase, '\\');
-    if (!outputbaseVar) {
-        outputbaseVar = outputbase;
-    }
-    else {
-        outputbaseVar++;
-    }
-
-    matlabfile = fopen(outputpath, "w");
-    fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
-    fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).Nsims);
-    fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).Nsims);
-    fprintf(matlabfile, "fclose(fid); \n");
-
-    fprintf(matlabfile, "fid = fopen('%s_ExtOut.dat','rb'); \n", outputbaseVar);
-    fprintf(matlabfile, "%s_ExtOut = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).Nsims);
-    fprintf(matlabfile, "%s_ExtOut = reshape(%s_ExtOut,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).Nsims);
-    fprintf(matlabfile, "fclose(fid); \n");
-    fclose(matlabfile);
-
-    /*write a python script for loading the output fields in a proper shape*/
-
-    char scriptfilename[MAX_PATH];
-    strcpy(scriptfilename, outputbase);
-    strcat(scriptfilename, ".py");
-    FILE* scriptfile;
-    scriptfile = fopen(scriptfilename, "w");
-    fprintf(scriptfile, "#!/usr/bin/python\nimport numpy as np\n");
-    fprintf(scriptfile, "dt = %e\ndz = %e\ndx = %e\n", (*activeSetPtr).tStep, (*activeSetPtr).propagationStep, (*activeSetPtr).rStep);
-    fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
-    fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
-    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).Nsims);
-    fprintf(scriptfile, "%s_ExtOut = np.reshape(np.fromfile(\"", outputbaseVar);
-    fprintf(scriptfile, "%s_ExtOut.dat", outputbaseVar);
-    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace, 2 * (*activeSetPtr).Nsims);
-    fclose(scriptfile);
-    free(saveEout);
-    free(saveEin);
-    free(matlabpadding);
-    return 0;
-}
 
 
-int resolveSequence(int currentIndex, struct propthread* s) {
-    double pi = 3.1415926535897932384626433832795;
-    
-    //sequence format
-    //material index, theta, phi, crystal length, propagation step, rotation angle
-    int materialIndex = (int)(*s).sequenceArray[0 + 6*currentIndex];
-    double crystalTheta = (pi/180) * (*s).sequenceArray[1 + 6 * currentIndex];
-    double crystalPhi = (pi/180) * (*s).sequenceArray[2 + 6 * currentIndex];
-    double propagationStep = 1e-9 * (*s).sequenceArray[4 + 6 * currentIndex];
-    size_t Npropagation = (size_t)(1e-6*(*s).sequenceArray[3 + 6 * currentIndex]/propagationStep);
-    double rotationAngle = (pi / 180) * (*s).sequenceArray[5 + 6 * currentIndex];
-
-    if (currentIndex > 0) {
-        (*s).isFollowerInSequence = TRUE;
-    }
-
-    (*s).propagationStep = propagationStep;
-    (*s).Npropagation = Npropagation;
-
-
-    (*s).materialIndex = materialIndex;
-    (*s).crystalTheta = crystalTheta;
-    (*s).crystalPhi = crystalPhi;
-    (*s).chi2Tensor = crystalDatabasePtr[materialIndex].d;
-    (*s).chi3Tensor = crystalDatabasePtr[materialIndex].chi3;
-    (*s).nonlinearSwitches = crystalDatabasePtr[materialIndex].nonlinearSwitches;
-    (*s).absorptionParameters = crystalDatabasePtr[materialIndex].absorptionParameters;
-    (*s).sellmeierCoefficients = crystalDatabasePtr[materialIndex].sellmeierCoefficients;
-
-    (*s).sellmeierType = crystalDatabasePtr[materialIndex].sellmeierType;
-    (*s).axesNumber = crystalDatabasePtr[materialIndex].axisType;
     return 0;
 }
 
@@ -972,56 +741,7 @@ int appendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
     return 0;
 }
 
-int readCrystalDatabase(struct crystalentry* db, bool isVerbose) {
-    int i = -1;
-    double* fd;
-    FILE* fp;
-    fp = fopen("CrystalDatabase.txt","r");
-    if (fp == NULL) {
-        printToConsole(maingui.textboxSims, _T("Could not open database!\r\n"));
-        return 1;
-    }
-    if (isVerbose) {
-        printToConsole(maingui.textboxSims, _T("Reading crystal database file\r\n"));
-    }
-    //read the entries line
-    int readErrors = 0;
 
-    while(readErrors == 0 && i<MAX_LOADSTRING){
-        i++;
-        readErrors += 1 != fwscanf(fp, _T("Name:\n%[^\n]\n"), db[i].crystalNameW);
-        readErrors += 1 != fscanf(fp, "Type:\n%d\n", &db[i].axisType);
-        readErrors += 1 != fscanf(fp, "Sellmeier equation:\n%d\n", &db[i].sellmeierType);
-        fd = &db[i].sellmeierCoefficients[0];
-        readErrors += 22 != fscanf(fp, "1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-        fd = &db[i].sellmeierCoefficients[22];
-        readErrors += 22 != fscanf(fp, "2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-        fd = &db[i].sellmeierCoefficients[44];
-        readErrors += 22 != fscanf(fp, "3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-        readErrors += 1 != fwscanf(fp, _T("Sellmeier reference:\n%[^\n]\n"), db[i].sellmeierReference);
-        readErrors += 1 != fscanf(fp, "chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
-        fd = &db[i].d[0];
-        readErrors += 18 != fscanf(fp, "d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
-        readErrors += 1 != fwscanf(fp, _T("d reference:\n%[^\n]\n"), db[i].dReference);
-        readErrors += 1 != fscanf(fp, "chi3 type:\n%d\n", &db[i].nonlinearSwitches[1]);
-        fd = &db[i].chi3[0];
-        readErrors += 9 != fscanf(fp, "chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
-        fd = &db[i].chi3[9];
-        readErrors += 9 != fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
-        fd = &db[i].chi3[18];
-        readErrors += 9 != fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
-        readErrors += 1 != fwscanf(fp, _T("chi3 reference:\n%[^\n]\n"), db[i].chi3Reference);
-        readErrors += 1 != fwscanf(fp, _T("Spectral file:\n%[^\n]\n"), db[i].spectralFile);
-        readErrors += 0 != fscanf(fp, "~~~crystal end~~~\n");
-        if (isVerbose && readErrors == 0) {
-            printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, db[i].crystalNameW);
-        }
-    }
-    fclose(fp);
-    printToConsole(maingui.textboxSims, _T("Read %i entries\r\n"), i);
-
-    return i;
-}
 //template function that works as a wrapper for swprintf_s, for writing to a text control working as a console
 //don't give it a format string approaching the size of MAX_LOADSTRING, but come on, that's over a thousand characters
 template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args) {
@@ -1428,13 +1148,7 @@ int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int pos
     free(plotArray);
     return 0;
 }
-//calculates the squard modulus of a complex number, under the assumption that the
-//machine's complex number format is interleaved doubles.
-//c forced to run in c++ for nostalgia reasons
-double cModulusSquared(std::complex<double>complexNumber) {
-    double* xy = (double*)&complexNumber;
-    return xy[0] * xy[0] + xy[1] * xy[1];
-}
+
 
 
 //use linear interpolation to resize matrix A to the size of matrix B
