@@ -195,11 +195,13 @@ struct guiStruct {
     HWND buttonPlot;
     HWND buttonRefreshDB;
     HWND buttonStop;
+    HWND buttonRunOnCluster;
     HWND tbWhichSimToPlot;
     HWND textboxSims;
 };
 
 DWORD WINAPI        mainSimThread(LPVOID lpParam);
+DWORD WINAPI        runOnCluster(LPVOID lpParam);
 int                 drawLabels(HDC hdc);
 int                 labelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset);
 int                 getStringFromHWND(HWND inputA, char* outputString, int bufferSize);
@@ -215,5 +217,9 @@ int                 readCrystalDatabase(struct crystalentry* db, bool isVerbose)
 int                 resolveSequence(int currentIndex, struct propthread* s);
 int                 drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv);
 int                 saveDataSet();
-int                 readParametersFromInterfaceAndAllocate();
+int                 readParametersFromInterface();
+int                 allocateGrids();
+int                 loadPulseFiles();
+int                 readSequenceString();
+int                 configureBatchMode();
 template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args);

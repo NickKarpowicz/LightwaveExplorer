@@ -2,7 +2,6 @@
 #include "framework.h"
 #include "MPQ_Nonlinear_Propagation.h"
 #include "NonlinearPropCUDA.cuh"
-#include<iostream>
 #include<cstdio>
 #include<complex>
 #include<math.h>
@@ -20,6 +19,7 @@
 #define ID_BTNSTOP 11114
 #define ID_BTNPULSE1 11115
 #define ID_BTNPULSE2 11116
+#define ID_BTNRUNONCLUSTER 11117
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -47,7 +47,11 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     HANDLE plotThread;
     DWORD hplotThread;
     
-    readParametersFromInterfaceAndAllocate();
+    readParametersFromInterface();
+    allocateGrids();
+    loadPulseFiles();
+    readSequenceString();
+    configureBatchMode();
 
     //run the simulations
     for (j = 0; j < (*activeSetPtr).Nsims; j++) {
@@ -100,6 +104,86 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     isRunning = FALSE;
     return 0;
 }
+
+
+//use ssh to run on clusters
+//still under construction!
+DWORD WINAPI runOnCluster(LPVOID lpParam) {
+    printToConsole(maingui.textboxSims, _T("Attempting to run on cluster.\r\n"));
+
+    HANDLE g_hChildStd_IN_Rd = NULL;
+    HANDLE g_hChildStd_IN_Wr = NULL;
+    HANDLE g_hChildStd_OUT_Rd = NULL;
+    HANDLE g_hChildStd_OUT_Wr = NULL;
+
+    SECURITY_ATTRIBUTES saAttr;
+    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    saAttr.bInheritHandle = TRUE;
+    saAttr.lpSecurityDescriptor = NULL;
+
+    CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0);
+    SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0);
+    CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0);
+    SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0);
+
+    TCHAR szCmdline[] = TEXT("ssh");
+    PROCESS_INFORMATION piProcInfo;
+    STARTUPINFO siStartInfo;
+    BOOL bSuccess = FALSE;
+    ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+
+    ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+    siStartInfo.cb = sizeof(STARTUPINFO);
+    siStartInfo.hStdError = g_hChildStd_OUT_Wr;
+    siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+    siStartInfo.hStdInput = g_hChildStd_IN_Rd;
+    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+    bSuccess = CreateProcess(NULL,
+        szCmdline,     // command line 
+        NULL,          // process security attributes 
+        NULL,          // primary thread security attributes 
+        TRUE,          // handles are inherited 
+        0,             // creation flags 
+        NULL,          // use parent's environment 
+        NULL,          // use parent's current directory 
+        &siStartInfo,  // STARTUPINFO pointer 
+        &piProcInfo);  // receives PROCESS_INFORMATION 
+
+    if (!bSuccess)
+        printToConsole(maingui.textboxSims, _T("Failed to create process.\r\n"));
+    else
+    {
+        // Close handles to the child process and its primary thread.
+        // Some applications might keep these handles to monitor the status
+        // of the child process, for example. 
+
+        CloseHandle(piProcInfo.hProcess);
+        CloseHandle(piProcInfo.hThread);
+
+        // Close handles to the stdin and stdout pipes no longer needed by the child process.
+        // If they are not explicitly closed, there is no way to recognize that the child process has ended.
+
+        CloseHandle(g_hChildStd_OUT_Wr);
+        CloseHandle(g_hChildStd_IN_Rd);
+    }
+
+    DWORD dwRead, dwWritten;
+    CHAR chBuf[2*MAX_LOADSTRING] = { 0 };
+    bSuccess = FALSE;
+    HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    for (;;)
+    {
+        bSuccess = ReadFile(g_hChildStd_OUT_Rd, chBuf, MAX_LOADSTRING, &dwRead, NULL);
+        if (!bSuccess || dwRead == 0) break;
+        printToConsole(maingui.textboxSims, _T("%S"), chBuf);
+    }
+
+    
+    isRunning = FALSE;
+    return 0;
+}
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR    lpCmdLine,
@@ -107,8 +191,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
-
-    // TODO: Place code here.
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -252,6 +334,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.buttonRun = CreateWindow(TEXT("button"), TEXT("Run"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
     maingui.buttonStop = CreateWindow(TEXT("button"), TEXT("Stop"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 24 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
     maingui.buttonRefreshDB = CreateWindow(TEXT("button"), TEXT("Refresh DB"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 25 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
+    maingui.buttonRefreshDB = CreateWindow(TEXT("button"), TEXT("Run@Cobra"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 26 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
     maingui.tbSequence = CreateWindow(TEXT("Edit"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, xOffsetRow1 + textboxwidth + 4, 19 * vs-2, xOffsetRow2-xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonFile = CreateWindow(TEXT("button"), TEXT("Set Path"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow3, 0 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
 
@@ -380,6 +463,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 mainthread = CreateThread(NULL, 0, mainSimThread, activeSetPtr, 0, &hMainThread);
             }
             break;
+        case ID_BTNRUNONCLUSTER:
+            if (!isRunning) {
+                isRunning = TRUE;
+                mainthread = CreateThread(NULL, 0, runOnCluster, activeSetPtr, 0, &hMainThread);
+            }
+            break;
         case ID_BTNSTOP:
             if (isRunning) {
                 cancellationCalled = TRUE;
@@ -445,15 +534,141 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return (INT_PTR)FALSE;
 }
 
-int readParametersFromInterfaceAndAllocate() {
+int allocateGrids() {
     if (isGridAllocated) {
-        isGridAllocated = TRUE;
+        isGridAllocated = FALSE;
         free((*activeSetPtr).ExtOut);
         free((*activeSetPtr).EkwOut);
         free((*activeSetPtr).Ext);
         free((*activeSetPtr).Ekw);
     }
+
+    (*activeSetPtr).loadedField1 = (std::complex<double>*)calloc((*activeSetPtr).Ntime, sizeof(std::complex<double>));
+    (*activeSetPtr).loadedField2 = (std::complex<double>*)calloc((*activeSetPtr).Ntime, sizeof(std::complex<double>));
+
+    (*activeSetPtr).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
+    (*activeSetPtr).sequenceArray = (double*)calloc(256 * MAX_LOADSTRING, sizeof(double));
+
+    (*activeSetPtr).Ext = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+    (*activeSetPtr).Ekw = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+
+    (*activeSetPtr).ExtOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+    (*activeSetPtr).EkwOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+
+    isGridAllocated = TRUE;
+    (*activeSetPtr).refractiveIndex1 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+    (*activeSetPtr).refractiveIndex2 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
+    (*activeSetPtr).deffTensor = (double*)calloc(9 * (*activeSetPtr).Nsims, sizeof(double));
+    (*activeSetPtr).imdone = (int*)calloc((*activeSetPtr).Nsims, sizeof(int));
+    return 0;
+}
+
+int loadPulseFiles() {
+    int pulse1FileType = (int)SendMessage(maingui.pdPulse1Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    int pulse2FileType = (int)SendMessage(maingui.pdPulse2Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
+    //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
+    int frogLines = 0;
+    if (pulse1FileType == 1) {
+        char pulse1Path[MAX_LOADSTRING];
+        getStringFromHWND(maingui.tbPulse1Path, pulse1Path, MAX_LOADSTRING);
+
+
+        frogLines = loadFrogSpeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
+        if (frogLines > 0) (*activeSetPtr).field1IsAllocated = TRUE;
+        printToConsole(maingui.textboxSims, _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
+
+    }
+    if (pulse2FileType == 1) {
+        char pulse2Path[MAX_LOADSTRING];
+        getStringFromHWND(maingui.tbPulse2Path, pulse2Path, MAX_LOADSTRING);
+
+        frogLines = loadFrogSpeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
+        if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
+        printToConsole(maingui.textboxSims, _T("loaded FROG file 2 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
+    }
+    return 0;
+}
+
+int readSequenceString() {
+    //read the sequence string (if there is one), convert it into an array if it exists
+
+    getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
+
+    char* tokToken = strtok((*activeSetPtr).sequenceString, ";");
+    int sequenceCount = sscanf((*activeSetPtr).sequenceString, "%lf %lf %lf %lf %lf %lf", (*activeSetPtr).sequenceArray, &(*activeSetPtr).sequenceArray[1], &(*activeSetPtr).sequenceArray[2], &(*activeSetPtr).sequenceArray[3], &(*activeSetPtr).sequenceArray[4], &(*activeSetPtr).sequenceArray[5]);
+
+    tokToken = strtok(NULL, ";");
+    int lastread = sequenceCount;
+    while (tokToken != NULL && lastread == 6) {
+        lastread = sscanf(tokToken, "%lf %lf %lf %lf %lf %lf", &(*activeSetPtr).sequenceArray[sequenceCount], &(*activeSetPtr).sequenceArray[sequenceCount + 1], &(*activeSetPtr).sequenceArray[sequenceCount + 2], &(*activeSetPtr).sequenceArray[sequenceCount + 3], &(*activeSetPtr).sequenceArray[sequenceCount + 4], &(*activeSetPtr).sequenceArray[sequenceCount + 5]);
+        sequenceCount += lastread;
+        tokToken = strtok(NULL, ";");
+    }
+
+    (*activeSetPtr).Nsequence = sequenceCount / 6;
+    (*activeSetPtr).isInSequence = ((*activeSetPtr).Nsequence > 0);
+    return 0;
+}
+
+int configureBatchMode() {
     int j;
+    const double pi = 3.1415926535897932384626433832795;
+
+    //Configure the struct array if in a batch
+    for (j = 0; j < (*activeSetPtr).Nsims; j++) {
+        if (j > 0) {
+            memcpy(&activeSetPtr[j], activeSetPtr, sizeof(struct propthread));
+        }
+
+        if ((*activeSetPtr).deffTensor != NULL) {
+            activeSetPtr[j].deffTensor = &(*activeSetPtr).deffTensor[9 * j];;
+        }
+
+        activeSetPtr[j].Ext = &(*activeSetPtr).Ext[j * (*activeSetPtr).Ngrid * 2];
+        activeSetPtr[j].Ekw = &(*activeSetPtr).Ekw[j * (*activeSetPtr).Ngrid * 2];
+        activeSetPtr[j].ExtOut = &(*activeSetPtr).ExtOut[j * (*activeSetPtr).Ngrid * 2];
+        activeSetPtr[j].EkwOut = &(*activeSetPtr).EkwOut[j * (*activeSetPtr).Ngrid * 2];
+
+
+        activeSetPtr[j].isFollowerInSequence = FALSE;
+
+        if ((*activeSetPtr).batchIndex == 1) {
+            activeSetPtr[j].delay2 += j * ((-1e-15 * (*activeSetPtr).batchDestination) - ((*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2)) / ((*activeSetPtr).Nsims - 1.);
+        }
+        if ((*activeSetPtr).batchIndex == 2) {
+            activeSetPtr[j].pulseEnergy1 += j * ((*activeSetPtr).batchDestination - (*activeSetPtr).pulseEnergy1) / ((*activeSetPtr).Nsims - 1.);
+        }
+        if ((*activeSetPtr).batchIndex == 3) {
+            activeSetPtr[j].cephase1 += j * (pi * (*activeSetPtr).batchDestination - (*activeSetPtr).cephase1) / ((*activeSetPtr).Nsims - 1.);
+        }
+        if ((*activeSetPtr).batchIndex == 5) {
+            activeSetPtr[j].crystalTheta += j * ((pi / 180) * (*activeSetPtr).batchDestination - (*activeSetPtr).crystalTheta) / ((*activeSetPtr).Nsims - 1.);
+        }
+        if ((*activeSetPtr).batchIndex == 6) {
+            activeSetPtr[j].gdd1 += j * (1e-30 * (*activeSetPtr).batchDestination - (*activeSetPtr).gdd1) / ((*activeSetPtr).Nsims - 1.);
+        }
+
+        if ((*activeSetPtr).batchIndex == 7) {
+            activeSetPtr[j].z01 += j * (1e-6 * (*activeSetPtr).batchDestination - (*activeSetPtr).z01) / ((*activeSetPtr).Nsims - 1.);
+        }
+
+        if ((*activeSetPtr).batchIndex == 8) {
+            activeSetPtr[j].drudeGamma += j * (1e12 * (*activeSetPtr).batchDestination - (*activeSetPtr).drudeGamma) / ((*activeSetPtr).Nsims - 1.);
+        }
+
+        if ((*activeSetPtr).batchIndex == 9) {
+            activeSetPtr[j].nonlinearAbsorptionStrength += j * ((*activeSetPtr).batchDestination - (*activeSetPtr).nonlinearAbsorptionStrength) / ((*activeSetPtr).Nsims - 1.);
+        }
+        if ((*activeSetPtr).batchIndex == 10) {
+            activeSetPtr[j].beamwaist1 += j * (1e-6 * (*activeSetPtr).batchDestination - (*activeSetPtr).beamwaist1) / ((*activeSetPtr).Nsims - 1.);
+        }
+    }
+    return 0;
+}
+
+
+int readParametersFromInterface() {
     const double pi = 3.1415926535897932384626433832795;
 
     (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);;
@@ -528,72 +743,9 @@ int readParametersFromInterfaceAndAllocate() {
         (*activeSetPtr).Nsims = 1;
     }
 
-
-    (*activeSetPtr).loadedField1 = (std::complex<double>*)calloc((*activeSetPtr).Ntime, sizeof(std::complex<double>));
-    (*activeSetPtr).loadedField2 = (std::complex<double>*)calloc((*activeSetPtr).Ntime, sizeof(std::complex<double>));
-    int pulse1FileType = (int)SendMessage(maingui.pdPulse1Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-    int pulse2FileType = (int)SendMessage(maingui.pdPulse2Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-
     (*activeSetPtr).field1IsAllocated = FALSE;
     (*activeSetPtr).field2IsAllocated = FALSE;
 
-    //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
-    //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
-    int frogLines = 0;
-    if (pulse1FileType == 1) {
-        char pulse1Path[MAX_LOADSTRING];
-        getStringFromHWND(maingui.tbPulse1Path, pulse1Path, MAX_LOADSTRING);
-
-
-        frogLines = loadFrogSpeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
-        if (frogLines > 0) (*activeSetPtr).field1IsAllocated = TRUE;
-        printToConsole(maingui.textboxSims, _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
-
-    }
-    if (pulse2FileType == 1) {
-        char pulse2Path[MAX_LOADSTRING];
-        getStringFromHWND(maingui.tbPulse2Path, pulse2Path, MAX_LOADSTRING);
-
-        frogLines = loadFrogSpeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
-        if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
-        printToConsole(maingui.textboxSims, _T("loaded FROG file 2 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
-    }
-
-
-    //read the sequence string (if there is one), convert it into an array if it exists
-    (*activeSetPtr).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
-    (*activeSetPtr).sequenceArray = (double*)calloc(256 * MAX_LOADSTRING, sizeof(double));
-    getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
-
-    char* tokToken = strtok((*activeSetPtr).sequenceString, ";");
-    int sequenceCount = sscanf((*activeSetPtr).sequenceString, "%lf %lf %lf %lf %lf %lf", (*activeSetPtr).sequenceArray, &(*activeSetPtr).sequenceArray[1], &(*activeSetPtr).sequenceArray[2], &(*activeSetPtr).sequenceArray[3], &(*activeSetPtr).sequenceArray[4], &(*activeSetPtr).sequenceArray[5]);
-
-    tokToken = strtok(NULL, ";");
-    int lastread = sequenceCount;
-    while (tokToken != NULL && lastread == 6) {
-        lastread = sscanf(tokToken, "%lf %lf %lf %lf %lf %lf", &(*activeSetPtr).sequenceArray[sequenceCount], &(*activeSetPtr).sequenceArray[sequenceCount + 1], &(*activeSetPtr).sequenceArray[sequenceCount + 2], &(*activeSetPtr).sequenceArray[sequenceCount + 3], &(*activeSetPtr).sequenceArray[sequenceCount + 4], &(*activeSetPtr).sequenceArray[sequenceCount + 5]);
-        sequenceCount += lastread;
-        tokToken = strtok(NULL, ";");
-    }
-
-    (*activeSetPtr).Nsequence = sequenceCount / 6;
-    (*activeSetPtr).isInSequence = ((*activeSetPtr).Nsequence > 0);
-
-
-
-
-    //Allocations
-    (*activeSetPtr).Ext = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-    (*activeSetPtr).Ekw = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-
-    (*activeSetPtr).ExtOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-    (*activeSetPtr).EkwOut = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * 2 * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-
-    isGridAllocated = TRUE;
-    (*activeSetPtr).refractiveIndex1 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-    (*activeSetPtr).refractiveIndex2 = (std::complex<double>*)calloc((*activeSetPtr).Ngrid * (*activeSetPtr).Nsims, sizeof(std::complex<double>));
-    (*activeSetPtr).deffTensor = (double*)calloc(9 * (*activeSetPtr).Nsims, sizeof(double));
-    (*activeSetPtr).imdone = (int*)calloc((*activeSetPtr).Nsims, sizeof(int));
 
     //crystal from database (database must be loaded!)
     (*activeSetPtr).chi2Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].d;
@@ -604,55 +756,7 @@ int readParametersFromInterfaceAndAllocate() {
     (*activeSetPtr).sellmeierType = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierType;
     (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
 
-    //Configure the struct array if in a batch
-    for (j = 0; j < (*activeSetPtr).Nsims; j++) {
-        if (j > 0) {
-            memcpy(&activeSetPtr[j], activeSetPtr, sizeof(struct propthread));
-        }
-
-        if ((*activeSetPtr).deffTensor != NULL) {
-            activeSetPtr[j].deffTensor = &(*activeSetPtr).deffTensor[9 * j];;
-        }
-        
-        activeSetPtr[j].Ext = &(*activeSetPtr).Ext[j * (*activeSetPtr).Ngrid * 2];
-        activeSetPtr[j].Ekw = &(*activeSetPtr).Ekw[j * (*activeSetPtr).Ngrid * 2];
-        activeSetPtr[j].ExtOut = &(*activeSetPtr).ExtOut[j * (*activeSetPtr).Ngrid * 2];
-        activeSetPtr[j].EkwOut = &(*activeSetPtr).EkwOut[j * (*activeSetPtr).Ngrid * 2];
-
-
-        activeSetPtr[j].isFollowerInSequence = FALSE;
-
-        if ((*activeSetPtr).batchIndex == 1) {
-            activeSetPtr[j].delay2 += j * ((-1e-15 * (*activeSetPtr).batchDestination) - ((*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2)) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 2) {
-            activeSetPtr[j].pulseEnergy1 += j * ((*activeSetPtr).batchDestination - (*activeSetPtr).pulseEnergy1) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 3) {
-            activeSetPtr[j].cephase1 += j * (pi * (*activeSetPtr).batchDestination - (*activeSetPtr).cephase1) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 5) {
-            activeSetPtr[j].crystalTheta += j * ((pi / 180) * (*activeSetPtr).batchDestination - (*activeSetPtr).crystalTheta) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 6) {
-            activeSetPtr[j].gdd1 += j * (1e-30 * (*activeSetPtr).batchDestination - (*activeSetPtr).gdd1) / ((*activeSetPtr).Nsims - 1.);
-        }
-
-        if ((*activeSetPtr).batchIndex == 7) {
-            activeSetPtr[j].z01 += j * (1e-6 * (*activeSetPtr).batchDestination - (*activeSetPtr).z01) / ((*activeSetPtr).Nsims - 1.);
-        }
-
-        if ((*activeSetPtr).batchIndex == 8) {
-            activeSetPtr[j].drudeGamma += j * (1e12 * (*activeSetPtr).batchDestination - (*activeSetPtr).drudeGamma) / ((*activeSetPtr).Nsims - 1.);
-        }
-
-        if ((*activeSetPtr).batchIndex == 9) {
-            activeSetPtr[j].nonlinearAbsorptionStrength += j * ((*activeSetPtr).batchDestination - (*activeSetPtr).nonlinearAbsorptionStrength) / ((*activeSetPtr).Nsims - 1.);
-        }
-        if ((*activeSetPtr).batchIndex == 10) {
-            activeSetPtr[j].beamwaist1 += j * (1e-6*(*activeSetPtr).batchDestination - (*activeSetPtr).beamwaist1) / ((*activeSetPtr).Nsims - 1.);
-        }
-    }
+    
     return 0;
 }
 int saveDataSet() {
