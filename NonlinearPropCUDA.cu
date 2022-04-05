@@ -3,9 +3,10 @@
 #include <cstdlib>
 #include <stdlib.h>
 #include <math.h>
+#include <chrono>
 #include <cuComplex.h>
 #include <cufft.h>
-#include "include/mkl/mkl.h"
+#include <mkl.h>
 
 #define THREADS_PER_BLOCK 64
 #define FALSE 0
@@ -742,11 +743,15 @@ __global__ void fftNormalizeKernel(cuDoubleComplex* A, long long* fftSize) {
 
 //main function for running on CLI
 //to be filled in!
-int main() {
-
+int main(int argc, char *argv[]) {
     int j, k;
     double rotationAngle;
     const double pi = 3.1415926535897932384626433832795;
+    
+    if (argc < 2) {
+        printf("no input file specified.\n");
+        return 1;
+    }
 
     // allocate databases, main structs
     struct simulationParameterSet* sCPU = (struct simulationParameterSet*)calloc(512, sizeof(struct simulationParameterSet));
@@ -756,19 +761,42 @@ int main() {
 
     // read crystal database
     readCrystalDatabase(crystalDatabasePtr);
+    if ((*crystalDatabasePtr).numberOfEntries == 0) {
+        printf("Could not read crystal database.\n");
+        free((*sCPU).sequenceString);
+        free((*sCPU).outputBasePath);
+        free(sCPU);
+        free(crystalDatabasePtr);
+        return 1;
+    }
+    printf("Read %i crystal database entries:\n", (*crystalDatabasePtr).numberOfEntries);
+    for (j = 0; j < (*crystalDatabasePtr).numberOfEntries; j++) {
+        printf("Material %i name: %ls\n", j, crystalDatabasePtr[j].crystalNameW);
+    }
 
-    // read from settings files
-    char filePath[] = "inputFile.txt";
-    readInputParametersFile(sCPU, crystalDatabasePtr, filePath);
+    // read from settings file
+    if (readInputParametersFile(sCPU, crystalDatabasePtr, argv[1]) == 1) {
+        printf("Could not read input file.\n");
+
+        free((*sCPU).sequenceString);
+        free((*sCPU).outputBasePath);
+        free(sCPU);
+        free(crystalDatabasePtr);
+        return 1;
+    }
 
     allocateGrids(sCPU);
+
     // load pulse files
+    // TODO
 
     readSequenceString(sCPU);
 
     configureBatchMode(sCPU);
 
+    auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     // run simulations
+    // TODO multithread with different cuda streams for using multiple GPUs
     for (j = 0; j < (*sCPU).Nsims; j++) {
         if ((*sCPU).isInSequence) {
             for (k = 0; k < (*sCPU).Nsequence; k++) {
@@ -791,6 +819,11 @@ int main() {
             }
         }
     }
+
+    auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
+    printf("Finished after %8.4lf s. \n", 1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+
+
     saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath);
     //free
 
@@ -1943,7 +1976,9 @@ int readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalE
     FILE* textfile;
     double pi = 3.1415926535897932384626433832795;
     textfile = fopen(filePath, "r");
-
+    if (textfile == NULL) {
+        return 1;
+    }
     //read parameters using fscanf:
     //recipie for programming: copy/paste the block of fprintf statements in the saveDataSet() function,
     //then find/replace:
