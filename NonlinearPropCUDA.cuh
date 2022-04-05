@@ -77,7 +77,10 @@ struct simulationParameterSet {
     std::complex<double>* loadedField2;
     bool field1IsAllocated = 0;
     bool field2IsAllocated = 0;
-
+    int pulse1FileType;
+    int pulse2FileType;
+    char* field1FilePath;
+    char* field2FilePath;
 
 
     //polarization properties
@@ -205,3 +208,4 @@ int             configureBatchMode(struct simulationParameterSet* sCPU);
 int             saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* outputbase);
 int             resolveSequence(int currentIndex, struct simulationParameterSet* s, struct crystalEntry* db);
 int             readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* filePath);
+int             loadPulseFiles(struct simulationParameterSet* sCPU);

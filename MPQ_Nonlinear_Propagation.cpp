@@ -56,7 +56,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
 
-    loadPulseFiles();
+    loadPulseFiles(activeSetPtr);
     readSequenceString(activeSetPtr);
     configureBatchMode(activeSetPtr);
     (*activeSetPtr).isInSequence = FALSE;
@@ -438,6 +438,8 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     activeSetPtr = (struct simulationParameterSet*)calloc(2048, sizeof(struct simulationParameterSet));
     (*activeSetPtr).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     (*activeSetPtr).sequenceString = (char*)calloc(MAX_LOADSTRING * 256, sizeof(char));
+    (*activeSetPtr).field1FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    (*activeSetPtr).field2FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     return TRUE;
 }
 
@@ -469,6 +471,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 free((*activeSetPtr).Ekw);
             }
             free((*activeSetPtr).outputBasePath);
+            free((*activeSetPtr).field1FilePath);
+            free((*activeSetPtr).field2FilePath);
             free(activeSetPtr);
             free(crystalDatabasePtr);
             DestroyWindow(hWnd);
@@ -562,33 +566,6 @@ int freeSemipermanentGrids() {
     return 0;
 }
 
-int loadPulseFiles() {
-    int pulse1FileType = (int)SendMessage(maingui.pdPulse1Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-    int pulse2FileType = (int)SendMessage(maingui.pdPulse2Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-    //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
-    //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
-    int frogLines = 0;
-    if (pulse1FileType == 1) {
-        char pulse1Path[MAX_LOADSTRING];
-        getStringFromHWND(maingui.tbPulse1Path, pulse1Path, MAX_LOADSTRING);
-
-
-        frogLines = loadFrogSpeck(pulse1Path, (*activeSetPtr).loadedField1, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
-        if (frogLines > 0) (*activeSetPtr).field1IsAllocated = TRUE;
-        printToConsole(maingui.textboxSims, _T("loaded FROG file 1 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
-
-    }
-    if (pulse2FileType == 1) {
-        char pulse2Path[MAX_LOADSTRING];
-        getStringFromHWND(maingui.tbPulse2Path, pulse2Path, MAX_LOADSTRING);
-
-        frogLines = loadFrogSpeck(pulse2Path, (*activeSetPtr).loadedField2, (*activeSetPtr).Ntime, (*activeSetPtr).fStep, 0.0, 1);
-        if (frogLines > 0) (*activeSetPtr).field2IsAllocated = TRUE;
-        printToConsole(maingui.textboxSims, _T("loaded FROG file 2 (%i lines, %i).\r\n"), frogLines, (*activeSetPtr).field1IsAllocated);
-    }
-    return 0;
-}
-
 int readParametersFromInterface() {
     const double pi = 3.1415926535897932384626433832795;
     (*activeSetPtr).pulseEnergy1 = getDoubleFromHWND(maingui.tbPulseEnergy1);
@@ -644,12 +621,34 @@ int readParametersFromInterface() {
     (*activeSetPtr).batchIndex = (int)SendMessage(maingui.pdBatchMode, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     (*activeSetPtr).symmetryType = (int)SendMessage(maingui.pdPropagationMode, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
 
-    memset((*activeSetPtr).sequenceString, 0, 256 * MAX_LOADSTRING * sizeof(char));
+    (*activeSetPtr).pulse1FileType = (int)SendMessage(maingui.pdPulse1Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    (*activeSetPtr).pulse2FileType = (int)SendMessage(maingui.pdPulse2Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+
+    char noneString[] = "None";
+
+    memset((*activeSetPtr).sequenceString, '\0', 256 * MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
+    if (strnlen_s((*activeSetPtr).sequenceString, 256 * MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).sequenceString, noneString);
+    }
 
-
-    memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING * sizeof(char));
+    memset((*activeSetPtr).outputBasePath, '\0', MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbFileNameBase, (*activeSetPtr).outputBasePath, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).outputBasePath, 256 * MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).outputBasePath, noneString);
+    }
+
+    memset((*activeSetPtr).field1FilePath, '\0', MAX_LOADSTRING * sizeof(char));
+    getStringFromHWND(maingui.tbPulse1Path, (*activeSetPtr).field1FilePath, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).field1FilePath, 256 * MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).field1FilePath, noneString);
+    }
+
+    memset((*activeSetPtr).field2FilePath, '\0', MAX_LOADSTRING * sizeof(char));
+    getStringFromHWND(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).field2FilePath, 256 * MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).field2FilePath, noneString);
+    }
 
     (*activeSetPtr).batchDestination = getDoubleFromHWND(maingui.tbBatchDestination);
     (*activeSetPtr).Nsims = (size_t)getDoubleFromHWND(maingui.tbNumberSims);

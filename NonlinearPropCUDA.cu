@@ -758,6 +758,8 @@ int main(int argc, char *argv[]) {
     struct crystalEntry* crystalDatabasePtr = (struct crystalEntry*)calloc(512, sizeof(struct crystalEntry));
     (*sCPU).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
     (*sCPU).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    (*sCPU).field1FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    (*sCPU).field2FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
 
     // read crystal database
     readCrystalDatabase(crystalDatabasePtr);
@@ -786,12 +788,8 @@ int main(int argc, char *argv[]) {
     }
 
     allocateGrids(sCPU);
-
-    // load pulse files
-    // TODO
-
+    loadPulseFiles(sCPU);
     readSequenceString(sCPU);
-
     configureBatchMode(sCPU);
 
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
@@ -836,6 +834,8 @@ int main(int argc, char *argv[]) {
     free((*sCPU).loadedField1);
     free((*sCPU).loadedField2);
     free((*sCPU).outputBasePath);
+    free((*sCPU).field1FilePath);
+    free((*sCPU).field2FilePath);
     free(sCPU);
     free(crystalDatabasePtr);
     return 0;
@@ -1998,7 +1998,9 @@ int readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalE
     fscanf(textfile, "Batch mode: %i\nBatch destination: %lf\nBatch steps: %lli\n", &(*sCPU).batchIndex, &(*sCPU).batchDestination, &(*sCPU).Nsims);
     fscanf(textfile, "Sequence: %s\n", (*sCPU).sequenceString);
     fscanf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
-
+    fscanf(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n", &(*sCPU).pulse1FileType, &(*sCPU).pulse2FileType);
+    fscanf(textfile, "Field 1 file path: %s\n", (*sCPU).field1FilePath);
+    fscanf(textfile, "Field 2 file path: %s\n", (*sCPU).field2FilePath);
 
     //derived parameters and cleanup:
     (*sCPU).sellmeierType = 0;
@@ -2068,7 +2070,9 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
     fprintf(textfile, "Batch mode: %i\nBatch destination: %e\nBatch steps: %lli\n", (*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
     fprintf(textfile, "Sequence: %s\n", (*sCPU).sequenceString);
     fprintf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
-
+    fprintf(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n", (*sCPU).pulse1FileType, (*sCPU).pulse2FileType);
+    fprintf(textfile, "Field 1 file path: %s\n", (*sCPU).field1FilePath);
+    fprintf(textfile, "Field 2 file path: %s\n", (*sCPU).field2FilePath);
 
     fwprintf(textfile, L"Material name: %s\nSellmeier reference: %s\nChi2 reference: %s\nChi3 reference: %s\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
     fprintf(textfile, "Sellmeier coefficients: \n");
@@ -2201,5 +2205,21 @@ int resolveSequence(int currentIndex, struct simulationParameterSet* s, struct c
 
     (*s).sellmeierType = db[materialIndex].sellmeierType;
     (*s).axesNumber = db[materialIndex].axisType;
+    return 0;
+}
+
+int loadPulseFiles(struct simulationParameterSet* sCPU) {
+
+    //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
+    //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
+    int frogLines = 0;
+    if ((*sCPU).pulse1FileType == 1) {
+        frogLines = loadFrogSpeck((*sCPU).field1FilePath, (*sCPU).loadedField1, (*sCPU).Ntime, (*sCPU).fStep, 0.0, 1);
+        if (frogLines > 0) (*sCPU).field1IsAllocated = TRUE;
+    }
+    if ((*sCPU).pulse2FileType == 1) {
+        frogLines = loadFrogSpeck((*sCPU).field2FilePath, (*sCPU).loadedField2, (*sCPU).Ntime, (*sCPU).fStep, 0.0, 1);
+        if (frogLines > 0) (*sCPU).field2IsAllocated = TRUE;
+    }
     return 0;
 }

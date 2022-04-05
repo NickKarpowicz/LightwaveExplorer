@@ -98,5 +98,4 @@ int                 linearRemap(double* A, int nax, int nay, double* B, int nbx,
 int                 drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv);
 int                 readParametersFromInterface();
 int                 freeSemipermanentGrids();
-int                 loadPulseFiles();
 template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args);
