@@ -7,6 +7,7 @@
 #include <cuComplex.h>
 #include <cufft.h>
 #include <mkl.h>
+#include <thread>
 
 #define THREADS_PER_BLOCK 64
 #define FALSE 0
@@ -744,13 +745,31 @@ __global__ void fftNormalizeKernel(cuDoubleComplex* A, long long* fftSize) {
 //main function for running on CLI
 //to be filled in!
 int main(int argc, char *argv[]) {
-    int j, k;
+    int i, j, k;
     double rotationAngle;
     const double pi = 3.1415926535897932384626433832795;
+
+    int CUDAdevice;
+    int CUDAdeviceCount = 0;
+    cudaGetDeviceCount(&CUDAdeviceCount);
+    cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
+    struct cudaDeviceProp activeCUDADeviceProp;
+    if (cuErr == cudaSuccess) {
+        printf("Found %i GPU(s): \n", CUDAdeviceCount);
+        for (i = 0; i < CUDAdeviceCount; i++) {
+            cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+            printf("%s\r\n", activeCUDADeviceProp.name);
+            printf(" Memory: %lli MB; Multiprocessors: %i\n", activeCUDADeviceProp.totalGlobalMem / (1024 * 1024), activeCUDADeviceProp.multiProcessorCount);
+        }
+    }
+    else {
+        printf("No GPU found.\n");
+        return 1;
+    }
     
     if (argc < 2) {
         printf("no input file specified.\n");
-        return 1;
+        return 2;
     }
 
     // allocate databases, main structs
@@ -815,8 +834,8 @@ int main(int argc, char *argv[]) {
 
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     // run simulations
-    // TODO multithread with different cuda streams for using multiple GPUs
-    
+    std::thread *threadBlock = (std::thread*)calloc((*sCPU).Nsims, sizeof(std::thread));
+    int maxThreads = CUDAdeviceCount;
     for (j = 0; j < (*sCPU).Nsims; j++) {
         if ((*sCPU).isInSequence) {
             for (k = 0; k < (*sCPU).Nsequence; k++) {
@@ -833,20 +852,31 @@ int main(int argc, char *argv[]) {
             }
         }
         else {
-            solveNonlinearWaveEquation(&sCPU[j]);
+            if (j >= maxThreads) {
+                threadBlock[j - maxThreads].join();
+            }
+            //solveNonlinearWaveEquation(&sCPU[j]);
+            sCPU[j].assignedGPU = j % CUDAdeviceCount;
+            threadBlock[j] = std::thread(solveNonlinearWaveEquation, &sCPU[j]);
+            printf("Launched thread %i\n", j);
             if (sCPU[j].memoryError > 0) {
                 printf("Warning: device memory error (%i).\n", sCPU[j].memoryError);
             }
         }
     }
-    
+    printf("Finishing...\n");
+	for (i = 0; i < (*sCPU).Nsims; i++) {
+		if (threadBlock[i].joinable()) {
+			threadBlock[i].join();
+		}
+	}
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     printf("Finished after %8.4lf s. \n", 1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
 
 
     saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath);
     //free
-
+    free(threadBlock);
     free((*sCPU).sequenceString);
     free((*sCPU).sequenceArray);
     free((*sCPU).refractiveIndex1);
@@ -869,6 +899,10 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     //the struct s contains most of the simulation variables and pointers
     struct cudaParameterSet s;
     struct simulationParameterSet* sCPU = (struct simulationParameterSet*)lpParam;
+    cudaSetDevice((*sCPU).assignedGPU);
+    cudaStream_t CUDAStream;
+    cudaStreamCreate(&CUDAStream);
+    s.CUDAStream = CUDAStream;
 
     //initialize and take values from the struct handed over by the dispatcher
     unsigned long long i;
@@ -1009,7 +1043,9 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     //prepare FFT plans
     cufftPlan2d(&s.fftPlan, (int)s.Nspace, (int)s.Ntime, CUFFT_Z2Z);
     cufftPlan2d(&s.polfftPlan, (int)s.Nspace, (int)s.Ntime, CUFFT_D2Z);
-    
+    cufftSetStream(s.fftPlan, CUDAStream);
+    cufftSetStream(s.polfftPlan, CUDAStream);
+
     //prepare the propagation arrays
     if (s.isCylindric) {
         preparePropagation3DCylindric(sCPU, s);
@@ -1049,16 +1085,16 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
             break;
         }
     }
-    cudaDeviceSynchronize();
+
     
     //transform final result
-    fixnanKernel<<<s.Nblock, s.Nthread>>>(s.gridEFrequency1);
-    fixnanKernel << <s.Nblock, s.Nthread >> > (s.gridEFrequency2);
+    fixnanKernel<<<s.Nblock, s.Nthread, 0, CUDAStream>>>(s.gridEFrequency1);
+    fixnanKernel << <s.Nblock, s.Nthread, 0, CUDAStream >>> (s.gridEFrequency2);
     cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
     cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
-    fftNormalizeKernel << <s.Nblock, s.Nthread >> >(s.gridETime1, s.propagationInts);
-    fftNormalizeKernel<<<s.Nblock, s.Nthread >>>(s.gridETime2, s.propagationInts);
-    cudaDeviceSynchronize();
+    fftNormalizeKernel << <s.Nblock, s.Nthread, 0, CUDAStream>>> (s.gridETime1, s.propagationInts);
+    fftNormalizeKernel<<<s.Nblock, s.Nthread, 0, CUDAStream >>> (s.gridETime2, s.propagationInts);
+
 
     //copy the field arrays from the GPU to CPU memory
     cudaMemcpy((*sCPU).ExtOut, s.gridETime1, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
@@ -1066,7 +1102,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaMemcpy(&(*sCPU).ExtOut[s.Ngrid], s.gridETime2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridEFrequency2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
-    cudaDeviceSynchronize();
+
     
     //Free GPU memory
     cudaFree(s.propagationInts);
@@ -1106,10 +1142,12 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaFree(s.gridPlasmaCurrentFrequency1);
     cudaFree(s.gridPlasmaCurrentFrequency2);
     
+    cudaStreamDestroy(CUDAStream);
+
     //Free CPU memory
     free(gridPropagationFactor1CPU);
     free(gridPolarizationFactor1CPU);
-    
+    (*sCPU).imdone[0] = 1;
     return 0;
 }
 
@@ -1124,21 +1162,21 @@ int runRK4Step(struct cudaParameterSet s, int stepNumber) {
         cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
         
         if (s.isNonLinear) {
-            nonlinearPolarizationKernel << <s.Nblock, s.Nthread >> > (s);
+            nonlinearPolarizationKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s);
             cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime1, (cufftDoubleComplex*)s.gridPolarizationFrequency1);
             cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime2, (cufftDoubleComplex*)s.gridPolarizationFrequency2);
         }
 
         if (s.isCylindric) {
-            radialLaplacianKernel << <s.Nblock, s.Nthread >> > (s);
+            radialLaplacianKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s);
             cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridRadialLaplacian1, (cufftDoubleComplex*)s.k1, CUFFT_FORWARD);
             cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridRadialLaplacian2, (cufftDoubleComplex*)s.k2, CUFFT_FORWARD);
             
         }
 
         if (s.hasPlasma) {
-            plasmaCurrentKernelPrep << <s.Nblock, s.Nthread >> > (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
-            plasmaCurrentKernel2 << <(unsigned int)s.Nspace, 1 >> > (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
+            plasmaCurrentKernelPrep << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
+            plasmaCurrentKernel2 << <(unsigned int)s.Nspace, 1, 0, s.CUDAStream >> > (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
             //plasmaCurrentKernel << <(unsigned int)s.Nspace, 1 >> > (s);
             cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent1, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency1);
             cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent2, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency2);
@@ -1147,7 +1185,7 @@ int runRK4Step(struct cudaParameterSet s, int stepNumber) {
     }
 
     //calculate k
-    rkKernel<<<s.Nblock, s.Nthread >>>(s, stepNumber);
+    rkKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream >>>(s, stepNumber);
     
     return 0;
 }
@@ -1249,7 +1287,9 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
     // 2D fft (k,f)->(x,t), copied to real space beam
 
     cufftPlan1d(&plan1, (int)(*sc).Ntime, CUFFT_Z2Z, (int)(*sc).Nspace);
+    cufftSetStream(plan1, (*sc).CUDAStream);
     cufftPlan2d(&plan2, (int)(*sc).Nspace, (int)(*sc).Ntime, CUFFT_Z2Z);
+    cufftSetStream(plan2, (*sc).CUDAStream);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridETemp1, CUFFT_FORWARD);
     cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETemp1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_FORWARD);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency1, (cufftDoubleComplex*)(*sc).gridETime1, CUFFT_INVERSE);
@@ -1259,8 +1299,8 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency2, (cufftDoubleComplex*)(*sc).gridETime2, CUFFT_INVERSE);
 
     //Take the conjugate of the field because me and cufft have different ideas of time
-    conjugateKernel<<<(*sc).Nblock, (*sc).Nthread >>>((*sc).gridETime1);
-    conjugateKernel<<<(*sc).Nblock, (*sc).Nthread >>>((*sc).gridETime2);
+    conjugateKernel<<<(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >>>((*sc).gridETime1);
+    conjugateKernel<<<(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >>>((*sc).gridETime2);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_INVERSE);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridEFrequency2, CUFFT_INVERSE);
     cudaDeviceSynchronize();
@@ -1281,7 +1321,7 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
         pulse1[i] = pulse1[i] * pulseEnergySum;
         pulse1f[i] = pulse1f[i] * pulseEnergySum;
     }
-    cudaDeviceSynchronize();
+
 
     //do same for pulse 2 here
     pulseSum = 0;
@@ -1364,8 +1404,8 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency2, (cufftDoubleComplex*)(*sc).gridETime2, CUFFT_INVERSE);
 
     //Take the conjugate of the field because me and cufft have different ideas of time
-    conjugateKernel << <(*sc).Nblock, (*sc).Nthread >> > ((*sc).gridETime1);
-    conjugateKernel << <(*sc).Nblock, (*sc).Nthread >> > ((*sc).gridETime2);
+    conjugateKernel << <(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridETime1);
+    conjugateKernel << <(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridETime2);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_INVERSE);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridEFrequency2, CUFFT_INVERSE);
     cudaDeviceSynchronize();
@@ -1429,7 +1469,7 @@ int preparePropagation2DCartesian(struct simulationParameterSet* s, struct cudaP
     cudaMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66+8) * sizeof(double), cudaMemcpyHostToDevice);
 
     //prepare the propagation grids
-    prepareCartesianGridsKernel <<<sc.Nblock, sc.Nthread>>> (alphaGPU, sellmeierCoefficients, sc);
+    prepareCartesianGridsKernel <<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream >>> (alphaGPU, sellmeierCoefficients, sc);
     cudaDeviceSynchronize();
 
     //copy the retrieved refractive indicies to the cpu
@@ -1465,7 +1505,7 @@ int preparePropagation3DCylindric(struct simulationParameterSet* s, struct cudaP
     cudaMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), cudaMemcpyHostToDevice);
 
     //prepare the propagation grids
-    prepareCylindricGridsKernel << <sc.Nblock, sc.Nthread >> > (sellmeierCoefficients, sc);
+    prepareCylindricGridsKernel << <sc.Nblock, sc.Nthread, 0, sc.CUDAStream >> > (sellmeierCoefficients, sc);
     cudaDeviceSynchronize();
 
     //copy the retrieved refractive indicies to the cpu
@@ -1835,13 +1875,13 @@ int rotateField(struct simulationParameterSet *s, double rotationAngle) {
     rotateFieldKernel<<<Nblock, Nthread>>>(Ein1, Ein2, Eout1, Eout2, rotationAngle);
 
     cudaMemcpy((*s).EkwOut, Eout1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-cudaMemcpy(&(*s).EkwOut[(*s).Ngrid], Eout2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&(*s).EkwOut[(*s).Ngrid], Eout2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
-cudaFree(Ein1);
-cudaFree(Ein2);
-cudaFree(Eout1);
-cudaFree(Eout2);
-return 0;
+    cudaFree(Ein1);
+    cudaFree(Ein2);
+    cudaFree(Eout1);
+    cudaFree(Eout2);
+    return 0;
 }
 
 //calculates the squard modulus of a complex number, under the assumption that the
@@ -2084,8 +2124,8 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
         saveEin[j] = real((*sCPU).Ext[j]);
     }
 
-
-
+    char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
     FILE* textfile;
     char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     strcpy(outputpath, outputbase);
@@ -2100,11 +2140,15 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
     fwprintf(textfile, L"Nonlinear absorption parameter: %e\nBand gap (eV): %e\nEffective mass (relative): %e\nDrude gamma (Hz): %e\n", (*sCPU).nonlinearAbsorptionStrength, (*sCPU).bandGapElectronVolts, (*sCPU).effectiveMass, (*sCPU).drudeGamma);
     fwprintf(textfile, L"Propagation mode: %i\n", (*sCPU).symmetryType);
     fwprintf(textfile, L"Batch mode: %i\nBatch destination: %e\nBatch steps: %lli\n", (*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
-    fwprintf(textfile, L"Sequence: %s\n", (*sCPU).sequenceString);
-    fwprintf(textfile, L"Output base path: %s\n", (*sCPU).outputBasePath);
+    mbstowcs(wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
+    fwprintf(textfile, L"Sequence: %s\n", wideStringConversionBuffer);
+    mbstowcs(wideStringConversionBuffer, (*sCPU).outputBasePath, MAX_LOADSTRING);
+    fwprintf(textfile, L"Output base path: %s\n", wideStringConversionBuffer);
     fwprintf(textfile, L"Field 1 from file type: %i\nField 2 from file type: %i\n", (*sCPU).pulse1FileType, (*sCPU).pulse2FileType);
-    fwprintf(textfile, L"Field 1 file path: %s\n", (*sCPU).field1FilePath);
-    fwprintf(textfile, L"Field 2 file path: %s\n", (*sCPU).field2FilePath);
+    mbstowcs(wideStringConversionBuffer, (*sCPU).field1FilePath, MAX_LOADSTRING);
+    fwprintf(textfile, L"Field 1 file path: %s\n", wideStringConversionBuffer);
+    mbstowcs(wideStringConversionBuffer, (*sCPU).field2FilePath, MAX_LOADSTRING);
+    fwprintf(textfile, L"Field 2 file path: %s\n", wideStringConversionBuffer);
 
     fwprintf(textfile, L"Material name: %s\nSellmeier reference: %s\nChi2 reference: %s\nChi3 reference: %s\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
     fwprintf(textfile, L"Sellmeier coefficients: \n");
@@ -2203,6 +2247,8 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
     free(saveEout);
     free(saveEin);
     free(matlabpadding);
+    free(stringConversionBuffer);
+    free(wideStringConversionBuffer);
     return 0;
 }
 

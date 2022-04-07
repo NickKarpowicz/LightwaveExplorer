@@ -413,19 +413,26 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     UpdateWindow(maingui.mainWindow);
     
     
-    int CUDAdevice;
+    int CUDAdevice, i;
+    int CUDAdeviceCount = 0;
+    cudaGetDeviceCount(&CUDAdeviceCount);
+    
     cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
     struct cudaDeviceProp activeCUDADeviceProp;
-    cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+    wchar_t wcstring[514];
+    size_t convertedChars = 0;
+    long long deviceMemory;
+    int deviceProcessors;
     if (cuErr == cudaSuccess) {
-        printToConsole(maingui.textboxSims, _T("Found GPU: "));
-        size_t origsize = 256 + 1;
-        const size_t newsize = 256;
-        size_t convertedChars = 0;
-        wchar_t wcstring[514];
-        mbstowcs_s(&convertedChars, wcstring, origsize, activeCUDADeviceProp.name, _TRUNCATE);
-        appendTextToWindow(maingui.textboxSims, wcstring, 256);
-        printToConsole(maingui.textboxSims, _T("\r\n\r\n"));
+        printToConsole(maingui.textboxSims, _T("Found %i GPU(s): \r\n"), CUDAdeviceCount);
+        for (i = 0; i < CUDAdeviceCount; i++) {
+            cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+            memset(wcstring, 0, sizeof(wchar_t));
+            mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
+            printToConsole(maingui.textboxSims, _T("%ls\r\n"), wcstring);
+            printToConsole(maingui.textboxSims, _T(" Memory: %lli MB; Multiprocessors: %i\r\n"), activeCUDADeviceProp.totalGlobalMem/(1024*1024), activeCUDADeviceProp.multiProcessorCount);
+        }
+
     }
     
     //read the crystal database
@@ -433,7 +440,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
     readCrystalDatabase(crystalDatabasePtr);
     printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
-    for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
+    for (i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
         printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
     }
     //make the active set pointer

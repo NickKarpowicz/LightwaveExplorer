@@ -98,6 +98,7 @@ struct simulationParameterSet {
     std::complex<double>* EkwOut;
     int* imdone;
     int memoryError;
+    int assignedGPU;
     int plotSim;
     struct crystalEntry* crystalDatabase;
     int batchIndex;
@@ -130,6 +131,7 @@ struct crystalEntry {
 };
 
 struct cudaParameterSet {
+    cudaStream_t CUDAStream;
 	cuDoubleComplex* gridETime1;
 	cuDoubleComplex* gridETime2;
 	cuDoubleComplex* gridETemp1;
@@ -182,7 +184,7 @@ struct cudaParameterSet {
 	double dt;
 	double dx;
 	double h;
-	long long Nsteps;
+	size_t Nsteps;
 	int Nthread;
 	int Nblock;
 };
