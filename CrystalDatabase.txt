@@ -71,11 +71,11 @@ Type:
 Sellmeier equation:
 0
 1st axis coefficients:
-0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 2e22 3.46498338898e+29 1e13
+0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
 2nd axis coefficients:
-0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 2e22 3.46498338898e+29 1e13
+0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
 3rd axis coefficients:
-0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 2e22 3.46498338898e+29 1e13
+0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
 Sellmeier reference:
 Fit based on DeVore and Del Mar Photonics data
 chi2 type:
@@ -89,11 +89,44 @@ None
 chi3 type:
 2
 chi3:
-1e-19 0 0 0 0 0 0 0 0
+4e-19 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 chi3 reference:
 Single isotropic value
+Spectral file:
+None
+~~~crystal end~~~
+Name:
+TiO2 Rutile
+Type:
+2
+Sellmeier equation:
+0
+1st axis coefficients:
+3.4805 0 2.4781 -0.09 0 2.2140 -111.6833 0 0 1 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
+2nd axis coefficients:
+3.4805 0 2.4781 -0.09 0 2.2140 -111.6833 0 0 1 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
+3rd axis coefficients:
+3.1032 0 4.1346 -0.0807 0 63.9791 -1493.5424 0 0 1 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
+Sellmeier reference:
+Philipp's fitting
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+None
+chi3 type:
+2
+chi3:
+6.16e-20 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Single isotropic value, based on chi3_1111 from N.G. Khadzhiiski and N.I. Koroteev, Optics Communications 42, 423-427 (1982).
 Spectral file:
 None
 ~~~crystal end~~~

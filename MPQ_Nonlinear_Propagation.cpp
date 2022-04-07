@@ -26,8 +26,9 @@ HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 struct guiStruct maingui;                       // struct containing all of the GUI elements
-struct simulationParameterSet* activeSetPtr;                // Main structure containing simulation parameters and pointers
+struct simulationParameterSet* activeSetPtr;    // Main structure containing simulation parameters and pointers
 struct crystalEntry* crystalDatabasePtr;        // Crystal info database
+WCHAR programDirectory[MAX_LOADSTRING];         // Program working directory (useful if the crystal database has to be reloaded)
 bool isRunning = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
@@ -417,7 +418,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     struct cudaDeviceProp activeCUDADeviceProp;
     cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
     if (cuErr == cudaSuccess) {
-        printToConsole(maingui.textboxSims, _T("Found GPU:"));
+        printToConsole(maingui.textboxSims, _T("Found GPU: "));
         size_t origsize = 256 + 1;
         const size_t newsize = 256;
         size_t convertedChars = 0;
@@ -429,6 +430,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     
     //read the crystal database
     crystalDatabasePtr = (struct crystalEntry*)calloc(MAX_LOADSTRING, sizeof(struct crystalEntry));
+    GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
     readCrystalDatabase(crystalDatabasePtr);
     printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
     for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
@@ -507,6 +509,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             getFileNameBaseFromDlgDat(hWnd, maingui.tbPulse2Path);
             break;
         case ID_BTNREFRESHDB:
+            SetCurrentDirectory(programDirectory);
             memset(crystalDatabasePtr, 0, 512 * sizeof(struct crystalEntry));
             readCrystalDatabase(crystalDatabasePtr);
             printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
@@ -626,25 +629,25 @@ int readParametersFromInterface() {
 
     char noneString[] = "None";
 
-    memset((*activeSetPtr).sequenceString, '\0', 256 * MAX_LOADSTRING * sizeof(char));
+    memset((*activeSetPtr).sequenceString, 0, 256 * MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
     if (strnlen_s((*activeSetPtr).sequenceString, 256 * MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).sequenceString, noneString);
     }
 
-    memset((*activeSetPtr).outputBasePath, '\0', MAX_LOADSTRING * sizeof(char));
+    memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbFileNameBase, (*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).outputBasePath, 256 * MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).outputBasePath, noneString);
     }
 
-    memset((*activeSetPtr).field1FilePath, '\0', MAX_LOADSTRING * sizeof(char));
+    memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbPulse1Path, (*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).field1FilePath, 256 * MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).field1FilePath, noneString);
     }
 
-    memset((*activeSetPtr).field2FilePath, '\0', MAX_LOADSTRING * sizeof(char));
+    memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).field2FilePath, 256 * MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).field2FilePath, noneString);
