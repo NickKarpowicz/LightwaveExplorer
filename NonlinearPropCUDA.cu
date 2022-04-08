@@ -745,10 +745,7 @@ __global__ void fftNormalizeKernel(cuDoubleComplex* A, long long* fftSize) {
 //main function for running on CLI
 //to be filled in!
 int main(int argc, char *argv[]) {
-    int i, j, k;
-    double rotationAngle;
-    const double pi = 3.1415926535897932384626433832795;
-
+    int i, j;
     int CUDAdevice;
     int CUDAdeviceCount = 0;
     cudaGetDeviceCount(&CUDAdeviceCount);
@@ -779,6 +776,7 @@ int main(int argc, char *argv[]) {
     (*sCPU).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     (*sCPU).field1FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     (*sCPU).field2FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    (*sCPU).crystalDatabase = crystalDatabasePtr;
 
     // read crystal database
     if (readCrystalDatabase(crystalDatabasePtr) == -2) {
@@ -835,41 +833,34 @@ int main(int argc, char *argv[]) {
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     // run simulations
     std::thread *threadBlock = (std::thread*)calloc((*sCPU).Nsims, sizeof(std::thread));
-    int maxThreads = CUDAdeviceCount;
+    size_t maxThreads = min(CUDAdeviceCount, (*sCPU).Nsims);
     for (j = 0; j < (*sCPU).Nsims; j++) {
-        if ((*sCPU).isInSequence) {
-            for (k = 0; k < (*sCPU).Nsequence; k++) {
-                resolveSequence(k, &sCPU[j], crystalDatabasePtr);
-                rotationAngle = (pi / 180) * (*sCPU).sequenceArray[5 + 6 * k];
-                solveNonlinearWaveEquation(&sCPU[j]);
-                if (rotationAngle != 0.0) {
-                    rotateField(sCPU, rotationAngle);
-                }
 
-                if (sCPU[j].memoryError > 0) {
-                    printf("Warning: device memory error (%i).\n", sCPU[j].memoryError);
-                }
-            }
-        }
-        else {
-            if (j >= maxThreads) {
+        sCPU[j].assignedGPU = j % CUDAdeviceCount;
+        if (j >= maxThreads) {
+            if (threadBlock[j - maxThreads].joinable()) {
                 threadBlock[j - maxThreads].join();
             }
-            //solveNonlinearWaveEquation(&sCPU[j]);
-            sCPU[j].assignedGPU = j % CUDAdeviceCount;
+        }
+
+        if ((*sCPU).isInSequence) {
+            threadBlock[j] = std::thread(solveNonlinearWaveEquationSequence, &sCPU[j]);
+        }
+        else {
             threadBlock[j] = std::thread(solveNonlinearWaveEquation, &sCPU[j]);
-            printf("Launched thread %i\n", j);
-            if (sCPU[j].memoryError > 0) {
-                printf("Warning: device memory error (%i).\n", sCPU[j].memoryError);
-            }
         }
     }
+    
     printf("Finishing...\n");
 	for (i = 0; i < (*sCPU).Nsims; i++) {
+        if (sCPU[i].memoryError > 0) {
+            printf("Warning: device memory error (%i).\n", sCPU[i].memoryError);
+        }
 		if (threadBlock[i].joinable()) {
 			threadBlock[i].join();
 		}
 	}
+    
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     printf("Finished after %8.4lf s. \n", 1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
 
@@ -893,6 +884,25 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
+    struct simulationParameterSet* sCPU = (struct simulationParameterSet*)lpParam;
+    const double pi = 3.1415926535897932384626433832795;
+    int k;
+    double rotationAngle;
+    for (k = 0; k < (*sCPU).Nsequence; k++) {
+        resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
+        rotationAngle = (pi / 180) * (*sCPU).sequenceArray[5 + 6 * k];
+        solveNonlinearWaveEquation(sCPU);
+        if (rotationAngle != 0.0) {
+            rotateField(sCPU, rotationAngle);
+        }
+
+        if ((*sCPU).memoryError > 0) {
+            printf("Warning: device memory error (%i).\n", (*sCPU).memoryError);
+        }
+    }
+    return 0;
+}
 //main thread of the nonlinear wave equation implemented on CUDA
 unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
@@ -1966,9 +1976,10 @@ int readCrystalDatabase(struct crystalEntry* db) {
 
 int readSequenceString(struct simulationParameterSet* sCPU) {
     //read the sequence string (if there is one), convert it into an array if it exists
-
-    char* tokToken = strtok((*sCPU).sequenceString, ";");
-    int sequenceCount = sscanf((*sCPU).sequenceString, "%lf %lf %lf %lf %lf %lf", (*sCPU).sequenceArray, &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2], &(*sCPU).sequenceArray[3], &(*sCPU).sequenceArray[4], &(*sCPU).sequenceArray[5]);
+    char sequenceString[MAX_LOADSTRING];
+    strcpy_s(sequenceString, (*sCPU).sequenceString);
+    char* tokToken = strtok(sequenceString, ";");
+    int sequenceCount = sscanf(sequenceString, "%lf %lf %lf %lf %lf %lf", &(*sCPU).sequenceArray[0], &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2], &(*sCPU).sequenceArray[3], &(*sCPU).sequenceArray[4], &(*sCPU).sequenceArray[5]);
 
     tokToken = strtok(NULL, ";");
     int lastread = sequenceCount;
@@ -2118,16 +2129,23 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
 
     //Save the results as double instead of complex
     double* saveEout = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(double));
-    double* saveEin = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(double));
     for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
         saveEout[j] = real((*sCPU).ExtOut[j]);
-        saveEin[j] = real((*sCPU).Ext[j]);
     }
 
     char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
-    FILE* textfile;
     char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    char* outputbaseVar = strrchr(outputbase, '\\');
+    if (!outputbaseVar) {
+        outputbaseVar = outputbase;
+    }
+    else {
+        outputbaseVar++;
+    }
+    double* matlabpadding = (double*)calloc(1024, sizeof(double));
+
+    FILE* textfile;
     strcpy(outputpath, outputbase);
     strcat(outputpath, ".txt");
     textfile = fopen(outputpath, "w");
@@ -2161,61 +2179,36 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
     fwprintf(textfile, L"Code version: 0.12 April 7, 2022\n");
 
     fclose(textfile);
-
-    //write output field as binary, in chunks (I don't know why it fails for more than MaxChunk
-    size_t charswritten = 0;
-    size_t MaxChunk = 65536;
-    double* matlabpadding = (double*)calloc(1024, sizeof(double));
+    
+    
+    //write fields as binary
+    for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
+        saveEout[j] = real((*sCPU).ExtOut[j]);
+    }
     FILE* ExtOutFile;
-    size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims) + 1024;
+    size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims);
     strcpy(outputpath, outputbase);
     strcat(outputpath, "_ExtOut.dat");
     ExtOutFile = fopen(outputpath, "wb");
-    while (charswritten < writeSize) {
-        if (writeSize - MaxChunk - charswritten > 0) {
-            fwrite(&saveEout[charswritten], sizeof(double), MaxChunk, ExtOutFile);
-            charswritten += MaxChunk;
-        }
-        else {
-            fwrite(&saveEout[charswritten], sizeof(double), writeSize - charswritten, ExtOutFile);
-            charswritten += writeSize - charswritten;
-        }
-    }
-    //fwrite(&(*saveset).Psi[0], sizeof(std::complex<double>), Psisize, Psifile);
+    fwrite(saveEout, sizeof(double), writeSize, ExtOutFile);
     fwrite(matlabpadding, sizeof(double), 1024, ExtOutFile);
     fclose(ExtOutFile);
 
-    charswritten = 0;
+    for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
+        saveEout[j] = real((*sCPU).Ext[j]);
+    }
     FILE* ExtInFile;
     strcpy(outputpath, outputbase);
     strcat(outputpath, "_ExtIn.dat");
     ExtInFile = fopen(outputpath, "wb");
-    while (charswritten < writeSize) {
-        if (writeSize - MaxChunk - charswritten > 0) {
-            fwrite(&saveEin[charswritten], sizeof(double), MaxChunk, ExtInFile);
-            charswritten += MaxChunk;
-        }
-        else {
-            fwrite(&saveEin[charswritten], sizeof(double), writeSize - charswritten, ExtInFile);
-            charswritten += writeSize - charswritten;
-        }
-    }
-    //fwrite(&(*saveset).Psi[0], sizeof(std::complex<double>), Psisize, Psifile);
+    fwrite(saveEout, sizeof(double), writeSize, ExtInFile);
     fwrite(matlabpadding, sizeof(double), 1024, ExtInFile);
     fclose(ExtInFile);
+
 
     FILE* matlabfile;
     strcpy(outputpath, outputbase);
     strcat(outputpath, ".m");
-
-    char* outputbaseVar = strrchr(outputbase, '\\');
-    if (!outputbaseVar) {
-        outputbaseVar = outputbase;
-    }
-    else {
-        outputbaseVar++;
-    }
-
     matlabfile = fopen(outputpath, "w");
     fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
     fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
@@ -2227,9 +2220,8 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
     fprintf(matlabfile, "%s_ExtOut = reshape(%s_ExtOut,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
     fprintf(matlabfile, "fclose(fid); \n");
     fclose(matlabfile);
-
-    /*write a python script for loading the output fields in a proper shape*/
-
+    
+    //write a python script for loading the output fields in a proper shape
     char scriptfilename[MAX_LOADSTRING];
     strcpy(scriptfilename, outputbase);
     strcat(scriptfilename, ".py");
@@ -2244,8 +2236,8 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
     fprintf(scriptfile, "%s_ExtOut.dat", outputbaseVar);
     fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
     fclose(scriptfile);
+    
     free(saveEout);
-    free(saveEin);
     free(matlabpadding);
     free(stringConversionBuffer);
     free(wideStringConversionBuffer);

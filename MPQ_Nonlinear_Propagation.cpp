@@ -56,33 +56,25 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
-
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
     readSequenceString(activeSetPtr);
+    wchar_t wideStringConversionBuffer[1024];
+    mbstowcs(wideStringConversionBuffer, (*activeSetPtr).sequenceString, MAX_LOADSTRING);
+    printToConsole(maingui.textboxSims, L"sequence string: %ls\r\n", wideStringConversionBuffer);
+    printToConsole(maingui.textboxSims, L"sequence count: %i %i\r\n", (*activeSetPtr).Nsequence, (*activeSetPtr).isInSequence);
+    printToConsole(maingui.textboxSims, L"sequence: %lf %lf %lf %lf %lf %lf\r\n", (*activeSetPtr).sequenceArray[0], (*activeSetPtr).sequenceArray[1], (*activeSetPtr).sequenceArray[2], (*activeSetPtr).sequenceArray[3], (*activeSetPtr).sequenceArray[4], (*activeSetPtr).sequenceArray[5]);
     configureBatchMode(activeSetPtr);
-    (*activeSetPtr).isInSequence = FALSE;
+
     //run the simulations
     for (j = 0; j < (*activeSetPtr).Nsims; j++) {
         if ((*activeSetPtr).isInSequence) {
-            for (k = 0; k < (*activeSetPtr).Nsequence; k++) {
-                resolveSequence(k, &activeSetPtr[j], crystalDatabasePtr);
-                rotationAngle = (pi / 180) * (*activeSetPtr).sequenceArray[5 + 6 * k];
-                solveNonlinearWaveEquation(&activeSetPtr[j]);
-                if (rotationAngle != 0.0) {
-                    rotateField(activeSetPtr, rotationAngle);
-                }
-                
-                (*activeSetPtr).plotSim = j;
-                plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-                if (activeSetPtr[j].memoryError > 0) {
-                    printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
-                }
-            }
+            solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
+            (*activeSetPtr).plotSim = j;
+            plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
         }
         else {
             solveNonlinearWaveEquation(&activeSetPtr[j]);
-            (*activeSetPtr).plotSim = j;
-            plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
             printToConsole(maingui.textboxSims, _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12 * activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
             
             if (activeSetPtr[j].memoryError > 0) {
@@ -94,6 +86,10 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             printToConsole(maingui.textboxSims, _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
             break;
         }
+
+        (*activeSetPtr).plotSim = j;
+        plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+
     }
 
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
@@ -421,8 +417,6 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     struct cudaDeviceProp activeCUDADeviceProp;
     wchar_t wcstring[514];
     size_t convertedChars = 0;
-    long long deviceMemory;
-    int deviceProcessors;
     if (cuErr == cudaSuccess) {
         printToConsole(maingui.textboxSims, _T("Found %i GPU(s): \r\n"), CUDAdeviceCount);
         for (i = 0; i < CUDAdeviceCount; i++) {

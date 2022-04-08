@@ -211,3 +211,4 @@ int             saveDataSet(struct simulationParameterSet* sCPU, struct crystalE
 int             resolveSequence(int currentIndex, struct simulationParameterSet* s, struct crystalEntry* db);
 int             readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* filePath);
 int             loadPulseFiles(struct simulationParameterSet* sCPU);
+unsigned long   solveNonlinearWaveEquationSequence(void* lpParam);
