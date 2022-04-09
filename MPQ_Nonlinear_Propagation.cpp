@@ -10,6 +10,8 @@
 #include<chrono>
 #include<Windows.h>
 #include<CommCtrl.h>
+#include<Uxtheme.h>
+#include<dwmapi.h>
 
 #define MAX_LOADSTRING 1024
 #define ID_BTNRUN 11110
@@ -32,6 +34,14 @@ WCHAR programDirectory[MAX_LOADSTRING];         // Program working directory (us
 bool isRunning = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
+BOOL USE_DARK_MODE = true;
+
+
+COLORREF uiWhite = RGB(255, 255, 255);
+COLORREF uiGrey = RGB(216, 216, 216);
+COLORREF uiDarkGrey = RGB(32, 32, 32);
+COLORREF uiBlack = RGB(16, 16, 16);
+HBRUSH blackBrush = CreateSolidBrush(uiBlack);
 
 // Forward declarations of (Microsoft) functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -41,9 +51,7 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
-    int j, k;
-    double rotationAngle;
-    const double pi = 3.1415926535897932384626433832795;
+    int j;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     HANDLE plotThread;
     DWORD hplotThread;
@@ -59,11 +67,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
     readSequenceString(activeSetPtr);
-    wchar_t wideStringConversionBuffer[1024];
-    mbstowcs(wideStringConversionBuffer, (*activeSetPtr).sequenceString, MAX_LOADSTRING);
-    printToConsole(maingui.textboxSims, L"sequence string: %ls\r\n", wideStringConversionBuffer);
-    printToConsole(maingui.textboxSims, L"sequence count: %i %i\r\n", (*activeSetPtr).Nsequence, (*activeSetPtr).isInSequence);
-    printToConsole(maingui.textboxSims, L"sequence: %lf %lf %lf %lf %lf %lf\r\n", (*activeSetPtr).sequenceArray[0], (*activeSetPtr).sequenceArray[1], (*activeSetPtr).sequenceArray[2], (*activeSetPtr).sequenceArray[3], (*activeSetPtr).sequenceArray[4], (*activeSetPtr).sequenceArray[5]);
     configureBatchMode(activeSetPtr);
 
     //run the simulations
@@ -116,82 +119,49 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
 //use ssh to run on clusters
 //still under construction!
-DWORD WINAPI runOnCluster(LPVOID lpParam) {
-    printToConsole(maingui.textboxSims, _T("Attempting to run on cluster.\r\n"));
+DWORD WINAPI createRunFile(LPVOID lpParam) {
 
-    HANDLE g_hChildStd_IN_Rd = NULL;
-    HANDLE g_hChildStd_IN_Wr = NULL;
-    HANDLE g_hChildStd_OUT_Rd = NULL;
-    HANDLE g_hChildStd_OUT_Wr = NULL;
+    readParametersFromInterface();
 
-    SECURITY_ATTRIBUTES saAttr;
-    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-    saAttr.bInheritHandle = TRUE;
-    saAttr.lpSecurityDescriptor = NULL;
-
-    CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0);
-    SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0);
-    CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0);
-    SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0);
-
-    TCHAR szCmdline[] = TEXT("ssh");
-    PROCESS_INFORMATION piProcInfo;
-    STARTUPINFO siStartInfo;
-    bool bSuccess = FALSE;
-    ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-
-    ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-    siStartInfo.cb = sizeof(STARTUPINFO);
-    siStartInfo.hStdError = g_hChildStd_OUT_Wr;
-    siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
-    siStartInfo.hStdInput = g_hChildStd_IN_Rd;
-    siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-
-    bSuccess = CreateProcess(NULL,
-        szCmdline,     // command line 
-        NULL,          // process security attributes 
-        NULL,          // primary thread security attributes 
-        TRUE,          // handles are inherited 
-        0,             // creation flags 
-        NULL,          // use parent's environment 
-        NULL,          // use parent's current directory 
-        &siStartInfo,  // STARTUPINFO pointer 
-        &piProcInfo);  // receives PROCESS_INFORMATION 
-
-    if (!bSuccess)
-        printToConsole(maingui.textboxSims, _T("Failed to create process.\r\n"));
-    else
-    {
-        // Close handles to the child process and its primary thread.
-        // Some applications might keep these handles to monitor the status
-        // of the child process, for example. 
-
-        CloseHandle(piProcInfo.hProcess);
-        CloseHandle(piProcInfo.hThread);
-
-        // Close handles to the stdin and stdout pipes no longer needed by the child process.
-        // If they are not explicitly closed, there is no way to recognize that the child process has ended.
-
-        CloseHandle(g_hChildStd_OUT_Wr);
-        CloseHandle(g_hChildStd_IN_Rd);
+    if (isGridAllocated) {
+        freeSemipermanentGrids();
     }
 
-    DWORD dwRead, dwWritten;
-    CHAR chBuf[2*MAX_LOADSTRING] = { 0 };
-    bSuccess = FALSE;
-    HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    allocateGrids(activeSetPtr);
+    (*activeSetPtr).runType = 1;
+    isGridAllocated = TRUE;
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    loadPulseFiles(activeSetPtr);
+    readSequenceString(activeSetPtr);
+    configureBatchMode(activeSetPtr);
 
-    for (;;)
-    {
-        bSuccess = ReadFile(g_hChildStd_OUT_Rd, chBuf, MAX_LOADSTRING, &dwRead, NULL);
-        if (!bSuccess || dwRead == 0) break;
-        printToConsole(maingui.textboxSims, _T("%S"), chBuf);
+
+    free((*activeSetPtr).sequenceArray);
+    free((*activeSetPtr).refractiveIndex1);
+    free((*activeSetPtr).refractiveIndex2);
+    free((*activeSetPtr).imdone);
+    free((*activeSetPtr).deffTensor);
+    free((*activeSetPtr).loadedField1);
+    free((*activeSetPtr).loadedField2);
+    char* fileName = (*activeSetPtr).outputBasePath;
+    wchar_t wideBuffer[MAX_LOADSTRING];
+    while (strchr(fileName, '\\') != NULL) {
+        fileName = strchr(fileName, '\\');
+        fileName++;
     }
-
     
+    mbstowcs(wideBuffer, fileName, strlen(fileName)+1);
+    printToConsole(maingui.textboxSims, L"Run on cluster with:\r\nsbatch %ls.slurmScript", wideBuffer);
+    //create command line settings file
+    saveSettingsFile(activeSetPtr, crystalDatabasePtr);
+
+    //create SLURM script
+    saveSlurmScript(activeSetPtr, 0, 1);
+
     isRunning = FALSE;
     return 0;
 }
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR    lpCmdLine,
@@ -254,7 +224,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hInstance = hInstance;
     wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MPQNONLINEARPROPAGATION));
     wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.hbrBackground = CreateSolidBrush(uiDarkGrey);
     wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_MPQNONLINEARPROPAGATION);
     wcex.lpszClassName = szWindowClass;
     wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -269,25 +239,26 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 // - identify GPU
 bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
+    EnableTheming(TRUE);
     hInst = hInstance; // Store instance handle in our global variable
-    int xOffsetRow1 = 160;
-    int xOffsetRow2 = 430 + 50;
-    int xOffsetRow3 = 540 + 100;
-    int vs = 26;
-    int radioButtonOffset = xOffsetRow2 - 155 + 24;
-    int btnwidth = 100;
-    int btnoffset = xOffsetRow1;
-    int btnoffset0 = 5;
-    int btnoffset2 = xOffsetRow2 + 50;
-    int btnoffset2a = btnoffset2 - btnwidth - 10;
-    int rbsize = 18;
-    int consoleSize = 420;
-    int textboxwidth = 150;
+    int xOffsetRow1 = maingui.xOffsetRow1;
+    int xOffsetRow2 = maingui.xOffsetRow2;
+    int xOffsetRow3 = maingui.xOffsetRow3;
+    int vs = maingui.vs;
+    int radioButtonOffset = maingui.radioButtonOffset;
+    int btnwidth = maingui.btnwidth;
+    int btnoffset = maingui.btnoffset;
+    int btnoffset0 = maingui.btnoffset0;
+    int btnoffset2 = maingui.btnoffset2;
+    int btnoffset2a = maingui.btnoffset2a;
+    int rbsize = maingui.rbsize;
+    int consoleSize = maingui.consoleSize;
+    int textboxwidth = maingui.textboxwidth;
     maingui.mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_EX_CONTROLPARENT,
         CW_USEDEFAULT, CW_USEDEFAULT, 2200, 33 * vs + consoleSize + 60, nullptr, nullptr, hInstance, nullptr);
     SetMenu(maingui.mainWindow, NULL);
     SetWindowTextA(maingui.mainWindow, "Nick's nonlinear propagator");
-
+    SetWindowTheme(maingui.mainWindow, NULL, L"Aero");
 
     //text boxes for input parameters
     maingui.tbPulseEnergy1 = CreateWindow(TEXT("Edit"), TEXT("24e-9"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -305,7 +276,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbGDD2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbTOD1 = CreateWindow(TEXT("Edit"), TEXT("230.57"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 13 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbTOD2 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 14 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    
+
     maingui.tbBeamwaist1 = CreateWindow(TEXT("Edit"), TEXT("2.8"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 15 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbBeamwaist2 = CreateWindow(TEXT("Edit"), TEXT("50"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 16 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbXoffset1 = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 17 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -323,7 +294,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbMaterialIndex = CreateWindow(TEXT("Edit"), TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalTheta = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalPhi = CreateWindow(TEXT("Edit"), TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    
+
     maingui.tbNonlinearAbsortion = CreateWindow(TEXT("Edit"), TEXT("2e-87"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbBandGap = CreateWindow(TEXT("Edit"), TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 4 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbDrudeGamma = CreateWindow(TEXT("Edit"), TEXT("10"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 5 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -398,7 +369,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 
     //Text message window
-    maingui.textboxSims = CreateWindow(TEXT("Edit"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | WS_VSCROLL | WS_HSCROLL, 0, 33 * vs, xOffsetRow2 + 150, consoleSize, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.textboxSims = CreateWindow(TEXT("Edit"), TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | WS_VSCROLL | WS_HSCROLL, 0, 33 * vs, consoleSize, consoleSize, maingui.mainWindow, NULL, hInstance, NULL);
 
     if (!maingui.mainWindow)
     {
@@ -489,7 +460,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_BTNRUNONCLUSTER:
             if (!isRunning) {
                 isRunning = TRUE;
-                mainthread = CreateThread(NULL, 0, runOnCluster, activeSetPtr, 0, &hMainThread);
+                mainthread = CreateThread(NULL, 0, createRunFile, activeSetPtr, 0, &hMainThread);
             }
             break;
         case ID_BTNSTOP:
@@ -524,12 +495,50 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
     }
     break;
+    case WM_CTLCOLORBTN:
+    {
+        HDC hdc = (HDC)wParam;
+        SetBkColor(hdc, uiBlack);
+        SetTextColor(hdc, uiGrey);
+        return (LRESULT)blackBrush;
+    }
+    case WM_CTLCOLORSCROLLBAR:
+    {
+        HDC hdc = (HDC)wParam;
+        //SetBkColor(hdc, uiBlack);
+        return (LRESULT)blackBrush;
+    }
+    case WM_CTLCOLORLISTBOX:
+    {
+        HDC hdc = (HDC)wParam;
+        SetBkColor(hdc, uiBlack);
+        SetTextColor(hdc, uiGrey);
+        return (LRESULT)blackBrush;
+    }
+    case WM_CTLCOLOREDIT:
+    {
+        HDC hdc = (HDC)wParam;
+        SetBkColor(hdc, uiBlack);
+        SetTextColor(hdc, uiGrey);
+        return (LRESULT)blackBrush;
+    }
     case WM_PAINT:
     {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
+        SetTextColor(hdc, uiGrey);
+        SetBkColor(hdc, uiDarkGrey);
         drawLabels(hdc);
         EndPaint(hWnd, &ps);
+    }
+    case WM_SIZE:
+    {
+        RECT mainRect;
+        GetWindowRect(maingui.mainWindow, &mainRect);
+        SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 33*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 35*maingui.vs -4, NULL);
+        if (isGridAllocated && !isRunning) {
+            drawSimPlots(activeSetPtr);
+        }
     }
     break;
     case WM_DESTROY:
@@ -711,6 +720,11 @@ int labelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* 
     return 0;
 }
 
+int floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelText, int xOffset, int yOffset) {
+    TextOutW(hdc, xOffset, yOffset, labelText, (int)_tcslen(labelText));
+    return 0;
+}
+
 //reads the content of a text box and returns a double containing its numerical value
 double getDoubleFromHWND(HWND inputA)
 {
@@ -825,13 +839,38 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -24);
 
     //plot labels
-    int x = 690;
-    int y = 125;
-    int dx = 64 * 11;
+    RECT mainRect;
+    GetWindowRect(maingui.mainWindow, &mainRect);
+    int x0 = maingui.consoleSize + 10;
+    int y0 = 2 * maingui.vs;
+    int textHeight = 21;
+    int imagePanelSizeX = mainRect.right - mainRect.left - x0;
+    int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 -5*textHeight;
+
+    int column1X = x0;
+    int column2X = x0 + imagePanelSizeX/2;
+    int unitLabelRow1X = x0 + imagePanelSizeX / 4;
+    int unitLabelRow2X = x0 + (3 * imagePanelSizeX) / 4;
+    int row1Y = y0;
+    int row2Y = y0 + imagePanelSizeY/4;
+    int row3Y = y0 + imagePanelSizeY/2;
+    int row4Y = y0 + (3 * imagePanelSizeY) / 4;
+    int row5Y = y0 + imagePanelSizeY + 15;
     int dy = 256;
     int plotMargin = 0;
     int spacerX = 50;
     int spacerY = 40;
+    floatyText(hdc, maingui.mainWindow, L"s-polarization, space/time:", column1X, row1Y);
+    floatyText(hdc, maingui.mainWindow, L"p-polarization, space/time:", column1X, row2Y);
+    floatyText(hdc, maingui.mainWindow, L"s-polarization waveform (GV/m):", column1X, row3Y);
+    floatyText(hdc, maingui.mainWindow, L"p-polarization waveform (GV/m):", column1X, row4Y);
+    floatyText(hdc, maingui.mainWindow, L"Time (fs)", unitLabelRow1X-40, row5Y);
+    floatyText(hdc, maingui.mainWindow, L"s-polarization, Fourier, Log:", column2X, row1Y);
+    floatyText(hdc, maingui.mainWindow, L"p-polarization, Fourier, Log:", column2X, row2Y);
+    floatyText(hdc, maingui.mainWindow, L"s-polarization spectrum, log-scale:", column2X, row3Y);
+    floatyText(hdc, maingui.mainWindow, L"p-polarization spectrum, log-scale:", column2X, row4Y);
+    floatyText(hdc, maingui.mainWindow, L"Frequency (THz)", unitLabelRow2X-90, row5Y);
+    /*
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization, space/time:"), 0, 32);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization, space/time:"), 0, 32+dy+spacerY);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization waveform (GV/m):"), 0, 32 + 2*(dy + spacerY));
@@ -842,6 +881,7 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("s-polarization spectrum, log-scale:"), 0 + dx + spacerX, 32 + 2*(dy + spacerY));
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("p-polarization spectrum, log-scale:"), 0 + dx + spacerX, 32 + 3*(dy + spacerY));
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFileNameBase, _T("Frequency (THz)"), dx / 2 + 0 + dx + spacerX, 36 + 4 * (dy + spacerY));
+    */
     return 0;
 }
 
@@ -1009,14 +1049,24 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     //bool wasRunning = isRunning;
     //isRunning = TRUE; //this locks the grid memory so it doesn't get freed while plotting, set back to wasRunning at the end
     if (isGridAllocated) {
-        size_t simIndex = (*activeSetPtr).plotSim;
-        int x = 690;
-        int y = 125;
-        int dx = 64*11;
-        int dy = 256;
-        int plotMargin = 0;
+
+        RECT mainRect;
+        GetWindowRect(maingui.mainWindow, &mainRect);
+
         int spacerX = 50;
         int spacerY = 40;
+        int x0 = maingui.consoleSize + spacerX + 10;
+        int y0 = 90 + spacerY;
+        int imagePanelSizeX = mainRect.right - mainRect.left - x0 - 2*spacerX;
+        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 5*spacerY;
+
+        size_t simIndex = (*activeSetPtr).plotSim;
+        int x = x0;
+        int y = y0;
+        int dx = imagePanelSizeX/2;
+        int dy = imagePanelSizeY/4;
+        int plotMargin = 0;
+
         double logPlotOffset = 1e11;
         int i,j;
         HDC hdc;
@@ -1101,6 +1151,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
 
 int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv) {
+    SetTextColor(hdc, uiGrey);
+    SetBkColor(hdc, uiDarkGrey);
     double maxY = 0;
     double minY = 0;
     int i;

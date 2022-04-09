@@ -1903,7 +1903,6 @@ double cModulusSquared(std::complex<double>complexNumber) {
 }
 
 int allocateGrids(struct simulationParameterSet* sCPU) {
-
     (*sCPU).loadedField1 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
     (*sCPU).loadedField2 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
 
@@ -1919,7 +1918,7 @@ int allocateGrids(struct simulationParameterSet* sCPU) {
     (*sCPU).refractiveIndex2 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims, sizeof(std::complex<double>));
     (*sCPU).deffTensor = (double*)calloc(9 * (*sCPU).Nsims, sizeof(double));
     (*sCPU).imdone = (int*)calloc((*sCPU).Nsims, sizeof(int));
-
+    (*sCPU).runType = 0;
     return 0;
 }
 
@@ -1977,7 +1976,7 @@ int readCrystalDatabase(struct crystalEntry* db) {
 int readSequenceString(struct simulationParameterSet* sCPU) {
     //read the sequence string (if there is one), convert it into an array if it exists
     char sequenceString[MAX_LOADSTRING];
-    strcpy_s(sequenceString, (*sCPU).sequenceString);
+    strcpy(sequenceString, (*sCPU).sequenceString);
     char* tokToken = strtok(sequenceString, ";");
     int sequenceCount = sscanf(sequenceString, "%lf %lf %lf %lf %lf %lf", &(*sCPU).sequenceArray[0], &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2], &(*sCPU).sequenceArray[3], &(*sCPU).sequenceArray[4], &(*sCPU).sequenceArray[5]);
 
@@ -2124,8 +2123,136 @@ int readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalE
     fclose(textfile);
     return 0;
 }
-int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* outputbase) {
+
+
+
+int saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCount) {
+    FILE* textfile;
+    char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
+    char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+
+    char* fileName = (*sCPU).outputBasePath;
+    while (strchr(fileName, '\\') != NULL) {
+        fileName = strchr(fileName, '\\');
+        fileName++;
+    }
+    char LF = '\x0A';
+    strcpy(outputpath, (*sCPU).outputBasePath);
+    strcat(outputpath, ".slurmScript");
+    textfile = fopen(outputpath, "wb");
+    fprintf(textfile, "#!/bin/bash -l"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "#SBATCH -o ./tjob.out.%%j"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "#SBATCH -e ./tjob.err.%%j"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "#SBATCH -D ./"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "#SBATCH -J lightwave"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "#SBATCH --constraint=\"gpu\""); fwrite(&LF, sizeof(char), 1, textfile);
+    if (gpuType == 0) {
+        fprintf(textfile, "#SBATCH --gres=gpu:rtx5000:%i", min(gpuCount,2)); fwrite(&LF, sizeof(char), 1, textfile);
+    }
+    if (gpuType == 1) {
+        fprintf(textfile, "#SBATCH --gres=gpu:v100:%i", min(gpuCount, 2)); fwrite(&LF, sizeof(char), 1, textfile);
+    }
+    if (gpuType == 2) {
+        fprintf(textfile, "#SBATCH --gres=gpu:a100:%i", min(gpuCount, 4)); fwrite(&LF, sizeof(char), 1, textfile);
+        fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2*min(gpuCount, 4)); fwrite(&LF, sizeof(char), 1, textfile);
+    }
+    fprintf(textfile, "#SBATCH --mem=%lliM",1024+(18 * sizeof(double) * (*sCPU).Ngrid * max(1,(*sCPU).Nsims))/1048576);
+
+    fprintf(textfile, "#SBATCH --nodes=1"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "#SBATCH --ntasks-per-node=1"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "#SBATCH --time=24:00:00"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "module purge"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "module load cuda/11.2"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "module load mkl/2022.0"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "module load gcc/9"); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH"); fwrite(&LF, sizeof(char), 1, textfile);
+    if (gpuType == 0) {
+        fprintf(textfile, "srun ./nnp75 %s.input > prog.out", fileName); fwrite(&LF, sizeof(char), 1, textfile);
+    }
+    if (gpuType == 1) {
+        fprintf(textfile, "srun ./nnp70 %s.input > prog.out", fileName); fwrite(&LF, sizeof(char), 1, textfile);
+    }
+    if (gpuType == 2) {
+        fprintf(textfile, "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}"); fwrite(&LF, sizeof(char), 1, textfile);
+        fprintf(textfile, "srun ./nnp80 %s.input > $prog.out", fileName); fwrite(&LF, sizeof(char), 1, textfile);
+    }
+    fclose(textfile);
+    free(outputpath);
+    free(wideStringConversionBuffer);
+    free(stringConversionBuffer);
+    return 0;
+}
+
+int saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr) {
     int j, k;
+    FILE* textfile;
+    char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
+    char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    strcpy(outputpath, (*sCPU).outputBasePath);
+    if ((*sCPU).runType == 1) {
+        strcat(outputpath, ".input");
+    }
+    else {
+        strcat(outputpath, ".txt");
+    }
+    
+    textfile = fopen(outputpath, "w");
+    fwprintf(textfile, L"Pulse energy 1 (J): %e\nPulse energy 2(J): %e\nFrequency 1 (Hz): %e\nFrequency 2 (Hz): %e\nBandwidth 1 (Hz): %e\nBandwidth 2 (Hz): %e\n", (*sCPU).pulseEnergy1, (*sCPU).pulseEnergy2, (*sCPU).frequency1, (*sCPU).frequency2, (*sCPU).bandwidth1, (*sCPU).bandwidth2);
+    fwprintf(textfile, L"SG order: %i\nCEP 1 (rad): %e\nCEP 2 (rad): %e\nDelay 1 (s): %e\nDelay 2 (s): %e\nGDD 1 (s^-2): %e\nGDD 2 (s^-2): %e\nTOD 1 (s^-3): %e\nTOD 2(s^-3): %e\n", (*sCPU).sgOrder1, (*sCPU).cephase1, (*sCPU).cephase2, (*sCPU).delay1, (*sCPU).delay2, (*sCPU).gdd1, (*sCPU).gdd2, (*sCPU).tod1, (*sCPU).tod2);
+    fwprintf(textfile, L"Beamwaist 1 (m): %e\nBeamwaist 2 (m): %e\nx offset 1 (m): %e\nx offset 2 (m): %e\nz offset 1 (m): %e\nz offset 2 (m): %e\nNC angle 1 (rad): %e\nNC angle 2 (rad): %e\n", (*sCPU).beamwaist1, (*sCPU).beamwaist2, (*sCPU).x01, (*sCPU).x02, (*sCPU).z01, (*sCPU).z02, (*sCPU).propagationAngle1, (*sCPU).propagationAngle2);
+    fwprintf(textfile, L"Polarization 1 (rad): %e\nPolarization 2 (rad): %e\nCircularity 1: %e\nCircularity 2: %e\n", (*sCPU).polarizationAngle1, (*sCPU).polarizationAngle2, (*sCPU).circularity1, (*sCPU).circularity2);
+    fwprintf(textfile, L"Material index: %i\n", (*sCPU).materialIndex);
+    fwprintf(textfile, L"Crystal theta (rad): %e\nCrystal phi (rad): %e\nGrid width (m): %e\ndx (m): %e\nTime span (s): %e\ndt (s): %e\nThickness (m): %e\ndz (m): %e\n", (*sCPU).crystalTheta, (*sCPU).crystalPhi, (*sCPU).spatialWidth, (*sCPU).rStep, (*sCPU).timeSpan, (*sCPU).tStep, (*sCPU).crystalThickness, (*sCPU).propagationStep);
+    fwprintf(textfile, L"Nonlinear absorption parameter: %e\nBand gap (eV): %e\nEffective mass (relative): %e\nDrude gamma (Hz): %e\n", (*sCPU).nonlinearAbsorptionStrength, (*sCPU).bandGapElectronVolts, (*sCPU).effectiveMass, (*sCPU).drudeGamma);
+    fwprintf(textfile, L"Propagation mode: %i\n", (*sCPU).symmetryType);
+    fwprintf(textfile, L"Batch mode: %i\nBatch destination: %e\nBatch steps: %lli\n", (*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
+    mbstowcs(wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
+    fwprintf(textfile, L"Sequence: %ls\n", wideStringConversionBuffer);
+
+
+    if ((*sCPU).runType == 1) {
+        char* fileName = (*sCPU).outputBasePath;
+        while (strchr(fileName, '\\') != NULL) {
+            fileName = strchr(fileName, '\\');
+            fileName++;
+        }
+        mbstowcs(wideStringConversionBuffer, fileName, strlen(fileName));
+        fwprintf(textfile, L"Output base path: %ls\n", wideStringConversionBuffer);
+    }
+    else {
+        mbstowcs(wideStringConversionBuffer, (*sCPU).outputBasePath, MAX_LOADSTRING);
+        fwprintf(textfile, L"Output base path: %ls\n", wideStringConversionBuffer);
+    }
+
+    fwprintf(textfile, L"Field 1 from file type: %i\nField 2 from file type: %i\n", (*sCPU).pulse1FileType, (*sCPU).pulse2FileType);
+    mbstowcs(wideStringConversionBuffer, (*sCPU).field1FilePath, MAX_LOADSTRING);
+    fwprintf(textfile, L"Field 1 file path: %ls\n", wideStringConversionBuffer);
+    mbstowcs(wideStringConversionBuffer, (*sCPU).field2FilePath, MAX_LOADSTRING);
+    fwprintf(textfile, L"Field 2 file path: %ls\n", wideStringConversionBuffer);
+
+    fwprintf(textfile, L"Material name: %ls\nSellmeier reference: %ls\nChi2 reference: %ls\nChi3 reference: %ls\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
+    fwprintf(textfile, L"Sellmeier coefficients: \n");
+    for (j = 0; j < 3; j++) {
+        for (k = 0; k < 22; k++) {
+            fwprintf(textfile, L"%e ", crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients[j * 22 + k]);
+        }
+        fwprintf(textfile, L"\n");
+    }
+    fwprintf(textfile, L"Code version: 0.12 April 7, 2022\n");
+
+    fclose(textfile);
+    free(outputpath);
+    free(wideStringConversionBuffer);
+    free(stringConversionBuffer);
+    return 0;
+}
+
+int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* outputbase) {
+    int j;
+
+    saveSettingsFile(sCPU, crystalDatabasePtr);
 
     //Save the results as double instead of complex
     double* saveEout = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(double));
@@ -2145,40 +2272,7 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
     }
     double* matlabpadding = (double*)calloc(1024, sizeof(double));
 
-    FILE* textfile;
-    strcpy(outputpath, outputbase);
-    strcat(outputpath, ".txt");
-    textfile = fopen(outputpath, "w");
-    fwprintf(textfile, L"Pulse energy 1 (J): %e\nPulse energy 2(J): %e\nFrequency 1 (Hz): %e\nFrequency 2 (Hz): %e\nBandwidth 1 (Hz): %e\nBandwidth 2 (Hz): %e\n", (*sCPU).pulseEnergy1, (*sCPU).pulseEnergy2, (*sCPU).frequency1, (*sCPU).frequency2, (*sCPU).bandwidth1, (*sCPU).bandwidth2);
-    fwprintf(textfile, L"SG order: %i\nCEP 1 (rad): %e\nCEP 2 (rad): %e\nDelay 1 (s): %e\nDelay 2 (s): %e\nGDD 1 (s^-2): %e\nGDD 2 (s^-2): %e\nTOD 1 (s^-3): %e\nTOD 2(s^-3): %e\n", (*sCPU).sgOrder1, (*sCPU).cephase1, (*sCPU).cephase2, (*sCPU).delay1, (*sCPU).delay2, (*sCPU).gdd1, (*sCPU).gdd2, (*sCPU).tod1, (*sCPU).tod2);
-    fwprintf(textfile, L"Beamwaist 1 (m): %e\nBeamwaist 2 (m): %e\nx offset 1 (m): %e\nx offset 2 (m): %e\nz offset 1 (m): %e\nz offset 2 (m): %e\nNC angle 1 (rad): %e\nNC angle 2 (rad): %e\n", (*sCPU).beamwaist1, (*sCPU).beamwaist2, (*sCPU).x01, (*sCPU).x02, (*sCPU).z01, (*sCPU).z02, (*sCPU).propagationAngle1, (*sCPU).propagationAngle2);
-    fwprintf(textfile, L"Polarization 1 (rad): %e\nPolarization 2 (rad): %e\nCircularity 1: %e\nCircularity 2: %e\n", (*sCPU).polarizationAngle1, (*sCPU).polarizationAngle2, (*sCPU).circularity1, (*sCPU).circularity2);
-    fwprintf(textfile, L"Material index: %i\n", (*sCPU).materialIndex);
-    fwprintf(textfile, L"Crystal theta (rad): %e\nCrystal phi (rad): %e\nGrid width (m): %e\ndx (m): %e\nTime span (s): %e\ndt (s): %e\nThickness (m): %e\ndz (m): %e\n", (*sCPU).crystalTheta, (*sCPU).crystalPhi, (*sCPU).spatialWidth, (*sCPU).rStep, (*sCPU).timeSpan, (*sCPU).tStep, (*sCPU).crystalThickness, (*sCPU).propagationStep);
-    fwprintf(textfile, L"Nonlinear absorption parameter: %e\nBand gap (eV): %e\nEffective mass (relative): %e\nDrude gamma (Hz): %e\n", (*sCPU).nonlinearAbsorptionStrength, (*sCPU).bandGapElectronVolts, (*sCPU).effectiveMass, (*sCPU).drudeGamma);
-    fwprintf(textfile, L"Propagation mode: %i\n", (*sCPU).symmetryType);
-    fwprintf(textfile, L"Batch mode: %i\nBatch destination: %e\nBatch steps: %lli\n", (*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
-    mbstowcs(wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
-    fwprintf(textfile, L"Sequence: %s\n", wideStringConversionBuffer);
-    mbstowcs(wideStringConversionBuffer, (*sCPU).outputBasePath, MAX_LOADSTRING);
-    fwprintf(textfile, L"Output base path: %s\n", wideStringConversionBuffer);
-    fwprintf(textfile, L"Field 1 from file type: %i\nField 2 from file type: %i\n", (*sCPU).pulse1FileType, (*sCPU).pulse2FileType);
-    mbstowcs(wideStringConversionBuffer, (*sCPU).field1FilePath, MAX_LOADSTRING);
-    fwprintf(textfile, L"Field 1 file path: %s\n", wideStringConversionBuffer);
-    mbstowcs(wideStringConversionBuffer, (*sCPU).field2FilePath, MAX_LOADSTRING);
-    fwprintf(textfile, L"Field 2 file path: %s\n", wideStringConversionBuffer);
-
-    fwprintf(textfile, L"Material name: %s\nSellmeier reference: %s\nChi2 reference: %s\nChi3 reference: %s\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
-    fwprintf(textfile, L"Sellmeier coefficients: \n");
-    for (j = 0; j < 3; j++) {
-        for (k = 0; k < 22; k++) {
-            fwprintf(textfile, L"%e ", crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients[j * 22 + k]);
-        }
-        fwprintf(textfile, L"\n");
-    }
-    fwprintf(textfile, L"Code version: 0.12 April 7, 2022\n");
-
-    fclose(textfile);
+    
     
     
     //write fields as binary

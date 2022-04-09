@@ -104,6 +104,7 @@ struct simulationParameterSet {
     int batchIndex;
     double batchDestination;
     char* outputBasePath;
+    int runType;
 
     //sequence
     bool isInSequence;
@@ -212,3 +213,5 @@ int             resolveSequence(int currentIndex, struct simulationParameterSet*
 int             readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* filePath);
 int             loadPulseFiles(struct simulationParameterSet* sCPU);
 unsigned long   solveNonlinearWaveEquationSequence(void* lpParam);
+int             saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr);
+int             saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCount);

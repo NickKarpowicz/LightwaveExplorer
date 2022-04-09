@@ -81,10 +81,24 @@ struct guiStruct {
     HWND buttonRunOnCluster;
     HWND tbWhichSimToPlot;
     HWND textboxSims;
+    int xOffsetRow1 = 160;
+    int xOffsetRow2 = 480;
+    int xOffsetRow3 = 640;
+    int vs = 26;
+    int radioButtonOffset = 349;
+    int btnwidth = 120;
+    int btnoffset = 160;
+    int btnoffset0 = 5;
+    int btnoffset2 = 510;
+    int btnoffset2a = 420;
+    int rbsize = 18;
+    int consoleSize = 630;
+    int textboxwidth = 150;
 };
 
+
 DWORD WINAPI        mainSimThread(LPVOID lpParam);
-DWORD WINAPI        runOnCluster(LPVOID lpParam);
+DWORD WINAPI        createRunFile(LPVOID lpParam);
 int                 drawLabels(HDC hdc);
 int                 labelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset);
 int                 getStringFromHWND(HWND inputA, char* outputString, int bufferSize);
@@ -99,3 +113,5 @@ int                 drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, i
 int                 readParametersFromInterface();
 int                 freeSemipermanentGrids();
 template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args);
+int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelText, int xOffset, int yOffset);
+

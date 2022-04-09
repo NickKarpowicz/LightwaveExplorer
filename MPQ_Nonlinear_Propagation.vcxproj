@@ -152,7 +152,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>%(AdditionalDependencies);cudart_static.lib;cufft.lib</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies);cudart_static.lib;cufft.lib;UxTheme.lib</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
