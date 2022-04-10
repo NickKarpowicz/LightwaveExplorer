@@ -3,7 +3,6 @@
 #include "resource.h"
 #include<complex>
 
-
 struct guiStruct {
     HWND mainWindow;
 
@@ -78,6 +77,9 @@ struct guiStruct {
     HWND buttonPlot;
     HWND buttonRefreshDB;
     HWND buttonStop;
+    HWND buttonLoad;
+    HWND tbPlotNumber;
+    HWND pdClusterSelector;
     HWND buttonRunOnCluster;
     HWND tbWhichSimToPlot;
     HWND textboxSims;
@@ -90,7 +92,7 @@ struct guiStruct {
     int btnoffset = 160;
     int btnoffset0 = 5;
     int btnoffset2 = 510;
-    int btnoffset2a = 420;
+    int btnoffset2a = 160 + 150 + 5;
     int rbsize = 18;
     int consoleSize = 630;
     int textboxwidth = 150;
@@ -114,4 +116,6 @@ int                 readParametersFromInterface();
 int                 freeSemipermanentGrids();
 template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args);
 int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelText, int xOffset, int yOffset);
+int                 openDialogBoxAndReadParameters(HWND hWnd);
+void                setTitleBarDark(HWND hWnd);
 

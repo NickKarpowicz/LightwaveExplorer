@@ -851,7 +851,6 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    printf("Finishing...\n");
 	for (i = 0; i < (*sCPU).Nsims; i++) {
         if (sCPU[i].memoryError > 0) {
             printf("Warning: device memory error (%i).\n", sCPU[i].memoryError);
@@ -1918,7 +1917,6 @@ int allocateGrids(struct simulationParameterSet* sCPU) {
     (*sCPU).refractiveIndex2 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims, sizeof(std::complex<double>));
     (*sCPU).deffTensor = (double*)calloc(9 * (*sCPU).Nsims, sizeof(double));
     (*sCPU).imdone = (int*)calloc((*sCPU).Nsims, sizeof(int));
-    (*sCPU).runType = 0;
     return 0;
 }
 
@@ -2158,7 +2156,7 @@ int saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCou
         fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2*min(gpuCount, 4)); fwrite(&LF, sizeof(char), 1, textfile);
     }
     fprintf(textfile, "#SBATCH --mem=%lliM",1024+(18 * sizeof(double) * (*sCPU).Ngrid * max(1,(*sCPU).Nsims))/1048576);
-
+    fwrite(&LF, sizeof(char), 1, textfile);
     fprintf(textfile, "#SBATCH --nodes=1"); fwrite(&LF, sizeof(char), 1, textfile);
     fprintf(textfile, "#SBATCH --ntasks-per-node=1"); fwrite(&LF, sizeof(char), 1, textfile);
     fprintf(textfile, "#SBATCH --time=24:00:00"); fwrite(&LF, sizeof(char), 1, textfile);
@@ -2191,7 +2189,7 @@ int saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* c
     wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
     char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     strcpy(outputpath, (*sCPU).outputBasePath);
-    if ((*sCPU).runType == 1) {
+    if ((*sCPU).runType > 0) {
         strcat(outputpath, ".input");
     }
     else {
@@ -2212,7 +2210,7 @@ int saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* c
     fwprintf(textfile, L"Sequence: %ls\n", wideStringConversionBuffer);
 
 
-    if ((*sCPU).runType == 1) {
+    if ((*sCPU).runType > 0) {
         char* fileName = (*sCPU).outputBasePath;
         while (strchr(fileName, '\\') != NULL) {
             fileName = strchr(fileName, '\\');
@@ -2396,5 +2394,49 @@ int loadPulseFiles(struct simulationParameterSet* sCPU) {
             return 1;
         }
     }
+    return 0;
+}
+
+int loadSavedFields(struct simulationParameterSet* sCPU, char* outputBase) {
+    char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+    size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims);
+    double* loadE = (double*)malloc(writeSize * sizeof(double));
+    size_t j;
+
+    //read fields as binary
+    FILE* ExtOutFile;
+    
+    strcpy(outputpath, outputBase);
+    strcat(outputpath, "_ExtOut.dat");
+    ExtOutFile = fopen(outputpath, "rb");
+    if (ExtOutFile == NULL) {
+        return 1;
+    }
+    fread(loadE, sizeof(double), writeSize, ExtOutFile);
+    fclose(ExtOutFile);
+    for (j = 0; j < writeSize; j++) {
+        (*sCPU).ExtOut[j] = loadE[j];
+    }
+
+    cufftHandle fftPlan;
+    cufftPlan2d(&fftPlan, (int)(*sCPU).Nspace, (int)(*sCPU).Ntime, CUFFT_Z2Z);
+
+    cuDoubleComplex* fieldGridkw;
+    cuDoubleComplex* fieldGridxt;
+    cudaMalloc((void**)&fieldGridkw, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
+    cudaMalloc((void**)&fieldGridxt, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
+
+    for (j = 0; j < 2*(*sCPU).Nsims; j++) {
+        cudaMemcpy(fieldGridxt, &(*sCPU).ExtOut[j*(*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+        cufftExecZ2Z(fftPlan, fieldGridxt, fieldGridkw, CUFFT_FORWARD);
+        cudaMemcpy(&(*sCPU).EkwOut[j*(*sCPU).Ngrid], fieldGridkw, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+    }
+
+
+    cudaFree(fieldGridkw);
+    cudaFree(fieldGridxt);
+    cufftDestroy(fftPlan);
+    free(loadE);
+    free(outputpath);
     return 0;
 }
