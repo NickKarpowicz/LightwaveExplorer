@@ -12,7 +12,7 @@
 #include<Uxtheme.h>
 #include<dwmapi.h>
 #include<d2d1.h>
-#pragma comment (lib,"d2d1")
+//#pragma comment (lib,"d2d1")
 
 #define MAX_LOADSTRING 1024
 #define ID_BTNRUN 11110
@@ -49,114 +49,6 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 bool                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
-
-
-void plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float unitY, bool forceminY, float forcedminY) {
-    ID2D1Factory* pFactory = NULL;
-    size_t i;
-    D2D1_POINT_2F p1;
-    D2D1_POINT_2F p2;
-    D2D1_ELLIPSE marker;
-    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
-    ID2D1HwndRenderTarget* pRenderTarget;
-    ID2D1SolidColorBrush* pBrush;
-    float markerSize = 1.5;
-    float lineWidth = 1.25;
-    double maxY = 0;
-    double minY = 0;
-    for (i = 0; i < Npts; i++) {
-        
-        maxY = max(Y[i], maxY);
-        minY = min(Y[i], minY);
-    }
-    if (minY == maxY) {
-        minY = -1;
-        maxY = 1;
-    }
-    if (forceminY) {
-        minY = forcedminY;
-    }
-    RECT rc;
-    GetClientRect(targetWindow, &rc);
-    D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-
-    hr = pFactory->CreateHwndRenderTarget(
-        D2D1::RenderTargetProperties(),
-        D2D1::HwndRenderTargetProperties(targetWindow, size),
-        &pRenderTarget);
-
-    D2D1_SIZE_F sizeF = pRenderTarget->GetSize();
-    float scaleX = sizeF.width/(Npts * dX);
-    float scaleY = sizeF.height/(maxY - minY);
-
-    if (SUCCEEDED(hr))
-    {
-        const D2D1_COLOR_F color = D2D1::ColorF(1, 1, 1, 1);
-        hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
-
-        if (SUCCEEDED(hr))
-        {
-            PAINTSTRUCT ps;
-            BeginPaint(targetWindow, &ps);
-            pRenderTarget->BeginDraw();
-
-
-            for (i = 0; i < Npts-1; i++) {
-                p1.x = scaleX * (i * dX);
-                p1.y = sizeF.height - scaleY * (Y[i] - minY);
-                p2.x = scaleX * ((i+1)*dX);
-                p2.y = sizeF.height - scaleY * (Y[i+1] - minY);
-                pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-                marker.point = p1;
-                marker.radiusX = markerSize;
-                marker.radiusY = markerSize;
-                pRenderTarget->FillEllipse(&marker, pBrush);
-            }
-
-            hr = pRenderTarget->EndDraw();
-            EndPaint(targetWindow, &ps);
-        }
-        
-        pRenderTarget->Release();
-        pBrush->Release();
-        pFactory->Release();
-        
-    }
-    int NyTicks = 3;
-    int NxTicks = 3;
-    wchar_t messageBuffer[MAX_LOADSTRING];
-    float yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
-    float xTicks1[3] = { 0.25 * dX * Npts, 0.5 * dX * Npts, 0.75 * dX * Npts };
-    HDC hdc = GetWindowDC(maingui.mainWindow);
-    SetTextColor(hdc, uiGrey);
-    SetBkColor(hdc, uiDarkGrey);
-    RECT windowRect;
-    GetWindowRect(targetWindow, &windowRect);
-
-    int posX = windowRect.left;
-    int posY = windowRect.top;
-    int pixelsTall = windowRect.bottom - windowRect.top;
-    int pixelsWide = windowRect.right - windowRect.left;
-
-    GetWindowRect(maingui.mainWindow, &windowRect);
-    posX -= windowRect.left;
-    posY -= windowRect.top;
-    for (i = 0; i < NyTicks; i++) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("%1.1f"), yTicks1[i] / unitY);
-        TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
-    }
-    for (i = 0; i < 3; i++) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("%3.0f"), xTicks1[i]);
-        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i)+1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));
-    }
-    ReleaseDC(maingui.mainWindow, hdc);
-
-}
 
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
@@ -595,7 +487,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     DWORD hMainThread;
     HANDLE plotThread;
     DWORD hplotThread;
-    HTHEME theme;
+
     switch (message)
     {
     case WM_COMMAND:
@@ -1430,7 +1322,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 1);
         //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
-        plotXYDirect2d(maingui.plotBox7, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
+        plotXYDirect2d(maingui.plotBox7, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 10);
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
@@ -1444,7 +1336,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx, 0);
 
-        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 1);
+        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 10);
 
         //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 2, 8, 1);
         plotXYDirect2d(maingui.plotBox8, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
@@ -1593,4 +1485,115 @@ void setTitleBarDark(HWND hWnd)
 {
     BOOL isDarkMode = TRUE;
     DwmSetWindowAttribute(hWnd, 20, &isDarkMode, sizeof(isDarkMode));
+}
+
+void plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float unitY, bool forceminY, float forcedminY) {
+    ID2D1Factory* pFactory = NULL;
+    size_t i;
+    D2D1_POINT_2F p1;
+    D2D1_POINT_2F p2;
+    D2D1_ELLIPSE marker;
+    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
+    ID2D1HwndRenderTarget* pRenderTarget;
+    ID2D1SolidColorBrush* pBrush;
+    float markerSize = 1.5;
+    float lineWidth = 1.25;
+
+    //get limits of Y
+    double maxY = 0;
+    double minY = 0;
+    for (i = 0; i < Npts; i++) {
+
+        maxY = max(Y[i], maxY);
+        minY = min(Y[i], minY);
+    }
+    if (minY == maxY) {
+        minY = -1;
+        maxY = 1;
+    }
+    if (forceminY) {
+        minY = forcedminY;
+    }
+
+
+    RECT targetRectangle;
+    GetClientRect(targetWindow, &targetRectangle);
+    D2D1_SIZE_U size = D2D1::SizeU(targetRectangle.right, targetRectangle.bottom);
+
+    hr = pFactory->CreateHwndRenderTarget(
+        D2D1::RenderTargetProperties(),
+        D2D1::HwndRenderTargetProperties(targetWindow, size),
+        &pRenderTarget);
+    D2D1_SIZE_F sizeF = pRenderTarget->GetSize();
+    float scaleX = sizeF.width / (Npts * (float)dX);
+    float scaleY = sizeF.height / ((float)(maxY - minY));
+
+    if (SUCCEEDED(hr))
+    {
+        const D2D1_COLOR_F color = D2D1::ColorF(1, 1, 1, 1);
+        hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
+
+        if (SUCCEEDED(hr))
+        {
+            PAINTSTRUCT ps;
+            BeginPaint(targetWindow, &ps);
+            pRenderTarget->BeginDraw();
+
+
+            for (i = 0; i < Npts - 1; i++) {
+                p1.x = scaleX * (i * (float)dX);
+                p1.y = sizeF.height - scaleY * ((float)Y[i] - (float)minY);
+                p2.x = scaleX * ((i + 1) * (float)dX);
+                p2.y = sizeF.height - scaleY * ((float)Y[i + 1] - (float)minY);
+                pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
+                marker.point = p1;
+                marker.radiusX = markerSize;
+                marker.radiusY = markerSize;
+                pRenderTarget->FillEllipse(&marker, pBrush);
+            }
+
+            hr = pRenderTarget->EndDraw();
+            EndPaint(targetWindow, &ps);
+        }
+
+        pRenderTarget->Release();
+        pBrush->Release();
+        pFactory->Release();
+
+    }
+
+    //Draw the labels
+    int NyTicks = 3;
+    int NxTicks = 3;
+    wchar_t messageBuffer[MAX_LOADSTRING];
+    double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
+    double xTicks1[3] = { 0.25 * dX * Npts, 0.5 * dX * Npts, 0.75 * dX * Npts };
+    HDC hdc = GetWindowDC(maingui.mainWindow);
+    SetTextColor(hdc, uiGrey);
+    SetBkColor(hdc, uiDarkGrey);
+    RECT windowRect;
+    GetWindowRect(targetWindow, &windowRect);
+
+    int posX = windowRect.left;
+    int posY = windowRect.top;
+    int pixelsTall = windowRect.bottom - windowRect.top;
+    int pixelsWide = windowRect.right - windowRect.left;
+
+    GetWindowRect(maingui.mainWindow, &windowRect);
+    posX -= windowRect.left;
+    posY -= windowRect.top;
+    for (i = 0; i < NyTicks; i++) {
+        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
+            _T("%1.1f"), yTicks1[i] / unitY);
+        TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
+    }
+    for (i = 0; i < 3; i++) {
+        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
+            _T("%3.0f"), xTicks1[i]);
+        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i)+1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));
+    }
+    ReleaseDC(maingui.mainWindow, hdc);
+
 }

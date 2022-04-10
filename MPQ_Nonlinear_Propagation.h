@@ -126,3 +126,4 @@ template<typename... Args> void printToConsole(HWND console, const wchar_t* form
 int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelText, int xOffset, int yOffset);
 int                 openDialogBoxAndReadParameters(HWND hWnd);
 void                setTitleBarDark(HWND hWnd);
+void                plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float unitY, bool forceminY, float forcedminY);
