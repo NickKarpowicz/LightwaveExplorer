@@ -83,6 +83,14 @@ struct guiStruct {
     HWND buttonRunOnCluster;
     HWND tbWhichSimToPlot;
     HWND textboxSims;
+    HWND plotBox1;
+    HWND plotBox2;
+    HWND plotBox3;
+    HWND plotBox4;
+    HWND plotBox5;
+    HWND plotBox6;
+    HWND plotBox7;
+    HWND plotBox8;
     int xOffsetRow1 = 160;
     int xOffsetRow2 = 480;
     int xOffsetRow3 = 640;
@@ -118,4 +126,3 @@ template<typename... Args> void printToConsole(HWND console, const wchar_t* form
 int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelText, int xOffset, int yOffset);
 int                 openDialogBoxAndReadParameters(HWND hWnd);
 void                setTitleBarDark(HWND hWnd);
-

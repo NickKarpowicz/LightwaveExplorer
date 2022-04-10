@@ -11,6 +11,8 @@
 #include<Windows.h>
 #include<Uxtheme.h>
 #include<dwmapi.h>
+#include<d2d1.h>
+#pragma comment (lib,"d2d1")
 
 #define MAX_LOADSTRING 1024
 #define ID_BTNRUN 11110
@@ -48,13 +50,120 @@ bool                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
+
+
+void plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float unitY, bool forceminY, float forcedminY) {
+    ID2D1Factory* pFactory = NULL;
+    size_t i;
+    D2D1_POINT_2F p1;
+    D2D1_POINT_2F p2;
+    D2D1_ELLIPSE marker;
+    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
+    ID2D1HwndRenderTarget* pRenderTarget;
+    ID2D1SolidColorBrush* pBrush;
+    float markerSize = 1.5;
+    float lineWidth = 1.25;
+    double maxY = 0;
+    double minY = 0;
+    for (i = 0; i < Npts; i++) {
+        
+        maxY = max(Y[i], maxY);
+        minY = min(Y[i], minY);
+    }
+    if (minY == maxY) {
+        minY = -1;
+        maxY = 1;
+    }
+    if (forceminY) {
+        minY = forcedminY;
+    }
+    RECT rc;
+    GetClientRect(targetWindow, &rc);
+    D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+
+    hr = pFactory->CreateHwndRenderTarget(
+        D2D1::RenderTargetProperties(),
+        D2D1::HwndRenderTargetProperties(targetWindow, size),
+        &pRenderTarget);
+
+    D2D1_SIZE_F sizeF = pRenderTarget->GetSize();
+    float scaleX = sizeF.width/(Npts * dX);
+    float scaleY = sizeF.height/(maxY - minY);
+
+    if (SUCCEEDED(hr))
+    {
+        const D2D1_COLOR_F color = D2D1::ColorF(1, 1, 1, 1);
+        hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
+
+        if (SUCCEEDED(hr))
+        {
+            PAINTSTRUCT ps;
+            BeginPaint(targetWindow, &ps);
+            pRenderTarget->BeginDraw();
+
+
+            for (i = 0; i < Npts-1; i++) {
+                p1.x = scaleX * (i * dX);
+                p1.y = sizeF.height - scaleY * (Y[i] - minY);
+                p2.x = scaleX * ((i+1)*dX);
+                p2.y = sizeF.height - scaleY * (Y[i+1] - minY);
+                pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
+                marker.point = p1;
+                marker.radiusX = markerSize;
+                marker.radiusY = markerSize;
+                pRenderTarget->FillEllipse(&marker, pBrush);
+            }
+
+            hr = pRenderTarget->EndDraw();
+            EndPaint(targetWindow, &ps);
+        }
+        
+        pRenderTarget->Release();
+        pBrush->Release();
+        pFactory->Release();
+        
+    }
+    int NyTicks = 3;
+    int NxTicks = 3;
+    wchar_t messageBuffer[MAX_LOADSTRING];
+    float yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
+    float xTicks1[3] = { 0.25 * dX * Npts, 0.5 * dX * Npts, 0.75 * dX * Npts };
+    HDC hdc = GetWindowDC(maingui.mainWindow);
+    SetTextColor(hdc, uiGrey);
+    SetBkColor(hdc, uiDarkGrey);
+    RECT windowRect;
+    GetWindowRect(targetWindow, &windowRect);
+
+    int posX = windowRect.left;
+    int posY = windowRect.top;
+    int pixelsTall = windowRect.bottom - windowRect.top;
+    int pixelsWide = windowRect.right - windowRect.left;
+
+    GetWindowRect(maingui.mainWindow, &windowRect);
+    posX -= windowRect.left;
+    posY -= windowRect.top;
+    for (i = 0; i < NyTicks; i++) {
+        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
+            _T("%1.1f"), yTicks1[i] / unitY);
+        TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
+    }
+    for (i = 0; i < 3; i++) {
+        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
+        swprintf_s(messageBuffer, MAX_LOADSTRING,
+            _T("%3.0f"), xTicks1[i]);
+        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i)+1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));
+    }
+    ReleaseDC(maingui.mainWindow, hdc);
+
+}
+
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
     int j;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     HANDLE plotThread;
     DWORD hplotThread;
-    
     readParametersFromInterface();
     (*activeSetPtr).runType = 0;
     if (isGridAllocated) {
@@ -230,7 +339,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
 
     }
-
     return (int)msg.wParam;
 }
 
@@ -321,6 +429,15 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbCircularity2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 26 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbFileNameBase = CreateWindow(WC_EDIT, TEXT("TestFile"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow3, 1 * vs, 775, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
+    maingui.plotBox1 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox2 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox3 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox4 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox5 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox6 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox7 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox8 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+
     maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalTheta = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalPhi = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -549,6 +666,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 plotSim = min(plotSim, (int)(*activeSetPtr).Nsims);
                 plotSim--;
                 plotSim = max(plotSim, 0);
+                if (isRunning && (*activeSetPtr).imdone[plotSim] == 0) {
+                    (*activeSetPtr).imdone[plotSim] = 3;
+                    while ((*activeSetPtr).imdone[plotSim] == 3) {
+                        Sleep(30);
+                    }
+                }
 
                 (*activeSetPtr).plotSim = plotSim;
                 plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
@@ -591,6 +714,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetTextColor(hdc, uiGrey);
         return (LRESULT)blackBrush;
     }
+    case WM_CTLCOLORSTATIC:
+    {
+        HDC hdc = (HDC)wParam;
+        SetBkColor(hdc, uiBlack);
+        SetTextColor(hdc, uiGrey);
+        return (LRESULT)blackBrush;
+    }
     case WM_CTLCOLOREDIT:
     {
         HDC hdc = (HDC)wParam;
@@ -606,6 +736,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetBkColor(hdc, uiDarkGrey);
         drawLabels(hdc);
         EndPaint(hWnd, &ps);
+       
         break;
     }
     case WM_SIZE:
@@ -614,6 +745,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GetWindowRect(maingui.mainWindow, &mainRect);
         SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 33*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 35*maingui.vs -4, NULL);
         SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs, mainRect.right - mainRect.left - maingui.xOffsetRow3- 30, 20, NULL);
+
+        int spacerX = 50;
+        int spacerY = 40;
+        int x0 = maingui.consoleSize + spacerX + 10;
+        int y0 = 90 + spacerY;
+        int imagePanelSizeX = mainRect.right - mainRect.left - x0 - 2 * spacerX;
+        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 5 * spacerY;
+
+        size_t simIndex = (*activeSetPtr).plotSim;
+        int x = x0;
+        int y = y0;
+        int dx = imagePanelSizeX / 2;
+        int dy = imagePanelSizeY / 4;
+        int plotMargin = 0;
+        int xCorrection = 10;
+        int yCorrection = 45;
+        if (!isGridAllocated) {
+            SetWindowPos(maingui.plotBox1, HWND_BOTTOM, x - xCorrection, y - yCorrection, dx, dy, NULL);
+            SetWindowPos(maingui.plotBox2, HWND_BOTTOM, x - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
+            SetWindowPos(maingui.plotBox3, HWND_BOTTOM, x - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
+            SetWindowPos(maingui.plotBox4, HWND_BOTTOM, x - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
+            SetWindowPos(maingui.plotBox5, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 0 * dy + 0 * spacerY - yCorrection, dx, dy, NULL);
+            SetWindowPos(maingui.plotBox6, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
+            SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
+            SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
+        }
+
+
         if (isGridAllocated && !isRunning) {
             drawSimPlots(activeSetPtr);
         }
@@ -640,6 +799,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
+
 
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1173,7 +1333,14 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
     DeleteDC(hdcMem);
     return 0;
 }
-
+/*
+int drawLine(HDC hdc) {
+    Gdiplus::Graphics graphics(hdc);
+    Gdiplus::Pen pen(Gdiplus::Color(255, 0, 0, 255));
+    graphics.DrawLine(&pen, 0, 0, 200, 100);
+    return 0;
+}
+*/
 DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     //bool wasRunning = isRunning;
     //isRunning = TRUE; //this locks the grid memory so it doesn't get freed while plotting, set back to wasRunning at the end
@@ -1195,6 +1362,18 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         int dx = imagePanelSizeX/2;
         int dy = imagePanelSizeY/4;
         int plotMargin = 0;
+        int xCorrection = 10;
+        int yCorrection = 45;
+
+        ShowWindow(maingui.plotBox1, 0);
+        ShowWindow(maingui.plotBox2, 0);
+        ShowWindow(maingui.plotBox5, 0);
+        ShowWindow(maingui.plotBox6, 0);
+        SetWindowPos(maingui.plotBox3, HWND_BOTTOM, x - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox4, HWND_BOTTOM, x - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
+
 
         double logPlotOffset = 1e11;
         int i,j;
@@ -1224,8 +1403,9 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
         drawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 1);
-        drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 2 * dy + 2 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
-
+        //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 2 * dy + 2 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
+        
+        plotXYDirect2d(maingui.plotBox3, (*activeSetPtr).tStep / 1e-15, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
         //Plot Time Domain, p-polarization
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
             plotarr[i] = (real((*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2]));
@@ -1233,8 +1413,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
         drawArrayAsBitmap(hdc, dx, dy, x, (size_t)(y) + (size_t)(dy) + spacerY, dy, dx, plotarr2, 1);
-        drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
-
+        //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
+        plotXYDirect2d(maingui.plotBox4, (*activeSetPtr).tStep / 1e-15, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
         //Plot Fourier Domain, s-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
@@ -1249,8 +1429,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 1);
-        drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
-
+        //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
+        plotXYDirect2d(maingui.plotBox7, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
@@ -1266,8 +1446,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 1);
 
-        drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 2, 8, 1);
-        
+        //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 2, 8, 1);
+        plotXYDirect2d(maingui.plotBox8, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
         free(shiftedFFT);
         free(plotarr);
         free(plotarr2);

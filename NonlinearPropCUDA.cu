@@ -683,14 +683,14 @@ __global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, d
         }
     }
 
-    //draw y ticks
+    //draw x ticks
     for (c = 0; c < NxTicks; c++) {
         x1 = normFactorX * (xTicks[c] + offsetX);
         x2 = x1;
         y1 = 0;
         y2 = tickLength;
         if (checkIfInBox(k, j, (int)x1, (int)y1, (int)x2, (int)y2, (int)(6 * lineWidth))) {
-            if (k < x1 || k > x2) {
+            if (k < (x1-1) || k > (x2+1)) {
                 lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
             }
             else {
@@ -1092,6 +1092,15 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
         if ((*sCPU).imdone[0] == 2) {
             break;
+        }
+
+        if ((*sCPU).imdone[0] == 3) {
+            //copy the field arrays from the GPU to CPU memory
+            cudaMemcpy((*sCPU).ExtOut, s.gridETime1, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+            cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+            cudaMemcpy(&(*sCPU).ExtOut[s.Ngrid], s.gridETime2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+            cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridEFrequency2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+            (*sCPU).imdone[0] = 0;
         }
     }
 
