@@ -9,7 +9,7 @@
 #include <mkl.h>
 #include <thread>
 
-#define THREADS_PER_BLOCK 64
+#define THREADS_PER_BLOCK 32
 #define FALSE 0
 #define TRUE 1
 #define MAX_LOADSTRING 1024
@@ -2131,6 +2131,13 @@ int readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalE
     return 0;
 }
 
+//print a linefeed without a carriage return so that linux systems don't complain
+//about impure scripts from DOS machines
+//fopen() should be called with "wb"
+void unixNewLine(FILE* iostream) {
+    char LF = '\x0A';
+    fwrite(&LF, sizeof(char), 1, iostream);
+}
 
 
 int saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCount) {
@@ -2144,45 +2151,44 @@ int saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCou
         fileName = strchr(fileName, '\\');
         fileName++;
     }
-    char LF = '\x0A';
     strcpy(outputpath, (*sCPU).outputBasePath);
     strcat(outputpath, ".slurmScript");
     textfile = fopen(outputpath, "wb");
-    fprintf(textfile, "#!/bin/bash -l"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "#SBATCH -o ./tjob.out.%%j"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "#SBATCH -e ./tjob.err.%%j"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "#SBATCH -D ./"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "#SBATCH -J lightwave"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "#SBATCH --constraint=\"gpu\""); fwrite(&LF, sizeof(char), 1, textfile);
+    fprintf(textfile, "#!/bin/bash -l"); unixNewLine(textfile);
+    fprintf(textfile, "#SBATCH -o ./tjob.out.%%j"); unixNewLine(textfile);
+    fprintf(textfile, "#SBATCH -e ./tjob.err.%%j"); unixNewLine(textfile);
+    fprintf(textfile, "#SBATCH -D ./"); unixNewLine(textfile);
+    fprintf(textfile, "#SBATCH -J lightwave");  unixNewLine(textfile);
+    fprintf(textfile, "#SBATCH --constraint=\"gpu\""); unixNewLine(textfile);
     if (gpuType == 0) {
-        fprintf(textfile, "#SBATCH --gres=gpu:rtx5000:%i", min(gpuCount,2)); fwrite(&LF, sizeof(char), 1, textfile);
+        fprintf(textfile, "#SBATCH --gres=gpu:rtx5000:%i", min(gpuCount,2)); unixNewLine(textfile);
     }
     if (gpuType == 1) {
-        fprintf(textfile, "#SBATCH --gres=gpu:v100:%i", min(gpuCount, 2)); fwrite(&LF, sizeof(char), 1, textfile);
+        fprintf(textfile, "#SBATCH --gres=gpu:v100:%i", min(gpuCount, 2)); unixNewLine(textfile);
     }
     if (gpuType == 2) {
-        fprintf(textfile, "#SBATCH --gres=gpu:a100:%i", min(gpuCount, 4)); fwrite(&LF, sizeof(char), 1, textfile);
-        fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2*min(gpuCount, 4)); fwrite(&LF, sizeof(char), 1, textfile);
+        fprintf(textfile, "#SBATCH --gres=gpu:a100:%i", min(gpuCount, 4)); unixNewLine(textfile);
+        fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2*min(gpuCount, 4)); unixNewLine(textfile);
     }
     fprintf(textfile, "#SBATCH --mem=%lliM",1024+(18 * sizeof(double) * (*sCPU).Ngrid * max(1,(*sCPU).Nsims))/1048576);
-    fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "#SBATCH --nodes=1"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "#SBATCH --ntasks-per-node=1"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "#SBATCH --time=24:00:00"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "module purge"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "module load cuda/11.2"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "module load mkl/2022.0"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "module load gcc/9"); fwrite(&LF, sizeof(char), 1, textfile);
-    fprintf(textfile, "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH"); fwrite(&LF, sizeof(char), 1, textfile);
+    unixNewLine(textfile);
+    fprintf(textfile, "#SBATCH --nodes=1"); unixNewLine(textfile);
+    fprintf(textfile, "#SBATCH --ntasks-per-node=1"); unixNewLine(textfile);
+    fprintf(textfile, "#SBATCH --time=24:00:00"); unixNewLine(textfile);
+    fprintf(textfile, "module purge"); unixNewLine(textfile);
+    fprintf(textfile, "module load cuda/11.2"); unixNewLine(textfile);
+    fprintf(textfile, "module load mkl/2022.0"); unixNewLine(textfile);
+    fprintf(textfile, "module load gcc/9"); unixNewLine(textfile);
+    fprintf(textfile, "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH"); unixNewLine(textfile);
     if (gpuType == 0) {
-        fprintf(textfile, "srun ./nnp75 %s.input > prog.out", fileName); fwrite(&LF, sizeof(char), 1, textfile);
+        fprintf(textfile, "srun ./nnp75 %s.input > prog.out", fileName); unixNewLine(textfile);
     }
     if (gpuType == 1) {
-        fprintf(textfile, "srun ./nnp70 %s.input > prog.out", fileName); fwrite(&LF, sizeof(char), 1, textfile);
+        fprintf(textfile, "srun ./nnp70 %s.input > prog.out", fileName); unixNewLine(textfile);
     }
     if (gpuType == 2) {
-        fprintf(textfile, "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}"); fwrite(&LF, sizeof(char), 1, textfile);
-        fprintf(textfile, "srun ./nnp80 %s.input > $prog.out", fileName); fwrite(&LF, sizeof(char), 1, textfile);
+        fprintf(textfile, "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}"); unixNewLine(textfile);
+        fprintf(textfile, "srun ./nnp80 %s.input > $prog.out", fileName); unixNewLine(textfile);
     }
     fclose(textfile);
     free(outputpath);
@@ -2406,7 +2412,7 @@ int loadPulseFiles(struct simulationParameterSet* sCPU) {
     return 0;
 }
 
-int loadSavedFields(struct simulationParameterSet* sCPU, char* outputBase) {
+int loadSavedFields(struct simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent) {
     char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims);
     double* loadE = (double*)malloc(writeSize * sizeof(double));
@@ -2426,26 +2432,43 @@ int loadSavedFields(struct simulationParameterSet* sCPU, char* outputBase) {
     for (j = 0; j < writeSize; j++) {
         (*sCPU).ExtOut[j] = loadE[j];
     }
+    free(loadE);
+    free(outputpath);
+    if (GPUisPresent) {
+        cufftHandle fftPlan;
+        cufftPlan2d(&fftPlan, (int)(*sCPU).Nspace, (int)(*sCPU).Ntime, CUFFT_Z2Z);
 
-    cufftHandle fftPlan;
-    cufftPlan2d(&fftPlan, (int)(*sCPU).Nspace, (int)(*sCPU).Ntime, CUFFT_Z2Z);
+        cuDoubleComplex* fieldGridkw;
+        cuDoubleComplex* fieldGridxt;
+        cudaMalloc((void**)&fieldGridkw, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
+        cudaMalloc((void**)&fieldGridxt, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
 
-    cuDoubleComplex* fieldGridkw;
-    cuDoubleComplex* fieldGridxt;
-    cudaMalloc((void**)&fieldGridkw, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
-    cudaMalloc((void**)&fieldGridxt, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
+        for (j = 0; j < 2 * (*sCPU).Nsims; j++) {
+            cudaMemcpy(fieldGridxt, &(*sCPU).ExtOut[j * (*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+            cufftExecZ2Z(fftPlan, fieldGridxt, fieldGridkw, CUFFT_FORWARD);
+            cudaMemcpy(&(*sCPU).EkwOut[j * (*sCPU).Ngrid], fieldGridkw, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+        }
+        cudaFree(fieldGridkw);
+        cudaFree(fieldGridxt);
+        cufftDestroy(fftPlan);
+    }
+    else {
+        DFTI_DESCRIPTOR_HANDLE dftiHandle = NULL;
+        MKL_LONG fftDimensions[2] = { (long)(*sCPU).Nspace , (long)(*sCPU).Ntime };
+        MKL_LONG mklError = 0;
+        mklError = DftiCreateDescriptor(&dftiHandle, DFTI_DOUBLE, DFTI_COMPLEX, 2, fftDimensions);
+        DftiSetValue(dftiHandle, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+        if (mklError != DFTI_NO_ERROR) return 1;
+        mklError = DftiCommitDescriptor(dftiHandle);
+        if (mklError != DFTI_NO_ERROR) return 2;
+        for (j = 0; j < (2 * (*sCPU).Nsims); j++) {
+            mklError = DftiComputeForward(dftiHandle, &(*sCPU).ExtOut[j*(*sCPU).Ngrid], &(*sCPU).EkwOut[j*(*sCPU).Ngrid]);
+            if (mklError != DFTI_NO_ERROR) return 3;
+        }
 
-    for (j = 0; j < 2*(*sCPU).Nsims; j++) {
-        cudaMemcpy(fieldGridxt, &(*sCPU).ExtOut[j*(*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
-        cufftExecZ2Z(fftPlan, fieldGridxt, fieldGridkw, CUFFT_FORWARD);
-        cudaMemcpy(&(*sCPU).EkwOut[j*(*sCPU).Ngrid], fieldGridkw, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+        DftiFreeDescriptor(&dftiHandle);
     }
 
 
-    cudaFree(fieldGridkw);
-    cudaFree(fieldGridxt);
-    cufftDestroy(fftPlan);
-    free(loadE);
-    free(outputpath);
     return 0;
 }

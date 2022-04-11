@@ -214,6 +214,7 @@ int             readInputParametersFile(struct simulationParameterSet* sCPU, str
 int             loadPulseFiles(struct simulationParameterSet* sCPU);
 unsigned long   solveNonlinearWaveEquationSequence(void* lpParam);
 int             saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr);
+void            unixNewLine(FILE* iostream);
 int             saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCount);
-int             loadSavedFields(struct simulationParameterSet* sCPU, char* outputBase);
+int             loadSavedFields(struct simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent);
 

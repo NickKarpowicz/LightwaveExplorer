@@ -12,7 +12,6 @@
 #include<Uxtheme.h>
 #include<dwmapi.h>
 #include<d2d1.h>
-//#pragma comment (lib,"d2d1")
 
 #define MAX_LOADSTRING 1024
 #define ID_BTNRUN 11110
@@ -352,12 +351,12 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.buttonRun = CreateWindowW(WC_BUTTON, TEXT("Run"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_CENTER | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
     maingui.buttonStop = CreateWindow(WC_BUTTON, TEXT("Stop"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
     maingui.buttonRefreshDB = CreateWindow(WC_BUTTON, TEXT("Refresh DB"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 24 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
-    maingui.buttonRunOnCluster = CreateWindow(WC_BUTTON, TEXT("Cluster script"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
-    maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, btnoffset2a + btnwidth + 5, 23 * vs, 60, 8 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonRunOnCluster = CreateWindow(WC_BUTTON, TEXT("Cluster script"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 25 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
+    maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, btnoffset2a + btnwidth + 5, 25 * vs -2, 190, 8 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     
     TCHAR A[64];
     memset(&A, 0, sizeof(A));
-    TCHAR clusterNames[7][64] = { L"R5k", L"2xR5k", L"V100", L"2xV100", L"A100", L"2xA100", L"4xA100"};
+    TCHAR clusterNames[7][64] = { L"Cobra 1xRTX 5000", L"Cobra 2xRTX 5000", L"Cobra 1xV100", L"Cobra 2xV100", L"Raven A100", L"Raven 2xA100", L"Raven 4xA100"};
     for (k = 0; k < 7; k++) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)clusterNames[k]);
         SendMessage(maingui.pdClusterSelector, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
@@ -366,7 +365,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.buttonPlot = CreateWindow(WC_BUTTON, TEXT("Plot"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
     maingui.tbWhichSimToPlot = CreateWindow(WC_EDIT, TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a + btnwidth + 5, 22 * vs, 60, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 24 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
+    maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
 
 
     maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, xOffsetRow1 + textboxwidth + 4, 19 * vs-2, xOffsetRow2-xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
@@ -678,8 +677,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SetWindowTheme(maingui.tbSequence, L"DarkMode_Explorer", NULL);
 		SetWindowTheme(maingui.tbFileNameBase, L"DarkMode_Explorer", NULL);
 		SetWindowTheme(maingui.pdBatchMode, L"DarkMode_Explorer", NULL);
-		SetWindowTheme(maingui.buttonRun, L"DarkMode_Explorer", NULL);
-        UpdateWindow(maingui.buttonRun);
 		UpdateWindow(hWnd);
 		break;
     case WM_DESTROY:
@@ -1121,8 +1118,8 @@ int openDialogBoxAndReadParameters(HWND hWnd) {
 
         allocateGrids(activeSetPtr);
         isGridAllocated = TRUE;
-        loadSavedFields(activeSetPtr, fileNameString);
-        
+        loadSavedFields(activeSetPtr, fileNameString, FALSE);
+
     }
     
     return 0;
@@ -1322,7 +1319,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 1);
         //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
-        plotXYDirect2d(maingui.plotBox7, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 10);
+        plotXYDirect2d(maingui.plotBox7, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
@@ -1336,7 +1333,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx, 0);
 
-        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 10);
+        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 12);
 
         //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 2, 8, 1);
         plotXYDirect2d(maingui.plotBox8, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
