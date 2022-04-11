@@ -1129,6 +1129,7 @@ int openDialogBoxAndReadParameters(HWND hWnd) {
 //Color maps:
 //  cm = 1: grayscale
 //  cm = 2: similar to matlab's jet
+//  cm = 3: similar to Colorcet L07
 int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm) {
 
     // creating input
@@ -1181,6 +1182,36 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
                     pixels[stride * i + 1] = 255;
                     pixels[stride * i + 2] = 255;
                 }
+            }
+        }
+        if (cm == 3) {
+            for (i = 0; i < Ntot; i++) {
+                nval = 255*(data[i] - imin) / (imax - imin);
+                
+                pixels[stride * i + 0] = (unsigned char)(255 *
+                    (0.998*exp(-0.5*pow((nval - 160)/115.,6))
+                    + 0.22*exp(-0.5 * pow((nval - 305) / 50, 4)))); //blue channel
+                
+                
+                pixels[stride * i + 1] = (unsigned char)(255 *
+                    (0.022 * exp(-0.5 * pow((nval - 25) / 20., 4))
+                    + 0.11 * exp(-0.5*pow((nval - 120) / 55, 4))
+                    + 1 * exp(-0.5*pow((nval - 400) / 190., 6)))); //green channel
+                pixels[stride * i + 2] = (unsigned char)(255 *
+                    (exp(- 0.5 *pow((nval - 415) / 300., 10)))); //red channel
+                    
+            }
+        }
+        if (cm == 4) {
+            imax = max(imax, -imin);
+            imin = min(imin, -imax);
+            for (i = 0; i < Ntot; i++) {
+                
+                nval = (data[i] - imin) / (imax - imin);
+                pixels[stride * i + 0] = (unsigned char)(255 * (1.00 * exp(-pow(4*(nval-0.05),2))
+                    + 1 * exp(-pow(4 * (nval - 1.05), 2)))); //blue channel
+                pixels[stride * i + 1] = (unsigned char)(255 * (1.02 * exp(-pow(3.5*(nval - 1.05), 2)))); //green channel
+                pixels[stride * i + 2] = (unsigned char)(255 * (0.8 * exp(-pow(4*(nval - 0.05), 2)))); //red channel
             }
         }
     }
@@ -1291,7 +1322,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
-        drawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 1);
+        drawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 4);
         //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 2 * dy + 2 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
         
         plotXYDirect2d(maingui.plotBox3, (*activeSetPtr).tStep / 1e-15, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
@@ -1301,7 +1332,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
 
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
-        drawArrayAsBitmap(hdc, dx, dy, x, (size_t)(y) + (size_t)(dy) + spacerY, dy, dx, plotarr2, 1);
+        drawArrayAsBitmap(hdc, dx, dy, x, (size_t)(y) + (size_t)(dy) + spacerY, dy, dx, plotarr2, 4);
         //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
         plotXYDirect2d(maingui.plotBox4, (*activeSetPtr).tStep / 1e-15, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
         //Plot Fourier Domain, s-polarization
@@ -1317,7 +1348,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
 
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
-        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 1);
+        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 3);
         //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
         plotXYDirect2d(maingui.plotBox7, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
         //Plot Fourier Domain, p-polarization
@@ -1333,7 +1364,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx, 0);
 
-        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 12);
+        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 3);
 
         //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 2, 8, 1);
         plotXYDirect2d(maingui.plotBox8, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
@@ -1344,62 +1375,6 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         ReleaseDC(maingui.mainWindow, hdc);
         isPlotting = FALSE;
     }
-    return 0;
-}
-
-
-
-int drawLabeledXYPlot(HDC hdc, int N, double* Y, double xStep, int posX, int posY, int pixelsWide, int pixelsTall, int forceYOrigin, double YOrigin, double yDiv) {
-    SetTextColor(hdc, uiGrey);
-    SetBkColor(hdc, uiDarkGrey);
-    double maxY = 0;
-    double minY = 0;
-    int i;
-    double* X = (double*)calloc(N, sizeof(double));
-    double* plotArray = (double*)calloc((size_t)(pixelsWide) * pixelsTall, sizeof(double));
-    for (i = 0; i < N; i++) {
-        X[i] = xStep * i;
-        maxY = max(Y[i], maxY);
-        minY = min(Y[i], minY);
-    }
-
-    int NyTicks = 3;
-    double yTicks1[3] = { maxY, 0, minY };
-    if (forceYOrigin == 2) {
-        minY = maxY - YOrigin;
-        NyTicks = 2;
-        yTicks1[1] = minY;
-
-    }
-    else if (forceYOrigin == 1) {
-        minY = YOrigin;
-        NyTicks = 2;
-        yTicks1[1] = minY + 0.5*(maxY-minY);
-    }
-
-
-    double xTicks1[3] = { 0.25 * xStep * N, 0.5 * xStep * N, 0.75 * xStep * N };
-
-    
-    plotDataXY(X, Y, 0, xStep * N, minY, 1.02 * maxY, N, pixelsWide, pixelsTall, 1, 2.2, plotArray, xTicks1, 3, yTicks1, NyTicks);
-    const wchar_t labelText[4] = _T("0.5");
-
-    wchar_t messageBuffer[MAX_LOADSTRING] = { 0 };
-    drawArrayAsBitmap(hdc, pixelsWide, pixelsTall, posX, posY, pixelsTall, pixelsWide, plotArray, 0);
-    for (i = 0; i < NyTicks; i++) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("%1.1f"), yTicks1[i]/yDiv);
-        TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
-    }
-    for (i = 0; i < 3; i++) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("%3.0f"), xTicks1[i]);
-        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i) + 1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));
-    }
-    free(X);
-    free(plotArray);
     return 0;
 }
 

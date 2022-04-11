@@ -45,15 +45,6 @@ __device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z){
     return expZ;
 }
 
-//check if the pixel (xi,yi) is in the box defined by points (x1,y1) and (x2,y2)
-__device__ __forceinline__ bool checkIfInBox(int xi, int yi, int x1, int y1, int x2, int y2, int tolerance) {
-    int xmax = max(x1, x2) + tolerance;
-    int xmin = min(x1, x2) - tolerance;
-    int ymax = max(y1, y2) + tolerance;
-    int ymin = min(y1, y2) - tolerance;
-    return xi >= xmin && xi <= xmax && yi >= ymin && yi <= ymax;
-}
-
 //sqrt for complex doubles on CUDA, copy and paste from
 // https://forums.developer.nvidia.com/t/additional-cucomplex-functions-cucnorm-cucsqrt-cucexp-and-some-complex-double-functions/36892 
 __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
@@ -100,6 +91,7 @@ __device__ __forceinline__ cuDoubleComplex sellmeierSubfunctionCuda(double* a, d
         + kL * a[16] / (a[17] - omega * omega + ii * a[18] * omega)
         + kL * a[19] / (a[20] - omega * omega + ii * a[21] * omega));
 }
+
 //Sellmeier equation for refractive indicies
 __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
     if (f==0) return make_cuDoubleComplex(1.0,0.0); //exit immediately for f=0
@@ -169,75 +161,53 @@ __global__ void rotateFieldKernel(cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, 
     Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
 }
 
-//Radial laplacian term of the nonlinear wave equation
-// e.g., apply the 1/rho * d/drho operator
-// this isn't really the optimal way to do this; revisit later
-__global__ void radialLaplacianKernel(struct cudaParameterSet s) {
+__device__ __forceinline__ double resolveNeighborsInOffsetRadialSymmetry(long long* neighbors, long long N, int j, double dr, long long Ntime, long long h) {
+	if (j < N / 2) {
+		neighbors[0] = (N - j - 2) * Ntime + h;
+		neighbors[1] = (j + 1) * Ntime + h;
+		neighbors[2] = (N - j - 1) * Ntime + h;
+		neighbors[3] = (N - j) * Ntime + h;
+		neighbors[4] = (j - 1) * Ntime + h;
+		neighbors[5] = (N - j + 1) * Ntime + h;
+		return -(dr * (j - N / 2) + 0.25 * dr);
+	}
+	else {
+		neighbors[0] = (N - j + 1) * Ntime + h;
+		neighbors[1] = (j - 1) * Ntime + h;
+		neighbors[2] = (N - j) * Ntime + h;
+		neighbors[3] = (N - j - 1) * Ntime + h;
+		neighbors[4] = (j + 1) * Ntime + h;
+		neighbors[5] = (N - j - 2) * Ntime + h;
+		return dr * (j - N / 2) + 0.25 * dr;
+	}
+}
+
+__global__ void radialLaplacianKernelNew(struct cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
-    double rho = s.dx * j - (s.dx / 2) * s.Nspace;
-
-    //zero at edges of grid and at origin
-    if ( j<3 || j>(s.Nspace-4)) {
+    long long h = i - j * s.Ntime; //temporal coordinate
+    long long neighbors[6];
+    
+    //zero at edges of grid
+    if (j<3 || j>(s.Nspace - 4)) {
         s.gridRadialLaplacian1[i] = make_cuDoubleComplex(0, 0);
         s.gridRadialLaplacian2[i] = make_cuDoubleComplex(0, 0);
     }
-    else if (rho != 0.){
-        rho = 1.0/rho;
-        s.gridRadialLaplacian1[i] = rho*(s.firstDerivativeOperation[0] * s.gridETime1[i - 3 * s.Ntime]
-            + s.firstDerivativeOperation[1] * s.gridETime1[i - 2 * s.Ntime]
-            + s.firstDerivativeOperation[2] * s.gridETime1[i - s.Ntime]
-            + s.firstDerivativeOperation[3] * s.gridETime1[i + s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime1[i + 2 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime1[i + 3 * s.Ntime]);
-        s.gridRadialLaplacian2[i] = rho*(s.firstDerivativeOperation[0] * s.gridETime2[i - 3 * s.Ntime]
-            + s.firstDerivativeOperation[1] * s.gridETime2[i - 2 * s.Ntime]
-            + s.firstDerivativeOperation[2] * s.gridETime2[i - s.Ntime]
-            + s.firstDerivativeOperation[3] * s.gridETime2[i + s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime2[i + 2 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime2[i + 3 * s.Ntime]);
-    }
     else {
-        //handle rho = 0 by Fornberg interpolation from surrounding points
-        //r[0]= 1.5 r[1] - 0.6 r[2] + 0.1 r[3]
-        s.gridRadialLaplacian1[i] = (1.5/(rho+s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime1[i - 2 * s.Ntime]
-            + s.firstDerivativeOperation[1] * s.gridETime1[i - 1 * s.Ntime]
-            + s.firstDerivativeOperation[2] * s.gridETime1[i]
-            + s.firstDerivativeOperation[3] * s.gridETime1[i + 2 *s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime1[i + 3 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime1[i + 4 * s.Ntime]);
-        s.gridRadialLaplacian2[i] = (1.5 / (rho + s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime2[i - 2 * s.Ntime]
-            + s.firstDerivativeOperation[1] * s.gridETime2[i - 1 * s.Ntime]
-            + s.firstDerivativeOperation[2] * s.gridETime2[i]
-            + s.firstDerivativeOperation[3] * s.gridETime2[i + 2*s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime2[i + 3 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime2[i + 4 * s.Ntime]);
-
-        s.gridRadialLaplacian1[i] = s.gridRadialLaplacian1[i] + (-0.6 / (rho + 2 * s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime1[i - s.Ntime]
-            + s.firstDerivativeOperation[1] * s.gridETime1[i]
-            + s.firstDerivativeOperation[2] * s.gridETime1[i + s.Ntime]
-            + s.firstDerivativeOperation[3] * s.gridETime1[i + 3 * s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime1[i + 4 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime1[i + 5 * s.Ntime]);
-        s.gridRadialLaplacian2[i] = s.gridRadialLaplacian2[i] + (-0.6 / (rho + 2*s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime2[i -  s.Ntime]
-            + s.firstDerivativeOperation[1] * s.gridETime2[i]
-            + s.firstDerivativeOperation[2] * s.gridETime2[i + s.Ntime]
-            + s.firstDerivativeOperation[3] * s.gridETime2[i + 3 * s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime2[i + 4 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime2[i + 5 * s.Ntime]);
-
-        s.gridRadialLaplacian1[i] = s.gridRadialLaplacian1[i] + (0.1 / (rho + 3*s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime1[i]
-            + s.firstDerivativeOperation[1] * s.gridETime1[i + 1 * s.Ntime]
-            + s.firstDerivativeOperation[2] * s.gridETime1[i + 2 * s.Ntime]
-            + s.firstDerivativeOperation[3] * s.gridETime1[i + 4 * s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime1[i + 5 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime1[i + 6 * s.Ntime]);
-        s.gridRadialLaplacian2[i] = s.gridRadialLaplacian2[i] + (0.1 / (rho + 3*s.dx)) * (s.firstDerivativeOperation[0] * s.gridETime2[i]
-            + s.firstDerivativeOperation[1] * s.gridETime2[i + 1 * s.Ntime]
-            + s.firstDerivativeOperation[2] * s.gridETime2[i + 2 * s.Ntime]
-            + s.firstDerivativeOperation[3] * s.gridETime2[i + 4 * s.Ntime]
-            + s.firstDerivativeOperation[4] * s.gridETime2[i + 5 * s.Ntime]
-            + s.firstDerivativeOperation[5] * s.gridETime2[i + 6 * s.Ntime]);
+        double rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, s.Nspace, j, s.dx, s.Ntime, h);
+        rho = 1.0 / rho;
+        s.gridRadialLaplacian1[i] = rho * (s.firstDerivativeOperation[0] * s.gridETime1[neighbors[0]]
+            + s.firstDerivativeOperation[1] * s.gridETime1[neighbors[1]]
+            + s.firstDerivativeOperation[2] * s.gridETime1[neighbors[2]]
+            + s.firstDerivativeOperation[3] * s.gridETime1[neighbors[3]]
+            + s.firstDerivativeOperation[4] * s.gridETime1[neighbors[4]]
+            + s.firstDerivativeOperation[5] * s.gridETime1[neighbors[5]]);
+        s.gridRadialLaplacian2[i] = rho * (s.firstDerivativeOperation[0] * s.gridETime2[neighbors[0]]
+            + s.firstDerivativeOperation[1] * s.gridETime2[neighbors[1]]
+            + s.firstDerivativeOperation[2] * s.gridETime2[neighbors[2]]
+            + s.firstDerivativeOperation[3] * s.gridETime2[neighbors[3]]
+            + s.firstDerivativeOperation[4] * s.gridETime2[neighbors[4]]
+            + s.firstDerivativeOperation[5] * s.gridETime2[neighbors[5]]);
     }
 
 }
@@ -650,86 +620,6 @@ __global__ void rkKernel(struct cudaParameterSet s, int stepNumber) {
 
 }
 
-//Line plot calculation kernel
-//runs through all the points and figures out the color of the current pixel
-__global__ void plotDataKernel(double* dataX, double* dataY, double lineWidth, double markerWidth, int sizeData, double* plotGrid, double normFactorX, double normFactorY, double offsetX, double offsetY, int sizeX, int sizeY, double* xTicks, int NxTicks, double* yTicks, int NyTicks) {
-    int i = threadIdx.x + blockIdx.x * blockDim.x;
-    int j = i / sizeX;
-    int k = i - j * sizeX;
-    double x1, x2, y1, y2;
-    int c;
-    int tickLength = 12;
-    double positionNormalization;
-    double lineDistance;
-    double pointDistance;
-    plotGrid[i] = 0;
-
-    //draw y ticks
-    for (c = 0; c < NyTicks; c++) {
-        x1 = 0;
-        x2 = tickLength;
-        y1 = normFactorY * (yTicks[c] + offsetY);
-        y2 = y1;
-        if (checkIfInBox(k, j, (int)x1, (int)y1, (int)x2, (int)y2, (int)(6*lineWidth))) {
-            if (k < x1 || k > x2) {
-                lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
-            }
-            else {
-                positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-                lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
-            }
-            lineDistance /= lineWidth;
-            plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
-        }
-    }
-
-    //draw x ticks
-    for (c = 0; c < NxTicks; c++) {
-        x1 = normFactorX * (xTicks[c] + offsetX);
-        x2 = x1;
-        y1 = 0;
-        y2 = tickLength;
-        if (checkIfInBox(k, j, (int)x1, (int)y1, (int)x2, (int)y2, (int)(6 * lineWidth))) {
-            if (k < (x1-1) || k > (x2+1)) {
-                lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
-            }
-            else {
-                positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-                lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
-            }
-            lineDistance /= lineWidth;
-            plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
-        }
-    }
-
-    for (c = 0; c < sizeData-1; c++) {
-        x1 = normFactorX*(dataX[c] + offsetX);
-        x2 = normFactorX*(dataX[c + 1] + offsetX);
-        y1 = normFactorY*(dataY[c] + offsetY);
-        y2 = normFactorY*(dataY[c + 1] + offsetY);
-        pointDistance = sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j));
-        if (checkIfInBox(k, j, (int)x1, (int)y1, (int)x2, (int)y2, (int)(6 * lineWidth))) {
-            
-            //if (k < x1 || k > x2 || ((j > (y1 + 1)) && (j > (y2 + 1))) || ((j < (y1 - 1)) && (j < (y2 - 1)))) {
-            if ((k < x1-1) || (k > x2+1) || ((j > (y1 + 1)) && (j > (y2 + 1))) || ((j < (y1 - 1)) && (j < (y2 - 1)))){
-                lineDistance = min(sqrt((x1 - k) * (x1 - k) + (y1 - j) * (y1 - j)), sqrt((x2 - k) * (x2 - k) + (y2 - j) * (y2 - j)));
-            }
-            else {
-                positionNormalization = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-                lineDistance = abs((x2 - x1) * (y1 - j) - (x1 - k) * (y2 - y1)) / positionNormalization;
-            }
-            
-
-            //end add
-            lineDistance /= lineWidth;
-            pointDistance /= markerWidth;
-            plotGrid[i] = max(plotGrid[i], exp(-lineDistance * lineDistance));
-            plotGrid[i] = max(plotGrid[i], exp(-pointDistance * pointDistance * pointDistance * pointDistance));
-        }
-    }
-
-}
-
 //Take absolute value of complex array
 __global__ void absKernel(double* absOut, cuDoubleComplex* complexIn) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -743,7 +633,6 @@ __global__ void fftNormalizeKernel(cuDoubleComplex* A, long long* fftSize) {
 }
 
 //main function for running on CLI
-//to be filled in!
 int main(int argc, char *argv[]) {
     int i, j;
     int CUDAdevice;
@@ -794,9 +683,7 @@ int main(int argc, char *argv[]) {
     for (j = 0; j < (*crystalDatabasePtr).numberOfEntries; j++) {
         printf("Material %i name: %ls", j, crystalDatabasePtr[j].crystalNameW);
     }
-    
-
-
+  
     // read from settings file
     if (readInputParametersFile(sCPU, crystalDatabasePtr, argv[1]) == 1) {
         printf("Could not read input file.\n");
@@ -831,6 +718,7 @@ int main(int argc, char *argv[]) {
     configureBatchMode(sCPU);
 
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
+
     // run simulations
     std::thread *threadBlock = (std::thread*)calloc((*sCPU).Nsims, sizeof(std::thread));
     size_t maxThreads = min(CUDAdeviceCount, (*sCPU).Nsims);
@@ -931,9 +819,6 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     s.isCylindric =(*sCPU).isCylindric;
     s.isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1] + (*sCPU).nonlinearSwitches[2]) > 0;
     
-
-
-
     //CPU allocations
     std::complex<double>* gridPropagationFactor1CPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
     std::complex<double>* gridPolarizationFactor1CPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
@@ -1021,7 +906,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     size_t propagationIntsCPU[4] = { s.Ngrid, s.Ntime, s.Nspace, (s.Ntime / 2 + 1) };
     double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
     for (i = 0; i < 6; i++) {
-        firstDerivativeOperation[i] *= (-1.0/(s.Ngrid * s.dx));
+        firstDerivativeOperation[i] *= (-2.0/(s.Ngrid * s.dx));
     }
 
     //set nonlinearSwitches[3] to the number of photons needed to overcome bandgap
@@ -1186,7 +1071,7 @@ int runRK4Step(struct cudaParameterSet s, int stepNumber) {
         }
 
         if (s.isCylindric) {
-            radialLaplacianKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s);
+            radialLaplacianKernelNew << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s);
             cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridRadialLaplacian1, (cufftDoubleComplex*)s.k1, CUFFT_FORWARD);
             cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridRadialLaplacian2, (cufftDoubleComplex*)s.k2, CUFFT_FORWARD);
             
@@ -1271,7 +1156,7 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
         }
 
         for (j = 0; j < (*s).Nspace; j++) {
-            rB = (*s).x01 + (*s).rStep * j - (*s).Nspace* (*s).rStep / 2.;
+            rB = ((*s).x01 + (*s).rStep * (j - (*s).Nspace / 2.0) - 0.25*(*s).rStep);
             r = rB * cos(theta) - zB * sin(theta);
             z = rB * sin(theta) + zB * cos(theta);
             
@@ -1380,7 +1265,7 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
 
         for (j = 0; j < (*s).Nspace; j++) {
 
-            rB = (*s).x01 + (*s).rStep * j - (*s).Nspace * (*s).rStep / 2.;
+            rB = ((*s).x01 + (*s).rStep * (j - (*s).Nspace / 2.0) - 0.25 * (*s).rStep);
             r = rB * cos(theta) - zB * sin(theta);
             z = rB * sin(theta) + zB * cos(theta);
 
@@ -1840,39 +1725,6 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
     return currentRow;
 }
 
-int plotDataXY(double* X, double* Y, double minX, double maxX, double minY, double maxY, int N, int plotSizeX, int plotSizeY, double lineWidth, double markerWidth, double* plotGrid, double* xTicks, int NxTicks, double* yTicks, int NyTicks) {
-    double normFactorX = plotSizeX/(maxX - minX);
-    double normFactorY = plotSizeY/(maxY - minY);
-    double offsetY = -minY;
-    double offsetX = -minX;
-
-    double* plotGridGPU;
-    double* dataX;
-    double* dataY;
-    double* xTicksGPU;
-    double* yTicksGPU;
-
-    cudaMalloc((void**)&plotGridGPU, plotSizeX * plotSizeY * sizeof(double));
-    cudaMalloc((void**)&dataX, N * sizeof(double));
-    cudaMalloc((void**)&dataY, N * sizeof(double));
-    cudaMalloc((void**)&xTicksGPU, NxTicks * sizeof(double));
-    cudaMalloc((void**)&yTicksGPU, NyTicks * sizeof(double));
-    cudaMemcpy(xTicksGPU, xTicks, NxTicks * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(yTicksGPU, yTicks, NyTicks * sizeof(double), cudaMemcpyHostToDevice);
-
-    cudaMemcpy(dataX, X, N * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(dataY, Y, N * sizeof(double), cudaMemcpyHostToDevice);
-    plotDataKernel<<<(plotSizeX*plotSizeY)/THREADS_PER_BLOCK,THREADS_PER_BLOCK>>>(dataX, dataY, lineWidth, markerWidth, N, plotGridGPU, normFactorX, normFactorY, offsetX, offsetY, plotSizeX, plotSizeY, xTicksGPU, NxTicks, yTicksGPU, NyTicks);
-    cudaMemcpy(plotGrid, plotGridGPU, (plotSizeX * plotSizeY) * sizeof(double), cudaMemcpyDeviceToHost);
-
-    cudaFree(plotGridGPU);
-    cudaFree(yTicksGPU);
-    cudaFree(xTicksGPU);
-    cudaFree(dataX);
-    cudaFree(dataY);
-
-    return 0;
-}
 
 //Rotate the field on the GPU
 //Allocates memory and copies from CPU, then copies back to CPU and deallocates
