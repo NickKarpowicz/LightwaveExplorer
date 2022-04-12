@@ -2,7 +2,7 @@
 
 #include "resource.h"
 #include<complex>
-
+#include<d2d1.h>
 struct guiStruct {
     HWND mainWindow;
 
@@ -91,6 +91,7 @@ struct guiStruct {
     HWND plotBox6;
     HWND plotBox7;
     HWND plotBox8;
+    ID2D1Factory* pFactory = NULL;
     int xOffsetRow1 = 160;
     int xOffsetRow2 = 480;
     int xOffsetRow3 = 640;
@@ -116,13 +117,13 @@ double              getDoubleFromHWND(HWND inputA);
 int                 appendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize);
 int                 getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox);
 int                 getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox);
-int                 drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm);
+int                 drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm);
 DWORD WINAPI        drawSimPlots(LPVOID lpParam);
-int                 linearRemap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp);
+int                 linearRemap(float* A, int nax, int nay, float* B, int nbx, int nby);
 int                 readParametersFromInterface();
 int                 freeSemipermanentGrids();
 template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args);
 int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelText, int xOffset, int yOffset);
-int                 openDialogBoxAndReadParameters(HWND hWnd);
+int                 openDialogBoxAndLoad(HWND hWnd);
 void                setTitleBarDark(HWND hWnd);
-void                plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float unitY, bool forceminY, float forcedminY);
+void                plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY);

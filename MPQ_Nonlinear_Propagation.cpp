@@ -328,6 +328,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.plotBox6 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.plotBox7 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.plotBox8 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, &maingui.pFactory);
 
     maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalTheta = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -569,7 +570,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             break;
         case ID_BTNLOAD:
-            openDialogBoxAndReadParameters(hWnd);
+            openDialogBoxAndLoad(hWnd);
             
             plotSim = (int)getDoubleFromHWND(maingui.tbWhichSimToPlot);
             plotSim = min(plotSim, (int)(*activeSetPtr).Nsims);
@@ -1075,11 +1076,7 @@ int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
     return 0;
 }
 
-int openDialogBoxAndReadParameters(HWND hWnd) {
-
-    //create the dialog box and get the file path
-
-    
+int openDialogBoxAndLoad(HWND hWnd) {
     WORD fbasedirend;
     OPENFILENAME ofn;
     TCHAR szFileName[MAX_LOADSTRING];
@@ -1130,7 +1127,8 @@ int openDialogBoxAndReadParameters(HWND hWnd) {
 //  cm = 1: grayscale
 //  cm = 2: similar to matlab's jet
 //  cm = 3: similar to Colorcet L07
-int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, double* data, int cm) {
+//  cn = 4: vaporwaves (symmetric amplitude)
+int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm) {
 
     // creating input
     unsigned char* pixels = (unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
@@ -1139,11 +1137,11 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
     }
     INT64 i;
     INT64 Ntot = Nx * Ny;
-    double nval;
+    float nval;
     int stride = 4;
     //Find the image maximum and minimum
-    double imin = data[0];
-    double imax = data[0];
+    float imin = data[0];
+    float imax = data[0];
     for (i = 1; i < Ntot; i++) {
         if (data[i] > imax) imax = data[i];
         if (data[i] < imin) imin = data[i];
@@ -1189,16 +1187,16 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
                 nval = 255*(data[i] - imin) / (imax - imin);
                 
                 pixels[stride * i + 0] = (unsigned char)(255 *
-                    (0.998*exp(-0.5*pow((nval - 160)/115.,6))
-                    + 0.22*exp(-0.5 * pow((nval - 305) / 50, 4)))); //blue channel
+                    (0.998*exp(-pow(7.7469e-03 * (nval - 160),6))
+                    + 0.22*exp(-pow(0.016818 * (nval - 305), 4)))); //blue channel
                 
                 
                 pixels[stride * i + 1] = (unsigned char)(255 *
-                    (0.022 * exp(-0.5 * pow((nval - 25) / 20., 4))
-                    + 0.11 * exp(-0.5*pow((nval - 120) / 55, 4))
-                    + 1 * exp(-0.5*pow((nval - 400) / 190., 6)))); //green channel
+                    (0.022 * exp(-pow(0.042045*(nval - 25), 4))
+                    + 0.11 * exp(-pow(0.015289*(nval - 120), 4))
+                    + 1 * exp(-pow(4.6889e-03*(nval - 400), 6)))); //green channel
                 pixels[stride * i + 2] = (unsigned char)(255 *
-                    (exp(- 0.5 *pow((nval - 415) / 300., 10)))); //red channel
+                    (exp(-pow(3.1101e-03*(nval - 415), 10)))); //red channel
                     
             }
         }
@@ -1253,17 +1251,8 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
     DeleteDC(hdcMem);
     return 0;
 }
-/*
-int drawLine(HDC hdc) {
-    Gdiplus::Graphics graphics(hdc);
-    Gdiplus::Pen pen(Gdiplus::Color(255, 0, 0, 255));
-    graphics.DrawLine(&pen, 0, 0, 200, 100);
-    return 0;
-}
-*/
+
 DWORD WINAPI drawSimPlots(LPVOID lpParam) {
-    //bool wasRunning = isRunning;
-    //isRunning = TRUE; //this locks the grid memory so it doesn't get freed while plotting, set back to wasRunning at the end
     if (isGridAllocated) {
         isPlotting = TRUE;
         RECT mainRect;
@@ -1295,12 +1284,10 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
 
 
-        double logPlotOffset = 1e11;
+        float logPlotOffset = 1e11f;
         int i,j;
         HDC hdc;
 
-        //int simIndex = (int)getDoubleFromHWND(maingui.tbWhichSimToPlot);
-        //simIndex--;
         if (simIndex < 0) {
             simIndex = 0;
         }
@@ -1309,36 +1296,34 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
 
         hdc = GetWindowDC(maingui.mainWindow);
-        double* plotarr = (double*)calloc((*activeSetPtr).Ngrid, sizeof(double));
-        double* plotarrC = (double*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(double));
-        double* plotarr2 = (double*)calloc((size_t)(dx) * (size_t)(dy), sizeof(double));
+        float* plotarr = (float*)calloc((*activeSetPtr).Ngrid, sizeof(float));
+        float* plotarrC = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
+        float* plotarr2 = (float*)calloc((size_t)(dx) * (size_t)(dy), sizeof(float));
         
         std::complex<double>* shiftedFFT = (std::complex<double>*)calloc((*activeSetPtr).Ngrid, sizeof(std::complex<double>));
 
         //Plot Time Domain, s-polarization
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = (real((*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2]));
+            plotarr[i] = (float)(real((*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2]));
         }
-
-        
-        linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
+        linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 4);
-        //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 2 * dy + 2 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
-        
-        plotXYDirect2d(maingui.plotBox3, (*activeSetPtr).tStep / 1e-15, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+
+        plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+
         //Plot Time Domain, p-polarization
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = (real((*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2]));
+            plotarr[i] = (float)(real((*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2]));
         }
 
-        linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx, 0);
+        linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, x, (size_t)(y) + (size_t)(dy) + spacerY, dy, dx, plotarr2, 4);
-        //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).tStep / 1e-15, x, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 0, 0, 1e9);
-        plotXYDirect2d(maingui.plotBox4, (*activeSetPtr).tStep / 1e-15, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+        plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+
         //Plot Fourier Domain, s-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = log10(cModulusSquared(shiftedFFT[i]) + logPlotOffset);
+            plotarr[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
         }
 
         for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
@@ -1347,14 +1332,15 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
             }
         }
 
-        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx, 0);
+        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 3);
-        //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime / 2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 2 * dy + 2 * spacerY, dx, dy, 2, 8, 1);
-        plotXYDirect2d(maingui.plotBox7, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
+        plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
+        
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
+
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = log10(cModulusSquared(shiftedFFT[i]) + logPlotOffset);
+            plotarr[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
         }
         for (i = 0; i < ((*activeSetPtr).Ntime/2); i++) {
             for (j = 0; j < (*activeSetPtr).Nspace; j++) {
@@ -1362,12 +1348,11 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
             }
         }
         
-        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx, 0);
-
+        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 3);
 
-        //drawLabeledXYPlot(hdc, (int)(*activeSetPtr).Ntime/2, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).fStep/1e12, x + dx + spacerX + plotMargin, y + 3 * dy + 3 * spacerY, (int)dx, (int)dy, 2, 8, 1);
-        plotXYDirect2d(maingui.plotBox8, (*activeSetPtr).fStep / 1e12, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
+        plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
+
         free(shiftedFFT);
         free(plotarr);
         free(plotarr2);
@@ -1380,76 +1365,27 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
 
 
-//use linear interpolation to resize matrix A to the size of matrix B
+//resize matrix A to the size of matrix B
 //B is overwritten with the resized matrix
-int linearRemap(double* A, int nax, int nay, double* B, int nbx, int nby, int modeInterp) {
+int linearRemap(float* A, int nax, int nay, float* B, int nbx, int nby) {
     int i, j;
-    double a, b, c, d;
-    double d00, d01, d10, d11;
-    double w00, w01, w10, w11;
-    double A00, A01, A10, A11;
-    double f, nf;
+    float A00;
+    float f;
 
-    int nx0, nx1, ny0, ny1;
+    int nx0, ny0;
     int Ni, Nj;
-
-    if (modeInterp == 1) {
-        for (i = 0; i < nbx; i++) {
-            f = ((double)nax / (double)nbx) * (double)i;
-            Ni = (int)f;
-            a = f - Ni;
-            b = 1. - a;
-            nx0 = nay * min(Ni, nax - 1);
-            nx1 = nay * min(Ni + 1, nax - 1);
-
-            for (j = 0; j < nby; j++) {
-                f = ((double)nay / (double)nby) * (double)j;
-                Nj = (int)f;
-                c = f - Nj;
-                d = 1. - c;
-                ny0 = min(nay - 1, Nj);
-                ny1 = min(nay - 1, Nj + 1);
-
-                A00 = A[ny0 + nx0];
-                A01 = A[ny1 + nx0];
-                A10 = A[ny0 + nx1];
-                A11 = A[ny1 + nx1];
-
-                d00 = sqrt(a * a + c * c);
-                d10 = sqrt(b * b + c * c);
-                d01 = sqrt(a * a + d * d);
-                d11 = sqrt(b * b + d * d);
-
-                w00 = 1 - d00;
-                w00 *= w00;
-                w01 = 1 - d01;
-                w01 *= w01;
-                w10 = 1 - d10;
-                w10 *= w10;
-                w11 = 1 - d11;
-                w11 *= w11;
-                nf = 1. / (w00 + w01 + w10 + w11);
-
-                B[i * nby + j] = nf * (w00 * A00 + w10 * A10 + w01 * A01 + w11 * A11);
-                //B[i * nby + j] = A00;
-            }
-        }
-    }
-    else {
-        for (i = 0; i < nbx; i++) {
-            f = ((double)nax / (double)nbx) * (double)i;
-            Ni = (int)f;
-            nx0 = nay * min(Ni, nax);
-            for (j = 0; j < nby; j++) {
-                f = ((double)nay / (double)nby) * (double)j;
-                Nj = (int)f;
-                ny0 = min(nay, Nj);
-                A00 = A[ny0 + nx0];
-                B[i * nby + j] = A00;
-            }
-        }
-    }
-
+	for (i = 0; i < nbx; i++) {
+		f = i*(nax / (float)nbx);
+		Ni = (int)f;
+		nx0 = nay * min(Ni, nax);
+		for (j = 0; j < nby; j++) {
+			f = (j*(nay / (float)nby));
+			Nj = (int)f;
+			ny0 = min(nay, Nj);
+			A00 = A[ny0 + nx0];
+			B[i * nby + j] = A00;
+		}
+	}
     return 0;
 }
 
@@ -1459,23 +1395,21 @@ void setTitleBarDark(HWND hWnd)
     DwmSetWindowAttribute(hWnd, 20, &isDarkMode, sizeof(isDarkMode));
 }
 
-void plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float unitY, bool forceminY, float forcedminY) {
-    ID2D1Factory* pFactory = NULL;
+void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY) {
     size_t i;
     D2D1_POINT_2F p1;
     D2D1_POINT_2F p2;
     D2D1_ELLIPSE marker;
-    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory);
+    
     ID2D1HwndRenderTarget* pRenderTarget;
     ID2D1SolidColorBrush* pBrush;
     float markerSize = 1.5;
     float lineWidth = 1.25;
 
     //get limits of Y
-    double maxY = 0;
-    double minY = 0;
+    float maxY = 0;
+    float minY = 0;
     for (i = 0; i < Npts; i++) {
-
         maxY = max(Y[i], maxY);
         minY = min(Y[i], minY);
     }
@@ -1492,7 +1426,7 @@ void plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float 
     GetClientRect(targetWindow, &targetRectangle);
     D2D1_SIZE_U size = D2D1::SizeU(targetRectangle.right, targetRectangle.bottom);
 
-    hr = pFactory->CreateHwndRenderTarget(
+    HRESULT hr = maingui.pFactory->CreateHwndRenderTarget(
         D2D1::RenderTargetProperties(),
         D2D1::HwndRenderTargetProperties(targetWindow, size),
         &pRenderTarget);
@@ -1511,7 +1445,7 @@ void plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float 
             BeginPaint(targetWindow, &ps);
             pRenderTarget->BeginDraw();
 
-
+            pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
             for (i = 0; i < Npts - 1; i++) {
                 p1.x = scaleX * (i * (float)dX);
                 p1.y = sizeF.height - scaleY * ((float)Y[i] - (float)minY);
@@ -1527,10 +1461,8 @@ void plotXYDirect2d(HWND targetWindow, double dX, double* Y, size_t Npts, float 
             hr = pRenderTarget->EndDraw();
             EndPaint(targetWindow, &ps);
         }
-
-        pRenderTarget->Release();
         pBrush->Release();
-        pFactory->Release();
+        pRenderTarget->Release();
 
     }
 
