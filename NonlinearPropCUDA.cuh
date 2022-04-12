@@ -155,7 +155,6 @@ struct cudaParameterSet {
 	cuDoubleComplex* gridPlasmaCurrentFrequency2;
 	cuDoubleComplex* k1;
 	cuDoubleComplex* k2;
-
 	cuDoubleComplex* ne;
 	cuDoubleComplex* no;
 	bool isCylindric;
@@ -174,6 +173,7 @@ struct cudaParameterSet {
 	long long* propagationInts;
 	cufftHandle fftPlan;
 	cufftHandle polfftPlan;
+    cufftHandle doublePolfftPlan;
 	bool isNonLinear;
 	size_t Ntime;
 	size_t Nspace;

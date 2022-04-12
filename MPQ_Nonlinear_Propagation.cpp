@@ -761,8 +761,11 @@ int readParametersFromInterface() {
     (*activeSetPtr).rStep = 1e-6 * getDoubleFromHWND(maingui.tbRadialStepSize);
     (*activeSetPtr).timeSpan = 1e-15 * getDoubleFromHWND(maingui.tbTimeSpan);
     (*activeSetPtr).tStep = 1e-15 * getDoubleFromHWND(maingui.tbTimeStepSize);
-    
- 
+
+    //fix the grid dimensions so that each is divisble by 32
+    (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (32 * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * 32)));
+    (*activeSetPtr).timeSpan = (*activeSetPtr).tStep * (32 * ceil((*activeSetPtr).timeSpan / ((*activeSetPtr).tStep * 32)));
+
     (*activeSetPtr).crystalThickness = 1e-6 * getDoubleFromHWND(maingui.tbCrystalThickness);
     (*activeSetPtr).propagationStep = 1e-9 * getDoubleFromHWND(maingui.tbXstep);
 
@@ -1127,7 +1130,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
 //  cm = 1: grayscale
 //  cm = 2: similar to matlab's jet
 //  cm = 3: similar to Colorcet L07
-//  cn = 4: vaporwaves (symmetric amplitude)
+//  cn = 4: vaporwave (symmetric amplitude)
 int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm) {
 
     // creating input
