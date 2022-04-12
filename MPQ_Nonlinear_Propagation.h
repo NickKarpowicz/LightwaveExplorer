@@ -4,93 +4,93 @@
 #include<complex>
 #include<d2d1.h>
 struct guiStruct {
-    HWND mainWindow;
+    HWND mainWindow = NULL;
+    
+    HWND tbMaterialIndex = NULL;
+    HWND tbCrystalTheta = NULL;
+    HWND tbCrystalPhi = NULL;
+    HWND tbCrystalThickness = NULL;
+    HWND tbNonlinearAbsortion = NULL;
+    HWND tbDrudeGamma = NULL;
+    HWND tbBandGap = NULL;
+    HWND tbEffectiveMass = NULL;
 
-    HWND tbMaterialIndex;
-    HWND tbCrystalTheta;
-    HWND tbCrystalPhi;
-    HWND tbCrystalThickness;
-    HWND tbNonlinearAbsortion;
-    HWND tbDrudeGamma;
-    HWND tbBandGap;
-    HWND tbEffectiveMass;
+    HWND tbGridXdim = NULL;
+    HWND tbRadialStepSize = NULL;
+    HWND tbTimeStepSize = NULL;
 
-    HWND tbGridXdim;
-    HWND tbRadialStepSize;
-    HWND tbTimeStepSize;
+    HWND tbTimeSpan = NULL;
+    HWND tbXstep = NULL;
+    HWND tbBatchMode = NULL;
+    HWND tbNumberSims = NULL;
+    HWND tbBatchDestination = NULL;
 
-    HWND tbTimeSpan;
-    HWND tbXstep;
-    HWND tbBatchMode;
-    HWND tbNumberSims;
-    HWND tbBatchDestination;
-
-    HWND tbPulse1Delay;
-    HWND tbPulse2Delay;
-    HWND tbPulseEnergy1;
-    HWND tbPulseEnergy2;
-    HWND tbBandwidth1;
-    HWND tbBandwidth2;
-    HWND tbFrequency1;
-    HWND tbFrequency2;
-    HWND tbCEPhase1;
-    HWND tbCEPhase2;
-    HWND tbPulseType;
-
-
-    HWND tbGDD1;
-    HWND tbGDD2;
-    HWND tbTOD1;
-    HWND tbTOD2;
-
-    HWND tbXoffset1;
-    HWND tbXoffset2;
-    HWND tbZoffset1;
-    HWND tbZoffset2;
-    HWND tbBeamwaist1;
-    HWND tbBeamwaist2;
-    HWND tbPropagationAngle1;
-    HWND tbPropagationAngle2;
-    HWND tbPolarizationAngle1;
-    HWND tbPolarizationAngle2;
-    HWND tbCircularity1;
-    HWND tbCircularity2;
+    HWND tbPulse1Delay = NULL;
+    HWND tbPulse2Delay = NULL;
+    HWND tbPulseEnergy1 = NULL;
+    HWND tbPulseEnergy2 = NULL;
+    HWND tbBandwidth1 = NULL;
+    HWND tbBandwidth2 = NULL;
+    HWND tbFrequency1 = NULL;
+    HWND tbFrequency2 = NULL;
+    HWND tbCEPhase1 = NULL;
+    HWND tbCEPhase2 = NULL;
+    HWND tbPulseType = NULL;
 
 
-    HWND pdPropagationMode;
-    HWND pdBatchMode;
-    HWND pdPulseType;
-    HWND pdRStep;
+    HWND tbGDD1 = NULL;
+    HWND tbGDD2 = NULL;
+    HWND tbTOD1 = NULL;
+    HWND tbTOD2 = NULL;
 
-    HWND tbSequence;
+    HWND tbXoffset1 = NULL;
+    HWND tbXoffset2 = NULL;
+    HWND tbZoffset1 = NULL;
+    HWND tbZoffset2 = NULL;
+    HWND tbBeamwaist1 = NULL;
+    HWND tbBeamwaist2 = NULL;
+    HWND tbPropagationAngle1 = NULL;
+    HWND tbPropagationAngle2 = NULL;
+    HWND tbPolarizationAngle1 = NULL;
+    HWND tbPolarizationAngle2 = NULL;
+    HWND tbCircularity1 = NULL;
+    HWND tbCircularity2 = NULL;
 
-    HWND cbSavePsi;
-    HWND tbFileNameBase;
-    HWND tbPulse1Path;
-    HWND pdPulse1Type;
-    HWND tbPulse2Path;
-    HWND pdPulse2Type;
-    HWND buttonPulse1Path;
-    HWND buttonPulse2Path;
-    HWND buttonRun;
-    HWND buttonFile;
-    HWND buttonPlot;
-    HWND buttonRefreshDB;
-    HWND buttonStop;
-    HWND buttonLoad;
-    HWND tbPlotNumber;
-    HWND pdClusterSelector;
-    HWND buttonRunOnCluster;
-    HWND tbWhichSimToPlot;
-    HWND textboxSims;
-    HWND plotBox1;
-    HWND plotBox2;
-    HWND plotBox3;
-    HWND plotBox4;
-    HWND plotBox5;
-    HWND plotBox6;
-    HWND plotBox7;
-    HWND plotBox8;
+
+    HWND pdPropagationMode = NULL;
+    HWND pdBatchMode = NULL;
+    HWND pdPulseType = NULL;
+    HWND pdRStep = NULL;
+
+    HWND tbSequence = NULL;
+
+    HWND cbSavePsi = NULL;
+    HWND tbFileNameBase = NULL;
+    HWND tbPulse1Path = NULL;
+    HWND pdPulse1Type = NULL;
+    HWND tbPulse2Path = NULL;
+    HWND pdPulse2Type = NULL;
+    HWND buttonPulse1Path = NULL;
+    HWND buttonPulse2Path = NULL;
+    HWND buttonRun = NULL;
+    HWND buttonFile = NULL;
+    HWND buttonPlot = NULL;
+    HWND buttonRefreshDB = NULL;
+    HWND buttonStop = NULL;
+    HWND buttonLoad = NULL;
+    HWND tbPlotNumber = NULL;
+    HWND pdClusterSelector = NULL;
+    HWND buttonRunOnCluster = NULL;
+    HWND tbWhichSimToPlot = NULL;
+    HWND textboxSims = NULL;
+    HWND plotBox1 = NULL;
+    HWND plotBox2 = NULL;
+    HWND plotBox3 = NULL;
+    HWND plotBox4 = NULL;
+    HWND plotBox5 = NULL;
+    HWND plotBox6 = NULL;
+    HWND plotBox7 = NULL;
+    HWND plotBox8 = NULL;
     ID2D1Factory* pFactory = NULL;
     int xOffsetRow1 = 160;
     int xOffsetRow2 = 480;

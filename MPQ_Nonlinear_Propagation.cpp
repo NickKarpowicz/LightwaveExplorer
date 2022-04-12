@@ -467,12 +467,15 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     
     //read the crystal database
     crystalDatabasePtr = (struct crystalEntry*)calloc(MAX_LOADSTRING, sizeof(struct crystalEntry));
-    GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
-    readCrystalDatabase(crystalDatabasePtr);
-    printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
-    for (i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
-        printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+    if (crystalDatabasePtr != NULL) {
+        GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
+        readCrystalDatabase(crystalDatabasePtr);
+        printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+        for (i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
+            printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+        }
     }
+
 
     return TRUE;
 }
@@ -1403,8 +1406,9 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     D2D1_POINT_2F p1;
     D2D1_POINT_2F p2;
     D2D1_ELLIPSE marker;
-    
-    ID2D1HwndRenderTarget* pRenderTarget;
+    D2D1_SIZE_F sizeF;
+    ZeroMemory(&sizeF, sizeof(D2D1_SIZE_F));
+    ID2D1HwndRenderTarget *pRenderTarget;
     ID2D1SolidColorBrush* pBrush;
     float markerSize = 1.5;
     float lineWidth = 1.25;
@@ -1433,7 +1437,10 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
         D2D1::RenderTargetProperties(),
         D2D1::HwndRenderTargetProperties(targetWindow, size),
         &pRenderTarget);
-    D2D1_SIZE_F sizeF = pRenderTarget->GetSize();
+    if (pRenderTarget != NULL) {
+        sizeF = pRenderTarget->GetSize();
+    }
+    
     float scaleX = sizeF.width / (Npts * (float)dX);
     float scaleY = sizeF.height / ((float)(maxY - minY));
 
