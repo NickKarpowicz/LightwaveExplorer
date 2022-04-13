@@ -60,7 +60,9 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     if (isGridAllocated) {
         freeSemipermanentGrids();
     }
-
+    double testvec[5] = { 0 };
+    testvec[2] = 3.1415;
+    printToConsole(maingui.textboxSims, L"location read: %lf", *(&testvec[0] + 2));
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
@@ -466,7 +468,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         btnoffset2a, 25 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
     maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        btnoffset2a + btnwidth + 5, 25 * vs -2, 190, 8 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + btnwidth + 5, 25 * vs -2, 190, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     
     TCHAR A[64];
     memset(&A, 0, sizeof(A));
@@ -519,23 +521,45 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     maingui.pdBatchMode = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        xOffsetRow2, 15 * vs - 4, textboxwidth, 23 * 20, maingui.mainWindow, NULL, hInstance, NULL);
-    TCHAR batchModeNames[12][64] = {
+        xOffsetRow2, 15 * vs - 4, textboxwidth, 36 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    TCHAR batchModeNames[34][64] = {
         L"none", 
-        L"Pulse 2 delay", 
-        L"Pulse 1 Energy", 
-        L"CEP", 
-        L"Propagation", 
-        L"Theta", 
-        L"Pulse 1 GDD", 
-        L"Pulse 1 z", 
-        L"Gamma", 
-        L"NL absorption", 
+        L"Energy 1", 
+        L"Energy 2", 
+        L"Frequency 1", 
+        L"Frequency 2", 
+        L"Bandwidth 1", 
+        L"Bandwidth 2", 
+        L"CEP 1", 
+        L"CEP 2", 
+        L"Delay 1", 
+        L"Delay 2",
+        L"GDD 1",
+        L"GDD 2",
+        L"TOD 1",
+        L"TOD 2",
         L"Beamwaist 1",
-        L"TOD 1"
+        L"Beamwaist 2",
+        L"x offset 1",
+        L"x offset 2",
+        L"z offset 1",
+        L"z offset 2",
+        L"NC angle 1",
+        L"NC angle 2",
+        L"Polarization 1",
+        L"Polarization 2",
+        L"Circularity 1",
+        L"Circularity 2",
+        L"Crystal Theta",
+        L"Crystal Phi",
+        L"NL absorption",
+        L"Gamma",
+        L"Eff. mass",
+        L"Thickness",
+        L"dz",
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 12; k++) {
+    for (k = 0; k < 34; k++) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)batchModeNames[k]);
         SendMessage(maingui.pdBatchMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }

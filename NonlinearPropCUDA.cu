@@ -1909,6 +1909,34 @@ int readSequenceString(simulationParameterSet* sCPU) {
 int configureBatchMode(simulationParameterSet* sCPU) {
     int j;
     const double pi = 3.1415926535897932384626433832795;
+    if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims == 1) {
+        return 0;
+    }
+
+    //pointers to values that can be scanned in batch mode
+    double* targets[34] = { 0,
+        &(*sCPU).pulseEnergy1, &(*sCPU).pulseEnergy2, &(*sCPU).frequency1, &(*sCPU).frequency2,
+        &(*sCPU).bandwidth1, &(*sCPU).bandwidth2, &(*sCPU).cephase1, &(*sCPU).cephase2,
+        &(*sCPU).delay1, &(*sCPU).delay2, &(*sCPU).gdd1, &(*sCPU).gdd2,
+        &(*sCPU).tod1, &(*sCPU).tod2, &(*sCPU).beamwaist1, &(*sCPU).beamwaist2,
+        &(*sCPU).x01, &(*sCPU).x02, &(*sCPU).z01, &(*sCPU).z02,
+        &(*sCPU).propagationAngle1, &(*sCPU).propagationAngle2, &(*sCPU).polarizationAngle1, &(*sCPU).polarizationAngle2,
+        &(*sCPU).circularity1, &(*sCPU).circularity2, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
+        &(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
+        &(*sCPU).propagationStep };
+    
+    //multipliers to the Batch end value from the interface
+    // (e.g. frequency in THz requires 1e12 multiplier)
+    double multipliers[34] = { 0,
+        1, 1, 1e12, 1e12, 
+        1e12, 1e12, pi, pi, 
+        1e-15, 1e-15, 1e-30, 1e-30, 
+        1e-45, 1e-45, 1e-6, 1e-6, 
+        1e-6, 1e-6, 1e-6, 1e-6, 
+        (pi / 180), (pi / 180), (pi / 180), (pi / 180), 
+        1, 1, (pi / 180), (pi / 180), 
+        1, 1e12, 1, 1e-6, 
+        1e-9 };
 
     //Configure the struct array if in a batch
     for (j = 0; j < (*sCPU).Nsims; j++) {
@@ -1928,40 +1956,12 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 
         sCPU[j].isFollowerInSequence = FALSE;
         
-        if ((*sCPU).batchIndex == 1) {
-            sCPU[j].delay2 += j * ((-1e-15 * (*sCPU).batchDestination) - ((*sCPU).delay2 - (*sCPU).timeSpan / 2)) / ((*sCPU).Nsims - 1.);
-        }
-        if ((*sCPU).batchIndex == 2) {
-            sCPU[j].pulseEnergy1 += j * ((*sCPU).batchDestination - (*sCPU).pulseEnergy1) / ((*sCPU).Nsims - 1.);
-        }
-        if ((*sCPU).batchIndex == 3) {
-            sCPU[j].cephase1 += j * (pi * (*sCPU).batchDestination - (*sCPU).cephase1) / ((*sCPU).Nsims - 1.);
-        }
-        if ((*sCPU).batchIndex == 5) {
-            sCPU[j].crystalTheta += j * ((pi / 180) * (*sCPU).batchDestination - (*sCPU).crystalTheta) / ((*sCPU).Nsims - 1.);
-        }
-        if ((*sCPU).batchIndex == 6) {
-            sCPU[j].gdd1 += j * (1e-30 * (*sCPU).batchDestination - (*sCPU).gdd1) / ((*sCPU).Nsims - 1.);
-        }
-
-        if ((*sCPU).batchIndex == 7) {
-            sCPU[j].z01 += j * (1e-6 * (*sCPU).batchDestination - (*sCPU).z01) / ((*sCPU).Nsims - 1.);
-        }
-
-        if ((*sCPU).batchIndex == 8) {
-            sCPU[j].drudeGamma += j * (1e12 * (*sCPU).batchDestination - (*sCPU).drudeGamma) / ((*sCPU).Nsims - 1.);
-        }
-
-        if ((*sCPU).batchIndex == 9) {
-            sCPU[j].nonlinearAbsorptionStrength += j * ((*sCPU).batchDestination - (*sCPU).nonlinearAbsorptionStrength) / ((*sCPU).Nsims - 1.);
-        }
-        if ((*sCPU).batchIndex == 10) {
-            sCPU[j].beamwaist1 += j * (1e-6 * (*sCPU).batchDestination - (*sCPU).beamwaist1) / ((*sCPU).Nsims - 1.);
-        }
-        if ((*sCPU).batchIndex == 11) {
-            sCPU[j].tod1 += j * (1e-45 * (*sCPU).batchDestination - (*sCPU).tod1) / ((*sCPU).Nsims - 1.);
-        }
-        
+        // To add new modes, append values to the two arrays above.
+        // Casti the pointer to the original value to a pointer to a struct, 
+        // increment, recast to a pointer to double and resolve then add j times the scan step size.
+        *((double*)((simulationParameterSet*)targets[(*sCPU).batchIndex] + j)) += 
+            j * (multipliers[(*sCPU).batchIndex] * (*sCPU).batchDestination - *targets[(*sCPU).batchIndex]) 
+            / ((*sCPU).Nsims - 1);
     }
     return 0;
 }
