@@ -1,4 +1,3 @@
-#pragma once
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include <stdio.h>
@@ -199,9 +198,7 @@ int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long lo
 std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn);
 int				preparePropagation2DCartesian(struct simulationParameterSet* s, struct cudaParameterSet sc);
 int				preparePropagation3DCylindric(struct simulationParameterSet* s, struct cudaParameterSet sc);
-double			findWalkoffAngles(struct simulationParameterSet* s, double dk, double f, double tol);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex);
-int				plotDataXY(double* X, double* Y, double minX, double maxX, double minY, double maxY, int N, int plotSizeX, int plotSizeY, double lineWidth, double markerWidth, double* plotGrid, double* xTicks, int NxTicks, double* yTicks, int NyTicks);
 int				rotateField(struct simulationParameterSet* s, double rotationAngle);
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(struct simulationParameterSet* sCPU);

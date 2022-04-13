@@ -1,3 +1,5 @@
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
 #include "NonlinearPropCUDA.cuh"
 #include <complex>
 #include <cstdlib>
@@ -73,7 +75,8 @@ __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
 //omega: frequency (rad/s)
 //ii: sqrt(-1)
 //kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
-__device__ __forceinline__ cuDoubleComplex sellmeierSubfunctionCuda(double* a, double ls, double omega, cuDoubleComplex ii, double kL) {
+__device__ __forceinline__ cuDoubleComplex sellmeierSubfunctionCuda(
+    double* a, double ls, double omega, cuDoubleComplex ii, double kL) {
     double realPart = a[0]
         + (a[1] + a[2] * ls) / (ls + a[3])
         + (a[4] + a[5] * ls) / (ls + a[6])
@@ -93,7 +96,8 @@ __device__ __forceinline__ cuDoubleComplex sellmeierSubfunctionCuda(double* a, d
 }
 
 //Sellmeier equation for refractive indicies
-__device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
+__device__ cuDoubleComplex sellmeierCuda(
+    cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
     if (f==0) return make_cuDoubleComplex(1.0,0.0); //exit immediately for f=0
 
     double ls = 2.99792458e14 / f; //wavelength in microns
@@ -155,7 +159,9 @@ __device__ cuDoubleComplex sellmeierCuda(cuDoubleComplex* ne, cuDoubleComplex* n
 }
 
 //rotate the field around the propagation axis (basis change)
-__global__ void rotateFieldKernel(cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, cuDoubleComplex* Eout1, cuDoubleComplex* Eout2, double rotationAngle) {
+__global__ void rotateFieldKernel(
+    cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, cuDoubleComplex* Eout1, 
+    cuDoubleComplex* Eout2, double rotationAngle) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
     Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
@@ -165,7 +171,8 @@ __global__ void rotateFieldKernel(cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, 
 // exploiting the fact that the radial grid is offset by 1/4 step from 0
 // this means that midpoints are available on the other side of the origin.
 // returns rho at the given index j
-__device__ __forceinline__ double resolveNeighborsInOffsetRadialSymmetry(long long* neighbors, long long N, int j, double dr, long long Ntime, long long h) {
+__device__ __forceinline__ double resolveNeighborsInOffsetRadialSymmetry(
+    long long* neighbors, long long N, int j, double dr, long long Ntime, long long h) {
 	if (j < N / 2) {
 		neighbors[0] = (N - j - 2) * Ntime + h;
 		neighbors[1] = (j + 1) * Ntime + h;
@@ -286,7 +293,8 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     //Find walkoff angle, starting from zero
     theta[i] = 0;
     double rhs = 2.99792458e8 * dk / (twoPi * f);
-    sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta + theta[i], crystalPhi, axesNumber, sellmeierType);
+    sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), 
+        crystalTheta + theta[i], crystalPhi, axesNumber, sellmeierType);
     nePlus = cuCreal(ne);
     err = abs(nePlus * sin(theta[i]) - rhs);
 
@@ -296,11 +304,13 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     while (err > tol && iters < 2048) {
         iters++;
 
-        sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta + theta[i] + dTheta, crystalPhi, axesNumber, sellmeierType);
+        sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), 
+            crystalTheta + theta[i] + dTheta, crystalPhi, axesNumber, sellmeierType);
         nePlus = cuCreal(ne);
         errPlus = abs(nePlus * sin(theta[i] + dTheta) - rhs);
 
-        sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta + theta[i] - dTheta, crystalPhi, axesNumber, sellmeierType);
+        sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), 
+            crystalTheta + theta[i] - dTheta, crystalPhi, axesNumber, sellmeierType);
         neMinus = cuCreal(ne);
         errMinus = abs(neMinus * sin(theta[i] - dTheta) - rhs);
 
@@ -330,8 +340,10 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
     }
     f *= -1;
 
-    sellmeierCuda(&n0, &no, sellmeierCoefficients, abs(s.f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-    sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta + theta[i], crystalPhi, axesNumber, sellmeierType);
+    sellmeierCuda(&n0, &no, sellmeierCoefficients, abs(s.f0), 
+        crystalTheta, crystalPhi, axesNumber, sellmeierType);
+    sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), 
+        crystalTheta + theta[i], crystalPhi, axesNumber, sellmeierType);
     if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
         ne = make_cuDoubleComplex(1, 0);
         no = make_cuDoubleComplex(1, 0);
@@ -692,7 +704,8 @@ int main(int argc, char *argv[]) {
         for (i = 0; i < CUDAdeviceCount; i++) {
             cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
             printf("%s\r\n", activeCUDADeviceProp.name);
-            printf(" Memory: %lli MB; Multiprocessors: %i\n", activeCUDADeviceProp.totalGlobalMem / (1024 * 1024), activeCUDADeviceProp.multiProcessorCount);
+            printf(" Memory: %lli MB; Multiprocessors: %i\n", 
+                activeCUDADeviceProp.totalGlobalMem / (1024 * 1024), activeCUDADeviceProp.multiProcessorCount);
         }
     }
     else {
@@ -796,7 +809,8 @@ int main(int argc, char *argv[]) {
 	}
     
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    printf("Finished after %8.4lf s. \n", 1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+    printf("Finished after %8.4lf s. \n", 
+        1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
 
 
     saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath);
@@ -971,7 +985,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     
     plasmaParametersCPU[0] = (*sCPU).nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
     plasmaParametersCPU[1] = (*sCPU).drudeGamma; //gamma
-    plasmaParametersCPU[2] = (1. / 8.8541878128e-12)*(*sCPU).tStep * (*sCPU).tStep * 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * band gap));
+    plasmaParametersCPU[2] = (1. / 8.8541878128e-12)*(*sCPU).tStep * (*sCPU).tStep 
+        * 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * band gap));
 
     calcEffectiveChi2Tensor((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
     cudaMemcpy(s.chi2Tensor, (*sCPU).deffTensor, 9 * sizeof(double), cudaMemcpyHostToDevice);
@@ -1115,10 +1130,11 @@ int runRK4Step(struct cudaParameterSet s, int stepNumber) {
         cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
         
         if (s.isNonLinear) {
-            nonlinearPolarizationKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s);
+            nonlinearPolarizationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s);
 
             if (s.isCylindric) {
-                expandCylindricalBeam <<< s.Nblock, s.Nthread, 0, s.CUDAStream >>> (s, s.gridPolarizationTime1, s.gridPolarizationTime2);
+                expandCylindricalBeam <<< s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
+                    (s, s.gridPolarizationTime1, s.gridPolarizationTime2);
                 cufftExecD2Z(s.doublePolfftPlan, (double*)s.gridRadialLaplacian1, (cufftDoubleComplex*)s.gridPolarizationFrequency1);
                 cufftExecD2Z(s.doublePolfftPlan, (double*)s.gridRadialLaplacian2, (cufftDoubleComplex*)s.gridPolarizationFrequency2);
             }
@@ -1128,11 +1144,14 @@ int runRK4Step(struct cudaParameterSet s, int stepNumber) {
             }
         }
         if (s.hasPlasma) {
-            plasmaCurrentKernelPrep << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
-            plasmaCurrentKernel2 << <(unsigned int)s.Nspace, 1, 0, s.CUDAStream >> > (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
+            plasmaCurrentKernelPrep <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
+                (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
+            plasmaCurrentKernel2 <<<(unsigned int)s.Nspace, 1, 0, s.CUDAStream >>> 
+                (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
             
             if (s.isCylindric) {
-                expandCylindricalBeam << < s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s, s.gridPlasmaCurrent1, s.gridPlasmaCurrent2);
+                expandCylindricalBeam <<< s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
+                    (s, s.gridPlasmaCurrent1, s.gridPlasmaCurrent2);
                 cufftExecD2Z(s.doublePolfftPlan, (double*)s.gridRadialLaplacian1, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency1);
                 cufftExecD2Z(s.doublePolfftPlan, (double*)s.gridRadialLaplacian2, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency2);
             }
@@ -1144,14 +1163,14 @@ int runRK4Step(struct cudaParameterSet s, int stepNumber) {
         }
         
         if (s.isCylindric) {
-            radialLaplacianKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s);
+            radialLaplacianKernel <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> (s);
             cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridRadialLaplacian1, (cufftDoubleComplex*)s.k1, CUFFT_FORWARD);
             cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridRadialLaplacian2, (cufftDoubleComplex*)s.k2, CUFFT_FORWARD);
         }
     }
 
     //calculate k
-    rkKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s, stepNumber);
+    rkKernel <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> (s, stepNumber);
     return 0;
 }
 
@@ -1237,7 +1256,8 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
             
             pulse1[i + (*s).Ntime * j] = polFactor1 * Eb;
             pulse1[i + (*s).Ntime * j + (*s).Ngrid] = polFactor2 * Eb;
-            pulseSum += abs(r)*(real(ne)*cModulusSquared(pulse1[i + (*s).Ntime * j]) + real(no)*cModulusSquared(pulse1[i + (*s).Ntime * j + (*s).Ngrid]));
+            pulseSum += abs(r)*(real(ne)*cModulusSquared(pulse1[i + (*s).Ntime * j]) 
+                + real(no)*cModulusSquared(pulse1[i + (*s).Ntime * j + (*s).Ngrid]));
         }
     }
     
@@ -1346,7 +1366,8 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
 
             pulse2[i + (*s).Ntime * j] = polFactor1 * Eb;
             pulse2[i + (*s).Ntime * j + (*s).Ngrid] = polFactor2 * Eb;
-            pulseSum += abs(r) * (real(ne) * cModulusSquared(pulse2[i + (*s).Ntime * j]) + real(no) * cModulusSquared(pulse2[i + (*s).Ntime * j + (*s).Ngrid]));
+            pulseSum += abs(r) * (real(ne) * cModulusSquared(pulse2[i + (*s).Ntime * j]) 
+                + real(no) * cModulusSquared(pulse2[i + (*s).Ntime * j + (*s).Ngrid]));
         }
     }
 
@@ -1485,49 +1506,6 @@ int preparePropagation3DCylindric(struct simulationParameterSet* s, struct cudaP
     cudaMemset(sc.k2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     free(sellmeierCoefficientsAugmentedCPU);
     return 0;
-}
-
-double findWalkoffAngles(struct simulationParameterSet* s, double dk, double f, double tol) {
-    double theta=0;
-    double dTheta = 0.1;
-    double err, errPlus, errMinus;
-    double rhs = 2.99792458e8 * dk / (2 * 3.14159265358979323846264338327950288 * f);
-    std::complex<double> ne, no;
-    double nePlus, neMinus;
-    f = abs(f);
-    sellmeier(&ne, &no, (*s).sellmeierCoefficients, f, (*s).crystalTheta + theta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-    nePlus = real(ne);
-    err = abs(nePlus * sin(theta) - rhs);
-    int iters = 0;
-    while (err > tol && iters<65536) {
-        iters++;
-
-        sellmeier(&ne, &no, (*s).sellmeierCoefficients, f, (*s).crystalTheta + theta + dTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-        nePlus = real(ne);
-        errPlus = abs(nePlus * sin(theta+dTheta) - rhs);
-
-        sellmeier(&ne, &no, (*s).sellmeierCoefficients, f, (*s).crystalTheta + theta - dTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-        neMinus = real(ne);
-        errMinus = abs(neMinus * sin(theta-dTheta) - rhs);
-
-        //Basic hill climbing algorithm
-        //calculate the error at theta +/- dTheta
-        // if theta + dTheta has lowest error, theta = theta+dTheta, err = errPlus
-        // if theta - dTheta has lowest error, theta = theta-dTheta, err = errMinus
-        // if theta has lowest error, step size is too large, dTheta /= 2;
-        if (errPlus < err && errPlus < errMinus) {
-            theta += dTheta;
-            err = errPlus;
-        }
-        else if (errMinus < err) {
-            theta -= dTheta;
-            err = errMinus;
-        }
-        else {
-            dTheta *= 0.5;
-        }
-    }
-    return theta;
 }
 
 int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi) {

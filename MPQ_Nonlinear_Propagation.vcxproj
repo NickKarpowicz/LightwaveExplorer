@@ -159,13 +159,17 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>compute_75,sm_75;%(CodeGeneration)</CodeGeneration>
-      <CudaRuntime>Static</CudaRuntime>
+      <CudaRuntime>None</CudaRuntime>
       <Runtime>MT</Runtime>
       <FastMath>true</FastMath>
+      <Optimization>O2</Optimization>
     </CudaCompile>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
     </Manifest>
+    <CudaLink>
+      <Optimization>O3</Optimization>
+    </CudaLink>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />

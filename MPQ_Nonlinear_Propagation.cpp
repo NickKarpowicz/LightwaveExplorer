@@ -95,7 +95,8 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     }
 
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    printToConsole(maingui.textboxSims, _T("Finished after %8.4lf s. \r\n"), 1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+    printToConsole(maingui.textboxSims, _T("Finished after %8.4lf s. \r\n"), 1e-6 * 
+        (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath);
 
     free((*activeSetPtr).sequenceArray);
@@ -290,91 +291,222 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     SetWindowTextA(maingui.mainWindow, "Nick's nonlinear propagator");
 
     //text boxes for input parameters
-    maingui.tbPulseEnergy1 = CreateWindow(WC_EDIT, TEXT("24e-9"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPulseEnergy2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbFrequency1 = CreateWindow(WC_EDIT, TEXT("130"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbFrequency2 = CreateWindow(WC_EDIT, TEXT("200"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbBandwidth1 = CreateWindow(WC_EDIT, TEXT("40"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 4 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbBandwidth2 = CreateWindow(WC_EDIT, TEXT("40"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 5 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPulseType = CreateWindow(WC_EDIT, TEXT("2"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 6 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbCEPhase1 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbCEPhase2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPulse1Delay = CreateWindow(WC_EDIT, TEXT("-90"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPulse2Delay = CreateWindowW(WC_EDIT, TEXT("-20"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbGDD1 = CreateWindow(WC_EDIT, TEXT("-27.262"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbGDD2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTOD1 = CreateWindow(WC_EDIT, TEXT("230.57"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 13 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTOD2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 14 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPulseEnergy1 = CreateWindow(WC_EDIT, TEXT("24e-9"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPulseEnergy2 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbFrequency1 = CreateWindow(WC_EDIT, TEXT("130"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbFrequency2 = CreateWindow(WC_EDIT, TEXT("200"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbBandwidth1 = CreateWindow(WC_EDIT, TEXT("40"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 4 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbBandwidth2 = CreateWindow(WC_EDIT, TEXT("40"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 5 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPulseType = CreateWindow(WC_EDIT, TEXT("2"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 6 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbCEPhase1 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbCEPhase2 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPulse1Delay = CreateWindow(WC_EDIT, TEXT("-90"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPulse2Delay = CreateWindowW(WC_EDIT, TEXT("-20"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbGDD1 = CreateWindow(WC_EDIT, TEXT("-27.262"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbGDD2 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbTOD1 = CreateWindow(WC_EDIT, TEXT("230.57"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 13 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbTOD2 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 14 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbBeamwaist1 = CreateWindow(WC_EDIT, TEXT("2.8"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 15 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbBeamwaist2 = CreateWindow(WC_EDIT, TEXT("50"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 16 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbXoffset1 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 17 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbXoffset2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 18 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbZoffset1 = CreateWindow(WC_EDIT, TEXT("-100"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 19 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbZoffset2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 20 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPropagationAngle1 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 21 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPropagationAngle2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 22 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPolarizationAngle1 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 23 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPolarizationAngle2 = CreateWindow(WC_EDIT, TEXT("90"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 24 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbCircularity1 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 25 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbCircularity2 = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1, 26 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbFileNameBase = CreateWindow(WC_EDIT, TEXT("TestFile"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow3, 1 * vs, 775, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbBeamwaist1 = CreateWindow(WC_EDIT, TEXT("2.8"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 15 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbBeamwaist2 = CreateWindow(WC_EDIT, TEXT("50"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 16 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbXoffset1 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 17 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbXoffset2 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 18 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbZoffset1 = CreateWindow(WC_EDIT, TEXT("-100"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 19 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbZoffset2 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 20 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPropagationAngle1 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 21 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPropagationAngle2 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 22 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPolarizationAngle1 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 23 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPolarizationAngle2 = CreateWindow(WC_EDIT, TEXT("90"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 24 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbCircularity1 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 25 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbCircularity2 = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1, 26 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbFileNameBase = CreateWindow(WC_EDIT, TEXT("TestFile"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 1 * vs, 775, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
-    maingui.plotBox1 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.plotBox2 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.plotBox3 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.plotBox4 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.plotBox5 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.plotBox6 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.plotBox7 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.plotBox8 = CreateWindow(WC_STATIC, NULL, WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox1 = CreateWindow(WC_STATIC, NULL, 
+        WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox2 = CreateWindow(WC_STATIC, NULL, 
+        WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox3 = CreateWindow(WC_STATIC, NULL, 
+        WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox4 = CreateWindow(WC_STATIC, NULL, 
+        WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox5 = CreateWindow(WC_STATIC, NULL, 
+        WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox6 = CreateWindow(WC_STATIC, NULL, 
+        WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox7 = CreateWindow(WC_STATIC, NULL, 
+        WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.plotBox8 = CreateWindow(WC_STATIC, NULL, 
+        WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
     D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, &maingui.pFactory);
 
-    maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbCrystalTheta = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbCrystalPhi = CreateWindow(WC_EDIT, TEXT("0"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbCrystalTheta = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 1 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbCrystalPhi = CreateWindow(WC_EDIT, TEXT("0"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbNonlinearAbsortion = CreateWindow(WC_EDIT, TEXT("2e-87"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbBandGap = CreateWindow(WC_EDIT, TEXT("3"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 4 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbDrudeGamma = CreateWindow(WC_EDIT, TEXT("10"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 5 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbEffectiveMass = CreateWindow(WC_EDIT, TEXT("0.081"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 6 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbNonlinearAbsortion = CreateWindow(WC_EDIT, TEXT("2e-87"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbBandGap = CreateWindow(WC_EDIT, TEXT("3"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 4 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbDrudeGamma = CreateWindow(WC_EDIT, TEXT("10"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 5 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbEffectiveMass = CreateWindow(WC_EDIT, TEXT("0.081"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 6 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbGridXdim = CreateWindow(WC_EDIT, TEXT("198.4"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbRadialStepSize = CreateWindow(WC_EDIT, TEXT("0.62"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTimeSpan = CreateWindow(WC_EDIT, TEXT("358.4"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTimeStepSize = CreateWindow(WC_EDIT, TEXT("0.7"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbCrystalThickness = CreateWindow(WC_EDIT, TEXT("500"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbXstep = CreateWindow(WC_EDIT, TEXT("25"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbGridXdim = CreateWindow(WC_EDIT, TEXT("198.4"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbRadialStepSize = CreateWindow(WC_EDIT, TEXT("0.62"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbTimeSpan = CreateWindow(WC_EDIT, TEXT("358.4"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbTimeStepSize = CreateWindow(WC_EDIT, TEXT("0.7"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbCrystalThickness = CreateWindow(WC_EDIT, TEXT("500"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbXstep = CreateWindow(WC_EDIT, TEXT("25"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
-    maingui.tbBatchDestination = CreateWindow(WC_EDIT, TEXT("20"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 16 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbNumberSims = CreateWindow(WC_EDIT, TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow2, 17 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbBatchDestination = CreateWindow(WC_EDIT, TEXT("20"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 16 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbNumberSims = CreateWindow(WC_EDIT, TEXT("1"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow2, 17 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
   
-    maingui.buttonRun = CreateWindowW(WC_BUTTON, TEXT("Run"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_CENTER | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
-    maingui.buttonStop = CreateWindow(WC_BUTTON, TEXT("Stop"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
-    maingui.buttonRefreshDB = CreateWindow(WC_BUTTON, TEXT("Refresh DB"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2, 24 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
-    maingui.buttonRunOnCluster = CreateWindow(WC_BUTTON, TEXT("Cluster script"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 25 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
-    maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, btnoffset2a + btnwidth + 5, 25 * vs -2, 190, 8 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonRun = CreateWindowW(WC_BUTTON, TEXT("Run"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_CENTER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        btnoffset2, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
+    maingui.buttonStop = CreateWindow(WC_BUTTON, TEXT("Stop"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        btnoffset2, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
+    maingui.buttonRefreshDB = CreateWindow(WC_BUTTON, TEXT("Refresh DB"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        btnoffset2, 24 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
+    maingui.buttonRunOnCluster = CreateWindow(WC_BUTTON, TEXT("Cluster script"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        btnoffset2a, 25 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
+    maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), 
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
+        btnoffset2a + btnwidth + 5, 25 * vs -2, 190, 8 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     
     TCHAR A[64];
     memset(&A, 0, sizeof(A));
-    TCHAR clusterNames[7][64] = { L"Cobra 1xRTX 5000", L"Cobra 2xRTX 5000", L"Cobra 1xV100", L"Cobra 2xV100", L"Raven A100", L"Raven 2xA100", L"Raven 4xA100"};
+    TCHAR clusterNames[7][64] = { 
+        L"Cobra 1xRTX 5000", 
+        L"Cobra 2xRTX 5000", 
+        L"Cobra 1xV100", 
+        L"Cobra 2xV100", 
+        L"Raven A100", 
+        L"Raven 2xA100", 
+        L"Raven 4xA100"};
     for (k = 0; k < 7; k++) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)clusterNames[k]);
         SendMessage(maingui.pdClusterSelector, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
     SendMessage(maingui.pdClusterSelector, CB_SETCURSEL, (WPARAM)0, 0);
-    maingui.buttonPlot = CreateWindow(WC_BUTTON, TEXT("Plot"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
-    maingui.tbWhichSimToPlot = CreateWindow(WC_EDIT, TEXT("1"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a + btnwidth + 5, 22 * vs, 60, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonPlot = CreateWindow(WC_BUTTON, TEXT("Plot"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        btnoffset2a, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
+    maingui.tbWhichSimToPlot = CreateWindow(WC_EDIT, TEXT("1"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        btnoffset2a + btnwidth + 5, 22 * vs, 60, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
+    maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        btnoffset2a, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
 
 
-    maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, xOffsetRow1 + textboxwidth + 4, 19 * vs-2, xOffsetRow2-xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.buttonFile = CreateWindow(WC_BUTTON, TEXT("Set Path"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow3, 0 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
+    maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 
+        xOffsetRow1 + textboxwidth + 4, 19 * vs-2, xOffsetRow2-xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonFile = CreateWindow(WC_BUTTON, TEXT("Set Path"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow3, 0 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
 
     
     
-    maingui.pdPropagationMode = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow2, 13 * vs, textboxwidth, 5 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.pdPropagationMode = CreateWindow(WC_COMBOBOX, TEXT(""), 
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
+        xOffsetRow2, 13 * vs, textboxwidth, 5 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR energyModeNames[2][64] = {
         TEXT("2D Cartesian"), TEXT("3D radial symmetry")
     };
@@ -385,9 +517,21 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     SendMessage(maingui.pdPropagationMode, CB_SETCURSEL, (WPARAM)1, 0);
 
-    maingui.pdBatchMode = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow2, 15 * vs - 4, textboxwidth, 23 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.pdBatchMode = CreateWindow(WC_COMBOBOX, TEXT(""), 
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
+        xOffsetRow2, 15 * vs - 4, textboxwidth, 23 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR batchModeNames[11][64] = {
-        TEXT("none"), TEXT("Pulse 2 delay"), TEXT("Pulse 1 Energy"), TEXT("CEP"), TEXT("Propagation"), TEXT("Theta"), TEXT("Pulse 1 GDD"), TEXT("Pulse 1 z"), TEXT("Gamma"), TEXT("NL absorption"), TEXT("Beamwaist 1")
+        TEXT("none"), 
+        TEXT("Pulse 2 delay"), 
+        TEXT("Pulse 1 Energy"), 
+        TEXT("CEP"), 
+        TEXT("Propagation"), 
+        TEXT("Theta"), 
+        TEXT("Pulse 1 GDD"), 
+        TEXT("Pulse 1 z"), 
+        TEXT("Gamma"), 
+        TEXT("NL absorption"), 
+        TEXT("Beamwaist 1")
     };
     memset(&A, 0, sizeof(A));
     for (k = 0; k < 11; k++) {
@@ -396,9 +540,13 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     SendMessage(maingui.pdBatchMode, CB_SETCURSEL, (WPARAM)0, 0);
 
-    maingui.pdPulse1Type = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow1, 27 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.pdPulse1Type = CreateWindow(WC_COMBOBOX, TEXT(""), 
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
+        xOffsetRow1, 27 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR pdPulse1Names[3][64] = {
-        TEXT("Synthetic"), TEXT("load FROG"), TEXT("load EOS")
+        TEXT("Synthetic"), 
+        TEXT("load FROG"), 
+        TEXT("load EOS")
     };
     memset(&A, 0, sizeof(A));
     for (k = 0; k < 3; k++) {
@@ -406,12 +554,20 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         SendMessage(maingui.pdPulse1Type, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
     SendMessage(maingui.pdPulse1Type, CB_SETCURSEL, (WPARAM)0, 0);
-    maingui.tbPulse1Path = CreateWindow(WC_EDIT, TEXT("pulse1.speck.dat"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 0, 28 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.buttonPulse1Path = CreateWindow(WC_BUTTON, TEXT("Set path 1"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, btnoffset2a, 27 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE1, hInstance, NULL);
+    maingui.tbPulse1Path = CreateWindow(WC_EDIT, TEXT("pulse1.speck.dat"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 
+        0, 28 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonPulse1Path = CreateWindow(WC_BUTTON, TEXT("Set path 1"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        btnoffset2a, 27 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE1, hInstance, NULL);
 
-    maingui.pdPulse2Type = CreateWindow(WC_COMBOBOX, TEXT(""), CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, xOffsetRow1, 30 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.pdPulse2Type = CreateWindow(WC_COMBOBOX, TEXT(""), 
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
+        xOffsetRow1, 30 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR pdPulse2Names[3][64] = {
-        TEXT("Synthetic"), TEXT("load FROG"), TEXT("load EOS")
+        TEXT("Synthetic"), 
+        TEXT("load FROG"), 
+        TEXT("load EOS")
     };
     memset(&A, 0, sizeof(A));
     for (k = 0; k < 3; k++) {
@@ -419,12 +575,18 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         SendMessage(maingui.pdPulse2Type, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
     SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)0, 0);
-    maingui.tbPulse2Path = CreateWindow(WC_EDIT, TEXT("pulse2.speck.dat"), WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 0, 31 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.buttonPulse2Path = CreateWindow(WC_BUTTON, TEXT("Set path 2"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, xOffsetRow1 + textboxwidth + 5, 30 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE2, hInstance, NULL);
+    maingui.tbPulse2Path = CreateWindow(WC_EDIT, TEXT("pulse2.speck.dat"), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 
+        0, 31 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonPulse2Path = CreateWindow(WC_BUTTON, TEXT("Set path 2"), 
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        xOffsetRow1 + textboxwidth + 5, 30 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE2, hInstance, NULL);
 
 
     //Text message window
-    maingui.textboxSims = CreateWindow(WC_EDIT, TEXT(""), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | WS_VSCROLL | WS_HSCROLL, 0, 33 * vs, consoleSize, consoleSize, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.textboxSims = CreateWindow(WC_EDIT, TEXT(""), 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | WS_VSCROLL | WS_HSCROLL, 
+        0, 33 * vs, consoleSize, consoleSize, maingui.mainWindow, NULL, hInstance, NULL);
 
     if (!maingui.mainWindow)
     {
@@ -457,7 +619,8 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
             memset(wcstring, 0, sizeof(wchar_t));
             mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
             printToConsole(maingui.textboxSims, _T("%ls\r\n"), wcstring);
-            printToConsole(maingui.textboxSims, _T(" Memory: %lli MB; Multiprocessors: %i\r\n"), activeCUDADeviceProp.totalGlobalMem/(1024*1024), activeCUDADeviceProp.multiProcessorCount);
+            printToConsole(maingui.textboxSims, _T(" Memory: %lli MB; Multiprocessors: %i\r\n"), 
+                activeCUDADeviceProp.totalGlobalMem/1048576, activeCUDADeviceProp.multiProcessorCount);
         }
 
     }
@@ -1315,7 +1478,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 4);
 
-        plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+        plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[(*activeSetPtr).Ngrid / 2], 
+            (*activeSetPtr).Ntime, 1e9, FALSE, 0);
 
         //Plot Time Domain, p-polarization
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
@@ -1324,7 +1488,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, x, (size_t)(y) + (size_t)(dy) + spacerY, dy, dx, plotarr2, 4);
-        plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+        plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f, 
+            &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
 
         //Plot Fourier Domain, s-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
@@ -1340,10 +1505,12 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 3);
-        plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
+        plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f, 
+            &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
         
         //Plot Fourier Domain, p-polarization
-        fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
+        fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], 
+            shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
 
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
             plotarr[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
@@ -1355,9 +1522,11 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
         
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx);
-        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 3);
+        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), 
+            (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 3);
 
-        plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f, &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
+        plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f, 
+            &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
 
         free(shiftedFFT);
         free(plotarr);
