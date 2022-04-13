@@ -28,9 +28,9 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-struct guiStruct maingui;                       // struct containing all of the GUI elements
-struct simulationParameterSet* activeSetPtr;    // Main structure containing simulation parameters and pointers
-struct crystalEntry* crystalDatabasePtr;        // Crystal info database
+guiStruct maingui;                       // struct containing all of the GUI elements
+simulationParameterSet* activeSetPtr;           // Main structure containing simulation parameters and pointers
+crystalEntry* crystalDatabasePtr;        // Crystal info database
 WCHAR programDirectory[MAX_LOADSTRING];         // Program working directory (useful if the crystal database has to be reloaded)
 bool isRunning = FALSE;
 bool isPlotting = FALSE;
@@ -426,16 +426,16 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 6 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbGridXdim = CreateWindow(WC_EDIT, TEXT("198.4"), 
+    maingui.tbGridXdim = CreateWindow(WC_EDIT, TEXT("210"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 7 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbRadialStepSize = CreateWindow(WC_EDIT, TEXT("0.62"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTimeSpan = CreateWindow(WC_EDIT, TEXT("358.4"), 
+    maingui.tbTimeSpan = CreateWindow(WC_EDIT, TEXT("512"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 9 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTimeStepSize = CreateWindow(WC_EDIT, TEXT("0.7"), 
+    maingui.tbTimeStepSize = CreateWindow(WC_EDIT, TEXT("0.52"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalThickness = CreateWindow(WC_EDIT, TEXT("500"), 
@@ -520,21 +520,22 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.pdBatchMode = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
         xOffsetRow2, 15 * vs - 4, textboxwidth, 23 * 20, maingui.mainWindow, NULL, hInstance, NULL);
-    TCHAR batchModeNames[11][64] = {
-        TEXT("none"), 
-        TEXT("Pulse 2 delay"), 
-        TEXT("Pulse 1 Energy"), 
-        TEXT("CEP"), 
-        TEXT("Propagation"), 
-        TEXT("Theta"), 
-        TEXT("Pulse 1 GDD"), 
-        TEXT("Pulse 1 z"), 
-        TEXT("Gamma"), 
-        TEXT("NL absorption"), 
-        TEXT("Beamwaist 1")
+    TCHAR batchModeNames[12][64] = {
+        L"none", 
+        L"Pulse 2 delay", 
+        L"Pulse 1 Energy", 
+        L"CEP", 
+        L"Propagation", 
+        L"Theta", 
+        L"Pulse 1 GDD", 
+        L"Pulse 1 z", 
+        L"Gamma", 
+        L"NL absorption", 
+        L"Beamwaist 1",
+        L"TOD 1"
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 11; k++) {
+    for (k = 0; k < 12; k++) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)batchModeNames[k]);
         SendMessage(maingui.pdBatchMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -598,7 +599,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     ShowWindow(maingui.mainWindow, nCmdShow);
 
     //make the active set pointer
-    activeSetPtr = (struct simulationParameterSet*)calloc(2048, sizeof(struct simulationParameterSet));
+    activeSetPtr = (simulationParameterSet*)calloc(2048, sizeof(simulationParameterSet));
     (*activeSetPtr).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     (*activeSetPtr).sequenceString = (char*)calloc(MAX_LOADSTRING * 256, sizeof(char));
     (*activeSetPtr).field1FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
@@ -629,7 +630,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     
     //read the crystal database
-    crystalDatabasePtr = (struct crystalEntry*)calloc(MAX_LOADSTRING, sizeof(struct crystalEntry));
+    crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
     if (crystalDatabasePtr != NULL) {
         GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
         readCrystalDatabase(crystalDatabasePtr);
@@ -711,7 +712,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case ID_BTNREFRESHDB:
             SetCurrentDirectory(programDirectory);
-            memset(crystalDatabasePtr, 0, 512 * sizeof(struct crystalEntry));
+            memset(crystalDatabasePtr, 0, 512 * sizeof(crystalEntry));
             readCrystalDatabase(crystalDatabasePtr);
             printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
@@ -726,7 +727,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 plotSim = max(plotSim, 0);
                 if (isRunning && (*activeSetPtr).imdone[plotSim] == 0) {
                     (*activeSetPtr).imdone[plotSim] = 3;
-                    while ((*activeSetPtr).imdone[plotSim] == 3) {
+                    int failCtr = 0;
+                    while ((*activeSetPtr).imdone[plotSim] == 3 && failCtr<1000) {
+                        failCtr++;
                         Sleep(30);
                     }
                 }

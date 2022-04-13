@@ -5,8 +5,26 @@
 #include <cuComplex.h>
 #include "cufft.h"
 
+
+typedef struct crystalEntry {
+    wchar_t crystalNameW[256];
+    int axisType;
+    int sellmeierType;
+    int nonlinearSwitches[4];
+    double sellmeierCoefficients[66];
+    wchar_t sellmeierReference[512];
+    double d[18];
+    wchar_t dReference[512];
+    double chi3[48];
+    wchar_t chi3Reference[512];
+    double absorptionParameters[6];
+    wchar_t spectralFile[512];
+    double spectralData[2048];
+    int numberOfEntries;
+} crystalEntry;
+
 //Simulation parameter struct to pass to the simulations running in threads
-struct simulationParameterSet {
+typedef struct simulationParameterSet {
     double rStep;
     double tStep;
     double fStep;
@@ -99,7 +117,7 @@ struct simulationParameterSet {
     int memoryError;
     int assignedGPU;
     int plotSim;
-    struct crystalEntry* crystalDatabase;
+    crystalEntry* crystalDatabase;
     int batchIndex;
     double batchDestination;
     char* outputBasePath;
@@ -111,26 +129,9 @@ struct simulationParameterSet {
     char* sequenceString;
     double* sequenceArray;
     int Nsequence;
-};
+} simulationParameterSet;
 
-struct crystalEntry {
-    wchar_t crystalNameW[256];
-    int axisType;
-    int sellmeierType;
-    int nonlinearSwitches[4];
-    double sellmeierCoefficients[66];
-    wchar_t sellmeierReference[512];
-    double d[18];
-    wchar_t dReference[512];
-    double chi3[48];
-    wchar_t chi3Reference[512];
-    double absorptionParameters[6];
-    wchar_t spectralFile[512];
-    double spectralData[2048];
-    int numberOfEntries;
-};
-
-struct cudaParameterSet {
+typedef struct cudaParameterSet {
     cudaStream_t CUDAStream;
 	cuDoubleComplex* gridETime1;
 	cuDoubleComplex* gridETime2;
@@ -187,31 +188,31 @@ struct cudaParameterSet {
 	size_t Nsteps;
 	int Nthread;
 	int Nblock;
-};
+} cudaParameterSet;
 
 unsigned long	solveNonlinearWaveEquation(void* lpParam);
-int				runRK4Step(struct cudaParameterSet s, int stepNumber);
-int				prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaParameterSet* sc);
+int				runRK4Step(cudaParameterSet s, int stepNumber);
+int				prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc);
 int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn);
-int				preparePropagation2DCartesian(struct simulationParameterSet* s, struct cudaParameterSet sc);
-int				preparePropagation3DCylindric(struct simulationParameterSet* s, struct cudaParameterSet sc);
+int				preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc);
+int				preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex);
-int				rotateField(struct simulationParameterSet* s, double rotationAngle);
+int				rotateField(simulationParameterSet* s, double rotationAngle);
 double          cModulusSquared(std::complex<double>complexNumber);
-int             allocateGrids(struct simulationParameterSet* sCPU);
-int             readCrystalDatabase(struct crystalEntry* db);
-int             readSequenceString(struct simulationParameterSet* sCPU);
-int             configureBatchMode(struct simulationParameterSet* sCPU);
-int             saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* outputbase);
-int             resolveSequence(int currentIndex, struct simulationParameterSet* s, struct crystalEntry* db);
-int             readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* filePath);
-int             loadPulseFiles(struct simulationParameterSet* sCPU);
+int             allocateGrids(simulationParameterSet* sCPU);
+int             readCrystalDatabase(crystalEntry* db);
+int             readSequenceString(simulationParameterSet* sCPU);
+int             configureBatchMode(simulationParameterSet* sCPU);
+int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase);
+int             resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db);
+int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* filePath);
+int             loadPulseFiles(simulationParameterSet* sCPU);
 unsigned long   solveNonlinearWaveEquationSequence(void* lpParam);
-int             saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr);
+int             saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr);
 void            unixNewLine(FILE* iostream);
-int             saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCount);
-int             loadSavedFields(struct simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent);
+int             saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount);
+int             loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent);
 

@@ -193,7 +193,7 @@ __device__ __forceinline__ double resolveNeighborsInOffsetRadialSymmetry(
 	}
 }
 
-__global__ void radialLaplacianKernel(struct cudaParameterSet s) {
+__global__ void radialLaplacianKernel(cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
     long long h = i % s.Ntime; //temporal coordinate
@@ -235,7 +235,7 @@ __global__ void radialLaplacianKernel(struct cudaParameterSet s) {
 // after FFT, we can discard the high frequencies. Thus we have downsampled
 // in such a way as to avoid aliasing, which inside the simulation is most
 // likely the appear (and cause instability) in the nonlinear terms.
-__global__ void expandCylindricalBeam(struct cudaParameterSet s, double* polarization1, double* polarization2) {
+__global__ void expandCylindricalBeam(cudaParameterSet s, double* polarization1, double* polarization2) {
     size_t i = threadIdx.x + blockIdx.x * blockDim.x;
     size_t j = i / s.Ntime; //spatial coordinate
     size_t k = i % s.Ntime; //temporal coordinate
@@ -255,7 +255,7 @@ __global__ void expandCylindricalBeam(struct cudaParameterSet s, double* polariz
     expandedBeam2[pos2] = polarization2[i];
 }
 //prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
-__global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoefficients, struct cudaParameterSet s) {
+__global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoefficients, cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j, k;
     long long Ntime = s.Ntime;
@@ -379,7 +379,7 @@ __global__ void prepareCartesianGridsKernel(double* theta, double* sellmeierCoef
 }
     
 //prepare the propagation constants under the assumption of cylindrical symmetry of the beam
-__global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, struct cudaParameterSet s) {
+__global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j, k;
     long long Ntime = s.Ntime;
@@ -470,7 +470,7 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
 
 //calculate the nonlinear polarization, after FFT to get the field
 //in the time domain
-__global__ void nonlinearPolarizationKernel(struct cudaParameterSet s) {
+__global__ void nonlinearPolarizationKernel(cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     double Ex = 2*cuCreal(s.gridETime1[i]) / s.propagationInts[0];
     double Ey = 2*cuCreal(s.gridETime2[i]) / s.propagationInts[0];
@@ -509,7 +509,7 @@ __global__ void nonlinearPolarizationKernel(struct cudaParameterSet s) {
 //equation for the plasma current:
 //J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
 //J_absorption(t) = beta*E^(2*Nphot-2)*E
-__global__ void plasmaCurrentKernelPrep(struct cudaParameterSet s, double* workN, double* workEx) {
+__global__ void plasmaCurrentKernelPrep(cudaParameterSet s, double* workN, double* workEx) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
 
     int k;
@@ -537,7 +537,7 @@ __global__ void plasmaCurrentKernelPrep(struct cudaParameterSet s, double* workN
     workEy[i] = Ey;
 
 }
-__global__ void plasmaCurrentKernel2(struct cudaParameterSet s, double* workN, double* workEx) {
+__global__ void plasmaCurrentKernel2(cudaParameterSet s, double* workN, double* workEx) {
     long long j = threadIdx.x + blockIdx.x * blockDim.x;
     double N = 0;
     double integralx = 0;
@@ -563,7 +563,7 @@ __global__ void plasmaCurrentKernel2(struct cudaParameterSet s, double* workN, d
 
 
 //Main kernel for RK4 propagation of the field
-__global__ void rkKernel(struct cudaParameterSet s, int stepNumber) {
+__global__ void rkKernel(cudaParameterSet s, int stepNumber) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     long long j = i / s.Ntime; //spatial coordinate
     long long h = i % s.Ntime; //temporal coordinate
@@ -719,8 +719,8 @@ int main(int argc, char *argv[]) {
     }
 
     // allocate databases, main structs
-    struct simulationParameterSet* sCPU = (struct simulationParameterSet*)calloc(512, sizeof(struct simulationParameterSet));
-    struct crystalEntry* crystalDatabasePtr = (struct crystalEntry*)calloc(512, sizeof(struct crystalEntry));
+    simulationParameterSet* sCPU = (simulationParameterSet*)calloc(512, sizeof(simulationParameterSet));
+    crystalEntry* crystalDatabasePtr = (crystalEntry*)calloc(512, sizeof(crystalEntry));
     (*sCPU).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
     (*sCPU).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     (*sCPU).field1FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
@@ -833,7 +833,7 @@ int main(int argc, char *argv[]) {
 }
 
 unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
-    struct simulationParameterSet* sCPU = (struct simulationParameterSet*)lpParam;
+    simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
     const double pi = 3.1415926535897932384626433832795;
     int k;
     double rotationAngle;
@@ -855,8 +855,8 @@ unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
 unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
     //the struct s contains most of the simulation variables and pointers
-    struct cudaParameterSet s;
-    struct simulationParameterSet* sCPU = (struct simulationParameterSet*)lpParam;
+    cudaParameterSet s;
+    simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
     cudaSetDevice((*sCPU).assignedGPU);
     cudaStream_t CUDAStream;
     cudaStreamCreate(&CUDAStream);
@@ -1121,7 +1121,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
-int runRK4Step(struct cudaParameterSet s, int stepNumber) {
+int runRK4Step(cudaParameterSet s, int stepNumber) {
 
     //operations involving FFT
     if (s.isNonLinear || s.isCylindric) {
@@ -1174,7 +1174,7 @@ int runRK4Step(struct cudaParameterSet s, int stepNumber) {
     return 0;
 }
 
-int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaParameterSet *sc) {
+int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) {
     size_t i,j;
     double rB, zB, r, z; //r and z in the Beam and lab coordinates, respectively.
     double w0, wz, zR, Rz, phi; //Gaussian beam parameters
@@ -1435,7 +1435,7 @@ int prepareElectricFieldArrays(struct simulationParameterSet* s, struct cudaPara
     return 0;
 }
 
-int preparePropagation2DCartesian(struct simulationParameterSet* s, struct cudaParameterSet sc) {
+int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc) {
     //recycle allocated device memory for the grids needed
     double* alphaGPU = (double*)sc.gridEFrequency1Next1;
     double* sellmeierCoefficients = (double*)sc.k1;
@@ -1472,7 +1472,7 @@ int preparePropagation2DCartesian(struct simulationParameterSet* s, struct cudaP
     return 0;
 }
 
-int preparePropagation3DCylindric(struct simulationParameterSet* s, struct cudaParameterSet sc) {
+int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc) {
     //recycle allocated device memory for the grids needed
     double* sellmeierCoefficients = (double*)sc.k1;
     sc.ne = sc.gridEFrequency1Next2;
@@ -1713,7 +1713,7 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
     while (fscanf(fp, "%lf %lf %lf %lf %lf", &wavelength, &R, &phi, &complexX, &complexY) == 5 && currentRow < maxFileSize) {
         //get the complex field from the data
         E[currentRow].real(complexX);
-        E[currentRow].imag(complexY);
+        E[currentRow].imag(-complexY);
 
         //keep track of the frequency step of the grid (running sum, divide by number of rows at end to get average)
         if (currentRow > 0) df += c / wavelength - fmax;
@@ -1770,7 +1770,7 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 //Allocates memory and copies from CPU, then copies back to CPU and deallocates
 // - inefficient but the general principle is that only the CPU memory is preserved
 // after simulations finish... and this only runs at the end of the simulation
-int rotateField(struct simulationParameterSet *s, double rotationAngle) {
+int rotateField(simulationParameterSet *s, double rotationAngle) {
     cuDoubleComplex* Ein1, * Eout1, * Ein2, * Eout2;
     cudaMalloc((void**)&Ein1,  (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMalloc((void**)&Ein2, (*s).Ngrid * sizeof(cuDoubleComplex));
@@ -1802,7 +1802,7 @@ double cModulusSquared(std::complex<double>complexNumber) {
     return xy[0] * xy[0] + xy[1] * xy[1];
 }
 
-int allocateGrids(struct simulationParameterSet* sCPU) {
+int allocateGrids(simulationParameterSet* sCPU) {
     (*sCPU).loadedField1 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
     (*sCPU).loadedField2 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
 
@@ -1822,7 +1822,7 @@ int allocateGrids(struct simulationParameterSet* sCPU) {
 }
 
 
-int readCrystalDatabase(struct crystalEntry* db) {
+int readCrystalDatabase(crystalEntry* db) {
     int i = 0;
     double* fd;
     FILE* fp;
@@ -1840,25 +1840,34 @@ int readCrystalDatabase(struct crystalEntry* db) {
         readErrors += 1 != fwscanf(fp, L"Type:\n%d\n", &db[i].axisType);
         readErrors += 1 != fwscanf(fp, L"Sellmeier equation:\n%d\n", &db[i].sellmeierType);
         fd = &db[i].sellmeierCoefficients[0];
-        readErrors += 22 != fwscanf(fp, L"1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 22 != fwscanf(fp, L"1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         fd = &db[i].sellmeierCoefficients[22];
-        readErrors += 22 != fwscanf(fp, L"2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 22 != fwscanf(fp, L"2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         fd = &db[i].sellmeierCoefficients[44];
-        readErrors += 22 != fwscanf(fp, L"3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
+        readErrors += 22 != fwscanf(fp, L"3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         readErrors += 0 != fwscanf(fp, L"Sellmeier reference:\n");
         fgetws(db[i].sellmeierReference, 512, fp);
         readErrors += 1 != fwscanf(fp, L"chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
         fd = &db[i].d[0];
-        readErrors += 18 != fwscanf(fp, L"d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
+        readErrors += 18 != fwscanf(fp, L"d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", 
+            &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], 
+            &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], 
+            &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
         readErrors += 0 != fwscanf(fp, L"d reference:\n");
         fgetws(db[i].dReference, 512, fp);
         readErrors += 1 != fwscanf(fp, L"chi3 type:\n%d\n", &db[i].nonlinearSwitches[1]);
         fd = &db[i].chi3[0];
-        readErrors += 9 != fwscanf(fp, L"chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 9 != fwscanf(fp, L"chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
         fd = &db[i].chi3[9];
-        readErrors += 9 != fwscanf(fp, L"%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 9 != fwscanf(fp, L"%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
         fd = &db[i].chi3[18];
-        readErrors += 9 != fwscanf(fp, L"%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        readErrors += 9 != fwscanf(fp, L"%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
         readErrors += 0 != fwscanf(fp, L"chi3 reference:\n");
         fgetws(db[i].chi3Reference, 512, fp);
         readErrors += 0 != fwscanf(fp, L"Spectral file:\n");
@@ -1872,7 +1881,7 @@ int readCrystalDatabase(struct crystalEntry* db) {
     return i;
 }
 
-int readSequenceString(struct simulationParameterSet* sCPU) {
+int readSequenceString(simulationParameterSet* sCPU) {
     //read the sequence string (if there is one), convert it into an array if it exists
     char sequenceString[MAX_LOADSTRING];
     strcpy(sequenceString, (*sCPU).sequenceString);
@@ -1897,14 +1906,14 @@ int readSequenceString(struct simulationParameterSet* sCPU) {
     return 0;
 }
 
-int configureBatchMode(struct simulationParameterSet* sCPU) {
+int configureBatchMode(simulationParameterSet* sCPU) {
     int j;
     const double pi = 3.1415926535897932384626433832795;
 
     //Configure the struct array if in a batch
     for (j = 0; j < (*sCPU).Nsims; j++) {
         if (j > 0) {
-            memcpy(&sCPU[j], sCPU, sizeof(struct simulationParameterSet));
+            memcpy(&sCPU[j], sCPU, sizeof(simulationParameterSet));
         }
         
         if ((*sCPU).deffTensor != NULL) {
@@ -1949,11 +1958,14 @@ int configureBatchMode(struct simulationParameterSet* sCPU) {
         if ((*sCPU).batchIndex == 10) {
             sCPU[j].beamwaist1 += j * (1e-6 * (*sCPU).batchDestination - (*sCPU).beamwaist1) / ((*sCPU).Nsims - 1.);
         }
+        if ((*sCPU).batchIndex == 11) {
+            sCPU[j].tod1 += j * (1e-45 * (*sCPU).batchDestination - (*sCPU).tod1) / ((*sCPU).Nsims - 1.);
+        }
         
     }
     return 0;
 }
-int readInputParametersFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* filePath) {
+int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* filePath) {
     FILE* textfile;
     double pi = 3.1415926535897932384626433832795;
     textfile = fopen(filePath, "r");
@@ -2032,7 +2044,7 @@ void unixNewLine(FILE* iostream) {
 }
 
 
-int saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCount) {
+int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
     FILE* textfile;
     char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
@@ -2086,7 +2098,7 @@ int saveSlurmScript(struct simulationParameterSet* sCPU, int gpuType, int gpuCou
     return 0;
 }
 
-int saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr) {
+int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
     int j, k;
     FILE* textfile;
     char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
@@ -2101,7 +2113,8 @@ int saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* c
     }
     
     textfile = fopen(outputpath, "w");
-    fwprintf(textfile, L"Pulse energy 1 (J): %e\nPulse energy 2(J): %e\nFrequency 1 (Hz): %e\nFrequency 2 (Hz): %e\nBandwidth 1 (Hz): %e\nBandwidth 2 (Hz): %e\n", (*sCPU).pulseEnergy1, (*sCPU).pulseEnergy2, (*sCPU).frequency1, (*sCPU).frequency2, (*sCPU).bandwidth1, (*sCPU).bandwidth2);
+    fwprintf(textfile, L"Pulse energy 1 (J): %e\nPulse energy 2(J): %e\nFrequency 1 (Hz): %e\n", (*sCPU).pulseEnergy1, (*sCPU).pulseEnergy2, (*sCPU).frequency1);
+    fwprintf(textfile, L"Frequency 2 (Hz): %e\nBandwidth 1 (Hz): %e\nBandwidth 2 (Hz): %e\n", (*sCPU).frequency2, (*sCPU).bandwidth1, (*sCPU).bandwidth2);
     fwprintf(textfile, L"SG order: %i\nCEP 1 (rad): %e\nCEP 2 (rad): %e\nDelay 1 (s): %e\nDelay 2 (s): %e\nGDD 1 (s^-2): %e\nGDD 2 (s^-2): %e\nTOD 1 (s^-3): %e\nTOD 2(s^-3): %e\n", (*sCPU).sgOrder1, (*sCPU).cephase1, (*sCPU).cephase2, (*sCPU).delay1, (*sCPU).delay2, (*sCPU).gdd1, (*sCPU).gdd2, (*sCPU).tod1, (*sCPU).tod2);
     fwprintf(textfile, L"Beamwaist 1 (m): %e\nBeamwaist 2 (m): %e\nx offset 1 (m): %e\nx offset 2 (m): %e\nz offset 1 (m): %e\nz offset 2 (m): %e\nNC angle 1 (rad): %e\nNC angle 2 (rad): %e\n", (*sCPU).beamwaist1, (*sCPU).beamwaist2, (*sCPU).x01, (*sCPU).x02, (*sCPU).z01, (*sCPU).z02, (*sCPU).propagationAngle1, (*sCPU).propagationAngle2);
     fwprintf(textfile, L"Polarization 1 (rad): %e\nPolarization 2 (rad): %e\nCircularity 1: %e\nCircularity 2: %e\n", (*sCPU).polarizationAngle1, (*sCPU).polarizationAngle2, (*sCPU).circularity1, (*sCPU).circularity2);
@@ -2151,7 +2164,7 @@ int saveSettingsFile(struct simulationParameterSet* sCPU, struct crystalEntry* c
     return 0;
 }
 
-int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crystalDatabasePtr, char* outputbase) {
+int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase) {
     int j;
 
     saveSettingsFile(sCPU, crystalDatabasePtr);
@@ -2240,7 +2253,7 @@ int saveDataSet(struct simulationParameterSet* sCPU, struct crystalEntry* crysta
     return 0;
 }
 
-int resolveSequence(int currentIndex, struct simulationParameterSet* s, struct crystalEntry* db) {
+int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db) {
     double pi = 3.1415926535897932384626433832795;
 
     //sequence format
@@ -2274,7 +2287,7 @@ int resolveSequence(int currentIndex, struct simulationParameterSet* s, struct c
     return 0;
 }
 
-int loadPulseFiles(struct simulationParameterSet* sCPU) {
+int loadPulseFiles(simulationParameterSet* sCPU) {
 
     //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
     //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
@@ -2301,7 +2314,7 @@ int loadPulseFiles(struct simulationParameterSet* sCPU) {
     return 0;
 }
 
-int loadSavedFields(struct simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent) {
+int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent) {
     char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims);
     double* loadE = (double*)malloc(writeSize * sizeof(double));

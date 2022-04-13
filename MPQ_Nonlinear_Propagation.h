@@ -1,8 +1,7 @@
-
 #include "resource.h"
 #include<complex>
 #include<d2d1.h>
-struct guiStruct {
+typedef struct guiStruct {
     HWND mainWindow = NULL;
     
     HWND tbMaterialIndex = NULL;
@@ -104,7 +103,7 @@ struct guiStruct {
     int rbsize = 18;
     int consoleSize = 630;
     int textboxwidth = 150;
-};
+} guiStruct;
 
 
 DWORD WINAPI        mainSimThread(LPVOID lpParam);
