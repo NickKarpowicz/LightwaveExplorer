@@ -147,8 +147,8 @@ DWORD WINAPI createRunFile(LPVOID lpParam) {
     
     mbstowcs(wideBuffer, fileName, strlen(fileName)+1);
     printToConsole(maingui.textboxSims, 
-        L"Run on cluster with:\r\nsbatch %ls.slurmScript\r\n",
-        wideBuffer);
+        L"Run on %ls cluster with:\r\nsbatch %ls.slurmScript\r\n",
+        wideBuffer, wideBuffer);
     
     //create command line settings file
     saveSettingsFile(activeSetPtr, crystalDatabasePtr);
@@ -324,20 +324,20 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbPulse2Delay = CreateWindowW(WC_EDIT, TEXT("-20"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1, 10 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbGDD1 = CreateWindow(WC_EDIT, TEXT("-27.262"), 
+    maingui.tbGDD1 = CreateWindow(WC_EDIT, TEXT("-40.262"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbGDD2 = CreateWindow(WC_EDIT, TEXT("0"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbTOD1 = CreateWindow(WC_EDIT, TEXT("230.57"), 
+    maingui.tbTOD1 = CreateWindow(WC_EDIT, TEXT("150"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1, 13 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbTOD2 = CreateWindow(WC_EDIT, TEXT("0"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1, 14 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbBeamwaist1 = CreateWindow(WC_EDIT, TEXT("2.8"), 
+    maingui.tbBeamwaist1 = CreateWindow(WC_EDIT, TEXT("3.2"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1, 15 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbBeamwaist2 = CreateWindow(WC_EDIT, TEXT("50"), 
@@ -413,7 +413,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 2 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbNonlinearAbsortion = CreateWindow(WC_EDIT, TEXT("2e-87"), 
+    maingui.tbNonlinearAbsortion = CreateWindow(WC_EDIT, TEXT("24e-87"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbBandGap = CreateWindow(WC_EDIT, TEXT("3"), 
@@ -441,7 +441,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbCrystalThickness = CreateWindow(WC_EDIT, TEXT("500"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 11 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbXstep = CreateWindow(WC_EDIT, TEXT("25"), 
+    maingui.tbXstep = CreateWindow(WC_EDIT, TEXT("20"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 12 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     

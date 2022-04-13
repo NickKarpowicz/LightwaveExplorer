@@ -2085,11 +2085,11 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
     fprintf(textfile, "module load gcc/9"); unixNewLine(textfile);
     fprintf(textfile, "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH"); unixNewLine(textfile);
     if (gpuType == 0 || gpuType == 1) {
-        fprintf(textfile, "srun ./nnp %s.input > prog.out", fileName); unixNewLine(textfile);
+        fprintf(textfile, "srun ./nnp %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
     }
     if (gpuType == 2) {
         fprintf(textfile, "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}"); unixNewLine(textfile);
-        fprintf(textfile, "srun ./nnp %s.input > $prog.out", fileName); unixNewLine(textfile);
+        fprintf(textfile, "srun ./nnp %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
     }
     fclose(textfile);
     free(outputpath);
