@@ -460,6 +460,31 @@ __global__ void conjugateKernel(cuDoubleComplex* E) {
     E[i] = cuConj(E[i]);
 }
 
+__global__ void materialPhaseKernel(double df, size_t Ntime, double* a, double f01, double f02, double thickness1,  double thickness2, double* phase1, double* phase2) {
+    size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+    //frequency being resolved by current thread
+    double f = i * df;
+    if (i >= Ntime / 2) {
+        f -= df * Ntime;
+    }
+    
+    //give phase shift relative to group velocity (approximated 
+    // with low-order finite difference) so the pulse doesn't move
+    cuDoubleComplex ne, no, no0, n0p, n0m;
+    sellmeierCuda(&ne, &no, a, abs(f), 0, 0, 0, 0);
+    f *= -6.28318530718;
+    sellmeierCuda(&ne, &no0, a, f01, 0, 0, 0, 0);
+    sellmeierCuda(&ne, &n0p, a, f01+1e11, 0, 0, 0, 0);
+    sellmeierCuda(&ne, &n0m, a, f01-1e11, 0, 0, 0, 0);
+    no0 = no0 + f01 * (n0p - n0m) / 2e11;
+    phase1[i] = thickness1 * f * cuCreal(no - no0) / 2.99792458e8;
+    sellmeierCuda(&ne, &no0, a, f02, 0, 0, 0, 0);
+    sellmeierCuda(&ne, &n0p, a, f02 + 1e11, 0, 0, 0, 0);
+    sellmeierCuda(&ne, &n0m, a, f02 - 1e11, 0, 0, 0, 0);
+    no0 = no0 + f02 * (n0p - n0m) / 2e11;
+    phase2[i] = thickness2 * f * cuCreal(no - no0) / 2.99792458e8;
+    
+}
 //replaces NaN values with 0
 __global__ void fixnanKernel(cuDoubleComplex* E) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -813,7 +838,7 @@ int main(int argc, char *argv[]) {
         1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
 
 
-    saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath);
+    saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
     //free
     free(threadBlock);
     free((*sCPU).sequenceString);
@@ -1208,6 +1233,26 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
     zB = (*s).z01;
     w0 = (*s).beamwaist1;
 
+
+    //get the material phase
+    double* materialCoefficientsCUDA;
+    double* materialPhase1CUDA;
+    double* materialPhase2CUDA;
+    cudaMalloc((void**)&materialCoefficientsCUDA, 66 * sizeof(double));
+    cudaMalloc((void**)&materialPhase1CUDA, (*s).Ntime * sizeof(double));
+    cudaMalloc((void**)&materialPhase2CUDA, (*s).Ntime * sizeof(double));
+    cudaMemcpy(materialCoefficientsCUDA, (*s).crystalDatabase[(*s).phaseMaterialIndex].sellmeierCoefficients, 66 * sizeof(double), cudaMemcpyHostToDevice);
+    materialPhaseKernel<<<(*s).Ntime, 1, 0, (*sc).CUDAStream >> >((*s).fStep, (*s).Ntime, materialCoefficientsCUDA, (*s).frequency1, (*s).frequency2, (*s).phaseMaterialThickness1, (*s).phaseMaterialThickness2, materialPhase1CUDA, materialPhase2CUDA);
+    double* materialPhase1 = (double*)malloc((*s).Ntime * sizeof(double));
+    double* materialPhase2 = (double*)malloc((*s).Ntime * sizeof(double));
+    cudaMemcpy(materialPhase1, materialPhase1CUDA, (*s).Ntime * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(materialPhase2, materialPhase2CUDA, (*s).Ntime * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaFree(materialPhase2CUDA);
+    cudaFree(materialPhase1CUDA);
+    cudaFree(materialCoefficientsCUDA);
+
+
+
     for (i = 1; i < (*s).Ntime; i++) {
         f = i * (*s).fStep;
         if (i >= (*s).Ntime / 2) {
@@ -1221,7 +1266,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         for (j = 0; j < (*s).sgOrder1; j++) {
             specfac *= specfac;
         }
-        specphase = ii * ((*s).cephase1 + 2*pi*f * (*s).delay1 - (*s).gdd1 * w * w - (*s).tod1 * w * w * w);
+        specphase = ii * ((*s).cephase1 + 2*pi*f * (*s).delay1 - (*s).gdd1 * w * w - (*s).tod1 * w * w * w - materialPhase1[i]);
         specfac = exp(-specfac - specphase);
 
         if ((*s).field1IsAllocated) {
@@ -1329,7 +1374,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         for (j = 0; j < (*s).sgOrder1; j++) {
             specfac *= specfac;
         }
-        specphase = ii * ((*s).cephase2 + 2*pi*f * (*s).delay2 - (*s).gdd2 * w * w - (*s).tod2 * w * w * w);
+        specphase = ii * ((*s).cephase2 + 2*pi*f * (*s).delay2 - (*s).gdd2 * w * w - (*s).tod2 * w * w * w - materialPhase2[i]);
         specfac = exp(-specfac - specphase);
 
         if ((*s).field2IsAllocated) {
@@ -1431,7 +1476,8 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
     free(pulse2);
     free(pulse1f);
     free(pulse2f);
-
+    free(materialPhase1);
+    free(materialPhase2);
     return 0;
 }
 
@@ -1914,11 +1960,12 @@ int configureBatchMode(simulationParameterSet* sCPU) {
     }
 
     //pointers to values that can be scanned in batch mode
-    double* targets[34] = { 0,
+    double* targets[36] = { 0,
         &(*sCPU).pulseEnergy1, &(*sCPU).pulseEnergy2, &(*sCPU).frequency1, &(*sCPU).frequency2,
         &(*sCPU).bandwidth1, &(*sCPU).bandwidth2, &(*sCPU).cephase1, &(*sCPU).cephase2,
         &(*sCPU).delay1, &(*sCPU).delay2, &(*sCPU).gdd1, &(*sCPU).gdd2,
-        &(*sCPU).tod1, &(*sCPU).tod2, &(*sCPU).beamwaist1, &(*sCPU).beamwaist2,
+        &(*sCPU).tod1, &(*sCPU).tod2, &(*sCPU).phaseMaterialThickness1, &(*sCPU).phaseMaterialThickness2,
+        &(*sCPU).beamwaist1, &(*sCPU).beamwaist2,
         &(*sCPU).x01, &(*sCPU).x02, &(*sCPU).z01, &(*sCPU).z02,
         &(*sCPU).propagationAngle1, &(*sCPU).propagationAngle2, &(*sCPU).polarizationAngle1, &(*sCPU).polarizationAngle2,
         &(*sCPU).circularity1, &(*sCPU).circularity2, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
@@ -1927,11 +1974,12 @@ int configureBatchMode(simulationParameterSet* sCPU) {
     
     //multipliers to the Batch end value from the interface
     // (e.g. frequency in THz requires 1e12 multiplier)
-    double multipliers[34] = { 0,
+    double multipliers[36] = { 0,
         1, 1, 1e12, 1e12, 
         1e12, 1e12, pi, pi, 
         1e-15, 1e-15, 1e-30, 1e-30, 
-        1e-45, 1e-45, 1e-6, 1e-6, 
+        1e-45, 1e-45, 1e-6, 1e-6,
+        1e-6, 1e-6, 
         1e-6, 1e-6, 1e-6, 1e-6, 
         (pi / 180), (pi / 180), (pi / 180), (pi / 180), 
         1, 1, (pi / 180), (pi / 180), 
@@ -1982,6 +2030,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
     // &(*sCPU).outputBasePath -> (*sCPU).outputBasePath
     fscanf(textfile, "Pulse energy 1 (J): %lf\nPulse energy 2(J): %lf\nFrequency 1 (Hz): %lf\nFrequency 2 (Hz): %lf\nBandwidth 1 (Hz): %lf\nBandwidth 2 (Hz): %lf\n", &(*sCPU).pulseEnergy1, &(*sCPU).pulseEnergy2, &(*sCPU).frequency1, &(*sCPU).frequency2, &(*sCPU).bandwidth1, &(*sCPU).bandwidth2);
     fscanf(textfile, "SG order: %i\nCEP 1 (rad): %lf\nCEP 2 (rad): %lf\nDelay 1 (s): %lf\nDelay 2 (s): %lf\nGDD 1 (s^-2): %lf\nGDD 2 (s^-2): %lf\nTOD 1 (s^-3): %lf\nTOD 2(s^-3): %lf\n", &(*sCPU).sgOrder1, &(*sCPU).cephase1, &(*sCPU).cephase2, &(*sCPU).delay1, &(*sCPU).delay2, &(*sCPU).gdd1, &(*sCPU).gdd2, &(*sCPU).tod1, &(*sCPU).tod2);
+    fscanf(textfile, "Phase material index: %d\nPhase material thickness 1 (mcr.): %lf\nPhase material thickness 2 (mcr.): %lf\n", &(*sCPU).phaseMaterialIndex, &(*sCPU).phaseMaterialThickness1, &(*sCPU).phaseMaterialThickness2);
     fscanf(textfile, "Beamwaist 1 (m): %lf\nBeamwaist 2 (m): %lf\nx offset 1 (m): %lf\nx offset 2 (m): %lf\nz offset 1 (m): %lf\nz offset 2 (m): %lf\nNC angle 1 (rad): %lf\nNC angle 2 (rad): %lf\n", &(*sCPU).beamwaist1, &(*sCPU).beamwaist2, &(*sCPU).x01, &(*sCPU).x02, &(*sCPU).z01, &(*sCPU).z02, &(*sCPU).propagationAngle1, &(*sCPU).propagationAngle2);
     fscanf(textfile, "Polarization 1 (rad): %lf\nPolarization 2 (rad): %lf\nCircularity 1: %lf\nCircularity 2: %lf\n", &(*sCPU).polarizationAngle1, &(*sCPU).polarizationAngle2, &(*sCPU).circularity1, &(*sCPU).circularity2);
     fscanf(textfile, "Material index: %i\n", &(*sCPU).materialIndex);
@@ -2116,6 +2165,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
     fwprintf(textfile, L"Pulse energy 1 (J): %e\nPulse energy 2(J): %e\nFrequency 1 (Hz): %e\n", (*sCPU).pulseEnergy1, (*sCPU).pulseEnergy2, (*sCPU).frequency1);
     fwprintf(textfile, L"Frequency 2 (Hz): %e\nBandwidth 1 (Hz): %e\nBandwidth 2 (Hz): %e\n", (*sCPU).frequency2, (*sCPU).bandwidth1, (*sCPU).bandwidth2);
     fwprintf(textfile, L"SG order: %i\nCEP 1 (rad): %e\nCEP 2 (rad): %e\nDelay 1 (s): %e\nDelay 2 (s): %e\nGDD 1 (s^-2): %e\nGDD 2 (s^-2): %e\nTOD 1 (s^-3): %e\nTOD 2(s^-3): %e\n", (*sCPU).sgOrder1, (*sCPU).cephase1, (*sCPU).cephase2, (*sCPU).delay1, (*sCPU).delay2, (*sCPU).gdd1, (*sCPU).gdd2, (*sCPU).tod1, (*sCPU).tod2);
+    fwprintf(textfile, L"Phase material index: %i\nPhase material thickness 1 (mcr.): %e\nPhase material thickness 2 (mcr.): %e\n", (*sCPU).phaseMaterialIndex, (*sCPU).phaseMaterialThickness1, (*sCPU).phaseMaterialThickness2);
     fwprintf(textfile, L"Beamwaist 1 (m): %e\nBeamwaist 2 (m): %e\nx offset 1 (m): %e\nx offset 2 (m): %e\nz offset 1 (m): %e\nz offset 2 (m): %e\nNC angle 1 (rad): %e\nNC angle 2 (rad): %e\n", (*sCPU).beamwaist1, (*sCPU).beamwaist2, (*sCPU).x01, (*sCPU).x02, (*sCPU).z01, (*sCPU).z02, (*sCPU).propagationAngle1, (*sCPU).propagationAngle2);
     fwprintf(textfile, L"Polarization 1 (rad): %e\nPolarization 2 (rad): %e\nCircularity 1: %e\nCircularity 2: %e\n", (*sCPU).polarizationAngle1, (*sCPU).polarizationAngle2, (*sCPU).circularity1, (*sCPU).circularity2);
     fwprintf(textfile, L"Material index: %i\n", (*sCPU).materialIndex);
@@ -2164,7 +2214,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
     return 0;
 }
 
-int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase) {
+int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs) {
     int j;
 
     saveSettingsFile(sCPU, crystalDatabasePtr);
@@ -2197,37 +2247,43 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     FILE* ExtOutFile;
     size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims);
     strcpy(outputpath, outputbase);
-    strcat(outputpath, "_ExtOut.dat");
+    strcat(outputpath, "_Ext.dat");
     ExtOutFile = fopen(outputpath, "wb");
     fwrite(saveEout, sizeof(double), writeSize, ExtOutFile);
     fwrite(matlabpadding, sizeof(double), 1024, ExtOutFile);
     fclose(ExtOutFile);
-
-    for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
-        saveEout[j] = real((*sCPU).Ext[j]);
+    if (saveInputs) {
+        for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
+            saveEout[j] = real((*sCPU).Ext[j]);
+        }
+        FILE* ExtInFile;
+        strcpy(outputpath, outputbase);
+        strcat(outputpath, "_ExtIn.dat");
+        ExtInFile = fopen(outputpath, "wb");
+        fwrite(saveEout, sizeof(double), writeSize, ExtInFile);
+        fwrite(matlabpadding, sizeof(double), 1024, ExtInFile);
+        fclose(ExtInFile);
     }
-    FILE* ExtInFile;
-    strcpy(outputpath, outputbase);
-    strcat(outputpath, "_ExtIn.dat");
-    ExtInFile = fopen(outputpath, "wb");
-    fwrite(saveEout, sizeof(double), writeSize, ExtInFile);
-    fwrite(matlabpadding, sizeof(double), 1024, ExtInFile);
-    fclose(ExtInFile);
+
 
 
     FILE* matlabfile;
     strcpy(outputpath, outputbase);
     strcat(outputpath, ".m");
     matlabfile = fopen(outputpath, "w");
-    fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
-    fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
-    fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    
+    if (saveInputs) {
+        fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
+        fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
+        fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+        fprintf(matlabfile, "fclose(fid); \n");
+    }
+    
+    fprintf(matlabfile, "fid = fopen('%s_Ext.dat','rb'); \n", outputbaseVar);
+    fprintf(matlabfile, "%s_Ext = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
+    fprintf(matlabfile, "%s_Ext = reshape(%s_Ext,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
     fprintf(matlabfile, "fclose(fid); \n");
-
-    fprintf(matlabfile, "fid = fopen('%s_ExtOut.dat','rb'); \n", outputbaseVar);
-    fprintf(matlabfile, "%s_ExtOut = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
-    fprintf(matlabfile, "%s_ExtOut = reshape(%s_ExtOut,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
-    fprintf(matlabfile, "fclose(fid); \n");
+    fprintf(matlabfile, "dt = %e;\ndz = %e;\ndx = %e;\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep);
     fclose(matlabfile);
     
     //write a python script for loading the output fields in a proper shape
@@ -2238,11 +2294,13 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     scriptfile = fopen(scriptfilename, "w");
     fprintf(scriptfile, "#!/usr/bin/python\nimport numpy as np\n");
     fprintf(scriptfile, "dt = %e\ndz = %e\ndx = %e\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep);
-    fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
-    fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
-    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
-    fprintf(scriptfile, "%s_ExtOut = np.reshape(np.fromfile(\"", outputbaseVar);
-    fprintf(scriptfile, "%s_ExtOut.dat", outputbaseVar);
+    if (saveInputs) {
+        fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
+        fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
+        fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    }
+    fprintf(scriptfile, "%s_Ext = np.reshape(np.fromfile(\"", outputbaseVar);
+    fprintf(scriptfile, "%s_Ext.dat", outputbaseVar);
     fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
     fclose(scriptfile);
     
@@ -2324,7 +2382,7 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
     FILE* ExtOutFile;
     
     strcpy(outputpath, outputBase);
-    strcat(outputpath, "_ExtOut.dat");
+    strcat(outputpath, "_Ext.dat");
     ExtOutFile = fopen(outputpath, "rb");
     if (ExtOutFile == NULL) {
         return 1;

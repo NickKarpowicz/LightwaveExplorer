@@ -88,6 +88,9 @@ typedef struct simulationParameterSet {
     double gdd2;
     double tod1;
     double tod2;
+    double phaseMaterialThickness1;
+    double phaseMaterialThickness2;
+    int phaseMaterialIndex;
 
     //loaded FROG/EOS fields
     std::complex<double>* loadedField1;
@@ -206,7 +209,7 @@ int             allocateGrids(simulationParameterSet* sCPU);
 int             readCrystalDatabase(crystalEntry* db);
 int             readSequenceString(simulationParameterSet* sCPU);
 int             configureBatchMode(simulationParameterSet* sCPU);
-int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase);
+int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs);
 int             resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db);
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* filePath);
 int             loadPulseFiles(simulationParameterSet* sCPU);

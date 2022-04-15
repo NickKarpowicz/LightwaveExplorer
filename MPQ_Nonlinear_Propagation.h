@@ -40,7 +40,9 @@ typedef struct guiStruct {
     HWND tbGDD2 = NULL;
     HWND tbTOD1 = NULL;
     HWND tbTOD2 = NULL;
-
+    HWND tbPhaseMaterialIndex = NULL;
+    HWND tbPhaseMaterialThickness1 = NULL;
+    HWND tbPhaseMaterialThickness2 = NULL;
     HWND tbXoffset1 = NULL;
     HWND tbXoffset2 = NULL;
     HWND tbZoffset1 = NULL;
@@ -125,3 +127,5 @@ int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelT
 int                 openDialogBoxAndLoad(HWND hWnd);
 void                setTitleBarDark(HWND hWnd);
 void                plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY);
+
+
