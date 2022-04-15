@@ -2004,8 +2004,8 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 
         sCPU[j].isFollowerInSequence = FALSE;
         
-        // To add new modes, append values to the two arrays above.
-        // Casti the pointer to the original value to a pointer to a struct, 
+        // To add new modes, append values to the two arrays above, and to the combobox in the UI.
+        // Cast the pointer to the original value to a pointer to a struct, 
         // increment, recast to a pointer to double and resolve then add j times the scan step size.
         *((double*)((simulationParameterSet*)targets[(*sCPU).batchIndex] + j)) += 
             j * (multipliers[(*sCPU).batchIndex] * (*sCPU).batchDestination - *targets[(*sCPU).batchIndex]) 

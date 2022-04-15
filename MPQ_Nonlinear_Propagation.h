@@ -127,5 +127,5 @@ int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelT
 int                 openDialogBoxAndLoad(HWND hWnd);
 void                setTitleBarDark(HWND hWnd);
 void                plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY);
-
+int                 setInterfaceValuesToActiveValues();
 

@@ -675,6 +675,8 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
 
 
+    
+
     return TRUE;
 }
 
@@ -782,7 +784,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             (*activeSetPtr).plotSim = plotSim;
             plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-
+            setInterfaceValuesToActiveValues();
             break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
@@ -838,7 +840,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         RECT mainRect;
         GetWindowRect(maingui.mainWindow, &mainRect);
-        SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 36*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 35*maingui.vs -4, NULL);
+        SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 36*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 38*maingui.vs -4, NULL);
         SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs, mainRect.right - mainRect.left - maingui.xOffsetRow3- 30, 20, NULL);
 
         int spacerX = 50;
@@ -1115,7 +1117,137 @@ template<typename... Args> void printToConsole(HWND console, const wchar_t* form
     swprintf_s(newBuffer, MAX_LOADSTRING, format, args...);
     appendTextToWindow(console, newBuffer, MAX_LOADSTRING);
 }
+int setWindowTextToInt(HWND win, int in) {
+    wchar_t textBuffer[128];
+    swprintf_s(textBuffer, 128, L"%i", in);
+    SetWindowTextW(win, textBuffer);
+    return 0;
+}
 
+int getNumberOfDecimalsToDisplay(double in, bool isExponential) {
+    if (in == 0) return 0;
+    in = abs(in);
+    int digits = -1;
+    int logValue = (int)floor(log10(in));
+    in /= pow((double)10.0, logValue);
+    while (digits < 15 && in > 1e-3 && in < 9.999) {
+        in -= (int)in;
+        in *= 10;
+        digits++;
+    }
+    if (isExponential) {
+        return max(0, digits);
+    }
+    return max(0,digits-logValue);
+}
+int setWindowTextToDouble(HWND win, double in) {
+    wchar_t textBuffer[128];
+    int digits = getNumberOfDecimalsToDisplay(in, FALSE);
+    if (digits == 0) {
+        swprintf_s(textBuffer, 128, L"%i", (int)in);
+    }
+    else if (digits == 1) {
+        swprintf_s(textBuffer, 128, L"%4.1lf", in);
+    }
+    else if (digits == 2) {
+        swprintf_s(textBuffer, 128, L"%4.2lf", in);
+    }
+    else if (digits == 3) {
+        swprintf_s(textBuffer, 128, L"%4.3lf", in);
+    }
+    else {
+        swprintf_s(textBuffer, 128, L"%4.4lf", in);
+    }
+
+    
+    SetWindowTextW(win, textBuffer);
+    return 0;
+}
+
+int setWindowTextToDoubleExp(HWND win, double in) {
+    wchar_t textBuffer[128];
+    int digits = getNumberOfDecimalsToDisplay(in, TRUE);
+    printToConsole(maingui.textboxSims, L"For %e, found %i digits\r\n", in, digits);
+    if (in == 0) {
+        swprintf_s(textBuffer, 128, L"0");
+    }
+    else if (digits == 0) {
+        swprintf_s(textBuffer, 128, L"%4.0e", in);
+    }
+    else if (digits == 1) {
+        swprintf_s(textBuffer, 128, L"%4.1e", in);
+    }
+    else if (digits == 2) {
+        swprintf_s(textBuffer, 128, L"%4.2e", in);
+    }
+    else if (digits == 3) {
+        swprintf_s(textBuffer, 128, L"%4.3e", in);
+    }
+    else if (digits == 4) {
+        swprintf_s(textBuffer, 128, L"%4.4e", in);
+    }
+    else {
+        swprintf_s(textBuffer, 128, L"%e", in);
+    }
+
+    SetWindowText(win, textBuffer);
+    return 0;
+}
+int setInterfaceValuesToActiveValues() {
+    const double pi = 3.1415926535897932384626433832795;
+    setWindowTextToDoubleExp(maingui.tbPulseEnergy1, (*activeSetPtr).pulseEnergy1);
+    setWindowTextToDoubleExp(maingui.tbPulseEnergy2, (*activeSetPtr).pulseEnergy2);
+    setWindowTextToDouble(maingui.tbFrequency1, 1e-12*(*activeSetPtr).frequency1);
+    setWindowTextToDouble(maingui.tbFrequency2, 1e-12*(*activeSetPtr).frequency2);
+    setWindowTextToDouble(maingui.tbBandwidth1, 1e-12 * (*activeSetPtr).bandwidth1);
+    setWindowTextToDouble(maingui.tbBandwidth2, 1e-12 * (*activeSetPtr).bandwidth2);
+    setWindowTextToInt(maingui.tbPulseType, (*activeSetPtr).sgOrder1);
+    setWindowTextToDouble(maingui.tbCEPhase1, pi * (*activeSetPtr).cephase1);
+    setWindowTextToDouble(maingui.tbCEPhase2, pi * (*activeSetPtr).cephase2);
+    setWindowTextToDouble(maingui.tbPulse1Delay, 1e15 * ((*activeSetPtr).delay1 - (*activeSetPtr).timeSpan/2));
+    setWindowTextToDouble(maingui.tbPulse2Delay, 1e15 * ((*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2));
+    setWindowTextToDouble(maingui.tbGDD1, 1e30*(*activeSetPtr).gdd1);
+    setWindowTextToDouble(maingui.tbGDD2, 1e30*(*activeSetPtr).gdd2);
+    setWindowTextToDouble(maingui.tbTOD1, 1e45*(*activeSetPtr).tod1);
+    setWindowTextToDouble(maingui.tbTOD2, 1e45*(*activeSetPtr).tod2);
+    setWindowTextToInt(maingui.tbPhaseMaterialIndex, (*activeSetPtr).phaseMaterialIndex);
+    setWindowTextToDouble(maingui.tbPhaseMaterialThickness1, 1e6 * (*activeSetPtr).phaseMaterialThickness1);
+    setWindowTextToDouble(maingui.tbPhaseMaterialThickness2, 1e6 * (*activeSetPtr).phaseMaterialThickness2);
+    setWindowTextToDouble(maingui.tbBeamwaist1, 1e6 * (*activeSetPtr).beamwaist1);
+    setWindowTextToDouble(maingui.tbBeamwaist2, 1e6 * (*activeSetPtr).beamwaist2);
+    setWindowTextToDouble(maingui.tbXoffset1, 1e6 * (*activeSetPtr).x01);
+    setWindowTextToDouble(maingui.tbXoffset1, 1e6 * (*activeSetPtr).x02);
+    setWindowTextToDouble(maingui.tbZoffset1, 1e6 * (*activeSetPtr).z01);
+    setWindowTextToDouble(maingui.tbZoffset2, 1e6 * (*activeSetPtr).z02);
+    setWindowTextToDouble(maingui.tbPropagationAngle1, (180 / pi) * (*activeSetPtr).propagationAngle1);
+    setWindowTextToDouble(maingui.tbPropagationAngle2, (180 / pi) * (*activeSetPtr).propagationAngle2);
+    setWindowTextToDouble(maingui.tbPolarizationAngle1, 0.001*round(1000*(180 / pi) * (*activeSetPtr).polarizationAngle1));
+    setWindowTextToDouble(maingui.tbPolarizationAngle2, 0.001*round(1000*(180 / pi) * (*activeSetPtr).polarizationAngle2));
+    setWindowTextToDouble(maingui.tbCircularity1, (*activeSetPtr).circularity1);
+    setWindowTextToDouble(maingui.tbCircularity2, (*activeSetPtr).circularity2);
+    SendMessage(maingui.pdPulse1Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse1FileType, 0);
+    SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse2FileType, 0);
+    setWindowTextToInt(maingui.tbMaterialIndex, (*activeSetPtr).materialIndex);
+    setWindowTextToDouble(maingui.tbCrystalTheta, (180 / pi) * (*activeSetPtr).crystalTheta);
+    setWindowTextToDouble(maingui.tbCrystalPhi, (180 / pi) * (*activeSetPtr).crystalPhi);
+    setWindowTextToDoubleExp(maingui.tbNonlinearAbsortion, (*activeSetPtr).nonlinearAbsorptionStrength);
+    setWindowTextToDouble(maingui.tbBandGap, (*activeSetPtr).bandGapElectronVolts);
+    setWindowTextToDouble(maingui.tbDrudeGamma, 1e-12 * (*activeSetPtr).drudeGamma);
+    setWindowTextToDouble(maingui.tbGridXdim, 1e6 * (*activeSetPtr).spatialWidth);
+    setWindowTextToDouble(maingui.tbRadialStepSize, 1e6 * (*activeSetPtr).rStep);
+    setWindowTextToDouble(maingui.tbTimeSpan, 1e15 * (*activeSetPtr).timeSpan);
+    setWindowTextToDouble(maingui.tbTimeStepSize, 1e15 * (*activeSetPtr).tStep);
+    setWindowTextToDouble(maingui.tbCrystalThickness, 1e6 * (*activeSetPtr).crystalThickness);
+    setWindowTextToDouble(maingui.tbXstep, 1e9 * (*activeSetPtr).propagationStep);
+    SendMessage(maingui.pdPropagationMode, CB_SETCURSEL, (WPARAM)(*activeSetPtr).symmetryType, 0);
+    SendMessage(maingui.pdBatchMode, CB_SETCURSEL, (WPARAM)(*activeSetPtr).batchIndex, 0);
+    setWindowTextToDouble(maingui.tbBatchDestination, (*activeSetPtr).batchDestination);
+    setWindowTextToInt(maingui.tbNumberSims, (*activeSetPtr).Nsims);
+    SetWindowTextA(maingui.tbSequence, (*activeSetPtr).sequenceString);
+    SetWindowTextA(maingui.tbPulse1Path, (*activeSetPtr).field1FilePath);
+    SetWindowTextA(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath);
+    return 0;
+}
 
 //returns a string containing the text in a text box
 int getStringFromHWND(HWND inputA, char* outputString, int bufferSize)
@@ -1611,6 +1743,7 @@ void setTitleBarDark(HWND hWnd)
     BOOL isDarkMode = TRUE;
     DwmSetWindowAttribute(hWnd, 20, &isDarkMode, sizeof(isDarkMode));
 }
+
 
 void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY) {
     size_t i;

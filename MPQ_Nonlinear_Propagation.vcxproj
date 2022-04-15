@@ -159,7 +159,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>compute_75,sm_75;%(CodeGeneration)</CodeGeneration>
-      <CudaRuntime>None</CudaRuntime>
+      <CudaRuntime>Static</CudaRuntime>
       <Runtime>MT</Runtime>
       <FastMath>true</FastMath>
       <Optimization>O2</Optimization>
@@ -170,6 +170,10 @@
     <CudaLink>
       <Optimization>O3</Optimization>
     </CudaLink>
+    <PostBuildEvent>
+      <Command>copy "$(TargetPath)" "$(ProjectDir)\Executable\"
+copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
