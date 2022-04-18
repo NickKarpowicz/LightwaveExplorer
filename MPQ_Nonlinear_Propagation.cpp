@@ -509,7 +509,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 
     maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), 
-        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN, 
         xOffsetRow1 + textboxwidth + 4, 19 * vs-2, xOffsetRow2-xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonFile = CreateWindow(WC_BUTTON, TEXT("Set Path"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
@@ -1000,6 +1000,13 @@ int readParametersFromInterface() {
     getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
     if (strnlen_s((*activeSetPtr).sequenceString, 256 * MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).sequenceString, noneString);
+    }
+    else {
+        for (int i = 0; i < strlen((*activeSetPtr).sequenceString); i++) {
+            if ((*activeSetPtr).sequenceString[i] == '\r' || (*activeSetPtr).sequenceString[i] == '\n') {
+                (*activeSetPtr).sequenceString[i] = ' ';
+            }
+        }
     }
 
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING * sizeof(char));
