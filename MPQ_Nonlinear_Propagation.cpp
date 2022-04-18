@@ -63,9 +63,12 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
+    (*activeSetPtr).isFollowerInSequence = FALSE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
     readSequenceString(activeSetPtr);
+    printToConsole(maingui.textboxSims, L"Found %i sequence steps\r\n", (*activeSetPtr).Nsequence);
+    printToConsole(maingui.textboxSims, L"Is follower: %i\r\n Is in: %i\r\n", (*activeSetPtr).isFollowerInSequence, (*activeSetPtr).isInSequence);
     configureBatchMode(activeSetPtr);
 
     //run the simulations
@@ -77,7 +80,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
         else {
             solveNonlinearWaveEquation(&activeSetPtr[j]);
-            //printToConsole(maingui.textboxSims, _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12 * activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
+            printToConsole(maingui.textboxSims, _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12 * activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
             
             if (activeSetPtr[j].memoryError > 0) {
                 printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
@@ -775,16 +778,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             break;
         case ID_BTNLOAD:
-            openDialogBoxAndLoad(hWnd);
-            
-            plotSim = (int)getDoubleFromHWND(maingui.tbWhichSimToPlot);
-            plotSim = min(plotSim, (int)(*activeSetPtr).Nsims);
-            plotSim--;
-            plotSim = max(plotSim, 0);
+            if (openDialogBoxAndLoad(hWnd)) {
+                plotSim = (int)getDoubleFromHWND(maingui.tbWhichSimToPlot);
+                plotSim = min(plotSim, (int)(*activeSetPtr).Nsims);
+                plotSim--;
+                plotSim = max(plotSim, 0);
 
-            (*activeSetPtr).plotSim = plotSim;
-            plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-            setInterfaceValuesToActiveValues();
+                (*activeSetPtr).plotSim = plotSim;
+                plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+                setInterfaceValuesToActiveValues();
+            }
+            else {
+                printToConsole(maingui.textboxSims, L"Read failure.\r\n");
+            }
             break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
@@ -1054,8 +1060,6 @@ int readParametersFromInterface() {
     (*activeSetPtr).sellmeierType = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierType;
     (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
 
-
-
     return 0;
 }
 
@@ -1167,7 +1171,6 @@ int setWindowTextToDouble(HWND win, double in) {
 int setWindowTextToDoubleExp(HWND win, double in) {
     wchar_t textBuffer[128];
     int digits = getNumberOfDecimalsToDisplay(in, TRUE);
-    printToConsole(maingui.textboxSims, L"For %e, found %i digits\r\n", in, digits);
     if (in == 0) {
         swprintf_s(textBuffer, 128, L"0");
     }
@@ -1204,8 +1207,8 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToInt(maingui.tbPulseType, (*activeSetPtr).sgOrder1);
     setWindowTextToDouble(maingui.tbCEPhase1, pi * (*activeSetPtr).cephase1);
     setWindowTextToDouble(maingui.tbCEPhase2, pi * (*activeSetPtr).cephase2);
-    setWindowTextToDouble(maingui.tbPulse1Delay, 1e15 * ((*activeSetPtr).delay1 - (*activeSetPtr).timeSpan/2));
-    setWindowTextToDouble(maingui.tbPulse2Delay, 1e15 * ((*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2));
+    setWindowTextToDouble(maingui.tbPulse1Delay, -1e15 * ((*activeSetPtr).delay1 - (*activeSetPtr).timeSpan/2));
+    setWindowTextToDouble(maingui.tbPulse2Delay, -1e15 * ((*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2));
     setWindowTextToDouble(maingui.tbGDD1, 1e30*(*activeSetPtr).gdd1);
     setWindowTextToDouble(maingui.tbGDD2, 1e30*(*activeSetPtr).gdd2);
     setWindowTextToDouble(maingui.tbTOD1, 1e45*(*activeSetPtr).tod1);
@@ -1243,7 +1246,14 @@ int setInterfaceValuesToActiveValues() {
     SendMessage(maingui.pdBatchMode, CB_SETCURSEL, (WPARAM)(*activeSetPtr).batchIndex, 0);
     setWindowTextToDouble(maingui.tbBatchDestination, (*activeSetPtr).batchDestination);
     setWindowTextToInt(maingui.tbNumberSims, (*activeSetPtr).Nsims);
-    SetWindowTextA(maingui.tbSequence, (*activeSetPtr).sequenceString);
+    if (strcmp((*activeSetPtr).sequenceString, "None.\n")) {
+        SetWindowText(maingui.tbSequence, L"");
+    }
+    else {
+        SetWindowTextA(maingui.tbSequence, (*activeSetPtr).sequenceString);
+    }
+        
+
     SetWindowTextA(maingui.tbPulse1Path, (*activeSetPtr).field1FilePath);
     SetWindowTextA(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath);
     return 0;
@@ -1444,25 +1454,29 @@ int openDialogBoxAndLoad(HWND hWnd) {
             freeSemipermanentGrids();
             isGridAllocated = FALSE;
         }
-        readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString);
 
-        //get the base of the file name, so that different files can be made with different extensions based on that
-        if (ofn.nFileExtension > 0) {
-            fbaseloc = ofn.nFileExtension - 1;
-            fbasedirend = ofn.nFileOffset;
+        //There should be 53 parameters, remember to update this if adding new ones!
+        if (53 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString)) {
+            //get the base of the file name, so that different files can be made with different extensions based on that
+            if (ofn.nFileExtension > 0) {
+                fbaseloc = ofn.nFileExtension - 1;
+                fbasedirend = ofn.nFileOffset;
+            }
+            _tcsncpy_s(szFileNameNoExt, szFileName, fbaseloc);
+            szFileNameNoExt[MAX_LOADSTRING - 1] = 0;
+            wcstombs(fileNameString, szFileNameNoExt, MAX_LOADSTRING);
+
+
+            allocateGrids(activeSetPtr);
+            isGridAllocated = TRUE;
+            loadSavedFields(activeSetPtr, fileNameString, FALSE);
+            return TRUE;
         }
-        _tcsncpy_s(szFileNameNoExt, szFileName, fbaseloc);
-        szFileNameNoExt[MAX_LOADSTRING - 1] = 0;
-        wcstombs(fileNameString, szFileNameNoExt, MAX_LOADSTRING);
 
-
-        allocateGrids(activeSetPtr);
-        isGridAllocated = TRUE;
-        loadSavedFields(activeSetPtr, fileNameString, FALSE);
 
     }
     
-    return 0;
+    return FALSE;
 }
 
 //Take an array of doubles and make an image in the window

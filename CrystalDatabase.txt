@@ -65,19 +65,19 @@ Spectral file:
 None
 ~~~crystal end~~~
 Name:
-TiO2 Rutile (Absorption on, o-axis only)
+BaF2
 Type:
 0
 Sellmeier equation:
 0
 1st axis coefficients:
-0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
+1.33973 0 0.81070 -0.010130 0 0.19652 -892.22 0 4.52469 -2896.6 0 0 1 0 0 0 0 0 0 0 0 0
 2nd axis coefficients:
-0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
+1.33973 0 0.81070 -0.010130 0 0.19652 -892.22 0 4.52469 -2896.6 0 0 1 0 0 0 0 0 0 0 0 0
 3rd axis coefficients:
-0.34234573 0 5.42854031 -0.05706006 0 0.24679643 -40.51655663 0 9.28195532 -1391.09084845 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
+1.33973 0 0.81070 -0.010130 0 0.19652 -892.22 0 4.52469 -2896.6 0 0 1 0 0 0 0 0 0 0 0 0
 Sellmeier reference:
-Fit based on DeVore and Del Mar Photonics data
+H. H. Li. Refractive index of alkaline earth halides and its wavelength and temperature derivatives. J. Phys. Chem. Ref. Data 9, 161-289 (1980)
 chi2 type:
 0
 d:
@@ -87,13 +87,13 @@ d:
 d reference:
 None
 chi3 type:
-2
+0
 chi3:
-4e-19 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 chi3 reference:
-Single isotropic value
+None
 Spectral file:
 None
 ~~~crystal end~~~

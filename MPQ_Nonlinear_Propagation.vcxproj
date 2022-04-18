@@ -195,6 +195,9 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
   <ItemGroup>
     <CudaCompile Include="NonlinearPropCUDA.cu" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="CrystalDatabase.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.6.targets" />
