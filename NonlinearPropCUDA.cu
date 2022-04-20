@@ -76,7 +76,7 @@ __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
 //omega: frequency (rad/s)
 //ii: sqrt(-1)
 //kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
-__device__ __forceinline__ cuDoubleComplex sellmeierSubfunctionCuda(
+__device__ cuDoubleComplex sellmeierSubfunctionCuda(
     double* a, double ls, double omega, cuDoubleComplex ii, double kL) {
     double realPart = a[0]
         + (a[1] + a[2] * ls) / (ls + a[3])
@@ -550,7 +550,7 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
     cuDoubleComplex ke = twoPi * ne * f / c;
     cuDoubleComplex ko = twoPi * no * f / c;
 
-    if (cuCreal(ke) < 0 && cuCreal(ko) < 0) {
+    if (cuCreal(ke) < 0 && cuCreal(ko) < 0 && abs(dk) < cuCabs(ke)) {
         s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
         s.gridPropagationFactor1Rho1[i] = ii * (1 / (2. * cuCreal(ke))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor1[i]))) {
@@ -2257,7 +2257,8 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
     readValueCount += fscanf(textfile, "Propagation mode: %i\n", &(*sCPU).symmetryType);
     readValueCount += fscanf(textfile, "Batch mode: %i\nBatch destination: %lf\nBatch steps: %lli\n",
         &(*sCPU).batchIndex, &(*sCPU).batchDestination, &(*sCPU).Nsims);
-    readValueCount += fscanf(textfile, "Sequence: %s\n", (*sCPU).sequenceString);
+    readValueCount += fscanf(textfile, "Sequence: ");
+    fgets((*sCPU).sequenceString, MAX_LOADSTRING, textfile);
     readValueCount += fscanf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
     readValueCount += fscanf(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n",
         &(*sCPU).pulse1FileType, &(*sCPU).pulse2FileType);

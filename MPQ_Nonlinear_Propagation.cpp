@@ -67,8 +67,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
     readSequenceString(activeSetPtr);
-    printToConsole(maingui.textboxSims, L"Found %i sequence steps\r\n", (*activeSetPtr).Nsequence);
-    printToConsole(maingui.textboxSims, L"Is follower: %i\r\n Is in: %i\r\n", (*activeSetPtr).isFollowerInSequence, (*activeSetPtr).isInSequence);
     configureBatchMode(activeSetPtr);
 
     //run the simulations
@@ -572,7 +570,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         L"dz",
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 34; k++) {
+    for (k = 0; k < 36; k++) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)batchModeNames[k]);
         SendMessage(maingui.pdBatchMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -676,8 +674,9 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
             printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
     }
-
-
+    char defaultFilename[] = "DefaultValues.ini";
+    readInputParametersFile(activeSetPtr, crystalDatabasePtr, defaultFilename);
+    setInterfaceValuesToActiveValues();
     
 
     return TRUE;
@@ -1253,7 +1252,7 @@ int setInterfaceValuesToActiveValues() {
     SendMessage(maingui.pdBatchMode, CB_SETCURSEL, (WPARAM)(*activeSetPtr).batchIndex, 0);
     setWindowTextToDouble(maingui.tbBatchDestination, (*activeSetPtr).batchDestination);
     setWindowTextToInt(maingui.tbNumberSims, (*activeSetPtr).Nsims);
-    if (strcmp((*activeSetPtr).sequenceString, "None.\n")) {
+    if (strcmp((*activeSetPtr).sequenceString, "None.\n") == 0) {
         SetWindowText(maingui.tbSequence, L"");
     }
     else {
@@ -1454,6 +1453,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
     ofn.nFileExtension = 0;
     ofn.nFileOffset = 0;
     char fileNameString[MAX_LOADSTRING];
+    int readParameters;
     wcstombs(fileNameString, szFileName, MAX_LOADSTRING);
     if (GetSaveFileNameW(&ofn)) {
         wcstombs(fileNameString, szFileName, MAX_LOADSTRING);
@@ -1461,9 +1461,9 @@ int openDialogBoxAndLoad(HWND hWnd) {
             freeSemipermanentGrids();
             isGridAllocated = FALSE;
         }
-
-        //There should be 53 parameters, remember to update this if adding new ones!
-        if (53 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString)) {
+        readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString);
+        //There should be 52 parameters, remember to update this if adding new ones!
+        if (readParameters == 52) {
             //get the base of the file name, so that different files can be made with different extensions based on that
             if (ofn.nFileExtension > 0) {
                 fbaseloc = ofn.nFileExtension - 1;
