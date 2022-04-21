@@ -929,6 +929,7 @@ int main(int argc, char *argv[]) {
     }
 
     readSequenceString(sCPU);
+    printf("Found %i steps in sequence\n", (*sCPU).Nsequence);
     configureBatchMode(sCPU);
 
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
@@ -2148,10 +2149,11 @@ int readSequenceString(simulationParameterSet* sCPU) {
             &(*sCPU).sequenceArray[sequenceCount + 6], &(*sCPU).sequenceArray[sequenceCount + 7],
             &(*sCPU).sequenceArray[sequenceCount + 8], &(*sCPU).sequenceArray[sequenceCount + 9],
             &(*sCPU).sequenceArray[sequenceCount + 10]);
-        sequenceCount += lastread;
+        if (lastread > 0) {
+            sequenceCount += lastread;
+        }
         tokToken = strtok(NULL, ";");
     }
-
     (*sCPU).Nsequence = sequenceCount / 11;
     (*sCPU).isInSequence = ((*sCPU).Nsequence > 0);
 
@@ -2265,6 +2267,11 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
     readValueCount += fscanf(textfile, "Field 1 file path: %s\n", (*sCPU).field1FilePath);
     readValueCount += fscanf(textfile, "Field 2 file path: %s\n", (*sCPU).field2FilePath);
 
+    for (int i = 0; i < strlen((*sCPU).sequenceString); i++) {
+        if ((*sCPU).sequenceString[i] == '\r' || (*sCPU).sequenceString[i] == '\n') {
+            (*sCPU).sequenceString[i] = ' ';
+        }
+    }
     //derived parameters and cleanup:
     (*sCPU).sellmeierType = 0;
     (*sCPU).axesNumber = 0;
@@ -2407,7 +2414,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
         (*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
     mbstowcs(wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
     fwprintf(textfile, L"Sequence: %ls\n", wideStringConversionBuffer);
-
+    
 
     if ((*sCPU).runType > 0) {
         char* fileName = (*sCPU).outputBasePath;
@@ -2416,6 +2423,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
             fileName++;
         }
         mbstowcs(wideStringConversionBuffer, fileName, strlen(fileName));
+        wideStringConversionBuffer[strlen(fileName)] = L'\0';
         fwprintf(textfile, L"Output base path: %ls\n", wideStringConversionBuffer);
     }
     else {
