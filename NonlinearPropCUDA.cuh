@@ -20,6 +20,7 @@ typedef struct crystalEntry {
     double absorptionParameters[6];
     wchar_t spectralFile[512];
     double spectralData[2048];
+    double nonlinearReferenceFrequencies[7];
     int numberOfEntries;
 } crystalEntry;
 
@@ -156,6 +157,8 @@ typedef struct cudaParameterSet {
 	cuDoubleComplex* gridRadialLaplacian2;
 	cuDoubleComplex* gridPlasmaCurrentFrequency1;
 	cuDoubleComplex* gridPlasmaCurrentFrequency2;
+    cuDoubleComplex* chiLinear1;
+    cuDoubleComplex* chiLinear2;
 	cuDoubleComplex* k1;
 	cuDoubleComplex* k2;
 	cuDoubleComplex* ne;
@@ -178,6 +181,7 @@ typedef struct cudaParameterSet {
 	cufftHandle polfftPlan;
     cufftHandle doublePolfftPlan;
 	bool isNonLinear;
+    bool isUsingMillersRule;
 	size_t Ntime;
 	size_t Nspace;
 	size_t Ngrid;

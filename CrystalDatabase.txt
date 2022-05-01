@@ -30,6 +30,8 @@ chi3 reference:
 None.
 Spectral file:
 None
+Nonlinear reference frequencies:
+0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
 BBO
@@ -63,6 +65,8 @@ chi3 reference:
 Empty matrix awaiting input
 Spectral file:
 None
+Nonlinear reference frequencies:
+0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
 BaF2
@@ -96,17 +100,19 @@ chi3 reference:
 None
 Spectral file:
 None
+Nonlinear reference frequencies:
+0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
 TiO2 Rutile
 Type:
-2
+1
 Sellmeier equation:
 0
 1st axis coefficients:
 3.4805 0 2.4781 -0.09 0 2.2140 -111.6833 0 0 1 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
 2nd axis coefficients:
-3.4805 0 2.4781 -0.09 0 2.2140 -111.6833 0 0 1 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
+3.1032 0 4.1346 -0.0807 0 63.9791 -1493.5424 0 0 1 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
 3rd axis coefficients:
 3.1032 0 4.1346 -0.0807 0 63.9791 -1493.5424 0 0 1 0 0 1 0 0 0 0 0 0 0 3.46498338898e+29 1e13
 Sellmeier reference:
@@ -129,6 +135,8 @@ chi3 reference:
 Single isotropic value, based on chi3_1111 from N.G. Khadzhiiski and N.I. Koroteev, Optics Communications 42, 423-427 (1982).
 Spectral file:
 None
+Nonlinear reference frequencies:
+2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14
 ~~~crystal end~~~
 Name:
 BiBO
@@ -162,6 +170,8 @@ chi3 reference:
 Empty matrix awaiting input
 Spectral file:
 None
+Nonlinear reference frequencies:
+0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
 alpha Quartz (SiO2)
@@ -195,6 +205,8 @@ chi3 reference:
 Empty matrix awaiting input
 Spectral file:
 None
+Nonlinear reference frequencies:
+0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
 Fused silica
@@ -228,4 +240,6 @@ chi3 reference:
 single value
 Spectral file:
 None
+Nonlinear reference frequencies:
+0 0 0 0 0 0 0
 ~~~crystal end~~~

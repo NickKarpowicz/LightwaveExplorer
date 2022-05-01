@@ -99,7 +99,7 @@ __device__ cuDoubleComplex sellmeierSubfunctionCuda(
 //Sellmeier equation for refractive indicies
 __device__ cuDoubleComplex sellmeierCuda(
     cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
-    if (f==0) return make_cuDoubleComplex(1.0,0.0); //exit immediately for f=0
+    if (f == 0) return make_cuDoubleComplex(1.0, 0.0); //exit immediately for f=0
 
     double ls = 2.99792458e14 / f; //wavelength in microns
     ls *= ls; //only wavelength^2 is ever used
@@ -116,7 +116,7 @@ __device__ cuDoubleComplex sellmeierCuda(
     }
     //option 1: uniaxial
     else if (type == 1) {
-        
+
         cuDoubleComplex na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
         cuDoubleComplex nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
         no[0] = na;
@@ -141,24 +141,59 @@ __device__ cuDoubleComplex sellmeierCuda(
         double realna2 = cuCreal(na) * cuCreal(na);
         double realnb2 = cuCreal(nb) * cuCreal(nb);
 
-        double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2) 
-            * sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2) 
-            + ((sinPhi2 /realna2 + cosPhi2 / realnb2) 
-                * cosTheta2 + sinTheta2 / (cuCreal(nc) * cuCreal(nc)))));
+        double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2)
+            * sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2)
+                + ((sinPhi2 / realna2 + cosPhi2 / realnb2)
+                    * cosTheta2 + sinTheta2 / (cuCreal(nc) * cuCreal(nc)))));
 
-        ne[0] = 1.0/cuCsqrt(cos(delta) * cos(delta) * (cosTheta2 * (cosPhi2 / (na * na) 
-            + sinPhi2 / (nb * nb)) + sinTheta2 / (nc*nc)) 
-            + sin(delta) * sin(delta) * (sinPhi2 / (na*na) + cosPhi2 / (nb*nb)) 
-            - 0.5*sin(2 * phi)*cosTheta*sin(2 * delta)*(1. / (na*na) - 1. / (nb*nb)));
+        ne[0] = 1.0 / cuCsqrt(cos(delta) * cos(delta) * (cosTheta2 * (cosPhi2 / (na * na)
+            + sinPhi2 / (nb * nb)) + sinTheta2 / (nc * nc))
+            + sin(delta) * sin(delta) * (sinPhi2 / (na * na) + cosPhi2 / (nb * nb))
+            - 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / (na * na) - 1. / (nb * nb)));
 
-        no[0] = 1.0/cuCsqrt(sin(delta) * sin(delta) * (cosTheta2 * (cosPhi2 / (na * na) 
-            + sinPhi2 / (nb * nb)) + sinTheta2 / (nc*nc)) 
-            + cos(delta)*cos(delta) * (sinPhi2 / (na*na) + cosPhi2 / (nb*nb)) 
-            + 0.5 * sin(2 * phi)*cosTheta*sin(2 * delta)*(1. / (na*na) - 1. / (nb*nb)));
+        no[0] = 1.0 / cuCsqrt(sin(delta) * sin(delta) * (cosTheta2 * (cosPhi2 / (na * na)
+            + sinPhi2 / (nb * nb)) + sinTheta2 / (nc * nc))
+            + cos(delta) * cos(delta) * (sinPhi2 / (na * na) + cosPhi2 / (nb * nb))
+            + 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / (na * na) - 1. / (nb * nb)));
         return ne[0];
     }
 }
+__global__ void millersRuleNormalizationKernel(cudaParameterSet s, double* sellmeierCoefficients, double* referenceFrequencies) {
+    if (!s.isUsingMillersRule) {
+        return;
+    }
+    size_t i;
+    double chi11[7];
+    double chi12[7];
+    cuDoubleComplex ne, no;
+    for (i = 0; i < 7; i++) {
+        if (referenceFrequencies[i] == 0) {
+            chi11[i] = 100000.0;
+            chi12[i] = 100000.0;
+        }
+        else {
+            sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[69], 0);
+            chi11[i] = cuCreal(ne) * cuCreal(ne) - 1;
+            chi12[i] = cuCreal(no) * cuCreal(no) - 1;
+        }
 
+    }
+
+    //normalize chi2 tensor values
+    s.chi2Tensor[0] /= chi11[0] * chi11[1] * chi11[2];
+    s.chi2Tensor[1] /= chi11[0] * chi11[1] * chi12[2];
+    s.chi2Tensor[2] /= chi11[0] * chi12[1] * chi11[2];
+    s.chi2Tensor[3] /= chi11[0] * chi12[1] * chi12[2];
+    s.chi2Tensor[4] /= chi12[0] * chi12[1] * chi11[2];
+    s.chi2Tensor[5] /= chi12[0] * chi12[1] * chi12[2];
+
+    //normalize chi3 tensor values
+    // note that currently full chi3 isn't implemented so
+    // this only applies to the first element, chi3_1111 under
+    // the assumption of centrosymmetry
+    s.chi3Tensor[0] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
+
+}
 //rotate the field around the propagation axis (basis change)
 __global__ void rotateFieldKernel(
     cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, cuDoubleComplex* Eout1, 
@@ -484,6 +519,19 @@ __global__ void prepareCartesianGridsKernel(double* sellmeierCoefficients, cudaP
     cuDoubleComplex ke = twoPi * ne * f / c;
     cuDoubleComplex ko = twoPi * no * f / c;
 
+    if (s.isUsingMillersRule) {
+        s.chiLinear1[i] = -1. + ne * ne;
+        s.chiLinear2[i] = -1. + no * no;
+        if ((cuCreal(s.chiLinear1[i]) == 0) || (cuCreal(s.chiLinear2[i]) == 0) || isnan(cuCreal(s.chiLinear1[i])) || isnan(cuCreal(s.chiLinear2[i]))) {
+            s.chiLinear1[i] = make_cuDoubleComplex(1, 0);
+            s.chiLinear2[i] = make_cuDoubleComplex(1, 0);
+        }
+    }
+    else {
+        s.chiLinear1[i] = make_cuDoubleComplex(1, 0);
+        s.chiLinear2[i] = make_cuDoubleComplex(1, 0);
+    }
+
     if (cuCreal(ke) < 0 && cuCreal(ko) < 0) {
         s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor1[i]))) {
@@ -495,8 +543,8 @@ __global__ void prepareCartesianGridsKernel(double* sellmeierCoefficients, cudaP
             s.gridPropagationFactor2[i] = cuZero;
         }
 
-        s.gridPolarizationFactor1[i] = ii * (twoPi * f) / (2. * cuCreal(ne) * c) * s.h;
-        s.gridPolarizationFactor2[i] = ii * (twoPi * f) / (2. * cuCreal(no) * c) * s.h;
+        s.gridPolarizationFactor1[i] = ii * s.chiLinear1[i] * (twoPi * f) / (2. * cuCreal(ne) * c) * s.h;
+        s.gridPolarizationFactor2[i] = ii * s.chiLinear2[i] * (twoPi * f) / (2. * cuCreal(no) * c) * s.h;
     }
 
     else {
@@ -550,23 +598,36 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
     cuDoubleComplex ke = twoPi * ne * f / c;
     cuDoubleComplex ko = twoPi * no * f / c;
 
+    if (s.isUsingMillersRule) {
+        s.chiLinear1[i] = -1. + ne * ne;
+        s.chiLinear2[i] = -1. + no * no;
+        if ((cuCreal(s.chiLinear1[i]) == 0) || (cuCreal(s.chiLinear2[i]) == 0) || isnan(cuCreal(s.chiLinear1[i])) || isnan(cuCreal(s.chiLinear2[i]))) {
+            s.chiLinear1[i] = make_cuDoubleComplex(1, 0);
+            s.chiLinear2[i] = make_cuDoubleComplex(1, 0);
+        }
+    }
+    else {
+        s.chiLinear1[i] = make_cuDoubleComplex(1, 0);
+        s.chiLinear2[i] = make_cuDoubleComplex(1, 0);
+    }
+
     if (cuCreal(ke) < 0 && cuCreal(ko) < 0 && abs(dk) < cuCabs(ke)) {
         s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
-        s.gridPropagationFactor1Rho1[i] = ii * (1 / (2. * cuCreal(ke))) * s.h;
+        s.gridPropagationFactor1Rho1[i] = ii * (1 / (s.chiLinear1[i] *2. * cuCreal(ke))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor1[i]))) {
             s.gridPropagationFactor1[i] = cuZero;
             s.gridPropagationFactor1Rho1[i] = cuZero;
         }
 
         s.gridPropagationFactor2[i] = ii * (ko - k0 + dk * dk / (2. * cuCreal(ko))) * s.h;
-        s.gridPropagationFactor1Rho2[i] = ii * (1 / (2. * cuCreal(ko))) * s.h;
+        s.gridPropagationFactor1Rho2[i] = ii * (1 / (s.chiLinear2[i] * 2. * cuCreal(ko))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor2[i]))) {
             s.gridPropagationFactor2[i] = cuZero;
             s.gridPropagationFactor1Rho2[i] = cuZero;
         }
         //factor of 0.5 comes from doubled grid size in cylindrical symmetry mode after expanding the beam
-        s.gridPolarizationFactor1[i] = 0.5 * ii * (twoPi * f) / (2. * cuCreal(ne) * c) * s.h;
-        s.gridPolarizationFactor2[i] = 0.5 * ii * (twoPi * f) / (2. * cuCreal(no) * c) * s.h;
+        s.gridPolarizationFactor1[i] = 0.5 * s.chiLinear1[i] * ii * (twoPi * f) / (2. * cuCreal(ne) * c) * s.h;
+        s.gridPolarizationFactor2[i] = 0.5 * s.chiLinear2[i] * ii * (twoPi * f) / (2. * cuCreal(no) * c) * s.h;
 
 
     }
@@ -626,8 +687,8 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
 //in the time domain
 __global__ void nonlinearPolarizationKernel(cudaParameterSet s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
-    double Ex = 2*cuCreal(s.gridETime1[i]) / s.propagationInts[0];
-    double Ey = 2*cuCreal(s.gridETime2[i]) / s.propagationInts[0];
+    double Ex = 2 * cuCreal(s.gridETime1[i]) / s.propagationInts[0];
+    double Ey = 2 * cuCreal(s.gridETime2[i]) / s.propagationInts[0];
 
     double Ex2 = Ex * Ex;
     double Ey2 = Ey * Ey;
@@ -845,6 +906,12 @@ __global__ void fftNormalizeKernel(cuDoubleComplex* A, long long* fftSize) {
     A[i] = A[i] / fftSize[0];
 }
 
+//element-wise B*A = C;
+__global__ void multiplicationKernel(cuDoubleComplex* A, cuDoubleComplex* B, cuDoubleComplex* C) {
+    long long i = threadIdx.x + blockIdx.x * blockDim.x;
+    C[i] = B[i] * A[i];
+}
+
 //main function for running on CLI
 int main(int argc, char *argv[]) {
     int i, j;
@@ -1014,7 +1081,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     s.dx = (*sCPU).rStep;
     s.fStep = (*sCPU).fStep;
     s.h = (*sCPU).propagationStep;
-    s.Nsteps = (*sCPU).Npropagation;
+    s.Nsteps = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
     s.Ngrid = s.Ntime * s.Nspace;
     s.axesNumber = (*sCPU).axesNumber;
     s.sellmeierType = (*sCPU).sellmeierType;
@@ -1023,7 +1090,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     s.Nblock = (int)(s.Ngrid / THREADS_PER_BLOCK);
     s.isCylindric =(*sCPU).isCylindric;
     s.isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;
-    
+    s.isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
+
     //CPU allocations
     std::complex<double>* gridPropagationFactor1CPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
     std::complex<double>* gridPolarizationFactor1CPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
@@ -1063,6 +1131,10 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaMemset(s.gridEFrequency1Next1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridEFrequency1Next2, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.gridEFrequency1Next2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.chiLinear1, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.chiLinear1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
+    memErrors += cudaMalloc((void**)&s.chiLinear2, sizeof(cuDoubleComplex) * s.Ngrid);
+    cudaMemset(s.chiLinear2, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.k1, sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.k1, 0, sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.k2, sizeof(cuDoubleComplex) * s.Ngrid);
@@ -1161,7 +1233,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     else {
         preparePropagation2DCartesian(sCPU, s);
     }
-    
+
     //generate the pulses, either through prepareElectricFieldArrays() if this is the first in the series, or by copying
     //the output of the last simulation in the sequence
     if ((*sCPU).isFollowerInSequence) {
@@ -1251,6 +1323,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaFree(s.chi2Tensor);
     cudaFree(s.chi3Tensor);
     cudaFree(s.expGammaT);
+    cudaFree(s.chiLinear1);
+    cudaFree(s.chiLinear2);
     cufftDestroy(s.fftPlan);
     cufftDestroy(s.polfftPlan);
     cufftDestroy(s.doublePolfftPlan);
@@ -1275,9 +1349,14 @@ int runRK4Step(cudaParameterSet s, int stepNumber) {
 
     //operations involving FFT
     if (s.isNonLinear || s.isCylindric) {
+
+        //multiply by linear chi so that we have polarization (for applying Miller's rule)
+        multiplicationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear1, s.gridETemp1, s.gridETime1);
+        multiplicationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear2, s.gridETemp2, s.gridETime2);
+        
         //perform inverse FFT to get time-space electric field
-        cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
-        cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
+        cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETime1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
+        cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETime2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
         
         if (s.isNonLinear) {
             nonlinearPolarizationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s);
@@ -1391,8 +1470,8 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         for (j = 0; j < (*s).sgOrder1; j++) {
             specfac *= specfac;
         }
-        specphase = ii * ((*s).cephase1 + 2*pi*f * (*s).delay1 - (*s).gdd1 * w * w - (*s).tod1 * w * w * w - materialPhase1[i]);
-        specfac = exp(-specfac - specphase);
+        specphase = ii * ((*s).cephase1 + 2*pi*f * ((*s).delay1 - 0.5*(*s).tStep*(*s).Ntime) + 0.5 * (*s).gdd1 * w * w + (*s).tod1 * w * w * w/6.0 + materialPhase1[i]);
+        specfac = exp(-specfac + specphase);
 
         if ((*s).field1IsAllocated) {
             specfac = (*s).loadedField1[i] * exp(-specphase);
@@ -1499,8 +1578,8 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         for (j = 0; j < (*s).sgOrder1; j++) {
             specfac *= specfac;
         }
-        specphase = ii * ((*s).cephase2 + 2*pi*f * (*s).delay2 - (*s).gdd2 * w * w - (*s).tod2 * w * w * w - materialPhase2[i]);
-        specfac = exp(-specfac - specphase);
+        specphase = ii * ((*s).cephase2 + 2*pi*f * ((*s).delay2 - 0.5*(*s).tStep*(*s).Ntime) + 0.5*(*s).gdd2 * w * w + (*s).tod2 * w * w * w/6.0 + materialPhase2[i]);
+        specfac = exp(-specfac + specphase);
 
         if ((*s).field2IsAllocated) {
             specfac = (*s).loadedField2[i] * exp(-specphase);
@@ -1689,6 +1768,10 @@ int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc
     sc.ne = sc.gridEFrequency1Next2;
     sc.no = sc.k2;
 
+    double* referenceFrequencies;
+    cudaMalloc(&referenceFrequencies, 7 * sizeof(double));
+    cudaMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), cudaMemcpyHostToDevice);
+
     //construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
     double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
     memcpy(sellmeierCoefficientsAugmentedCPU, (*s).sellmeierCoefficients, 66 * (sizeof(double)));
@@ -1703,6 +1786,7 @@ int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc
 
     //prepare the propagation grids
     prepareCartesianGridsKernel <<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream >>> (sellmeierCoefficients, sc);
+    millersRuleNormalizationKernel << <1, 1, 0, sc.CUDAStream >> > (sc, sellmeierCoefficients, referenceFrequencies);
     cudaDeviceSynchronize();
 
     //copy the retrieved refractive indicies to the cpu
@@ -1716,6 +1800,7 @@ int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc
     cudaMemset(sc.k1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.k2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     free(sellmeierCoefficientsAugmentedCPU);
+    cudaFree(referenceFrequencies);
     return 0;
 }
 
@@ -1724,6 +1809,9 @@ int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc
     double* sellmeierCoefficients = (double*)sc.k1;
     sc.ne = sc.gridEFrequency1Next2;
     sc.no = sc.k2;
+    double* referenceFrequencies;
+    cudaMalloc(&referenceFrequencies, 7*sizeof(double));
+    cudaMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), cudaMemcpyHostToDevice);
 
     //construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
     double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
@@ -1736,9 +1824,11 @@ int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc
     sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
     sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
     cudaMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), cudaMemcpyHostToDevice);
-
+    cudaDeviceSynchronize();
     //prepare the propagation grids
+    
     prepareCylindricGridsKernel << <sc.Nblock, sc.Nthread, 0, sc.CUDAStream >> > (sellmeierCoefficients, sc);
+    millersRuleNormalizationKernel<<<1, 1, 0, sc.CUDAStream>>>(sc, sellmeierCoefficients, referenceFrequencies);
     cudaDeviceSynchronize();
 
     //copy the retrieved refractive indicies to the cpu
@@ -1751,6 +1841,7 @@ int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc
     cudaMemset(sc.gridEFrequency2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.k1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.k2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
+    cudaFree(referenceFrequencies);
     free(sellmeierCoefficientsAugmentedCPU);
     return 0;
 }
@@ -1960,7 +2051,7 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
     while (fscanf(fp, "%lf %lf %lf %lf %lf", &wavelength, &R, &phi, &complexX, &complexY) == 5 && currentRow < maxFileSize) {
         //get the complex field from the data
         E[currentRow].real(complexX);
-        E[currentRow].imag(-complexY);
+        E[currentRow].imag(complexY);
 
         //keep track of the frequency step of the grid (running sum, divide by number of rows at end to get average)
         if (currentRow > 0) df += c / wavelength - fmax;
@@ -2119,6 +2210,10 @@ int readCrystalDatabase(crystalEntry* db) {
         fgetws(db[i].chi3Reference, 512, fp);
         readErrors += 0 != fwscanf(fp, L"Spectral file:\n");
         fgetws(db[i].spectralFile, 512, fp);
+        fd = db[i].nonlinearReferenceFrequencies;
+        readErrors += 0 != fwscanf(fp, L"Nonlinear reference frequencies:\n");
+        readErrors += 7 != fwscanf(fp, L"%lf %lf %lf %lf %lf %lf %lf\n",
+            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6]);
         readErrors += 0 != fwscanf(fp, L"~~~crystal end~~~\n");
         if (readErrors == 0) i++;
     }
@@ -2592,6 +2687,7 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
         (*s).bandGapElectronVolts = offsetArray[5];
         (*s).drudeGamma = offsetArray[6];
         (*s).effectiveMass = offsetArray[7];
+        (*s).crystalThickness = 1e-6 * offsetArray[8];
         (*s).propagationStep = 1e-9 * offsetArray[9];
         (*s).Npropagation = (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
         if (currentIndex > 0) {

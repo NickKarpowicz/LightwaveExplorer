@@ -78,7 +78,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
         else {
             solveNonlinearWaveEquation(&activeSetPtr[j]);
-            printToConsole(maingui.textboxSims, _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12 * activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
+            //printToConsole(maingui.textboxSims, _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12 * activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
             
             if (activeSetPtr[j].memoryError > 0) {
                 printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
@@ -941,10 +941,10 @@ int readParametersFromInterface() {
     if ((*activeSetPtr).sgOrder1 < 2) {
         (*activeSetPtr).sgOrder1 = 2;
     }
-    (*activeSetPtr).cephase1 = getDoubleFromHWND(maingui.tbCEPhase1);
-    (*activeSetPtr).cephase2 = getDoubleFromHWND(maingui.tbCEPhase2);
-    (*activeSetPtr).delay1 = -1e-15 * getDoubleFromHWND(maingui.tbPulse1Delay); 
-    (*activeSetPtr).delay2 = -1e-15 * getDoubleFromHWND(maingui.tbPulse2Delay);
+    (*activeSetPtr).cephase1 = getDoubleFromHWND(maingui.tbCEPhase1)*pi;
+    (*activeSetPtr).cephase2 = getDoubleFromHWND(maingui.tbCEPhase2)*pi;
+    (*activeSetPtr).delay1 = 1e-15 * getDoubleFromHWND(maingui.tbPulse1Delay); 
+    (*activeSetPtr).delay2 = 1e-15 * getDoubleFromHWND(maingui.tbPulse2Delay);
     (*activeSetPtr).gdd1 = 1e-30 * getDoubleFromHWND(maingui.tbGDD1);
     (*activeSetPtr).gdd2 = 1e-30 * getDoubleFromHWND(maingui.tbGDD2);
     (*activeSetPtr).tod1 = 1e-45 * getDoubleFromHWND(maingui.tbTOD1);
@@ -1030,8 +1030,8 @@ int readParametersFromInterface() {
     (*activeSetPtr).Nsims = (size_t)getDoubleFromHWND(maingui.tbNumberSims);
 
     //derived parameters and cleanup:
-    (*activeSetPtr).delay1 += (*activeSetPtr).timeSpan / 2;
-    (*activeSetPtr).delay2 += (*activeSetPtr).timeSpan / 2;
+    //(*activeSetPtr).delay1 += (*activeSetPtr).timeSpan / 2;
+    //(*activeSetPtr).delay2 += (*activeSetPtr).timeSpan / 2;
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
     (*activeSetPtr).sgOrder2 = (*activeSetPtr).sgOrder1;
@@ -1213,8 +1213,8 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToInt(maingui.tbPulseType, (*activeSetPtr).sgOrder1);
     setWindowTextToDouble(maingui.tbCEPhase1, pi * (*activeSetPtr).cephase1);
     setWindowTextToDouble(maingui.tbCEPhase2, pi * (*activeSetPtr).cephase2);
-    setWindowTextToDouble(maingui.tbPulse1Delay, -1e15 * ((*activeSetPtr).delay1 - (*activeSetPtr).timeSpan/2));
-    setWindowTextToDouble(maingui.tbPulse2Delay, -1e15 * ((*activeSetPtr).delay2 - (*activeSetPtr).timeSpan / 2));
+    setWindowTextToDouble(maingui.tbPulse1Delay, 1e15 * (*activeSetPtr).delay1);
+    setWindowTextToDouble(maingui.tbPulse2Delay, 1e15 * (*activeSetPtr).delay2);
     setWindowTextToDouble(maingui.tbGDD1, 1e30*(*activeSetPtr).gdd1);
     setWindowTextToDouble(maingui.tbGDD2, 1e30*(*activeSetPtr).gdd2);
     setWindowTextToDouble(maingui.tbTOD1, 1e45*(*activeSetPtr).tod1);
