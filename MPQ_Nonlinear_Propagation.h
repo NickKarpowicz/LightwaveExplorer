@@ -63,6 +63,7 @@ typedef struct guiStruct {
     HWND pdRStep = NULL;
 
     HWND tbSequence = NULL;
+    HWND tbFitting = NULL;
 
     HWND cbSavePsi = NULL;
     HWND tbFileNameBase = NULL;
@@ -72,6 +73,9 @@ typedef struct guiStruct {
     HWND pdPulse2Type = NULL;
     HWND buttonPulse1Path = NULL;
     HWND buttonPulse2Path = NULL;
+    HWND tbFittingReferencePath = NULL;
+    HWND pdFittingType = NULL;
+    HWND buttonFittingReference = NULL;
     HWND buttonRun = NULL;
     HWND buttonFile = NULL;
     HWND buttonPlot = NULL;
@@ -82,6 +86,7 @@ typedef struct guiStruct {
     HWND pdClusterSelector = NULL;
     HWND buttonRunOnCluster = NULL;
     HWND tbWhichSimToPlot = NULL;
+    HWND buttonFit = NULL;
     HWND textboxSims = NULL;
     HWND plotBox1 = NULL;
     HWND plotBox2 = NULL;
@@ -128,4 +133,5 @@ int                 openDialogBoxAndLoad(HWND hWnd);
 void                setTitleBarDark(HWND hWnd);
 void                plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY);
 int                 setInterfaceValuesToActiveValues();
+DWORD WINAPI        fittingThread(LPVOID lpParam);
 

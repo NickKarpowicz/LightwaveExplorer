@@ -11,6 +11,10 @@
 #include <mkl.h>
 #include <thread>
 
+//fitting parameter set as global variable
+simulationParameterSet* fittingSet;
+simulationParameterSet* fittingReferenceSet;
+
 #define THREADS_PER_BLOCK 32
 #define FALSE 0
 #define TRUE 1
@@ -31,6 +35,7 @@ __device__ cuDoubleComplex operator+(double a, cuDoubleComplex b) { return cuCad
 __device__ cuDoubleComplex operator+(cuDoubleComplex a, double b) { return cuCadd(a, make_cuDoubleComplex(b, 0.0)); }
 __device__ cuDoubleComplex operator-(cuDoubleComplex a, cuDoubleComplex b) { return cuCsub(a, b); }
 __device__ cuDoubleComplex operator-(double a, cuDoubleComplex b) { return cuCsub(make_cuDoubleComplex(a, 0.0), b); }
+__device__ cuDoubleComplex operator-(cuDoubleComplex a, double b) { return cuCsub(a, make_cuDoubleComplex(b,0.0)); }
 __device__ cuDoubleComplex operator/(cuDoubleComplex a, double b) { return cuCdiv(a, make_cuDoubleComplex(b, 0.0)); }
 __device__ cuDoubleComplex operator/(double b, cuDoubleComplex a) { return cuCdiv(make_cuDoubleComplex(b, 0.0), a); }
 __device__ cuDoubleComplex operator/(cuDoubleComplex b, cuDoubleComplex a) { return cuCdiv(b, a); }
@@ -194,6 +199,55 @@ __global__ void millersRuleNormalizationKernel(cudaParameterSet s, double* sellm
     s.chi3Tensor[0] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
 
 }
+
+__device__ __forceinline__ double cuCModSquared(cuDoubleComplex a) {
+    return a.x * a.x + a.y * a.y;
+}
+__global__ void totalSpectrumKernel(cuDoubleComplex* fieldGrid1, cuDoubleComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
+    size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t j;
+    double beamCenter1 = 0.;
+    double beamCenter2 = 0.;
+    double beamTotal1 = 0.;
+    double beamTotal2 = 0.;
+    double a, x;
+
+    //find beam centers
+    for (j = 0; j < Nspace; j++) {
+        x = gridStep * j;
+        a = cuCModSquared(fieldGrid1[i + j * Ntime]);
+        beamTotal1 += a;
+        beamCenter1 += x * a;
+        a = cuCModSquared(fieldGrid2[i + j * Ntime]);
+        beamTotal2 += a;
+        beamCenter2 += x * a;
+    }
+    if (beamTotal1 > 0) {
+        beamCenter1 /= beamTotal1;
+    }
+    if (beamTotal2 > 0) {
+        beamCenter2 /= beamTotal2;
+    }
+    
+
+    //Integrate total beam power, assuming radially-symmetric beam around
+    //the center
+    beamTotal1 = 0.;
+    beamTotal2 = 0.;
+    for (j = 0; j < Nspace; j++) {
+        x = gridStep * j;
+        beamTotal1 += abs(x - beamCenter1) * cuCModSquared(fieldGrid1[i + j * Ntime]);
+        beamTotal2 += abs(x - beamCenter2) * cuCModSquared(fieldGrid2[i + j * Ntime]);
+    }
+    beamTotal1 *= gridStep/Ntime;
+    beamTotal2 *= gridStep/Ntime;
+
+    //put the values into the output spectrum
+    spectrum[i] = beamTotal1;
+    spectrum[i + Ntime] = beamTotal2;
+    spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
+}
+
 //rotate the field around the propagation axis (basis change)
 __global__ void rotateFieldKernel(
     cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, cuDoubleComplex* Eout1, 
@@ -533,12 +587,12 @@ __global__ void prepareCartesianGridsKernel(double* sellmeierCoefficients, cudaP
     }
 
     if (cuCreal(ke) < 0 && cuCreal(ko) < 0) {
-        s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
+        s.gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * cuCreal(ke))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor1[i]))) {
             s.gridPropagationFactor1[i] = cuZero;
         }
 
-        s.gridPropagationFactor2[i] = ii * (ko - k0 + dk * dk / (2. * cuCreal(ko))) * s.h;
+        s.gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * cuCreal(ko))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor2[i]))) {
             s.gridPropagationFactor2[i] = cuZero;
         }
@@ -612,14 +666,14 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
     }
 
     if (cuCreal(ke) < 0 && cuCreal(ko) < 0 && abs(dk) < cuCabs(ke)) {
-        s.gridPropagationFactor1[i] = ii * (ke - k0 + dk * dk / (2. * cuCreal(ke))) * s.h;
+        s.gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * cuCreal(ke))) * s.h;
         s.gridPropagationFactor1Rho1[i] = ii * (1 / (s.chiLinear1[i] *2. * cuCreal(ke))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor1[i]))) {
             s.gridPropagationFactor1[i] = cuZero;
             s.gridPropagationFactor1Rho1[i] = cuZero;
         }
 
-        s.gridPropagationFactor2[i] = ii * (ko - k0 + dk * dk / (2. * cuCreal(ko))) * s.h;
+        s.gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * cuCreal(ko))) * s.h;
         s.gridPropagationFactor1Rho2[i] = ii * (1 / (s.chiLinear2[i] * 2. * cuCreal(ko))) * s.h;
         if (isnan(cuCreal(s.gridPropagationFactor2[i]))) {
             s.gridPropagationFactor2[i] = cuZero;
@@ -823,6 +877,9 @@ __global__ void rkKernel(cudaParameterSet s, int stepNumber) {
                 plasmaJ2 = jfac * s.gridPolarizationFactor2[i] * s.gridPlasmaCurrentFrequency2[hp];
             }
         }
+        //correct for the presence of millers rule dispersion in gridPolarizationFactor
+        //plasmaJ1 = plasmaJ1 / s.chiLinear1[i];
+        //plasmaJ2 = plasmaJ2 / s.chiLinear2[i];
 
     }
 
@@ -997,11 +1054,43 @@ int main(int argc, char *argv[]) {
 
     readSequenceString(sCPU);
     printf("Found %i steps in sequence\n", (*sCPU).Nsequence);
+    readFittingString(sCPU);
     configureBatchMode(sCPU);
 
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
     // run simulations
+    if ((*sCPU).isInFittingMode) {
+        printf("Running in fitting mode -- I don't know how long this will take!\n");
+        runFitting(sCPU);
+        
+        auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
+        printf("Finished after %8.4lf s. \n",
+            1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+        
+        saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
+        //free
+        free((*sCPU).sequenceString);
+        free((*sCPU).sequenceArray);
+        free((*sCPU).refractiveIndex1);
+        free((*sCPU).refractiveIndex2);
+        free((*sCPU).imdone);
+        free((*sCPU).deffTensor);
+        free((*sCPU).loadedField1);
+        free((*sCPU).loadedField2);
+        free((*sCPU).Ext);
+        free((*sCPU).Ekw);
+        free((*sCPU).ExtOut);
+        free((*sCPU).EkwOut);
+        free((*sCPU).outputBasePath);
+        free((*sCPU).field1FilePath);
+        free((*sCPU).field2FilePath);
+        free((*sCPU).totalSpectrum);
+        free(sCPU);
+        free(crystalDatabasePtr);
+
+        return 0;
+    }
     std::thread *threadBlock = (std::thread*)calloc((*sCPU).Nsims, sizeof(std::thread));
     size_t maxThreads = min(CUDAdeviceCount, (*sCPU).Nsims);
     for (j = 0; j < (*sCPU).Nsims; j++) {
@@ -1046,9 +1135,14 @@ int main(int argc, char *argv[]) {
     free((*sCPU).deffTensor);
     free((*sCPU).loadedField1);
     free((*sCPU).loadedField2);
+    free((*sCPU).Ext);
+    free((*sCPU).Ekw);
+    free((*sCPU).ExtOut);
+    free((*sCPU).EkwOut);
     free((*sCPU).outputBasePath);
     free((*sCPU).field1FilePath);
     free((*sCPU).field2FilePath);
+    free((*sCPU).totalSpectrum);
     free(sCPU);
     free(crystalDatabasePtr);
     return 0;
@@ -1202,7 +1296,9 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     plasmaParametersCPU[0] = (*sCPU).nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
     plasmaParametersCPU[1] = (*sCPU).drudeGamma; //gamma
     if ((*sCPU).nonlinearAbsorptionStrength > 0.) {
-        plasmaParametersCPU[2] = (1. / 8.8541878128e-12) * (*sCPU).tStep * (*sCPU).tStep
+        //plasmaParametersCPU[2] = (1. / 8.8541878128e-12) * (*sCPU).tStep * (*sCPU).tStep
+            //* 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * band gap));
+        plasmaParametersCPU[2] = (*sCPU).tStep * (*sCPU).tStep
             * 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * band gap));
     }
     else {
@@ -1291,8 +1387,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaMemcpy(&(*sCPU).ExtOut[s.Ngrid], s.gridETime2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridEFrequency2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
-    
-    
+    getTotalSpectrum(sCPU, &s);
+    cudaStreamSynchronize(s.CUDAStream);
     //Free GPU memory
     cudaFree(s.propagationInts);
     cudaFree(s.nonlinearSwitches);
@@ -1373,6 +1469,8 @@ int runRK4Step(cudaParameterSet s, int stepNumber) {
             }
         }
         if (s.hasPlasma) {
+            //cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
+            //cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
             plasmaCurrentKernelPrep <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
                 (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
             plasmaCurrentKernel2 <<<(unsigned int)s.Nspace, 1, 0, s.CUDAStream >>> 
@@ -2030,7 +2128,66 @@ std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* n
         return 1;
     }
 }
+int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
+    FILE* fp = fopen(spectrumPath, "r");
+    size_t maxFileSize = 16384;
+    size_t currentRow = 0;
+    double c = 1e9 * 2.99792458e8;
+    double* loadedWavelengths = (double*)calloc(8192, sizeof(double));
+    double* loadedFrequencies = (double*)calloc(8192, sizeof(double));
+    double* loadedIntensities = (double*)calloc(8192, sizeof(double));
+    double maxWavelength = 0;
+    double minWavelength = 0;
+    if (fp == NULL) {
+        free(loadedWavelengths);
+        free(loadedIntensities);
+        free(loadedFrequencies);
+        return -1;
+    }
 
+    while (fscanf(fp, "%lf %lf", &loadedWavelengths[currentRow], &loadedIntensities[currentRow]) == 2 && currentRow < maxFileSize) {
+        if (currentRow == 0) {
+            maxWavelength = loadedWavelengths[currentRow];
+            minWavelength = loadedWavelengths[currentRow];
+        }
+        else {
+            maxWavelength = max(maxWavelength, loadedWavelengths[currentRow]);
+            minWavelength = min(minWavelength, loadedWavelengths[currentRow]);
+        }
+        //rescale to frequency spacing
+        loadedIntensities[currentRow] *= loadedWavelengths[currentRow] * loadedWavelengths[currentRow];
+        loadedFrequencies[currentRow] = c / loadedWavelengths[currentRow];
+        currentRow++;
+    }
+    size_t sizeData = currentRow-1;
+    size_t i, j;
+
+    double maxFrequency = c / minWavelength;
+    double minFrequency = c / maxWavelength;
+    double currentFrequency = 0;
+    double df;
+    
+    for(i = 1; i < (*sCPU).Ntime; i++) {
+        currentFrequency = i * (*sCPU).fStep;
+        if ((currentFrequency > minFrequency) && (currentFrequency < maxFrequency)) {
+            //find the first frequency greater than the current value
+            j = sizeData-1;
+            while((loadedFrequencies[j] <= currentFrequency) && (j > 2)) {
+                j--;
+            }
+            df = loadedFrequencies[j] - loadedFrequencies[j - 1];
+            (*sCPU).fittingArray[i] = 
+                (loadedIntensities[j-1] * (loadedFrequencies[j] - currentFrequency) 
+                    + loadedIntensities[j] * (currentFrequency - loadedFrequencies[j-1])) / df; //linear interpolation
+        }
+    }
+    
+    fclose(fp);
+    free(loadedWavelengths);
+    free(loadedIntensities);
+    free(loadedFrequencies);
+    return 0;
+}
 int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex) {
     FILE* fp;
     int maxFileSize = 16384;
@@ -2155,6 +2312,7 @@ int allocateGrids(simulationParameterSet* sCPU) {
     (*sCPU).refractiveIndex1 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims, sizeof(std::complex<double>));
     (*sCPU).refractiveIndex2 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims, sizeof(std::complex<double>));
     (*sCPU).deffTensor = (double*)calloc(9 * (*sCPU).Nsims, sizeof(double));
+    (*sCPU).totalSpectrum = (double*)calloc((*sCPU).Nsims * (*sCPU).Ntime * 3, sizeof(double));
     (*sCPU).imdone = (int*)calloc((*sCPU).Nsims, sizeof(int));
     return 0;
 }
@@ -2259,6 +2417,40 @@ int readSequenceString(simulationParameterSet* sCPU) {
     return 0;
 }
 
+int readFittingString(simulationParameterSet* sCPU) {
+    //read the fitting string (if there is one), convert it into an array if it exists
+    char fittingString[MAX_LOADSTRING];
+    double ROIbegin;
+    double ROIend;
+    strcpy(fittingString, (*sCPU).fittingString);
+    char* tokToken = strtok(fittingString, ";");
+    bool paramsRead = (3 == sscanf(fittingString, "%lf %lf %lf",
+        &ROIbegin, &ROIend, &(*sCPU).fittingPrecision));
+    (*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
+    (*sCPU).fittingROIstop = (size_t)min(ROIend / (*sCPU).fStep, (*sCPU).Ntime/2);
+    (*sCPU).fittingROIsize = min(max(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime/2);
+    int fittingCount = 0;
+    tokToken = strtok(NULL, ";");
+    int lastread = 3;
+    while (tokToken != NULL && lastread == 3) {
+        lastread = sscanf(tokToken, "%lf %lf %lf",
+            &(*sCPU).fittingArray[fittingCount], &(*sCPU).fittingArray[fittingCount + 1],
+            &(*sCPU).fittingArray[fittingCount + 2]);
+        if (lastread > 0) {
+            fittingCount += lastread;
+        }
+        tokToken = strtok(NULL, ";");
+    }
+    (*sCPU).Nfitting = fittingCount / 3;
+    (*sCPU).isInFittingMode = (((*sCPU).Nfitting) > 0 && paramsRead);
+
+    if (!(*sCPU).isInFittingMode) {
+        char nopeString[] = "None.";
+        strcpy((*sCPU).fittingString, nopeString);
+    }
+    return 0;
+}
+
 int configureBatchMode(simulationParameterSet* sCPU) {
     int j;
     const double pi = 3.1415926535897932384626433832795;
@@ -2307,7 +2499,7 @@ int configureBatchMode(simulationParameterSet* sCPU) {
         sCPU[j].Ekw = &(*sCPU).Ekw[j * (*sCPU).Ngrid * 2];
         sCPU[j].ExtOut = &(*sCPU).ExtOut[j * (*sCPU).Ngrid * 2];
         sCPU[j].EkwOut = &(*sCPU).EkwOut[j * (*sCPU).Ngrid * 2];
-        
+        sCPU[j].totalSpectrum = &(*sCPU).totalSpectrum[j * (*sCPU).Ntime * 3];
 
         sCPU[j].isFollowerInSequence = FALSE;
         
@@ -2356,15 +2548,26 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
         &(*sCPU).batchIndex, &(*sCPU).batchDestination, &(*sCPU).Nsims);
     readValueCount += fscanf(textfile, "Sequence: ");
     fgets((*sCPU).sequenceString, MAX_LOADSTRING, textfile);
+    readValueCount += fscanf(textfile, "Fitting: ");
+    fgets((*sCPU).fittingString, MAX_LOADSTRING, textfile);
+    readValueCount += fscanf(textfile, "Fitting mode : %i\n", &(*sCPU).fittingMode);
     readValueCount += fscanf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
     readValueCount += fscanf(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n",
         &(*sCPU).pulse1FileType, &(*sCPU).pulse2FileType);
     readValueCount += fscanf(textfile, "Field 1 file path: %s\n", (*sCPU).field1FilePath);
     readValueCount += fscanf(textfile, "Field 2 file path: %s\n", (*sCPU).field2FilePath);
+    readValueCount += fscanf(textfile, "Fitting reference file path: %s\n", (*sCPU).fittingPath);
+
+    
 
     for (int i = 0; i < strlen((*sCPU).sequenceString); i++) {
         if ((*sCPU).sequenceString[i] == '\r' || (*sCPU).sequenceString[i] == '\n') {
             (*sCPU).sequenceString[i] = ' ';
+        }
+    }
+    for (int i = 0; i < strlen((*sCPU).fittingString); i++) {
+        if ((*sCPU).fittingString[i] == '\r' || (*sCPU).fittingString[i] == '\n') {
+            (*sCPU).fittingString[i] = ' ';
         }
     }
     //derived parameters and cleanup:
@@ -2509,7 +2712,9 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
         (*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
     mbstowcs(wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
     fwprintf(textfile, L"Sequence: %ls\n", wideStringConversionBuffer);
-    
+    mbstowcs(wideStringConversionBuffer, (*sCPU).fittingString, MAX_LOADSTRING);
+    fwprintf(textfile, L"Fitting: %ls\n", wideStringConversionBuffer);
+    fwprintf(textfile, L"Fitting mode: %i\n", (*sCPU).fittingMode);
 
     if ((*sCPU).runType > 0) {
         char* fileName = (*sCPU).outputBasePath;
@@ -2531,6 +2736,8 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
     fwprintf(textfile, L"Field 1 file path: %ls\n", wideStringConversionBuffer);
     mbstowcs(wideStringConversionBuffer, (*sCPU).field2FilePath, MAX_LOADSTRING);
     fwprintf(textfile, L"Field 2 file path: %ls\n", wideStringConversionBuffer);
+    mbstowcs(wideStringConversionBuffer, (*sCPU).fittingPath, MAX_LOADSTRING);
+    fwprintf(textfile, L"Fitting reference file path: %ls\n", wideStringConversionBuffer);
 
     fwprintf(textfile, L"Material name: %ls\nSellmeier reference: %ls\nChi2 reference: %ls\nChi3 reference: %ls\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
     fwprintf(textfile, L"Sellmeier coefficients: \n");
@@ -2540,7 +2747,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
         }
         fwprintf(textfile, L"\n");
     }
-    fwprintf(textfile, L"Code version: 0.12 April 7, 2022\n");
+    fwprintf(textfile, L"Code version: 0.15 May 6, 2022\n");
 
     fclose(textfile);
     free(outputpath);
@@ -2600,7 +2807,14 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
         fclose(ExtInFile);
     }
 
-
+    //Save the spectrum
+    FILE* totalSpectrumFile;
+    strcpy(outputpath, outputbase);
+    strcat(outputpath, "_spectrum.dat");
+    totalSpectrumFile = fopen(outputpath, "wb");
+    fwrite((*sCPU).totalSpectrum, sizeof(double), 3 * (*sCPU).Ntime * (*sCPU).Nsims, totalSpectrumFile);
+    fwrite(matlabpadding, sizeof(double), 1024, totalSpectrumFile);
+    fclose(totalSpectrumFile);
 
     FILE* matlabfile;
     strcpy(outputpath, outputbase);
@@ -2618,7 +2832,11 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     fprintf(matlabfile, "%s_Ext = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
     fprintf(matlabfile, "%s_Ext = reshape(%s_Ext,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
     fprintf(matlabfile, "fclose(fid); \n");
-    fprintf(matlabfile, "dt = %e;\ndz = %e;\ndx = %e;\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep);
+    fprintf(matlabfile, "fid = fopen('%s_spectrum.dat','rb'); \n", outputbaseVar);
+    fprintf(matlabfile, "%s_spectrum = fread(fid, %lli, 'double'); \n", outputbaseVar, 3 * (*sCPU).Ntime * (*sCPU).Nsims);
+    fprintf(matlabfile, "%s_spectrum = reshape(%s_spectrum,[%lli %i %zi]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, 3, (*sCPU).Nsims);
+    fprintf(matlabfile, "fclose(fid); \n");
+    fprintf(matlabfile, "dt = %e;\ndz = %e;\ndx = %e;\ndf = %e;\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep, (*sCPU).fStep);
     fclose(matlabfile);
     
     //write a python script for loading the output fields in a proper shape
@@ -2628,7 +2846,7 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     FILE* scriptfile;
     scriptfile = fopen(scriptfilename, "w");
     fprintf(scriptfile, "#!/usr/bin/python\nimport numpy as np\n");
-    fprintf(scriptfile, "dt = %e\ndz = %e\ndx = %e\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep);
+    fprintf(scriptfile, "dt = %e\ndz = %e\ndx = %e\ndf = %e\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep, (*sCPU).fStep);
     if (saveInputs) {
         fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
         fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
@@ -2637,6 +2855,9 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     fprintf(scriptfile, "%s_Ext = np.reshape(np.fromfile(\"", outputbaseVar);
     fprintf(scriptfile, "%s_Ext.dat", outputbaseVar);
     fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    fprintf(scriptfile, "%s_spectrum = np.reshape(np.fromfile(\"", outputbaseVar);
+    fprintf(scriptfile, "%s_spectrum.dat", outputbaseVar);
+    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%i,%zi),order='F')\n", 3 * (*sCPU).Ntime * (*sCPU).Nsims, (*sCPU).Ntime, 3, (*sCPU).Nsims);
     fclose(scriptfile);
     
     free(saveEout);
@@ -2773,6 +2994,13 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
         (*sCPU).ExtOut[j] = loadE[j];
     }
     free(loadE);
+
+    FILE* spectrumFile;
+    strcpy(outputpath, outputBase);
+    strcat(outputpath, "_spectrum.dat");
+    spectrumFile = fopen(outputpath, "rb");
+    fread((*sCPU).totalSpectrum, sizeof(double), (*sCPU).Nsims * 3 * (*sCPU).Ntime, spectrumFile);
+    fclose(spectrumFile);
     free(outputpath);
     if (GPUisPresent) {
         cufftHandle fftPlan;
@@ -2811,4 +3039,212 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 
 
     return 0;
+}
+
+
+int getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc) {
+    cufftHandle plan1;
+    cufftPlan1d(&plan1, (int)(*sc).Ntime, CUFFT_Z2Z, (int)(*sc).Nspace);
+    cufftSetStream(plan1, (*sc).CUDAStream);
+    cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridETemp1, CUFFT_FORWARD);
+    cufftExecZ2Z(plan1, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridETemp2, CUFFT_FORWARD);
+
+    totalSpectrumKernel<<<(unsigned int)(*sc).Ntime, 1, 0, (*sc).CUDAStream>>>((*sc).gridETemp1, (*sc).gridETemp2, (*sCPU).rStep, (*sc).Ntime, (*sc).Nspace, (*sc).gridPolarizationTime1);
+    cudaDeviceSynchronize();
+    cudaMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sc).Ntime * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaDeviceSynchronize();
+    cufftDestroy(plan1);
+    return 0;
+}
+
+unsigned long runFitting(simulationParameterSet* sCPU) {
+    int n = (int)(*sCPU).Nfitting;
+    int m = (int)(*sCPU).fittingROIsize;
+    fittingReferenceSet = sCPU;
+    fittingSet = (simulationParameterSet*)malloc((*sCPU).Nsims * sizeof(simulationParameterSet));
+    memcpy(fittingSet, sCPU, (*sCPU).Nsims * sizeof(simulationParameterSet));
+    
+    double commonPrecision = (*sCPU).fittingPrecision;
+    const double eps[6] = { commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision }; /* set precisions for stop-criteria */
+    double jacobianPrecision = commonPrecision;
+    double* x = (double*)mkl_malloc(sizeof(double) * n, 64);
+    double* fittingValues = (double*)mkl_malloc(sizeof(double) * m, 64);
+    double* fjac = (double*)mkl_malloc(sizeof(double) * m * n, 64);
+    double* lowerBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
+    double* upperBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
+    const int maxIterations = 10000;
+    const int maxTrialIterations = 1000;
+    /* initial step bound */
+    double rs = 0.0;
+    int RCI_Request;
+    int successful;
+
+    int iter;
+    int stopCriterion;
+    double inputResiduals = 0.0, outputResiduals = 0.0;
+    _TRNSPBC_HANDLE_t handle;
+    int i;
+    int error = 0;
+
+    //initial guess and bounds
+    for (i = 0; i < n; i++) {
+        x[i] = 1.;
+        upperBounds[i] = (*fittingSet).fittingArray[3 * i + 2];
+        lowerBounds[i] = (*fittingSet).fittingArray[3 * i + 1];
+    }
+
+    //initialize fitting function and jacobian
+    for (i = 0; i < m; i++) {
+        fittingValues[i] = 0.0;
+    }
+    for (i = 0; i < m * n; i++) {
+        fjac[i] = 0.0;
+    }
+
+    error += dtrnlspbc_init(&handle, &n, &m, x, lowerBounds, upperBounds, eps, &maxIterations, &maxTrialIterations, &rs) != TR_SUCCESS;
+
+    if (error == 0) {
+        RCI_Request = 0;
+        successful = 0;
+        while (successful == 0 && (*sCPU).imdone[0] != 2)
+        {
+
+            if (dtrnlspbc_solve(&handle, fittingValues, fjac, &RCI_Request) != TR_SUCCESS)
+            {
+                successful = -1;
+            }
+
+            //check convergence
+            if (RCI_Request > -7 && RCI_Request < -1) successful = 1;
+
+            //recalculate
+            if (RCI_Request == 1)
+            {
+                runFittingIteration(&m, &n, x, fittingValues);
+            }
+
+            //make jacobian
+            if (RCI_Request == 2)
+            {
+                djacobi(runFittingIteration, &n, &m, fjac, x, &jacobianPrecision);
+            }
+        }
+    }
+
+    /* get solution statuses
+       handle            in:        TR solver handle
+       iter              out:       number of iterations
+       stopCriterion             out:       number of stop criterion
+       inputResiduals                out:       initial residuals
+       outputResiduals                out:       final residuals */
+    dtrnlspbc_get(&handle, &iter, &stopCriterion, &inputResiduals, &outputResiduals);
+
+
+    printf("I found x:\r\n");
+    for (i = 0; i < m; i++) {
+        printf("%lf\r\n", x[i]);
+    }
+    memcpy(sCPU, fittingSet, (*fittingSet).Nsims * sizeof(simulationParameterSet));
+    //free memory
+    dtrnlspbc_delete(&handle);
+    mkl_free(upperBounds);
+    mkl_free(lowerBounds);
+    mkl_free(fjac);
+    mkl_free(fittingValues);
+    mkl_free(x);
+    MKL_Free_Buffers();
+    free(fittingSet);
+    return 0;
+}
+
+
+void runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction) {
+    int i;
+    int fitLocation;
+    double referenceValue;
+    //pointers to values that can be scanned in batch mode
+    double* targets[36] = { 0,
+        &(*fittingSet).pulseEnergy1, &(*fittingSet).pulseEnergy2, &(*fittingSet).frequency1, &(*fittingSet).frequency2,
+        &(*fittingSet).bandwidth1, &(*fittingSet).bandwidth2, &(*fittingSet).cephase1, &(*fittingSet).cephase2,
+        &(*fittingSet).delay1, &(*fittingSet).delay2, &(*fittingSet).gdd1, &(*fittingSet).gdd2,
+        &(*fittingSet).tod1, &(*fittingSet).tod2, &(*fittingSet).phaseMaterialThickness1, &(*fittingSet).phaseMaterialThickness2,
+        &(*fittingSet).beamwaist1, &(*fittingSet).beamwaist2,
+        &(*fittingSet).x01, &(*fittingSet).x02, &(*fittingSet).z01, &(*fittingSet).z02,
+        &(*fittingSet).propagationAngle1, &(*fittingSet).propagationAngle2, &(*fittingSet).polarizationAngle1, &(*fittingSet).polarizationAngle2,
+        &(*fittingSet).circularity1, &(*fittingSet).circularity2, &(*fittingSet).crystalTheta, &(*fittingSet).crystalPhi,
+        &(*fittingSet).nonlinearAbsorptionStrength, &(*fittingSet).drudeGamma, &(*fittingSet).effectiveMass, &(*fittingSet).crystalThickness,
+        &(*fittingSet).propagationStep };
+
+    double* references[36] = { 0,
+    &(*fittingReferenceSet).pulseEnergy1, &(*fittingReferenceSet).pulseEnergy2, &(*fittingReferenceSet).frequency1, &(*fittingReferenceSet).frequency2,
+    &(*fittingReferenceSet).bandwidth1, &(*fittingReferenceSet).bandwidth2, &(*fittingReferenceSet).cephase1, &(*fittingReferenceSet).cephase2,
+    &(*fittingReferenceSet).delay1, &(*fittingReferenceSet).delay2, &(*fittingReferenceSet).gdd1, &(*fittingReferenceSet).gdd2,
+    &(*fittingReferenceSet).tod1, &(*fittingReferenceSet).tod2, &(*fittingReferenceSet).phaseMaterialThickness1, &(*fittingReferenceSet).phaseMaterialThickness2,
+    &(*fittingReferenceSet).beamwaist1, &(*fittingReferenceSet).beamwaist2,
+    &(*fittingReferenceSet).x01, &(*fittingReferenceSet).x02, &(*fittingReferenceSet).z01, &(*fittingReferenceSet).z02,
+    &(*fittingReferenceSet).propagationAngle1, &(*fittingReferenceSet).propagationAngle2, &(*fittingReferenceSet).polarizationAngle1, &(*fittingReferenceSet).polarizationAngle2,
+    &(*fittingReferenceSet).circularity1, &(*fittingReferenceSet).circularity2, &(*fittingReferenceSet).crystalTheta, &(*fittingReferenceSet).crystalPhi,
+    &(*fittingReferenceSet).nonlinearAbsorptionStrength, &(*fittingReferenceSet).drudeGamma, &(*fittingReferenceSet).effectiveMass, &(*fittingReferenceSet).crystalThickness,
+    &(*fittingReferenceSet).propagationStep };
+
+    
+    for (i = 0; i < *n; i++) {
+        fitLocation = (int)round((*fittingSet).fittingArray[3 * i]);
+        referenceValue = *references[fitLocation];
+        if (referenceValue == 0.0) {
+            referenceValue = 1.;
+        }
+        *targets[fitLocation] = fittingValues[i] * referenceValue;
+    }
+    if ((*fittingSet).isInSequence) {
+        solveNonlinearWaveEquationSequence(fittingSet);
+        (*fittingSet).isFollowerInSequence = FALSE;
+    }
+    else {
+        solveNonlinearWaveEquation(fittingSet);
+    }
+    
+
+    //mode 0: maximize total spectrum in ROI
+    if ((*fittingSet).fittingMode == 0) {
+        for (i = 0; i < *m; i++) {
+            fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[2 * (*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]);
+        }
+    }
+    //mode 1: maximize s-polarized spectrum in ROI
+    if ((*fittingSet).fittingMode == 1) {
+        for (i = 0; i < *m; i++) {
+            fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).fittingROIstart + i]);
+        }
+    }
+    //mode 2: maximize p-polarized spectrum in ROI
+    if ((*fittingSet).fittingMode == 2) {
+        for (i = 0; i < *m; i++) {
+            fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]);
+        }
+    }
+
+    if ((*fittingSet).fittingMode == 3) {
+        double maxSim = 0;
+        double maxRef = 0;
+        double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Ntime + (*fittingSet).fittingROIstart];
+        double* refSpec = &(*fittingSet).fittingArray[(*fittingSet).fittingROIstart];
+        for (i = 0; i < *m; i++) {
+            maxSim = max(maxSim, simSpec[i]);
+            maxRef = max(maxRef, refSpec[i]);
+        }
+        if (maxSim == 0) {
+            maxSim = 1;
+        }
+        if (maxRef == 0) {
+            maxRef = 1;
+        }
+        for (i = 0; i < *m; i++) {
+            fittingFunction[i] = log10(1e5*refSpec[i] / maxRef) - log10(1e5*simSpec[i] / maxSim);
+            //fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]);
+        }
+    }
+
+
+    return;
 }

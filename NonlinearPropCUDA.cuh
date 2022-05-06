@@ -117,6 +117,7 @@ typedef struct simulationParameterSet {
     std::complex<double>* Ekw;
     std::complex<double>* ExtOut;
     std::complex<double>* EkwOut;
+    double* totalSpectrum;
     int* imdone;
     int memoryError;
     int assignedGPU;
@@ -133,6 +134,19 @@ typedef struct simulationParameterSet {
     char* sequenceString;
     double* sequenceArray;
     int Nsequence;
+
+    //fitting
+    bool isInFittingMode;
+    char fittingString[1024];
+    char fittingPath[1024];
+    double fittingArray[16384];
+    double fittingPrecision;
+    int Nfitting;
+    int fittingMode;
+    size_t fittingROIstart;
+    size_t fittingROIstop;
+    size_t fittingROIsize;
+
 } simulationParameterSet;
 
 typedef struct cudaParameterSet {
@@ -222,4 +236,8 @@ int             saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* cry
 void            unixNewLine(FILE* iostream);
 int             saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount);
 int             loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent);
-
+int             getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc);
+unsigned long   runFitting(simulationParameterSet* sCPU);
+void            runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction);
+int             readFittingString(simulationParameterSet* sCPU);
+int             loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU);

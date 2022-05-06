@@ -23,6 +23,8 @@
 #define ID_BTNPULSE2 11116
 #define ID_BTNRUNONCLUSTER 11117
 #define ID_BTNLOAD 11118
+#define ID_BTNFIT 11119
+#define ID_BTNFITREFERENCE 11120
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -48,6 +50,7 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 bool                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
 
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
@@ -287,7 +290,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     int consoleSize = maingui.consoleSize;
     int textboxwidth = maingui.textboxwidth;
     maingui.mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_EX_CONTROLPARENT,
-        CW_USEDEFAULT, CW_USEDEFAULT, 2200, 33 * vs + consoleSize + 60, nullptr, nullptr, hInstance, nullptr);
+        CW_USEDEFAULT, CW_USEDEFAULT, 2200, 33 * vs + consoleSize, nullptr, nullptr, hInstance, nullptr);
     SetMenu(maingui.mainWindow, NULL);
     SetWindowTextA(maingui.mainWindow, "Nick's nonlinear propagator");
 
@@ -477,7 +480,10 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         btnoffset2a, 25 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
     maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        btnoffset2a + btnwidth + 5, 25 * vs -2, 190, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + btnwidth + 5, 25 * vs -3, 190, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonFit = CreateWindow(WC_BUTTON, TEXT("Fit"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        btnoffset2, 26 * vs+2, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
     
     TCHAR A[64];
     memset(&A, 0, sizeof(A));
@@ -509,6 +515,11 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN, 
         xOffsetRow1 + textboxwidth + 4, 19 * vs-2, xOffsetRow2-xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
+
+    maingui.tbFitting = CreateWindow(WC_EDIT, TEXT(""),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN,
+        xOffsetRow1 + textboxwidth + 4, 27 * vs - 2, xOffsetRow2 - xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
+
     maingui.buttonFile = CreateWindow(WC_BUTTON, TEXT("Set Path"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow3, 0 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
@@ -618,6 +629,28 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1 + textboxwidth + 5, 33 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE2, hInstance, NULL);
 
+    maingui.pdFittingType = CreateWindow(WC_COMBOBOX, TEXT(""),
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        xOffsetRow1, 36 * vs - 4, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    TCHAR pdFittingNames[4][64] = {
+        TEXT("Maximize"),
+        TEXT("Maximize s"),
+        TEXT("Maximize p"),
+        TEXT("Match spectrum")
+    };
+    memset(&A, 0, sizeof(A));
+    for (k = 0; k < 4; k++) {
+        wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)pdFittingNames[k]);
+        SendMessage(maingui.pdFittingType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    }
+    SendMessage(maingui.pdFittingType, CB_SETCURSEL, (WPARAM)0, 0);
+    maingui.tbFittingReferencePath = CreateWindow(WC_EDIT, TEXT("ReferenceFile.txt"),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL,
+        0, 37 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.buttonPulse2Path = CreateWindow(WC_BUTTON, TEXT("Set Ref. path"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow1 + textboxwidth + 5, 36 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNFITREFERENCE, hInstance, NULL);
+
 
     //Text message window
     maingui.textboxSims = CreateWindow(WC_EDIT, TEXT(""), 
@@ -725,6 +758,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 mainthread = CreateThread(NULL, 0, mainSimThread, activeSetPtr, 0, &hMainThread);
             }
             break;
+        case ID_BTNFIT:
+            if (!isRunning) {
+                isRunning = TRUE;
+                mainthread = CreateThread(NULL, 0, fittingThread, activeSetPtr, 0, &hMainThread);
+            }
+            break;
         case ID_BTNRUNONCLUSTER:
             if (!isRunning) {
                 isRunning = TRUE;
@@ -748,6 +787,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_BTNPULSE2:
             getFileNameBaseFromDlgDat(hWnd, maingui.tbPulse2Path);
             break;
+        case ID_BTNFITREFERENCE:
+            getFileNameBaseFromDlgDat(hWnd, maingui.tbFittingReferencePath);
+            break;
         case ID_BTNREFRESHDB:
             SetCurrentDirectory(programDirectory);
             memset(crystalDatabasePtr, 0, 512 * sizeof(crystalEntry));
@@ -763,7 +805,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 plotSim = min(plotSim, (int)(*activeSetPtr).Nsims);
                 plotSim--;
                 plotSim = max(plotSim, 0);
-                if (isRunning && (*activeSetPtr).imdone[plotSim] == 0) {
+                if (isRunning && (*activeSetPtr).imdone[plotSim] == 0 && !(*activeSetPtr).isInFittingMode) {
                     (*activeSetPtr).imdone[plotSim] = 3;
                     int failCtr = 0;
                     while ((*activeSetPtr).imdone[plotSim] == 3 && failCtr<1000) {
@@ -845,7 +887,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         RECT mainRect;
         GetWindowRect(maingui.mainWindow, &mainRect);
-        SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 36*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 38*maingui.vs -4, NULL);
+        SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 39*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 41*maingui.vs -4, NULL);
         SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs, mainRect.right - mainRect.left - maingui.xOffsetRow3- 30, 20, NULL);
 
         int spacerX = 50;
@@ -888,6 +930,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SetWindowTheme(maingui.tbSequence, L"DarkMode_Explorer", NULL);
 		SetWindowTheme(maingui.tbFileNameBase, L"DarkMode_Explorer", NULL);
 		SetWindowTheme(maingui.pdBatchMode, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.tbFitting, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.tbFittingReferencePath, L"DarkMode_Explorer", NULL);
 		UpdateWindow(hWnd);
 		break;
     case WM_DESTROY:
@@ -926,6 +970,7 @@ int freeSemipermanentGrids() {
     free((*activeSetPtr).EkwOut);
     free((*activeSetPtr).Ext);
     free((*activeSetPtr).Ekw);
+    free((*activeSetPtr).totalSpectrum);
     return 0;
 }
 
@@ -992,7 +1037,7 @@ int readParametersFromInterface() {
 
     (*activeSetPtr).pulse1FileType = (int)SendMessage(maingui.pdPulse1Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     (*activeSetPtr).pulse2FileType = (int)SendMessage(maingui.pdPulse2Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-
+    (*activeSetPtr).fittingMode = (int)SendMessage(maingui.pdFittingType, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     char noneString[] = "None";
 
     memset((*activeSetPtr).sequenceString, 0, 256 * MAX_LOADSTRING * sizeof(char));
@@ -1004,6 +1049,19 @@ int readParametersFromInterface() {
         for (int i = 0; i < strlen((*activeSetPtr).sequenceString); i++) {
             if ((*activeSetPtr).sequenceString[i] == '\r' || (*activeSetPtr).sequenceString[i] == '\n') {
                 (*activeSetPtr).sequenceString[i] = ' ';
+            }
+        }
+    }
+
+    memset((*activeSetPtr).fittingString, 0, 1024 * sizeof(char));
+    getStringFromHWND(maingui.tbFitting, (*activeSetPtr).fittingString, 1024);
+    if (strnlen_s((*activeSetPtr).fittingString, 1024) == 0) {
+        strcpy((*activeSetPtr).fittingString, noneString);
+    }
+    else {
+        for (int i = 0; i < strlen((*activeSetPtr).fittingString); i++) {
+            if ((*activeSetPtr).fittingString[i] == '\r' || (*activeSetPtr).fittingString[i] == '\n') {
+                (*activeSetPtr).fittingString[i] = ' ';
             }
         }
     }
@@ -1025,6 +1083,13 @@ int readParametersFromInterface() {
     if (strnlen_s((*activeSetPtr).field2FilePath, 256 * MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).field2FilePath, noneString);
     }
+
+    memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING * sizeof(char));
+    getStringFromHWND(maingui.tbFittingReferencePath, (*activeSetPtr).fittingPath, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).fittingPath, noneString);
+    }
+
 
     (*activeSetPtr).batchDestination = getDoubleFromHWND(maingui.tbBatchDestination);
     (*activeSetPtr).Nsims = (size_t)getDoubleFromHWND(maingui.tbNumberSims);
@@ -1251,7 +1316,7 @@ int setInterfaceValuesToActiveValues() {
     SendMessage(maingui.pdPropagationMode, CB_SETCURSEL, (WPARAM)(*activeSetPtr).symmetryType, 0);
     SendMessage(maingui.pdBatchMode, CB_SETCURSEL, (WPARAM)(*activeSetPtr).batchIndex, 0);
     setWindowTextToDouble(maingui.tbBatchDestination, (*activeSetPtr).batchDestination);
-    setWindowTextToInt(maingui.tbNumberSims, (*activeSetPtr).Nsims);
+    setWindowTextToInt(maingui.tbNumberSims, (int)(*activeSetPtr).Nsims);
     if (strcmp((*activeSetPtr).sequenceString, "None.\n") == 0) {
         SetWindowText(maingui.tbSequence, L"");
     }
@@ -1262,6 +1327,20 @@ int setInterfaceValuesToActiveValues() {
 
     SetWindowTextA(maingui.tbPulse1Path, (*activeSetPtr).field1FilePath);
     SetWindowTextA(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath);
+    if ((*activeSetPtr).fittingPath[0] == 'N') {
+        SetWindowText(maingui.tbFittingReferencePath, L"");
+    }
+    else {
+        SetWindowTextA(maingui.tbFittingReferencePath, (*activeSetPtr).fittingPath);
+    }
+    if ((*activeSetPtr).fittingString[0] == 'N') {
+        SetWindowText(maingui.tbFitting, L"");
+    }
+    else {
+        SetWindowTextA(maingui.tbFitting, (*activeSetPtr).fittingString);
+    }
+    SendMessage(maingui.pdFittingType, CB_SETCURSEL, (WPARAM)(*activeSetPtr).fittingMode, 0);
+
     return 0;
 }
 
@@ -1335,9 +1414,9 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse1Type, _T("Pulse 1 type:"), labos, 4);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2 type:"), labos, 4);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 4);
-
-    labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -24);
-
+    labelTextBox(hdc, maingui.mainWindow, maingui.pdFittingType, _T("Fit type:"), labos, 4);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
     //plot labels
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);
@@ -1463,7 +1542,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
         }
         readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString);
         //There should be 52 parameters, remember to update this if adding new ones!
-        if (readParameters == 52) {
+        if (readParameters == 54) {
             //get the base of the file name, so that different files can be made with different extensions based on that
             if (ofn.nFileExtension > 0) {
                 fbaseloc = ofn.nFileExtension - 1;
@@ -1478,6 +1557,9 @@ int openDialogBoxAndLoad(HWND hWnd) {
             isGridAllocated = TRUE;
             loadSavedFields(activeSetPtr, fileNameString, FALSE);
             return TRUE;
+        }
+        else {
+            printToConsole(maingui.textboxSims, L"Read %i\r\n", readParameters);
         }
 
 
@@ -1700,8 +1782,14 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 3);
+        //plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f, 
+        //    &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
+
+        for (i = 0; i < ((*activeSetPtr).Ntime/2); i++) {
+            plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Ntime]);
+        }
         plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f, 
-            &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
+            &plotarrC[0], (*activeSetPtr).Ntime/2, 1, TRUE, -4);
         
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], 
@@ -1720,8 +1808,14 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), 
             (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 3);
 
-        plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f, 
-            &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
+        //plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f, 
+        //    &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
+
+        for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
+            plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Ntime]);
+        }
+        plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
+            &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
 
         free(shiftedFFT);
         free(plotarr);
@@ -1875,4 +1969,56 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     }
     ReleaseDC(maingui.mainWindow, hdc);
 
+}
+
+DWORD WINAPI fittingThread(LPVOID lpParam) {
+    cancellationCalled = FALSE;
+    auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
+
+    readParametersFromInterface();
+    (*activeSetPtr).runType = 0;
+    if (isGridAllocated) {
+        freeSemipermanentGrids();
+    }
+
+    allocateGrids(activeSetPtr);
+    isGridAllocated = TRUE;
+    (*activeSetPtr).isFollowerInSequence = FALSE;
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    loadPulseFiles(activeSetPtr);
+    readSequenceString(activeSetPtr);
+    configureBatchMode(activeSetPtr);
+
+    //char testString[] = "0 750e12 900e12; 29 0 10; 3 0 2;";
+    //strcpy((*activeSetPtr).fittingString, testString);
+    readFittingString(activeSetPtr);
+
+    //if ((*activeSetPtr).fittingMode == 3) {
+    loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr);
+    //}
+
+    printToConsole(maingui.textboxSims, L"Nfit: %i %i\r\nROI: %lli %lli %lli\r\n", 
+        (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode,
+        (*activeSetPtr).fittingROIstart, (*activeSetPtr).fittingROIstop, (*activeSetPtr).fittingROIsize);
+    //run the simulations
+    runFitting(activeSetPtr);
+    (*activeSetPtr).plotSim = 0;
+    drawSimPlots(activeSetPtr);
+
+
+    auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
+    printToConsole(maingui.textboxSims, _T("Finished fitting after %8.4lf s. \r\n"), 1e-6 *
+        (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+    saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
+
+    free((*activeSetPtr).sequenceArray);
+    free((*activeSetPtr).refractiveIndex1);
+    free((*activeSetPtr).refractiveIndex2);
+    free((*activeSetPtr).imdone);
+    free((*activeSetPtr).deffTensor);
+    free((*activeSetPtr).loadedField1);
+    free((*activeSetPtr).loadedField2);
+
+    isRunning = FALSE;
+    return 0;
 }
