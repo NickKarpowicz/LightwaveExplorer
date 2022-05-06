@@ -143,6 +143,7 @@ typedef struct simulationParameterSet {
     double fittingPrecision;
     int Nfitting;
     int fittingMode;
+    int fittingMaxIterations;
     size_t fittingROIstart;
     size_t fittingROIstop;
     size_t fittingROIsize;

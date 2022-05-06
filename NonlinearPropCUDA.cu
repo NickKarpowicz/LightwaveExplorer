@@ -1061,6 +1061,30 @@ int main(int argc, char *argv[]) {
 
     // run simulations
     if ((*sCPU).isInFittingMode) {
+        if ((*sCPU).fittingMode == 3) {
+            if (loadReferenceSpectrum((*sCPU).fittingPath, sCPU)) {
+                printf("Could not load reference spectrum!\n");
+                free((*sCPU).sequenceString);
+                free((*sCPU).sequenceArray);
+                free((*sCPU).refractiveIndex1);
+                free((*sCPU).refractiveIndex2);
+                free((*sCPU).imdone);
+                free((*sCPU).deffTensor);
+                free((*sCPU).loadedField1);
+                free((*sCPU).loadedField2);
+                free((*sCPU).Ext);
+                free((*sCPU).Ekw);
+                free((*sCPU).ExtOut);
+                free((*sCPU).EkwOut);
+                free((*sCPU).outputBasePath);
+                free((*sCPU).field1FilePath);
+                free((*sCPU).field2FilePath);
+                free((*sCPU).totalSpectrum);
+                free(sCPU);
+                free(crystalDatabasePtr);
+                return 10;
+            }
+        }
         printf("Running in fitting mode -- I don't know how long this will take!\n");
         runFitting(sCPU);
         
@@ -2130,6 +2154,10 @@ std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* n
 }
 int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
     FILE* fp = fopen(spectrumPath, "r");
+    if (fp == NULL) {
+        printf("Could not read reference file\r\n");
+        return 1;
+    }
     size_t maxFileSize = 16384;
     size_t currentRow = 0;
     double c = 1e9 * 2.99792458e8;
@@ -2424,8 +2452,8 @@ int readFittingString(simulationParameterSet* sCPU) {
     double ROIend;
     strcpy(fittingString, (*sCPU).fittingString);
     char* tokToken = strtok(fittingString, ";");
-    bool paramsRead = (3 == sscanf(fittingString, "%lf %lf %lf",
-        &ROIbegin, &ROIend, &(*sCPU).fittingPrecision));
+    bool paramsRead = (4 == sscanf(fittingString, "%lf %lf %lf %d",
+        &ROIbegin, &ROIend, &(*sCPU).fittingPrecision, &(*sCPU).fittingMaxIterations));
     (*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
     (*sCPU).fittingROIstop = (size_t)min(ROIend / (*sCPU).fStep, (*sCPU).Ntime/2);
     (*sCPU).fittingROIsize = min(max(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime/2);
@@ -3072,8 +3100,8 @@ unsigned long runFitting(simulationParameterSet* sCPU) {
     double* fjac = (double*)mkl_malloc(sizeof(double) * m * n, 64);
     double* lowerBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
     double* upperBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
-    const int maxIterations = 10000;
-    const int maxTrialIterations = 1000;
+    const int maxIterations = max((*sCPU).fittingMaxIterations,2);
+    const int maxTrialIterations = max(maxIterations/10, 2);
     /* initial step bound */
     double rs = 0.0;
     int RCI_Request;
@@ -3102,13 +3130,13 @@ unsigned long runFitting(simulationParameterSet* sCPU) {
     }
 
     error += dtrnlspbc_init(&handle, &n, &m, x, lowerBounds, upperBounds, eps, &maxIterations, &maxTrialIterations, &rs) != TR_SUCCESS;
-
+    size_t currentIteration = 0;
     if (error == 0) {
         RCI_Request = 0;
         successful = 0;
-        while (successful == 0 && (*sCPU).imdone[0] != 2)
+        while (successful == 0 && (*sCPU).imdone[0] != 2 && currentIteration < maxIterations)
         {
-
+            currentIteration++;
             if (dtrnlspbc_solve(&handle, fittingValues, fjac, &RCI_Request) != TR_SUCCESS)
             {
                 successful = -1;
@@ -3138,12 +3166,6 @@ unsigned long runFitting(simulationParameterSet* sCPU) {
        inputResiduals                out:       initial residuals
        outputResiduals                out:       final residuals */
     dtrnlspbc_get(&handle, &iter, &stopCriterion, &inputResiduals, &outputResiduals);
-
-
-    printf("I found x:\r\n");
-    for (i = 0; i < m; i++) {
-        printf("%lf\r\n", x[i]);
-    }
     memcpy(sCPU, fittingSet, (*fittingSet).Nsims * sizeof(simulationParameterSet));
     //free memory
     dtrnlspbc_delete(&handle);

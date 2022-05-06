@@ -1992,10 +1992,21 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     //char testString[] = "0 750e12 900e12; 29 0 10; 3 0 2;";
     //strcpy((*activeSetPtr).fittingString, testString);
     readFittingString(activeSetPtr);
-
-    //if ((*activeSetPtr).fittingMode == 3) {
-    loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr);
-    //}
+    
+    if ((*activeSetPtr).fittingMode == 3) {
+        if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
+            printToConsole(maingui.textboxSims, L"Could not read reference file!\r\n");
+            free((*activeSetPtr).sequenceArray);
+            free((*activeSetPtr).refractiveIndex1);
+            free((*activeSetPtr).refractiveIndex2);
+            free((*activeSetPtr).imdone);
+            free((*activeSetPtr).deffTensor);
+            free((*activeSetPtr).loadedField1);
+            free((*activeSetPtr).loadedField2);
+            return 1;
+        }
+        
+    }
 
     printToConsole(maingui.textboxSims, L"Nfit: %i %i\r\nROI: %lli %lli %lli\r\n", 
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode,
