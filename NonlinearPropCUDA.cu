@@ -296,7 +296,7 @@ __global__ void radialLaplacianKernel(cudaParameterSet s) {
     }
     else {
         double rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, s.Nspace, j, s.dx, s.Ntime, h);
-        rho = 1.0 / rho;
+        rho = -1.0 / rho;
         s.gridRadialLaplacian1[i] = rho * (s.firstDerivativeOperation[0] * s.gridETime1[neighbors[0]]
             + s.firstDerivativeOperation[1] * s.gridETime1[neighbors[1]]
             + s.firstDerivativeOperation[2] * s.gridETime1[neighbors[2]]
@@ -512,7 +512,8 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 
     cuDoubleComplex ts = 2 * ne1 * cos(alpha1) / (ne1 * cos(alpha1) + ne2 * cos(alpha2));
     cuDoubleComplex tp = 2 * ne1 * cos(alpha1) / (ne2 * cos(alpha1) + ne1 * cos(alpha2));
-
+    if (isnan(ts.x) || isnan(ts.y)) ts = make_cuDoubleComplex(0, 0);
+    if (isnan(tp.x) || isnan(tp.y)) ts = make_cuDoubleComplex(0, 0);
     s.gridEFrequency1[i] = ts * s.gridEFrequency1[i];
     s.gridEFrequency2[i] = tp * s.gridEFrequency2[i];
 }
@@ -1807,7 +1808,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
     return 0;
 }
 int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int materialIndex2) {
-    cudaParameterSet sc = { 0 };
+    cudaParameterSet sc;
     sc.Ntime = (*s).Ntime;
     sc.Nspace = (*s).Nspace;
     sc.dt = (*s).tStep;
@@ -1839,6 +1840,7 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
     cudaMalloc(&sellmeierCoefficients1, 74 * sizeof(double));
     cudaMalloc(&sellmeierCoefficients2, 74 * sizeof(double));
     cudaMemcpy(sellmeierCoefficients1, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), cudaMemcpyHostToDevice);
+    cudaDeviceSynchronize();
     memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex2].sellmeierCoefficients, 66 * (sizeof(double)));
     sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
     sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
@@ -1849,13 +1851,18 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
     sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
     cudaMemcpy(sellmeierCoefficients2, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), cudaMemcpyHostToDevice);
 
+    size_t propagationIntsCPU[4] = { sc.Ngrid, sc.Ntime, sc.Nspace, (sc.Ntime / 2 + 1) };
+    cudaMalloc((void**)&sc.propagationInts, sizeof(size_t) * 4);
+    cudaMemcpy(sc.propagationInts, propagationIntsCPU, 4 * sizeof(size_t), cudaMemcpyHostToDevice);
+
+    cudaDeviceSynchronize();
     cudaMalloc(&sc.gridEFrequency1, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMalloc(&sc.gridEFrequency2, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMalloc(&sc.gridETime1, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMalloc(&sc.gridETime2, (*s).Ngrid * sizeof(cuDoubleComplex));
 
-    cudaMemcpy(sc.gridEFrequency1, (*s).Ekw, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
-    cudaMemcpy(sc.gridEFrequency2, &(*s).Ekw[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+    cudaMemcpy(sc.gridEFrequency1, (*s).EkwOut, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+    cudaMemcpy(sc.gridEFrequency2, &(*s).EkwOut[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
 
     applyFresnelLossKernel<<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>>(sellmeierCoefficients1, sellmeierCoefficients2, sc);
 
@@ -1875,6 +1882,7 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
 
 
     free(sellmeierCoefficientsAugmentedCPU);
+    
     cufftDestroy(sc.fftPlan);
     cudaFree(sc.gridEFrequency1);
     cudaFree(sc.gridEFrequency2);
@@ -1882,6 +1890,7 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
     cudaFree(sc.gridETime2);
     cudaFree(sellmeierCoefficients1);
     cudaFree(sellmeierCoefficients2);
+    cudaStreamDestroy(sc.CUDAStream);
     return 0;
 }
 int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc) {
