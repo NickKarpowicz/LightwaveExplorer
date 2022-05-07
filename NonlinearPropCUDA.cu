@@ -879,8 +879,8 @@ __global__ void rkKernel(cudaParameterSet s, int stepNumber) {
             }
         }
         //correct for the presence of millers rule dispersion in gridPolarizationFactor
-        //plasmaJ1 = plasmaJ1 / s.chiLinear1[i];
-        //plasmaJ2 = plasmaJ2 / s.chiLinear2[i];
+        plasmaJ1 = plasmaJ1 / s.chiLinear1[i];
+        plasmaJ2 = plasmaJ2 / s.chiLinear2[i];
 
     }
 
@@ -1188,9 +1188,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaParameterSet s;
     simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
     cudaSetDevice((*sCPU).assignedGPU);
-    cudaStream_t CUDAStream;
-    cudaStreamCreate(&CUDAStream);
-    s.CUDAStream = CUDAStream;
+    cudaStreamCreate(&s.CUDAStream);
+    cudaStreamCreate(&s.CUDAStream2);
 
     //initialize and take values from the struct handed over by the dispatcher
     unsigned long long i;
@@ -1342,11 +1341,17 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
     //prepare FFT plans
     cufftPlan2d(&s.fftPlan, (int)s.Nspace, (int)s.Ntime, CUFFT_Z2Z);
+    cufftPlan2d(&s.fftPlanB, (int)s.Nspace, (int)s.Ntime, CUFFT_Z2Z);
     cufftPlan2d(&s.doublePolfftPlan, 2 * (int)s.Nspace, (int)s.Ntime, CUFFT_D2Z);
+    cufftPlan2d(&s.doublePolfftPlanB, 2 * (int)s.Nspace, (int)s.Ntime, CUFFT_D2Z);
     cufftPlan2d(&s.polfftPlan, (int)s.Nspace, (int)s.Ntime, CUFFT_D2Z);
-    cufftSetStream(s.fftPlan, CUDAStream);
-    cufftSetStream(s.polfftPlan, CUDAStream);
-    cufftSetStream(s.doublePolfftPlan, CUDAStream);
+    cufftPlan2d(&s.polfftPlanB, (int)s.Nspace, (int)s.Ntime, CUFFT_D2Z);
+    cufftSetStream(s.fftPlan, s.CUDAStream);
+    cufftSetStream(s.fftPlanB, s.CUDAStream2);
+    cufftSetStream(s.polfftPlan, s.CUDAStream);
+    cufftSetStream(s.polfftPlanB, s.CUDAStream2);
+    cufftSetStream(s.doublePolfftPlan, s.CUDAStream);
+    cufftSetStream(s.doublePolfftPlanB, s.CUDAStream2);
     //prepare the propagation arrays
     if (s.isCylindric) {
         preparePropagation3DCylindric(sCPU, s);
@@ -1398,12 +1403,12 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
     
     //transform final result
-    fixnanKernel<<<s.Nblock, s.Nthread, 0, CUDAStream>>>(s.gridEFrequency1);
-    fixnanKernel << <s.Nblock, s.Nthread, 0, CUDAStream >>> (s.gridEFrequency2);
+    fixnanKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.gridEFrequency1);
+    fixnanKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >>> (s.gridEFrequency2);
     cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
     cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridEFrequency2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
-    fftNormalizeKernel << <s.Nblock, s.Nthread, 0, CUDAStream>>> (s.gridETime1, s.propagationInts);
-    fftNormalizeKernel<<<s.Nblock, s.Nthread, 0, CUDAStream >>> (s.gridETime2, s.propagationInts);
+    fftNormalizeKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream>>> (s.gridETime1, s.propagationInts);
+    fftNormalizeKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> (s.gridETime2, s.propagationInts);
 
 
     //copy the field arrays from the GPU to CPU memory
@@ -1413,7 +1418,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaMemcpy(&(*sCPU).EkwOut[s.Ngrid], s.gridEFrequency2, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
     getTotalSpectrum(sCPU, &s);
-    cudaStreamSynchronize(s.CUDAStream);
+
     //Free GPU memory
     cudaFree(s.propagationInts);
     cudaFree(s.nonlinearSwitches);
@@ -1447,15 +1452,19 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaFree(s.chiLinear1);
     cudaFree(s.chiLinear2);
     cufftDestroy(s.fftPlan);
+    cufftDestroy(s.fftPlanB);
     cufftDestroy(s.polfftPlan);
+    cufftDestroy(s.polfftPlanB);
     cufftDestroy(s.doublePolfftPlan);
+    cufftDestroy(s.doublePolfftPlanB);
     cudaFree(s.plasmaParameters);
     cudaFree(s.gridPlasmaCurrent1);
     cudaFree(s.gridPlasmaCurrent2);
     cudaFree(s.gridPlasmaCurrentFrequency1);
     cudaFree(s.gridPlasmaCurrentFrequency2);
     
-    cudaStreamDestroy(CUDAStream);
+    cudaStreamDestroy(s.CUDAStream);
+    cudaStreamDestroy(s.CUDAStream2);
 
     //Free CPU memory
     free(gridPropagationFactor1CPU);
@@ -1478,7 +1487,7 @@ int runRK4Step(cudaParameterSet s, int stepNumber) {
         //perform inverse FFT to get time-space electric field
         cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETime1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
         cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETime2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
-        
+
         if (s.isNonLinear) {
             nonlinearPolarizationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s);
 
@@ -1491,11 +1500,12 @@ int runRK4Step(cudaParameterSet s, int stepNumber) {
             else {
                 cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime1, (cufftDoubleComplex*)s.gridPolarizationFrequency1);
                 cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime2, (cufftDoubleComplex*)s.gridPolarizationFrequency2);
+
             }
         }
         if (s.hasPlasma) {
-            //cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
-            //cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
+            cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
+            cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
             plasmaCurrentKernelPrep <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
                 (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
             plasmaCurrentKernel2 <<<(unsigned int)s.Nspace, 1, 0, s.CUDAStream >>> 

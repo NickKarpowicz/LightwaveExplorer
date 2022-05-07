@@ -152,6 +152,7 @@ typedef struct simulationParameterSet {
 
 typedef struct cudaParameterSet {
     cudaStream_t CUDAStream;
+    cudaStream_t CUDAStream2;
 	cuDoubleComplex* gridETime1;
 	cuDoubleComplex* gridETime2;
 	cuDoubleComplex* gridETemp1;
@@ -193,8 +194,11 @@ typedef struct cudaParameterSet {
 	int* nonlinearSwitches;
 	long long* propagationInts;
 	cufftHandle fftPlan;
+    cufftHandle fftPlanB;
 	cufftHandle polfftPlan;
+    cufftHandle polfftPlanB;
     cufftHandle doublePolfftPlan;
+    cufftHandle doublePolfftPlanB;
 	bool isNonLinear;
     bool isUsingMillersRule;
 	size_t Ntime;
