@@ -1000,10 +1000,6 @@ int main(int argc, char *argv[]) {
     // allocate databases, main structs
     simulationParameterSet* sCPU = (simulationParameterSet*)calloc(512, sizeof(simulationParameterSet));
     crystalEntry* crystalDatabasePtr = (crystalEntry*)calloc(512, sizeof(crystalEntry));
-    (*sCPU).sequenceString = (char*)calloc(256 * MAX_LOADSTRING, sizeof(char));
-    (*sCPU).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-    (*sCPU).field1FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-    (*sCPU).field2FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
     (*sCPU).crystalDatabase = crystalDatabasePtr;
 
     // read crystal database
@@ -1012,8 +1008,6 @@ int main(int argc, char *argv[]) {
     }
     if ((*crystalDatabasePtr).numberOfEntries == 0) {
         printf("Could not read crystal database.\n");
-        free((*sCPU).sequenceString);
-        free((*sCPU).outputBasePath);
         free(sCPU);
         free(crystalDatabasePtr);
         return 12;
@@ -1026,9 +1020,6 @@ int main(int argc, char *argv[]) {
     // read from settings file
     if (readInputParametersFile(sCPU, crystalDatabasePtr, argv[1]) == 1) {
         printf("Could not read input file.\n");
-
-        free((*sCPU).sequenceString);
-        free((*sCPU).outputBasePath);
         free(sCPU);
         free(crystalDatabasePtr);
         return 13;
@@ -1037,17 +1028,12 @@ int main(int argc, char *argv[]) {
     allocateGrids(sCPU);
     if (loadPulseFiles(sCPU) == 1) {
         printf("Could not read pulse file.\n");
-        free((*sCPU).sequenceString);
-        free((*sCPU).sequenceArray);
         free((*sCPU).refractiveIndex1);
         free((*sCPU).refractiveIndex2);
         free((*sCPU).imdone);
         free((*sCPU).deffTensor);
         free((*sCPU).loadedField1);
         free((*sCPU).loadedField2);
-        free((*sCPU).outputBasePath);
-        free((*sCPU).field1FilePath);
-        free((*sCPU).field2FilePath);
         free(sCPU);
         free(crystalDatabasePtr);
         return 14;
@@ -1065,8 +1051,6 @@ int main(int argc, char *argv[]) {
         if ((*sCPU).fittingMode == 3) {
             if (loadReferenceSpectrum((*sCPU).fittingPath, sCPU)) {
                 printf("Could not load reference spectrum!\n");
-                free((*sCPU).sequenceString);
-                free((*sCPU).sequenceArray);
                 free((*sCPU).refractiveIndex1);
                 free((*sCPU).refractiveIndex2);
                 free((*sCPU).imdone);
@@ -1077,9 +1061,6 @@ int main(int argc, char *argv[]) {
                 free((*sCPU).Ekw);
                 free((*sCPU).ExtOut);
                 free((*sCPU).EkwOut);
-                free((*sCPU).outputBasePath);
-                free((*sCPU).field1FilePath);
-                free((*sCPU).field2FilePath);
                 free((*sCPU).totalSpectrum);
                 free(sCPU);
                 free(crystalDatabasePtr);
@@ -1095,8 +1076,6 @@ int main(int argc, char *argv[]) {
         
         saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
         //free
-        free((*sCPU).sequenceString);
-        free((*sCPU).sequenceArray);
         free((*sCPU).refractiveIndex1);
         free((*sCPU).refractiveIndex2);
         free((*sCPU).imdone);
@@ -1107,9 +1086,6 @@ int main(int argc, char *argv[]) {
         free((*sCPU).Ekw);
         free((*sCPU).ExtOut);
         free((*sCPU).EkwOut);
-        free((*sCPU).outputBasePath);
-        free((*sCPU).field1FilePath);
-        free((*sCPU).field2FilePath);
         free((*sCPU).totalSpectrum);
         free(sCPU);
         free(crystalDatabasePtr);
@@ -1152,8 +1128,6 @@ int main(int argc, char *argv[]) {
     saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
     //free
     free(threadBlock);
-    free((*sCPU).sequenceString);
-    free((*sCPU).sequenceArray);
     free((*sCPU).refractiveIndex1);
     free((*sCPU).refractiveIndex2);
     free((*sCPU).imdone);
@@ -1164,9 +1138,6 @@ int main(int argc, char *argv[]) {
     free((*sCPU).Ekw);
     free((*sCPU).ExtOut);
     free((*sCPU).EkwOut);
-    free((*sCPU).outputBasePath);
-    free((*sCPU).field1FilePath);
-    free((*sCPU).field2FilePath);
     free((*sCPU).totalSpectrum);
     free(sCPU);
     free(crystalDatabasePtr);
@@ -1175,10 +1146,14 @@ int main(int argc, char *argv[]) {
 
 unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
     simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
+    simulationParameterSet* sCPUbackup = (simulationParameterSet*)calloc(1, sizeof(simulationParameterSet));
+    memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
     int k;
     for (k = 0; k < (*sCPU).Nsequence; k++) {
         resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
+        memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
     }
+    free(sCPUbackup);
     return 0;
 }
 //main thread of the nonlinear wave equation implemented on CUDA
@@ -1198,8 +1173,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     s.dt = (*sCPU).tStep;
     s.dx = (*sCPU).rStep;
     s.fStep = (*sCPU).fStep;
-    s.h = (*sCPU).propagationStep;
     s.Nsteps = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
+    s.h = (*sCPU).crystalThickness / (s.Nsteps); //adjust step size so that thickness can be varied continuously by fitting
     s.Ngrid = s.Ntime * s.Nspace;
     s.axesNumber = (*sCPU).axesNumber;
     s.sellmeierType = (*sCPU).sellmeierType;
@@ -1504,8 +1479,8 @@ int runRK4Step(cudaParameterSet s, int stepNumber) {
             }
         }
         if (s.hasPlasma) {
-            cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
-            cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
+            //cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
+            //cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETemp2, (cufftDoubleComplex*)s.gridETime2, CUFFT_INVERSE);
             plasmaCurrentKernelPrep <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
                 (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
             plasmaCurrentKernel2 <<<(unsigned int)s.Nspace, 1, 0, s.CUDAStream >>> 
@@ -2286,7 +2261,7 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
         //frequency grid used in the simulation
         f = i * fStep;
         if (i >= Ntime / 2) {
-            f -= fStep * Ntime;
+            f -= fStep * (Ntime-1);
         }
         f *= -1;
 
@@ -2347,8 +2322,6 @@ double cModulusSquared(std::complex<double>complexNumber) {
 int allocateGrids(simulationParameterSet* sCPU) {
     (*sCPU).loadedField1 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
     (*sCPU).loadedField2 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
-
-    (*sCPU).sequenceArray = (double*)calloc(256 * MAX_LOADSTRING, sizeof(double));
 
     (*sCPU).Ext = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
     (*sCPU).Ekw = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
@@ -2948,16 +2921,17 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
     
     switch (stepType) {
     case 0:
-        (*s).materialIndex = (int)offsetArray[1];
-        (*s).crystalTheta = (pi / 180) * offsetArray[2];
-        (*s).crystalPhi = (pi / 180) * offsetArray[3];
-        (*s).nonlinearAbsorptionStrength = offsetArray[4];
-        (*s).bandGapElectronVolts = offsetArray[5];
-        (*s).drudeGamma = offsetArray[6];
-        (*s).effectiveMass = offsetArray[7];
-        (*s).crystalThickness = 1e-6 * offsetArray[8];
-        (*s).propagationStep = 1e-9 * offsetArray[9];
-        (*s).Npropagation = (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
+        if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+        if ((int)offsetArray[2] != -1) (*s).crystalTheta = (pi / 180) * offsetArray[2];
+        if ((int)offsetArray[3] != -1) (*s).crystalPhi = (pi / 180) * offsetArray[3];
+        if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
+        if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
+        if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
+        if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
+        if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
+        if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
+        if ((int)offsetArray[8] != -1 && (int)offsetArray[8] != -1) (*s).Npropagation 
+            = (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
         if (currentIndex > 0) {
             (*s).isFollowerInSequence = TRUE;
         }

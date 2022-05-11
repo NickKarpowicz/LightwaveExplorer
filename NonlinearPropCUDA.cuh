@@ -5,6 +5,7 @@
 #include <cuComplex.h>
 #include "cufft.h"
 
+#define MAX_LOADSTRING 1024
 
 typedef struct crystalEntry {
     wchar_t crystalNameW[256];
@@ -100,8 +101,8 @@ typedef struct simulationParameterSet {
     bool field2IsAllocated = 0;
     int pulse1FileType;
     int pulse2FileType;
-    char* field1FilePath;
-    char* field2FilePath;
+    char field1FilePath[MAX_LOADSTRING];
+    char field2FilePath[MAX_LOADSTRING];
 
 
     //polarization properties
@@ -125,14 +126,14 @@ typedef struct simulationParameterSet {
     crystalEntry* crystalDatabase;
     int batchIndex;
     double batchDestination;
-    char* outputBasePath;
+    char outputBasePath[MAX_LOADSTRING];
     int runType;
 
     //sequence
     bool isInSequence;
     bool isFollowerInSequence;
-    char* sequenceString;
-    double* sequenceArray;
+    char sequenceString[MAX_LOADSTRING];
+    double sequenceArray[MAX_LOADSTRING];
     int Nsequence;
 
     //fitting

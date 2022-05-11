@@ -13,7 +13,7 @@
 #include<dwmapi.h>
 #include<d2d1.h>
 
-#define MAX_LOADSTRING 1024
+
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111
 #define ID_BTNGETFILENAME 11112
@@ -58,12 +58,14 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     HANDLE plotThread;
     DWORD hplotThread;
-    readParametersFromInterface();
-    (*activeSetPtr).runType = 0;
+    
+    
     if (isGridAllocated) {
         freeSemipermanentGrids();
     }
-
+    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+    readParametersFromInterface();
+    (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
     (*activeSetPtr).isFollowerInSequence = FALSE;
@@ -103,7 +105,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
 
-    free((*activeSetPtr).sequenceArray);
+
     free((*activeSetPtr).refractiveIndex1);
     free((*activeSetPtr).refractiveIndex2);
     free((*activeSetPtr).imdone);
@@ -135,7 +137,7 @@ DWORD WINAPI createRunFile(LPVOID lpParam) {
     configureBatchMode(activeSetPtr);
 
 
-    free((*activeSetPtr).sequenceArray);
+
     free((*activeSetPtr).refractiveIndex1);
     free((*activeSetPtr).refractiveIndex2);
     free((*activeSetPtr).imdone);
@@ -668,10 +670,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     //make the active set pointer
     activeSetPtr = (simulationParameterSet*)calloc(2048, sizeof(simulationParameterSet));
-    (*activeSetPtr).outputBasePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-    (*activeSetPtr).sequenceString = (char*)calloc(MAX_LOADSTRING * 256, sizeof(char));
-    (*activeSetPtr).field1FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-    (*activeSetPtr).field2FilePath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+
 
     //Find, count, and name the GPUs
     int CUDAdevice, i;
@@ -1038,11 +1037,13 @@ int readParametersFromInterface() {
     (*activeSetPtr).pulse1FileType = (int)SendMessage(maingui.pdPulse1Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     (*activeSetPtr).pulse2FileType = (int)SendMessage(maingui.pdPulse2Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     (*activeSetPtr).fittingMode = (int)SendMessage(maingui.pdFittingType, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+
+    printToConsole(maingui.textboxSims, L"Fitting Mode:%i\r\n", (*activeSetPtr).fittingMode);
     char noneString[] = "None";
 
-    memset((*activeSetPtr).sequenceString, 0, 256 * MAX_LOADSTRING * sizeof(char));
-    getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING * 256);
-    if (strnlen_s((*activeSetPtr).sequenceString, 256 * MAX_LOADSTRING) == 0) {
+    memset((*activeSetPtr).sequenceString, 0, MAX_LOADSTRING * sizeof(char));
+    getStringFromHWND(maingui.tbSequence, (*activeSetPtr).sequenceString, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).sequenceString, noneString);
     }
     else {
@@ -1068,19 +1069,19 @@ int readParametersFromInterface() {
 
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbFileNameBase, (*activeSetPtr).outputBasePath, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).outputBasePath, 256 * MAX_LOADSTRING) == 0) {
+    if (strnlen_s((*activeSetPtr).outputBasePath, MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).outputBasePath, noneString);
     }
 
     memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbPulse1Path, (*activeSetPtr).field1FilePath, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).field1FilePath, 256 * MAX_LOADSTRING) == 0) {
+    if (strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).field1FilePath, noneString);
     }
 
     memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).field2FilePath, 256 * MAX_LOADSTRING) == 0) {
+    if (strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).field2FilePath, noneString);
     }
 
@@ -1996,7 +1997,6 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
             printToConsole(maingui.textboxSims, L"Could not read reference file!\r\n");
-            free((*activeSetPtr).sequenceArray);
             free((*activeSetPtr).refractiveIndex1);
             free((*activeSetPtr).refractiveIndex2);
             free((*activeSetPtr).imdone);
@@ -2022,7 +2022,6 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
 
-    free((*activeSetPtr).sequenceArray);
     free((*activeSetPtr).refractiveIndex1);
     free((*activeSetPtr).refractiveIndex2);
     free((*activeSetPtr).imdone);
