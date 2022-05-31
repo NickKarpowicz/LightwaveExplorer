@@ -1038,7 +1038,6 @@ int readParametersFromInterface() {
     (*activeSetPtr).pulse2FileType = (int)SendMessage(maingui.pdPulse2Type, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     (*activeSetPtr).fittingMode = (int)SendMessage(maingui.pdFittingType, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
 
-    printToConsole(maingui.textboxSims, L"Fitting Mode:%i\r\n", (*activeSetPtr).fittingMode);
     char noneString[] = "None";
 
     memset((*activeSetPtr).sequenceString, 0, MAX_LOADSTRING * sizeof(char));

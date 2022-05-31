@@ -243,3 +243,38 @@ None
 Nonlinear reference frequencies:
 0 0 0 0 0 0 0
 ~~~crystal end~~~
+Name:
+BBO (dispersive + chi3)
+Type:
+1
+Sellmeier equation:
+0
+1st axis coefficients:
+2.7359 0.01878 0 -0.01822 0 0 1 0 0 1 0 0 1 -0.01471 0.0006081 -0.00006740 0 0 0 0 0 0
+2nd axis coefficients:
+2.3753 0.01224 0 -0.01667 0 0 1 0 0 1 0 0 1 -0.01627 0.0005716 -0.00006305 0 0 0 0 0 0
+3rd axis coefficients:
+2.3753 0.01224 0 -0.01667 0 0 1 0 0 1 0 0 1 -0.01627 0.0005716 -0.00006305 0 0 0 0 0 0
+Sellmeier reference:
+D. Zhang et al., Optics Communications 184, 485 (2000).
+chi2 type:
+1
+d:
+0 0 0 0 0.08 2.2
+2.2 -2.2 0 0.08 0 0
+0.08 0.08 0 0 0 0
+d reference:
+I. Shoji, et al., J. Opt. Soc. Am. B 16, 620–624 (1999). 
+chi3 type:
+2
+chi3:
+5e-22 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+M. Bache, et al. Optical Materials Express 3, 357-392 (2013).
+Spectral file:
+None
+Nonlinear reference frequencies:
+282e12 282e12 564e12 375e12 375e12 375e12 375e12
+~~~crystal end~~~
