@@ -294,7 +294,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_EX_CONTROLPARENT,
         CW_USEDEFAULT, CW_USEDEFAULT, 2200, 33 * vs + consoleSize, nullptr, nullptr, hInstance, nullptr);
     SetMenu(maingui.mainWindow, NULL);
-    SetWindowTextA(maingui.mainWindow, "Nick's nonlinear propagator");
+    SetWindowTextA(maingui.mainWindow, "Lightwave Explorer");
 
     //text boxes for input parameters
     maingui.tbPulseEnergy1 = CreateWindow(WC_EDIT, TEXT("24e-9"), 
