@@ -31,16 +31,18 @@ simulationParameterSet* fittingReferenceSet;
 //overload the math operators for cuda complex numbers so this code fits inside the observable universe
 __device__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
 __device__ cuDoubleComplex operator+(cuDoubleComplex a, cuDoubleComplex b) { return cuCadd(a, b); }
-__device__ cuDoubleComplex operator+(double a, cuDoubleComplex b) { return cuCadd(make_cuDoubleComplex(a, 0.0), b); }
-__device__ cuDoubleComplex operator+(cuDoubleComplex a, double b) { return cuCadd(a, make_cuDoubleComplex(b, 0.0)); }
+__device__ cuDoubleComplex operator+(double a, cuDoubleComplex b) { return make_cuDoubleComplex(b.x + a, b.y); }
+__device__ cuDoubleComplex operator+(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x + b, a.y); }
 __device__ cuDoubleComplex operator-(cuDoubleComplex a, cuDoubleComplex b) { return cuCsub(a, b); }
-__device__ cuDoubleComplex operator-(double a, cuDoubleComplex b) { return cuCsub(make_cuDoubleComplex(a, 0.0), b); }
-__device__ cuDoubleComplex operator-(cuDoubleComplex a, double b) { return cuCsub(a, make_cuDoubleComplex(b,0.0)); }
-__device__ cuDoubleComplex operator/(cuDoubleComplex a, double b) { return cuCdiv(a, make_cuDoubleComplex(b, 0.0)); }
-__device__ cuDoubleComplex operator/(double b, cuDoubleComplex a) { return cuCdiv(make_cuDoubleComplex(b, 0.0), a); }
+__device__ cuDoubleComplex operator-(double a, cuDoubleComplex b) { return make_cuDoubleComplex(a-b.x, -b.y); }
+__device__ cuDoubleComplex operator-(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x-b,a.y); }
 __device__ cuDoubleComplex operator/(cuDoubleComplex b, cuDoubleComplex a) { return cuCdiv(b, a); }
-__device__ cuDoubleComplex operator*(cuDoubleComplex a, double b) { return cuCmul(a, make_cuDoubleComplex(b, 0.0)); }
-__device__ cuDoubleComplex operator*(double b, cuDoubleComplex a) { return cuCmul(a, make_cuDoubleComplex(b, 0.0)); }
+__device__ cuDoubleComplex operator/(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x / b, a.y / b); }
+__device__ cuDoubleComplex operator/(double b, cuDoubleComplex a) { return cuCdiv(make_cuDoubleComplex(b, 0.0), a); }
+__device__ cuDoubleComplex operator*(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x * b, a.y * b); }
+__device__ cuDoubleComplex operator*(double b, cuDoubleComplex a) { return make_cuDoubleComplex(a.x * b, a.y * b); }
+
+
 
 //complex exponential function for CUDA
 __device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z){
@@ -1574,10 +1576,8 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         w = 2 * pi * (f - (*s).frequency1);
         
         //supergaussian pulse spectrum, if no input pulse specified
-        specfac = (f - (*s).frequency1)/(*s).bandwidth1;
-        for (j = 0; j < (*s).sgOrder1; j++) {
-            specfac *= specfac;
-        }
+        specfac = pow((f - (*s).frequency1)/(*s).bandwidth1,(*s).sgOrder1);
+
         specphase = ii * ((*s).cephase1 + 2*pi*f * ((*s).delay1 - 0.5*(*s).tStep*(*s).Ntime) + 0.5 * (*s).gdd1 * w * w + (*s).tod1 * w * w * w/6.0 + materialPhase1[i]);
         specfac = exp(-specfac + specphase);
 
@@ -1585,15 +1585,16 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
             specfac = (*s).loadedField1[i] * exp(-specphase);
         }
 
-        ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
-        no = (*s).refractiveIndex2[i + (*s).Ntime * j];
-        ko = 2 * pi * no * f / c;
-        zR = pi * w0 * w0 * real(ne) * f / c;
-        if (f == 0) {
-            zR = 1e3;
-        }
+
 
         for (j = 0; j < (*s).Nspace; j++) {
+            ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
+            no = (*s).refractiveIndex2[i + (*s).Ntime * j];
+            ko = 2 * pi * no * f / c;
+            zR = pi * w0 * w0 * real(ne) * f / c;
+            if (f == 0) {
+                zR = 1e3;
+            }
             rB = ((*s).x01 + (*s).rStep * (j - (*s).Nspace / 2.0) - 0.25*(*s).rStep);
             r = rB * cos(theta) - zB * sin(theta);
             z = rB * sin(theta) + zB * cos(theta);
@@ -1682,10 +1683,8 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         w = 2 * pi * (f - (*s).frequency2);
 
         //supergaussian pulse spectrum, if no input pulse specified
-        specfac = (f - (*s).frequency2) / (*s).bandwidth2;
-        for (j = 0; j < (*s).sgOrder1; j++) {
-            specfac *= specfac;
-        }
+        specfac = pow((f - (*s).frequency2) / (*s).bandwidth2,(*s).sgOrder2);
+
         specphase = ii * ((*s).cephase2 + 2*pi*f * ((*s).delay2 - 0.5*(*s).tStep*(*s).Ntime) + 0.5*(*s).gdd2 * w * w + (*s).tod2 * w * w * w/6.0 + materialPhase2[i]);
         specfac = exp(-specfac + specphase);
 
@@ -1694,16 +1693,16 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         }
 
 
-        ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
-        no = (*s).refractiveIndex2[i + (*s).Ntime * j];
-        ko = 2 * pi * no * f / c;
-        zR = pi * w0 * w0 * real(ne) * f / c;
-        if (f == 0) {
-            zR = 1e3;
-        }
+
 
         for (j = 0; j < (*s).Nspace; j++) {
-
+            ne = (*s).refractiveIndex1[i + (*s).Ntime * j];
+            no = (*s).refractiveIndex2[i + (*s).Ntime * j];
+            ko = 2 * pi * no * f / c;
+            zR = pi * w0 * w0 * real(ne) * f / c;
+            if (f == 0) {
+                zR = 1e3;
+            }
             rB = ((*s).x01 + (*s).rStep * (j - (*s).Nspace / 2.0) - 0.25 * (*s).rStep);
             r = rB * cos(theta) - zB * sin(theta);
             z = rB * sin(theta) + zB * cos(theta);
