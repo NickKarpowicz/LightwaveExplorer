@@ -1453,7 +1453,6 @@ int drawLabels(HDC hdc) {
 }
 
 int getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox) {
-
     //create the dialog box and get the file path
     OPENFILENAME ofn;
     TCHAR szFileName[MAX_PATH];
@@ -1472,8 +1471,7 @@ int getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox) {
     ofn.nFileExtension = 0;
     ofn.nFileOffset = 0;
     //only save if there is memory allocated and the simulation is complete
-    if (GetSaveFileNameW(&ofn)) {
-
+    if (GetOpenFileNameW(&ofn)) {
         //get the base of the file name, so that different files can be made with different extensions based on that
         if (ofn.nFileExtension > 0) {
             fbaseloc = ofn.nFileExtension - 1;
@@ -1506,7 +1504,7 @@ int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
     ofn.nFileExtension = 0;
     ofn.nFileOffset = 0;
 
-    if (GetSaveFileNameW(&ofn)) {
+    if (GetOpenFileNameW(&ofn)) {
 
         SetWindowText(outputTextbox, szFileName);
     }
@@ -1534,7 +1532,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
     char fileNameString[MAX_LOADSTRING];
     int readParameters;
     wcstombs(fileNameString, szFileName, MAX_LOADSTRING);
-    if (GetSaveFileNameW(&ofn)) {
+    if (GetOpenFileNameW(&ofn)) {
         wcstombs(fileNameString, szFileName, MAX_LOADSTRING);
         if (isGridAllocated) {
             freeSemipermanentGrids();

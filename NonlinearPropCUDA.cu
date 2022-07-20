@@ -29,18 +29,21 @@ simulationParameterSet* fittingReferenceSet;
 #endif
 
 //overload the math operators for cuda complex numbers so this code fits inside the observable universe
-__device__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
-__device__ cuDoubleComplex operator+(cuDoubleComplex a, cuDoubleComplex b) { return cuCadd(a, b); }
-__device__ cuDoubleComplex operator+(double a, cuDoubleComplex b) { return make_cuDoubleComplex(b.x + a, b.y); }
-__device__ cuDoubleComplex operator+(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x + b, a.y); }
-__device__ cuDoubleComplex operator-(cuDoubleComplex a, cuDoubleComplex b) { return cuCsub(a, b); }
-__device__ cuDoubleComplex operator-(double a, cuDoubleComplex b) { return make_cuDoubleComplex(a-b.x, -b.y); }
-__device__ cuDoubleComplex operator-(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x-b,a.y); }
-__device__ cuDoubleComplex operator/(cuDoubleComplex b, cuDoubleComplex a) { return cuCdiv(b, a); }
-__device__ cuDoubleComplex operator/(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x / b, a.y / b); }
-__device__ cuDoubleComplex operator/(double b, cuDoubleComplex a) { return cuCdiv(make_cuDoubleComplex(b, 0.0), a); }
-__device__ cuDoubleComplex operator*(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x * b, a.y * b); }
-__device__ cuDoubleComplex operator*(double b, cuDoubleComplex a) { return make_cuDoubleComplex(a.x * b, a.y * b); }
+__device__ __forceinline__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
+__device__ __forceinline__ cuDoubleComplex operator*(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x * b, a.y * b); }
+__device__ __forceinline__ cuDoubleComplex operator*(double b, cuDoubleComplex a) { return make_cuDoubleComplex(a.x * b, a.y * b); }
+__device__ __forceinline__ cuDoubleComplex operator+(cuDoubleComplex a, cuDoubleComplex b) { return cuCadd(a, b); }
+__device__ __forceinline__ cuDoubleComplex operator+(double a, cuDoubleComplex b) { return make_cuDoubleComplex(b.x + a, b.y); }
+__device__ __forceinline__ cuDoubleComplex operator+(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x + b, a.y); }
+__device__ __forceinline__ cuDoubleComplex operator-(cuDoubleComplex a, cuDoubleComplex b) { return cuCsub(a, b); }
+__device__ __forceinline__ cuDoubleComplex operator-(double a, cuDoubleComplex b) { return make_cuDoubleComplex(a-b.x, -b.y); }
+__device__ __forceinline__ cuDoubleComplex operator-(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x-b,a.y); }
+__device__ __forceinline__ cuDoubleComplex operator/(cuDoubleComplex b, cuDoubleComplex a) { return cuCdiv(b, a); }
+__device__ __forceinline__ cuDoubleComplex operator/(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x / b, a.y / b); }
+__device__ __forceinline__ cuDoubleComplex operator/(double b, cuDoubleComplex a) {
+    double denominator = (a.x * a.x + a.y * a.y);
+    return make_cuDoubleComplex(b*a.x/denominator, -b*a.y/denominator);
+}
 
 
 
