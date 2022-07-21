@@ -250,7 +250,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
-
+    memset(&wcex, 0, sizeof(WNDCLASSEXW));
     wcex.cbSize = sizeof(WNDCLASSEX);
 
     wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -1137,7 +1137,7 @@ int readParametersFromInterface() {
 //quality of life function - put a text label on a text box window, relative to its position
 int labelTextBox(HDC hdc, HWND parentWindow, HWND targetTextBox, const wchar_t* labelText, int xOffset, int yOffset) {
     RECT rectTextBox;
-    POINT positionTextBox;
+    POINT positionTextBox{};
     GetWindowRect(targetTextBox, &rectTextBox);
     positionTextBox.x = rectTextBox.left;
     positionTextBox.y = rectTextBox.top;
@@ -1455,7 +1455,7 @@ int drawLabels(HDC hdc) {
 int getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox) {
     //create the dialog box and get the file path
     OPENFILENAME ofn;
-    TCHAR szFileName[MAX_PATH];
+    TCHAR szFileName[MAX_PATH]{};
     TCHAR szFileNameNoExt[MAX_PATH];
     ZeroMemory(&ofn, sizeof(ofn));
     WORD fbasedirend;
@@ -1490,7 +1490,7 @@ int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
 
     //create the dialog box and get the file path
     OPENFILENAME ofn;
-    TCHAR szFileName[MAX_PATH];
+    TCHAR szFileName[MAX_PATH]{};
     ZeroMemory(&ofn, sizeof(ofn));
     WORD fbaseloc = 0;
     ofn.lStructSize = sizeof(ofn);
@@ -1515,8 +1515,8 @@ int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
 int openDialogBoxAndLoad(HWND hWnd) {
     WORD fbasedirend;
     OPENFILENAME ofn;
-    TCHAR szFileName[MAX_LOADSTRING];
-    TCHAR szFileNameNoExt[MAX_LOADSTRING];
+    TCHAR szFileName[MAX_LOADSTRING]{};
+    TCHAR szFileNameNoExt[MAX_LOADSTRING]{};
     ZeroMemory(&ofn, sizeof(ofn));
     WORD fbaseloc = 0;
     ofn.lStructSize = sizeof(ofn);
@@ -1657,7 +1657,7 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
             }
         }
     }
-    BITMAPINFOHEADER bmih;
+    BITMAPINFOHEADER bmih{};
 
     bmih.biSize = sizeof(BITMAPINFOHEADER);
     bmih.biWidth = (long)Nx;
@@ -1809,7 +1809,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         //plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f, 
         //    &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
 
-        for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
+        for (i = 0; i < (*activeSetPtr).Ntime/2; i++) {
             plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Ntime]);
         }
         plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
@@ -1860,9 +1860,9 @@ void setTitleBarDark(HWND hWnd)
 
 void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY) {
     size_t i;
-    D2D1_POINT_2F p1;
-    D2D1_POINT_2F p2;
-    D2D1_ELLIPSE marker;
+    D2D1_POINT_2F p1{};
+    D2D1_POINT_2F p2{};
+    D2D1_ELLIPSE marker{};
     D2D1_SIZE_F sizeF;
     ZeroMemory(&sizeF, sizeof(D2D1_SIZE_F));
     ID2D1HwndRenderTarget *pRenderTarget;

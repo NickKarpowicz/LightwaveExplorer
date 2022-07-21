@@ -41,11 +41,9 @@ __device__ __forceinline__ cuDoubleComplex operator-(cuDoubleComplex a, double b
 __device__ __forceinline__ cuDoubleComplex operator/(cuDoubleComplex b, cuDoubleComplex a) { return cuCdiv(b, a); }
 __device__ __forceinline__ cuDoubleComplex operator/(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x / b, a.y / b); }
 __device__ __forceinline__ cuDoubleComplex operator/(double b, cuDoubleComplex a) {
-    double denominator = (a.x * a.x + a.y * a.y);
-    return make_cuDoubleComplex(b*a.x/denominator, -b*a.y/denominator);
+    double divByDenominator = b/(a.x * a.x + a.y * a.y);
+    return make_cuDoubleComplex(a.x * divByDenominator, -a.y * divByDenominator);
 }
-
-
 
 //complex exponential function for CUDA
 __device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z){
