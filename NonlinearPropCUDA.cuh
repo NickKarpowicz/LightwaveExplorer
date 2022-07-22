@@ -153,7 +153,6 @@ typedef struct simulationParameterSet {
 
 typedef struct cudaParameterSet {
     cudaStream_t CUDAStream;
-    cudaStream_t CUDAStream2;
 	cuDoubleComplex* gridETime1;
 	cuDoubleComplex* gridETime2;
 	cuDoubleComplex* gridETemp1;
@@ -182,7 +181,7 @@ typedef struct cudaParameterSet {
 	cuDoubleComplex* no;
 	bool isCylindric;
 	bool hasPlasma;
-	double* gridPolarizationTime1; //future optimization: this could be double rather than complex, if I can figure out the data layout of D2Z cufft
+	double* gridPolarizationTime1; 
 	double* gridPolarizationTime2;
 	double* firstDerivativeOperation;
 	double* plasmaParameters; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
@@ -195,11 +194,8 @@ typedef struct cudaParameterSet {
 	int* nonlinearSwitches;
 	long long* propagationInts;
 	cufftHandle fftPlan;
-    cufftHandle fftPlanB;
 	cufftHandle polfftPlan;
-    cufftHandle polfftPlanB;
     cufftHandle doublePolfftPlan;
-    cufftHandle doublePolfftPlanB;
 	bool isNonLinear;
     bool isUsingMillersRule;
 	size_t Ntime;

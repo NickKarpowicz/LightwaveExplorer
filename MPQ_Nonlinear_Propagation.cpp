@@ -1539,8 +1539,8 @@ int openDialogBoxAndLoad(HWND hWnd) {
             isGridAllocated = FALSE;
         }
         readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString);
-        //There should be 52 parameters, remember to update this if adding new ones!
-        if (readParameters == 54) {
+        //There should be 50 parameters, remember to update this if adding new ones!
+        if (readParameters == 50) {
             //get the base of the file name, so that different files can be made with different extensions based on that
             if (ofn.nFileExtension > 0) {
                 fbaseloc = ofn.nFileExtension - 1;
