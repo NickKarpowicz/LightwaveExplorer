@@ -340,7 +340,7 @@ __global__ void expandCylindricalBeam(cudaParameterSet s, double* polarization1,
     //reuse memory allocated for the radial Laplacian, casting complex double
     //to a 2x larger double real grid
     double* expandedBeam1 = (double*)s.gridRadialLaplacian1;
-    double* expandedBeam2 = (double*)s.gridRadialLaplacian2;
+    double* expandedBeam2 = expandedBeam1 + 2 * s.Ngrid;
 
     expandedBeam1[pos1] = polarization1[i];
     expandedBeam1[pos2] = polarization1[i];
@@ -1187,6 +1187,10 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     s.isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;
     s.isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
 
+    size_t beamExpansionFactor = 1;
+    if (s.isCylindric) {
+        beamExpansionFactor++;
+    }
     //CPU allocations
     std::complex<double>* gridPropagationFactor1CPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
     std::complex<double>* gridPolarizationFactor1CPU = (std::complex<double>*)malloc(2 * s.Ngrid * sizeof(std::complex<double>));
@@ -1214,12 +1218,11 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaMemset(s.chiLinear1, 0, 2 * sizeof(cuDoubleComplex) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.k1, 2 * sizeof(cuDoubleComplex) * s.Ngrid);
     cudaMemset(s.k1, 0, 2 * sizeof(cuDoubleComplex) * s.Ngrid);
-    //the following two should have a size (s.Ntime / 2 + 1) * s.Nspace, but I get overruns during
-    //the ffts if they're not larger. If I figure this out, it will save a complex grid worth of memory...
-    memErrors += cudaMalloc((void**)&s.gridPolarizationFrequency1, 4*sizeof(cuDoubleComplex) * s.Ngrid); 
-    cudaMemset(s.gridPolarizationFrequency1, 0, 4*sizeof(cuDoubleComplex) * s.Ngrid);
-    memErrors += cudaMalloc((void**)&s.gridPlasmaCurrentFrequency1, 4*sizeof(cuDoubleComplex) * s.Ngrid);
-    cudaMemset(s.gridPlasmaCurrentFrequency1, 0, 4*sizeof(cuDoubleComplex) * s.Ngrid);
+
+    memErrors += cudaMalloc((void**)&s.gridPolarizationFrequency1, sizeof(cuDoubleComplex) * 2 * (beamExpansionFactor * s.Nspace * (s.Ntime / 2 + 1)));
+    cudaMemset(s.gridPolarizationFrequency1, 0, sizeof(cuDoubleComplex) * 2 * (beamExpansionFactor * s.Nspace * (s.Ntime / 2 + 1)));
+    memErrors += cudaMalloc((void**)&s.gridPlasmaCurrentFrequency1, sizeof(cuDoubleComplex) * 2 * (2 * s.Nspace * (s.Ntime / 2 + 1)));
+    cudaMemset(s.gridPlasmaCurrentFrequency1, 0, sizeof(cuDoubleComplex) * 2 * (2 * s.Nspace * (s.Ntime / 2 + 1)));
     memErrors += cudaMalloc((void**)&s.gridPolarizationTime1, 2 * sizeof(double) * s.Ngrid);
     cudaMemset(s.gridPolarizationTime1, 0, 2 * sizeof(double) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridPlasmaCurrent1, 2 * sizeof(double) * s.Ngrid);
@@ -1252,8 +1255,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     s.gridETime2 = s.gridETime1 + s.Ngrid;
     s.gridPlasmaCurrent2 = s.gridPlasmaCurrent1 + s.Ngrid;
     s.gridPolarizationTime2 = s.gridPolarizationTime1 + s.Ngrid;
-    s.gridPlasmaCurrentFrequency2 = s.gridPlasmaCurrentFrequency1 + 2 * s.Ngrid;
-    s.gridPolarizationFrequency2 = s.gridPlasmaCurrentFrequency1 + 2 * s.Ngrid;
+    s.gridPlasmaCurrentFrequency2 = s.gridPlasmaCurrentFrequency1 + (beamExpansionFactor * s.Nspace * (s.Ntime / 2 + 1));
+    s.gridPolarizationFrequency2 = s.gridPolarizationFrequency1 + (beamExpansionFactor * s.Nspace * (s.Ntime/2+1));
     s.k2 = s.k1 + s.Ngrid;
     s.chiLinear2 = s.chiLinear1 + s.Ngrid;
     s.gridRadialLaplacian2 = s.gridRadialLaplacian1 + s.Ngrid;
@@ -1313,10 +1316,20 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cufftGetSizeMany(s.fftPlan, 2, cufftSizes1, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_Z2Z, 2, &workSize);
     cufftMakePlanMany(s.fftPlan, 2, cufftSizes1, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_Z2Z, 2, &workSize);
 
-    int cufftSizes2[]{ (int)(2 * s.Nspace), (int)s.Ntime };
+    //the inputs are written out explicitly here even though 6x NULL would also do the same thing
+    //this is in the hope that someday I figure out a way to do a truncated transform that doesn't
+    //calculate the >f_nyquist/2 elements that I ignore
+    int cufftSizes2[]{ 2*(int)s.Nspace, (int)s.Ntime };
+    int istride = 1;
+    int ostride = 1;
+    int idist = (int)(2 * s.Ngrid);
+    int odist = (int)(2 * s.Nspace * (s.Ntime / 2 + 1));
+    int inembed[] = { (int)(2*s.Nspace), (int)s.Ntime };
+    int onembed[] = { (int)(2*s.Nspace), (int)s.Ntime / 2 + 1 };
+
     cufftCreate(&s.doublePolfftPlan);
-    cufftGetSizeMany(s.doublePolfftPlan, 2, cufftSizes2, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_D2Z, 2, &workSize);
-    cufftMakePlanMany(s.doublePolfftPlan, 2, cufftSizes2, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_D2Z, 2, &workSize);
+    cufftGetSizeMany(s.doublePolfftPlan, 2, cufftSizes2, inembed, istride, idist, onembed, ostride, odist, CUFFT_D2Z, 2, &workSize);
+    cufftMakePlanMany(s.doublePolfftPlan, 2, cufftSizes2, inembed, istride, idist, onembed, ostride, odist, CUFFT_D2Z, 2, &workSize);
 
     cufftCreate(&s.polfftPlan);
     cufftGetSizeMany(s.polfftPlan, 2, cufftSizes1, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_D2Z, 2, &workSize);
@@ -1352,13 +1365,11 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
     //Core propagation loop
     for (i = 0; i < s.Nsteps; i++) {
-        //calculate k1
+        
+        //RK4
         runRK4Step(s, 0);
-        //calculate k2
         runRK4Step(s, 1);
-        //calculate k3
         runRK4Step(s, 2);
-        //calculate k4
         runRK4Step(s, 3);
 
         if ((*sCPU).imdone[0] == 2) {
@@ -1414,7 +1425,6 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cufftDestroy(s.doublePolfftPlan);
     cudaFree(s.plasmaParameters);
     cudaFree(s.gridPlasmaCurrent1);
-    cudaFree(s.gridPlasmaCurrent2);
     cudaFree(s.gridPlasmaCurrentFrequency1);
     
     cudaStreamDestroy(s.CUDAStream);
@@ -1433,7 +1443,6 @@ int runRK4Step(cudaParameterSet s, int stepNumber) {
 
     //operations involving FFT
     if (s.isNonLinear || s.isCylindric) {
-
         //multiply by linear chi so that we have polarization (for applying Miller's rule)
         multiplicationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear1, s.gridETemp1, s.gridETime1);
         multiplicationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear2, s.gridETemp2, s.gridETime2);
