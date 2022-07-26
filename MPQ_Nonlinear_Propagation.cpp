@@ -80,6 +80,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
             (*activeSetPtr).plotSim = j;
             plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+            CloseHandle(plotThread);
         }
         else {
             solveNonlinearWaveEquation(&activeSetPtr[j]);
@@ -97,6 +98,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
         (*activeSetPtr).plotSim = j;
         plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+        CloseHandle(plotThread);
 
     }
 
@@ -1693,6 +1695,7 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
     StretchBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
     free(pixels);
     DeleteDC(hdcMem);
+    DeleteObject(hbmp);
     return 0;
 }
 
@@ -1743,7 +1746,6 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         float* plotarr = (float*)calloc((*activeSetPtr).Ngrid, sizeof(float));
         float* plotarrC = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
         float* plotarr2 = (float*)calloc((size_t)(dx) * (size_t)(dy), sizeof(float));
-        
         std::complex<double>* shiftedFFT = (std::complex<double>*)calloc((*activeSetPtr).Ngrid, sizeof(std::complex<double>));
 
         //Plot Time Domain, s-polarization
@@ -1780,8 +1782,6 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 3);
-        //plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f, 
-        //    &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime / 2, 1, TRUE, 12);
 
         for (i = 0; i < ((*activeSetPtr).Ntime/2); i++) {
             plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Ntime]);
@@ -1805,9 +1805,6 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), 
             (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 3);
-
-        //plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f, 
-        //    &plotarrC[(*activeSetPtr).Ngrid / 4], (*activeSetPtr).Ntime/2, 1, TRUE, 12);
 
         for (i = 0; i < (*activeSetPtr).Ntime/2; i++) {
             plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Ntime]);
