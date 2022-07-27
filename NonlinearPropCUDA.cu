@@ -40,20 +40,15 @@ __device__ __forceinline__ cuDoubleComplex operator-(double a, cuDoubleComplex b
 __device__ __forceinline__ cuDoubleComplex operator-(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x-b,a.y); }
 __device__ __forceinline__ cuDoubleComplex operator/(cuDoubleComplex b, cuDoubleComplex a) { return cuCdiv(b, a); }
 __device__ __forceinline__ cuDoubleComplex operator/(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x / b, a.y / b); }
-__device__ __forceinline__ cuDoubleComplex operator/(double b, cuDoubleComplex a) {
+__device__  cuDoubleComplex operator/(double b, cuDoubleComplex a) {
     double divbByDenominator = b/(a.x * a.x + a.y * a.y);
     return make_cuDoubleComplex(a.x * divbByDenominator, -a.y * divbByDenominator);
 }
 
 //complex exponential function for CUDA
-__device__ __forceinline__ cuDoubleComplex cuCexpd(cuDoubleComplex z){
-    cuDoubleComplex expZ;
+__device__ cuDoubleComplex cuCexpd(cuDoubleComplex z){
     double r = exp(z.x);
-    expZ.y = sin(z.y);
-    expZ.x = cos(z.y);
-    expZ.x *= r;
-    expZ.y *= r;
-    return expZ;
+    return make_cuDoubleComplex(r*cos(z.y),r*sin(z.y));
 }
 
 //sqrt for complex doubles on CUDA, copy and paste from

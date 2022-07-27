@@ -278,3 +278,108 @@ None
 Nonlinear reference frequencies:
 282e12 282e12 564e12 375e12 375e12 375e12 375e12
 ~~~crystal end~~~
+Name:
+Ge
+Type:
+0
+Sellmeier equation:
+0
+1st axis coefficients:
+19.4409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+19.4409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+19.4409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+G. Ghosh, Optics Communications 163, 95-102 (1999).
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+(old code, look up later)
+chi3 type:
+0
+chi3:
+1.5e-18 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Empty matrix awaiting input
+Spectral file:
+None
+Nonlinear reference frequencies:
+75e12 75e12 150e12 75e12 75e12 75e12 75e12
+~~~crystal end~~~
+Name:
+Si
+Type:
+0
+Sellmeier equation:
+0
+1st axis coefficients:
+1 0 10.6684293 -0.09091219 0 0.0030434748 -1.2876602 0 1.54133408 -1218816 0 0 1 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1 0 10.6684293 -0.09091219 0 0.0030434748 -1.2876602 0 1.54133408 -1218816 0 0 1 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1 0 10.6684293 -0.09091219 0 0.0030434748 -1.2876602 0 1.54133408 -1218816 0 0 1 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+G. Ghosh, Optics Communications 163, 95-102 (1999).
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+(old code, look up later)
+chi3 type:
+2
+chi3:
+1.0e-18 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Empty matrix awaiting input
+Spectral file:
+None
+Nonlinear reference frequencies:
+75e12 75e12 150e12 75e12 75e12 75e12 75e12
+~~~crystal end~~~
+Name:
+GaSe
+Type:
+2
+Sellmeier equation:
+0
+1st axis coefficients:
+10.6409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 
+2nd axis coefficients:
+10.6409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 
+3rd axis coefficients:
+8.2477 0.2881 0 -0.1669 4927.5 0 -1990.1 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 
+Sellmeier reference:
+G. Ghosh, Optics Communications 163, 95-102 (1999).
+chi2 type:
+1
+d:
+0 0 0 0 0 54
+54 -54 0 0 0 0
+0 0 0 0 0 0
+d reference:
+(old code, look up later)
+chi3 type:
+0
+chi3:
+1.0e-18 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Empty matrix awaiting input
+Spectral file:
+None
+Nonlinear reference frequencies:
+0 0 0 0 0 0 0
+~~~crystal end~~~
