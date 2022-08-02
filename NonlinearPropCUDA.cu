@@ -2949,26 +2949,29 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
     //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
     //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
     int frogLines = 0;
+    int errCount = 0;
     if ((*sCPU).pulse1FileType == 1) {
         frogLines = loadFrogSpeck((*sCPU).field1FilePath, (*sCPU).loadedField1, (*sCPU).Ntime, (*sCPU).fStep, 0.0, 1);
-        if (frogLines > 0) {
+        if (frogLines > 1) {
             (*sCPU).field1IsAllocated = TRUE;
         }
         else {
-            return 1;
+            (*sCPU).field1IsAllocated = FALSE;
+            errCount++;
         }
     }
 
     if ((*sCPU).pulse2FileType == 1) {
         frogLines = loadFrogSpeck((*sCPU).field2FilePath, (*sCPU).loadedField2, (*sCPU).Ntime, (*sCPU).fStep, 0.0, 1);
-        if (frogLines > 0) {
+        if (frogLines > 1) {
             (*sCPU).field2IsAllocated = TRUE;
         }
         else {
-            return 1;
+            (*sCPU).field2IsAllocated = FALSE;
+            errCount++;
         }
     }
-    return 0;
+    return errCount;
 }
 
 int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent) {
@@ -3200,22 +3203,22 @@ void runFittingIteration(int* m, int* n, double* fittingValues, double* fittingF
     //mode 0: maximize total spectrum in ROI
     if ((*fittingSet).fittingMode == 0) {
         for (i = 0; i < *m; i++) {
-            fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[2 * (*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]);
+            fittingFunction[i] = log10(1.0e8 / ((*fittingSet).totalSpectrum[2 * (*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]));
         }
     }
     //mode 1: maximize s-polarized spectrum in ROI
     if ((*fittingSet).fittingMode == 1) {
         for (i = 0; i < *m; i++) {
-            fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).fittingROIstart + i]);
+            fittingFunction[i] = log10(1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).fittingROIstart + i]));
         }
     }
     //mode 2: maximize p-polarized spectrum in ROI
     if ((*fittingSet).fittingMode == 2) {
         for (i = 0; i < *m; i++) {
-            fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]);
+            fittingFunction[i] = log10(1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]));
         }
     }
-
+    //mode 3: match total spectrum to reference given in ascii file
     if ((*fittingSet).fittingMode == 3) {
         double maxSim = 0;
         double maxRef = 0;
