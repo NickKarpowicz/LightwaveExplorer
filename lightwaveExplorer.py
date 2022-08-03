@@ -242,8 +242,7 @@ def load(filePath: str):
         loadedData.batchStart = loadedData.propagationStep
         loadedData.batchDestination *= 1e-9
         
-        
-        
+    #that was fun, wasn't it? I think we all just had a good time. In c++ I just added an offset to a pointer. Now make the scale vector.
     loadedData.batchVector = np.linspace(loadedData.batchStart,loadedData.batchDestination,loadedData.Nsims)
     return loadedData
     
