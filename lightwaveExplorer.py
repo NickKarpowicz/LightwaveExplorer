@@ -66,7 +66,9 @@ class lightwaveExplorerResult:
         self.spectrumTotal = 0
         self.spectrum_x = 0
         self.spectrum_y = 0
-
+        self.frequencyVector = 0
+        self.timeVector = 0
+        self.spaceVector = 0
 def readLine(line: str):
     rr = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", line)
     return float(rr[-1])
@@ -74,6 +76,8 @@ def readLine(line: str):
 
 def load(filePath: str):
     loadedData = lightwaveExplorerResult()
+
+    #read in the values from the settings file
     settingsFile = open(filePath, "r")
     lines = settingsFile.readlines()
     loadedData.pulseEnergy1 = readLine(lines[0])
@@ -131,13 +135,13 @@ def load(filePath: str):
     #now load the output data from binary format. Note that this will fail if you're using wrong-endian CPUs
     fileBase = os.path.splitext(filePath)
     loadedData.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*loadedData.Ngrid*loadedData.Nsims)],(loadedData.Ntime,loadedData.Nspace,2*loadedData.Nsims),order='F')
-    loadedData.Ext_x = np.squeeze(loadedData.Ext[:,:,0:2:-1])
-    loadedData.Ext_y = np.squeeze(loadedData.Ext[:,:,1:2:-1])
+    loadedData.Ext_x = np.squeeze(loadedData.Ext[:,:,0:(2*loadedData.Nsims):2])
+    loadedData.Ext_y = np.squeeze(loadedData.Ext[:,:,1:(2*loadedData.Nsims + 1):2])
     
     loadedData.spectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*loadedData.Ntime*loadedData.Nsims],(loadedData.Ntime,3,loadedData.Nsims),order='F')
-    loadedData.spectrumTotal = np.squeeze(loadedData.spectrum[:,2,:])
-    loadedData.spectrum_x = np.squeeze(loadedData.spectrum[:,0,:])
-    loadedData.spectrum_y = np.squeeze(loadedData.spectrum[:,1,:])
+    loadedData.spectrumTotal = np.squeeze(loadedData.spectrum[0:int(loadedData.Ntime/2),2,:])
+    loadedData.spectrum_x = np.squeeze(loadedData.spectrum[0:int(loadedData.Ntime/2),0,:])
+    loadedData.spectrum_y = np.squeeze(loadedData.spectrum[0:int(loadedData.Ntime/2),1,:])
     
     #make scale vector corresponding to the batch scan and correct units of the scan
     if loadedData.batchIndex == 0:
@@ -244,5 +248,10 @@ def load(filePath: str):
         
     #that was fun, wasn't it? I think we all just had a good time. In c++ I just added an offset to a pointer. Now make the scale vector.
     loadedData.batchVector = np.linspace(loadedData.batchStart,loadedData.batchDestination,loadedData.Nsims)
+
+    loadedData.timeVector = loadedData.tStep*np.arange(0,loadedData.Ntime)
+    loadedData.frequencyVector = np.fft.fftfreq(loadedData.Ntime, d=loadedData.tStep)
+    loadedData.frequencyVectorSpectrum = loadedData.frequencyVector[0:int(loadedData.Ntime/2)]
+    loadedData.spaceVector = loadedData.rStep * (np.arange(0,loadedData.Nspace) - loadedData.Nspace/2) + 0.25 * loadedData.rStep
     return loadedData
     

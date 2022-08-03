@@ -202,6 +202,9 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
   <ItemGroup>
     <Text Include="CrystalDatabase.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="lightwaveExplorer.py" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.7.targets" />
