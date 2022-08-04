@@ -2557,11 +2557,21 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
     readValueCount += fscanf(textfile, "Fitting reference file path: ");
     fgets((*sCPU).fittingPath, MAX_LOADSTRING, textfile);
     
-    removeBreakChars((*sCPU).field1FilePath, MAX_LOADSTRING);
-    removeBreakChars((*sCPU).fittingPath, MAX_LOADSTRING);
-    removeBreakChars((*sCPU).field2FilePath, MAX_LOADSTRING);
-    removeBreakChars((*sCPU).fittingString, MAX_LOADSTRING);
-    removeBreakChars((*sCPU).sequenceString, MAX_LOADSTRING);
+    removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\r');
+    removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\n');
+
+    removeCharacterFromString((*sCPU).field2FilePath, MAX_LOADSTRING, '\r');
+    removeCharacterFromString((*sCPU).field2FilePath, MAX_LOADSTRING, '\n');
+
+    removeCharacterFromString((*sCPU).fittingPath, MAX_LOADSTRING, '\r');
+    removeCharacterFromString((*sCPU).fittingPath, MAX_LOADSTRING, '\n');
+
+    removeCharacterFromString((*sCPU).fittingString, MAX_LOADSTRING, '\r');
+    removeCharacterFromString((*sCPU).fittingString, MAX_LOADSTRING, '\n');
+
+    removeCharacterFromString((*sCPU).sequenceString, MAX_LOADSTRING, '\r');
+    removeCharacterFromString((*sCPU).sequenceString, MAX_LOADSTRING, '\n');
+
 
     //derived parameters and cleanup:
     (*sCPU).sellmeierType = 0;
@@ -2749,11 +2759,11 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
     return 0;
 }
 
-int removeBreakChars(char* cString, size_t N) {
+int removeCharacterFromString(char* cString, size_t N, char removedChar) {
     size_t i = 0;
     size_t r = 0;
     while (i < N) {
-        if (cString[i] == '\r' || cString[i] == '\n') {
+        if (cString[i] == removedChar) {
             memmove(&cString[i], &cString[i + 1], N - i - r - 1);
             cString[N - r - 1] = 0;
             r++;

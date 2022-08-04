@@ -918,7 +918,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
 
-        if (isGridAllocated && !isRunning) {
+        if (isGridAllocated) {
             drawSimPlots(activeSetPtr);
         }
         break;
@@ -1048,7 +1048,8 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).sequenceString, noneString);
     }
     else {
-        removeBreakChars((*activeSetPtr).sequenceString, strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING));
+        removeCharacterFromString((*activeSetPtr).sequenceString, strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING), '\r');
+        removeCharacterFromString((*activeSetPtr).sequenceString, strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING), '\n');
     }
 
     memset((*activeSetPtr).fittingString, 0, 1024 * sizeof(char));
@@ -1057,7 +1058,8 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).fittingString, noneString);
     }
     else {
-        removeBreakChars((*activeSetPtr).fittingString, strnlen_s((*activeSetPtr).fittingString, 1024));
+        removeCharacterFromString((*activeSetPtr).fittingString, strnlen_s((*activeSetPtr).fittingString, 1024), '\r');
+        removeCharacterFromString((*activeSetPtr).fittingString, strnlen_s((*activeSetPtr).fittingString, 1024), '\n');
     }
 
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1072,7 +1074,8 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).field1FilePath, noneString);
     }
     else {
-        removeBreakChars((*activeSetPtr).field1FilePath, strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING));
+        removeCharacterFromString((*activeSetPtr).field1FilePath, strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING), '\r');
+        removeCharacterFromString((*activeSetPtr).field1FilePath, strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING), '\n');
     }
 
     memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1081,7 +1084,8 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).field2FilePath, noneString);
     }
     else {
-        removeBreakChars((*activeSetPtr).field2FilePath, strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING));
+        removeCharacterFromString((*activeSetPtr).field2FilePath, strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING), '\r');
+        removeCharacterFromString((*activeSetPtr).field2FilePath, strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING), '\n');
     }
 
     memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1090,7 +1094,8 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).fittingPath, noneString);
     }
     else {
-        removeBreakChars((*activeSetPtr).fittingPath, strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING));
+        removeCharacterFromString((*activeSetPtr).fittingPath, strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING), '\r');
+        removeCharacterFromString((*activeSetPtr).fittingPath, strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING), '\n');
     }
 
     (*activeSetPtr).batchDestination = getDoubleFromHWND(maingui.tbBatchDestination);
@@ -1224,16 +1229,16 @@ int setWindowTextToDouble(HWND win, double in) {
         swprintf_s(textBuffer, 128, L"%i", (int)in);
     }
     else if (digits == 1) {
-        swprintf_s(textBuffer, 128, L"%4.1lf", in);
+        swprintf_s(textBuffer, 128, L"%2.1lf", in);
     }
     else if (digits == 2) {
-        swprintf_s(textBuffer, 128, L"%4.2lf", in);
+        swprintf_s(textBuffer, 128, L"%3.2lf", in);
     }
     else if (digits == 3) {
         swprintf_s(textBuffer, 128, L"%4.3lf", in);
     }
     else {
-        swprintf_s(textBuffer, 128, L"%4.4lf", in);
+        swprintf_s(textBuffer, 128, L"%5.4lf", in);
     }
 
     
@@ -1325,7 +1330,8 @@ int setInterfaceValuesToActiveValues() {
     else {
         insertLineBreaksAfterSemicolons((*activeSetPtr).sequenceString, MAX_LOADSTRING);
         SetWindowTextA(maingui.tbSequence, (*activeSetPtr).sequenceString);
-        removeBreakChars((*activeSetPtr).sequenceString, MAX_LOADSTRING);
+        removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\r');
+        removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\n');
     }
         
 
@@ -1356,7 +1362,8 @@ int setInterfaceValuesToActiveValues() {
     else {
         insertLineBreaksAfterSemicolons((*activeSetPtr).fittingString, MAX_LOADSTRING);
         SetWindowTextA(maingui.tbFitting, (*activeSetPtr).fittingString);
-        removeBreakChars((*activeSetPtr).fittingString, MAX_LOADSTRING);
+        removeCharacterFromString((*activeSetPtr).fittingString, MAX_LOADSTRING, '\r');
+        removeCharacterFromString((*activeSetPtr).fittingString, MAX_LOADSTRING, '\n');
     }
     SendMessage(maingui.pdFittingType, CB_SETCURSEL, (WPARAM)(*activeSetPtr).fittingMode, 0);
 
