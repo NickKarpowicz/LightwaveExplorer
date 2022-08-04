@@ -277,17 +277,19 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
     c = 2.99792458e8
     totalResponse = 1.
 
+    #make everything numpy arrays
     bandpass = np.array(bandpass)
     filterTransmissionNanometers = np.array(filterTransmissionNanometers)
     detectorResponseNanometers = np.array(detectorResponseNanometers)
 
+    #resolve the various filters
     if bandpass.any() != None:
         bandpassFilter = np.exp(-(s.frequencyVectorSpectrum-bandpass[0])**bandpass[2]/(2*bandpass[1]**bandpass[2]))
         totalResponse *= bandpassFilter
 
     if filterTransmissionNanometers.any() != None:
         sortIndicies = np.argsort(1e9*c/filterTransmissionNanometers[0,:])
-        dataFrequencyAxis = np.array([1e9*c/filterTransmissionNanometers[sortIndicies,0], filterTransmissionNanometers[sortIndicies,1]])
+        dataFrequencyAxis = np.array([1e9*c/filterTransmissionNanometers[0,sortIndicies], filterTransmissionNanometers[1,sortIndicies]])
         totalResponse  *= np.interp(s.frequencyVectorSpectrum, dataFrequencyAxis[0,:], dataFrequencyAxis[1,:])
     
     if detectorResponseNanometers.any() != None:
@@ -295,5 +297,7 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
         dataFrequencyAxis = np.array([1e9*c/detectorResponseNanometers[0,sortIndicies], detectorResponseNanometers[1,sortIndicies]])
         totalResponse  *= np.interp(s.frequencyVectorSpectrum, dataFrequencyAxis[0,:], dataFrequencyAxis[1,:])
 
+    #EOS signal is the integral of the difference between the two spectra, multiplied by the total spectral response
     EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
+
     return EOSsignal;
