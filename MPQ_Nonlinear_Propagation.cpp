@@ -1323,7 +1323,9 @@ int setInterfaceValuesToActiveValues() {
         SetWindowText(maingui.tbSequence, L"");
     }
     else {
+        insertLineBreaksAfterSemicolons((*activeSetPtr).sequenceString, MAX_LOADSTRING);
         SetWindowTextA(maingui.tbSequence, (*activeSetPtr).sequenceString);
+        removeBreakChars((*activeSetPtr).sequenceString, MAX_LOADSTRING);
     }
         
 
@@ -1352,7 +1354,9 @@ int setInterfaceValuesToActiveValues() {
         SetWindowText(maingui.tbFitting, L"");
     }
     else {
+        insertLineBreaksAfterSemicolons((*activeSetPtr).fittingString, MAX_LOADSTRING);
         SetWindowTextA(maingui.tbFitting, (*activeSetPtr).fittingString);
+        removeBreakChars((*activeSetPtr).fittingString, MAX_LOADSTRING);
     }
     SendMessage(maingui.pdFittingType, CB_SETCURSEL, (WPARAM)(*activeSetPtr).fittingMode, 0);
 
@@ -2037,5 +2041,25 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     free((*activeSetPtr).loadedField2);
 
     isRunning = FALSE;
+    return 0;
+}
+
+int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
+    size_t i = 0;
+    while (i < N-1) {
+        if (cString[i] == ';') {
+            memmove(&cString[i + 3], &cString[i+1], N - i - 3);
+            cString[i + 1] = '\r';
+            cString[i + 2] = '\n';
+            i++;
+            i++;
+
+            //trim space following semicolon
+            if (cString[i + 1] == ' ') {
+                memmove(&cString[i + 1], &cString[i + 2], N - i - 1);
+            }
+        }
+        i++;
+    }
     return 0;
 }

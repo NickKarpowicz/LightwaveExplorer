@@ -134,4 +134,5 @@ void                setTitleBarDark(HWND hWnd);
 void                plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY);
 int                 setInterfaceValuesToActiveValues();
 DWORD WINAPI        fittingThread(LPVOID lpParam);
+int                 insertLineBreaksAfterSemicolons(char* cString, size_t N);
 
