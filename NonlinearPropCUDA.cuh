@@ -243,3 +243,4 @@ unsigned long   runFitting(simulationParameterSet* sCPU);
 void            runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction);
 int             readFittingString(simulationParameterSet* sCPU);
 int             loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU);
+int             removeBreakChars(char* cString, size_t N);

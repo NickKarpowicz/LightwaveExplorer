@@ -1048,11 +1048,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).sequenceString, noneString);
     }
     else {
-        for (int i = 0; i < strlen((*activeSetPtr).sequenceString); i++) {
-            if ((*activeSetPtr).sequenceString[i] == '\r' || (*activeSetPtr).sequenceString[i] == '\n') {
-                (*activeSetPtr).sequenceString[i] = ' ';
-            }
-        }
+        removeBreakChars((*activeSetPtr).sequenceString, strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING));
     }
 
     memset((*activeSetPtr).fittingString, 0, 1024 * sizeof(char));
@@ -1061,11 +1057,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).fittingString, noneString);
     }
     else {
-        for (int i = 0; i < strlen((*activeSetPtr).fittingString); i++) {
-            if ((*activeSetPtr).fittingString[i] == '\r' || (*activeSetPtr).fittingString[i] == '\n') {
-                (*activeSetPtr).fittingString[i] = ' ';
-            }
-        }
+        removeBreakChars((*activeSetPtr).fittingString, strnlen_s((*activeSetPtr).fittingString, 1024));
     }
 
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1080,11 +1072,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).field1FilePath, noneString);
     }
     else {
-        for (int i = 0; i < strlen((*activeSetPtr).field1FilePath); i++) {
-            if ((*activeSetPtr).field1FilePath[i] == '\r' || (*activeSetPtr).field1FilePath[i] == '\n') {
-                (*activeSetPtr).field1FilePath[i] = 0;
-            }
-        }
+        removeBreakChars((*activeSetPtr).field1FilePath, strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING));
     }
 
     memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1093,11 +1081,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).field2FilePath, noneString);
     }
     else {
-        for (int i = 0; i < strlen((*activeSetPtr).field2FilePath); i++) {
-            if ((*activeSetPtr).field2FilePath[i] == '\r' || (*activeSetPtr).field2FilePath[i] == '\n') {
-                (*activeSetPtr).field2FilePath[i] = 0;
-            }
-        }
+        removeBreakChars((*activeSetPtr).field2FilePath, strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING));
     }
 
     memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1106,11 +1090,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).fittingPath, noneString);
     }
     else {
-        for (int i = 0; i < strlen((*activeSetPtr).fittingPath); i++) {
-            if ((*activeSetPtr).fittingPath[i] == '\r' || (*activeSetPtr).fittingPath[i] == '\n') {
-                (*activeSetPtr).fittingPath[i] = 0;
-            }
-        }
+        removeBreakChars((*activeSetPtr).fittingPath, strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING));
     }
 
     (*activeSetPtr).batchDestination = getDoubleFromHWND(maingui.tbBatchDestination);
@@ -1347,14 +1327,27 @@ int setInterfaceValuesToActiveValues() {
     }
         
 
-    SetWindowTextA(maingui.tbPulse1Path, (*activeSetPtr).field1FilePath);
-    SetWindowTextA(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath);
-    if ((*activeSetPtr).fittingPath[0] == 'N') {
+    if (strcmp((*activeSetPtr).field1FilePath, "None") == 0) {
+        SetWindowText(maingui.tbPulse1Path, L"");
+    }
+    else {
+        SetWindowTextA(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath);
+    }
+
+    if (strcmp((*activeSetPtr).field2FilePath, "None") == 0) {
+        SetWindowText(maingui.tbPulse2Path, L"");
+    }
+    else {
+        SetWindowTextA(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath);
+    }
+
+    if (strcmp((*activeSetPtr).fittingPath, "None") == 0) {
         SetWindowText(maingui.tbFittingReferencePath, L"");
     }
     else {
         SetWindowTextA(maingui.tbFittingReferencePath, (*activeSetPtr).fittingPath);
     }
+    
     if ((*activeSetPtr).fittingString[0] == 'N') {
         SetWindowText(maingui.tbFitting, L"");
     }
