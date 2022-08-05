@@ -27,25 +27,26 @@
 #define ID_BTNFITREFERENCE 11120
 
 // Global Variables:
-HINSTANCE hInst;                                // current instance
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-guiStruct maingui;                       // struct containing all of the GUI elements
-simulationParameterSet* activeSetPtr;           // Main structure containing simulation parameters and pointers
-crystalEntry* crystalDatabasePtr;        // Crystal info database
-WCHAR programDirectory[MAX_LOADSTRING];         // Program working directory (useful if the crystal database has to be reloaded)
+HINSTANCE hInst;                            // current instance
+WCHAR szTitle[MAX_LOADSTRING];              // The title bar text
+WCHAR szWindowClass[MAX_LOADSTRING];        // the main window class name
+guiStruct maingui;                          // struct containing all of the GUI elements
+simulationParameterSet* activeSetPtr;       // Main structure containing simulation parameters and pointers
+crystalEntry* crystalDatabasePtr;           // Crystal info database
+WCHAR programDirectory[MAX_LOADSTRING];     // Program working directory (useful if the crystal database has to be reloaded)
 bool isRunning = FALSE;
 bool isPlotting = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
 
+//UI colors
 COLORREF uiWhite = RGB(255, 255, 255);
 COLORREF uiGrey = RGB(216, 216, 216);
 COLORREF uiDarkGrey = RGB(32, 32, 32);
 COLORREF uiBlack = RGB(16, 16, 16);
 HBRUSH blackBrush = CreateSolidBrush(uiBlack);
 
-// Forward declarations of (Microsoft) functions included in this code module:
+// Forward declarations of (Microsoft) functions
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 bool                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -84,8 +85,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
         else {
             solveNonlinearWaveEquation(&activeSetPtr[j]);
-            //printToConsole(maingui.textboxSims, _T("Sellmeier check: f: %lf n1: %lf n2: %lf.\r\n"), 1e-12 * activeSetPtr[j].fStep * 64, real(activeSetPtr[j].refractiveIndex1[64]), real(activeSetPtr[j].refractiveIndex2[64]));
-            
             if (activeSetPtr[j].memoryError > 0) {
                 printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
             }
@@ -137,8 +136,6 @@ DWORD WINAPI createRunFile(LPVOID lpParam) {
     loadPulseFiles(activeSetPtr);
     readSequenceString(activeSetPtr);
     configureBatchMode(activeSetPtr);
-
-
 
     free((*activeSetPtr).refractiveIndex1);
     free((*activeSetPtr).refractiveIndex2);
@@ -1102,8 +1099,6 @@ int readParametersFromInterface() {
     (*activeSetPtr).Nsims = (size_t)getDoubleFromHWND(maingui.tbNumberSims);
 
     //derived parameters and cleanup:
-    //(*activeSetPtr).delay1 += (*activeSetPtr).timeSpan / 2;
-    //(*activeSetPtr).delay2 += (*activeSetPtr).timeSpan / 2;
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
     (*activeSetPtr).sgOrder2 = (*activeSetPtr).sgOrder1;
@@ -2007,9 +2002,6 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     loadPulseFiles(activeSetPtr);
     readSequenceString(activeSetPtr);
     configureBatchMode(activeSetPtr);
-
-    //char testString[] = "0 750e12 900e12; 29 0 10; 3 0 2;";
-    //strcpy((*activeSetPtr).fittingString, testString);
     readFittingString(activeSetPtr);
     
     if ((*activeSetPtr).fittingMode == 3) {
@@ -2029,12 +2021,11 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     printToConsole(maingui.textboxSims, L"Nfit: %i %i\r\nROI: %lli %lli %lli\r\n", 
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode,
         (*activeSetPtr).fittingROIstart, (*activeSetPtr).fittingROIstop, (*activeSetPtr).fittingROIsize);
+
     //run the simulations
     runFitting(activeSetPtr);
     (*activeSetPtr).plotSim = 0;
     drawSimPlots(activeSetPtr);
-
-
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     printToConsole(maingui.textboxSims, _T("Finished fitting after %8.4lf s. \r\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
@@ -2046,7 +2037,6 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     free((*activeSetPtr).deffTensor);
     free((*activeSetPtr).loadedField1);
     free((*activeSetPtr).loadedField2);
-
     isRunning = FALSE;
     return 0;
 }
@@ -2058,8 +2048,7 @@ int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
             memmove(&cString[i + 3], &cString[i+1], N - i - 3);
             cString[i + 1] = '\r';
             cString[i + 2] = '\n';
-            i++;
-            i++;
+            i += 2;
 
             //trim space following semicolon
             if (cString[i + 1] == ' ') {

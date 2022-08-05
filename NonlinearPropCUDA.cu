@@ -2541,37 +2541,27 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
     readValueCount += fscanf(textfile, "Fitting: ");
     fgets((*sCPU).fittingString, MAX_LOADSTRING, textfile);
     readValueCount += fscanf(textfile, "Fitting mode : %i\n", &(*sCPU).fittingMode);
-    //readValueCount += fscanf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
     readValueCount += fscanf(textfile, "Output base path: ");
     fgets((*sCPU).outputBasePath, MAX_LOADSTRING, textfile);
     readValueCount += fscanf(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n",
         &(*sCPU).pulse1FileType, &(*sCPU).pulse2FileType);
-    //readValueCount += fscanf(textfile, "Field 1 file path: %s\n", (*sCPU).field1FilePath);
     readValueCount += fscanf(textfile, "Field 1 file path: ");
     fgets((*sCPU).field1FilePath, MAX_LOADSTRING, textfile);
-    //readValueCount += fscanf(textfile, "Field 2 file path: %s\n", (*sCPU).field2FilePath);
     readValueCount += fscanf(textfile, "Field 2 file path: ");
     fgets((*sCPU).field2FilePath, MAX_LOADSTRING, textfile);
-
-    //readValueCount += fscanf(textfile, "Fitting reference file path: %s\n", (*sCPU).fittingPath);
     readValueCount += fscanf(textfile, "Fitting reference file path: ");
     fgets((*sCPU).fittingPath, MAX_LOADSTRING, textfile);
     
     removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\r');
     removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\n');
-
     removeCharacterFromString((*sCPU).field2FilePath, MAX_LOADSTRING, '\r');
     removeCharacterFromString((*sCPU).field2FilePath, MAX_LOADSTRING, '\n');
-
     removeCharacterFromString((*sCPU).fittingPath, MAX_LOADSTRING, '\r');
     removeCharacterFromString((*sCPU).fittingPath, MAX_LOADSTRING, '\n');
-
     removeCharacterFromString((*sCPU).fittingString, MAX_LOADSTRING, '\r');
     removeCharacterFromString((*sCPU).fittingString, MAX_LOADSTRING, '\n');
-
     removeCharacterFromString((*sCPU).sequenceString, MAX_LOADSTRING, '\r');
     removeCharacterFromString((*sCPU).sequenceString, MAX_LOADSTRING, '\n');
-
 
     //derived parameters and cleanup:
     (*sCPU).sellmeierType = 0;
@@ -2607,7 +2597,6 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
     (*sCPU).sellmeierCoefficients = crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients;
     (*sCPU).sellmeierType = crystalDatabasePtr[(*sCPU).materialIndex].sellmeierType;
     (*sCPU).axesNumber = crystalDatabasePtr[(*sCPU).materialIndex].axisType;
-
 
     fclose(textfile);
     return readValueCount;
@@ -2750,7 +2739,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
         }
         fwprintf(textfile, L"\n");
     }
-    fwprintf(textfile, L"Code version: 0.15 May 6, 2022\n");
+    fwprintf(textfile, L"Code version: 0.2 August 4, 2022\n");
 
     fclose(textfile);
     free(outputpath);
@@ -2765,8 +2754,8 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
     while (i < N) {
         if (cString[i] == removedChar) {
             memmove(&cString[i], &cString[i + 1], N - i - r - 1);
-            cString[N - r - 1] = 0;
             r++;
+            cString[N - r - 1] = 0;
         }
         else {
             i++;
@@ -2798,9 +2787,6 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     }
     double* matlabpadding = (double*)calloc(1024, sizeof(double));
 
-    
-    
-    
     //write fields as binary
     for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
         saveEout[j] = real((*sCPU).ExtOut[j]);
