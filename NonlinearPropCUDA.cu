@@ -3225,19 +3225,19 @@ void runFittingIteration(int* m, int* n, double* fittingValues, double* fittingF
     //mode 0: maximize total spectrum in ROI
     if ((*fittingSet).fittingMode == 0) {
         for (i = 0; i < *m; i++) {
-            fittingFunction[i] = log10(1.0e8 / ((*fittingSet).totalSpectrum[2 * (*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]));
+            fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[2 * (*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]));
         }
     }
     //mode 1: maximize s-polarized spectrum in ROI
     if ((*fittingSet).fittingMode == 1) {
         for (i = 0; i < *m; i++) {
-            fittingFunction[i] = log10(1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).fittingROIstart + i]));
+            fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).fittingROIstart + i]));
         }
     }
     //mode 2: maximize p-polarized spectrum in ROI
     if ((*fittingSet).fittingMode == 2) {
         for (i = 0; i < *m; i++) {
-            fittingFunction[i] = log10(1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]));
+            fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]));
         }
     }
     //mode 3: match total spectrum to reference given in ascii file

@@ -1,3 +1,4 @@
+from pickle import TRUE
 import numpy as np
 import re
 import os
@@ -76,7 +77,7 @@ def readLine(line: str):
     return float(rr[-1])
     
 
-def load(filePath: str):
+def load(filePath: str, loadFieldArray=True):
     s = lightwaveExplorerResult()
 
     #read in the values from the settings file
@@ -136,9 +137,10 @@ def load(filePath: str):
     
     #now load the output data from binary format. Note that this will fail if you're using wrong-endian CPUs
     fileBase = os.path.splitext(filePath)
-    s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims)],(s.Ntime,s.Nspace,2*s.Nsims),order='F')
-    s.Ext_x = np.squeeze(s.Ext[:,:,0:(2*s.Nsims):2])
-    s.Ext_y = np.squeeze(s.Ext[:,:,1:(2*s.Nsims + 1):2])
+    if loadFieldArray: 
+        s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims)],(s.Ntime,s.Nspace,2*s.Nsims),order='F')
+        s.Ext_x = np.squeeze(s.Ext[:,:,0:(2*s.Nsims):2])
+        s.Ext_y = np.squeeze(s.Ext[:,:,1:(2*s.Nsims + 1):2])
     
     s.spectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*s.Ntime*s.Nsims],(s.Ntime,3,s.Nsims),order='F')
     s.spectrumTotal = np.squeeze(s.spectrum[0:int(s.Ntime/2),2,:]).T
