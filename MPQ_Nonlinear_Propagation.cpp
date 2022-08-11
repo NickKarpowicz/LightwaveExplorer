@@ -622,6 +622,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)pdPulse2Names[k]);
         SendMessage(maingui.pdPulse2Type, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
+
     SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)0, 0);
     maingui.tbPulse2Path = CreateWindow(WC_EDIT, TEXT("pulse2.speck.dat"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL, 
@@ -648,7 +649,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbFittingReferencePath = CreateWindow(WC_EDIT, TEXT("ReferenceFile.txt"),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL,
         0, 37 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.buttonPulse2Path = CreateWindow(WC_BUTTON, TEXT("Set Ref. path"),
+    maingui.buttonFittingReference = CreateWindow(WC_BUTTON, TEXT("Set Ref. path"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
         xOffsetRow1 + textboxwidth + 5, 36 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNFITREFERENCE, hInstance, NULL);
 
@@ -666,7 +667,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     SetWindowTheme(maingui.mainWindow, L"DarkMode_Explorer", NULL);
     ShowWindow(maingui.mainWindow, nCmdShow);
-
+    SetWindowTheme(maingui.mainWindow, L"DarkMode_Explorer", NULL);
     //make the active set pointer
     activeSetPtr = (simulationParameterSet*)calloc(2048, sizeof(simulationParameterSet));
 
@@ -930,6 +931,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SetWindowTheme(maingui.pdBatchMode, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.tbFitting, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.tbFittingReferencePath, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonRun, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonFit, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.pdBatchMode, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.pdClusterSelector, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.pdFittingType, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.pdPropagationMode, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.pdPulse1Type, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.pdPulse2Type, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.buttonFile, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonFittingReference, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonLoad, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonPulse1Path, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonPulse2Path, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonRefreshDB, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonStop, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonRunOnCluster, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonPlot, L"DarkMode_Explorer", NULL);
 		UpdateWindow(hWnd);
 		break;
     case WM_DESTROY:
