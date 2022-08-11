@@ -244,3 +244,4 @@ void            runFittingIteration(int* m, int* n, double* fittingValues, doubl
 int             readFittingString(simulationParameterSet* sCPU);
 int             loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
+int             applyLinearPropagation(simulationParameterSet* s, int materialIndex, double thickness);

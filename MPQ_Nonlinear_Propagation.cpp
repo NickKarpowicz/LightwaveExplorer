@@ -1334,7 +1334,7 @@ int setInterfaceValuesToActiveValues() {
         SetWindowText(maingui.tbPulse1Path, L"");
     }
     else {
-        SetWindowTextA(maingui.tbPulse2Path, (*activeSetPtr).field2FilePath);
+        SetWindowTextA(maingui.tbPulse1Path, (*activeSetPtr).field1FilePath);
     }
 
     if (strcmp((*activeSetPtr).field2FilePath, "None") == 0) {
