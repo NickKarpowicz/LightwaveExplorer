@@ -390,7 +390,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         xOffsetRow1, 29 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbFileNameBase = CreateWindow(WC_EDIT, TEXT("TestFile"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        xOffsetRow3, 1 * vs, 775, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow3, 1 * vs+5, 775, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
     maingui.plotBox1 = CreateWindow(WC_STATIC, NULL, 
         WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
@@ -469,22 +469,22 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
   
     maingui.buttonRun = CreateWindowW(WC_BUTTON, TEXT("Run"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_CENTER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
+        btnoffset2, 22 * vs-14, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
     maingui.buttonStop = CreateWindow(WC_BUTTON, TEXT("Stop"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
+        btnoffset2, 23 * vs-10, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
     maingui.buttonRefreshDB = CreateWindow(WC_BUTTON, TEXT("Refresh DB"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 24 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
+        btnoffset2, 24 * vs-4-6+4, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
     maingui.buttonRunOnCluster = CreateWindow(WC_BUTTON, TEXT("Cluster script"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 25 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
+        btnoffset2a, 25 * vs-2, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
     maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        btnoffset2a + btnwidth + 5, 25 * vs -3, 190, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + btnwidth + 5, 25 * vs -1, 190, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonFit = CreateWindow(WC_BUTTON, TEXT("Fit"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        btnoffset2, 26 * vs+2, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
+        btnoffset2, 26 * vs+2, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
     
     TCHAR A[64];
     memset(&A, 0, sizeof(A));
@@ -503,14 +503,14 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     SendMessage(maingui.pdClusterSelector, CB_SETCURSEL, (WPARAM)0, 0);
     maingui.buttonPlot = CreateWindow(WC_BUTTON, TEXT("Plot"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 22 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
+        btnoffset2a, 22 * vs - 14, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
     maingui.tbWhichSimToPlot = CreateWindow(WC_EDIT, TEXT("1"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a + btnwidth + 5, 22 * vs, 60, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + btnwidth + 5, 22 * vs-8, 60, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
     maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 23 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
+        btnoffset2a, 23 * vs - 10, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
 
 
     maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), 
@@ -519,17 +519,17 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     maingui.tbFitting = CreateWindow(WC_EDIT, TEXT(""),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN,
-        xOffsetRow1 + textboxwidth + 4, 27 * vs - 2, xOffsetRow2 - xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 4, 27 * vs - 2+9, xOffsetRow2 - xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
 
     maingui.buttonFile = CreateWindow(WC_BUTTON, TEXT("Set Path"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        xOffsetRow3, 0 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
+        xOffsetRow3, 0 * vs, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
 
     
     
     maingui.pdPropagationMode = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        xOffsetRow2, 13 * vs, textboxwidth, 5 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow2, 13 * vs+3, textboxwidth, 5 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR energyModeNames[2][64] = {
         TEXT("2D Cartesian"), TEXT("3D radial symmetry")
     };
@@ -542,7 +542,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     maingui.pdBatchMode = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        xOffsetRow2, 15 * vs - 4, textboxwidth, 38 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow2, 15 * vs-11, textboxwidth, 38 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR batchModeNames[36][64] = {
         L"none", 
         L"01: Energy 1", 
@@ -607,7 +607,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         0, 31 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonPulse1Path = CreateWindow(WC_BUTTON, TEXT("Set path 1"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 30 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE1, hInstance, NULL);
+        btnoffset2a, 30 * vs-5, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNPULSE1, hInstance, NULL);
 
     maingui.pdPulse2Type = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
@@ -629,7 +629,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         0, 34 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonPulse2Path = CreateWindow(WC_BUTTON, TEXT("Set path 2"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        xOffsetRow1 + textboxwidth + 5, 33 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNPULSE2, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 5, 33 * vs-5, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNPULSE2, hInstance, NULL);
 
     maingui.pdFittingType = CreateWindow(WC_COMBOBOX, TEXT(""),
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
@@ -651,7 +651,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         0, 37 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonFittingReference = CreateWindow(WC_BUTTON, TEXT("Set Ref. path"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        xOffsetRow1 + textboxwidth + 5, 36 * vs, btnwidth, 20, maingui.mainWindow, (HMENU)ID_BTNFITREFERENCE, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 5, 36 * vs-5, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNFITREFERENCE, hInstance, NULL);
 
 
     //Text message window
@@ -887,7 +887,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         RECT mainRect;
         GetWindowRect(maingui.mainWindow, &mainRect);
         SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 39*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 41*maingui.vs -4, NULL);
-        SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs, mainRect.right - mainRect.left - maingui.xOffsetRow3- 30, 20, NULL);
+        SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs+5, mainRect.right - mainRect.left - maingui.xOffsetRow3- 30, 20, NULL);
 
         int spacerX = 50;
         int spacerY = 40;
