@@ -83,6 +83,7 @@ typedef struct guiStruct {
     HWND buttonStop = NULL;
     HWND buttonLoad = NULL;
     HWND tbPlotNumber = NULL;
+    HWND cbLogPlot = NULL;
     HWND pdClusterSelector = NULL;
     HWND buttonRunOnCluster = NULL;
     HWND tbWhichSimToPlot = NULL;

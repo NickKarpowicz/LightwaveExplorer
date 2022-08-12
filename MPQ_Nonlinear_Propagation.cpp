@@ -25,6 +25,7 @@
 #define ID_BTNLOAD 11118
 #define ID_BTNFIT 11119
 #define ID_BTNFITREFERENCE 11120
+#define ID_CBLOGPLOT 12000
 
 // Global Variables:
 HINSTANCE hInst;                            // current instance
@@ -290,6 +291,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     int rbsize = maingui.rbsize;
     int consoleSize = maingui.consoleSize;
     int textboxwidth = maingui.textboxwidth;
+    int btnHeight = 26;
     maingui.mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_EX_CONTROLPARENT,
         CW_USEDEFAULT, CW_USEDEFAULT, 2200, 33 * vs + consoleSize, nullptr, nullptr, hInstance, nullptr);
     SetMenu(maingui.mainWindow, NULL);
@@ -469,22 +471,22 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
   
     maingui.buttonRun = CreateWindowW(WC_BUTTON, TEXT("Run"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_CENTER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 22 * vs-14, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
+        btnoffset2, 22 * vs-14, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
     maingui.buttonStop = CreateWindow(WC_BUTTON, TEXT("Stop"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 23 * vs-10, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
+        btnoffset2, 23 * vs-10, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
     maingui.buttonRefreshDB = CreateWindow(WC_BUTTON, TEXT("Refresh DB"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 24 * vs-4-6+4, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
+        btnoffset2, 24 * vs-4-6+4, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
     maingui.buttonRunOnCluster = CreateWindow(WC_BUTTON, TEXT("Cluster script"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 25 * vs-2, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
+        btnoffset2a, 25 * vs-2, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
     maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
         btnoffset2a + btnwidth + 5, 25 * vs -1, 189, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonFit = CreateWindow(WC_BUTTON, TEXT("Fit"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        btnoffset2, 26 * vs+2, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
+        btnoffset2, 26 * vs+2, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
     
     TCHAR A[64];
     memset(&A, 0, sizeof(A));
@@ -503,14 +505,16 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     SendMessage(maingui.pdClusterSelector, CB_SETCURSEL, (WPARAM)0, 0);
     maingui.buttonPlot = CreateWindow(WC_BUTTON, TEXT("Plot"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 22 * vs - 14, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
+        btnoffset2a, 22 * vs - 14, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
     maingui.tbWhichSimToPlot = CreateWindow(WC_EDIT, TEXT("1"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a + btnwidth, 22 * vs-13, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + btnwidth+1, 22 * vs-12, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.cbLogPlot = CreateWindow(TEXT("button"), TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, btnoffset2a + btnwidth+52, 22 * vs, 12, 12, maingui.mainWindow, (HMENU)ID_CBLOGPLOT, hInstance, NULL);
+
 
     maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 23 * vs - 10, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
+        btnoffset2a, 23 * vs - 10, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
 
 
     maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), 
@@ -523,7 +527,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     maingui.buttonFile = CreateWindow(WC_BUTTON, TEXT("Set Path"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        xOffsetRow3, 0 * vs, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
+        xOffsetRow3, 0 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNGETFILENAME, hInstance, NULL);
 
     
     
@@ -607,7 +611,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         0, 31 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonPulse1Path = CreateWindow(WC_BUTTON, TEXT("Set path 1"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 30 * vs-5, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNPULSE1, hInstance, NULL);
+        btnoffset2a, 30 * vs-5, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNPULSE1, hInstance, NULL);
 
     maingui.pdPulse2Type = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
@@ -629,7 +633,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         0, 34 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonPulse2Path = CreateWindow(WC_BUTTON, TEXT("Set path 2"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        xOffsetRow1 + textboxwidth + 5, 33 * vs-5, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNPULSE2, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 5, 33 * vs-5, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNPULSE2, hInstance, NULL);
 
     maingui.pdFittingType = CreateWindow(WC_COMBOBOX, TEXT(""),
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
@@ -651,7 +655,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         0, 37 * vs, xOffsetRow2 + 150, 46, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonFittingReference = CreateWindow(WC_BUTTON, TEXT("Set Ref. path"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        xOffsetRow1 + textboxwidth + 5, 36 * vs-5, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNFITREFERENCE, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 5, 36 * vs-5, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNFITREFERENCE, hInstance, NULL);
 
 
     //Text message window
@@ -904,16 +908,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         int plotMargin = 0;
         int xCorrection = 10;
         int yCorrection = 45;
-        if (!isGridAllocated) {
-            SetWindowPos(maingui.plotBox1, HWND_BOTTOM, x - xCorrection, y - yCorrection, dx, dy, NULL);
-            SetWindowPos(maingui.plotBox2, HWND_BOTTOM, x - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
-            SetWindowPos(maingui.plotBox3, HWND_BOTTOM, x - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
-            SetWindowPos(maingui.plotBox4, HWND_BOTTOM, x - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
-            SetWindowPos(maingui.plotBox5, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 0 * dy + 0 * spacerY - yCorrection, dx, dy, NULL);
-            SetWindowPos(maingui.plotBox6, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
-            SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
-            SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
-        }
+
+        SetWindowPos(maingui.plotBox1, HWND_BOTTOM, x - xCorrection, y - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox2, HWND_BOTTOM, x - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox3, HWND_BOTTOM, x - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox4, HWND_BOTTOM, x - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox5, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 0 * dy + 0 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox6, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
+        
 
 
         if (isGridAllocated) {
@@ -948,6 +952,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonStop, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonRunOnCluster, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonPlot, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.cbLogPlot, L"DarkMode_CFD", NULL);
 		UpdateWindow(hWnd);
 		break;
     case WM_DESTROY:
@@ -1456,6 +1461,7 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.pdFittingType, _T("Fit type:"), labos, 4);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), -6, -15);
     //plot labels
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);
@@ -1478,16 +1484,31 @@ int drawLabels(HDC hdc) {
     int plotMargin = 0;
     int spacerX = 50;
     int spacerY = 40;
-    floatyText(hdc, maingui.mainWindow, L"s-polarization, space/time:", column1X, row1Y);
-    floatyText(hdc, maingui.mainWindow, L"p-polarization, space/time:", column1X, row2Y);
-    floatyText(hdc, maingui.mainWindow, L"s-polarization waveform (GV/m):", column1X, row3Y);
-    floatyText(hdc, maingui.mainWindow, L"p-polarization waveform (GV/m):", column1X, row4Y);
-    floatyText(hdc, maingui.mainWindow, L"Time (fs)", unitLabelRow1X-40, row5Y);
-    floatyText(hdc, maingui.mainWindow, L"s-polarization, Fourier, Log:", column2X, row1Y);
-    floatyText(hdc, maingui.mainWindow, L"p-polarization, Fourier, Log:", column2X, row2Y);
-    floatyText(hdc, maingui.mainWindow, L"s-polarization spectrum, log-scale:", column2X, row3Y);
-    floatyText(hdc, maingui.mainWindow, L"p-polarization spectrum, log-scale:", column2X, row4Y);
-    floatyText(hdc, maingui.mainWindow, L"Frequency (THz)", unitLabelRow2X-90, row5Y);
+    //floatyText(hdc, maingui.plotBox1, L"s-polarization, space/time:", -10, -10);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox1, _T("s-polarization, space/time:"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox2, _T("p-polarization, space/time:"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox3, _T("s-polarization waveform (GV/m):"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("p-polarization waveform (GV/m):"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox5, _T("s-polarization, Fourier, Log:"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox6, _T("p-polarization, Fourier, Log:"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("s-polarization spectrum, log-scale:"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("p-polarization spectrum, log-scale:"), -20, -20);
+
+
+    GetWindowRect(maingui.plotBox8, &mainRect);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("Frequency (THz)"), (mainRect.right-mainRect.left)/2 - 15*4, (mainRect.bottom-mainRect.top) + 20);
+    GetWindowRect(maingui.plotBox4, &mainRect);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("Time (fs)"), (mainRect.right - mainRect.left) / 2 - 9 * 4, (mainRect.bottom - mainRect.top) + 20);
+
+    //floatyText(hdc, maingui.mainWindow, L"p-polarization, space/time:", column1X, row2Y);
+    //floatyText(hdc, maingui.mainWindow, L"s-polarization waveform (GV/m):", column1X, row3Y);
+    //floatyText(hdc, maingui.mainWindow, L"p-polarization waveform (GV/m):", column1X, row4Y);
+    //floatyText(hdc, maingui.mainWindow, L"Time (fs)", unitLabelRow1X-40, row5Y);
+    //floatyText(hdc, maingui.mainWindow, L"s-polarization, Fourier, Log:", column2X, row1Y);
+    //floatyText(hdc, maingui.mainWindow, L"p-polarization, Fourier, Log:", column2X, row2Y);
+    //floatyText(hdc, maingui.mainWindow, L"s-polarization spectrum, log-scale:", column2X, row3Y);
+    //floatyText(hdc, maingui.mainWindow, L"p-polarization spectrum, log-scale:", column2X, row4Y);
+    //floatyText(hdc, maingui.mainWindow, L"Frequency (THz)", unitLabelRow2X-90, row5Y);
     return 0;
 }
 
@@ -1739,33 +1760,23 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
 DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if (isGridAllocated) {
         isPlotting = TRUE;
+        bool logPlot = TRUE;
+        if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
+            logPlot = FALSE;
+        }
+
         RECT mainRect;
+        RECT plotRect;
         GetWindowRect(maingui.mainWindow, &mainRect);
 
-        int spacerX = 50;
-        int spacerY = 40;
-        int x0 = maingui.consoleSize + spacerX + 10;
-        int y0 = 90 + spacerY;
-        int imagePanelSizeX = mainRect.right - mainRect.left - x0 - 2*spacerX;
-        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 5*spacerY;
-
+        GetWindowRect(maingui.plotBox1, &plotRect);
+        int dx = plotRect.right - plotRect.left;
+        int dy = plotRect.bottom - plotRect.top;
         size_t simIndex = (*activeSetPtr).plotSim;
-        int x = x0;
-        int y = y0;
-        int dx = imagePanelSizeX/2;
-        int dy = imagePanelSizeY/4;
-        int plotMargin = 0;
-        int xCorrection = 10;
-        int yCorrection = 45;
-
         ShowWindow(maingui.plotBox1, 0);
         ShowWindow(maingui.plotBox2, 0);
         ShowWindow(maingui.plotBox5, 0);
         ShowWindow(maingui.plotBox6, 0);
-        SetWindowPos(maingui.plotBox3, HWND_BOTTOM, x - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox4, HWND_BOTTOM, x - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
 
 
         float logPlotOffset = 1e11f;
@@ -1790,7 +1801,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
             plotarr[i] = (float)(real((*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2]));
         }
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
-        drawArrayAsBitmap(hdc, dx, dy, x, y, dy, dx, plotarr2, 4);
+        drawArrayAsBitmap(hdc, plotRect.right- plotRect.left, plotRect.bottom- plotRect.top, plotRect.left-mainRect.left, plotRect.top-mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 4);
 
         plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[(*activeSetPtr).Ngrid / 2], 
             (*activeSetPtr).Ntime, 1e9, FALSE, 0);
@@ -1801,7 +1812,10 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
 
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
-        drawArrayAsBitmap(hdc, dx, dy, x, (size_t)(y) + (size_t)(dy) + spacerY, dy, dx, plotarr2, 4);
+        GetWindowRect(maingui.plotBox2, &plotRect);
+        drawArrayAsBitmap(hdc, plotRect.right - plotRect.left, plotRect.bottom - plotRect.top, plotRect.left - mainRect.left, plotRect.top - mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 4);
+
+
         plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f, 
             &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
 
@@ -1818,14 +1832,25 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
 
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx);
-        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), y, dy, dx, plotarr2, 3);
+        GetWindowRect(maingui.plotBox5, &plotRect);
+        drawArrayAsBitmap(hdc, plotRect.right - plotRect.left, plotRect.bottom - plotRect.top, plotRect.left - mainRect.left, plotRect.top - mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 3);
 
-        for (i = 0; i < ((*activeSetPtr).Ntime/2); i++) {
-            plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Ntime]);
+
+        if (logPlot) {
+            for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
+                plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Ntime]);
+            }
+            plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
+                &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
         }
-        plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f, 
-            &plotarrC[0], (*activeSetPtr).Ntime/2, 1, TRUE, -4);
-        
+        else {
+            for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
+                plotarrC[i] = (float)((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Ntime]);
+            }
+            plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
+                &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
+
+        }
         //Plot Fourier Domain, p-polarization
         fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], 
             shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
@@ -1840,14 +1865,23 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         }
         
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx);
-        drawArrayAsBitmap(hdc, dx, dy, (size_t)(x) + (size_t)(dx) + (size_t)(spacerX), 
-            (size_t)(y) + (size_t)(dy) + (size_t)(spacerY), dy, dx, plotarr2, 3);
-
-        for (i = 0; i < (*activeSetPtr).Ntime/2; i++) {
-            plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Ntime]);
+        GetWindowRect(maingui.plotBox6, &plotRect);
+        drawArrayAsBitmap(hdc, plotRect.right - plotRect.left, plotRect.bottom - plotRect.top, plotRect.left - mainRect.left, plotRect.top - mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 3);
+        
+        if (logPlot) {
+            for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
+                plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Ntime]);
+            }
+            plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
+                &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
         }
-        plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
-            &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
+        else {
+            for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
+                plotarrC[i] = (float)((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Ntime]);
+            }
+            plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
+                &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
+        }
 
         free(shiftedFFT);
         free(plotarr);
