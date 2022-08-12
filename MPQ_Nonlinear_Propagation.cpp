@@ -481,7 +481,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         btnoffset2a, 25 * vs-2, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
     maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        btnoffset2a + btnwidth + 5, 25 * vs -1, 190, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + btnwidth + 5, 25 * vs -1, 189, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonFit = CreateWindow(WC_BUTTON, TEXT("Fit"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
         btnoffset2, 26 * vs+2, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
@@ -506,7 +506,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         btnoffset2a, 22 * vs - 14, btnwidth, 30, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
     maingui.tbWhichSimToPlot = CreateWindow(WC_EDIT, TEXT("1"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a + btnwidth + 5, 22 * vs-8, 60, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + btnwidth, 22 * vs-13, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
     maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
