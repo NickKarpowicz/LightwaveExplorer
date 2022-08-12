@@ -893,9 +893,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 39*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 41*maingui.vs -4, NULL);
         SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs+5, mainRect.right - mainRect.left - maingui.xOffsetRow3- 30, 20, NULL);
 
-        int spacerX = 50;
-        int spacerY = 40;
-        int x0 = maingui.consoleSize + spacerX + 10;
+        int spacerX = 60;
+        int spacerY = 30;
+        int x0 = maingui.consoleSize + spacerX + 12;
         int y0 = 90 + spacerY;
         int imagePanelSizeX = mainRect.right - mainRect.left - x0 - 2 * spacerX;
         int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 5 * spacerY;
@@ -1465,50 +1465,22 @@ int drawLabels(HDC hdc) {
     //plot labels
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);
-    int x0 = maingui.consoleSize + 10;
-    int y0 = 2 * maingui.vs;
-    int textHeight = 21;
-    int imagePanelSizeX = mainRect.right - mainRect.left - x0;
-    int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 -5*textHeight;
 
-    int column1X = x0;
-    int column2X = x0 + imagePanelSizeX/2;
-    int unitLabelRow1X = x0 + imagePanelSizeX / 4;
-    int unitLabelRow2X = x0 + (3 * imagePanelSizeX) / 4;
-    int row1Y = y0;
-    int row2Y = y0 + imagePanelSizeY/4;
-    int row3Y = y0 + imagePanelSizeY/2;
-    int row4Y = y0 + (3 * imagePanelSizeY) / 4;
-    int row5Y = y0 + imagePanelSizeY + 15;
-    int dy = 256;
-    int plotMargin = 0;
-    int spacerX = 50;
-    int spacerY = 40;
-    //floatyText(hdc, maingui.plotBox1, L"s-polarization, space/time:", -10, -10);
+
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox1, _T("s-polarization, space/time:"), -20, -20);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox2, _T("p-polarization, space/time:"), -20, -20);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox3, _T("s-polarization waveform (GV/m):"), -20, -20);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("p-polarization waveform (GV/m):"), -20, -20);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox5, _T("s-polarization, Fourier, Log:"), -20, -20);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox6, _T("p-polarization, Fourier, Log:"), -20, -20);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("s-polarization spectrum, log-scale:"), -20, -20);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("p-polarization spectrum, log-scale:"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("s-polarization spectrum:"), -20, -20);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("p-polarization spectrum:"), -20, -20);
 
 
     GetWindowRect(maingui.plotBox8, &mainRect);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("Frequency (THz)"), (mainRect.right-mainRect.left)/2 - 15*4, (mainRect.bottom-mainRect.top) + 20);
     GetWindowRect(maingui.plotBox4, &mainRect);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("Time (fs)"), (mainRect.right - mainRect.left) / 2 - 9 * 4, (mainRect.bottom - mainRect.top) + 20);
-
-    //floatyText(hdc, maingui.mainWindow, L"p-polarization, space/time:", column1X, row2Y);
-    //floatyText(hdc, maingui.mainWindow, L"s-polarization waveform (GV/m):", column1X, row3Y);
-    //floatyText(hdc, maingui.mainWindow, L"p-polarization waveform (GV/m):", column1X, row4Y);
-    //floatyText(hdc, maingui.mainWindow, L"Time (fs)", unitLabelRow1X-40, row5Y);
-    //floatyText(hdc, maingui.mainWindow, L"s-polarization, Fourier, Log:", column2X, row1Y);
-    //floatyText(hdc, maingui.mainWindow, L"p-polarization, Fourier, Log:", column2X, row2Y);
-    //floatyText(hdc, maingui.mainWindow, L"s-polarization spectrum, log-scale:", column2X, row3Y);
-    //floatyText(hdc, maingui.mainWindow, L"p-polarization spectrum, log-scale:", column2X, row4Y);
-    //floatyText(hdc, maingui.mainWindow, L"Frequency (THz)", unitLabelRow2X-90, row5Y);
     return 0;
 }
 
@@ -1760,6 +1732,7 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
 DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if (isGridAllocated) {
         isPlotting = TRUE;
+        RedrawWindow(maingui.mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
         bool logPlot = TRUE;
         if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
             logPlot = FALSE;
@@ -1888,6 +1861,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         free(plotarr2);
         free(plotarrC);
         ReleaseDC(maingui.mainWindow, hdc);
+        
         isPlotting = FALSE;
     }
     return 0;
@@ -2023,9 +1997,18 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     posY -= windowRect.top;
     for (i = 0; i < NyTicks; i++) {
         memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("%1.1f"), yTicks1[i] / unitY);
-        TextOutW(hdc, posX - 32, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
+        if (abs(yTicks1[i] / unitY) > 10.0) {
+            swprintf_s(messageBuffer, MAX_LOADSTRING,
+                _T("%1.1e"), yTicks1[i] / unitY);
+            TextOutW(hdc, posX - 54, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
+        }
+        else {
+            swprintf_s(messageBuffer, MAX_LOADSTRING,
+                _T("%1.4f"), yTicks1[i] / unitY);
+            TextOutW(hdc, posX - 50, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
+        }
+        
+        
     }
     for (i = 0; i < 3; i++) {
         memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
