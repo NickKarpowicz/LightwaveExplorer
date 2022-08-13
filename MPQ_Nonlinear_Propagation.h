@@ -21,7 +21,9 @@ typedef struct guiStruct {
     HWND tbXstep = NULL;
     HWND tbBatchMode = NULL;
     HWND tbNumberSims = NULL;
+    HWND tbNumberSims2 = NULL;
     HWND tbBatchDestination = NULL;
+    HWND tbBatchDestination2 = NULL;
 
     HWND tbPulse1Delay = NULL;
     HWND tbPulse2Delay = NULL;
@@ -59,7 +61,7 @@ typedef struct guiStruct {
 
     HWND pdPropagationMode = NULL;
     HWND pdBatchMode = NULL;
-    HWND pdPulseType = NULL;
+    HWND pdBatchMode2 = NULL;
     HWND pdRStep = NULL;
 
     HWND tbSequence = NULL;
@@ -103,14 +105,19 @@ typedef struct guiStruct {
     int xOffsetRow3 = 640;
     int vs = 26;
     int radioButtonOffset = 349;
-    int btnwidth = 120;
+    int btnwidth = 100;
+    int btnHeight = 26;
+    int comboBoxHeight = 18;
     int btnoffset = 160;
     int btnoffset0 = 5;
-    int btnoffset2 = 510;
+    int btnoffset2 = 530;
     int btnoffset2a = 160 + 150 + 5;
     int rbsize = 18;
     int consoleSize = 630;
     int textboxwidth = 150;
+    int plotSpacerX = 64;
+    int plotSpacerY = 30;
+
 } guiStruct;
 
 

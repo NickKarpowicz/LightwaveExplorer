@@ -1141,9 +1141,9 @@ int main(int argc, char *argv[]) {
 
         return 0;
     }
-    std::thread *threadBlock = (std::thread*)calloc((*sCPU).Nsims, sizeof(std::thread));
-    size_t maxThreads = min(CUDAdeviceCount, (*sCPU).Nsims);
-    for (j = 0; j < (*sCPU).Nsims; j++) {
+    std::thread *threadBlock = (std::thread*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::thread));
+    size_t maxThreads = min(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
+    for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; j++) {
 
         sCPU[j].assignedGPU = j % CUDAdeviceCount;
         if (j >= maxThreads) {
@@ -1160,7 +1160,7 @@ int main(int argc, char *argv[]) {
         }
     }
     
-	for (i = 0; i < (*sCPU).Nsims; i++) {
+	for (i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; i++) {
         if (sCPU[i].memoryError > 0) {
             printf("Warning: device memory error (%i).\n", sCPU[i].memoryError);
         }
@@ -2456,17 +2456,17 @@ int allocateGrids(simulationParameterSet* sCPU) {
     (*sCPU).loadedField1 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
     (*sCPU).loadedField2 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
 
-    (*sCPU).Ext = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
-    (*sCPU).Ekw = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
+    (*sCPU).Ext = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
+    (*sCPU).Ekw = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
 
-    (*sCPU).ExtOut = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
-    (*sCPU).EkwOut = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(std::complex<double>));
+    (*sCPU).ExtOut = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
+    (*sCPU).EkwOut = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
 
-    (*sCPU).refractiveIndex1 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims, sizeof(std::complex<double>));
-    (*sCPU).refractiveIndex2 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims, sizeof(std::complex<double>));
-    (*sCPU).deffTensor = (double*)calloc(9 * (*sCPU).Nsims, sizeof(double));
-    (*sCPU).totalSpectrum = (double*)calloc((*sCPU).Nsims * (*sCPU).Ntime * 3, sizeof(double));
-    (*sCPU).imdone = (int*)calloc((*sCPU).Nsims, sizeof(int));
+    (*sCPU).refractiveIndex1 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
+    (*sCPU).refractiveIndex2 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
+    (*sCPU).deffTensor = (double*)calloc(9 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(double));
+    (*sCPU).totalSpectrum = (double*)calloc((*sCPU).Nsims * (*sCPU).Nsims2 * (*sCPU).Ntime * 3, sizeof(double));
+    (*sCPU).imdone = (int*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(int));
     return 0;
 }
 
@@ -2538,36 +2538,36 @@ int readSequenceString(simulationParameterSet* sCPU) {
     //read the sequence string (if there is one), convert it into an array if it exists
     char sequenceString[MAX_LOADSTRING];
     strcpy(sequenceString, (*sCPU).sequenceString);
-    char* tokToken = strtok(sequenceString, ";");
-    int sequenceCount = sscanf(sequenceString, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
-        &(*sCPU).sequenceArray[0], &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2], 
-        &(*sCPU).sequenceArray[3], &(*sCPU).sequenceArray[4], &(*sCPU).sequenceArray[5],
-        &(*sCPU).sequenceArray[6], &(*sCPU).sequenceArray[7], &(*sCPU).sequenceArray[8],
-        &(*sCPU).sequenceArray[9], &(*sCPU).sequenceArray[10]);
+char* tokToken = strtok(sequenceString, ";");
+int sequenceCount = sscanf(sequenceString, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+    &(*sCPU).sequenceArray[0], &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2],
+    &(*sCPU).sequenceArray[3], &(*sCPU).sequenceArray[4], &(*sCPU).sequenceArray[5],
+    &(*sCPU).sequenceArray[6], &(*sCPU).sequenceArray[7], &(*sCPU).sequenceArray[8],
+    &(*sCPU).sequenceArray[9], &(*sCPU).sequenceArray[10]);
 
+tokToken = strtok(NULL, ";");
+int lastread = sequenceCount;
+while (tokToken != NULL && lastread == 11) {
+    lastread = sscanf(tokToken, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+        &(*sCPU).sequenceArray[sequenceCount], &(*sCPU).sequenceArray[sequenceCount + 1],
+        &(*sCPU).sequenceArray[sequenceCount + 2], &(*sCPU).sequenceArray[sequenceCount + 3],
+        &(*sCPU).sequenceArray[sequenceCount + 4], &(*sCPU).sequenceArray[sequenceCount + 5],
+        &(*sCPU).sequenceArray[sequenceCount + 6], &(*sCPU).sequenceArray[sequenceCount + 7],
+        &(*sCPU).sequenceArray[sequenceCount + 8], &(*sCPU).sequenceArray[sequenceCount + 9],
+        &(*sCPU).sequenceArray[sequenceCount + 10]);
+    if (lastread > 0) {
+        sequenceCount += lastread;
+    }
     tokToken = strtok(NULL, ";");
-    int lastread = sequenceCount;
-    while (tokToken != NULL && lastread == 11) {
-        lastread = sscanf(tokToken, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", 
-            &(*sCPU).sequenceArray[sequenceCount], &(*sCPU).sequenceArray[sequenceCount + 1], 
-            &(*sCPU).sequenceArray[sequenceCount + 2], &(*sCPU).sequenceArray[sequenceCount + 3], 
-            &(*sCPU).sequenceArray[sequenceCount + 4], &(*sCPU).sequenceArray[sequenceCount + 5],
-            &(*sCPU).sequenceArray[sequenceCount + 6], &(*sCPU).sequenceArray[sequenceCount + 7],
-            &(*sCPU).sequenceArray[sequenceCount + 8], &(*sCPU).sequenceArray[sequenceCount + 9],
-            &(*sCPU).sequenceArray[sequenceCount + 10]);
-        if (lastread > 0) {
-            sequenceCount += lastread;
-        }
-        tokToken = strtok(NULL, ";");
-    }
-    (*sCPU).Nsequence = sequenceCount / 11;
-    (*sCPU).isInSequence = ((*sCPU).Nsequence > 0);
+}
+(*sCPU).Nsequence = sequenceCount / 11;
+(*sCPU).isInSequence = ((*sCPU).Nsequence > 0);
 
-    if (!(*sCPU).isInSequence) {
-        char nopeString[] = "None.";
-        strcpy((*sCPU).sequenceString, nopeString);
-    }
-    return 0;
+if (!(*sCPU).isInSequence) {
+    char nopeString[] = "None.";
+    strcpy((*sCPU).sequenceString, nopeString);
+}
+return 0;
 }
 
 int readFittingString(simulationParameterSet* sCPU) {
@@ -2580,8 +2580,8 @@ int readFittingString(simulationParameterSet* sCPU) {
     bool paramsRead = (4 == sscanf(fittingString, "%lf %lf %lf %d",
         &ROIbegin, &ROIend, &(*sCPU).fittingPrecision, &(*sCPU).fittingMaxIterations));
     (*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
-    (*sCPU).fittingROIstop = (size_t)min(ROIend / (*sCPU).fStep, (*sCPU).Ntime/2);
-    (*sCPU).fittingROIsize = min(max(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime/2);
+    (*sCPU).fittingROIstop = (size_t)min(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
+    (*sCPU).fittingROIsize = min(max(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
     int fittingCount = 0;
     tokToken = strtok(NULL, ";");
     int lastread = 3;
@@ -2605,7 +2605,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 }
 
 int configureBatchMode(simulationParameterSet* sCPU) {
-    int j;
+    size_t i,j, currentRow;
     if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims == 1) {
         return 0;
     }
@@ -2622,46 +2622,59 @@ int configureBatchMode(simulationParameterSet* sCPU) {
         &(*sCPU).circularity1, &(*sCPU).circularity2, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
         &(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
         &(*sCPU).propagationStep };
-    
+
     //multipliers to the Batch end value from the interface
     // (e.g. frequency in THz requires 1e12 multiplier)
     double multipliers[36] = { 0,
-        1, 1, 1e12, 1e12, 
-        1e12, 1e12, PI, PI, 
-        1e-15, 1e-15, 1e-30, 1e-30, 
+        1, 1, 1e12, 1e12,
+        1e12, 1e12, PI, PI,
+        1e-15, 1e-15, 1e-30, 1e-30,
         1e-45, 1e-45, 1e-6, 1e-6,
-        1e-6, 1e-6, 
-        1e-6, 1e-6, 1e-6, 1e-6, 
-        DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD, 
-        1, 1, DEG2RAD, DEG2RAD, 
-        1, 1e12, 1, 1e-6, 
+        1e-6, 1e-6,
+        1e-6, 1e-6, 1e-6, 1e-6,
+        DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
+        1, 1, DEG2RAD, DEG2RAD,
+        1, 1e12, 1, 1e-6,
         1e-9 };
 
     //Configure the struct array if in a batch
-    for (j = 0; j < (*sCPU).Nsims; j++) {
-        if (j > 0) {
-            memcpy(&sCPU[j], sCPU, sizeof(simulationParameterSet));
+    for (i = 0; i < (*sCPU).Nsims2; i++) {
+        currentRow = i * (*sCPU).Nsims;
+        
+        if (currentRow > 0) {
+            memcpy(&sCPU[currentRow], sCPU, sizeof(simulationParameterSet));
+        }
+        if ((*sCPU).Nsims2 > 1) {
+            *((double*)((simulationParameterSet*)targets[(*sCPU).batchIndex2] + currentRow)) +=
+                i * (multipliers[(*sCPU).batchIndex2] * (*sCPU).batchDestination2 - *targets[(*sCPU).batchIndex2])
+                / ((*sCPU).Nsims2 - 1);
         }
         
-        if ((*sCPU).deffTensor != NULL) {
-            sCPU[j].deffTensor = &(*sCPU).deffTensor[9 * j];;
+        for (j = 0; j < (*sCPU).Nsims; j++) {
+            if (j > 0) {
+                memcpy(&sCPU[j + currentRow], &sCPU[currentRow], sizeof(simulationParameterSet));
+            }
+
+            if ((*sCPU).deffTensor != NULL) {
+                sCPU[j + currentRow].deffTensor = &(*sCPU).deffTensor[9 * (j + currentRow)];;
+            }
+
+            sCPU[j + currentRow].Ext = &(*sCPU).Ext[(j + currentRow) * (*sCPU).Ngrid * 2];
+            sCPU[j + currentRow].Ekw = &(*sCPU).Ekw[(j + currentRow) * (*sCPU).Ngrid * 2];
+            sCPU[j + currentRow].ExtOut = &(*sCPU).ExtOut[(j + currentRow) * (*sCPU).Ngrid * 2];
+            sCPU[j + currentRow].EkwOut = &(*sCPU).EkwOut[(j + currentRow) * (*sCPU).Ngrid * 2];
+            sCPU[j + currentRow].totalSpectrum = &(*sCPU).totalSpectrum[(j + currentRow) * (*sCPU).Ntime * 3];
+            sCPU[j + currentRow].isFollowerInSequence = FALSE;
+
+            // To add new modes, append values to the two arrays above, and to the combobox in the UI.
+            // Cast the pointer to the original value to a pointer to a struct, 
+            // increment, recast to a pointer to double and resolve then add j times the scan step size.
+            *((double*)((simulationParameterSet*)targets[(*sCPU).batchIndex] + (j + currentRow))) +=
+                j * (multipliers[(*sCPU).batchIndex] * (*sCPU).batchDestination - *targets[(*sCPU).batchIndex])
+                / ((*sCPU).Nsims - 1);
         }
-
-        sCPU[j].Ext = &(*sCPU).Ext[j * (*sCPU).Ngrid * 2];
-        sCPU[j].Ekw = &(*sCPU).Ekw[j * (*sCPU).Ngrid * 2];
-        sCPU[j].ExtOut = &(*sCPU).ExtOut[j * (*sCPU).Ngrid * 2];
-        sCPU[j].EkwOut = &(*sCPU).EkwOut[j * (*sCPU).Ngrid * 2];
-        sCPU[j].totalSpectrum = &(*sCPU).totalSpectrum[j * (*sCPU).Ntime * 3];
-
-        sCPU[j].isFollowerInSequence = FALSE;
-        
-        // To add new modes, append values to the two arrays above, and to the combobox in the UI.
-        // Cast the pointer to the original value to a pointer to a struct, 
-        // increment, recast to a pointer to double and resolve then add j times the scan step size.
-        *((double*)((simulationParameterSet*)targets[(*sCPU).batchIndex] + j)) += 
-            j * (multipliers[(*sCPU).batchIndex] * (*sCPU).batchDestination - *targets[(*sCPU).batchIndex]) 
-            / ((*sCPU).Nsims - 1);
     }
+    
     return 0;
 }
 int skipFileUntilCharacter(FILE* fstream, char target) {
@@ -2780,6 +2793,12 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
     readValueCount += fscanf(textfile, "%lf", &(*sCPU).batchDestination);
     skipFileUntilCharacter(textfile, ':');
     readValueCount += fscanf(textfile, "%lli", &(*sCPU).Nsims);
+    skipFileUntilCharacter(textfile, ':');
+    readValueCount += fscanf(textfile, "%i", &(*sCPU).batchIndex2);
+    skipFileUntilCharacter(textfile, ':');
+    readValueCount += fscanf(textfile, "%lf", &(*sCPU).batchDestination2);
+    skipFileUntilCharacter(textfile, ':');
+    readValueCount += fscanf(textfile, "%lli", &(*sCPU).Nsims2);
     readValueCount += fscanf(textfile, "\nSequence: ");
     fgets((*sCPU).sequenceString, MAX_LOADSTRING, textfile);
     readValueCount += fscanf(textfile, "Fitting: ");
@@ -2826,8 +2845,11 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
         (*sCPU).propagationAngle2 = 0;
     }
 
-    if ((*sCPU).batchIndex == 0 || (*sCPU).batchIndex == 4 || (*sCPU).Nsims < 1) {
+    if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims < 1) {
         (*sCPU).Nsims = 1;
+    }
+    if ((*sCPU).batchIndex2 == 0 || (*sCPU).Nsims2 < 1) {
+        (*sCPU).Nsims2 = 1;
     }
 
     (*sCPU).field1IsAllocated = FALSE;
@@ -2946,6 +2968,8 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
         (*sCPU).symmetryType);
     fwprintf(textfile, L"Batch mode: %i\nBatch destination: %14.14e\nBatch steps: %lli\n", 
         (*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
+    fwprintf(textfile, L"Batch mode 2: %i\nBatch destination 2: %14.14e\nBatch steps 2: %lli\n",
+        (*sCPU).batchIndex2, (*sCPU).batchDestination2, (*sCPU).Nsims2);
     mbstowcs(wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
     fwprintf(textfile, L"Sequence: %ls\n", wideStringConversionBuffer);
     mbstowcs(wideStringConversionBuffer, (*sCPU).fittingString, MAX_LOADSTRING);
@@ -2983,7 +3007,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
         }
         fwprintf(textfile, L"\n");
     }
-    fwprintf(textfile, L"Code version: 0.2 August 4, 2022\n");
+    fwprintf(textfile, L"Code version: 0.3 August 13, 2022\n");
 
     fclose(textfile);
     free(outputpath);
@@ -3005,6 +3029,9 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
             i++;
         }
     }
+    if (cString[N - 1] == removedChar) {
+        cString[N - 1] = '\0';
+    }
     return 0;
 }
 
@@ -3014,8 +3041,8 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     saveSettingsFile(sCPU, crystalDatabasePtr);
 
     //Save the results as double instead of complex
-    double* saveEout = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims, sizeof(double));
-    for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
+    double* saveEout = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(double));
+    for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2 * 2); j++) {
         saveEout[j] = real((*sCPU).ExtOut[j]);
     }
 
@@ -3032,11 +3059,11 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     double* matlabpadding = (double*)calloc(1024, sizeof(double));
 
     //write fields as binary
-    for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
+    for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2 * 2); j++) {
         saveEout[j] = real((*sCPU).ExtOut[j]);
     }
     FILE* ExtOutFile;
-    size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims);
+    size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
     strcpy(outputpath, outputbase);
     strcat(outputpath, "_Ext.dat");
     ExtOutFile = fopen(outputpath, "wb");
@@ -3044,7 +3071,7 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     fwrite(matlabpadding, sizeof(double), 1024, ExtOutFile);
     fclose(ExtOutFile);
     if (saveInputs) {
-        for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * 2); j++) {
+        for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2 * 2); j++) {
             saveEout[j] = real((*sCPU).Ext[j]);
         }
         FILE* ExtInFile;
@@ -3061,7 +3088,7 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     strcpy(outputpath, outputbase);
     strcat(outputpath, "_spectrum.dat");
     totalSpectrumFile = fopen(outputpath, "wb");
-    fwrite((*sCPU).totalSpectrum, sizeof(double), 3 * (*sCPU).Ntime * (*sCPU).Nsims, totalSpectrumFile);
+    fwrite((*sCPU).totalSpectrum, sizeof(double), 3 * (*sCPU).Ntime * (*sCPU).Nsims * (*sCPU).Nsims2, totalSpectrumFile);
     fwrite(matlabpadding, sizeof(double), 1024, totalSpectrumFile);
     fclose(totalSpectrumFile);
 
@@ -3072,18 +3099,18 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     
     if (saveInputs) {
         fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
-        fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
-        fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+        fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
+        fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
         fprintf(matlabfile, "fclose(fid); \n");
     }
     
     fprintf(matlabfile, "fid = fopen('%s_Ext.dat','rb'); \n", outputbaseVar);
-    fprintf(matlabfile, "%s_Ext = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims);
-    fprintf(matlabfile, "%s_Ext = reshape(%s_Ext,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    fprintf(matlabfile, "%s_Ext = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
+    fprintf(matlabfile, "%s_Ext = reshape(%s_Ext,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
     fprintf(matlabfile, "fclose(fid); \n");
     fprintf(matlabfile, "fid = fopen('%s_spectrum.dat','rb'); \n", outputbaseVar);
-    fprintf(matlabfile, "%s_spectrum = fread(fid, %lli, 'double'); \n", outputbaseVar, 3 * (*sCPU).Ntime * (*sCPU).Nsims);
-    fprintf(matlabfile, "%s_spectrum = reshape(%s_spectrum,[%lli %i %zi]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, 3, (*sCPU).Nsims);
+    fprintf(matlabfile, "%s_spectrum = fread(fid, %lli, 'double'); \n", outputbaseVar, 3 * (*sCPU).Ntime * (*sCPU).Nsims * (*sCPU).Nsims2);
+    fprintf(matlabfile, "%s_spectrum = reshape(%s_spectrum,[%lli %i %zi]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
     fprintf(matlabfile, "fclose(fid); \n");
     fprintf(matlabfile, "dt = %e;\ndz = %e;\ndx = %e;\ndf = %e;\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep, (*sCPU).fStep);
     fclose(matlabfile);
@@ -3099,14 +3126,14 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
     if (saveInputs) {
         fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
         fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
-        fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+        fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
     }
     fprintf(scriptfile, "%s_Ext = np.reshape(np.fromfile(\"", outputbaseVar);
     fprintf(scriptfile, "%s_Ext.dat", outputbaseVar);
-    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims);
+    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
     fprintf(scriptfile, "%s_spectrum = np.reshape(np.fromfile(\"", outputbaseVar);
     fprintf(scriptfile, "%s_spectrum.dat", outputbaseVar);
-    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%i,%zi),order='F')\n", 3 * (*sCPU).Ntime * (*sCPU).Nsims, (*sCPU).Ntime, 3, (*sCPU).Nsims);
+    fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%i,%zi),order='F')\n", 3 * (*sCPU).Ntime * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
     fclose(scriptfile);
     
     free(saveEout);
@@ -3237,7 +3264,7 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
 
 int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent) {
     char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-    size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims);
+    size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
     double* loadE = (double*)malloc(writeSize * sizeof(double));
     size_t j;
 
@@ -3261,7 +3288,7 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
     strcpy(outputpath, outputBase);
     strcat(outputpath, "_spectrum.dat");
     spectrumFile = fopen(outputpath, "rb");
-    fread((*sCPU).totalSpectrum, sizeof(double), (*sCPU).Nsims * 3 * (*sCPU).Ntime, spectrumFile);
+    fread((*sCPU).totalSpectrum, sizeof(double), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Ntime, spectrumFile);
     fclose(spectrumFile);
     free(outputpath);
     if (GPUisPresent) {
@@ -3273,7 +3300,7 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
         cudaMalloc((void**)&fieldGridkw, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
         cudaMalloc((void**)&fieldGridxt, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
 
-        for (j = 0; j < 2 * (*sCPU).Nsims; j++) {
+        for (j = 0; j < 2 * (*sCPU).Nsims * (*sCPU).Nsims2; j++) {
             cudaMemcpy(fieldGridxt, &(*sCPU).ExtOut[j * (*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
             cufftExecZ2Z(fftPlan, fieldGridxt, fieldGridkw, CUFFT_FORWARD);
             cudaMemcpy(&(*sCPU).EkwOut[j * (*sCPU).Ngrid], fieldGridkw, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
@@ -3291,7 +3318,7 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
         if (mklError != DFTI_NO_ERROR) return 1;
         mklError = DftiCommitDescriptor(dftiHandle);
         if (mklError != DFTI_NO_ERROR) return 2;
-        for (j = 0; j < (2 * (*sCPU).Nsims); j++) {
+        for (j = 0; j < (2 * (*sCPU).Nsims * (*sCPU).Nsims2); j++) {
             mklError = DftiComputeForward(dftiHandle, &(*sCPU).ExtOut[j*(*sCPU).Ngrid], &(*sCPU).EkwOut[j*(*sCPU).Ngrid]);
             if (mklError != DFTI_NO_ERROR) return 3;
         }

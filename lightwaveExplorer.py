@@ -13,7 +13,8 @@ class lightwaveExplorerResult:
         self.Ntime = 0
         self.Nspace = 0
         self.Ngrid = 0
-        self.Nsims = 0
+        self.Nsims = 1
+        self.Nsims2 = 1
         self.spatialWidth = 0
         self.timeSpan = 0
         self.materialIndex = 0
@@ -59,9 +60,13 @@ class lightwaveExplorerResult:
         self.pulsetype = 0
         self.Ext = 0
         self.batchIndex = 0
+        self.batchIndex2 = 0
         self.batchDestination = 0
+        self.batchDestination2 = 0
         self.batchStart = 0
+        self.batchStart2 = 0
         self.batchVector = 0
+        self.batchVector2 = 0
         self.Ext_x = 0
         self.Ext_y = 0
         self.spectrumTotal = 0
@@ -130,6 +135,12 @@ def load(filePath: str, loadFieldArray=True):
     s.batchIndex = readLine(lines[44])
     s.batchDestination = readLine(lines[45])
     s.Nsims = int(readLine(lines[46]))
+    testString = lines[47]
+    if testString[0] == 'B':
+        s.batchIndex2 = readLine(lines[47])
+        s.batchDestination2 = readLine(lines[48])
+        s.Nsims2 = int(readLine(lines[49]))
+
     s.Ntime = int(np.round(s.timeSpan/s.tStep))
     s.Nspace = int(np.round(s.spatialWidth/s.rStep))
     s.Ngrid = int(s.Ntime*s.Nspace)
@@ -137,14 +148,14 @@ def load(filePath: str, loadFieldArray=True):
     #now load the output data from binary format. Note that this will fail if you're using wrong-endian CPUs
     fileBase = os.path.splitext(filePath)
     if loadFieldArray: 
-        s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims)],(s.Ntime,s.Nspace,2*s.Nsims),order='F')
-        s.Ext_x = np.squeeze(s.Ext[:,:,0:(2*s.Nsims):2])
-        s.Ext_y = np.squeeze(s.Ext[:,:,1:(2*s.Nsims + 1):2])
+        s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims*s.Nsims2)],(s.Ntime,s.Nspace,2*s.Nsims,s.Nsims2),order='F')
+        s.Ext_x = np.squeeze(s.Ext[:,:,0:(2*s.Nsims):2,:])
+        s.Ext_y = np.squeeze(s.Ext[:,:,1:(2*s.Nsims + 1):2,:])
     
-    s.spectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*s.Ntime*s.Nsims],(s.Ntime,3,s.Nsims),order='F')
-    s.spectrumTotal = np.squeeze(s.spectrum[0:int(s.Ntime/2),2,:]).T
-    s.spectrum_x = np.squeeze(s.spectrum[0:int(s.Ntime/2),0,:]).T
-    s.spectrum_y = np.squeeze(s.spectrum[0:int(s.Ntime/2),1,:]).T
+    s.spectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*s.Ntime*s.Nsims*s.Nsims2],(s.Ntime,3,s.Nsims,s.Nsims2),order='F')
+    s.spectrumTotal = np.squeeze(s.spectrum[0:int(s.Ntime/2),2,:,:]).T
+    s.spectrum_x = np.squeeze(s.spectrum[0:int(s.Ntime/2),0,:,:]).T
+    s.spectrum_y = np.squeeze(s.spectrum[0:int(s.Ntime/2),1,:,:]).T
     
     #make scale vector corresponding to the batch scan and correct units of the scan
     if s.batchIndex == 0:
@@ -252,6 +263,112 @@ def load(filePath: str, loadFieldArray=True):
     #that was fun, wasn't it? I think we all just had a good time. In c++ I just added an offset to a pointer. Now make the scale vector.
     s.batchVector = np.linspace(s.batchStart,s.batchDestination,s.Nsims)
 
+    #make scale vector corresponding to the batch scan and correct units of the scan
+    if s.batchIndex2 == 0:
+        s.batchStart2 = 0
+    elif s.batchIndex2 == 1:
+        s.batchStart2 = s.pulseEnergy1
+    elif s.batchIndex2 == 2:
+        s.batchStart2 = s.pulseEnergy2
+    elif s.batchIndex2 == 3:
+        s.batchStart2 = s.frequency1
+        s.batchDestination2 *= 1e12
+    elif s.batchIndex2 == 4:
+        s.batchStart2 = s.frequency2
+        s.batchDestination2 *= 1e12
+    elif s.batchIndex2 == 5:
+        s.batchStart2 = s.frequency1
+        s.batchDestination2 *= 1e12
+    elif s.batchIndex2 == 6:
+        s.batchStart2 = s.frequency2
+        s.batchDestination2 *= 1e12
+    elif s.batchIndex2 == 7:
+        s.batchStart2 = s.cephase1
+        s.batchDestination2 *= np.pi
+    elif s.batchIndex2 == 8:
+        s.batchStart2 = s.cephase2
+        s.batchDestination2 *= np.pi
+    elif s.batchIndex2 == 9:
+        s.batchStart2 = s.delay1
+        s.batchDestination2 *= 1e-15
+    elif s.batchIndex2 == 10:
+        s.batchStart2 = s.delay2
+        s.batchDestination2 *= 1e-15
+    elif s.batchIndex2 == 11:
+        s.batchStart2 = s.gdd1
+        s.batchDestination2 *= 1e-30
+    elif s.batchIndex2 == 12:
+        s.batchStart2 = s.gdd2
+        s.batchDestination2 *= 1e-30
+    elif s.batchIndex2 == 13:
+        s.batchStart2 = s.tod1
+        s.batchDestination2 *= 1e-45
+    elif s.batchIndex2 == 14:
+        s.batchStart2 = s.tod2
+        s.batchDestination2 *= 1e-45   
+    elif s.batchIndex2 == 15:
+        s.batchStart2 = s.phaseMaterialThickness1
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 16:
+        s.batchStart2 = s.phaseMaterialThickness2
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 17:
+        s.batchStart2 = s.beamwaist1
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 18:
+        s.batchStart2 = s.beamwaist2
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 19:
+        s.batchStart2 = s.x01
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 20:
+        s.batchStart2 = s.x02
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 21:
+        s.batchStart2 = s.z01
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 22:
+        s.batchStart2 = s.z02
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 23:
+        s.batchStart2 = s.propagationAngle1
+        s.batchDestination2 *= (np.pi/180)
+    elif s.batchIndex2 == 24:
+        s.batchStart2 = s.propagationAngle2
+        s.batchDestination2 *= (np.pi/180)
+    elif s.batchIndex2 == 25:
+        s.batchStart2 = s.polarizationAngle1
+        s.batchDestination2 *=(np.pi/180)
+    elif s.batchIndex2 == 26:
+        s.batchStart2 = s.polarizationAngle2
+        s.batchDestination2 *= (np.pi/180)
+    elif s.batchIndex2 == 27:
+        s.batchStart2 = s.circularity1
+    elif s.batchIndex2 == 28:
+        s.batchStart2 = s.circularity2
+    elif s.batchIndex2 == 29:
+        s.batchStart2 = s.crystalTheta
+        s.batchDestination2 *= (np.pi/180)
+    elif s.batchIndex2 == 30:
+        s.batchStart2 = s.crystalPhi
+        s.batchDestination2 *= (np.pi/180)
+    elif s.batchIndex2 == 31:
+        s.batchStart2 = s.nonlinearAbsorptionStrength
+    elif s.batchIndex2 == 32:
+        s.batchStart2 = s.drudeGamma
+        s.batchDestination2 *= 1e12
+    elif s.batchIndex2 == 33:
+        s.batchStart2 = s.effectiveMass
+    elif s.batchIndex2 == 34:
+        s.batchStart2 = s.crystalThickness
+        s.batchDestination2 *= 1e-6
+    elif s.batchIndex2 == 35:
+        s.batchStart2 = s.propagationStep
+        s.batchDestination2 *= 1e-9
+        
+    #that was fun, wasn't it? I think we all just had a good time. In c++ I just added an offset to a pointer. Now make the scale vector.
+    s.batchVector2 = np.linspace(s.batchStart2,s.batchDestination2,s.Nsims2)
+
     s.timeVector = s.tStep*np.arange(0,s.Ntime)
     s.frequencyVector = np.fft.fftfreq(s.Ntime, d=s.tStep)
     s.frequencyVectorSpectrum = s.frequencyVector[0:int(s.Ntime/2)]
@@ -299,6 +416,8 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
         totalResponse  *= np.interp(s.frequencyVectorSpectrum, dataFrequencyAxis[0,:], dataFrequencyAxis[1,:])
 
     #EOS signal is the integral of the difference between the two spectra, multiplied by the total spectral response
-    EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
-
+    if s.Nsims2>1:
+        EOSsignal = np.array([np.sum((totalResponse*(np.squeeze(s.spectrum_x[i,:,:]-s.spectrum_y[i,:,:]))), axis=1) for i in range(s.Nsims2)])
+    else:
+        EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
     return EOSsignal;

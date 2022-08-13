@@ -37,6 +37,7 @@ typedef struct simulationParameterSet {
     size_t Nspace;
     size_t Ngrid;
     size_t Nsims;
+    size_t Nsims2;
     double spatialWidth;
     double timeSpan;
     int materialIndex;
@@ -125,7 +126,9 @@ typedef struct simulationParameterSet {
     int plotSim;
     crystalEntry* crystalDatabase;
     int batchIndex;
+    int batchIndex2;
     double batchDestination;
+    double batchDestination2;
     char outputBasePath[MAX_LOADSTRING];
     int runType;
 
@@ -140,7 +143,7 @@ typedef struct simulationParameterSet {
     bool isInFittingMode;
     char fittingString[1024];
     char fittingPath[1024];
-    double fittingArray[16384];
+    double fittingArray[1024];
     double fittingPrecision;
     int Nfitting;
     int fittingMode;
