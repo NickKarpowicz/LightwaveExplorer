@@ -507,8 +507,11 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         btnoffset2, 20 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
     
     maingui.pbProgress = CreateWindowEx(0, PROGRESS_CLASS, (LPTSTR)NULL, WS_CHILD | WS_VISIBLE, 
-        xOffsetRow2 - 160, 24 * vs, 180, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow2 - 160, 24 * vs+5, 180, 10, maingui.mainWindow, NULL, hInstance, NULL);
     SendMessage(maingui.pbProgress, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
+    maingui.pbProgressB = CreateWindowEx(0, PROGRESS_CLASS, (LPTSTR)NULL, WS_CHILD | WS_VISIBLE,
+        xOffsetRow2 - 160, 24 * vs+8, 180, 4, maingui.mainWindow, NULL, hInstance, NULL);
+    SendMessage(maingui.pbProgressB, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
 
     TCHAR A[64];
     memset(&A, 0, sizeof(A));
@@ -987,8 +990,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonPlot, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
         SetWindowTheme(maingui.pbProgress, L"", L"");
+        SetWindowTheme(maingui.pbProgressB, L"", L"");
         SendMessage(maingui.pbProgress, PBM_SETBKCOLOR, 0, RGB(0,0,0));
-        SendMessage(maingui.pbProgress, PBM_SETBARCOLOR, 0, RGB(32,0,128));
+        SendMessage(maingui.pbProgress, PBM_SETBARCOLOR, 0, RGB(87, 254, 255));
+        SendMessage(maingui.pbProgressB, PBM_SETBKCOLOR, 0, RGB(0, 0, 0));
+        SendMessage(maingui.pbProgressB, PBM_SETBARCOLOR, 0, RGB(255, 84, 255));
         SendMessage(maingui.pdClusterSelector, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdBatchMode, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdBatchMode2, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
@@ -2179,6 +2185,7 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
             }
             if (lengthEstimate > 0) {
                 SendMessage(maingui.pbProgress, PBM_SETPOS, (int)((100 * progressCounter) / lengthEstimate), 0);
+                SendMessage(maingui.pbProgressB, PBM_SETPOS, (int)((100 * progressCounter) / lengthEstimate), 0);
             }
             
         }
@@ -2192,7 +2199,7 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
         
 
         
-        Sleep(1000);
+        Sleep(500);
     }
     nvmlShutdown();
     return 0;

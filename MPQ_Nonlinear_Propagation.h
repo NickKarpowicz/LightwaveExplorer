@@ -67,8 +67,8 @@ typedef struct guiStruct {
     HWND tbSequence = NULL;
     HWND tbFitting = NULL;
 
-    HWND pbProgress = 0;
-
+    HWND pbProgress = NULL;
+    HWND pbProgressB = NULL;
     HWND cbSavePsi = NULL;
     HWND tbFileNameBase = NULL;
     HWND tbPulse1Path = NULL;
@@ -119,7 +119,7 @@ typedef struct guiStruct {
     int consoleSize = 630;
     int textboxwidth = 150;
     int plotSpacerX = 64;
-    int plotSpacerY = 30;
+    int plotSpacerY = 40;
 
 } guiStruct;
 
