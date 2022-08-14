@@ -67,6 +67,8 @@ typedef struct guiStruct {
     HWND tbSequence = NULL;
     HWND tbFitting = NULL;
 
+    HWND pbProgress = 0;
+
     HWND cbSavePsi = NULL;
     HWND tbFileNameBase = NULL;
     HWND tbPulse1Path = NULL;
@@ -91,6 +93,7 @@ typedef struct guiStruct {
     HWND tbWhichSimToPlot = NULL;
     HWND buttonFit = NULL;
     HWND textboxSims = NULL;
+    HWND tbGPUStatus = NULL;
     HWND plotBox1 = NULL;
     HWND plotBox2 = NULL;
     HWND plotBox3 = NULL;
@@ -143,4 +146,5 @@ void                plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t
 int                 setInterfaceValuesToActiveValues();
 DWORD WINAPI        fittingThread(LPVOID lpParam);
 int                 insertLineBreaksAfterSemicolons(char* cString, size_t N);
+DWORD WINAPI        statusMonitorThread(LPVOID lpParam);
 

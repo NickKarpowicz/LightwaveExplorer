@@ -1024,6 +1024,7 @@ int main(int argc, char *argv[]) {
     int i, j;
     int CUDAdevice;
     int CUDAdeviceCount = 0;
+    size_t progressCounter = 0;
     cudaGetDeviceCount(&CUDAdeviceCount);
     cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
     struct cudaDeviceProp activeCUDADeviceProp;
@@ -1050,7 +1051,7 @@ int main(int argc, char *argv[]) {
     simulationParameterSet* sCPU = (simulationParameterSet*)calloc(512, sizeof(simulationParameterSet));
     crystalEntry* crystalDatabasePtr = (crystalEntry*)calloc(512, sizeof(crystalEntry));
     (*sCPU).crystalDatabase = crystalDatabasePtr;
-
+    (*sCPU).progressCounter = &progressCounter;
     // read crystal database
     if (readCrystalDatabase(crystalDatabasePtr) == -2) {
         return 11;
@@ -1429,6 +1430,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
             (*sCPU).imdone[0] = 0;
         }
+        (*(*sCPU).progressCounter)++;
     }
 
     

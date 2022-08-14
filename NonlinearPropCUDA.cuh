@@ -38,6 +38,7 @@ typedef struct simulationParameterSet {
     size_t Ngrid;
     size_t Nsims;
     size_t Nsims2;
+    size_t *progressCounter;
     double spatialWidth;
     double timeSpan;
     int materialIndex;
