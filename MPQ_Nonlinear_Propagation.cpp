@@ -326,9 +326,12 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.tbBandwidth2 = CreateWindow(WC_EDIT, TEXT("40"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1b, 2 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbPulseType = CreateWindow(WC_EDIT, TEXT("2"), 
+    maingui.tbPulseType1 = CreateWindow(WC_EDIT, TEXT("2"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        xOffsetRow1, 3 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow1, 3 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPulseType2 = CreateWindow(WC_EDIT, TEXT("2"),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow1b, 3 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCEPhase1 = CreateWindow(WC_EDIT, TEXT("0"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1, 4 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -354,9 +357,12 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow1b, 7 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
-    maingui.tbPhaseMaterialIndex = CreateWindow(WC_EDIT, L"0",
+    maingui.tbPhaseMaterialIndex1 = CreateWindow(WC_EDIT, L"0",
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        xOffsetRow1, 8 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow1, 8 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPhaseMaterialIndex2 = CreateWindow(WC_EDIT, L"0",
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow1b, 8 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbPhaseMaterialThickness1 = CreateWindow(WC_EDIT, L"0",
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
         xOffsetRow1, 9 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -432,7 +438,10 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        xOffsetRow2, 0 * vs, textboxwidth, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow2, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbMaterialIndexAlternate = CreateWindow(WC_EDIT, TEXT("3"),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow2b, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalTheta = CreateWindow(WC_EDIT, TEXT("0"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 1 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -1055,9 +1064,13 @@ int readParametersFromInterface() {
     (*activeSetPtr).frequency2 = 1e12 * getDoubleFromHWND(maingui.tbFrequency2);
     (*activeSetPtr).bandwidth1 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth1);
     (*activeSetPtr).bandwidth2 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth2);
-    (*activeSetPtr).sgOrder1 = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType) / 2));
+    (*activeSetPtr).sgOrder1 = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType1) / 2));
     if ((*activeSetPtr).sgOrder1 < 2) {
         (*activeSetPtr).sgOrder1 = 2;
+    }
+    (*activeSetPtr).sgOrder2 = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType2) / 2));
+    if ((*activeSetPtr).sgOrder2 < 2) {
+        (*activeSetPtr).sgOrder2 = 2;
     }
     (*activeSetPtr).cephase1 = getDoubleFromHWND(maingui.tbCEPhase1)*pi;
     (*activeSetPtr).cephase2 = getDoubleFromHWND(maingui.tbCEPhase2)*pi;
@@ -1067,7 +1080,8 @@ int readParametersFromInterface() {
     (*activeSetPtr).gdd2 = 1e-30 * getDoubleFromHWND(maingui.tbGDD2);
     (*activeSetPtr).tod1 = 1e-45 * getDoubleFromHWND(maingui.tbTOD1);
     (*activeSetPtr).tod2 = 1e-45 * getDoubleFromHWND(maingui.tbTOD2);
-    (*activeSetPtr).phaseMaterialIndex = (int)getDoubleFromHWND(maingui.tbPhaseMaterialIndex);
+    (*activeSetPtr).phaseMaterialIndex1 = (int)getDoubleFromHWND(maingui.tbPhaseMaterialIndex1);
+    (*activeSetPtr).phaseMaterialIndex2 = (int)getDoubleFromHWND(maingui.tbPhaseMaterialIndex2);
     (*activeSetPtr).phaseMaterialThickness1 = 1e-6*getDoubleFromHWND(maingui.tbPhaseMaterialThickness1);
     (*activeSetPtr).phaseMaterialThickness2 = 1e-6*getDoubleFromHWND(maingui.tbPhaseMaterialThickness2);
     (*activeSetPtr).beamwaist1 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist1);
@@ -1083,7 +1097,8 @@ int readParametersFromInterface() {
     (*activeSetPtr).circularity1 = getDoubleFromHWND(maingui.tbCircularity1);
     (*activeSetPtr).circularity2 = getDoubleFromHWND(maingui.tbCircularity2);
 
-    (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);;
+    (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);
+    (*activeSetPtr).materialIndexAlternate = (int)getDoubleFromHWND(maingui.tbMaterialIndexAlternate);
     (*activeSetPtr).crystalTheta = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalTheta);
     (*activeSetPtr).crystalPhi = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalPhi);
 
@@ -1178,7 +1193,6 @@ int readParametersFromInterface() {
     //derived parameters and cleanup:
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
-    (*activeSetPtr).sgOrder2 = (*activeSetPtr).sgOrder1;
     (*activeSetPtr).Ntime = (size_t)round((*activeSetPtr).timeSpan / (*activeSetPtr).tStep);
     (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
@@ -1357,7 +1371,8 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToDouble(maingui.tbFrequency2, 1e-12*(*activeSetPtr).frequency2);
     setWindowTextToDouble(maingui.tbBandwidth1, 1e-12 * (*activeSetPtr).bandwidth1);
     setWindowTextToDouble(maingui.tbBandwidth2, 1e-12 * (*activeSetPtr).bandwidth2);
-    setWindowTextToInt(maingui.tbPulseType, (*activeSetPtr).sgOrder1);
+    setWindowTextToInt(maingui.tbPulseType1, (*activeSetPtr).sgOrder1);
+    setWindowTextToInt(maingui.tbPulseType2, (*activeSetPtr).sgOrder2);
     setWindowTextToDouble(maingui.tbCEPhase1, pi * (*activeSetPtr).cephase1);
     setWindowTextToDouble(maingui.tbCEPhase2, pi * (*activeSetPtr).cephase2);
     setWindowTextToDouble(maingui.tbPulse1Delay, 1e15 * (*activeSetPtr).delay1);
@@ -1366,7 +1381,8 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToDouble(maingui.tbGDD2, 1e30*(*activeSetPtr).gdd2);
     setWindowTextToDouble(maingui.tbTOD1, 1e45*(*activeSetPtr).tod1);
     setWindowTextToDouble(maingui.tbTOD2, 1e45*(*activeSetPtr).tod2);
-    setWindowTextToInt(maingui.tbPhaseMaterialIndex, (*activeSetPtr).phaseMaterialIndex);
+    setWindowTextToInt(maingui.tbPhaseMaterialIndex1, (*activeSetPtr).phaseMaterialIndex1);
+    setWindowTextToInt(maingui.tbPhaseMaterialIndex2, (*activeSetPtr).phaseMaterialIndex2);
     setWindowTextToDouble(maingui.tbPhaseMaterialThickness1, 1e6 * (*activeSetPtr).phaseMaterialThickness1);
     setWindowTextToDouble(maingui.tbPhaseMaterialThickness2, 1e6 * (*activeSetPtr).phaseMaterialThickness2);
     setWindowTextToDouble(maingui.tbBeamwaist1, 1e6 * (*activeSetPtr).beamwaist1);
@@ -1384,6 +1400,7 @@ int setInterfaceValuesToActiveValues() {
     SendMessage(maingui.pdPulse1Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse1FileType, 0);
     SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse2FileType, 0);
     setWindowTextToInt(maingui.tbMaterialIndex, (*activeSetPtr).materialIndex);
+    setWindowTextToInt(maingui.tbMaterialIndexAlternate, (*activeSetPtr).materialIndexAlternate);
     setWindowTextToDouble(maingui.tbCrystalTheta, (180 / pi) * (*activeSetPtr).crystalTheta);
     setWindowTextToDouble(maingui.tbCrystalPhi, (180 / pi) * (*activeSetPtr).crystalPhi);
     setWindowTextToDoubleExp(maingui.tbNonlinearAbsortion, (*activeSetPtr).nonlinearAbsorptionStrength);
@@ -1484,11 +1501,11 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbBandwidth1, _T("Bandwidth (THz)"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFrequency1, _T("Frequency (THz)"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbCEPhase1, _T("CEP/pi"), labos, 0);
-    labelTextBox(hdc, maingui.mainWindow, maingui.tbPulseType, _T("SG order"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPulseType1, _T("SG order"), labos, 0);
     
     labelTextBox(hdc, maingui.mainWindow, maingui.tbGDD1, _T("GDD 1 (fs^2)"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbTOD1, _T("TOD 1 (fs^3)"), labos, 0);
-    labelTextBox(hdc, maingui.mainWindow, maingui.tbPhaseMaterialIndex, _T("Phase material"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPhaseMaterialIndex1, _T("Phase material"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbPhaseMaterialThickness1, L"Thickness (\x00B5m)", labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbXoffset1, _T("x offset (\x00B5m)"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbZoffset1, _T("z offset (\x00B5m)"), labos, 0);
@@ -1613,7 +1630,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
         }
         readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString);
         //There should be 50 parameters, remember to update this if adding new ones!
-        if (readParameters == 53) {
+        if (readParameters == 57) {
             //get the base of the file name, so that different files can be made with different extensions based on that
             if (ofn.nFileExtension > 0) {
                 fbaseloc = ofn.nFileExtension - 1;

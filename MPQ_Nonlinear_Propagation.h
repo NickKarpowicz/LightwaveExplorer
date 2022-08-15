@@ -5,6 +5,7 @@ typedef struct guiStruct {
     HWND mainWindow = NULL;
     
     HWND tbMaterialIndex = NULL;
+    HWND tbMaterialIndexAlternate = NULL;
     HWND tbCrystalTheta = NULL;
     HWND tbCrystalPhi = NULL;
     HWND tbCrystalThickness = NULL;
@@ -35,14 +36,16 @@ typedef struct guiStruct {
     HWND tbFrequency2 = NULL;
     HWND tbCEPhase1 = NULL;
     HWND tbCEPhase2 = NULL;
-    HWND tbPulseType = NULL;
+    HWND tbPulseType1 = NULL;
+    HWND tbPulseType2 = NULL;
 
 
     HWND tbGDD1 = NULL;
     HWND tbGDD2 = NULL;
     HWND tbTOD1 = NULL;
     HWND tbTOD2 = NULL;
-    HWND tbPhaseMaterialIndex = NULL;
+    HWND tbPhaseMaterialIndex1 = NULL;
+    HWND tbPhaseMaterialIndex2 = NULL;
     HWND tbPhaseMaterialThickness1 = NULL;
     HWND tbPhaseMaterialThickness2 = NULL;
     HWND tbXoffset1 = NULL;

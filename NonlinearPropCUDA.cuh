@@ -35,13 +35,16 @@ typedef struct simulationParameterSet {
     size_t Npropagation;
     size_t Ntime;
     size_t Nspace;
+    size_t Nspace2;
     size_t Ngrid;
     size_t Nsims;
     size_t Nsims2;
     size_t *progressCounter;
     double spatialWidth;
+    double spatialHeight;
     double timeSpan;
     int materialIndex;
+    int materialIndexAlternate;
     double bandGapElectronVolts;
     double effectiveMass;
     double nonlinearAbsorptionStrength;
@@ -94,7 +97,8 @@ typedef struct simulationParameterSet {
     double tod2;
     double phaseMaterialThickness1;
     double phaseMaterialThickness2;
-    int phaseMaterialIndex;
+    int phaseMaterialIndex1;
+    int phaseMaterialIndex2;
 
     //loaded FROG/EOS fields
     std::complex<double>* loadedField1;
