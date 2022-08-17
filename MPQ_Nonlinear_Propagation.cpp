@@ -40,6 +40,7 @@ bool isRunning = FALSE;
 bool isPlotting = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
+bool hasGPU = FALSE;
 size_t progressCounter = 0;
 //UI colors
 COLORREF uiWhite = RGB(255, 255, 255);
@@ -728,6 +729,10 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     wchar_t wcstring[514];
     size_t convertedChars = 0;
     if (cuErr == cudaSuccess) {
+        if (CUDAdeviceCount > 0) {
+            hasGPU = TRUE;
+        }
+        
         printToConsole(maingui.textboxSims, _T("Found %i GPU(s): \r\n"), CUDAdeviceCount);
         for (i = 0; i < CUDAdeviceCount; i++) {
             cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
@@ -1313,6 +1318,10 @@ int getNumberOfDecimalsToDisplay(double in, bool isExponential) {
 }
 int setWindowTextToDouble(HWND win, double in) {
     wchar_t textBuffer[128];
+    if (abs(in) < 1e-3) {
+        setWindowTextToDoubleExp(win, in);
+        return 0;
+    }
     int digits = getNumberOfDecimalsToDisplay(in, FALSE);
     if (digits == 0) {
         swprintf_s(textBuffer, 128, L"%i", (int)in);
@@ -1329,8 +1338,6 @@ int setWindowTextToDouble(HWND win, double in) {
     else {
         swprintf_s(textBuffer, 128, L"%5.4lf", in);
     }
-
-    
     SetWindowTextW(win, textBuffer);
     return 0;
 }
@@ -1482,7 +1489,7 @@ int drawLabels(HDC hdc) {
     int dxplots = 404;
     int dyplots = 214;
     int vs = 26;
-
+    
     labelTextBox(hdc, maingui.mainWindow, maingui.tbMaterialIndex, _T("Material index"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalTheta, _T("Theta, phi (\x00B0)"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbNonlinearAbsortion, _T("NL absorption"), labos, 0);
@@ -1778,8 +1785,6 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
 
     SelectObject(hdcMem, hbmp);
     GetObject(hbmp, sizeof(bm), &bm);
-
-    //BitBlt(hdc, x, y, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, SRCCOPY);
     StretchBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
     free(pixels);
     DeleteDC(hdcMem);
@@ -1790,7 +1795,6 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
 DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if (isGridAllocated) {
         isPlotting = TRUE;
-        //RedrawWindow(maingui.mainWindow, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
         bool logPlot = TRUE;
         if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
             logPlot = FALSE;
@@ -2143,7 +2147,15 @@ int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
     size_t i = 0;
     while (i < N-1) {
         if (cString[i] == ';') {
-            memmove(&cString[i + 3], &cString[i+1], N - i - 3);
+            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] == ' ') {
+                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
+            }
             cString[i + 1] = '\r';
             cString[i + 2] = '\n';
             i += 2;
@@ -2172,12 +2184,17 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
     size_t lengthEstimate = 0;
     double length;
     double step;
-    wchar_t messageBuffer[MAX_LOADSTRING] = { 0 };
-    nvmlInit_v2();
-    nvmlDeviceGetHandleByIndex_v2(0, &nvmlDevice);
+
+    if (hasGPU) {
+        nvmlInit_v2();
+        nvmlDeviceGetHandleByIndex_v2(0, &nvmlDevice);
+    }
+
     while (TRUE) {
+        
         lengthEstimate = 0;
-        if (!(*activeSetPtr).isInFittingMode) {
+        if (!(*activeSetPtr).isInFittingMode && isRunning) {
+            //estimate the total steps in the current simulation;
             if ((*activeSetPtr).Nsequence > 0) {
                 for (i = 0; i < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; i++) {
                     for (j = 0; j < (*activeSetPtr).Nsequence; j++) {
@@ -2207,17 +2224,16 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
             
         }
         
-        
-        nvmlError = nvmlDeviceGetPowerUsage(nvmlDevice, &devicePower);
-        //nvmlDeviceGetMemoryInfo(nvmlDevice, &deviceMemoryState);
-        //nvmlDeviceGetTemperature(nvmlDevice, NVML_TEMPERATURE_GPU, &deviceTemp);
-        swprintf_s(messageBuffer, MAX_LOADSTRING, TEXT("%i"), devicePower / 1000);
-        SetWindowText(maingui.tbGPUStatus, messageBuffer);
-        
+        if (hasGPU) {
+            nvmlError = nvmlDeviceGetPowerUsage(nvmlDevice, &devicePower);
 
-        
+        }
+        setWindowTextToDouble(maingui.tbGPUStatus, round(devicePower / 1000));
         Sleep(500);
     }
-    nvmlShutdown();
+    if (hasGPU) {
+        nvmlShutdown();
+    }
+    
     return 0;
 }
