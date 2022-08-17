@@ -293,7 +293,7 @@ __global__ void radialLaplacianKernel(cudaParameterSet s) {
     long long j = i / s.Ntime; //spatial coordinate
     long long h = i % s.Ntime; //temporal coordinate
     long long neighbors[6];
-    
+
     //zero at edges of grid
     if (j<3 || j>(s.Nspace - 4)) {
         s.gridRadialLaplacian1[i] = make_cuDoubleComplex(0, 0);
@@ -585,6 +585,9 @@ __global__ void prepareCartesianGridsKernel(double* sellmeierCoefficients, cudaP
     cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
     j = i / Ntime; //spatial coordinate
     k = i % Ntime; //temporal coordinate
+    if (k > s.propagationInts[3]) {
+        return;
+    }
     cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
     double crystalTheta = sellmeierCoefficients[66];
     double crystalPhi = sellmeierCoefficients[67];
@@ -672,6 +675,12 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
     cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
     j = i / Ntime; //spatial coordinate
     k = i % Ntime; //temporal coordinate
+
+    if (k > s.propagationInts[3]) {
+        return;
+    }
+    //long long iC = s.propagationInts[3] * j + k;
+
     cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
     double crystalTheta = sellmeierCoefficients[66];
     double crystalPhi = sellmeierCoefficients[67];
@@ -879,13 +888,31 @@ __global__ void plasmaCurrentKernel2(cudaParameterSet s, double* workN, double* 
         s.gridPlasmaCurrent2[l] += expMinusGammaT[k] * integraly;
     }
 }
-
+//size_t propagationIntsCPU[4] = { s.Ngrid, s.Ntime, s.Nspace, (s.Ntime / 2 + 1) };
+__device__ cuDoubleComplex findFFTValueD2Z_2D(cuDoubleComplex* Arr, long long* propagationInts, long long i) {
+    long long h = i % propagationInts[1];
+    if (h > propagationInts[3]) {
+        h = propagationInts[1] - h + (propagationInts[2] - i / propagationInts[1]) * propagationInts[3];
+        return cuConj(Arr[h]);
+    }
+    else {
+        h += (i / propagationInts[1]) * propagationInts[3];
+        return Arr[h];
+    }
+}
 
 //Main kernel for RK4 propagation of the field
 __global__ void rkKernel(cudaParameterSet s, int stepNumber) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
-    long long j = i / s.Ntime; //spatial coordinate
     long long h = i % s.Ntime; //temporal coordinate
+    if (h > s.propagationInts[3]) {
+        s.gridETime1[i] = make_cuDoubleComplex(0, 0);
+        s.gridETime2[i] = make_cuDoubleComplex(0, 0);
+        return;
+    }
+    long long j = i / s.Ntime; //spatial coordinate
+    long long iC = s.propagationInts[3] * j + h;
+
     cuDoubleComplex plasmaJ1 = make_cuDoubleComplex(0, 0);
     cuDoubleComplex plasmaJ2 = make_cuDoubleComplex(0, 0);
 
@@ -938,65 +965,64 @@ __global__ void rkKernel(cudaParameterSet s, int stepNumber) {
     //were to be N_time x N_space, half of the points would be redundant. The extra steps below are to determine where in the grid the 
     //current point sits. Essentially, if in the negative frequency quadrants, reverse the frequency and take complex conjugate of the 
     //value
-    if (h > s.propagationInts[3]) {
-        h = s.Ntime - h;
-        j = s.Nspace - j;
-        if (s.isCylindric) j += s.Nspace;
-        h += j * s.propagationInts[3];
 
-        s.k1[i] = s.gridPropagationFactor1[i] * s.gridETemp1[i] +s.gridPolarizationFactor1[i] * cuConj(s.gridPolarizationFrequency1[h]);
-        s.k2[i] = s.gridPropagationFactor2[i] * s.gridETemp2[i] +s.gridPolarizationFactor2[i] * cuConj(s.gridPolarizationFrequency2[h]);
-    }
-    else {
-        h += j * s.propagationInts[3];
+    h += j * s.propagationInts[3];
 
-        s.k1[i] = s.gridPropagationFactor1[i] * s.gridETemp1[i] +s.gridPolarizationFactor1[i] * s.gridPolarizationFrequency1[h];
-        s.k2[i] = s.gridPropagationFactor2[i] * s.gridETemp2[i] +s.gridPolarizationFactor2[i] * s.gridPolarizationFrequency2[h];
-    }
+    s.k1[iC] = s.gridPropagationFactor1[i] * s.gridETemp1[i] +s.gridPolarizationFactor1[i] * s.gridPolarizationFrequency1[h];
+    s.k2[iC] = s.gridPropagationFactor2[i] * s.gridETemp2[i] +s.gridPolarizationFactor2[i] * s.gridPolarizationFrequency2[h];
+    
     if (s.isCylindric) {
-        s.k1[i] = s.k1[i] + s.gridRadialLaplacian1[i];
-        s.k2[i] = s.k2[i] + s.gridRadialLaplacian2[i];
+        s.k1[iC] = s.k1[iC] + s.gridRadialLaplacian1[i];
+        s.k2[iC] = s.k2[iC] + s.gridRadialLaplacian2[i];
     }
 
     if (s.hasPlasma) {
-        s.k1[i] = s.k1[i] + plasmaJ1;
-        s.k2[i] = s.k2[i] + plasmaJ2;
+        s.k1[iC] = s.k1[iC] + plasmaJ1;
+        s.k2[iC] = s.k2[iC] + plasmaJ2;
     }
 
     //in the first substep, first construct the next intermediate field value
     //which will be used in the next substep. 
     if (stepNumber == 0) {
-        s.gridETemp1[i] = s.gridEFrequency1[i] + 0.5 * s.k1[i];
-        s.gridETemp2[i] = s.gridEFrequency2[i] + 0.5 * s.k2[i];
+        s.gridETemp1[i] = s.gridEFrequency1[i] + 0.5 * s.k1[iC];
+        s.gridETemp2[i] = s.gridEFrequency2[i] + 0.5 * s.k2[iC];
        
-        s.gridEFrequency1Next1[i] = s.k1[i] / 6 + s.gridEFrequency1[i];
-        s.gridEFrequency1Next2[i] = s.k2[i] / 6 + s.gridEFrequency2[i];
+        s.gridEFrequency1Next1[i] = s.k1[iC] / 6 + s.gridEFrequency1[i];
+        s.gridEFrequency1Next2[i] = s.k2[iC] / 6 + s.gridEFrequency2[i];
+        s.gridETime1[i] = s.chiLinear1[i] * s.gridETemp1[i];
+        s.gridETime2[i] = s.chiLinear2[i] * s.gridETemp2[i];
     }
 
     //in the next substep, again construct the next intermediate field and add k/3 to solution
     else if (stepNumber == 1) {
-        s.gridETemp1[i] = s.gridEFrequency1[i] + 0.5 * s.k1[i];
-        s.gridETemp2[i] = s.gridEFrequency2[i] + 0.5 * s.k2[i];
+        s.gridETemp1[i] = s.gridEFrequency1[i] + 0.5 * s.k1[iC];
+        s.gridETemp2[i] = s.gridEFrequency2[i] + 0.5 * s.k2[iC];
 
-        s.gridEFrequency1Next1[i] = s.gridEFrequency1Next1[i] + s.k1[i] / 3;
-        s.gridEFrequency1Next2[i] = s.gridEFrequency1Next2[i] + s.k2[i] / 3;
+        s.gridEFrequency1Next1[i] = s.gridEFrequency1Next1[i] + s.k1[iC] / 3;
+        s.gridEFrequency1Next2[i] = s.gridEFrequency1Next2[i] + s.k2[iC] / 3;
 
+        s.gridETime1[i] = s.chiLinear1[i] * s.gridETemp1[i];
+        s.gridETime2[i] = s.chiLinear2[i] * s.gridETemp2[i];
     }
 
     //same action as previous substep, except the weight of k in the intermediate solution is 1 instead of 0.5
     else if (stepNumber == 2) {
-        s.gridETemp1[i] = s.gridEFrequency1[i] + s.k1[i];
-        s.gridETemp2[i] = s.gridEFrequency2[i] + s.k2[i];
-        s.gridEFrequency1Next1[i] = s.gridEFrequency1Next1[i] + s.k1[i] / 3;
-        s.gridEFrequency1Next2[i] = s.gridEFrequency1Next2[i] + s.k2[i] / 3;
+        s.gridETemp1[i] = s.gridEFrequency1[i] + s.k1[iC];
+        s.gridETemp2[i] = s.gridEFrequency2[i] + s.k2[iC];
+        s.gridEFrequency1Next1[i] = s.gridEFrequency1Next1[i] + s.k1[iC] / 3;
+        s.gridEFrequency1Next2[i] = s.gridEFrequency1Next2[i] + s.k2[iC] / 3;
+        s.gridETime1[i] = s.chiLinear1[i] * s.gridETemp1[i];
+        s.gridETime2[i] = s.chiLinear2[i] * s.gridETemp2[i];
     }
 
     //last substep. Solution is now complete and may be copied directly into the field arrays
     else {
-        s.gridEFrequency1[i] = s.gridEFrequency1Next1[i] + s.k1[i] / 6;
-        s.gridEFrequency2[i] = s.gridEFrequency1Next2[i] + s.k2[i] / 6;
+        s.gridEFrequency1[i] = s.gridEFrequency1Next1[i] + s.k1[iC] / 6;
+        s.gridEFrequency2[i] = s.gridEFrequency1Next2[i] + s.k2[iC] / 6;
         s.gridETemp1[i] = s.gridEFrequency1[i];
         s.gridETemp2[i] = s.gridEFrequency2[i];
+        s.gridETime1[i] = s.chiLinear1[i] * s.gridETemp1[i];
+        s.gridETime2[i] = s.chiLinear2[i] * s.gridETemp2[i];
     }
 
 }
@@ -1018,6 +1044,12 @@ __global__ void multiplicationKernel(cuDoubleComplex* A, cuDoubleComplex* B, cuD
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
     C[i] = B[i] * A[i];
 }
+
+__global__ void multiplicationKernelInPlace(cuDoubleComplex* A, cuDoubleComplex* B) {
+    long long i = threadIdx.x + blockIdx.x * blockDim.x;
+    B[i] = A[i] * B[i];
+}
+
 
 //main function for running on CLI
 int main(int argc, char *argv[]) {
@@ -1409,7 +1441,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     //Copy the field into the temporary array
     cudaMemcpy(s.gridETemp1, s.gridEFrequency1, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
     cudaMemcpy(s.gridETemp2, s.gridEFrequency2, s.Nspace * s.Ntime * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
-
+    multiplicationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear1, s.gridETemp1, s.gridETime1);
+    multiplicationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear2, s.gridETemp2, s.gridETime2);
     //Core propagation loop
     for (i = 0; i < s.Nsteps; i++) {
         
@@ -1491,10 +1524,6 @@ int runRK4Step(cudaParameterSet s, int stepNumber) {
 
     //operations involving FFT
     if (s.isNonLinear || s.isCylindric) {
-        //multiply by linear chi so that we have polarization (for applying Miller's rule)
-        multiplicationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear1, s.gridETemp1, s.gridETime1);
-        multiplicationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear2, s.gridETemp2, s.gridETime2);
-        
         //perform inverse FFT to get time-space electric field
         cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.gridETime1, (cufftDoubleComplex*)s.gridETime1, CUFFT_INVERSE);
         if (s.isNonLinear) {
@@ -1596,14 +1625,14 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         if (i >= (*s).Ntime / 2) {
             f -= (*s).fStep * (*s).Ntime;
         }
-        f *= -1;
+        //f *= -1;
         w = TWOPI * (f - (*s).frequency1);
         
         //supergaussian pulse spectrum, if no input pulse specified
         specfac = pow((f - (*s).frequency1)/(*s).bandwidth1,(*s).sgOrder1);
 
         specphase = ii * ((*s).cephase1 + TWOPI*f * ((*s).delay1 - 0.5*(*s).tStep*(*s).Ntime) + 0.5 * (*s).gdd1 * w * w + (*s).tod1 * w * w * w/6.0 + materialPhase1[i]);
-        specfac = exp(-specfac + specphase);
+        specfac = exp(-specfac - specphase);
 
         if ((*s).field1IsAllocated) {
             specfac = (*s).loadedField1[i] * exp(-specphase);
@@ -1619,7 +1648,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
             if (f == 0) {
                 zR = 1e3;
             }
-            rB = ((*s).x01 + (*s).rStep * (j - (*s).Nspace / 2.0) - 0.25*(*s).rStep);
+            rB = ((*s).x01 - (*s).rStep * (j - (*s).Nspace / 2.0) + 0.25*(*s).rStep);
             r = rB * cos(theta) - zB * sin(theta);
             z = rB * sin(theta) + zB * cos(theta);
             
@@ -1630,7 +1659,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
                 Rz = 1.0e15;
             }
             phi = atan(z / zR);
-            Eb = (w0 / wz) * exp(-ii * (real(ko) * (z-zB) + real(ko) * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+            Eb = (w0 / wz) * exp(ii * (real(ko) * (z-zB) + real(ko) * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
             Eb *= specfac;
             if (isnan(cModulusSquared(Eb)) || f<=0) {
                 Eb = 0;
@@ -1666,8 +1695,8 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency2, (cufftDoubleComplex*)(*sc).gridETime2, CUFFT_INVERSE);
 
     //Take the conjugate of the field because me and cufft have different ideas of time
-    conjugateKernel<<<(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >>>((*sc).gridETime1);
-    conjugateKernel<<<(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >>>((*sc).gridETime2);
+    //conjugateKernel<<<(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >>>((*sc).gridETime1);
+    //conjugateKernel<<<(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >>>((*sc).gridETime2);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_INVERSE);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridEFrequency2, CUFFT_INVERSE);
     cudaDeviceSynchronize();
@@ -1702,14 +1731,14 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
         if (i >= (*s).Ntime / 2) {
             f -= (*s).fStep * (*s).Ntime;
         }
-        f *= -1;
+        //f *= -1;
         w = TWOPI * (f - (*s).frequency2);
 
         //supergaussian pulse spectrum, if no input pulse specified
         specfac = pow((f - (*s).frequency2) / (*s).bandwidth2,(*s).sgOrder2);
 
         specphase = ii * ((*s).cephase2 + TWOPI*f * ((*s).delay2 - 0.5*(*s).tStep*(*s).Ntime) + 0.5*(*s).gdd2 * w * w + (*s).tod2 * w * w * w/6.0 + materialPhase2[i]);
-        specfac = exp(-specfac + specphase);
+        specfac = exp(-specfac - specphase);
 
         if ((*s).field2IsAllocated) {
             specfac = (*s).loadedField2[i] * exp(-specphase);
@@ -1726,7 +1755,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
             if (f == 0) {
                 zR = 1e3;
             }
-            rB = ((*s).x01 + (*s).rStep * (j - (*s).Nspace / 2.0) - 0.25 * (*s).rStep);
+            rB = ((*s).x01 - (*s).rStep * (j - (*s).Nspace / 2.0) + 0.25 * (*s).rStep);
             r = rB * cos(theta) - zB * sin(theta);
             z = rB * sin(theta) + zB * cos(theta);
 
@@ -1737,7 +1766,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
                 Rz = 1.0e15;
             }
             phi = atan(z / zR);
-            Eb = (w0 / wz) * exp(-ii * (real(ko) * (z - zB) + real(ko) * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+            Eb = (w0 / wz) * exp(ii * (real(ko) * (z - zB) + real(ko) * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
             Eb *= specfac;
             if (isnan(cModulusSquared(Eb)) || f <= 0) {
                 Eb = 0;
@@ -1769,8 +1798,8 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridEFrequency2, (cufftDoubleComplex*)(*sc).gridETime2, CUFFT_INVERSE);
 
     //Take the conjugate of the field because me and cufft have different ideas of time
-    conjugateKernel << <(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridETime1);
-    conjugateKernel << <(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridETime2);
+    //conjugateKernel << <(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridETime1);
+    //conjugateKernel << <(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridETime2);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1, CUFFT_INVERSE);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)(*sc).gridETime2, (cufftDoubleComplex*)(*sc).gridEFrequency2, CUFFT_INVERSE);
     cudaDeviceSynchronize();
