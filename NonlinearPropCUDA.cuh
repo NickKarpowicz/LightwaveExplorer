@@ -161,8 +161,12 @@ typedef struct simulationParameterSet {
 
 typedef struct cudaParameterSet {
     cudaStream_t CUDAStream;
-	cuDoubleComplex* gridETime1;
-	cuDoubleComplex* gridETime2;
+	double* gridETime1;
+	double* gridETime2;
+    cuDoubleComplex* workspace1;
+    cuDoubleComplex* workspace2;
+    cuDoubleComplex* workspace1C;
+    cuDoubleComplex* workspace2C;
 	cuDoubleComplex* gridETemp1;
 	cuDoubleComplex* gridETemp2;
 	cuDoubleComplex* gridEFrequency1;
@@ -177,8 +181,8 @@ typedef struct cudaParameterSet {
 	cuDoubleComplex* gridPolarizationFrequency2;
 	cuDoubleComplex* gridEFrequency1Next1;
 	cuDoubleComplex* gridEFrequency1Next2;
-	cuDoubleComplex* gridRadialLaplacian1;
-	cuDoubleComplex* gridRadialLaplacian2;
+	double* gridRadialLaplacian1;
+	double* gridRadialLaplacian2;
 	cuDoubleComplex* gridPlasmaCurrentFrequency1;
 	cuDoubleComplex* gridPlasmaCurrentFrequency2;
     cuDoubleComplex* chiLinear1;
@@ -202,6 +206,8 @@ typedef struct cudaParameterSet {
 	int* nonlinearSwitches;
 	long long* propagationInts;
 	cufftHandle fftPlan;
+    cufftHandle fftPlanZ2D;
+    cufftHandle fftPlanD2Z;
 	cufftHandle polfftPlan;
     cufftHandle doublePolfftPlan;
 	bool isNonLinear;
@@ -218,6 +224,7 @@ typedef struct cudaParameterSet {
 	double h;
 	size_t Nsteps;
 	int Nthread;
+    int NblockC;
 	int Nblock;
 } cudaParameterSet;
 
