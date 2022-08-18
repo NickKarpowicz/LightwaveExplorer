@@ -879,19 +879,17 @@ __global__ void plasmaCurrentKernel2(cudaParameterSet s, double* workN, double* 
     double* workEy = &workEx[s.Ngrid];
     double* expMinusGammaT = &s.expGammaT[s.Ntime];
 
-    long long k, l;
+    long long k;
     j *= s.Ntime;
+    double a;
     for (k = 0; k < s.Ntime; k++) {
-
-        l = j + k;
-        N += workN[l];
-
-        integralx += s.expGammaT[k] * N * workEx[l];
-        integraly += s.expGammaT[k] * N * workEy[l];
-
-
-        s.gridPlasmaCurrent1[l] += expMinusGammaT[k] * integralx;
-        s.gridPlasmaCurrent2[l] += expMinusGammaT[k] * integraly;
+        N += workN[j];
+        a = N * s.expGammaT[k];
+        integralx += a * workEx[j];
+        integraly += a * workEy[j];
+        s.gridPlasmaCurrent1[j] += expMinusGammaT[k] * integralx;
+        s.gridPlasmaCurrent2[j] += expMinusGammaT[k] * integraly;
+        j++;
     }
 }
 //size_t propagationIntsCPU[4] = { s.Ngrid, s.Ntime, s.Nspace, (s.Ntime / 2 + 1) };
@@ -1430,7 +1428,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
         complexToRealKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.workspace1, s.gridETime1);
         complexToRealKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.workspace2, s.gridETime2);
         cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
-        multiplyByConstantKernel << <(int)(s.Ntime / 2 + 1) * (2 * s.Nspace), 1, 0, s.CUDAStream >> > (s.gridEFrequency1, 2.0);
+        multiplyByConstantKernel << <(unsigned int)((s.Ntime / 2 + 1) * (2 * s.Nspace)), 1, 0, s.CUDAStream >> > (s.gridEFrequency1, 2.0);
 
     }
     else {
@@ -1842,7 +1840,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
     fftNormalizeKernel << <2*(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).workspace1, (*sc).propagationInts);
     complexToRealKernel << <2*(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).workspace1, (*sc).gridETime1);
     cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
-    multiplyByConstantKernel<<<(int)((*sc).Ntime/2 + 1) * (2*(*sc).Nspace), 1, 0, (*sc).CUDAStream >> >((*sc).gridEFrequency1, 2.0);
+    multiplyByConstantKernel<<<(unsigned int)(((*sc).Ntime/2 + 1) * (2*(*sc).Nspace)), 1, 0, (*sc).CUDAStream >> >((*sc).gridEFrequency1, 2.0);
     cudaDeviceSynchronize();
     cufftDestroy(plan1);
     cufftDestroy(plan2);
