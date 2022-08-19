@@ -762,13 +762,12 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
             printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
     }
+
     char defaultFilename[] = "DefaultValues.ini";
     readInputParametersFile(activeSetPtr, crystalDatabasePtr, defaultFilename);
     setInterfaceValuesToActiveValues();
     DWORD hMonitorThread;
     CreateThread(NULL, 0, statusMonitorThread, activeSetPtr, 0, &hMonitorThread);
-    
-
     return TRUE;
 }
 

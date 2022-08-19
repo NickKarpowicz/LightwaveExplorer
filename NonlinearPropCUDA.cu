@@ -822,8 +822,32 @@ __global__ void nonlinearPolarizationKernel(cudaParameterSet* s) {
         (*s).gridPolarizationTime2[i] += (*s).chi2Tensor[1] * Ex2 + (*s).chi2Tensor[3] * Ex * Ey + (*s).chi2Tensor[5] * Ey2;
     }
     
-    //to be implemented: full chi3 matrix on (*s).nonlinearSwitches[1]==1
+    //resolve the full chi3 matrix when (*s).nonlinearSwitches[1]==1
+    if ((*s).nonlinearSwitches[1] == 1) {
 
+        //rotate field into crystal frame
+        double E3[3] = { (*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey, 
+            (*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
+            (*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey };
+        
+        //loop over tensor element X_abcd
+        //i hope the compiler unrolls this, but no way am I writing that out by hand
+        unsigned char a, b, c, d;
+        double P3[3] = { 0 };
+        for (a = 0; a < 3; a++) {
+            for (b = 0; b < 3; b++) {
+                for (c = 0; c < 3; c++) {
+                    for (d = 0; d < 3; d++) {
+                        P3[d] += (*s).chi3Tensor[a + 3 * b + 9 * c + 27 * d] * E3[a] * E3[b] * E3[c];
+                    }
+                }
+            }
+        }
+
+        //rotate back into simulation frame
+        (*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P3[0] + (*s).rotationBackward[1] * P3[1] + (*s).rotationBackward[2] * P3[2];
+        (*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P3[0] + (*s).rotationBackward[4] * P3[1] + (*s).rotationBackward[5] * P3[2];
+    }
     //using only one value of chi3, under assumption of centrosymmetry
     if ((*s).nonlinearSwitches[1] == 2) {
         (*s).gridPolarizationTime1[i] += (*s).chi3Tensor[0] * (Ex2 * Ex + (1. / 3.) * Ey2 * Ex);
@@ -1227,6 +1251,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
     cudaSetDevice((*sCPU).assignedGPU);
     cudaStreamCreate(&s.CUDAStream);
+    fillRotationMatricies(sCPU, &s);
 
     //initialize and take values from the struct handed over by the dispatcher
     unsigned long long i;
@@ -1369,7 +1394,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaMemcpy(s.chi2Tensor, (*sCPU).deffTensor, 9 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(s.propagationInts, propagationIntsCPU, 5 * sizeof(size_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(s.chi3Tensor, (*sCPU).chi3Tensor, 27 * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(s.chi3Tensor, (*sCPU).chi3Tensor, 81 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.absorptionParameters, (*sCPU).absorptionParameters, 6 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.plasmaParameters, plasmaParametersCPU, 6 * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(s.firstDerivativeOperation, firstDerivativeOperation, 6 * sizeof(double), cudaMemcpyHostToDevice);
@@ -2520,6 +2545,7 @@ int readCrystalDatabase(crystalEntry* db) {
     if (fp == NULL) {
         return -2;
     }
+    wchar_t lineBuffer[MAX_LOADSTRING] = { 0 };
 
     //read the entries line
     int readErrors = 0;
@@ -2530,34 +2556,47 @@ int readCrystalDatabase(crystalEntry* db) {
         readErrors += 1 != fwscanf(fp, L"Type:\n%d\n", &db[i].axisType);
         readErrors += 1 != fwscanf(fp, L"Sellmeier equation:\n%d\n", &db[i].sellmeierType);
         fd = &db[i].sellmeierCoefficients[0];
-        readErrors += 22 != fwscanf(fp, L"1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+        readErrors += 22 != fwscanf(fp, L"1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
             &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         fd = &db[i].sellmeierCoefficients[22];
-        readErrors += 22 != fwscanf(fp, L"2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+        readErrors += 22 != fwscanf(fp, L"2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
             &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         fd = &db[i].sellmeierCoefficients[44];
-        readErrors += 22 != fwscanf(fp, L"3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
+        readErrors += 22 != fwscanf(fp, L"3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
             &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
         readErrors += 0 != fwscanf(fp, L"Sellmeier reference:\n");
         fgetws(db[i].sellmeierReference, 512, fp);
         readErrors += 1 != fwscanf(fp, L"chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
         fd = &db[i].d[0];
-        readErrors += 18 != fwscanf(fp, L"d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n", 
-            &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15], 
-            &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16], 
+        readErrors += 18 != fwscanf(fp, L"d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n",
+            &fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15],
+            &fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16],
             &fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
         readErrors += 0 != fwscanf(fp, L"d reference:\n");
         fgetws(db[i].dReference, 512, fp);
-        readErrors += 1 != fwscanf(fp, L"chi3 type:\n%d\n", &db[i].nonlinearSwitches[1]);
+        readErrors += 1 != fwscanf(fp, L"chi3 type:\n%d\nchi3:\n", &db[i].nonlinearSwitches[1]);
+        //handle chi3 in a flexible way to avoid making the user write 81 zeroes when not needed
         fd = &db[i].chi3[0];
-        readErrors += 9 != fwscanf(fp, L"chi3:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
-            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
-        fd = &db[i].chi3[9];
-        readErrors += 9 != fwscanf(fp, L"%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
-            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
-        fd = &db[i].chi3[18];
-        readErrors += 9 != fwscanf(fp, L"%lf %lf %lf %lf %lf %lf %lf %lf %lf\n", 
-            &fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8]);
+        memset(fd, 0, 81 * sizeof(double));
+        if (db[i].nonlinearSwitches[1] != 1 && db[i].nonlinearSwitches[1] != 2) {
+            fgetws(lineBuffer, MAX_LOADSTRING, fp);
+            fgetws(lineBuffer, MAX_LOADSTRING, fp);
+            fgetws(lineBuffer, MAX_LOADSTRING, fp);
+        }
+        else if (db[i].nonlinearSwitches[1] == 1) {
+            for (int j = 0; j < 3; j++) {
+                for (int k = 0; k < 27; k++) {
+                    readErrors += 1 != fwscanf(fp, L"%lf", &fd[j + 3 * k]);
+                }
+                fwscanf(fp, L"\n");
+            }
+        }
+        else if (db[i].nonlinearSwitches[1] == 2) {
+            readErrors += 1 != fwscanf(fp, L"%lf", &fd[0]);
+            fgetws(lineBuffer, MAX_LOADSTRING, fp);
+            fgetws(lineBuffer, MAX_LOADSTRING, fp);
+            fgetws(lineBuffer, MAX_LOADSTRING, fp);
+        }
         readErrors += 0 != fwscanf(fp, L"chi3 reference:\n");
         fgetws(db[i].chi3Reference, 512, fp);
         readErrors += 0 != fwscanf(fp, L"Spectral file:\n");
@@ -3578,4 +3617,25 @@ void runFittingIteration(int* m, int* n, double* fittingValues, double* fittingF
 
 
     return;
+}
+
+//generate the rotation matricies for translating between the beam coordinates and
+//crystal coordinates
+int fillRotationMatricies(simulationParameterSet* sCPU, cudaParameterSet* s) {
+    double cosT = cos((*sCPU).crystalTheta);
+    double sinT = sin((*sCPU).crystalTheta);
+    double cosP = cos((*sCPU).crystalPhi);
+    double sinP = sin((*sCPU).crystalPhi);
+    double forward[9] = 
+        { cosP, sinP, 0, -cosT * sinP, cosT * cosP, sinT, sinT * sinP, -sinT * cosP, cosT };
+
+    //reverse direction (same array contents)
+    sinT *= -1;
+    sinP *= -1;
+    double backward[9] = 
+        { cosP, sinP, 0, -cosT * sinP, cosT * cosP, sinT, sinT * sinP, -sinT * cosP, cosT };
+
+    memcpy((*s).rotationForward, forward, 9 * sizeof(double));
+    memcpy((*s).rotationBackward, backward, 9 * sizeof(double));
+    return 0;
 }

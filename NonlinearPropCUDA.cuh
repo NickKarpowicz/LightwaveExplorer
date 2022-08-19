@@ -16,7 +16,7 @@ typedef struct crystalEntry {
     wchar_t sellmeierReference[512];
     double d[18];
     wchar_t dReference[512];
-    double chi3[48];
+    double chi3[81];
     wchar_t chi3Reference[512];
     double absorptionParameters[6];
     wchar_t spectralFile[512];
@@ -203,6 +203,8 @@ typedef struct cudaParameterSet {
 	double* gridPlasmaCurrent2;
 	double* absorptionParameters;
 	double* expGammaT;
+    double rotationForward[9];
+    double rotationBackward[9];
 	int* nonlinearSwitches;
 	long long* propagationInts;
 	cufftHandle fftPlan;
@@ -261,3 +263,4 @@ int             loadReferenceSpectrum(char* spectrumPath, simulationParameterSet
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
 int             skipFileUntilCharacter(FILE* fstream, char target);
 int             applyLinearPropagation(simulationParameterSet* s, int materialIndex, double thickness);
+int             fillRotationMatricies(simulationParameterSet* sCPU, cudaParameterSet* s);
