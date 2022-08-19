@@ -1428,7 +1428,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
         complexToRealKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.workspace1, s.gridETime1);
         complexToRealKernel << <s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.workspace2, s.gridETime2);
         cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
-        multiplyByConstantKernel << <(unsigned int)((s.Ntime / 2 + 1) * (2 * s.Nspace)), 1, 0, s.CUDAStream >> > (s.gridEFrequency1, 2.0);
+        multiplyByConstantKernel << <(unsigned int)((s.Ntime / 2 + 1) * (s.Nspace/16)), 32, 0, s.CUDAStream >> > (s.gridEFrequency1, 2.0);
 
     }
     else {
@@ -1469,17 +1469,17 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     
     //transform final result
     cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
-    multiplyByConstantKernelD<<<(int)(2*s.Ngrid), 1, 0, s.CUDAStream >> >(s.gridETime1, 0.5);
+    multiplyByConstantKernelD<<<(int)(s.Ngrid/16), 32, 0, s.CUDAStream >> >(s.gridETime1, 0.5);
     realToComplexKernel << <2*s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.gridETime1, s.workspace1);
     fftNormalizeKernel << <2*s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.workspace1, &s.propagationInts[0]);
 
     //copy the field arrays from the GPU to CPU memory
     cudaMemcpy((*sCPU).ExtOut, s.workspace1, 2*(*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-    multiplyByConstantKernel << <(int)(2 * s.Ngrid), 1, 0, s.CUDAStream >> > (s.workspace1, 2);
+    multiplyByConstantKernel << <(int)(s.Ngrid/16), 32, 0, s.CUDAStream >> > (s.workspace1, 2);
     getTotalSpectrum(sCPU, &s);
     realToComplexKernel << <2*s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.gridETime1, s.workspace1);
     fftNormalizeKernel << <2*s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.workspace1, &s.propagationInts[0]);
-    multiplyByConstantKernel << <(int)(2 * s.Ngrid), 1, 0, s.CUDAStream >> > (s.workspace1, 2);
+    multiplyByConstantKernel << <(int)(s.Ngrid/16), 32, 0, s.CUDAStream >> > (s.workspace1, 2);
     cufftExecZ2Z(s.fftPlan, (cufftDoubleComplex*)s.workspace1, (cufftDoubleComplex*)s.workspace1, CUFFT_FORWARD);
     cudaMemcpy((*sCPU).EkwOut, s.workspace1, 2*(*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
@@ -1548,7 +1548,7 @@ int runRK4Step(cudaParameterSet s, int stepNumber) {
         if (s.hasPlasma) {
             plasmaCurrentKernelPrep <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
                 (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
-            plasmaCurrentKernel2 <<<(unsigned int)s.Nspace, 1, 0, s.CUDAStream >>> 
+            plasmaCurrentKernel2 <<<(unsigned int)s.Nspace/16, 16, 0, s.CUDAStream >>> 
                 (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
             
             if (s.isCylindric) {
@@ -1840,7 +1840,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet *sc) 
     fftNormalizeKernel << <2*(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).workspace1, (*sc).propagationInts);
     complexToRealKernel << <2*(*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).workspace1, (*sc).gridETime1);
     cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
-    multiplyByConstantKernel<<<(unsigned int)(((*sc).Ntime/2 + 1) * (2*(*sc).Nspace)), 1, 0, (*sc).CUDAStream >> >((*sc).gridEFrequency1, 2.0);
+    multiplyByConstantKernel<<<(unsigned int)(((*sc).Ntime/2 + 1) * ((*sc).Nspace/16)), 32, 0, (*sc).CUDAStream >> >((*sc).gridEFrequency1, 2.0);
     cudaDeviceSynchronize();
     cufftDestroy(plan1);
     cufftDestroy(plan2);
