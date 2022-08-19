@@ -1284,8 +1284,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
     memErrors += cudaMalloc((void**)&s.gridPolarizationFrequency1, sizeof(cuDoubleComplex) * 2 * beamExpansionFactor * NgridC);
     cudaMemset(s.gridPolarizationFrequency1, 0, sizeof(cuDoubleComplex) * 2 * beamExpansionFactor * NgridC);
-    memErrors += cudaMalloc((void**)&s.gridPlasmaCurrentFrequency1, sizeof(cuDoubleComplex) * 2 * NgridC);
-    cudaMemset(s.gridPlasmaCurrentFrequency1, 0, sizeof(cuDoubleComplex) * 2 * NgridC);
+    memErrors += cudaMalloc((void**)&s.gridPlasmaCurrentFrequency1, sizeof(cuDoubleComplex) * 2 * beamExpansionFactor *  NgridC);
+    cudaMemset(s.gridPlasmaCurrentFrequency1, 0, sizeof(cuDoubleComplex) * 2 * beamExpansionFactor * NgridC);
     memErrors += cudaMalloc((void**)&s.gridPolarizationTime1, 2 * sizeof(double) * s.Ngrid);
     cudaMemset(s.gridPolarizationTime1, 0, 2 * sizeof(double) * s.Ngrid);
     memErrors += cudaMalloc((void**)&s.gridPlasmaCurrent1, 2 * sizeof(double) * s.Ngrid);
