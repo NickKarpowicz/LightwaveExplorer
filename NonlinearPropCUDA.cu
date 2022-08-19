@@ -284,32 +284,32 @@ __device__ __forceinline__ double resolveNeighborsInOffsetRadialSymmetry(
 	}
 }
 
-__global__ void radialLaplacianKernel(cudaParameterSet s) {
+__global__ void radialLaplacianKernel(cudaParameterSet* s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
-    long long j = i / s.Ntime; //spatial coordinate
-    long long h = i % s.Ntime; //temporal coordinate
+    long long j = i / (*s).Ntime; //spatial coordinate
+    long long h = i % (*s).Ntime; //temporal coordinate
     long long neighbors[6];
 
     //zero at edges of grid
-    if (j<3 || j>(s.Nspace - 4)) {
-        s.gridRadialLaplacian1[i] = 0.;
-        s.gridRadialLaplacian2[i] = 0.;
+    if (j<3 || j>((*s).Nspace - 4)) {
+        (*s).gridRadialLaplacian1[i] = 0.;
+        (*s).gridRadialLaplacian2[i] = 0.;
     }
     else {
-        double rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, s.Nspace, j, s.dx, s.Ntime, h);
+        double rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, j, (*s).dx, (*s).Ntime, h);
         rho = -1.0 / rho;
-        s.gridRadialLaplacian1[i] = rho * (s.firstDerivativeOperation[0] * s.gridETime1[neighbors[0]]
-            + s.firstDerivativeOperation[1] * s.gridETime1[neighbors[1]]
-            + s.firstDerivativeOperation[2] * s.gridETime1[neighbors[2]]
-            + s.firstDerivativeOperation[3] * s.gridETime1[neighbors[3]]
-            + s.firstDerivativeOperation[4] * s.gridETime1[neighbors[4]]
-            + s.firstDerivativeOperation[5] * s.gridETime1[neighbors[5]]);
-        s.gridRadialLaplacian2[i] = rho * (s.firstDerivativeOperation[0] * s.gridETime2[neighbors[0]]
-            + s.firstDerivativeOperation[1] * s.gridETime2[neighbors[1]]
-            + s.firstDerivativeOperation[2] * s.gridETime2[neighbors[2]]
-            + s.firstDerivativeOperation[3] * s.gridETime2[neighbors[3]]
-            + s.firstDerivativeOperation[4] * s.gridETime2[neighbors[4]]
-            + s.firstDerivativeOperation[5] * s.gridETime2[neighbors[5]]);
+        (*s).gridRadialLaplacian1[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
+            + (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
+            + (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
+            + (*s).firstDerivativeOperation[3] * (*s).gridETime1[neighbors[3]]
+            + (*s).firstDerivativeOperation[4] * (*s).gridETime1[neighbors[4]]
+            + (*s).firstDerivativeOperation[5] * (*s).gridETime1[neighbors[5]]);
+        (*s).gridRadialLaplacian2[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime2[neighbors[0]]
+            + (*s).firstDerivativeOperation[1] * (*s).gridETime2[neighbors[1]]
+            + (*s).firstDerivativeOperation[2] * (*s).gridETime2[neighbors[2]]
+            + (*s).firstDerivativeOperation[3] * (*s).gridETime2[neighbors[3]]
+            + (*s).firstDerivativeOperation[4] * (*s).gridETime2[neighbors[4]]
+            + (*s).firstDerivativeOperation[5] * (*s).gridETime2[neighbors[5]]);
     }
 
 }
@@ -326,19 +326,19 @@ __global__ void radialLaplacianKernel(cudaParameterSet s) {
 // after FFT, we can discard the high frequencies. Thus we have downsampled
 // in such a way as to avoid aliasing, which inside the simulation is most
 // likely the appear (and cause instability) in the nonlinear terms.
-__global__ void expandCylindricalBeam(cudaParameterSet s, double* polarization1, double* polarization2) {
+__global__ void expandCylindricalBeam(cudaParameterSet* s, double* polarization1, double* polarization2) {
     size_t i = threadIdx.x + blockIdx.x * blockDim.x;
-    size_t j = i / s.Ntime; //spatial coordinate
-    size_t k = i % s.Ntime; //temporal coordinate
+    size_t j = i / (*s).Ntime; //spatial coordinate
+    size_t k = i % (*s).Ntime; //temporal coordinate
 
     //positions on the expanded grid corresponding the the current index
-    size_t pos1 = 2 * (s.Nspace - j - 1) * s.Ntime + k;
-    size_t pos2 = (2 * j + 1) * s.Ntime + k;
+    size_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
+    size_t pos2 = (2 * j + 1) * (*s).Ntime + k;
 
     //reuse memory allocated for the radial Laplacian, casting complex double
     //to a 2x larger double real grid
-    double* expandedBeam1 = (double*)s.gridRadialLaplacian1;
-    double* expandedBeam2 = expandedBeam1 + 2 * s.Ngrid;
+    double* expandedBeam1 = (double*)(*s).gridRadialLaplacian1;
+    double* expandedBeam2 = expandedBeam1 + 2 * (*s).Ngrid;
 
     expandedBeam1[pos1] = polarization1[i];
     expandedBeam1[pos2] = polarization1[i];
@@ -804,30 +804,30 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
 
 //calculate the nonlinear polarization, after FFT to get the field
 //in the time domain
-__global__ void nonlinearPolarizationKernel(cudaParameterSet s) {
+__global__ void nonlinearPolarizationKernel(cudaParameterSet* s) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
-    double Ex = s.gridETime1[i] / s.propagationInts[0];
-    double Ey = s.gridETime2[i] / s.propagationInts[0];
+    double Ex = (*s).gridETime1[i] / (*s).propagationInts[0];
+    double Ey = (*s).gridETime2[i] / (*s).propagationInts[0];
 
     double Ex2 = Ex * Ex;
     double Ey2 = Ey * Ey;
-    s.gridPolarizationTime1[i] = 0.;
-    s.gridPolarizationTime2[i] = 0.;
+    (*s).gridPolarizationTime1[i] = 0.;
+    (*s).gridPolarizationTime2[i] = 0.;
 
     //The d2eff tensor has the form
     // | d_xxx d_xyx d_yyx |
     // | d_xxy d_xyy d_yyy |
-    if (s.nonlinearSwitches[0] == 1) {
-        s.gridPolarizationTime1[i] += s.chi2Tensor[0] * Ex2 + s.chi2Tensor[2] * Ex * Ey + s.chi2Tensor[4] * Ey2;
-        s.gridPolarizationTime2[i] += s.chi2Tensor[1] * Ex2 + s.chi2Tensor[3] * Ex * Ey + s.chi2Tensor[5] * Ey2;
+    if ((*s).nonlinearSwitches[0] == 1) {
+        (*s).gridPolarizationTime1[i] += (*s).chi2Tensor[0] * Ex2 + (*s).chi2Tensor[2] * Ex * Ey + (*s).chi2Tensor[4] * Ey2;
+        (*s).gridPolarizationTime2[i] += (*s).chi2Tensor[1] * Ex2 + (*s).chi2Tensor[3] * Ex * Ey + (*s).chi2Tensor[5] * Ey2;
     }
     
-    //to be implemented: full chi3 matrix on s.nonlinearSwitches[1]==1
+    //to be implemented: full chi3 matrix on (*s).nonlinearSwitches[1]==1
 
     //using only one value of chi3, under assumption of centrosymmetry
-    if (s.nonlinearSwitches[1] == 2) {
-        s.gridPolarizationTime1[i] += s.chi3Tensor[0] * (Ex2 * Ex + (1. / 3.) * Ey2 * Ex);
-        s.gridPolarizationTime2[i] += s.chi3Tensor[0] * (Ey2 * Ey + (1. / 3.) * Ex2 * Ey);
+    if ((*s).nonlinearSwitches[1] == 2) {
+        (*s).gridPolarizationTime1[i] += (*s).chi3Tensor[0] * (Ex2 * Ex + (1. / 3.) * Ey2 * Ex);
+        (*s).gridPolarizationTime2[i] += (*s).chi3Tensor[0] * (Ey2 * Ey + (1. / 3.) * Ex2 * Ey);
     }
 }
 
@@ -843,52 +843,52 @@ __global__ void nonlinearPolarizationKernel(cudaParameterSet s) {
 //equation for the plasma current:
 //J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
 //J_absorption(t) = beta*E^(2*Nphot-2)*E
-__global__ void plasmaCurrentKernelPrep(cudaParameterSet s, double* workN, double* workEx) {
+__global__ void plasmaCurrentKernelPrep(cudaParameterSet* s, double* workN, double* workEx) {
     long long i = threadIdx.x + blockIdx.x * blockDim.x;
 
     int k;
-    double* workEy = &workEx[s.Ngrid];
+    double* workEy = &workEx[(*s).Ngrid];
     double w, Esquared, Ex, Ey;
-    Ex = 0.5 * s.gridETime1[i] / s.propagationInts[0];
-    Ey = 0.5 * s.gridETime2[i] / s.propagationInts[0];
+    Ex = 0.5 * (*s).gridETime1[i] / (*s).propagationInts[0];
+    Ey = 0.5 * (*s).gridETime2[i] / (*s).propagationInts[0];
     Esquared = Ex * Ex + Ey * Ey;
     //plasmaParameters[0] is the nonlinear absorption parameter
-    w = s.plasmaParameters[0] * Esquared;
+    w = (*s).plasmaParameters[0] * Esquared;
     //nonlinearSwitches[3] is Nphotons-2
-    for (k = 0; k < s.nonlinearSwitches[3]; k++) {
+    for (k = 0; k < (*s).nonlinearSwitches[3]; k++) {
         w *= Esquared;
     }
     //absorption currents
-    s.gridPlasmaCurrent1[i] = w * Ex;
-    s.gridPlasmaCurrent2[i] = w * Ey;
+    (*s).gridPlasmaCurrent1[i] = w * Ex;
+    (*s).gridPlasmaCurrent2[i] = w * Ey;
 
     //plasmaParameters[2] is the 1/photon energy, translating the loss of power
     //from the field to the number of free carriers
     //extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
     //of the plasma current
-    workN[i] = s.plasmaParameters[2] * (s.gridPlasmaCurrent1[i] * Ex + s.gridPlasmaCurrent2[i] * Ey);
+    workN[i] = (*s).plasmaParameters[2] * ((*s).gridPlasmaCurrent1[i] * Ex + (*s).gridPlasmaCurrent2[i] * Ey);
     workEx[i] = Ex;
     workEy[i] = Ey;
 
 }
-__global__ void plasmaCurrentKernel2(cudaParameterSet s, double* workN, double* workEx) {
+__global__ void plasmaCurrentKernel2(cudaParameterSet* s, double* workN, double* workEx) {
     long long j = threadIdx.x + blockIdx.x * blockDim.x;
     double N = 0;
     double integralx = 0;
     double integraly = 0;
-    double* workEy = &workEx[s.Ngrid];
-    double* expMinusGammaT = &s.expGammaT[s.Ntime];
+    double* workEy = &workEx[(*s).Ngrid];
+    double* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
 
     long long k;
-    j *= s.Ntime;
+    j *= (*s).Ntime;
     double a;
-    for (k = 0; k < s.Ntime; k++) {
+    for (k = 0; k < (*s).Ntime; k++) {
         N += workN[j];
-        a = N * s.expGammaT[k];
+        a = N * (*s).expGammaT[k];
         integralx += a * workEx[j];
         integraly += a * workEy[j];
-        s.gridPlasmaCurrent1[j] += expMinusGammaT[k] * integralx;
-        s.gridPlasmaCurrent2[j] += expMinusGammaT[k] * integraly;
+        (*s).gridPlasmaCurrent1[j] += expMinusGammaT[k] * integralx;
+        (*s).gridPlasmaCurrent2[j] += expMinusGammaT[k] * integraly;
         j++;
     }
 }
@@ -906,84 +906,84 @@ __device__ cuDoubleComplex findFFTValueD2Z_2D(cuDoubleComplex* Arr, long long* p
 }
 
 //Main kernel for RK4 propagation of the field
-__global__ void rkKernel(cudaParameterSet s, int stepNumber) {
+__global__ void rkKernel(cudaParameterSet *sP, int stepNumber) {
     long long iO = threadIdx.x + blockIdx.x * blockDim.x;
-    long long i = (iO % s.propagationInts[3]) + (iO / s.propagationInts[3]) * s.Ntime;
-    long long h = i % (s.Ntime); //temporal coordinate
-    long long j = i / (s.Ntime); //spatial coordinate
+    long long i = (iO % (*sP).propagationInts[3]) + (iO / (*sP).propagationInts[3]) * (*sP).Ntime;
+    long long h = i % ((*sP).Ntime); //temporal coordinate
+    long long j = i / ((*sP).Ntime); //spatial coordinate
 
-    long long iC = s.propagationInts[3] * j + h;
-    //long long iC = (s.Ntime / 2) * j + h;
+    long long iC = (*sP).propagationInts[3] * j + h;
+    //long long iC = ((*sP).Ntime / 2) * j + h;
     cuDoubleComplex plasmaJ1 = make_cuDoubleComplex(0, 0);
     cuDoubleComplex plasmaJ2 = make_cuDoubleComplex(0, 0);
 
-    if (s.isCylindric) {
+    if ((*sP).isCylindric) {
         //correct for double grid size after expandCylindricalBeam()
-        if (j > s.Nspace / 2) {
-            j += s.Nspace;
+        if (j > (*sP).Nspace / 2) {
+            j += (*sP).Nspace;
         }
     }
     //polarization is stored in a reduced format by cuFFT because the FFT is from real to complex, meaning if the output grid
     //were to be N_time x N_space, half of the points would be redundant. The extra steps below are to determine where in the grid the 
-    //current point sits. Essentially, if in the negative frequency quadrants, reverse the frequency and take complex conjugate of the 
+    //current point sit(*sP). Essentially, if in the negative frequency quadrants, reverse the frequency and take complex conjugate of the 
     //value
-    h += j * s.propagationInts[3];
+    h += j * (*sP).propagationInts[3];
 
-    s.k1[iC] = s.gridPropagationFactor1[iC] * s.gridETemp1[iC] + s.gridPolarizationFactor1[iC] * s.gridPolarizationFrequency1[h];
-    s.k2[iC] = s.gridPropagationFactor2[iC] * s.gridETemp2[iC] + s.gridPolarizationFactor2[iC] * s.gridPolarizationFrequency2[h];
+    (*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridETemp1[iC] + (*sP).gridPolarizationFactor1[iC] * (*sP).gridPolarizationFrequency1[h];
+    (*sP).k2[iC] = (*sP).gridPropagationFactor2[iC] * (*sP).gridETemp2[iC] + (*sP).gridPolarizationFactor2[iC] * (*sP).gridPolarizationFrequency2[h];
 
-    if (s.hasPlasma) {
-        cuDoubleComplex jfac = make_cuDoubleComplex(0, -1.0 / (TWOPI * ((i % (s.Ntime/2)) * s.fStep)));
-        if ((i % (s.Ntime/2)) != 0) {
-            s.k1[iC] = s.k1[iC] + jfac * s.gridPolarizationFactor1[iC] * s.gridPlasmaCurrentFrequency1[h] / s.chiLinear1[iC];
-            s.k2[iC] = s.k2[iC] + jfac * s.gridPolarizationFactor2[iC] * s.gridPlasmaCurrentFrequency2[h] / s.chiLinear2[iC];
+    if ((*sP).hasPlasma) {
+        cuDoubleComplex jfac = make_cuDoubleComplex(0, -1.0 / (TWOPI * ((i % ((*sP).Ntime/2)) * (*sP).fStep)));
+        if ((i % ((*sP).Ntime/2)) != 0) {
+            (*sP).k1[iC] = (*sP).k1[iC] + jfac * (*sP).gridPolarizationFactor1[iC] * (*sP).gridPlasmaCurrentFrequency1[h] / (*sP).chiLinear1[iC];
+            (*sP).k2[iC] = (*sP).k2[iC] + jfac * (*sP).gridPolarizationFactor2[iC] * (*sP).gridPlasmaCurrentFrequency2[h] / (*sP).chiLinear2[iC];
         }
     }
 
-    if (s.isCylindric) {
-        s.k1[iC] = s.k1[iC] + s.gridPropagationFactor1Rho1[iC] * s.workspace1C[iC];
-        s.k2[iC] = s.k2[iC] + s.gridPropagationFactor1Rho2[iC] * s.workspace2C[iC];
+    if ((*sP).isCylindric) {
+        (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1C[iC];
+        (*sP).k2[iC] = (*sP).k2[iC] + (*sP).gridPropagationFactor1Rho2[iC] * (*sP).workspace2C[iC];
     }
 
     //in the first substep, first construct the next intermediate field value
     //which will be used in the next substep. 
     if (stepNumber == 0) {
-        s.gridETemp1[iC] = s.gridEFrequency1[iC] + 0.5 * s.k1[iC];
-        s.gridETemp2[iC] = s.gridEFrequency2[iC] + 0.5 * s.k2[iC];
-        s.gridEFrequency1Next1[iC] = s.k1[iC] / 6 + s.gridEFrequency1[iC];
-        s.gridEFrequency1Next2[iC] = s.k2[iC] / 6 + s.gridEFrequency2[iC];
-        s.workspace1C[iC] = s.chiLinear1[iC] * s.gridETemp1[iC];
-        s.workspace2C[iC] = s.chiLinear2[iC] * s.gridETemp2[iC];
+        (*sP).gridETemp1[iC] = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
+        (*sP).gridETemp2[iC] = (*sP).gridEFrequency2[iC] + 0.5 * (*sP).k2[iC];
+        (*sP).gridEFrequency1Next1[iC] = (*sP).k1[iC] / 6 + (*sP).gridEFrequency1[iC];
+        (*sP).gridEFrequency1Next2[iC] = (*sP).k2[iC] / 6 + (*sP).gridEFrequency2[iC];
+        (*sP).workspace1C[iC] = (*sP).chiLinear1[iC] * (*sP).gridETemp1[iC];
+        (*sP).workspace2C[iC] = (*sP).chiLinear2[iC] * (*sP).gridETemp2[iC];
     }
 
     //in the next substep, again construct the next intermediate field and add k/3 to solution
     else if (stepNumber == 1) {
-        s.gridETemp1[iC] = s.gridEFrequency1[iC] + 0.5 * s.k1[iC];
-        s.gridETemp2[iC] = s.gridEFrequency2[iC] + 0.5 * s.k2[iC];
-        s.gridEFrequency1Next1[iC] = s.gridEFrequency1Next1[iC] + s.k1[iC] / 3;
-        s.gridEFrequency1Next2[iC] = s.gridEFrequency1Next2[iC] + s.k2[iC] / 3;
-        s.workspace1C[iC] = s.chiLinear1[iC] * s.gridETemp1[iC];
-        s.workspace2C[iC] = s.chiLinear2[iC] * s.gridETemp2[iC];
+        (*sP).gridETemp1[iC] = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
+        (*sP).gridETemp2[iC] = (*sP).gridEFrequency2[iC] + 0.5 * (*sP).k2[iC];
+        (*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).k1[iC] / 3;
+        (*sP).gridEFrequency1Next2[iC] = (*sP).gridEFrequency1Next2[iC] + (*sP).k2[iC] / 3;
+        (*sP).workspace1C[iC] = (*sP).chiLinear1[iC] * (*sP).gridETemp1[iC];
+        (*sP).workspace2C[iC] = (*sP).chiLinear2[iC] * (*sP).gridETemp2[iC];
     }
 
     //same action as previous substep, except the weight of k in the intermediate solution is 1 instead of 0.5
     else if (stepNumber == 2) {
-        s.gridETemp1[iC] = s.gridEFrequency1[iC] + s.k1[iC];
-        s.gridETemp2[iC] = s.gridEFrequency2[iC] + s.k2[iC];
-        s.gridEFrequency1Next1[iC] = s.gridEFrequency1Next1[iC] + s.k1[iC] / 3;
-        s.gridEFrequency1Next2[iC] = s.gridEFrequency1Next2[iC] + s.k2[iC] / 3;
-        s.workspace1C[iC] = s.chiLinear1[iC] * s.gridETemp1[iC];
-        s.workspace2C[iC] = s.chiLinear2[iC] * s.gridETemp2[iC];
+        (*sP).gridETemp1[iC] = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
+        (*sP).gridETemp2[iC] = (*sP).gridEFrequency2[iC] + (*sP).k2[iC];
+        (*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).k1[iC] / 3;
+        (*sP).gridEFrequency1Next2[iC] = (*sP).gridEFrequency1Next2[iC] + (*sP).k2[iC] / 3;
+        (*sP).workspace1C[iC] = (*sP).chiLinear1[iC] * (*sP).gridETemp1[iC];
+        (*sP).workspace2C[iC] = (*sP).chiLinear2[iC] * (*sP).gridETemp2[iC];
     }
 
     //last substep. Solution is now complete and may be copied directly into the field arrays
     else {
-        s.gridEFrequency1[iC] = s.gridEFrequency1Next1[iC] + s.k1[iC] / 6;
-        s.gridEFrequency2[iC] = s.gridEFrequency1Next2[iC] + s.k2[iC] / 6;
-        s.gridETemp1[iC] = s.gridEFrequency1[iC];
-        s.gridETemp2[iC] = s.gridEFrequency2[iC];
-        s.workspace1C[iC] = s.chiLinear1[iC] * s.gridETemp1[iC];
-        s.workspace2C[iC] = s.chiLinear2[iC] * s.gridETemp2[iC];
+        (*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).k1[iC] / 6;
+        (*sP).gridEFrequency2[iC] = (*sP).gridEFrequency1Next2[iC] + (*sP).k2[iC] / 6;
+        (*sP).gridETemp1[iC] = (*sP).gridEFrequency1[iC];
+        (*sP).gridETemp2[iC] = (*sP).gridEFrequency2[iC];
+        (*sP).workspace1C[iC] = (*sP).chiLinear1[iC] * (*sP).gridETemp1[iC];
+        (*sP).workspace2C[iC] = (*sP).chiLinear2[iC] * (*sP).gridETemp2[iC];
     }
 }
 
@@ -1443,14 +1443,18 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaMemcpy(s.gridETemp2, s.gridEFrequency2, NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
     multiplicationKernelCompact<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear1, s.gridETemp1, s.workspace1C, s);
     multiplicationKernelCompact<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s.chiLinear2, s.gridETemp2, s.workspace2C, s);
+
+    cudaParameterSet* sP;
+    cudaMalloc(&sP, sizeof(cudaParameterSet));
+    cudaMemcpy(sP, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
     //Core propagation loop
     for (i = 0; i < s.Nsteps; i++) {
         
         //RK4
-        runRK4Step(s, 0);
-        runRK4Step(s, 1);
-        runRK4Step(s, 2);
-        runRK4Step(s, 3);
+        runRK4Step(&s, sP, 0);
+        runRK4Step(&s, sP, 1);
+        runRK4Step(&s, sP, 2);
+        runRK4Step(&s, sP, 3);
 
         if ((*sCPU).imdone[0] == 2) {
             break;
@@ -1514,7 +1518,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cudaFree(s.plasmaParameters);
     cudaFree(s.gridPlasmaCurrent1);
     cudaFree(s.gridPlasmaCurrentFrequency1);
-    
+    cudaFree(sP);
     cudaStreamDestroy(s.CUDAStream);
 
 
@@ -1527,49 +1531,49 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
-int runRK4Step(cudaParameterSet s, int stepNumber) {
+int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, int stepNumber) {
 
     //operations involving FFT
-    if (s.isNonLinear || s.isCylindric) {
+    if ((*sH).isNonLinear || (*sH).isCylindric) {
         //perform inverse FFT to get time-space electric field
-        cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.workspace1C, s.gridETime1);
-        if (s.isNonLinear) {
-            nonlinearPolarizationKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(s);
+        cufftExecZ2D((*sH).fftPlanZ2D, (cufftDoubleComplex*)(*sH).workspace1C, (*sH).gridETime1);
+        if ((*sH).isNonLinear) {
+            nonlinearPolarizationKernel<<<(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream>>>(sD);
 
-            if (s.isCylindric) {
-                expandCylindricalBeam <<< s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
-                    (s, s.gridPolarizationTime1, s.gridPolarizationTime2);
-                cufftExecD2Z(s.doublePolfftPlan, (double*)s.gridRadialLaplacian1, (cufftDoubleComplex*)s.gridPolarizationFrequency1);
+            if ((*sH).isCylindric) {
+                expandCylindricalBeam <<< (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >>> 
+                    (sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
+                cufftExecD2Z((*sH).doublePolfftPlan, (double*)(*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).gridPolarizationFrequency1);
             }
             else {
-                cufftExecD2Z(s.polfftPlan, s.gridPolarizationTime1, (cufftDoubleComplex*)s.gridPolarizationFrequency1);
+                cufftExecD2Z((*sH).polfftPlan, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).gridPolarizationFrequency1);
             }
         }
-        if (s.hasPlasma) {
-            plasmaCurrentKernelPrep <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
-                (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
-            plasmaCurrentKernel2 <<<(unsigned int)s.Nspace/16, 16, 0, s.CUDAStream >>> 
-                (s, (double*)s.gridPlasmaCurrentFrequency1, (double*)s.gridPlasmaCurrentFrequency2);
+        if ((*sH).hasPlasma) {
+            plasmaCurrentKernelPrep <<<(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >>> 
+                (sD, (double*)(*sH).gridPlasmaCurrentFrequency1, (double*)(*sH).gridPlasmaCurrentFrequency2);
+            plasmaCurrentKernel2 <<<(unsigned int)(*sH).Nspace/16, 16, 0, (*sH).CUDAStream >>> 
+                (sD, (double*)(*sH).gridPlasmaCurrentFrequency1, (double*)(*sH).gridPlasmaCurrentFrequency2);
             
-            if (s.isCylindric) {
-                expandCylindricalBeam <<< s.Nblock, s.Nthread, 0, s.CUDAStream >>> 
-                    (s, s.gridPlasmaCurrent1, s.gridPlasmaCurrent2);
-                cufftExecD2Z(s.doublePolfftPlan, (double*)s.gridRadialLaplacian1, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency1);
+            if ((*sH).isCylindric) {
+                expandCylindricalBeam <<< (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >>> 
+                    (sD, (*sH).gridPlasmaCurrent1, (*sH).gridPlasmaCurrent2);
+                cufftExecD2Z((*sH).doublePolfftPlan, (double*)(*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).gridPlasmaCurrentFrequency1);
             }
             else {
-                cufftExecD2Z(s.polfftPlan, s.gridPlasmaCurrent1, (cufftDoubleComplex*)s.gridPlasmaCurrentFrequency1);
+                cufftExecD2Z((*sH).polfftPlan, (*sH).gridPlasmaCurrent1, (cufftDoubleComplex*)(*sH).gridPlasmaCurrentFrequency1);
             }
 
         }
         
-        if (s.isCylindric) {
-            radialLaplacianKernel <<<s.Nblock, s.Nthread, 0, s.CUDAStream >>> (s);
-            cufftExecD2Z(s.fftPlanD2Z, s.gridRadialLaplacian1, (cufftDoubleComplex*)s.workspace1C);
+        if ((*sH).isCylindric) {
+            radialLaplacianKernel <<<(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >>> (sD);
+            cufftExecD2Z((*sH).fftPlanD2Z, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1C);
         }
     }
 
     //calculate k
-    rkKernel <<<s.NblockC, s.Nthread, 0, s.CUDAStream >>> (s, stepNumber);
+    rkKernel <<<(*sH).NblockC, (*sH).Nthread, 0, (*sH).CUDAStream >>> (sD, stepNumber);
     return 0;
 }
 

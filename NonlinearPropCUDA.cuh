@@ -229,7 +229,7 @@ typedef struct cudaParameterSet {
 } cudaParameterSet;
 
 unsigned long	solveNonlinearWaveEquation(void* lpParam);
-int				runRK4Step(cudaParameterSet s, int stepNumber);
+int				runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, int stepNumber);
 int				prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc);
 int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
