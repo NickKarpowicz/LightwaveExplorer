@@ -60,6 +60,7 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 
+
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
     int j;
@@ -897,15 +898,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HDC hdc = (HDC)wParam;
         SetBkColor(hdc, uiGrey);
         SetTextColor(hdc, uiGrey);
-        setTitleBarDark(maingui.buttonRun);
         return (LRESULT)greyBrush;
     }
-    case WM_CTLCOLORSCROLLBAR:
-    {
-        HDC hdc = (HDC)wParam;
-        //SetBkColor(hdc, uiBlack);
-        return (LRESULT)blackBrush;
-    }
+
     case WM_CTLCOLORLISTBOX:
     {
         HDC hdc = (HDC)wParam;
@@ -970,8 +965,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
         SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
         
-
-
         if (isGridAllocated) {
             drawSimPlots(activeSetPtr);
         }
@@ -979,7 +972,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     case WM_THEMECHANGED:
 		setTitleBarDark(hWnd);
-		SetWindowTheme(maingui.textboxSims, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.textboxSims, L"DarkMode_Explorer", NULL);
 		SetWindowTheme(maingui.tbPulse1Path, L"DarkMode_Explorer", NULL);
 		SetWindowTheme(maingui.tbPulse2Path, L"DarkMode_Explorer", NULL);
 		SetWindowTheme(maingui.tbSequence, L"DarkMode_Explorer", NULL);

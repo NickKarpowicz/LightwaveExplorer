@@ -850,8 +850,9 @@ __global__ void nonlinearPolarizationKernel(cudaParameterSet* s) {
     }
     //using only one value of chi3, under assumption of centrosymmetry
     if ((*s).nonlinearSwitches[1] == 2) {
-        (*s).gridPolarizationTime1[i] += (*s).chi3Tensor[0] * (Ex2 * Ex + (1. / 3.) * Ey2 * Ex);
-        (*s).gridPolarizationTime2[i] += (*s).chi3Tensor[0] * (Ey2 * Ey + (1. / 3.) * Ex2 * Ey);
+        double Esquared = (*s).chi3Tensor[0] * (Ex2 + Ey2);
+        (*s).gridPolarizationTime1[i] += Ex * Esquared;
+        (*s).gridPolarizationTime2[i] += Ey * Esquared;
     }
 }
 
