@@ -162,7 +162,7 @@
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_75,sm_75;compute_86,sm_86;%(CodeGeneration)</CodeGeneration>
+      <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
       <CudaRuntime>Static</CudaRuntime>
       <Runtime>MT</Runtime>
       <FastMath>true</FastMath>

@@ -799,8 +799,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (isGridAllocated) {
                 free((*activeSetPtr).ExtOut);
                 free((*activeSetPtr).EkwOut);
-                free((*activeSetPtr).Ext);
-                free((*activeSetPtr).Ekw);
+                //free((*activeSetPtr).Ext);
+                //free((*activeSetPtr).Ekw);
             }
             free((*activeSetPtr).outputBasePath);
             free((*activeSetPtr).field1FilePath);
@@ -1051,8 +1051,8 @@ int freeSemipermanentGrids() {
     isGridAllocated = FALSE;
     free((*activeSetPtr).ExtOut);
     free((*activeSetPtr).EkwOut);
-    free((*activeSetPtr).Ext);
-    free((*activeSetPtr).Ekw);
+    //free((*activeSetPtr).Ext);
+    //free((*activeSetPtr).Ekw);
     free((*activeSetPtr).totalSpectrum);
     return 0;
 }
@@ -1196,6 +1196,8 @@ int readParametersFromInterface() {
     (*activeSetPtr).axesNumber = 0;
     (*activeSetPtr).Ntime = (size_t)round((*activeSetPtr).timeSpan / (*activeSetPtr).tStep);
     (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
+    (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
+    (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace;
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
     (*activeSetPtr).kStep = 2 * pi / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
     (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
@@ -1646,7 +1648,9 @@ int openDialogBoxAndLoad(HWND hWnd) {
 
             allocateGrids(activeSetPtr);
             isGridAllocated = TRUE;
-            loadSavedFields(activeSetPtr, fileNameString, FALSE);
+            int res;
+            res = loadSavedFields(activeSetPtr, fileNameString, FALSE);
+            printToConsole(maingui.textboxSims,L"loaded with %i\r\n", res);
             return TRUE;
         }
         else {
@@ -1810,10 +1814,11 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         ShowWindow(maingui.plotBox6, 0);
 
 
-        float logPlotOffset = 1e11f;
-        int i,j;
-        HDC hdc;
+        float logPlotOffset = 1.0e11f;
+        int i;
 
+        HDC hdc;
+        size_t Nfreq = (*activeSetPtr).Ntime / 2 + 1;
         if (simIndex < 0) {
             simIndex = 0;
         }
@@ -1829,7 +1834,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         //Plot Time Domain, s-polarization
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = (float)(real((*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2]));
+            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2];
         }
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, plotRect.right- plotRect.left, plotRect.bottom- plotRect.top, plotRect.left-mainRect.left, plotRect.top-mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 4);
@@ -1839,7 +1844,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         //Plot Time Domain, p-polarization
         for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = (float)(real((*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2]));
+            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2];
         }
 
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
@@ -1851,64 +1856,54 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
             &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
 
         //Plot Fourier Domain, s-polarization
-        fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
-        for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
+        fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, Nfreq, (*activeSetPtr).Nspace);
+        for (i = 0; i < Nfreq * (*activeSetPtr).Nspace; i++) {
+            plotarrC[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
         }
 
-        for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-            for (j = 0; j < (*activeSetPtr).Nspace; j++) {
-                plotarrC[i + ((*activeSetPtr).Ntime / 2) * j] = plotarr[i + (*activeSetPtr).Ntime * j + (*activeSetPtr).Ntime / 2];
-            }
-        }
-
-        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2, plotarr2, (int)dy, (int)dx);
+        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2 + 1, plotarr2, (int)dy, (int)dx);
         GetWindowRect(maingui.plotBox5, &plotRect);
         drawArrayAsBitmap(hdc, plotRect.right - plotRect.left, plotRect.bottom - plotRect.top, plotRect.left - mainRect.left, plotRect.top - mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 3);
 
 
         if (logPlot) {
             for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-                plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Ntime]);
+                plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
             }
             plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
                 &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
         }
         else {
             for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-                plotarrC[i] = (float)((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Ntime]);
+                plotarrC[i] = (float)((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
             }
             plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
                 &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
 
         }
         //Plot Fourier Domain, p-polarization
-        fftshiftZ(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Ngrid], 
-            shiftedFFT, (*activeSetPtr).Ntime, (*activeSetPtr).Nspace);
+        fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Nspace * Nfreq], 
+            shiftedFFT, Nfreq, (*activeSetPtr).Nspace);
 
-        for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
+        for (i = 0; i < (*activeSetPtr).Nspace * Nfreq; i++) {
+            plotarrC[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
         }
-        for (i = 0; i < ((*activeSetPtr).Ntime/2); i++) {
-            for (j = 0; j < (*activeSetPtr).Nspace; j++) {
-                plotarrC[i + ((*activeSetPtr).Ntime / 2) * j] = plotarr[i + (*activeSetPtr).Ntime * j + (*activeSetPtr).Ntime/2];
-            }
-        }
+
         
-        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime/2, plotarr2, (int)dy, (int)dx);
+        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)Nfreq, plotarr2, (int)dy, (int)dx);
         GetWindowRect(maingui.plotBox6, &plotRect);
         drawArrayAsBitmap(hdc, plotRect.right - plotRect.left, plotRect.bottom - plotRect.top, plotRect.left - mainRect.left, plotRect.top - mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 3);
         
         if (logPlot) {
             for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
-                plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Ntime]);
+                plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
             }
             plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
                 &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
         }
         else {
             for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
-                plotarrC[i] = (float)((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Ntime]);
+                plotarrC[i] = (float)((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
             }
             plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
                 &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
@@ -2008,7 +2003,7 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     wchar_t blankOut[] = L"          ";
     for (i = 0; i < NyTicks; i++) {
         memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        if (abs(yTicks1[i] / unitY) > 10.0) {
+        if (abs(yTicks1[i] / unitY) > 10.0 || abs(yTicks1[i] / unitY) < 0.01) {
             swprintf_s(messageBuffer, MAX_LOADSTRING,
                 _T("%1.1e "), yTicks1[i] / unitY);
             TextOutW(hdc, posX - 59, posY + (int)(i * 0.96 * pixelsTall / 2), blankOut, (int)_tcslen(blankOut));
@@ -2176,7 +2171,6 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
     int i,j;
     double finishedpercent = 0.;
     nvmlReturn_t nvmlError;
-    nvmlMemory_t deviceMemoryState;
     size_t lengthEstimate = 0;
     double length;
     double step;
@@ -2189,7 +2183,7 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
     while (TRUE) {
         
         lengthEstimate = 0;
-        if (!(*activeSetPtr).isInFittingMode && isRunning) {
+        if (!(*activeSetPtr).isInFittingMode) {
             //estimate the total steps in the current simulation;
             if ((*activeSetPtr).Nsequence > 0) {
                 for (i = 0; i < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; i++) {
@@ -2222,9 +2216,10 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
         
         if (hasGPU) {
             nvmlError = nvmlDeviceGetPowerUsage(nvmlDevice, &devicePower);
+            setWindowTextToDouble(maingui.tbGPUStatus, round(devicePower / 1000));
 
         }
-        setWindowTextToDouble(maingui.tbGPUStatus, round(devicePower / 1000));
+        
         Sleep(500);
     }
     if (hasGPU) {

@@ -34,9 +34,11 @@ typedef struct simulationParameterSet {
     double propagationStep;
     size_t Npropagation;
     size_t Ntime;
+    size_t Nfreq;
     size_t Nspace;
     size_t Nspace2;
     size_t Ngrid;
+    size_t NgridC;
     size_t Nsims;
     size_t Nsims2;
     size_t *progressCounter;
@@ -120,9 +122,9 @@ typedef struct simulationParameterSet {
 
     int pulsetype;
     double* InfoVec;
-    std::complex<double>* Ext;
-    std::complex<double>* Ekw;
-    std::complex<double>* ExtOut;
+    //double* Ext;
+    //std::complex<double>* Ekw;
+    double* ExtOut;
     std::complex<double>* EkwOut;
     double* totalSpectrum;
     int* imdone;
@@ -161,8 +163,7 @@ typedef struct simulationParameterSet {
 
 typedef struct cudaParameterSet {
     cudaStream_t CUDAStream;
-	double* gridETime1;
-	double* gridETime2;
+
     cuDoubleComplex* workspace1;
     cuDoubleComplex* workspace2;
     cuDoubleComplex* workspace1C;
@@ -181,8 +182,6 @@ typedef struct cudaParameterSet {
 	cuDoubleComplex* gridPolarizationFrequency2;
 	cuDoubleComplex* gridEFrequency1Next1;
 	cuDoubleComplex* gridEFrequency1Next2;
-	double* gridRadialLaplacian1;
-	double* gridRadialLaplacian2;
 	cuDoubleComplex* gridPlasmaCurrentFrequency1;
 	cuDoubleComplex* gridPlasmaCurrentFrequency2;
     cuDoubleComplex* chiLinear1;
@@ -191,32 +190,41 @@ typedef struct cudaParameterSet {
 	cuDoubleComplex* k2;
 	cuDoubleComplex* ne;
 	cuDoubleComplex* no;
-	bool isCylindric;
-	bool hasPlasma;
-	double* gridPolarizationTime1; 
-	double* gridPolarizationTime2;
-	double* firstDerivativeOperation;
-	double* plasmaParameters; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
-	double* chi2Tensor;
+
+    double* gridRadialLaplacian1;
+    double* gridRadialLaplacian2;
+    double* gridETime1;
+    double* gridETime2;
+    double* gridPolarizationTime1;
+    double* gridPolarizationTime2;
+    double* expGammaT;
+    double* gridPlasmaCurrent1;
+    double* gridPlasmaCurrent2;
+
+    //fixed length arrays
+    double firstDerivativeOperation[6];
+    double plasmaParameters[6]; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
+	double chi2Tensor[9];
 	double* chi3Tensor;
-	double* gridPlasmaCurrent1;
-	double* gridPlasmaCurrent2;
-	double* absorptionParameters;
-	double* expGammaT;
+	double absorptionParameters[6];
     double rotationForward[9];
     double rotationBackward[9];
-	int* nonlinearSwitches;
-	long long* propagationInts;
+	int nonlinearSwitches[4];
+	
 	cufftHandle fftPlan;
     cufftHandle fftPlanZ2D;
     cufftHandle fftPlanD2Z;
 	cufftHandle polfftPlan;
     cufftHandle doublePolfftPlan;
-	bool isNonLinear;
+    bool isCylindric;
+    bool hasPlasma;
+    bool isNonLinear;
     bool isUsingMillersRule;
 	size_t Ntime;
+    size_t Nfreq;
 	size_t Nspace;
 	size_t Ngrid;
+    size_t NgridC;
 	int axesNumber;
 	int sellmeierType;
 	double f0;
@@ -235,6 +243,7 @@ int				runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, int stepNumber);
 int				prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc);
 int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
+int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn);
 int				preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc);
@@ -264,3 +273,5 @@ int             removeCharacterFromString(char* cString, size_t N, char removedC
 int             skipFileUntilCharacter(FILE* fstream, char target);
 int             applyLinearPropagation(simulationParameterSet* s, int materialIndex, double thickness);
 int             fillRotationMatricies(simulationParameterSet* sCPU, cudaParameterSet* s);
+int             deallocateCudaParameterSet(cudaParameterSet* s);
+int             initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s);
