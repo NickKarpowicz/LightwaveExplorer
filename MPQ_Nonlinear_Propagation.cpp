@@ -119,9 +119,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
 
-
-    free((*activeSetPtr).refractiveIndex1);
-    free((*activeSetPtr).refractiveIndex2);
     free((*activeSetPtr).imdone);
     free((*activeSetPtr).deffTensor);
     free((*activeSetPtr).loadedField1);
@@ -150,8 +147,6 @@ DWORD WINAPI createRunFile(LPVOID lpParam) {
     readSequenceString(activeSetPtr);
     configureBatchMode(activeSetPtr);
 
-    free((*activeSetPtr).refractiveIndex1);
-    free((*activeSetPtr).refractiveIndex2);
     free((*activeSetPtr).imdone);
     free((*activeSetPtr).deffTensor);
     free((*activeSetPtr).loadedField1);
@@ -2100,8 +2095,6 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
             printToConsole(maingui.textboxSims, L"Could not read reference file!\r\n");
-            free((*activeSetPtr).refractiveIndex1);
-            free((*activeSetPtr).refractiveIndex2);
             free((*activeSetPtr).imdone);
             free((*activeSetPtr).deffTensor);
             free((*activeSetPtr).loadedField1);
@@ -2124,8 +2117,6 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
 
-    free((*activeSetPtr).refractiveIndex1);
-    free((*activeSetPtr).refractiveIndex2);
     free((*activeSetPtr).imdone);
     free((*activeSetPtr).deffTensor);
     free((*activeSetPtr).loadedField1);

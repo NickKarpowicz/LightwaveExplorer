@@ -58,8 +58,8 @@ typedef struct simulationParameterSet {
     double* deffTensor;
     double* chi3Tensor;
     double* sellmeierCoefficients;
-    std::complex<double>* refractiveIndex1;
-    std::complex<double>* refractiveIndex2;
+    //std::complex<double>* refractiveIndex1;
+    //std::complex<double>* refractiveIndex2;
     double* absorptionParameters;
     int sellmeierType;
     int axesNumber;

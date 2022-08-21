@@ -621,8 +621,6 @@ __global__ void prepareCartesianGridsKernel(double* sellmeierCoefficients, cudaP
         ne = make_cuDoubleComplex(1, 0);
         no = make_cuDoubleComplex(1, 0);
     }
-    s.ne[i] = ne;
-    s.no[i] = no;
 
     cuDoubleComplex k0 = make_cuDoubleComplex(TWOPI * cuCreal(n0) * f / LIGHTC, 0);
     cuDoubleComplex ke = TWOPI * ne * f / LIGHTC;
@@ -703,8 +701,6 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
         ne = make_cuDoubleComplex(1, 0);
         no = make_cuDoubleComplex(1, 0);
     }
-    (*s).ne[i] = ne;
-    (*s).no[i] = no;
 
     cuDoubleComplex k0 = make_cuDoubleComplex(TWOPI * cuCreal(n0) * f / LIGHTC, 0);
     cuDoubleComplex ke = TWOPI * ne * f / LIGHTC;
@@ -1215,8 +1211,6 @@ int main(int argc, char *argv[]) {
     allocateGrids(sCPU);
     if (loadPulseFiles(sCPU) == 1) {
         printf("Could not read pulse file.\n");
-        free((*sCPU).refractiveIndex1);
-        free((*sCPU).refractiveIndex2);
         free((*sCPU).imdone);
         free((*sCPU).deffTensor);
         free((*sCPU).loadedField1);
@@ -1238,14 +1232,10 @@ int main(int argc, char *argv[]) {
         if ((*sCPU).fittingMode == 3) {
             if (loadReferenceSpectrum((*sCPU).fittingPath, sCPU)) {
                 printf("Could not load reference spectrum!\n");
-                free((*sCPU).refractiveIndex1);
-                free((*sCPU).refractiveIndex2);
                 free((*sCPU).imdone);
                 free((*sCPU).deffTensor);
                 free((*sCPU).loadedField1);
                 free((*sCPU).loadedField2);
-                //free((*sCPU).Ext);
-                //free((*sCPU).Ekw);
                 free((*sCPU).ExtOut);
                 free((*sCPU).EkwOut);
                 free((*sCPU).totalSpectrum);
@@ -1262,15 +1252,11 @@ int main(int argc, char *argv[]) {
             1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
         
         saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
-        //free
-        free((*sCPU).refractiveIndex1);
-        free((*sCPU).refractiveIndex2);
+
         free((*sCPU).imdone);
         free((*sCPU).deffTensor);
         free((*sCPU).loadedField1);
         free((*sCPU).loadedField2);
-        //free((*sCPU).Ext);
-        //free((*sCPU).Ekw);
         free((*sCPU).ExtOut);
         free((*sCPU).EkwOut);
         free((*sCPU).totalSpectrum);
@@ -1315,14 +1301,10 @@ int main(int argc, char *argv[]) {
     saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
     //free
     free(threadBlock);
-    free((*sCPU).refractiveIndex1);
-    free((*sCPU).refractiveIndex2);
     free((*sCPU).imdone);
     free((*sCPU).deffTensor);
     free((*sCPU).loadedField1);
     free((*sCPU).loadedField2);
-    //free((*sCPU).Ext);
-    //free((*sCPU).Ekw);
     free((*sCPU).ExtOut);
     free((*sCPU).EkwOut);
     free((*sCPU).totalSpectrum);
@@ -1388,8 +1370,10 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
     cudaMemset((*s).gridPropagationFactor1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
     memErrors += cudaMalloc((void**)&(*s).gridPolarizationFactor1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
     cudaMemset((*s).gridPolarizationFactor1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-    memErrors += cudaMalloc((void**)&(*s).gridPropagationFactor1Rho1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-    cudaMemset((*s).gridPropagationFactor1Rho1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
+    if ((*s).isCylindric) {
+        memErrors += cudaMalloc((void**)&(*s).gridPropagationFactor1Rho1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
+        cudaMemset((*s).gridPropagationFactor1Rho1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
+    }
     memErrors += cudaMalloc((void**)&(*s).gridRadialLaplacian1, 2 * sizeof(cuDoubleComplex) * (*s).Ngrid);
     cudaMemset((*s).gridRadialLaplacian1, 0, 2 * sizeof(cuDoubleComplex) * (*s).Ngrid);
     memErrors += cudaMalloc((void**)&(*s).gridEFrequency1Next1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
@@ -1417,18 +1401,13 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
     }
     cudaMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, cudaMemcpyHostToDevice);
     free(expGammaTCPU);
-
-    //memErrors += cudaMalloc((void**)&(*s).chi2Tensor, sizeof(double) * 9);
     memErrors += cudaMalloc((void**)&(*s).chi3Tensor, sizeof(double) * 81);
-    //memErrors += cudaMalloc((void**)&(*s).nonlinearSwitches, sizeof(int) * 4);
-    //memErrors += cudaMalloc((void**)&(*s).absorptionParameters, sizeof(double) * 6);
-    //memErrors += cudaMalloc((void**)&(*s).plasmaParameters, sizeof(double) * 6);
+
 
     (*sCPU).memoryError = memErrors;
     if (memErrors > 0) {
         return memErrors;
     }
-
 
     //second polarization grids are to pointers within the first polarization
     //to have contiguous memory
@@ -1450,6 +1429,8 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
     (*s).gridETemp2 = (*s).gridETemp1 + (*s).NgridC;
     (*s).workspace1C = (*s).workspace1;
     (*s).workspace2C = (*s).workspace1C + (*s).NgridC;
+    (*s).gridEFrequency2 = (*s).gridEFrequency1 + (*s).NgridC;
+    (*s).gridETemp2 = (*s).gridETemp1 + (*s).NgridC;
     //prepare effective nonlinearity tensors and put them on the GPU
 
     double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
@@ -1472,8 +1453,6 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
     plasmaParametersCPU[0] = (*sCPU).nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
     plasmaParametersCPU[1] = (*sCPU).drudeGamma; //gamma
     if ((*sCPU).nonlinearAbsorptionStrength > 0.) {
-        //plasmaParametersCPU[2] = (1. / 8.8541878128e-12) * (*sCPU).tStep * (*sCPU).tStep
-            //* 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * band gap));
         plasmaParametersCPU[2] = (*sCPU).tStep * (*sCPU).tStep
             * 2.817832e-08 / (1.6022e-19 * (*sCPU).bandGapElectronVolts * (*sCPU).effectiveMass); // (dt^2)*e* e / (m * band gap));
     }
@@ -1505,9 +1484,6 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
     cufftGetSizeMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_Z2D, 2, &workSize);
     cufftMakePlanMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_Z2D, 2, &workSize);
 
-    //the inputs are written out explicitly here even though 6x NULL would also do the same thing
-    //this is in the hope that someday I figure out a way to do a truncated transform that doesn't
-    //calculate the >f_nyquist/2 elements that I ignore
     int cufftSizes2[]{ 2 * (int)(*s).Nspace, (int)(*s).Ntime };
     int istride = 1;
     int ostride = 1;
@@ -1531,23 +1507,20 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 }
 
 int deallocateCudaParameterSet(cudaParameterSet* s) {
-    //Free GPU memory
-
-    //cudaFree((*s).nonlinearSwitches);
-    //cudaFree((*s).absorptionParameters);
     cudaFree((*s).gridETime1);
     cudaFree((*s).workspace1);
     cudaFree((*s).gridETemp1);
     cudaFree((*s).gridPolarizationFrequency1);
     cudaFree((*s).gridEFrequency1);
     cudaFree((*s).gridPropagationFactor1);
-    cudaFree((*s).gridPropagationFactor1Rho1);
+    if ((*s).isCylindric) {
+        cudaFree((*s).gridPropagationFactor1Rho1);
+    }
     cudaFree((*s).gridRadialLaplacian1);
     cudaFree((*s).gridPolarizationFactor1);
     cudaFree((*s).gridEFrequency1Next1);
     cudaFree((*s).k1);
     cudaFree((*s).gridPolarizationTime1);
-    //cudaFree((*s).chi2Tensor);
     cudaFree((*s).chi3Tensor);
     cudaFree((*s).expGammaT);
     cudaFree((*s).chiLinear1);
@@ -1556,7 +1529,6 @@ int deallocateCudaParameterSet(cudaParameterSet* s) {
     cufftDestroy((*s).fftPlanZ2D);
     cufftDestroy((*s).polfftPlan);
     cufftDestroy((*s).doublePolfftPlan);
-    //cudaFree((*s).plasmaParameters);
     cudaFree((*s).gridPlasmaCurrent1);
     cudaFree((*s).gridPlasmaCurrentFrequency1);
     cudaStreamDestroy((*s).CUDAStream);
@@ -1571,8 +1543,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
     cudaSetDevice((*sCPU).assignedGPU);
     initializeCudaParameterSet(sCPU, &s);
-    s.gridEFrequency2 = s.gridEFrequency1 + s.NgridC;
-    s.gridETemp2 = s.gridETemp1 + s.NgridC;
+
     //prepare the propagation arrays
     if (s.isCylindric) {
         preparePropagation3DCylindric(sCPU, s);
@@ -1627,7 +1598,6 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
     cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
     multiplyByConstantKernelD << <(int)(s.Ngrid / 16), 32, 0, s.CUDAStream >> > (s.gridETime1, 0.5/s.Ngrid);
     cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-    //realToComplexKernel << <2*s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.gridETime1, s.workspace1);
 
     //copy the field arrays from the GPU to CPU memory
     getTotalSpectrum(sCPU, &s);
@@ -1792,13 +1762,9 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
     sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
     cudaMemcpy(sellmeierCoefficients2, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), cudaMemcpyHostToDevice);
 
-
-
     cudaDeviceSynchronize();
 
-
     cudaMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2*(*s).NgridC * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
-
 
     applyFresnelLossKernel<<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>>(sellmeierCoefficients1, sellmeierCoefficients2, sc);
 
@@ -1812,11 +1778,7 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
     cudaMemcpy((*s).ExtOut, sc.gridETime1, 2*(*s).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
     cudaMemcpy((*s).EkwOut, sc.gridEFrequency1, 2*(*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
-
-
     free(sellmeierCoefficientsAugmentedCPU);
-    
-
     cudaFree(sellmeierCoefficients1);
     cudaFree(sellmeierCoefficients2);
     deallocateCudaParameterSet(&sc);
@@ -1853,11 +1815,8 @@ int applyLinearPropagation(simulationParameterSet* s, int materialIndex, double 
     sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
     sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
     double* sellmeierCoefficients;
-
     cudaMalloc(&sellmeierCoefficients, 74 * sizeof(double));
-
     cudaMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), cudaMemcpyHostToDevice);
-
 
     cudaDeviceSynchronize();
     cudaMalloc(&sc.gridEFrequency1, (*s).Ngrid * sizeof(cuDoubleComplex));
@@ -1884,7 +1843,6 @@ int applyLinearPropagation(simulationParameterSet* s, int materialIndex, double 
 
 
     free(sellmeierCoefficientsAugmentedCPU);
-
     cufftDestroy(sc.fftPlan);
     cudaFree(sc.gridEFrequency1);
     cudaFree(sc.gridEFrequency2);
@@ -1898,8 +1856,6 @@ int applyLinearPropagation(simulationParameterSet* s, int materialIndex, double 
 int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc) {
     //recycle allocated device memory for the grids needed
     double* sellmeierCoefficients = (double*)sc.gridEFrequency1Next1;
-    sc.ne = sc.workspace1;
-    sc.no = sc.workspace2;
 
     double* referenceFrequencies;
     cudaMalloc(&referenceFrequencies, 7 * sizeof(double));
@@ -1925,11 +1881,7 @@ int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc
     millersRuleNormalizationKernel << <1, 1, 0, sc.CUDAStream >> > (sD, sellmeierCoefficients, referenceFrequencies);
     cudaDeviceSynchronize();
     cudaFree(sD);
-    //copy the retrieved refractive indicies to the cpu
-    cudaMemcpy((*s).refractiveIndex1, sc.ne, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-    cudaMemcpy((*s).refractiveIndex2, sc.no, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
-    
     //clean up
     cudaMemset(sc.gridEFrequency1Next1, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
     cudaMemset(sc.gridEFrequency1Next2, 0, (*s).Ngrid * sizeof(cuDoubleComplex));
@@ -1941,8 +1893,6 @@ int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc
 int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc) {
     //recycle allocated device memory for the grids needed
     double* sellmeierCoefficients = (double*)sc.gridEFrequency1Next1;
-    sc.ne = sc.workspace1;
-    sc.no = sc.workspace2;
     double* referenceFrequencies;
     cudaMalloc(&referenceFrequencies, 7*sizeof(double));
     cudaMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), cudaMemcpyHostToDevice);
@@ -1967,9 +1917,6 @@ int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc
     millersRuleNormalizationKernel<<<1, 1, 0, sc.CUDAStream>>>(sD, sellmeierCoefficients, referenceFrequencies);
     cudaDeviceSynchronize();
     cudaFree(sD);
-    //copy the retrieved refractive indicies to the cpu
-    cudaMemcpy((*s).refractiveIndex1, sc.ne, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-    cudaMemcpy((*s).refractiveIndex2, sc.no, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
 
     //clean up
@@ -1994,8 +1941,6 @@ int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, d
         R[3] * R[3], R[4] * R[4], R[5] * R[5], 2 * R[4] * R[5], 2 * R[3] * R[5], 2 * R[3] * R[4]
     };
 
-
-
     //The deff tensor is given by the equation R deff = d Ore, solve for deff, find d Ore first
     double dOre[9] = { 0 };
     for (i = 0; i < 3; i++) {
@@ -2005,7 +1950,6 @@ int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, d
             }
         }
     }
-
 
     //Least squares solution to get the deff tensor
     double* work = (double*)malloc(128 * sizeof(double));
@@ -2087,8 +2031,6 @@ int fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1
 
     return 0;
 }
-
-
 
 //same as fftshiftZ, but flips the output array columns
 int fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2) {
@@ -2185,6 +2127,7 @@ std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* n
         return 1;
     }
 }
+
 int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
     FILE* fp = fopen(spectrumPath, "r");
     if (fp == NULL) {
@@ -2249,6 +2192,7 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
     free(loadedFrequencies);
     return 0;
 }
+
 int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex) {
     FILE* fp;
     int maxFileSize = 16384;
@@ -2317,7 +2261,6 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
     return currentRow;
 }
 
-
 //Rotate the field on the GPU
 //Allocates memory and copies from CPU, then copies back to CPU and deallocates
 // - inefficient but the general principle is that only the CPU memory is preserved
@@ -2362,15 +2305,8 @@ double cModulusSquared(std::complex<double>complexNumber) {
 int allocateGrids(simulationParameterSet* sCPU) {
     (*sCPU).loadedField1 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
     (*sCPU).loadedField2 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
-
-    //(*sCPU).Ext = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(double));
-    //(*sCPU).Ekw = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
-
     (*sCPU).ExtOut = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(double));
     (*sCPU).EkwOut = (std::complex<double>*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
-
-    (*sCPU).refractiveIndex1 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
-    (*sCPU).refractiveIndex2 = (std::complex<double>*)calloc((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
     (*sCPU).deffTensor = (double*)calloc(9 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(double));
     (*sCPU).totalSpectrum = (double*)calloc((*sCPU).Nsims * (*sCPU).Nsims2 * (*sCPU).Nfreq * 3, sizeof(double));
     (*sCPU).imdone = (int*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(int));
