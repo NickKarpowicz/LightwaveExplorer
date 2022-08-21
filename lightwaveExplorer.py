@@ -12,6 +12,7 @@ class lightwaveExplorerResult:
         self.Npropagation = 0
         self.Ntime = 0
         self.Nspace = 0
+        self.Nfreq = 0
         self.Ngrid = 0
         self.Nsims = 1
         self.Nsims2 = 1
@@ -146,6 +147,7 @@ def load(filePath: str, loadFieldArray=True):
         s.batchDestination2 = readLine(lines[52])
         s.Nsims2 = int(readLine(lines[53]))
     s.Ntime = int(np.round(s.timeSpan/s.tStep))
+    s.Nfreq = int(s.Ntime/2 + 1)
     s.Nspace = int(np.round(s.spatialWidth/s.rStep))
     s.Ngrid = int(s.Ntime*s.Nspace)
     
@@ -156,10 +158,10 @@ def load(filePath: str, loadFieldArray=True):
         s.Ext_x = np.squeeze(s.Ext[:,:,0:(2*s.Nsims):2,:])
         s.Ext_y = np.squeeze(s.Ext[:,:,1:(2*s.Nsims + 1):2,:])
     
-    s.spectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*s.Ntime*s.Nsims*s.Nsims2],(s.Ntime,3,s.Nsims,s.Nsims2),order='F')
-    s.spectrumTotal = np.squeeze(s.spectrum[0:int(s.Ntime/2),2,:,:]).T
-    s.spectrum_x = np.squeeze(s.spectrum[0:int(s.Ntime/2),0,:,:]).T
-    s.spectrum_y = np.squeeze(s.spectrum[0:int(s.Ntime/2),1,:,:]).T
+    s.spectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*s.Nfreq*s.Nsims*s.Nsims2],(s.Nfreq,3,s.Nsims,s.Nsims2),order='F')
+    s.spectrumTotal = np.squeeze(s.spectrum[:,2,:,:]).T
+    s.spectrum_x = np.squeeze(s.spectrum[:,0,:,:]).T
+    s.spectrum_y = np.squeeze(s.spectrum[:,1,:,:]).T
     
     #make scale vector corresponding to the batch scan and correct units of the scan
     if s.batchIndex == 0:
@@ -375,7 +377,8 @@ def load(filePath: str, loadFieldArray=True):
 
     s.timeVector = s.tStep*np.arange(0,s.Ntime)
     s.frequencyVector = np.fft.fftfreq(s.Ntime, d=s.tStep)
-    s.frequencyVectorSpectrum = s.frequencyVector[0:int(s.Ntime/2)]
+    s.frequencyVectorSpectrum = s.frequencyVector[0:s.Nfreq]
+    s.frequencyVectorSpectrum[-1] *= -1
     s.spaceVector = s.rStep * (np.arange(0,s.Nspace) - s.Nspace/2) + 0.25 * s.rStep
     return s
 
