@@ -140,21 +140,24 @@ __device__ cuDoubleComplex sellmeierCuda(
 		double cosPhi2 = cosPhi * cosPhi;
 		double realna2 = cuCreal(na) * cuCreal(na);
 		double realnb2 = cuCreal(nb) * cuCreal(nb);
-
+		cuDoubleComplex na2 = na * na;
+		cuDoubleComplex nb2 = nb * nb;
+		cuDoubleComplex nc2 = nc * nc;
 		double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2)
 			* sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2)
 				+ ((sinPhi2 / realna2 + cosPhi2 / realnb2)
 					* cosTheta2 + sinTheta2 / (cuCreal(nc) * cuCreal(nc)))));
+		double cosDelta = cos(delta);
+		double sinDelta = sin(delta);
+		ne[0] = 1.0 / cuCsqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 / na2
+			+ sinPhi2 / nb2) + sinTheta2 / nc2)
+			+ sinDelta * sinDelta * (sinPhi2 / na2 + cosPhi2 / nb2)
+			- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / na2 - 1. / (nb * nb)));
 
-		ne[0] = 1.0 / cuCsqrt(cos(delta) * cos(delta) * (cosTheta2 * (cosPhi2 / (na * na)
-			+ sinPhi2 / (nb * nb)) + sinTheta2 / (nc * nc))
-			+ sin(delta) * sin(delta) * (sinPhi2 / (na * na) + cosPhi2 / (nb * nb))
-			- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / (na * na) - 1. / (nb * nb)));
-
-		no[0] = 1.0 / cuCsqrt(sin(delta) * sin(delta) * (cosTheta2 * (cosPhi2 / (na * na)
-			+ sinPhi2 / (nb * nb)) + sinTheta2 / (nc * nc))
-			+ cos(delta) * cos(delta) * (sinPhi2 / (na * na) + cosPhi2 / (nb * nb))
-			+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / (na * na) - 1. / (nb * nb)));
+		no[0] = 1.0 / cuCsqrt(sinDelta * sinDelta * (cosTheta2 * (cosPhi2 / na2
+			+ sinPhi2 / nb2) + sinTheta2 / nc2)
+			+ cosDelta * cosDelta * (sinPhi2 / na2 + cosPhi2 / nb2)
+			+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / na2 - 1. / nb2));
 		return ne[0];
 	}
 }
