@@ -51,26 +51,17 @@ __device__  cuDoubleComplex operator/(double b, cuDoubleComplex a) {
 
 
 
-//complex exponential function for CUDA
+//complex exponential function for cuDoubleComplex
 __device__ cuDoubleComplex cuCexpd(cuDoubleComplex z) {
 	double r = exp(z.x);
 	return make_cuDoubleComplex(r * cos(z.y), r * sin(z.y));
 }
 
-//sqrt for complex doubles on CUDA, copy and paste from
-// https://forums.developer.nvidia.com/t/additional-cucomplex-functions-cucnorm-cucsqrt-cucexp-and-some-complex-double-functions/36892 
-__device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x)
-{
-	double radius = cuCabs(x);
-	double cosA = x.x / radius;
-	cuDoubleComplex out;
-	out.x = sqrt(radius * (cosA + 1.0) / 2.0);
-	out.y = sqrt(radius * (1.0 - cosA) / 2.0);
-	// signbit should be false if x.y is negative
-	if (signbit(x.y))
-		out.y *= -1.0;
-
-	return out;
+//sqrt for cuDoubleComplex
+__device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x){
+	double r = cuCabs(x);
+	double c = x.x / r;
+	return make_cuDoubleComplex(sqrt(r * (c + 1.0) / 2), signbit(x.y) * sqrt(r * (1.0 - c) / 2));
 }
 
 //Inner function for the Sellmeier equation to provide the refractive indicies
