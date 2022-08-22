@@ -951,6 +951,9 @@ __global__ void updateKwithPolarizationKernel(cudaParameterSet* sP) {
 __global__ void updateKwithPlasmaKernel(cudaParameterSet* sP) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	long long h = i % ((*sP).Nfreq); //temporal coordinate
+	if (h == 0) {
+		return;
+	}
 	long long j = i / ((*sP).Nfreq); //spatial coordinate
 
 
@@ -961,6 +964,7 @@ __global__ void updateKwithPlasmaKernel(cudaParameterSet* sP) {
 		}
 	}
 	cuDoubleComplex jfac = make_cuDoubleComplex(0, -1.0 / (h * (*sP).fStep));
+
 	h += j * (*sP).Nfreq;
 
 
@@ -1629,7 +1633,7 @@ int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, int stepNumber) {
 				(sD, (double*)(*sH).workspace1, (double*)(*sH).workspace2P);
 			plasmaCurrentKernel2 << <(unsigned int)(*sH).Nspace / 16, 16, 0, (*sH).CUDAStream >> >
 				(sD, (double*)(*sH).workspace1, (double*)(*sH).workspace2P);
-
+			
 			if ((*sH).isCylindric) {
 				expandCylindricalBeam << < (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> >
 					(sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
@@ -1638,6 +1642,7 @@ int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, int stepNumber) {
 			else {
 				cufftExecD2Z((*sH).polfftPlan, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).workspace1);
 			}
+			
 			updateKwithPlasmaKernel << <(*sH).NblockC, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
 		}
 
@@ -1737,11 +1742,12 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 
 	multiplicationKernelCompact << <(*sc).NblockC, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 	multiplicationKernelCompact << <(*sc).NblockC, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridPropagationFactor2, (*sc).gridEFrequency1Next2, (*sc).k2);
-
+	cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
 	cufftDestroy(planBeamFreqToTime);
 	cudaFree(materialPhase1CUDA);
 	cudaFree(materialPhase2CUDA);
 	cudaFree(materialCoefficientsCUDA);
+	cudaFree(sellmeierPropagationMedium);
 	cudaFree(loadedField1);
 	cudaFree(loadedField2);
 	cudaFree(scDevice);
