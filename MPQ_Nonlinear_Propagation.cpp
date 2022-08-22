@@ -713,7 +713,6 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         return FALSE;
     }
 
-
     SetWindowTheme(maingui.mainWindow, L"DarkMode_Explorer", NULL);
     ShowWindow(maingui.mainWindow, nCmdShow);
     SetWindowTheme(maingui.mainWindow, L"DarkMode_Explorer", NULL);
