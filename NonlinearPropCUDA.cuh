@@ -162,8 +162,6 @@ typedef struct cudaParameterSet {
 
     cuDoubleComplex* workspace1;
     cuDoubleComplex* workspace2;
-    cuDoubleComplex* workspace1C;
-    cuDoubleComplex* workspace2C;
 	cuDoubleComplex* gridETemp1;
 	cuDoubleComplex* gridETemp2;
 	cuDoubleComplex* gridEFrequency1;
@@ -184,8 +182,6 @@ typedef struct cudaParameterSet {
     cuDoubleComplex* chiLinear2;
 	cuDoubleComplex* k1;
 	cuDoubleComplex* k2;
-	cuDoubleComplex* ne;
-	cuDoubleComplex* no;
 
     double* gridRadialLaplacian1;
     double* gridRadialLaplacian2;
