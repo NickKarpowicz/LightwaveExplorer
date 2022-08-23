@@ -464,7 +464,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         xOffsetRow2b, 3 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
 
     maingui.tbGridXdim = CreateWindow(WC_EDIT, TEXT("210"), 
-        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT | ES_AUTOHSCROLL,
         xOffsetRow2, 4 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbRadialStepSize = CreateWindow(WC_EDIT, TEXT("0.62"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
@@ -1052,6 +1052,7 @@ int freeSemipermanentGrids() {
 }
 
 int readParametersFromInterface() {
+    std::complex<double> tmp;
     const double pi = 3.1415926535897932384626433832795;
     (*activeSetPtr).pulseEnergy1 = getDoubleFromHWND(maingui.tbPulseEnergy1);
     (*activeSetPtr).pulseEnergy2 = getDoubleFromHWND(maingui.tbPulseEnergy2);
@@ -1097,13 +1098,23 @@ int readParametersFromInterface() {
     (*activeSetPtr).crystalTheta = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalTheta);
     (*activeSetPtr).crystalPhi = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalPhi);
 
-    (*activeSetPtr).spatialWidth = 1e-6 * getDoubleFromHWND(maingui.tbGridXdim);
+    //(*activeSetPtr).spatialWidth = 1e-6 * getDoubleFromHWND(maingui.tbGridXdim);
+    tmp = 1e-6 * getDoubleDoublesfromHWND(maingui.tbGridXdim);
+    (*activeSetPtr).spatialWidth = real(tmp);
+    (*activeSetPtr).spatialHeight = imag(tmp);
     (*activeSetPtr).rStep = 1e-6 * getDoubleFromHWND(maingui.tbRadialStepSize);
     (*activeSetPtr).timeSpan = 1e-15 * getDoubleFromHWND(maingui.tbTimeSpan);
     (*activeSetPtr).tStep = 1e-15 * getDoubleFromHWND(maingui.tbTimeStepSize);
 
     //fix the grid dimensions so that each is divisble by 32
     (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (32 * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * 32)));
+    if ((*activeSetPtr).spatialHeight > 0) {
+        (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (32 * ceil((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * 32)));
+    }
+    else {
+        (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
+    }
+    
     (*activeSetPtr).timeSpan = (*activeSetPtr).tStep * (32 * ceil((*activeSetPtr).timeSpan / ((*activeSetPtr).tStep * 32)));
 
     (*activeSetPtr).crystalThickness = 1e-6 * getDoubleFromHWND(maingui.tbCrystalThickness);
@@ -1192,13 +1203,16 @@ int readParametersFromInterface() {
     (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     if ((*activeSetPtr).symmetryType == 2) {
         (*activeSetPtr).is3D = TRUE;
-        (*activeSetPtr).Nspace2 = (*activeSetPtr).Nspace;
+        (*activeSetPtr).Nspace2 = (size_t)round((*activeSetPtr).spatialHeight / (*activeSetPtr).rStep);
+        if ((*activeSetPtr).Nspace2 == 0) {
+            (*activeSetPtr).Nspace2 = (*activeSetPtr).Nspace;
+        }
     }
     else {
         (*activeSetPtr).is3D = FALSE;
         (*activeSetPtr).Nspace2 = 1;
     }
-    
+    printToConsole(maingui.textboxSims, L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
     (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
     (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
@@ -1263,6 +1277,25 @@ double getDoubleFromHWND(HWND inputA)
     {
         len = GetWindowText(inputA, s, 100);
         sdata = _wtof(s);
+        return sdata;
+    }
+    else {
+        return 0.;
+    }
+}
+
+//reads the content of a text box and returns a double containing its numerical value
+std::complex<double> getDoubleDoublesfromHWND(HWND inputA)
+{
+    std::complex<double> sdata = (0,0);
+    double* xloc = (double*)&sdata;
+    double* yloc = xloc + 1;
+    int len = GetWindowTextLength(inputA);
+    TCHAR s[256];
+    if (len > 0)
+    {
+        len = GetWindowText(inputA, s, 256);
+        swscanf_s(s, L"%lf; %lf", xloc, yloc);
         return sdata;
     }
     else {
@@ -1414,7 +1447,20 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToDoubleExp(maingui.tbNonlinearAbsortion, (*activeSetPtr).nonlinearAbsorptionStrength);
     setWindowTextToDouble(maingui.tbBandGap, (*activeSetPtr).bandGapElectronVolts);
     setWindowTextToDouble(maingui.tbDrudeGamma, 1e-12 * (*activeSetPtr).drudeGamma);
-    setWindowTextToDouble(maingui.tbGridXdim, 1e6 * (*activeSetPtr).spatialWidth);
+
+    if (!(*activeSetPtr).is3D) {
+        setWindowTextToDouble(maingui.tbGridXdim, 1e6 * (*activeSetPtr).spatialWidth);
+    }
+    else if((*activeSetPtr).spatialHeight == (*activeSetPtr).spatialWidth
+        || (*activeSetPtr).spatialHeight == 1 || (*activeSetPtr).spatialHeight == 0){
+        setWindowTextToDouble(maingui.tbGridXdim, 1e6 * (*activeSetPtr).spatialWidth);
+    }
+    else {
+        wchar_t buffer[128];
+        swprintf_s(buffer, 128, L"%i;%i", (int)(1e6 * (*activeSetPtr).spatialWidth), (int)(1e6 * (*activeSetPtr).spatialHeight));
+        SetWindowTextW(maingui.tbGridXdim, buffer);
+    }
+    
     setWindowTextToDouble(maingui.tbRadialStepSize, 1e6 * (*activeSetPtr).rStep);
     setWindowTextToDouble(maingui.tbTimeSpan, 1e15 * (*activeSetPtr).timeSpan);
     setWindowTextToDouble(maingui.tbTimeStepSize, 1e15 * (*activeSetPtr).tStep);

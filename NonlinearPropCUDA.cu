@@ -1522,12 +1522,8 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 	unsigned long long i;
 	(*s).Ntime = (*sCPU).Ntime;
 	(*s).Nspace = (*sCPU).Nspace;
-	(*s).Nspace2 = 1;
-	(*s).is3D = FALSE;
-	if ((*sCPU).symmetryType == 2) {
-		(*s).Nspace2 = (*s).Nspace;
-		(*s).is3D = TRUE;
-	}
+	(*s).Nspace2 = (*sCPU).Nspace2;
+	(*s).is3D = (*sCPU).is3D;
 	(*s).Nfreq = ((*s).Ntime / 2 + 1);
 	(*s).Ngrid = (*s).Ntime * (*s).Nspace * (*s).Nspace2;
 	(*s).NgridC = (*s).Nfreq * (*s).Nspace * (*s).Nspace2; //size of the positive frequency side of the grid
@@ -1664,7 +1660,7 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 	//prepare FFT plans
 	size_t workSize;
 	if ((*s).is3D) {
-		int cufftSizes1[] = { (int)(*s).Nspace, (int)(*s).Nspace2, (int)(*s).Ntime };
+		int cufftSizes1[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
 		cufftCreate(&(*s).fftPlanD2Z);
 		cufftGetSizeMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_D2Z, 2, &workSize);
 		cufftMakePlanMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_D2Z, 2, &workSize);
@@ -2964,7 +2960,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	(*sCPU).Ntime = (size_t)round((*sCPU).timeSpan / (*sCPU).tStep);
 	(*sCPU).Nfreq = (*sCPU).Ntime / 2 + 1;
 	(*sCPU).Nspace = (size_t)round((*sCPU).spatialWidth / (*sCPU).rStep);
-	(*sCPU).Nspace2 = 1;
+	(*sCPU).Nspace2 = (size_t)round((*sCPU).spatialHeight / (*sCPU).rStep);
 	(*sCPU).Ngrid = (*sCPU).Ntime * (*sCPU).Nspace;
 	(*sCPU).NgridC = (*sCPU).Nfreq * (*sCPU).Nspace;
 	(*sCPU).kStep = TWOPI / ((*sCPU).Nspace * (*sCPU).rStep);
@@ -2980,9 +2976,11 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 		(*sCPU).propagationAngle2 = 0;
 	}
 	if ((*sCPU).is3D) {
-		(*sCPU).Nspace2 = (*sCPU).Nspace;
 		(*sCPU).Ngrid = (*sCPU).Ntime * (*sCPU).Nspace * (*sCPU).Nspace2;
 		(*sCPU).NgridC = (*sCPU).Nfreq * (*sCPU).Nspace * (*sCPU).Nspace2;
+	}
+	else {
+		(*sCPU).Nspace2 = 1;
 	}
 	if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims < 1) {
 		(*sCPU).Nsims = 1;
@@ -3433,10 +3431,19 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 		cufftDestroy(fftPlan);
 	}
 	else {
-		DFTI_DESCRIPTOR_HANDLE dftiHandle = NULL;
-		MKL_LONG fftDimensions[2] = { (long)(*sCPU).Nspace , (long)(*sCPU).Ntime };
 		MKL_LONG mklError = 0;
-		mklError = DftiCreateDescriptor(&dftiHandle, DFTI_DOUBLE, DFTI_COMPLEX, 2, fftDimensions);
+		DFTI_DESCRIPTOR_HANDLE dftiHandle = NULL;
+		if ((*sCPU).is3D) {
+			MKL_LONG fftDimensions[3] = { (long)(*sCPU).Nspace2, (long)(*sCPU).Nspace, (long)(*sCPU).Ntime };
+			
+			mklError = DftiCreateDescriptor(&dftiHandle, DFTI_DOUBLE, DFTI_COMPLEX, 3, fftDimensions);
+		}
+		else {
+			MKL_LONG fftDimensions[2] = { (long)(*sCPU).Nspace , (long)(*sCPU).Ntime };
+			mklError = DftiCreateDescriptor(&dftiHandle, DFTI_DOUBLE, DFTI_COMPLEX, 2, fftDimensions);
+		}
+		
+		
 		DftiSetValue(dftiHandle, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
 		if (mklError != DFTI_NO_ERROR) return 1;
 		mklError = DftiCommitDescriptor(dftiHandle);
@@ -3450,7 +3457,7 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 				workspaceTime[i] = (*sCPU).ExtOut[j * (*sCPU).Ngrid + i];
 			}
 			mklError = DftiComputeForward(dftiHandle, workspaceTime, workspaceFreq);
-			for (i = 0; i < (*sCPU).Nspace; i++) {
+			for (i = 0; i < (*sCPU).Nspace*(*sCPU).Nspace2; i++) {
 				memcpy(&(*sCPU).EkwOut[j * Nfreq * (*sCPU).Nspace + i * Nfreq], &workspaceFreq[i * (*sCPU).Ntime], Nfreq * 2 * sizeof(double));
 			}
 			if (mklError != DFTI_NO_ERROR) return 3;

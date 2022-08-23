@@ -152,4 +152,4 @@ int                 insertLineBreaksAfterSemicolons(char* cString, size_t N);
 DWORD WINAPI        statusMonitorThread(LPVOID lpParam);
 int                 setWindowTextToDoubleExp(HWND win, double in);
 int                 setWindowTextToDouble(HWND win, double in);
-
+std::complex<double> getDoubleDoublesfromHWND(HWND inputA);
