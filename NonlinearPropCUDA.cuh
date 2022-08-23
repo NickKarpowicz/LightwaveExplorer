@@ -76,6 +76,7 @@ typedef struct simulationParameterSet {
     double propagationAngle1;
     double propagationAngle2;
     bool isCylindric;
+    bool is3D;
     int symmetryType;
 
     //spectral/temporal field properties
@@ -208,12 +209,14 @@ typedef struct cudaParameterSet {
     cufftHandle fftPlanD2Z;
     cufftHandle doublePolfftPlan;
     bool isCylindric;
+    bool is3D;
     bool hasPlasma;
     bool isNonLinear;
     bool isUsingMillersRule;
 	size_t Ntime;
     size_t Nfreq;
 	size_t Nspace;
+    size_t Nspace2;
 	size_t Ngrid;
     size_t NgridC;
 	int axesNumber;
@@ -239,6 +242,7 @@ int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long lo
 std::complex<double> sellmeier(std::complex<double>* ne, std::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn);
 int				preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc);
 int				preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc);
+int             preparePropagation3D(simulationParameterSet* s, cudaParameterSet sc);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex);
 int				rotateField(simulationParameterSet* s, double rotationAngle);
 double          cModulusSquared(std::complex<double>complexNumber);

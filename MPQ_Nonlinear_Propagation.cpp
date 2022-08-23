@@ -570,12 +570,12 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     
     maingui.pdPropagationMode = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        xOffsetRow2, 7 * vs, textboxwidth, 5 * 20, maingui.mainWindow, NULL, hInstance, NULL);
-    TCHAR energyModeNames[2][64] = {
-        TEXT("2D Cartesian"), TEXT("3D radial symmetry")
+        xOffsetRow2, 7 * vs, textboxwidth, 8 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    TCHAR energyModeNames[3][64] = {
+        TEXT("2D Cartesian"), TEXT("3D radial symmetry"), TEXT("3D")
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 2; k++) {
+    for (k = 0; k < 3; k++) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)energyModeNames[k]);
         SendMessage(maingui.pdPropagationMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -1190,9 +1190,18 @@ int readParametersFromInterface() {
     (*activeSetPtr).axesNumber = 0;
     (*activeSetPtr).Ntime = (size_t)round((*activeSetPtr).timeSpan / (*activeSetPtr).tStep);
     (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
+    if ((*activeSetPtr).symmetryType == 2) {
+        (*activeSetPtr).is3D = TRUE;
+        (*activeSetPtr).Nspace2 = (*activeSetPtr).Nspace;
+    }
+    else {
+        (*activeSetPtr).is3D = FALSE;
+        (*activeSetPtr).Nspace2 = 1;
+    }
+    
     (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
-    (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace;
-    (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
+    (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
+    (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
     (*activeSetPtr).kStep = 2 * pi / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
     (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
     (*activeSetPtr).Npropagation = (size_t)round((*activeSetPtr).crystalThickness / (*activeSetPtr).propagationStep);
@@ -1810,7 +1819,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         float logPlotOffset = 1.0e11f;
         int i;
-
+        size_t Nplot = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
+        size_t NplotC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace;
         HDC hdc;
         size_t Nfreq = (*activeSetPtr).Ntime / 2 + 1;
         if (simIndex < 0) {
@@ -1819,26 +1829,27 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         if (simIndex > (*activeSetPtr).Nsims*(*activeSetPtr).Nsims2) {
             simIndex = 0;
         }
-
+        size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+        size_t cubeMiddleF = 0*(*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
         hdc = GetWindowDC(maingui.mainWindow);
-        float* plotarr = (float*)calloc((*activeSetPtr).Ngrid, sizeof(float));
+        float* plotarr = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
         float* plotarrC = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
         float* plotarr2 = (float*)calloc((size_t)(dx) * (size_t)(dy), sizeof(float));
-        std::complex<double>* shiftedFFT = (std::complex<double>*)calloc((*activeSetPtr).Ngrid, sizeof(std::complex<double>));
+        std::complex<double>* shiftedFFT = (std::complex<double>*)calloc(Nplot, sizeof(std::complex<double>));
 
         //Plot Time Domain, s-polarization
-        for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2];
+        for (i = 0; i < Nplot; i++) {
+            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
         }
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         drawArrayAsBitmap(hdc, plotRect.right- plotRect.left, plotRect.bottom- plotRect.top, plotRect.left-mainRect.left, plotRect.top-mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 4);
 
-        plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[(*activeSetPtr).Ngrid / 2], 
+        plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[Nplot / 2], 
             (*activeSetPtr).Ntime, 1e9, FALSE, 0);
 
         //Plot Time Domain, p-polarization
-        for (i = 0; i < (*activeSetPtr).Ngrid; i++) {
-            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2];
+        for (i = 0; i < Nplot; i++) {
+            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + Nplot*(*activeSetPtr).Nspace2 + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
         }
 
         linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
@@ -1847,11 +1858,11 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
 
         plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f, 
-            &plotarr[(*activeSetPtr).Ngrid / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+            &plotarr[Nplot / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
 
         //Plot Fourier Domain, s-polarization
-        fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2], shiftedFFT, Nfreq, (*activeSetPtr).Nspace);
-        for (i = 0; i < Nfreq * (*activeSetPtr).Nspace; i++) {
+        fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + cubeMiddleF], shiftedFFT, Nfreq, (*activeSetPtr).Nspace);
+        for (i = 0; i < NplotC; i++) {
             plotarrC[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
         }
 
@@ -1876,10 +1887,10 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         }
         //Plot Fourier Domain, p-polarization
-        fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).Ngrid * 2 + (*activeSetPtr).Nspace * Nfreq], 
+        fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + NplotC*(*activeSetPtr).Nspace2 + cubeMiddleF],
             shiftedFFT, Nfreq, (*activeSetPtr).Nspace);
 
-        for (i = 0; i < (*activeSetPtr).Nspace * Nfreq; i++) {
+        for (i = 0; i < NplotC; i++) {
             plotarrC[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
         }
 
