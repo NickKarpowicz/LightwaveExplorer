@@ -204,10 +204,8 @@ typedef struct cudaParameterSet {
     double rotationBackward[9];
 	int nonlinearSwitches[4];
 	
-	cufftHandle fftPlan;
     cufftHandle fftPlanZ2D;
     cufftHandle fftPlanD2Z;
-	cufftHandle polfftPlan;
     cufftHandle doublePolfftPlan;
     bool isCylindric;
     bool hasPlasma;
@@ -232,7 +230,7 @@ typedef struct cudaParameterSet {
 } cudaParameterSet;
 
 unsigned long	solveNonlinearWaveEquation(void* lpParam);
-int				runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, int stepNumber);
+int				runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, uint8_t stepNumber);
 int				prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc);
 int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
