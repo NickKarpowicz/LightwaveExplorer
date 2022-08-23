@@ -1291,7 +1291,7 @@ __global__ void beamGenerationKernel3D(
 	pulse[i] = make_cuDoubleComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
 	pulse[i + (*s).NgridC] = make_cuDoubleComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
 	double pointEnergy = (ne.x * cuCModSquared(pulse[i]) + no.x * cuCModSquared(pulse[i + (*s).NgridC]));
-	pointEnergy *= 0.5 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
+	pointEnergy *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
 
 	atomicAdd(pulseSum, pointEnergy);
 }
@@ -1847,10 +1847,9 @@ int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, uint8_t stepNumber) {
 
 int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) {
 	if ((*s).isFollowerInSequence) {
-		cudaMemcpy((*sc).gridETime1, (*s).ExtOut, (*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
-		cudaMemcpy((*sc).gridETime2, &(*s).ExtOut[(*s).Ngrid], (*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
+		cudaMemcpy((*sc).gridETime1, (*s).ExtOut, 2*(*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
 		cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
-		multiplyByConstantKernel<<<(unsigned int)(((*sc).Ntime / 2 + 1) * ((*sc).Nspace / 16)), 32, 0, (*sc).CUDAStream>>> ((*sc).gridEFrequency1, 2.0);
+		multiplyByConstantKernel << <(unsigned int)((*sc).NgridC/16), 32, 0, (*sc).CUDAStream >> > ((*sc).gridEFrequency1, 2.0);
 		return 0;
 	}
 	double* materialPhase1CUDA, * materialPhase2CUDA;
@@ -2982,6 +2981,8 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	}
 	if ((*sCPU).is3D) {
 		(*sCPU).Nspace2 = (*sCPU).Nspace;
+		(*sCPU).Ngrid = (*sCPU).Ntime * (*sCPU).Nspace * (*sCPU).Nspace2;
+		(*sCPU).NgridC = (*sCPU).Nfreq * (*sCPU).Nspace * (*sCPU).Nspace2;
 	}
 	if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims < 1) {
 		(*sCPU).Nsims = 1;

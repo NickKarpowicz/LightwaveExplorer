@@ -1653,7 +1653,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
             isGridAllocated = TRUE;
             int res;
             res = loadSavedFields(activeSetPtr, fileNameString, FALSE);
-            printToConsole(maingui.textboxSims,L"loaded with %i\r\n", res);
+            //printToConsole(maingui.textboxSims,L"loaded with %i\r\n", res);
             return TRUE;
         }
         else {
