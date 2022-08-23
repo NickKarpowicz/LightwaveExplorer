@@ -1535,12 +1535,11 @@ int deallocateCudaParameterSet(cudaParameterSet* s) {
 }
 unsigned long solveNonlinearWaveEquation(void* lpParam) {
 	size_t i;
-	cudaParameterSet s;
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
 	cudaSetDevice((*sCPU).assignedGPU);
 	cudaParameterSet* sDevice;
 	cudaMalloc(&sDevice, sizeof(cudaParameterSet));
-
+	cudaParameterSet s;
 	initializeCudaParameterSet(sCPU, &s);
 
 	//prepare the propagation arrays
@@ -1552,9 +1551,9 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 	}
 	prepareElectricFieldArrays(sCPU, &s);
 
-	cudaMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
-
+	
 	//Core propagation loop
+	cudaMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 	for (i = 0; i < s.Nsteps; i++) {
 
 		//RK4
@@ -1577,15 +1576,12 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 		(*(*sCPU).progressCounter)++;
 	}
 
-	//transform final result
+	//give the result to the CPU
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 	cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
 	multiplyByConstantKernelD << <(int)(s.Ngrid / 16), 32, 0, s.CUDAStream >> > (s.gridETime1, 0.5 / s.Ngrid);
 	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-
-	//copy the field arrays from the GPU to CPU memory
 	getTotalSpectrum(sCPU, &s);
-	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, (cufftDoubleComplex*)s.workspace1);
-	cudaMemcpy((*sCPU).EkwOut, s.workspace1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
 	deallocateCudaParameterSet(&s);
 	cudaFree(sDevice);
