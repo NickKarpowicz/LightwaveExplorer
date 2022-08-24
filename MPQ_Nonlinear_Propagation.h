@@ -89,6 +89,8 @@ typedef struct guiStruct {
     HWND buttonRefreshDB = NULL;
     HWND buttonStop = NULL;
     HWND buttonLoad = NULL;
+    HWND buttonAddCrystalToSequence = NULL;
+    HWND buttonAddEchoSequence = NULL;
     HWND tbPlotNumber = NULL;
     HWND cbLogPlot = NULL;
     HWND pdClusterSelector = NULL;

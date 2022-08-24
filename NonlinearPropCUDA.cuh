@@ -73,8 +73,12 @@ typedef struct simulationParameterSet {
     double z02;
     double x01;
     double x02;
+    double y01;
+    double y02;
     double propagationAngle1;
     double propagationAngle2;
+    double propagationAnglePhi1;
+    double propagationAnglePhi2;
     bool isCylindric;
     bool is3D;
     int symmetryType;

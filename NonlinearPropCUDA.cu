@@ -1064,8 +1064,6 @@ __global__ void updateKwithPlasmaKernel(cudaParameterSet* sP) {
 
 	h += j * (*sP).Nfreq;
 
-
-
 	if ((*sP).isUsingMillersRule) {
 		(*sP).k1[i] = (*sP).k1[i] + jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] / (*sP).chiLinear1[i % ((*sP).Nfreq)];
 		(*sP).k2[i] = (*sP).k2[i] + jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] / (*sP).chiLinear2[i % ((*sP).Nfreq)];
@@ -1234,7 +1232,7 @@ __global__ void beamGenerationKernel3D(
 	cuDoubleComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
 	int sgOrder, double cep, double delay, double gdd, double tod,
 	bool hasLoadedField, cuDoubleComplex* loadedField, double* materialPhase,
-	double w0, double z0, double x0, double beamAngle,
+	double w0, double z0, double y0, double x0, double beamAngle, double beamAnglePhi,
 	double polarizationAngle, double circularity,
 	double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -1269,18 +1267,24 @@ __global__ void beamGenerationKernel3D(
 	if (f == 0) {
 		zR = 1e3;
 	}
-	double x = (x0 - (*s).dx * (j - (*s).Nspace / 2.0));
-	double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
-	double r = x * cos(beamAngle) - z0 * sin(beamAngle);
-	r = sqrt(r * r + y * y);
-	double z = x * sin(beamAngle) + z0 * cos(beamAngle);
+	double xo = ((*s).dx * (j - (*s).Nspace / 2.0)) - x0;
+	double yo = ((*s).dx * (k - (*s).Nspace2 / 2.0)) - y0;
+	double zo = z0;
+	double cB = cos(beamAngle);
+	double cA = cos(beamAnglePhi);
+	double sB = sin(beamAngle);
+	double sA = sin(beamAnglePhi);
+	double x = cB * xo + sA * sB * yo + sA * sB * zo;
+	double y = cA * yo - sA * zo;
+	double z = -sB * xo + sA * cB * yo + cA * cB * zo;
+	double r = sqrt(x * x + y * y);
 
 	double wz = w0 * sqrt(1 + (z * z / (zR * zR)));
-	double Rz = z * (1. + (zR * zR / (z * z)));
-
-	if (z == 0) {
-		Rz = 1.0e15;
+	double Rz = 1.0e15;
+	if (z != 0.0) {
+		Rz = z * (1. + (zR * zR / (z * z)));
 	}
+
 	double phi = atan(z / zR);
 	cuDoubleComplex Eb = (w0 / wz) * cuCexpd(make_cuDoubleComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
 	Eb = Eb * specfac;
@@ -1878,7 +1882,6 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 
 
 	double* pulseSum = &materialCoefficientsCUDA[0];
-
 	//calculate pulse 1 and store it in unused memory
 	cudaMemset(pulseSum, 0, sizeof(double));
 	cudaMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(cuDoubleComplex));
@@ -1887,7 +1890,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 			(*sc).workspace1, pulseSum, scDevice, (*s).frequency1, (*s).bandwidth1,
 			(*s).sgOrder1, (*s).cephase1, (*s).delay1, (*s).gdd1, (*s).tod1,
 			(*s).field1IsAllocated, loadedField1, materialPhase1CUDA, (*s).beamwaist1,
-			(*s).z01, (*s).x01, (*s).propagationAngle1, (*s).polarizationAngle1, (*s).circularity1,
+			(*s).z01, (*s).y01, (*s).x01, (*s).propagationAngle1, (*s).propagationAnglePhi1, (*s).polarizationAngle1, (*s).circularity1,
 			sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
 	}
 	else {
@@ -1911,7 +1914,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 			(*sc).workspace1, pulseSum, scDevice, (*s).frequency2, (*s).bandwidth2,
 			(*s).sgOrder2, (*s).cephase2, (*s).delay2, (*s).gdd2, (*s).tod2,
 			(*s).field2IsAllocated, loadedField2, materialPhase2CUDA, (*s).beamwaist2,
-			(*s).z02, (*s).x02, (*s).propagationAngle2, (*s).polarizationAngle2, (*s).circularity2,
+			(*s).z02, (*s).y02, (*s).x02, (*s).propagationAngle2, (*s).propagationAnglePhi2, (*s).polarizationAngle2, (*s).circularity2,
 			sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
 	}
 	else {
@@ -2858,6 +2861,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).phaseMaterialThickness2);
 	skipFileUntilCharacter(textfile, ':');
+	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).beamwaist1);
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).beamwaist2);
@@ -2866,6 +2870,10 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).x02);
 	skipFileUntilCharacter(textfile, ':');
+	readValueCount += fscanf(textfile, "%lf", &(*sCPU).y01);
+	skipFileUntilCharacter(textfile, ':');
+	readValueCount += fscanf(textfile, "%lf", &(*sCPU).y02);
+	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).z01);
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).z02);
@@ -2873,6 +2881,10 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationAngle1);
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationAngle2);
+	skipFileUntilCharacter(textfile, ':');
+	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationAnglePhi1);
+	skipFileUntilCharacter(textfile, ':');
+	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationAnglePhi2);
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).polarizationAngle1);
 	skipFileUntilCharacter(textfile, ':');
@@ -3089,8 +3101,17 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 		(*sCPU).sgOrder1, (*sCPU).sgOrder2, (*sCPU).cephase1, (*sCPU).cephase2, (*sCPU).delay1, (*sCPU).delay2, (*sCPU).gdd1, (*sCPU).gdd2, (*sCPU).tod1, (*sCPU).tod2);
 	fwprintf(textfile, L"Phase material 1 index: %i\nPhase material 2 index: %i\nPhase material thickness 1 (mcr.): %14.14e\nPhase material thickness 2 (mcr.): %14.14e\n",
 		(*sCPU).phaseMaterialIndex1, (*sCPU).phaseMaterialIndex2, (*sCPU).phaseMaterialThickness1, (*sCPU).phaseMaterialThickness2);
-	fwprintf(textfile, L"Beamwaist 1 (m): %14.14e\nBeamwaist 2 (m): %14.14e\nx offset 1 (m): %14.14e\nx offset 2 (m): %14.14e\nz offset 1 (m): %14.14e\nz offset 2 (m): %14.14e\nNC angle 1 (rad): %14.14e\nNC angle 2 (rad): %14.14e\n",
-		(*sCPU).beamwaist1, (*sCPU).beamwaist2, (*sCPU).x01, (*sCPU).x02, (*sCPU).z01, (*sCPU).z02, (*sCPU).propagationAngle1, (*sCPU).propagationAngle2);
+	fwprintf(textfile, L"Beam mode placeholder: 0\n");
+	fwprintf(textfile, L"Beamwaist 1 (m): %14.14e\nBeamwaist 2 (m): %14.14e\nx offset 1 (m): %14.14e\nx offset 2 (m): %14.14e\n",
+		(*sCPU).beamwaist1, (*sCPU).beamwaist2, (*sCPU).x01, (*sCPU).x02);
+	fwprintf(textfile, L"y offset 1 (m): %14.14e\ny offset 2 (m): %14.14e\n",
+		(*sCPU).y01, (*sCPU).y02);
+	fwprintf(textfile, L"z offset 1 (m): %14.14e\nz offset 2 (m): %14.14e\n",
+		(*sCPU).z01, (*sCPU).z02);
+	fwprintf(textfile, L"NC angle 1 (rad): %14.14e\nNC angle 2 (rad): %14.14e\n",
+		(*sCPU).propagationAngle1, (*sCPU).propagationAngle2);
+	fwprintf(textfile, L"NC angle phi 1 (rad): %14.14e\nNC angle phi 2 (rad): %14.14e\n",
+		(*sCPU).propagationAnglePhi1, (*sCPU).propagationAnglePhi2);
 	fwprintf(textfile, L"Polarization 1 (rad): %14.14e\nPolarization 2 (rad): %14.14e\nCircularity 1: %14.14e\nCircularity 2: %14.14e\n",
 		(*sCPU).polarizationAngle1, (*sCPU).polarizationAngle2, (*sCPU).circularity1, (*sCPU).circularity2);
 	fwprintf(textfile, L"Material index: %i\nAlternate material index: %i\n",

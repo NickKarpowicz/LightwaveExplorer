@@ -29,8 +29,18 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define ID_BTNLOAD 11118
 #define ID_BTNFIT 11119
 #define ID_BTNFITREFERENCE 11120
+#define ID_BTNADDECHO 11121
+#define ID_BTNADDCRYSTAL 11122
 #define ID_CBLOGPLOT 12000
 #define MAX_SIMULATIONS 16192
+
+#define TWOPI 6.2831853071795862
+#define PI 3.1415926535897931
+#define DEG2RAD 1.7453292519943295e-02
+#define LIGHTC 2.99792458e8
+#define EPS0 8.8541878128e-12
+#define SIXTH 0.1666666666666667
+#define THIRD 0.3333333333333333
 
 // Global Variables:
 HINSTANCE hInst;                            // current instance
@@ -554,6 +564,12 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         btnoffset2a, 18 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
 
 
+    maingui.buttonAddEchoSequence = CreateWindow(WC_BUTTON, TEXT("\x2B83"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow2, 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDECHO, hInstance, NULL);
+    maingui.buttonAddCrystalToSequence = CreateWindow(WC_BUTTON, TEXT("\x21AF"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow2 + btnHeight + 4, 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDCRYSTAL, hInstance, NULL);
     maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN, 
         xOffsetRow1 + textboxwidth + 4, 13 * vs, xOffsetRow2-xOffsetRow1, 4*vs-6, maingui.mainWindow, NULL, hInstance, NULL);
@@ -883,6 +899,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 printToConsole(maingui.textboxSims, L"Read failure.\r\n");
             }
             break;
+        case ID_BTNADDCRYSTAL:
+            if (GetWindowTextLength(maingui.tbSequence) < 11) {
+                SetWindowText(maingui.tbSequence, L"");
+            }
+            printToConsole(maingui.tbSequence, L"%i %i %2.1lf %2.1lf %2.1e %2.1lf %2.1lf %2.1lf %2.1lf %2.1lf %i;\r\n",
+                0, (int)getDoubleFromHWND(maingui.tbMaterialIndex), getDoubleFromHWND(maingui.tbCrystalTheta),
+                getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbNonlinearAbsortion),
+                getDoubleFromHWND(maingui.tbBandGap),getDoubleFromHWND(maingui.tbDrudeGamma),
+                getDoubleFromHWND(maingui.tbEffectiveMass), getDoubleFromHWND(maingui.tbCrystalThickness),
+                getDoubleFromHWND(maingui.tbXstep), 0);
+            break;
+        case ID_BTNADDECHO:
+            if (GetWindowTextLength(maingui.tbSequence) < 11) {
+                SetWindowText(maingui.tbSequence, L"");
+            }
+            printToConsole(maingui.tbSequence, L"%i %i %i %i %i %i %i %i %i %i %i;\r\n", 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0);
+            break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
@@ -992,6 +1025,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonStop, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonRunOnCluster, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonPlot, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonAddCrystalToSequence, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonAddEchoSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
         SetWindowTheme(maingui.pbProgress, L"", L"");
         SetWindowTheme(maingui.pbProgressB, L"", L"");
@@ -1082,12 +1117,22 @@ int readParametersFromInterface() {
     (*activeSetPtr).phaseMaterialThickness2 = 1e-6*getDoubleFromHWND(maingui.tbPhaseMaterialThickness2);
     (*activeSetPtr).beamwaist1 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist1);
     (*activeSetPtr).beamwaist2 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist2);
-    (*activeSetPtr).x01 = 1e-6 * getDoubleFromHWND(maingui.tbXoffset1);
-    (*activeSetPtr).x02 = 1e-6 * getDoubleFromHWND(maingui.tbXoffset2);
+    tmp = 1e-6 * getDoubleDoublesfromHWND(maingui.tbXoffset1);
+    (*activeSetPtr).x01 = real(tmp);
+    (*activeSetPtr).y01 = imag(tmp);
+    tmp = 1e-6 * getDoubleDoublesfromHWND(maingui.tbXoffset2);
+    (*activeSetPtr).x02 = real(tmp);
+    (*activeSetPtr).y02 = imag(tmp);
     (*activeSetPtr).z01 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset1);
     (*activeSetPtr).z02 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset2);
-    (*activeSetPtr).propagationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle1);
-    (*activeSetPtr).propagationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle2);
+    //(*activeSetPtr).propagationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle1);
+    //(*activeSetPtr).propagationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle2);
+    tmp = DEG2RAD * getDoubleDoublesfromHWND(maingui.tbPropagationAngle1);
+    (*activeSetPtr).propagationAngle1 = real(tmp);
+    (*activeSetPtr).propagationAnglePhi1 = imag(tmp);
+    tmp = DEG2RAD * getDoubleDoublesfromHWND(maingui.tbPropagationAngle2);
+    (*activeSetPtr).propagationAngle2 = real(tmp);
+    (*activeSetPtr).propagationAnglePhi2 = imag(tmp);
     (*activeSetPtr).polarizationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPolarizationAngle1);
     (*activeSetPtr).polarizationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPolarizationAngle2);
     (*activeSetPtr).circularity1 = getDoubleFromHWND(maingui.tbCircularity1);
@@ -1106,16 +1151,9 @@ int readParametersFromInterface() {
     (*activeSetPtr).timeSpan = 1e-15 * getDoubleFromHWND(maingui.tbTimeSpan);
     (*activeSetPtr).tStep = 1e-15 * getDoubleFromHWND(maingui.tbTimeStepSize);
 
-    //fix the grid dimensions so that each is divisble by 32
-    (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (32 * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * 32)));
-    if ((*activeSetPtr).spatialHeight > 0) {
-        (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (32 * ceil((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * 32)));
-    }
-    else {
-        (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
-    }
+
     
-    (*activeSetPtr).timeSpan = (*activeSetPtr).tStep * (32 * ceil((*activeSetPtr).timeSpan / ((*activeSetPtr).tStep * 32)));
+    (*activeSetPtr).timeSpan = (*activeSetPtr).tStep * (16 * ceil((*activeSetPtr).timeSpan / ((*activeSetPtr).tStep * 16)));
 
     (*activeSetPtr).crystalThickness = 1e-6 * getDoubleFromHWND(maingui.tbCrystalThickness);
     (*activeSetPtr).propagationStep = 1e-9 * getDoubleFromHWND(maingui.tbXstep);
@@ -1197,20 +1235,36 @@ int readParametersFromInterface() {
     (*activeSetPtr).Nsims = (size_t)getDoubleFromHWND(maingui.tbNumberSims);
     (*activeSetPtr).Nsims2 = (size_t)getDoubleFromHWND(maingui.tbNumberSims2);
     //derived parameters and cleanup:
+
+        //fix the grid dimensions so that each is divisble by 16
+    if ((*activeSetPtr).is3D) {
+
+    }
+    
+
+
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
     (*activeSetPtr).Ntime = (size_t)round((*activeSetPtr).timeSpan / (*activeSetPtr).tStep);
-    (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
+   
     if ((*activeSetPtr).symmetryType == 2) {
         (*activeSetPtr).is3D = TRUE;
-        (*activeSetPtr).Nspace2 = (size_t)round((*activeSetPtr).spatialHeight / (*activeSetPtr).rStep);
-        if ((*activeSetPtr).Nspace2 == 0) {
-            (*activeSetPtr).Nspace2 = (*activeSetPtr).Nspace;
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (8 * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * 8)));
+        (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
+        if ((*activeSetPtr).spatialHeight > 0) {
+            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (8 * ceil((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * 8)));
         }
+        else {
+            (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
+        }
+        (*activeSetPtr).Nspace2 = (size_t)round((*activeSetPtr).spatialHeight / (*activeSetPtr).rStep);
     }
     else {
         (*activeSetPtr).is3D = FALSE;
         (*activeSetPtr).Nspace2 = 1;
+        (*activeSetPtr).spatialHeight = 0;
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (32 * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * 32)));
+        (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     }
     printToConsole(maingui.textboxSims, L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
     (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
@@ -1473,15 +1527,18 @@ int setInterfaceValuesToActiveValues() {
     SendMessage(maingui.pdBatchMode2, CB_SETCURSEL, (WPARAM)(*activeSetPtr).batchIndex2, 0);
     setWindowTextToDouble(maingui.tbBatchDestination2, (*activeSetPtr).batchDestination2);
     setWindowTextToInt(maingui.tbNumberSims2, (int)(*activeSetPtr).Nsims2);
-    if (strcmp((*activeSetPtr).sequenceString, "None.\n") == 0) {
-        SetWindowText(maingui.tbSequence, L"");
-    }
-    else {
+
+    if (strlen((*activeSetPtr).sequenceString)>12) {
         insertLineBreaksAfterSemicolons((*activeSetPtr).sequenceString, MAX_LOADSTRING);
         SetWindowTextA(maingui.tbSequence, (*activeSetPtr).sequenceString);
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\r');
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\n');
     }
+    else {
+        SetWindowText(maingui.tbSequence, L"");
+    }
+
+
         
 
     if (strcmp((*activeSetPtr).field1FilePath, "None") == 0) {
@@ -1684,7 +1741,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
         }
         readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString);
         //There should be 50 parameters, remember to update this if adding new ones!
-        if (readParameters == 57) {
+        if (readParameters == 61) {
             //get the base of the file name, so that different files can be made with different extensions based on that
             if (ofn.nFileExtension > 0) {
                 fbaseloc = ofn.nFileExtension - 1;
@@ -1863,7 +1920,10 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         ShowWindow(maingui.plotBox6, 0);
 
 
-        float logPlotOffset = 1.0e11f;
+        float logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+        if ((*activeSetPtr).is3D) {
+            logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+        }
         int i;
         size_t Nplot = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
         size_t NplotC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace;
@@ -1908,8 +1968,10 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
         //Plot Fourier Domain, s-polarization
         fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + cubeMiddleF], shiftedFFT, Nfreq, (*activeSetPtr).Nspace);
+
         for (i = 0; i < NplotC; i++) {
             plotarrC[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
+
         }
 
         linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2 + 1, plotarr2, (int)dy, (int)dx);
