@@ -12,6 +12,7 @@ class lightwaveExplorerResult:
         self.Npropagation = 0
         self.Ntime = 0
         self.Nspace = 0
+        self.Nspace2 = 0
         self.Nfreq = 0
         self.Ngrid = 0
         self.Nsims = 1
@@ -149,14 +150,24 @@ def load(filePath: str, loadFieldArray=True):
     s.Ntime = int(np.round(s.timeSpan/s.tStep))
     s.Nfreq = int(s.Ntime/2 + 1)
     s.Nspace = int(np.round(s.spatialWidth/s.rStep))
-    s.Ngrid = int(s.Ntime*s.Nspace)
+    if s.symmetryType == 2:
+        s.Nspace2 = int(np.round(s.spatialHeight/s.rStep))
+    else:
+        s.Nspace2 = 1
+    s.Ngrid = int(s.Ntime*s.Nspace*s.Nspace2)
+
     
     #now load the output data from binary format. Note that this will fail if you're using wrong-endian CPUs
     fileBase = os.path.splitext(filePath)
     if loadFieldArray: 
-        s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims*s.Nsims2)],(s.Ntime,s.Nspace,2*s.Nsims,s.Nsims2),order='F')
-        s.Ext_x = np.squeeze(s.Ext[:,:,0:(2*s.Nsims):2,:])
-        s.Ext_y = np.squeeze(s.Ext[:,:,1:(2*s.Nsims + 1):2,:])
+        if s.symmetryType == 2:
+            s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims*s.Nsims2)],(s.Ntime,s.Nspace,s.Nspace2, 2*s.Nsims,s.Nsims2),order='F')
+            s.Ext_x = np.squeeze(s.Ext[:,:,:,0:(2*s.Nsims):2,:])
+            s.Ext_y = np.squeeze(s.Ext[:,:,:,1:(2*s.Nsims + 1):2,:])
+        else:
+            s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims*s.Nsims2)],(s.Ntime,s.Nspace,s.Nspace2, 2*s.Nsims,s.Nsims2),order='F')
+            s.Ext_x = np.squeeze(s.Ext[:,:,0:(2*s.Nsims):2,:])
+            s.Ext_y = np.squeeze(s.Ext[:,:,1:(2*s.Nsims + 1):2,:])
     
     s.spectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*s.Nfreq*s.Nsims*s.Nsims2],(s.Nfreq,3,s.Nsims,s.Nsims2),order='F')
     s.spectrumTotal = np.squeeze(s.spectrum[:,2,:,:]).T

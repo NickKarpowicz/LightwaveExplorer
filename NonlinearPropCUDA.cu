@@ -233,8 +233,8 @@ __global__ void totalSpectrumKernel(cuDoubleComplex* fieldGrid1, cuDoubleComplex
 	beamTotal2 = 0.;
 	for (j = 0; j < Nspace; j++) {
 		x = gridStep * j;
-		beamTotal1 += abs(x - beamCenter1) * cuCModSquared(fieldGrid1[i + j * Ntime]);
-		beamTotal2 += abs(x - beamCenter2) * cuCModSquared(fieldGrid2[i + j * Ntime]);
+		beamTotal1 += PI * abs(x - beamCenter1) * cuCModSquared(fieldGrid1[i + j * Ntime]);
+		beamTotal2 += PI * abs(x - beamCenter2) * cuCModSquared(fieldGrid2[i + j * Ntime]);
 	}
 	beamTotal1 *= gridStep / Ntime;
 	beamTotal2 *= gridStep / Ntime;
@@ -2779,10 +2779,8 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 				sCPU[j + currentRow].deffTensor = &(*sCPU).deffTensor[9 * (j + currentRow)];;
 			}
 
-			//sCPU[j + currentRow].Ext = &(*sCPU).Ext[(j + currentRow) * (*sCPU).Ngrid * 2];
-			//sCPU[j + currentRow].Ekw = &(*sCPU).Ekw[(j + currentRow) * (*sCPU).Ngrid * 2];
 			sCPU[j + currentRow].ExtOut = &(*sCPU).ExtOut[(j + currentRow) * (*sCPU).Ngrid * 2];
-			sCPU[j + currentRow].EkwOut = &(*sCPU).EkwOut[(j + currentRow) * (*sCPU).Ngrid * 2];
+			sCPU[j + currentRow].EkwOut = &(*sCPU).EkwOut[(j + currentRow) * (*sCPU).NgridC * 2];
 			sCPU[j + currentRow].totalSpectrum = &(*sCPU).totalSpectrum[(j + currentRow) * (*sCPU).Nfreq * 3];
 			sCPU[j + currentRow].isFollowerInSequence = FALSE;
 
