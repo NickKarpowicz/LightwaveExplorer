@@ -37,6 +37,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define TWOPI 6.2831853071795862
 #define PI 3.1415926535897931
 #define DEG2RAD 1.7453292519943295e-02
+#define RAD2DEG 57.2957795130823229
 #define LIGHTC 2.99792458e8
 #define EPS0 8.8541878128e-12
 #define SIXTH 0.1666666666666667
@@ -1088,7 +1089,7 @@ int freeSemipermanentGrids() {
 
 int readParametersFromInterface() {
     std::complex<double> tmp;
-    const double pi = 3.1415926535897932384626433832795;
+
     (*activeSetPtr).pulseEnergy1 = getDoubleFromHWND(maingui.tbPulseEnergy1);
     (*activeSetPtr).pulseEnergy2 = getDoubleFromHWND(maingui.tbPulseEnergy2);
     (*activeSetPtr).frequency1 = 1e12 * getDoubleFromHWND(maingui.tbFrequency1);
@@ -1103,8 +1104,8 @@ int readParametersFromInterface() {
     if ((*activeSetPtr).sgOrder2 < 2) {
         (*activeSetPtr).sgOrder2 = 2;
     }
-    (*activeSetPtr).cephase1 = getDoubleFromHWND(maingui.tbCEPhase1)*pi;
-    (*activeSetPtr).cephase2 = getDoubleFromHWND(maingui.tbCEPhase2)*pi;
+    (*activeSetPtr).cephase1 = PI * getDoubleFromHWND(maingui.tbCEPhase1);
+    (*activeSetPtr).cephase2 = PI * getDoubleFromHWND(maingui.tbCEPhase2);
     (*activeSetPtr).delay1 = 1e-15 * getDoubleFromHWND(maingui.tbPulse1Delay); 
     (*activeSetPtr).delay2 = 1e-15 * getDoubleFromHWND(maingui.tbPulse2Delay);
     (*activeSetPtr).gdd1 = 1e-30 * getDoubleFromHWND(maingui.tbGDD1);
@@ -1125,23 +1126,21 @@ int readParametersFromInterface() {
     (*activeSetPtr).y02 = imag(tmp);
     (*activeSetPtr).z01 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset1);
     (*activeSetPtr).z02 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset2);
-    //(*activeSetPtr).propagationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle1);
-    //(*activeSetPtr).propagationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPropagationAngle2);
     tmp = DEG2RAD * getDoubleDoublesfromHWND(maingui.tbPropagationAngle1);
     (*activeSetPtr).propagationAngle1 = real(tmp);
     (*activeSetPtr).propagationAnglePhi1 = imag(tmp);
     tmp = DEG2RAD * getDoubleDoublesfromHWND(maingui.tbPropagationAngle2);
     (*activeSetPtr).propagationAngle2 = real(tmp);
     (*activeSetPtr).propagationAnglePhi2 = imag(tmp);
-    (*activeSetPtr).polarizationAngle1 = (pi / 180) * getDoubleFromHWND(maingui.tbPolarizationAngle1);
-    (*activeSetPtr).polarizationAngle2 = (pi / 180) * getDoubleFromHWND(maingui.tbPolarizationAngle2);
+    (*activeSetPtr).polarizationAngle1 = DEG2RAD * getDoubleFromHWND(maingui.tbPolarizationAngle1);
+    (*activeSetPtr).polarizationAngle2 = DEG2RAD * getDoubleFromHWND(maingui.tbPolarizationAngle2);
     (*activeSetPtr).circularity1 = getDoubleFromHWND(maingui.tbCircularity1);
     (*activeSetPtr).circularity2 = getDoubleFromHWND(maingui.tbCircularity2);
 
     (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);
     (*activeSetPtr).materialIndexAlternate = (int)getDoubleFromHWND(maingui.tbMaterialIndexAlternate);
-    (*activeSetPtr).crystalTheta = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalTheta);
-    (*activeSetPtr).crystalPhi = (pi / 180) * getDoubleFromHWND(maingui.tbCrystalPhi);
+    (*activeSetPtr).crystalTheta = DEG2RAD * getDoubleFromHWND(maingui.tbCrystalTheta);
+    (*activeSetPtr).crystalPhi = DEG2RAD * getDoubleFromHWND(maingui.tbCrystalPhi);
 
     //(*activeSetPtr).spatialWidth = 1e-6 * getDoubleFromHWND(maingui.tbGridXdim);
     tmp = 1e-6 * getDoubleDoublesfromHWND(maingui.tbGridXdim);
@@ -1151,8 +1150,6 @@ int readParametersFromInterface() {
     (*activeSetPtr).timeSpan = 1e-15 * getDoubleFromHWND(maingui.tbTimeSpan);
     (*activeSetPtr).tStep = 1e-15 * getDoubleFromHWND(maingui.tbTimeStepSize);
 
-
-    
     (*activeSetPtr).timeSpan = (*activeSetPtr).tStep * (16 * ceil((*activeSetPtr).timeSpan / ((*activeSetPtr).tStep * 16)));
 
     (*activeSetPtr).crystalThickness = 1e-6 * getDoubleFromHWND(maingui.tbCrystalThickness);
@@ -1184,9 +1181,9 @@ int readParametersFromInterface() {
         removeCharacterFromString((*activeSetPtr).sequenceString, strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING), '\n');
     }
 
-    memset((*activeSetPtr).fittingString, 0, 1024 * sizeof(char));
+    memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING * sizeof(char));
     getStringFromHWND(maingui.tbFitting, (*activeSetPtr).fittingString, 1024);
-    if (strnlen_s((*activeSetPtr).fittingString, 1024) == 0) {
+    if (strnlen_s((*activeSetPtr).fittingString, MAX_LOADSTRING) == 0) {
         strcpy((*activeSetPtr).fittingString, noneString);
     }
     else {
@@ -1270,7 +1267,7 @@ int readParametersFromInterface() {
     (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
     (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
-    (*activeSetPtr).kStep = 2 * pi / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
+    (*activeSetPtr).kStep = TWOPI / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
     (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
     (*activeSetPtr).Npropagation = (size_t)round((*activeSetPtr).crystalThickness / (*activeSetPtr).propagationStep);
 
@@ -1459,7 +1456,7 @@ int setWindowTextToDoubleExp(HWND win, double in) {
     return 0;
 }
 int setInterfaceValuesToActiveValues() {
-    const double pi = 3.1415926535897932384626433832795;
+
     setWindowTextToDoubleExp(maingui.tbPulseEnergy1, (*activeSetPtr).pulseEnergy1);
     setWindowTextToDoubleExp(maingui.tbPulseEnergy2, (*activeSetPtr).pulseEnergy2);
     setWindowTextToDouble(maingui.tbFrequency1, 1e-12*(*activeSetPtr).frequency1);
@@ -1468,8 +1465,8 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToDouble(maingui.tbBandwidth2, 1e-12 * (*activeSetPtr).bandwidth2);
     setWindowTextToInt(maingui.tbPulseType1, (*activeSetPtr).sgOrder1);
     setWindowTextToInt(maingui.tbPulseType2, (*activeSetPtr).sgOrder2);
-    setWindowTextToDouble(maingui.tbCEPhase1, pi * (*activeSetPtr).cephase1);
-    setWindowTextToDouble(maingui.tbCEPhase2, pi * (*activeSetPtr).cephase2);
+    setWindowTextToDouble(maingui.tbCEPhase1, PI * (*activeSetPtr).cephase1);
+    setWindowTextToDouble(maingui.tbCEPhase2, PI * (*activeSetPtr).cephase2);
     setWindowTextToDouble(maingui.tbPulse1Delay, 1e15 * (*activeSetPtr).delay1);
     setWindowTextToDouble(maingui.tbPulse2Delay, 1e15 * (*activeSetPtr).delay2);
     setWindowTextToDouble(maingui.tbGDD1, 1e30*(*activeSetPtr).gdd1);
@@ -1486,18 +1483,18 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToDouble(maingui.tbXoffset1, 1e6 * (*activeSetPtr).x02);
     setWindowTextToDouble(maingui.tbZoffset1, 1e6 * (*activeSetPtr).z01);
     setWindowTextToDouble(maingui.tbZoffset2, 1e6 * (*activeSetPtr).z02);
-    setWindowTextToDouble(maingui.tbPropagationAngle1, (180 / pi) * (*activeSetPtr).propagationAngle1);
-    setWindowTextToDouble(maingui.tbPropagationAngle2, (180 / pi) * (*activeSetPtr).propagationAngle2);
-    setWindowTextToDouble(maingui.tbPolarizationAngle1, 0.001*round(1000*(180 / pi) * (*activeSetPtr).polarizationAngle1));
-    setWindowTextToDouble(maingui.tbPolarizationAngle2, 0.001*round(1000*(180 / pi) * (*activeSetPtr).polarizationAngle2));
+    setWindowTextToDouble(maingui.tbPropagationAngle1, RAD2DEG * (*activeSetPtr).propagationAngle1);
+    setWindowTextToDouble(maingui.tbPropagationAngle2, RAD2DEG * (*activeSetPtr).propagationAngle2);
+    setWindowTextToDouble(maingui.tbPolarizationAngle1, 0.001*round(1000*RAD2DEG * (*activeSetPtr).polarizationAngle1));
+    setWindowTextToDouble(maingui.tbPolarizationAngle2, 0.001*round(1000*RAD2DEG * (*activeSetPtr).polarizationAngle2));
     setWindowTextToDouble(maingui.tbCircularity1, (*activeSetPtr).circularity1);
     setWindowTextToDouble(maingui.tbCircularity2, (*activeSetPtr).circularity2);
     SendMessage(maingui.pdPulse1Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse1FileType, 0);
     SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse2FileType, 0);
     setWindowTextToInt(maingui.tbMaterialIndex, (*activeSetPtr).materialIndex);
     setWindowTextToInt(maingui.tbMaterialIndexAlternate, (*activeSetPtr).materialIndexAlternate);
-    setWindowTextToDouble(maingui.tbCrystalTheta, (180 / pi) * (*activeSetPtr).crystalTheta);
-    setWindowTextToDouble(maingui.tbCrystalPhi, (180 / pi) * (*activeSetPtr).crystalPhi);
+    setWindowTextToDouble(maingui.tbCrystalTheta, RAD2DEG * (*activeSetPtr).crystalTheta);
+    setWindowTextToDouble(maingui.tbCrystalPhi, RAD2DEG * (*activeSetPtr).crystalPhi);
     setWindowTextToDoubleExp(maingui.tbNonlinearAbsortion, (*activeSetPtr).nonlinearAbsorptionStrength);
     setWindowTextToDouble(maingui.tbBandGap, (*activeSetPtr).bandGapElectronVolts);
     setWindowTextToDouble(maingui.tbDrudeGamma, 1e-12 * (*activeSetPtr).drudeGamma);
@@ -1806,17 +1803,17 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
         if (cm == 1) {
             for (i = 0; i < Ntot; i++) {
                 nval = (data[i] - imin) / (imax - imin);
-                pixels[stride * i + 0] = (unsigned char)(255 * cos(3.1415 * nval / 2.)); //blue channel
-                pixels[stride * i + 1] = (unsigned char)(255 * cos(3.1415 * (nval - 0.5))); //green channel
-                pixels[stride * i + 2] = (unsigned char)(255 * sin(3.1415 * nval / 2.)); //red channel
+                pixels[stride * i + 0] = (unsigned char)(255 * cos(PI * nval / 2.)); //blue channel
+                pixels[stride * i + 1] = (unsigned char)(255 * cos(PI * (nval - 0.5))); //green channel
+                pixels[stride * i + 2] = (unsigned char)(255 * sin(PI * nval / 2.)); //red channel
             }
         }
         if (cm == 2) {
             for (i = 0; i < Ntot; i++) {
                 nval = (data[i] - imin) / (imax - imin);
-                pixels[stride * i + 0] = (unsigned char)(255 * cos(3.1415 * nval / 2.)); //blue channel
-                pixels[stride * i + 1] = (unsigned char)(255 * cos(3.1415 * (nval - 0.5))); //green channel
-                pixels[stride * i + 2] = (unsigned char)(255 * sin(3.1415 * nval / 2.)); //red channel
+                pixels[stride * i + 0] = (unsigned char)(255 * cos(PI * nval / 2.)); //blue channel
+                pixels[stride * i + 1] = (unsigned char)(255 * cos(PI * (nval - 0.5))); //green channel
+                pixels[stride * i + 2] = (unsigned char)(255 * sin(PI * nval / 2.)); //red channel
                 if (nval < 0.02) {
                     pixels[stride * i + 0] = 255;
                     pixels[stride * i + 1] = 128;

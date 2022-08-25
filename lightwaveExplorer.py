@@ -233,7 +233,7 @@ def load(filePath: str, loadFieldArray=True):
             s.Ext_x = np.squeeze(s.Ext[:,:,:,0:(2*s.Nsims):2,:])
             s.Ext_y = np.squeeze(s.Ext[:,:,:,1:(2*s.Nsims + 1):2,:])
         else:
-            s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims*s.Nsims2)],(s.Ntime,s.Nspace,s.Nspace2, 2*s.Nsims,s.Nsims2),order='F')
+            s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims*s.Nsims2)],(s.Ntime,s.Nspace, 2*s.Nsims, s.Nsims2),order='F')
             s.Ext_x = np.squeeze(s.Ext[:,:,0:(2*s.Nsims):2,:])
             s.Ext_y = np.squeeze(s.Ext[:,:,1:(2*s.Nsims + 1):2,:])
     

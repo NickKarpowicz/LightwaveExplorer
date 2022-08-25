@@ -383,3 +383,38 @@ None
 Nonlinear reference frequencies:
 0 0 0 0 0 0 0
 ~~~crystal end~~~
+Name:
+4H-SiC
+Type:
+1
+Sellmeier equation:
+0
+1st axis coefficients:
+1 0 0.20075 12.07224 0 5.54861 -0.02641 0 35.65066-1268.24708 0 0 0 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1 0 0.20075 12.07224 0 5.54861 -0.02641 0 35.65066-1268.24708 0 0 0 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1 0 0.20075 12.07224 0 5.54861 -0.02641 0 35.65066-1268.24708 0 0 0 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+S. Wang, et al., 4H-SiC: A new nonlinear material for midinfrared lasers, Laser Photonics Rev. 7, 831–838 (2013)
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+None
+chi3 type:
+2
+chi3:
+8.9e-21 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Single isotropic value, based on X. Guo, et al, Nonlinear optical properties of 6H-SiC and 4H-SiC in an extensive spectral range, Optical Materials Express 11, 1080 (2021)
+Spectral file:
+None
+Nonlinear reference frequencies:
+375e12 375e12 375e12 375e12 375e12 375e12 375e12
+~~~crystal end~~~
