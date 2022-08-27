@@ -128,11 +128,11 @@ None
 chi3 type:
 2
 chi3:
-1.25e-20 0 0 0 0 0 0 0 0
+0.85e-20 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 chi3 reference:
-Single isotropic value, based on chi3_1111 from N.G. Khadzhiiski and N.I. Koroteev, Optics Communications 42, 423-427 (1982).
+Single isotropic value, based on experiments by Philipp
 Spectral file:
 None
 Nonlinear reference frequencies:

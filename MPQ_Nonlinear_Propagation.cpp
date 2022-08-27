@@ -1084,6 +1084,7 @@ int freeSemipermanentGrids() {
     //free((*activeSetPtr).Ext);
     //free((*activeSetPtr).Ekw);
     free((*activeSetPtr).totalSpectrum);
+    free((*activeSetPtr).fittingReference);
     return 0;
 }
 
@@ -2216,7 +2217,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
             free((*activeSetPtr).loadedField2);
             return 1;
         }
-        
+
     }
 
     printToConsole(maingui.textboxSims, L"Nfit: %i %i\r\nROI: %lli %lli %lli\r\n", 

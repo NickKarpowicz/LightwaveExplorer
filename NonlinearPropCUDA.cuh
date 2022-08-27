@@ -153,6 +153,7 @@ typedef struct simulationParameterSet {
     char fittingPath[1024];
     double fittingArray[1024];
     double fittingPrecision;
+    double* fittingReference;
     int Nfitting;
     int fittingMode;
     int fittingMaxIterations;
