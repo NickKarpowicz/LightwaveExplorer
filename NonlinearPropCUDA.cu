@@ -1743,6 +1743,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 	else {
 		preparePropagation2DCartesian(sCPU, s);
 	}
+
 	prepareElectricFieldArrays(sCPU, &s);
 	
 
@@ -1771,7 +1772,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 		(*(*sCPU).progressCounter)++;
 	}
 
-	//give the result to the CPU
+	////give the result to the CPU
 	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 	cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
 	multiplyByConstantKernelD<<<(int)(s.Ngrid / 16), 32, 0, s.CUDAStream>>> (s.gridETime1, 1.0 / s.Ngrid);
@@ -1838,13 +1839,12 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 	if ((*s).isFollowerInSequence) {
 		cudaMemcpy((*sc).gridETime1, (*s).ExtOut, 2*(*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
 		cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
-		//multiplyByConstantKernel << <(unsigned int)((*sc).NgridC/16), 32, 0, (*sc).CUDAStream >> > ((*sc).gridEFrequency1, 2.0);
 		return 0;
 	}
 	double* materialPhase1CUDA, * materialPhase2CUDA;
 	cuDoubleComplex* loadedField1, * loadedField2;
 	cufftHandle planBeamFreqToTime;
-	cufftPlan1d(&planBeamFreqToTime, (int)(*sc).Ntime, CUFFT_Z2D, 2 * (int)((*sc).Nspace*(sc)->Nspace2));
+	cufftPlan1d(&planBeamFreqToTime, (int)(*sc).Ntime, CUFFT_Z2D, 2 * (int)((*sc).Nspace*(*sc).Nspace2));
 	cudaParameterSet* scDevice;
 	cudaMalloc(&scDevice, sizeof(cudaParameterSet));
 	cudaMalloc(&loadedField1, (*sc).Ntime * sizeof(cuDoubleComplex));
@@ -1931,14 +1931,12 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 
 	if ((*sc).isUsingMillersRule) {
 		multiplicationKernelCompactVector<<<(*sc).NgridC/8, 16, 0, (*sc).CUDAStream>>> ((*sc).chiLinear1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
-		multiplicationKernelCompactVector<<<(*sc).NgridC/8, 16, 0, (*sc).CUDAStream>>> ((*sc).chiLinear2, (*sc).gridEFrequency1Next2, (*sc).workspace2, scDevice);
 	}
 	else {
 		cudaMemcpy((*sc).workspace1, (*sc).gridEFrequency1Next1, 2 * sizeof(cuDoubleComplex) * (*sc).NgridC, cudaMemcpyDeviceToDevice);
 	}
 
 	multiplicationKernelCompact<<<(*sc).NgridC/8, 16, 0, (*sc).CUDAStream>>> ((*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
-	multiplicationKernelCompact<<<(*sc).NgridC/8, 16, 0, (*sc).CUDAStream>>> ((*sc).gridPropagationFactor2, (*sc).gridEFrequency1Next2, (*sc).k2);
 	cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
 	cufftDestroy(planBeamFreqToTime);
 	cudaFree(materialPhase1CUDA);
