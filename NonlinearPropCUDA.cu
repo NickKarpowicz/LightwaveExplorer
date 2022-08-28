@@ -1028,6 +1028,7 @@ __global__ void plasmaCurrentKernel2(cudaParameterSet* s, double* workN, double*
 	}
 }
 
+
 __global__ void updateKwithPolarizationKernel(cudaParameterSet* sP) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	long long h = i % ((*sP).Nfreq); //temporal coordinate
@@ -1049,6 +1050,7 @@ __global__ void updateKwithPlasmaKernel(cudaParameterSet* sP) {
 
 	cuDoubleComplex jfac = make_cuDoubleComplex(0, -1.0 / (h * (*sP).fStep));
 	h += (j + ((*sP).isCylindric * (j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
+
 
 
 	if ((*sP).isUsingMillersRule) {
@@ -1565,8 +1567,8 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 	cudaMemset((*s).gridETime1, 0, 2 * sizeof(double) * (*s).Ngrid);
 	memErrors += cudaMalloc((void**)&(*s).gridPolarizationTime1, 2 * sizeof(double) * (*s).Ngrid);
 	cudaMemset((*s).gridPolarizationTime1, 0, 2 * sizeof(double) * (*s).Ngrid);
-	memErrors += cudaMalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	cudaMemset((*s).workspace1, 0, beamExpansionFactor * 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
+	memErrors += cudaMalloc((void**)&(*s).workspace1, (beamExpansionFactor + 2) * sizeof(cuDoubleComplex) * (*s).NgridC);
+	cudaMemset((*s).workspace1, 0, (beamExpansionFactor + 2) * sizeof(cuDoubleComplex) * (*s).NgridC);
 	memErrors += cudaMalloc((void**)&(*s).gridEFrequency1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
 	cudaMemset((*s).gridEFrequency1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
 	memErrors += cudaMalloc((void**)&(*s).gridPropagationFactor1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
@@ -1836,20 +1838,35 @@ int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, uint8_t stepNumber) {
 }
 
 int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) {
+	cudaParameterSet* scDevice;
+	cudaMalloc(&scDevice, sizeof(cudaParameterSet));
+	cudaMemcpy(scDevice, sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 	if ((*s).isFollowerInSequence) {
 		cudaMemcpy((*sc).gridETime1, (*s).ExtOut, 2*(*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
 		cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
+		//Copy the field into the temporary array
+		cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
+
+		if ((*sc).isUsingMillersRule) {
+			multiplicationKernelCompactVector << <(*sc).NgridC / 8, 16, 0, (*sc).CUDAStream >> > ((*sc).chiLinear1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
+		}
+		else {
+			cudaMemcpy((*sc).workspace1, (*sc).gridEFrequency1Next1, 2 * sizeof(cuDoubleComplex) * (*sc).NgridC, cudaMemcpyDeviceToDevice);
+		}
+
+		multiplicationKernelCompact << <(*sc).NgridC / 8, 16, 0, (*sc).CUDAStream >> > ((*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
+		cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
+		cudaFree(scDevice);
 		return 0;
 	}
 	double* materialPhase1CUDA, * materialPhase2CUDA;
 	cuDoubleComplex* loadedField1, * loadedField2;
 	cufftHandle planBeamFreqToTime;
 	cufftPlan1d(&planBeamFreqToTime, (int)(*sc).Ntime, CUFFT_Z2D, 2 * (int)((*sc).Nspace*(*sc).Nspace2));
-	cudaParameterSet* scDevice;
-	cudaMalloc(&scDevice, sizeof(cudaParameterSet));
+	
 	cudaMalloc(&loadedField1, (*sc).Ntime * sizeof(cuDoubleComplex));
 	cudaMalloc(&loadedField2, (*sc).Ntime * sizeof(cuDoubleComplex));
-	cudaMemcpy(scDevice, sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+	
 	//get the material phase
 	double* materialCoefficientsCUDA, * sellmeierPropagationMedium;
 	//NOTE TO SELF: add second phase material
