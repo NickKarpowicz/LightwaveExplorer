@@ -33,7 +33,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define ID_BTNADDCRYSTAL 11122
 #define ID_CBLOGPLOT 12000
 #define MAX_SIMULATIONS 16192
-
+#define MIN_GRIDDIM 8
 #define TWOPI 6.2831853071795862
 #define PI 3.1415926535897931
 #define DEG2RAD 1.7453292519943295e-02
@@ -1243,14 +1243,14 @@ int readParametersFromInterface() {
 
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
-    (*activeSetPtr).Ntime = (size_t)round((*activeSetPtr).timeSpan / (*activeSetPtr).tStep);
+    (*activeSetPtr).Ntime = (size_t)MIN_GRIDDIM*ceil((*activeSetPtr).timeSpan / (MIN_GRIDDIM*(*activeSetPtr).tStep));
    
     if ((*activeSetPtr).symmetryType == 2) {
         (*activeSetPtr).is3D = TRUE;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (8 * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * 8)));
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
         if ((*activeSetPtr).spatialHeight > 0) {
-            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (8 * ceil((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * 8)));
+            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         }
         else {
             (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
@@ -1261,7 +1261,7 @@ int readParametersFromInterface() {
         (*activeSetPtr).is3D = FALSE;
         (*activeSetPtr).Nspace2 = 1;
         (*activeSetPtr).spatialHeight = 0;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (32 * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * 32)));
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     }
     printToConsole(maingui.textboxSims, L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
