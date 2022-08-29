@@ -918,8 +918,8 @@ __global__ void fixnanKernel(cuDoubleComplex* E) {
 //in the time domain
 __global__ void nonlinearPolarizationKernel(cudaParameterSet* s) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
-	double Ex = (*s).gridETime1[i] / (*s).Ngrid;
-	double Ey = (*s).gridETime2[i] / (*s).Ngrid;
+	double Ex = (*s).fftNorm * (*s).gridETime1[i];
+	double Ey = (*s).fftNorm * (*s).gridETime2[i];
 
 	double Ex2 = Ex * Ex;
 	double Ey2 = Ey * Ey;
@@ -980,52 +980,42 @@ __global__ void nonlinearPolarizationKernel(cudaParameterSet* s) {
 //equation for the plasma current:
 //J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
 //J_absorption(t) = beta*E^(2*Nphot-2)*E
-__global__ void plasmaCurrentKernelPrep(cudaParameterSet* s, double* workN, double* workEx) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
-
-	int k;
-	double* workEy = &workEx[(*s).Ngrid];
-	double w, Esquared, Ex, Ey;
-	Ex = (*s).gridETime1[i] / (*s).Ngrid;
-	Ey = (*s).gridETime2[i] / (*s).Ngrid;
-	Esquared = Ex * Ex + Ey * Ey;
-	//plasmaParameters[0] is the nonlinear absorption parameter
-	w = (*s).plasmaParameters[0] * Esquared;
+//plasmaParameters[0] is the nonlinear absorption parameter
 	//nonlinearSwitches[3] is Nphotons-2
-	for (k = 0; k < (*s).nonlinearSwitches[3]; k++) {
-		w *= Esquared;
-	}
-	//absorption currents
-	(*s).gridPolarizationTime1[i] = w * Ex;
-	(*s).gridPolarizationTime2[i] = w * Ey;
-
 	//plasmaParameters[2] is the 1/photon energy, translating the loss of power
 	//from the field to the number of free carriers
 	//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
 	//of the plasma current
-	workN[i] = (*s).plasmaParameters[2] * ((*s).gridPolarizationTime1[i] * Ex + (*s).gridPolarizationTime2[i] * Ey);
-	workEx[i] = Ex;
-	workEy[i] = Ey;
-
-}
-__global__ void plasmaCurrentKernel2(cudaParameterSet* s, double* workN, double* workEx) {
+__global__ void plasmaCurrentKernel(cudaParameterSet* s) {
 	long long j = threadIdx.x + blockIdx.x * blockDim.x;
+	j *= (*s).Ntime;
 	double N = 0;
 	double integralx = 0;
 	double integraly = 0;
-	double* workEy = &workEx[(*s).Ngrid];
 	double* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-
+	double w, Esquared, Ex, Ey, a;
 	long long k;
-	j *= (*s).Ntime;
-	double a;
+	unsigned char p;
+	unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
+	double Jx, Jy;
 	for (k = 0; k < (*s).Ntime; k++) {
-		N += workN[j];
+		Ex = (*s).gridETime1[j] * (*s).fftNorm;
+		Ey = (*s).gridETime2[j] * (*s).fftNorm;
+		Esquared = Ex * Ex + Ey * Ey;
+		w = (*s).plasmaParameters[0] * Esquared;
+		for (p = 0; p < pMax; p++) {
+			w *= Esquared;
+		}
+
+		Jx = w * Ex;
+		Jy = w * Ey;
+
+		N += (*s).plasmaParameters[2] * (Jx * Ex + Jy * Ey);
 		a = N * (*s).expGammaT[k];
-		integralx += a * workEx[j];
-		integraly += a * workEy[j];
-		(*s).gridPolarizationTime1[j] += expMinusGammaT[k] * integralx;
-		(*s).gridPolarizationTime2[j] += expMinusGammaT[k] * integraly;
+		integralx += a * Ex;
+		integraly += a * Ey;
+		(*s).gridPolarizationTime1[j] = Jx + expMinusGammaT[k] * integralx;
+		(*s).gridPolarizationTime2[j] = Jy + expMinusGammaT[k] * integraly;
 		j++;
 	}
 }
@@ -1536,6 +1526,7 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 	(*s).Nfreq = ((*s).Ntime / 2 + 1);
 	(*s).Ngrid = (*s).Ntime * (*s).Nspace * (*s).Nspace2;
 	(*s).NgridC = (*s).Nfreq * (*s).Nspace * (*s).Nspace2; //size of the positive frequency side of the grid
+	(*s).fftNorm = 1.0 / (*s).Ngrid;
 	(*s).dt = (*sCPU).tStep;
 	(*s).dx = (*sCPU).rStep;
 	(*s).fStep = (*sCPU).fStep;
@@ -1564,15 +1555,15 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 	//I shouldn't need all these memsets but they make me feel better
 	//
 	// currently 8 large grids, meaning memory use is approximately
-	// 32 bytes per grid point (8 grids x 2 polarizations x 2ouble precision)
+	// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
 	// plus a little bit for additional constants/workspaces/etc
 	int memErrors = 0;
 	memErrors += cudaMalloc((void**)&(*s).gridETime1, 2 * sizeof(double) * (*s).Ngrid);
 	cudaMemset((*s).gridETime1, 0, 2 * sizeof(double) * (*s).Ngrid);
 	memErrors += cudaMalloc((void**)&(*s).gridPolarizationTime1, 2 * sizeof(double) * (*s).Ngrid);
 	cudaMemset((*s).gridPolarizationTime1, 0, 2 * sizeof(double) * (*s).Ngrid);
-	memErrors += cudaMalloc((void**)&(*s).workspace1, (beamExpansionFactor + 2) * sizeof(cuDoubleComplex) * (*s).NgridC);
-	cudaMemset((*s).workspace1, 0, (beamExpansionFactor + 2) * sizeof(cuDoubleComplex) * (*s).NgridC);
+	memErrors += cudaMalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
+	cudaMemset((*s).workspace1, 0, beamExpansionFactor * 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
 	memErrors += cudaMalloc((void**)&(*s).gridEFrequency1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
 	cudaMemset((*s).gridEFrequency1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
 	memErrors += cudaMalloc((void**)&(*s).gridPropagationFactor1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
@@ -1799,9 +1790,9 @@ int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, uint8_t stepNumber) {
 	if ((*sH).isNonLinear || (*sH).isCylindric) {
 		//perform inverse FFT to get time-space electric field
 		cufftExecZ2D((*sH).fftPlanZ2D, (cufftDoubleComplex*)(*sH).workspace1, (*sH).gridETime1);
+
 		if ((*sH).isNonLinear) {
 			nonlinearPolarizationKernel<<<(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream>>> (sD);
-
 			if ((*sH).isCylindric) {
 				expandCylindricalBeam<<< (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream>>>
 					(sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
@@ -1812,12 +1803,9 @@ int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, uint8_t stepNumber) {
 			}
 			updateKwithPolarizationKernel<<<(*sH).Nblock/2, (*sH).Nthread, 0, (*sH).CUDAStream>>> (sD);
 		}
+
 		if ((*sH).hasPlasma) {
-			plasmaCurrentKernelPrep<<<(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream>>>
-				(sD, (double*)(*sH).workspace1, (double*)(*sH).workspace2P);
-			plasmaCurrentKernel2<<<(unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / 16), 16, 0, (*sH).CUDAStream>>>
-				(sD, (double*)(*sH).workspace1, (double*)(*sH).workspace2P);
-			
+			plasmaCurrentKernel<<<(unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), MIN_GRIDDIM, 0, (*sH).CUDAStream>>>(sD);
 			if ((*sH).isCylindric) {
 				expandCylindricalBeam<<< (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream>>>
 					(sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
@@ -1826,7 +1814,6 @@ int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, uint8_t stepNumber) {
 			else {
 				cufftExecD2Z((*sH).fftPlanD2Z, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).workspace1);
 			}
-			
 			updateKwithPlasmaKernel<<<(*sH).Nblock/2, (*sH).Nthread, 0, (*sH).CUDAStream>>> (sD);
 		}
 
@@ -2553,7 +2540,7 @@ int rotateField(simulationParameterSet* s, double rotationAngle) {
 
 	//retrieve/rotate the field from the CPU memory
 	cudaMemcpy(Ein1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
-	rotateFieldKernel<<<(unsigned int)(sc.NgridC / MIN_GRIDDIM), MIN_GRIDDIM /16, 0, sc.CUDAStream>>> (Ein1, Ein2, Eout1, Eout2, rotationAngle);
+	rotateFieldKernel<<<(unsigned int)(sc.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, 0, sc.CUDAStream>>> (Ein1, Ein2, Eout1, Eout2, rotationAngle);
 	cudaMemcpy((*s).EkwOut, Eout1, 2 * (*s).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
 	//transform back to time

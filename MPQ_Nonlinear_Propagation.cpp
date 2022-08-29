@@ -1243,7 +1243,7 @@ int readParametersFromInterface() {
 
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
-    (*activeSetPtr).Ntime = (size_t)MIN_GRIDDIM*ceil((*activeSetPtr).timeSpan / (MIN_GRIDDIM*(*activeSetPtr).tStep));
+    (*activeSetPtr).Ntime = (size_t)(MIN_GRIDDIM*ceil((*activeSetPtr).timeSpan / (MIN_GRIDDIM*(*activeSetPtr).tStep)));
    
     if ((*activeSetPtr).symmetryType == 2) {
         (*activeSetPtr).is3D = TRUE;
@@ -1896,6 +1896,48 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
     return 0;
 }
 
+DWORD WINAPI imagePlotThread(LPVOID lpParam) {
+    imagePlotStruct *s = (imagePlotStruct*)lpParam;
+    RECT plotRect, mainRect;
+    HDC hdc = GetWindowDC(maingui.mainWindow);
+    GetWindowRect((*s).plotBox, &plotRect);
+    GetWindowRect(maingui.mainWindow, &mainRect);
+
+    ShowWindow((*s).plotBox, 0);
+
+    int dx = plotRect.right - plotRect.left;
+    int dy = plotRect.bottom - plotRect.top;
+    size_t plotSize = (size_t)dx * (size_t)dy;
+    float* plotarr2 = (float*)malloc(plotSize * sizeof(float));
+    size_t simIndex = (*activeSetPtr).plotSim;
+
+
+    switch ((*s).dataType) {
+    case 0:
+        linearRemapDoubleToFloat((*s).data, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
+        break;
+    case 1:
+        std::complex<double> *shiftedFFT = (std::complex<double>*)malloc((*activeSetPtr).Nspace * (*activeSetPtr).Nfreq * sizeof(std::complex<double>));
+        fftshiftD2Z((*s).complexData, shiftedFFT, (*activeSetPtr).Nfreq, (*activeSetPtr).Nspace);
+        linearRemapZToLogFloat(shiftedFFT, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
+        free(shiftedFFT);
+        break;
+    }
+    
+    drawArrayAsBitmap(hdc, 
+        plotRect.right - plotRect.left, 
+        plotRect.bottom - plotRect.top, 
+        plotRect.left - mainRect.left, 
+        plotRect.top - mainRect.top, 
+        plotRect.bottom - plotRect.top, 
+        plotRect.right - plotRect.left, 
+        plotarr2, (*s).colorMap);
+    
+    ReleaseDC(maingui.mainWindow, hdc);
+    free(plotarr2);
+    return 0;
+}
+
 DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if (isGridAllocated) {
         isPlotting = TRUE;
@@ -1903,135 +1945,157 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
             logPlot = FALSE;
         }
-
-        RECT mainRect;
-        RECT plotRect;
-        GetWindowRect(maingui.mainWindow, &mainRect);
-
-        GetWindowRect(maingui.plotBox1, &plotRect);
-        int dx = plotRect.right - plotRect.left;
-        int dy = plotRect.bottom - plotRect.top;
         size_t simIndex = (*activeSetPtr).plotSim;
-        ShowWindow(maingui.plotBox1, 0);
-        ShowWindow(maingui.plotBox2, 0);
-        ShowWindow(maingui.plotBox5, 0);
-        ShowWindow(maingui.plotBox6, 0);
 
 
         float logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
         if ((*activeSetPtr).is3D) {
             logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
         }
+
         int i;
         size_t Nplot = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
-        size_t NplotC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace;
-        HDC hdc;
-        size_t Nfreq = (*activeSetPtr).Ntime / 2 + 1;
+
         if (simIndex < 0) {
             simIndex = 0;
         }
         if (simIndex > (*activeSetPtr).Nsims*(*activeSetPtr).Nsims2) {
             simIndex = 0;
         }
+
         size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
         size_t cubeMiddleF = 0*(*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
-        hdc = GetWindowDC(maingui.mainWindow);
+
         float* plotarr = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
-        float* plotarrC = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
-        float* plotarr2 = (float*)calloc((size_t)(dx) * (size_t)(dy), sizeof(float));
-        std::complex<double>* shiftedFFT = (std::complex<double>*)calloc(Nplot, sizeof(std::complex<double>));
+        
+        imagePlotStruct sTime1, sTime2, sFreq1, sFreq2;
+        sTime1.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+        sTime1.plotBox = maingui.plotBox1;
+        sTime1.dataType = 0;
+        sTime1.colorMap = 4;
+        DWORD hTime1;
+        CreateThread(NULL, 0, imagePlotThread, &sTime1, 0, &hTime1);
 
-        //Plot Time Domain, s-polarization
-        for (i = 0; i < Nplot; i++) {
-            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+        sTime2.data = &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+        sTime2.plotBox = maingui.plotBox2;
+        sTime2.dataType = 0;
+        sTime2.colorMap = 4;
+        DWORD hTime2;
+        CreateThread(NULL, 0, imagePlotThread, &sTime2, 0, &hTime2);
+
+        sFreq1.complexData = &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + cubeMiddleF];
+        sFreq1.plotBox = maingui.plotBox5;
+        sFreq1.dataType = 1;
+        sFreq1.logMin = logPlotOffset;
+        sFreq1.colorMap = 3;
+        DWORD hFreq1;
+        CreateThread(NULL, 0, imagePlotThread, &sFreq1, 0, &hFreq1);
+
+        sFreq2.complexData = &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + (*activeSetPtr).NgridC + cubeMiddleF];
+        sFreq2.plotBox = maingui.plotBox6;
+        sFreq2.dataType = 1;
+        sFreq2.logMin = logPlotOffset;
+        sFreq2.colorMap = 3;
+        DWORD hFreq2;
+        CreateThread(NULL, 0, imagePlotThread, &sFreq2, 0, &hFreq2);
+        
+
+        for (i = 0; i < (*activeSetPtr).Ntime; i++) {
+            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
         }
-        linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
-        drawArrayAsBitmap(hdc, plotRect.right- plotRect.left, plotRect.bottom- plotRect.top, plotRect.left-mainRect.left, plotRect.top-mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 4);
-
-        plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, &plotarr[Nplot / 2], 
+        plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, plotarr, 
             (*activeSetPtr).Ntime, 1e9, FALSE, 0);
 
-        //Plot Time Domain, p-polarization
-        for (i = 0; i < Nplot; i++) {
-            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + Nplot*(*activeSetPtr).Nspace2 + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+
+        for (i = 0; i < (*activeSetPtr).Ntime; i++) {
+            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
         }
-
-        linearRemap(plotarr, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
-        GetWindowRect(maingui.plotBox2, &plotRect);
-        drawArrayAsBitmap(hdc, plotRect.right - plotRect.left, plotRect.bottom - plotRect.top, plotRect.left - mainRect.left, plotRect.top - mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 4);
-
-
         plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f, 
-            &plotarr[Nplot / 2], (*activeSetPtr).Ntime, 1e9, FALSE, 0);
-
-        //Plot Fourier Domain, s-polarization
-        fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + cubeMiddleF], shiftedFFT, Nfreq, (*activeSetPtr).Nspace);
-
-        for (i = 0; i < NplotC; i++) {
-            plotarrC[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
-
-        }
-
-        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime / 2 + 1, plotarr2, (int)dy, (int)dx);
-        GetWindowRect(maingui.plotBox5, &plotRect);
-        drawArrayAsBitmap(hdc, plotRect.right - plotRect.left, plotRect.bottom - plotRect.top, plotRect.left - mainRect.left, plotRect.top - mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 3);
+            plotarr, (*activeSetPtr).Ntime, 1e9, FALSE, 0);
 
 
         if (logPlot) {
             for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-                plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
+                plotarr[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
             }
             plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
-                &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
+                &plotarr[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
         }
         else {
             for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-                plotarrC[i] = (float)((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
+                plotarr[i] = (float)((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
             }
             plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
-                &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
-
-        }
-        //Plot Fourier Domain, p-polarization
-        fftshiftD2Z(&(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + NplotC*(*activeSetPtr).Nspace2 + cubeMiddleF],
-            shiftedFFT, Nfreq, (*activeSetPtr).Nspace);
-
-        for (i = 0; i < NplotC; i++) {
-            plotarrC[i] = log10((float)cModulusSquared(shiftedFFT[i]) + logPlotOffset);
+                &plotarr[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
         }
 
-        
-        linearRemap(plotarrC, (int)(*activeSetPtr).Nspace, (int)Nfreq, plotarr2, (int)dy, (int)dx);
-        GetWindowRect(maingui.plotBox6, &plotRect);
-        drawArrayAsBitmap(hdc, plotRect.right - plotRect.left, plotRect.bottom - plotRect.top, plotRect.left - mainRect.left, plotRect.top - mainRect.top, plotRect.bottom - plotRect.top, plotRect.right - plotRect.left, plotarr2, 3);
-        
         if (logPlot) {
             for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
-                plotarrC[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
+                plotarr[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
             }
             plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
-                &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
+                &plotarr[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
         }
         else {
             for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
-                plotarrC[i] = (float)((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
+                plotarr[i] = (float)((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
             }
             plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
-                &plotarrC[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
+                &plotarr[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
         }
 
-        free(shiftedFFT);
         free(plotarr);
-        free(plotarr2);
-        free(plotarrC);
-        ReleaseDC(maingui.mainWindow, hdc);
-        
+
         isPlotting = FALSE;
     }
     return 0;
 }
 
 
+int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
+    int i, j;
+    float A00;
+    float f;
+
+    int nx0, ny0;
+    int Ni, Nj;
+    for (i = 0; i < nbx; i++) {
+        f = i * (nax / (float)nbx);
+        Ni = (int)f;
+        nx0 = nay * min(Ni, nax);
+        for (j = 0; j < nby; j++) {
+            f = (j * (nay / (float)nby));
+            Nj = (int)f;
+            ny0 = min(nay, Nj);
+            A00 = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
+            B[i * nby + j] = A00;
+        }
+    }
+    return 0;
+}
+//resize double matrix A to the size of float matrix B
+//B is overwritten with the resized matrix
+int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby) {
+    int i, j;
+    float A00;
+    float f;
+
+    int nx0, ny0;
+    int Ni, Nj;
+    for (i = 0; i < nbx; i++) {
+        f = i * (nax / (float)nbx);
+        Ni = (int)f;
+        nx0 = nay * min(Ni, nax);
+        for (j = 0; j < nby; j++) {
+            f = (j * (nay / (float)nby));
+            Nj = (int)f;
+            ny0 = min(nay, Nj);
+            A00 = (float)A[ny0 + nx0];
+            B[i * nby + j] = A00;
+        }
+    }
+    return 0;
+}
 
 //resize matrix A to the size of matrix B
 //B is overwritten with the resized matrix

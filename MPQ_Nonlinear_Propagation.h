@@ -128,6 +128,18 @@ typedef struct guiStruct {
 
 } guiStruct;
 
+typedef struct imagePlotStruct {
+    HWND plotBox = NULL;
+    double* data = NULL;
+    std::complex<double>* complexData = NULL;
+    int simIndex = 0;
+    int colorMap = 4;
+    bool logScale = FALSE;
+    double logMin;
+    size_t vSlice = 0;
+    int dataType;
+} imagePlotStruct;
+
 
 DWORD WINAPI        mainSimThread(LPVOID lpParam);
 DWORD WINAPI        createRunFile(LPVOID lpParam);
@@ -155,3 +167,5 @@ DWORD WINAPI        statusMonitorThread(LPVOID lpParam);
 int                 setWindowTextToDoubleExp(HWND win, double in);
 int                 setWindowTextToDouble(HWND win, double in);
 std::complex<double> getDoubleDoublesfromHWND(HWND inputA);
+int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby);
+int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin);

@@ -224,6 +224,7 @@ typedef struct cudaParameterSet {
     size_t Nspace2;
 	size_t Ngrid;
     size_t NgridC;
+    double fftNorm;
 	int axesNumber;
 	int sellmeierType;
 	double f0;
