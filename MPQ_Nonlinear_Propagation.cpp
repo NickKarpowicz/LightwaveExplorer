@@ -103,9 +103,12 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     for (j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         if ((*activeSetPtr).isInSequence) {
             solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
-            (*activeSetPtr).plotSim = j;
-            plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-            CloseHandle(plotThread);
+            if (!isPlotting) {
+                (*activeSetPtr).plotSim = j;
+                plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+                CloseHandle(plotThread);
+            }
+
         }
         else {
             solveNonlinearWaveEquation(&activeSetPtr[j]);
@@ -119,9 +122,11 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             break;
         }
 
-        (*activeSetPtr).plotSim = j;
-        plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-        CloseHandle(plotThread);
+        if (!isPlotting) {
+            (*activeSetPtr).plotSim = j;
+            plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+            CloseHandle(plotThread);
+        }
 
     }
 
@@ -1939,115 +1944,124 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
 }
 
 DWORD WINAPI drawSimPlots(LPVOID lpParam) {
-    if (isGridAllocated) {
-        isPlotting = TRUE;
-        bool logPlot = TRUE;
-        if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
-            logPlot = FALSE;
-        }
-        size_t simIndex = (*activeSetPtr).plotSim;
-
-
-        float logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-        if ((*activeSetPtr).is3D) {
-            logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
-        }
-
-        int i;
-        size_t Nplot = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
-
-        if (simIndex < 0) {
-            simIndex = 0;
-        }
-        if (simIndex > (*activeSetPtr).Nsims*(*activeSetPtr).Nsims2) {
-            simIndex = 0;
-        }
-
-        size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
-        size_t cubeMiddleF = 0*(*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
-
-        float* plotarr = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
-        
-        imagePlotStruct sTime1, sTime2, sFreq1, sFreq2;
-        sTime1.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
-        sTime1.plotBox = maingui.plotBox1;
-        sTime1.dataType = 0;
-        sTime1.colorMap = 4;
-        DWORD hTime1;
-        CreateThread(NULL, 0, imagePlotThread, &sTime1, 0, &hTime1);
-
-        sTime2.data = &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
-        sTime2.plotBox = maingui.plotBox2;
-        sTime2.dataType = 0;
-        sTime2.colorMap = 4;
-        DWORD hTime2;
-        CreateThread(NULL, 0, imagePlotThread, &sTime2, 0, &hTime2);
-
-        sFreq1.complexData = &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + cubeMiddleF];
-        sFreq1.plotBox = maingui.plotBox5;
-        sFreq1.dataType = 1;
-        sFreq1.logMin = logPlotOffset;
-        sFreq1.colorMap = 3;
-        DWORD hFreq1;
-        CreateThread(NULL, 0, imagePlotThread, &sFreq1, 0, &hFreq1);
-
-        sFreq2.complexData = &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + (*activeSetPtr).NgridC + cubeMiddleF];
-        sFreq2.plotBox = maingui.plotBox6;
-        sFreq2.dataType = 1;
-        sFreq2.logMin = logPlotOffset;
-        sFreq2.colorMap = 3;
-        DWORD hFreq2;
-        CreateThread(NULL, 0, imagePlotThread, &sFreq2, 0, &hFreq2);
-        
-
-        for (i = 0; i < (*activeSetPtr).Ntime; i++) {
-            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
-        }
-        plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, plotarr, 
-            (*activeSetPtr).Ntime, 1e9, FALSE, 0);
-
-
-        for (i = 0; i < (*activeSetPtr).Ntime; i++) {
-            plotarr[i] = (float)(*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
-        }
-        plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f, 
-            plotarr, (*activeSetPtr).Ntime, 1e9, FALSE, 0);
-
-
-        if (logPlot) {
-            for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-                plotarr[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
-            }
-            plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
-                &plotarr[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
-        }
-        else {
-            for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-                plotarr[i] = (float)((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
-            }
-            plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
-                &plotarr[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
-        }
-
-        if (logPlot) {
-            for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
-                plotarr[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
-            }
-            plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
-                &plotarr[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
-        }
-        else {
-            for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
-                plotarr[i] = (float)((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
-            }
-            plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
-                &plotarr[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
-        }
-
-        free(plotarr);
-
-        isPlotting = FALSE;
+    if (!isGridAllocated) {
+        return 0;
     }
+
+	isPlotting = TRUE;
+	bool logPlot = TRUE;
+	if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
+		logPlot = FALSE;
+	}
+	size_t simIndex = (*activeSetPtr).plotSim;
+
+
+	float logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+	if ((*activeSetPtr).is3D) {
+		logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+	}
+
+	int i;
+	size_t Nplot = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
+
+	if (simIndex < 0) {
+		simIndex = 0;
+	}
+	if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+		simIndex = 0;
+	}
+
+	size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+	size_t cubeMiddleF = 0 * (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+	float* plotarr = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
+
+	imagePlotStruct sTime1, sTime2, sFreq1, sFreq2;
+	sTime1.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+	sTime1.plotBox = maingui.plotBox1;
+	sTime1.dataType = 0;
+	sTime1.colorMap = 4;
+	DWORD hTime1;
+	HANDLE plotThread1 = CreateThread(NULL, 0, imagePlotThread, &sTime1, 0, &hTime1);
+    
+	sTime2.data = &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+	sTime2.plotBox = maingui.plotBox2;
+	sTime2.dataType = 0;
+	sTime2.colorMap = 4;
+	DWORD hTime2;
+    HANDLE plotThread2 = CreateThread(NULL, 0, imagePlotThread, &sTime2, 0, &hTime2);
+
+	sFreq1.complexData = &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + cubeMiddleF];
+	sFreq1.plotBox = maingui.plotBox5;
+	sFreq1.dataType = 1;
+	sFreq1.logMin = logPlotOffset;
+	sFreq1.colorMap = 3;
+	DWORD hFreq1;
+    HANDLE plotThread3 = CreateThread(NULL, 0, imagePlotThread, &sFreq1, 0, &hFreq1);
+
+	sFreq2.complexData = &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + (*activeSetPtr).NgridC + cubeMiddleF];
+	sFreq2.plotBox = maingui.plotBox6;
+	sFreq2.dataType = 1;
+	sFreq2.logMin = logPlotOffset;
+	sFreq2.colorMap = 3;
+	DWORD hFreq2;
+    HANDLE plotThread4 = CreateThread(NULL, 0, imagePlotThread, &sFreq2, 0, &hFreq2);
+
+
+	for (i = 0; i < (*activeSetPtr).Ntime; i++) {
+		plotarr[i] = (float)(*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
+	}
+	plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, plotarr,
+		(*activeSetPtr).Ntime, 1e9, FALSE, 0);
+
+
+	for (i = 0; i < (*activeSetPtr).Ntime; i++) {
+		plotarr[i] = (float)(*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
+	}
+	plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f,
+		plotarr, (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+
+
+	if (logPlot) {
+		for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
+			plotarr[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
+		}
+		plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
+			&plotarr[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
+	}
+	else {
+		for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
+			plotarr[i] = (float)((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
+		}
+		plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
+			&plotarr[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
+	}
+
+	if (logPlot) {
+		for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
+			plotarr[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
+		}
+		plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
+			&plotarr[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
+	}
+	else {
+		for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
+			plotarr[i] = (float)((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
+		}
+		plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
+			&plotarr[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
+	}
+
+	free(plotarr);
+    WaitForSingleObject(plotThread1, INFINITE);
+    WaitForSingleObject(plotThread2, INFINITE);
+    WaitForSingleObject(plotThread3, INFINITE);
+    WaitForSingleObject(plotThread4, INFINITE);
+    CloseHandle(plotThread1);
+    CloseHandle(plotThread2);
+    CloseHandle(plotThread3);
+    CloseHandle(plotThread4);
+    isPlotting = FALSE;
     return 0;
 }
 
@@ -2121,10 +2135,9 @@ int linearRemap(float* A, int nax, int nay, float* B, int nbx, int nby) {
     return 0;
 }
 
-void setTitleBarDark(HWND hWnd)
-{
+void setTitleBarDark(HWND hWnd){
     BOOL isDarkMode = TRUE;
-    DwmSetWindowAttribute(hWnd, 20, &isDarkMode, sizeof(isDarkMode));
+    DwmSetWindowAttribute(hWnd, 20, &isDarkMode, sizeof(BOOL));
 }
 
 

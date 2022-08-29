@@ -132,11 +132,9 @@ typedef struct imagePlotStruct {
     HWND plotBox = NULL;
     double* data = NULL;
     std::complex<double>* complexData = NULL;
-    int simIndex = 0;
     int colorMap = 4;
     bool logScale = FALSE;
     double logMin;
-    size_t vSlice = 0;
     int dataType;
 } imagePlotStruct;
 
