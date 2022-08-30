@@ -451,7 +451,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.plotBox8 = CreateWindow(WC_STATIC, NULL, 
         WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
         xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, &maingui.pFactory);
+    D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &maingui.pFactory);
 
     maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
@@ -1944,39 +1944,32 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
 }
 
 DWORD WINAPI drawSimPlots(LPVOID lpParam) {
-    if (!isGridAllocated) {
+    if (!isGridAllocated || isPlotting) {
         return 0;
     }
-
+    imagePlotStruct sTime1, sTime2, sFreq1, sFreq2;
 	isPlotting = TRUE;
 	bool logPlot = TRUE;
 	if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
 		logPlot = FALSE;
 	}
 	size_t simIndex = (*activeSetPtr).plotSim;
-
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+    size_t Nplot = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
 
 	float logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
 	if ((*activeSetPtr).is3D) {
 		logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
 	}
 
-	int i;
-	size_t Nplot = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
-
-	if (simIndex < 0) {
-		simIndex = 0;
-	}
-	if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
-		simIndex = 0;
-	}
-
 	size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 	size_t cubeMiddleF = 0 * (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 
-	float* plotarr = (float*)calloc((*activeSetPtr).Ntime * (*activeSetPtr).Nspace, sizeof(float));
-
-	imagePlotStruct sTime1, sTime2, sFreq1, sFreq2;
 	sTime1.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
 	sTime1.plotBox = maingui.plotBox1;
 	sTime1.dataType = 0;
@@ -2008,59 +2001,53 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     HANDLE plotThread4 = CreateThread(NULL, 0, imagePlotThread, &sFreq2, 0, &hFreq2);
 
 
-	for (i = 0; i < (*activeSetPtr).Ntime; i++) {
-		plotarr[i] = (float)(*activeSetPtr).ExtOut[i + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
-	}
-	plotXYDirect2d(maingui.plotBox3, (float)(*activeSetPtr).tStep / 1e-15f, plotarr,
-		(*activeSetPtr).Ntime, 1e9, FALSE, 0);
+    plotStruct sWave1, sWave2, sSpectrum1, sSpectrum2;
+    sWave1.plotBox = maingui.plotBox3;
+    sWave1.dx = (*activeSetPtr).tStep / 1e-15f;
+    sWave1.x0 = -(sWave1.dx * (*activeSetPtr).Ntime) / 2;
+    sWave1.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
+    sWave1.Npts = (*activeSetPtr).Ntime;
+    sWave1.unitY = 1e9;
+    plotXYDirect2d(&sWave1);
 
 
-	for (i = 0; i < (*activeSetPtr).Ntime; i++) {
-		plotarr[i] = (float)(*activeSetPtr).ExtOut[i + (*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
-	}
-	plotXYDirect2d(maingui.plotBox4, (float)(*activeSetPtr).tStep / 1e-15f,
-		plotarr, (*activeSetPtr).Ntime, 1e9, FALSE, 0);
+    sWave2.plotBox = maingui.plotBox4;
+    sWave2.dx = (*activeSetPtr).tStep / 1e-15f;
+    sWave2.x0 = -(sWave2.dx * (*activeSetPtr).Ntime) / 2;
+    sWave2.data = &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
+    sWave2.Npts = (*activeSetPtr).Ntime;
+    sWave2.unitY = 1e9;
+    plotXYDirect2d(&sWave2);
 
+    sSpectrum1.plotBox = maingui.plotBox7;
+    sSpectrum1.dx = (float)(*activeSetPtr).fStep / 1e12f;
+    sSpectrum1.data = &(*activeSetPtr).totalSpectrum[simIndex * 3 * (*activeSetPtr).Nfreq];
+    sSpectrum1.Npts = (*activeSetPtr).Nfreq;
+    sSpectrum1.logScale = logPlot;
+    sSpectrum1.forceYmin = logPlot;
+    sSpectrum1.forcedYmin = -4.0;
+    plotXYDirect2d(&sSpectrum1);
 
-	if (logPlot) {
-		for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-			plotarr[i] = (float)log10((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
-		}
-		plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
-			&plotarr[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
-	}
-	else {
-		for (i = 0; i < ((*activeSetPtr).Ntime / 2); i++) {
-			plotarr[i] = (float)((*activeSetPtr).totalSpectrum[i + simIndex * 3 * (*activeSetPtr).Nfreq]);
-		}
-		plotXYDirect2d(maingui.plotBox7, (float)(*activeSetPtr).fStep / 1e12f,
-			&plotarr[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
-	}
+    sSpectrum2.plotBox = maingui.plotBox8;
+    sSpectrum2.dx = (float)(*activeSetPtr).fStep / 1e12f;
+    sSpectrum2.data = &(*activeSetPtr).totalSpectrum[(1 + simIndex * 3) * (*activeSetPtr).Nfreq];
+    sSpectrum2.Npts = (*activeSetPtr).Nfreq;
+    sSpectrum2.logScale = logPlot;
+    sSpectrum2.forceYmin = logPlot;
+    sSpectrum2.forcedYmin = -4.0;
+    DWORD hSpectrum2;
+    plotXYDirect2d(&sSpectrum2);
 
-	if (logPlot) {
-		for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
-			plotarr[i] = (float)log10((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
-		}
-		plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
-			&plotarr[0], (*activeSetPtr).Ntime / 2, 1, TRUE, -4);
-	}
-	else {
-		for (i = 0; i < (*activeSetPtr).Ntime / 2; i++) {
-			plotarr[i] = (float)((*activeSetPtr).totalSpectrum[i + (1 + simIndex * 3) * (*activeSetPtr).Nfreq]);
-		}
-		plotXYDirect2d(maingui.plotBox8, (float)(*activeSetPtr).fStep / 1e12f,
-			&plotarr[0], (*activeSetPtr).Ntime / 2, 1, FALSE, 0);
-	}
-
-	free(plotarr);
     WaitForSingleObject(plotThread1, INFINITE);
     WaitForSingleObject(plotThread2, INFINITE);
     WaitForSingleObject(plotThread3, INFINITE);
     WaitForSingleObject(plotThread4, INFINITE);
+
     CloseHandle(plotThread1);
     CloseHandle(plotThread2);
     CloseHandle(plotThread3);
     CloseHandle(plotThread4);
+
     isPlotting = FALSE;
     return 0;
 }
@@ -2141,7 +2128,9 @@ void setTitleBarDark(HWND hWnd){
 }
 
 
-void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY) {
+DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
+    plotStruct* s = (plotStruct*)inputStruct;
+    if ((*s).Npts == 0) return 1;
     size_t i;
     D2D1_POINT_2F p1{};
     D2D1_POINT_2F p2{};
@@ -2156,16 +2145,25 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     //get limits of Y
     float maxY = 0;
     float minY = 0;
-    for (i = 0; i < Npts; i++) {
-        maxY = max(Y[i], maxY);
-        minY = min(Y[i], minY);
+    if ((*s).logScale) {
+        for (i = 0; i < (*s).Npts; i++) {
+            maxY = max((float)log10((*s).data[i]), maxY);
+            minY = min((float)log10((*s).data[i]), minY);
+        }
     }
+    else {
+        for (i = 0; i < (*s).Npts; i++) {
+            maxY = max((float)(*s).data[i], maxY);
+            minY = min((float)(*s).data[i], minY);
+        }
+    }
+
     if (minY == maxY) {
         minY = -1;
         maxY = 1;
     }
-    if (forceminY) {
-        minY = forcedminY;
+    if ((*s).forceYmin) {
+        minY = (*s).forcedYmin;
     }
 
     //Draw the labels
@@ -2173,12 +2171,12 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     int NxTicks = 3;
     wchar_t messageBuffer[MAX_LOADSTRING];
     double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
-    double xTicks1[3] = { 0.25 * dX * Npts, 0.5 * dX * Npts, 0.75 * dX * Npts };
+    double xTicks1[3] = { 0.25 * (*s).dx*(*s).Npts + (*s).x0, 0.5 * (*s).dx * (*s).Npts + (*s).x0, 0.75 * (*s).dx * (*s).Npts + (*s).x0 };
     HDC hdc = GetWindowDC(maingui.mainWindow);
     SetTextColor(hdc, uiGrey);
     SetBkColor(hdc, uiDarkGrey);
     RECT windowRect;
-    GetWindowRect(targetWindow, &windowRect);
+    GetWindowRect((*s).plotBox, &windowRect);
 
     int posX = windowRect.left;
     int posY = windowRect.top;
@@ -2191,15 +2189,15 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     wchar_t blankOut[] = L"          ";
     for (i = 0; i < NyTicks; i++) {
         memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        if (abs(yTicks1[i] / unitY) > 10.0 || abs(yTicks1[i] / unitY) < 0.01) {
+        if (abs(yTicks1[i] / (*s).unitY) > 10.0 || abs(yTicks1[i] / (*s).unitY) < 0.01) {
             swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("%1.1e "), yTicks1[i] / unitY);
+                _T("%1.1e "), yTicks1[i] / (*s).unitY);
             TextOutW(hdc, posX - 59, posY + (int)(i * 0.96 * pixelsTall / 2), blankOut, (int)_tcslen(blankOut));
             TextOutW(hdc, posX - 59, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
         }
         else {
             swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("%1.4f "), yTicks1[i] / unitY);
+                _T("%1.4f "), yTicks1[i] / (*s).unitY);
             TextOutW(hdc, posX - 59, posY + (int)(i * 0.96 * pixelsTall / 2), blankOut, (int)_tcslen(blankOut));
             TextOutW(hdc, posX - 54, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
         }
@@ -2209,25 +2207,25 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     for (i = 0; i < 3; i++) {
         memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
         swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("%3.0f "), xTicks1[i]);
+            _T("%i"), (int)round(xTicks1[i]));
         TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i)+1) - 12), posY + pixelsTall, blankOut, (int)_tcslen(blankOut));
         TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i)+1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));
     }
     ReleaseDC(maingui.mainWindow, hdc);
 
     RECT targetRectangle;
-    GetClientRect(targetWindow, &targetRectangle);
+    GetClientRect((*s).plotBox, &targetRectangle);
     D2D1_SIZE_U size = D2D1::SizeU(targetRectangle.right, targetRectangle.bottom);
 
     HRESULT hr = maingui.pFactory->CreateHwndRenderTarget(
         D2D1::RenderTargetProperties(),
-        D2D1::HwndRenderTargetProperties(targetWindow, size),
+        D2D1::HwndRenderTargetProperties((*s).plotBox, size),
         &pRenderTarget);
     if (pRenderTarget != NULL) {
         sizeF = pRenderTarget->GetSize();
     }
     
-    float scaleX = sizeF.width / (Npts * (float)dX);
+    float scaleX = sizeF.width / ((*s).Npts * (float)(*s).dx);
     float scaleY = sizeF.height / ((float)(maxY - minY));
 
     if (SUCCEEDED(hr))
@@ -2238,15 +2236,22 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
         if (SUCCEEDED(hr))
         {
             PAINTSTRUCT ps;
-            BeginPaint(targetWindow, &ps);
+            BeginPaint((*s).plotBox, &ps);
             pRenderTarget->BeginDraw();
 
             pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-            for (i = 0; i < Npts - 1; i++) {
-                p1.x = scaleX * (i * (float)dX);
-                p1.y = sizeF.height - scaleY * ((float)Y[i] - (float)minY);
-                p2.x = scaleX * ((i + 1) * (float)dX);
-                p2.y = sizeF.height - scaleY * ((float)Y[i + 1] - (float)minY);
+            for (i = 0; i < (*s).Npts - 1; i++) {
+                p1.x = scaleX * (i * (float)(*s).dx);
+                p2.x = scaleX * ((i + 1) * (float)(*s).dx);
+                if ((*s).logScale) {
+                    p1.y = sizeF.height - scaleY * ((float)log10((*s).data[i]) - (float)minY);
+                    p2.y = sizeF.height - scaleY * ((float)log10((*s).data[i + 1]) - (float)minY);
+                }
+                else {
+                    p1.y = sizeF.height - scaleY * ((float)(*s).data[i] - (float)minY);
+                    p2.y = sizeF.height - scaleY * ((float)(*s).data[i + 1] - (float)minY);
+                }
+
                 pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
                 marker.point = p1;
                 marker.radiusX = markerSize;
@@ -2255,7 +2260,7 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
             }
 
             hr = pRenderTarget->EndDraw();
-            EndPaint(targetWindow, &ps);
+            EndPaint((*s).plotBox, &ps);
         }
         pBrush->Release();
         pRenderTarget->Release();
@@ -2263,7 +2268,7 @@ void plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float un
     }
 
     
-
+    return 0;
 }
 
 DWORD WINAPI fittingThread(LPVOID lpParam) {

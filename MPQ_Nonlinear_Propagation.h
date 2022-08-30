@@ -138,6 +138,21 @@ typedef struct imagePlotStruct {
     int dataType;
 } imagePlotStruct;
 
+typedef struct plotStruct {
+    HWND plotBox = NULL;
+    double* data = NULL;
+    std::complex<double>* complexData = NULL;
+    bool logScale = FALSE;
+    double logMin = 0;
+    int dataType = 0;
+    double dx = 1.0;
+    float x0 = 0.0;
+    size_t Npts = 0;
+    float unitY = 1.0;
+    bool forceYmin = FALSE;
+    float forcedYmin = 0.0;
+} plotStruct;
+
 
 DWORD WINAPI        mainSimThread(LPVOID lpParam);
 DWORD WINAPI        createRunFile(LPVOID lpParam);
@@ -157,7 +172,7 @@ template<typename... Args> void printToConsole(HWND console, const wchar_t* form
 int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelText, int xOffset, int yOffset);
 int                 openDialogBoxAndLoad(HWND hWnd);
 void                setTitleBarDark(HWND hWnd);
-void                plotXYDirect2d(HWND targetWindow, float dX, float* Y, size_t Npts, float unitY, bool forceminY, float forcedminY);
+DWORD WINAPI        plotXYDirect2d(LPVOID inputStruct);
 int                 setInterfaceValuesToActiveValues();
 DWORD WINAPI        fittingThread(LPVOID lpParam);
 int                 insertLineBreaksAfterSemicolons(char* cString, size_t N);

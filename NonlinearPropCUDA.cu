@@ -3055,14 +3055,13 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --nodes=1"); unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --ntasks-per-node=1"); unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH --time=24:00:00"); unixNewLine(textfile);
+	fprintf(textfile, "#SBATCH --time=01:00:00"); unixNewLine(textfile);
 	fprintf(textfile, "module purge"); unixNewLine(textfile);
-	fprintf(textfile, "module load cuda/11.2"); unixNewLine(textfile);
-	fprintf(textfile, "module load mkl/2022.0"); unixNewLine(textfile);
-	fprintf(textfile, "module load gcc/9"); unixNewLine(textfile);
+	fprintf(textfile, "module load cuda/11.6"); unixNewLine(textfile);
+	fprintf(textfile, "module load mkl/2022.1"); unixNewLine(textfile);
 	fprintf(textfile, "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH"); unixNewLine(textfile);
 	if (gpuType == 0 || gpuType == 1) {
-		fprintf(textfile, "srun ./nnp %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
+		fprintf(textfile, "srun ./lwe %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
 	}
 	if (gpuType == 2) {
 		fprintf(textfile, "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}"); unixNewLine(textfile);
