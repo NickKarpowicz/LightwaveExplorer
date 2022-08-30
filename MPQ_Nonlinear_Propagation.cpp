@@ -1797,71 +1797,138 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
         if (data[i] < imin) imin = data[i];
     }
 
+    float oneOver255 = 0.00392156862745;
+    unsigned char colorMap[256][3] = { 0 };
+    for (i = 0; i < 256; i++) {
+        switch (cm) {
+        case 0:
+            
+            colorMap[i][0] = i;
+            colorMap[i][1] = i;
+            colorMap[i][2] = i;
+            break;
+        case 1:
+            nval = i * oneOver255;
+            colorMap[i][0] = (unsigned char)(255 * cos(PI * nval / 2.));
+            colorMap[i][1] = (unsigned char)(255 * cos(PI * (nval - 0.5)));
+            colorMap[i][2] = (unsigned char)(255 * sin(PI * nval / 2.));
+            break;
+        case 2:
+            nval = i * oneOver255;
+            colorMap[i][0] = (unsigned char)(255 * cos(PI * nval / 2.));
+            colorMap[i][1] = (unsigned char)(255 * cos(PI * (nval - 0.5)));
+            colorMap[i][2] = (unsigned char)(255 * sin(PI * nval / 2.));
+            if (nval < 0.02) {
+                colorMap[i][0] = 255;
+                colorMap[i][1] = 128;
+                colorMap[i][2] = 128;
+            }
+            if (nval < 0.01) {
+                colorMap[i][0] = 255;
+                colorMap[i][1] = 255;
+                colorMap[i][2] = 255;
+            }
+            break;
+        case 3:
+            nval = 255 * (i*oneOver255);
+            colorMap[i][0] = (unsigned char)(255 *
+                (0.998 * exp(-pow(7.7469e-03 * (nval - 160), 6))
+                    + 0.22 * exp(-pow(0.016818 * (nval - 305), 4))));
+            colorMap[i][1] = (unsigned char)(255 *
+                (0.022 * exp(-pow(0.042045 * (nval - 25), 4))
+                    + 0.11 * exp(-pow(0.015289 * (nval - 120), 4))
+                    + 1 * exp(-pow(4.6889e-03 * (nval - 400), 6))));
+            colorMap[i][2] = (unsigned char)(255 *
+                (exp(-pow(3.1101e-03 * (nval - 415), 10))));
+            break;
+        case 4:
+            nval = i * oneOver255;
+            colorMap[i][0] = (unsigned char)(255 * (1.00 * exp(-pow(4 * (nval - 0.05), 2))
+                + 1 * exp(-pow(4 * (nval - 1.05), 2))));
+            colorMap[i][1] = (255 * (1.02 * exp(-pow(3.5 * (nval - 1.05), 2))));
+            colorMap[i][2] = (255 * (0.8 * exp(-pow(4 * (nval - 0.05), 2))));
+        }
+
+
+    }
+
+    if (cm == 4) {
+        imax = max(imax, -imin);
+        imin = min(imin, -imax);
+    }
+    unsigned char currentValue;
     if (imin != imax) {
-        if (cm == 0) {
-            for (i = 0; i < Ntot; i++) {
-                nval = (data[i] - imin) / (imax - imin);
-                pixels[stride * i + 0] = (unsigned char)(255 * nval); //blue channel
-                pixels[stride * i + 1] = (unsigned char)(255 * nval); //green channel
-                pixels[stride * i + 2] = (unsigned char)(255 * nval); //red channel
-            }
+        for (i = 0; i < Ntot; i++) {
+            currentValue = (unsigned char)(255 * (data[i] - imin) / (imax - imin));
+            pixels[stride * i + 0] = colorMap[currentValue][0];
+            pixels[stride * i + 1] = colorMap[currentValue][1];
+            pixels[stride * i + 2] = colorMap[currentValue][2];
         }
-        if (cm == 1) {
-            for (i = 0; i < Ntot; i++) {
-                nval = (data[i] - imin) / (imax - imin);
-                pixels[stride * i + 0] = (unsigned char)(255 * cos(PI * nval / 2.)); //blue channel
-                pixels[stride * i + 1] = (unsigned char)(255 * cos(PI * (nval - 0.5))); //green channel
-                pixels[stride * i + 2] = (unsigned char)(255 * sin(PI * nval / 2.)); //red channel
-            }
-        }
-        if (cm == 2) {
-            for (i = 0; i < Ntot; i++) {
-                nval = (data[i] - imin) / (imax - imin);
-                pixels[stride * i + 0] = (unsigned char)(255 * cos(PI * nval / 2.)); //blue channel
-                pixels[stride * i + 1] = (unsigned char)(255 * cos(PI * (nval - 0.5))); //green channel
-                pixels[stride * i + 2] = (unsigned char)(255 * sin(PI * nval / 2.)); //red channel
-                if (nval < 0.02) {
-                    pixels[stride * i + 0] = 255;
-                    pixels[stride * i + 1] = 128;
-                    pixels[stride * i + 2] = 128;
-                }
-                if (nval < 0.01) {
-                    pixels[stride * i + 0] = 255;
-                    pixels[stride * i + 1] = 255;
-                    pixels[stride * i + 2] = 255;
-                }
-            }
-        }
-        if (cm == 3) {
-            for (i = 0; i < Ntot; i++) {
-                nval = 255*(data[i] - imin) / (imax - imin);
-                
-                pixels[stride * i + 0] = (unsigned char)(255 *
-                    (0.998*exp(-pow(7.7469e-03 * (nval - 160),6))
-                    + 0.22*exp(-pow(0.016818 * (nval - 305), 4)))); //blue channel
-                
-                
-                pixels[stride * i + 1] = (unsigned char)(255 *
-                    (0.022 * exp(-pow(0.042045*(nval - 25), 4))
-                    + 0.11 * exp(-pow(0.015289*(nval - 120), 4))
-                    + 1 * exp(-pow(4.6889e-03*(nval - 400), 6)))); //green channel
-                pixels[stride * i + 2] = (unsigned char)(255 *
-                    (exp(-pow(3.1101e-03*(nval - 415), 10)))); //red channel
-                    
-            }
-        }
-        if (cm == 4) {
-            imax = max(imax, -imin);
-            imin = min(imin, -imax);
-            for (i = 0; i < Ntot; i++) {
-                
-                nval = (data[i] - imin) / (imax - imin);
-                pixels[stride * i + 0] = (unsigned char)(255 * (1.00 * exp(-pow(4*(nval-0.05),2))
-                    + 1 * exp(-pow(4 * (nval - 1.05), 2)))); //blue channel
-                pixels[stride * i + 1] = (unsigned char)(255 * (1.02 * exp(-pow(3.5*(nval - 1.05), 2)))); //green channel
-                pixels[stride * i + 2] = (unsigned char)(255 * (0.8 * exp(-pow(4*(nval - 0.05), 2)))); //red channel
-            }
-        }
+        
+        //if (cm == 0) {
+        //    for (i = 0; i < Ntot; i++) {
+        //        nval = (data[i] - imin) / (imax - imin);
+        //        pixels[stride * i + 0] = (unsigned char)(255 * nval); //blue channel
+        //        pixels[stride * i + 1] = (unsigned char)(255 * nval); //green channel
+        //        pixels[stride * i + 2] = (unsigned char)(255 * nval); //red channel
+        //    }
+        //}
+        //if (cm == 1) {
+        //    for (i = 0; i < Ntot; i++) {
+        //        nval = (data[i] - imin) / (imax - imin);
+        //        pixels[stride * i + 0] = (unsigned char)(255 * cos(PI * nval / 2.)); //blue channel
+        //        pixels[stride * i + 1] = (unsigned char)(255 * cos(PI * (nval - 0.5))); //green channel
+        //        pixels[stride * i + 2] = (unsigned char)(255 * sin(PI * nval / 2.)); //red channel
+        //    }
+        //}
+        //if (cm == 2) {
+        //    for (i = 0; i < Ntot; i++) {
+        //        nval = (data[i] - imin) / (imax - imin);
+        //        pixels[stride * i + 0] = (unsigned char)(255 * cos(PI * nval / 2.)); //blue channel
+        //        pixels[stride * i + 1] = (unsigned char)(255 * cos(PI * (nval - 0.5))); //green channel
+        //        pixels[stride * i + 2] = (unsigned char)(255 * sin(PI * nval / 2.)); //red channel
+        //        if (nval < 0.02) {
+        //            pixels[stride * i + 0] = 255;
+        //            pixels[stride * i + 1] = 128;
+        //            pixels[stride * i + 2] = 128;
+        //        }
+        //        if (nval < 0.01) {
+        //            pixels[stride * i + 0] = 255;
+        //            pixels[stride * i + 1] = 255;
+        //            pixels[stride * i + 2] = 255;
+        //        }
+        //    }
+        //}
+        //if (cm == 3) {
+        //    for (i = 0; i < Ntot; i++) {
+        //        nval = 255*(data[i] - imin) / (imax - imin);
+        //        
+        //        pixels[stride * i + 0] = (unsigned char)(255 *
+        //            (0.998*exp(-pow(7.7469e-03 * (nval - 160),6))
+        //            + 0.22*exp(-pow(0.016818 * (nval - 305), 4)))); //blue channel
+        //        
+        //        
+        //        pixels[stride * i + 1] = (unsigned char)(255 *
+        //            (0.022 * exp(-pow(0.042045*(nval - 25), 4))
+        //            + 0.11 * exp(-pow(0.015289*(nval - 120), 4))
+        //            + 1 * exp(-pow(4.6889e-03*(nval - 400), 6)))); //green channel
+        //        pixels[stride * i + 2] = (unsigned char)(255 *
+        //            (exp(-pow(3.1101e-03*(nval - 415), 10)))); //red channel
+        //            
+        //    }
+        //}
+        //if (cm == 4) {
+        //    imax = max(imax, -imin);
+        //    imin = min(imin, -imax);
+        //    for (i = 0; i < Ntot; i++) {
+        //        
+        //        nval = (data[i] - imin) / (imax - imin);
+        //        pixels[stride * i + 0] = (unsigned char)(255 * (1.00 * exp(-pow(4*(nval-0.05),2))
+        //            + 1 * exp(-pow(4 * (nval - 1.05), 2)))); //blue channel
+        //        pixels[stride * i + 1] = (unsigned char)(255 * (1.02 * exp(-pow(3.5*(nval - 1.05), 2)))); //green channel
+        //        pixels[stride * i + 2] = (unsigned char)(255 * (0.8 * exp(-pow(4*(nval - 0.05), 2)))); //red channel
+        //    }
+        //}
     }
     BITMAPINFOHEADER bmih{};
 
