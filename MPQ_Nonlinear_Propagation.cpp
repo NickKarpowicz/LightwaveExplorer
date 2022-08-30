@@ -1797,56 +1797,56 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
         if (data[i] < imin) imin = data[i];
     }
 
-    float oneOver255 = 0.00392156862745;
-    unsigned char colorMap[256][3] = { 0 };
-    for (i = 0; i < 256; i++) {
+    float oneOver255 = 1.0f/255;
+    unsigned char colorMap[256][3];
+    for (int j = 0; j < 256; j++) {
         switch (cm) {
         case 0:
             
-            colorMap[i][0] = i;
-            colorMap[i][1] = i;
-            colorMap[i][2] = i;
+            colorMap[j][0] = j;
+            colorMap[j][1] = j;
+            colorMap[j][2] = j;
             break;
         case 1:
-            nval = i * oneOver255;
-            colorMap[i][0] = (unsigned char)(255 * cos(PI * nval / 2.));
-            colorMap[i][1] = (unsigned char)(255 * cos(PI * (nval - 0.5)));
-            colorMap[i][2] = (unsigned char)(255 * sin(PI * nval / 2.));
+            nval = j * oneOver255;
+            colorMap[j][0] = (unsigned char)(255 * cos(PI * nval / 2.));
+            colorMap[j][1] = (unsigned char)(255 * cos(PI * (nval - 0.5)));
+            colorMap[j][2] = (unsigned char)(255 * sin(PI * nval / 2.));
             break;
         case 2:
-            nval = i * oneOver255;
-            colorMap[i][0] = (unsigned char)(255 * cos(PI * nval / 2.));
-            colorMap[i][1] = (unsigned char)(255 * cos(PI * (nval - 0.5)));
-            colorMap[i][2] = (unsigned char)(255 * sin(PI * nval / 2.));
+            nval = j * oneOver255;
+            colorMap[j][0] = (unsigned char)(255 * cos(PI * nval / 2.));
+            colorMap[j][1] = (unsigned char)(255 * cos(PI * (nval - 0.5)));
+            colorMap[j][2] = (unsigned char)(255 * sin(PI * nval / 2.));
             if (nval < 0.02) {
-                colorMap[i][0] = 255;
-                colorMap[i][1] = 128;
-                colorMap[i][2] = 128;
+                colorMap[j][0] = 255;
+                colorMap[j][1] = 128;
+                colorMap[j][2] = 128;
             }
             if (nval < 0.01) {
-                colorMap[i][0] = 255;
-                colorMap[i][1] = 255;
-                colorMap[i][2] = 255;
+                colorMap[j][0] = 255;
+                colorMap[j][1] = 255;
+                colorMap[j][2] = 255;
             }
             break;
         case 3:
-            nval = 255 * (i*oneOver255);
-            colorMap[i][0] = (unsigned char)(255 *
+            nval = 255 * (j*oneOver255);
+            colorMap[j][0] = (unsigned char)(255 *
                 (0.998 * exp(-pow(7.7469e-03 * (nval - 160), 6))
                     + 0.22 * exp(-pow(0.016818 * (nval - 305), 4))));
-            colorMap[i][1] = (unsigned char)(255 *
+            colorMap[j][1] = (unsigned char)(255 *
                 (0.022 * exp(-pow(0.042045 * (nval - 25), 4))
                     + 0.11 * exp(-pow(0.015289 * (nval - 120), 4))
                     + 1 * exp(-pow(4.6889e-03 * (nval - 400), 6))));
-            colorMap[i][2] = (unsigned char)(255 *
+            colorMap[j][2] = (unsigned char)(255 *
                 (exp(-pow(3.1101e-03 * (nval - 415), 10))));
             break;
         case 4:
-            nval = i * oneOver255;
-            colorMap[i][0] = (unsigned char)(255 * (1.00 * exp(-pow(4 * (nval - 0.05), 2))
-                + 1 * exp(-pow(4 * (nval - 1.05), 2))));
-            colorMap[i][1] = (255 * (1.02 * exp(-pow(3.5 * (nval - 1.05), 2))));
-            colorMap[i][2] = (255 * (0.8 * exp(-pow(4 * (nval - 0.05), 2))));
+            nval = j * oneOver255;
+            colorMap[j][0] = (unsigned char)(255. * (1.0 * exp(-pow(4.5 * (nval - 0.05), 2))
+                + 1.00 * exp(-pow(3.5 * (nval - 1.05), 2))));
+            colorMap[j][1] = (unsigned char)(255. * (0.95 * exp(-pow(3.5 * (nval - 1.05), 2))));
+            colorMap[j][2] = (unsigned char)(255. * (0.9 * exp(-pow(4.5 * (nval - 0.05), 2))+ 0.2 * exp(-pow(3.5 * (nval - 1.05), 2))));
         }
 
 
@@ -1865,70 +1865,6 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
             pixels[stride * i + 2] = colorMap[currentValue][2];
         }
         
-        //if (cm == 0) {
-        //    for (i = 0; i < Ntot; i++) {
-        //        nval = (data[i] - imin) / (imax - imin);
-        //        pixels[stride * i + 0] = (unsigned char)(255 * nval); //blue channel
-        //        pixels[stride * i + 1] = (unsigned char)(255 * nval); //green channel
-        //        pixels[stride * i + 2] = (unsigned char)(255 * nval); //red channel
-        //    }
-        //}
-        //if (cm == 1) {
-        //    for (i = 0; i < Ntot; i++) {
-        //        nval = (data[i] - imin) / (imax - imin);
-        //        pixels[stride * i + 0] = (unsigned char)(255 * cos(PI * nval / 2.)); //blue channel
-        //        pixels[stride * i + 1] = (unsigned char)(255 * cos(PI * (nval - 0.5))); //green channel
-        //        pixels[stride * i + 2] = (unsigned char)(255 * sin(PI * nval / 2.)); //red channel
-        //    }
-        //}
-        //if (cm == 2) {
-        //    for (i = 0; i < Ntot; i++) {
-        //        nval = (data[i] - imin) / (imax - imin);
-        //        pixels[stride * i + 0] = (unsigned char)(255 * cos(PI * nval / 2.)); //blue channel
-        //        pixels[stride * i + 1] = (unsigned char)(255 * cos(PI * (nval - 0.5))); //green channel
-        //        pixels[stride * i + 2] = (unsigned char)(255 * sin(PI * nval / 2.)); //red channel
-        //        if (nval < 0.02) {
-        //            pixels[stride * i + 0] = 255;
-        //            pixels[stride * i + 1] = 128;
-        //            pixels[stride * i + 2] = 128;
-        //        }
-        //        if (nval < 0.01) {
-        //            pixels[stride * i + 0] = 255;
-        //            pixels[stride * i + 1] = 255;
-        //            pixels[stride * i + 2] = 255;
-        //        }
-        //    }
-        //}
-        //if (cm == 3) {
-        //    for (i = 0; i < Ntot; i++) {
-        //        nval = 255*(data[i] - imin) / (imax - imin);
-        //        
-        //        pixels[stride * i + 0] = (unsigned char)(255 *
-        //            (0.998*exp(-pow(7.7469e-03 * (nval - 160),6))
-        //            + 0.22*exp(-pow(0.016818 * (nval - 305), 4)))); //blue channel
-        //        
-        //        
-        //        pixels[stride * i + 1] = (unsigned char)(255 *
-        //            (0.022 * exp(-pow(0.042045*(nval - 25), 4))
-        //            + 0.11 * exp(-pow(0.015289*(nval - 120), 4))
-        //            + 1 * exp(-pow(4.6889e-03*(nval - 400), 6)))); //green channel
-        //        pixels[stride * i + 2] = (unsigned char)(255 *
-        //            (exp(-pow(3.1101e-03*(nval - 415), 10)))); //red channel
-        //            
-        //    }
-        //}
-        //if (cm == 4) {
-        //    imax = max(imax, -imin);
-        //    imin = min(imin, -imax);
-        //    for (i = 0; i < Ntot; i++) {
-        //        
-        //        nval = (data[i] - imin) / (imax - imin);
-        //        pixels[stride * i + 0] = (unsigned char)(255 * (1.00 * exp(-pow(4*(nval-0.05),2))
-        //            + 1 * exp(-pow(4 * (nval - 1.05), 2)))); //blue channel
-        //        pixels[stride * i + 1] = (unsigned char)(255 * (1.02 * exp(-pow(3.5*(nval - 1.05), 2)))); //green channel
-        //        pixels[stride * i + 2] = (unsigned char)(255 * (0.8 * exp(-pow(4*(nval - 0.05), 2)))); //red channel
-        //    }
-        //}
     }
     BITMAPINFOHEADER bmih{};
 
@@ -2015,6 +1951,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         return 0;
     }
     imagePlotStruct sTime1, sTime2, sFreq1, sFreq2;
+    HANDLE plotThreads[4];
+    DWORD plotHandles[4];
 	isPlotting = TRUE;
 	bool logPlot = TRUE;
 	if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
@@ -2027,7 +1965,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
     }
-    size_t Nplot = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace;
+
 
 	float logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
 	if ((*activeSetPtr).is3D) {
@@ -2035,53 +1973,54 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 	}
 
 	size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
-	size_t cubeMiddleF = 0 * (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 
-	sTime1.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+
+	sTime1.data = 
+        &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
 	sTime1.plotBox = maingui.plotBox1;
 	sTime1.dataType = 0;
 	sTime1.colorMap = 4;
-	DWORD hTime1;
-	HANDLE plotThread1 = CreateThread(NULL, 0, imagePlotThread, &sTime1, 0, &hTime1);
+	plotThreads[0] = CreateThread(NULL, 0, imagePlotThread, &sTime1, 0, &plotHandles[0]);
     
-	sTime2.data = &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+	sTime2.data = 
+        &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
 	sTime2.plotBox = maingui.plotBox2;
 	sTime2.dataType = 0;
 	sTime2.colorMap = 4;
-	DWORD hTime2;
-    HANDLE plotThread2 = CreateThread(NULL, 0, imagePlotThread, &sTime2, 0, &hTime2);
+    plotThreads[1] = CreateThread(NULL, 0, imagePlotThread, &sTime2, 0, &plotHandles[1]);
 
-	sFreq1.complexData = &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + cubeMiddleF];
+	sFreq1.complexData = 
+        &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2];
 	sFreq1.plotBox = maingui.plotBox5;
 	sFreq1.dataType = 1;
 	sFreq1.logMin = logPlotOffset;
 	sFreq1.colorMap = 3;
-	DWORD hFreq1;
-    HANDLE plotThread3 = CreateThread(NULL, 0, imagePlotThread, &sFreq1, 0, &hFreq1);
+    plotThreads[2] = CreateThread(NULL, 0, imagePlotThread, &sFreq1, 0, &plotHandles[2]);
 
-	sFreq2.complexData = &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + (*activeSetPtr).NgridC + cubeMiddleF];
+	sFreq2.complexData = 
+        &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + (*activeSetPtr).NgridC];
 	sFreq2.plotBox = maingui.plotBox6;
 	sFreq2.dataType = 1;
 	sFreq2.logMin = logPlotOffset;
 	sFreq2.colorMap = 3;
-	DWORD hFreq2;
-    HANDLE plotThread4 = CreateThread(NULL, 0, imagePlotThread, &sFreq2, 0, &hFreq2);
+    plotThreads[3] = CreateThread(NULL, 0, imagePlotThread, &sFreq2, 0, &plotHandles[3]);
 
 
     plotStruct sWave1, sWave2, sSpectrum1, sSpectrum2;
     sWave1.plotBox = maingui.plotBox3;
     sWave1.dx = (*activeSetPtr).tStep / 1e-15f;
-    sWave1.x0 = -(sWave1.dx * (*activeSetPtr).Ntime) / 2;
-    sWave1.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
+    sWave1.x0 = -(float)(sWave1.dx * (*activeSetPtr).Ntime) / 2;
+    sWave1.data = 
+        &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + (*activeSetPtr).Ntime * (*activeSetPtr).Nspace / 2];
     sWave1.Npts = (*activeSetPtr).Ntime;
     sWave1.unitY = 1e9;
     plotXYDirect2d(&sWave1);
 
-
     sWave2.plotBox = maingui.plotBox4;
     sWave2.dx = (*activeSetPtr).tStep / 1e-15f;
-    sWave2.x0 = -(sWave2.dx * (*activeSetPtr).Ntime) / 2;
-    sWave2.data = &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + Nplot / 2];
+    sWave2.x0 = -(float)(sWave2.dx * (*activeSetPtr).Ntime) / 2;
+    sWave2.data = 
+        &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + (*activeSetPtr).Ntime * (*activeSetPtr).Nspace / 2];
     sWave2.Npts = (*activeSetPtr).Ntime;
     sWave2.unitY = 1e9;
     plotXYDirect2d(&sWave2);
@@ -2102,18 +2041,12 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum2.logScale = logPlot;
     sSpectrum2.forceYmin = logPlot;
     sSpectrum2.forcedYmin = -4.0;
-    DWORD hSpectrum2;
     plotXYDirect2d(&sSpectrum2);
 
-    WaitForSingleObject(plotThread1, INFINITE);
-    WaitForSingleObject(plotThread2, INFINITE);
-    WaitForSingleObject(plotThread3, INFINITE);
-    WaitForSingleObject(plotThread4, INFINITE);
-
-    CloseHandle(plotThread1);
-    CloseHandle(plotThread2);
-    CloseHandle(plotThread3);
-    CloseHandle(plotThread4);
+    WaitForMultipleObjects(4, plotThreads, TRUE, INFINITE);
+    for (unsigned int i = 0; i < 4; i++) {
+        if (plotThreads[i] != 0)CloseHandle(plotThreads[i]);
+    }
 
     isPlotting = FALSE;
     return 0;
