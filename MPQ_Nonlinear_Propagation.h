@@ -151,6 +151,7 @@ typedef struct plotStruct {
     float unitY = 1.0;
     bool forceYmin = FALSE;
     float forcedYmin = 0.0;
+    D2D1_COLOR_F color = D2D1::ColorF(1, 1, 1, 1);
 } plotStruct;
 
 
@@ -163,7 +164,7 @@ double              getDoubleFromHWND(HWND inputA);
 int                 appendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize);
 int                 getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox);
 int                 getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox);
-int                 drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm);
+int                 drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm);
 DWORD WINAPI        drawSimPlots(LPVOID lpParam);
 int                 linearRemap(float* A, int nax, int nay, float* B, int nbx, int nby);
 int                 readParametersFromInterface();

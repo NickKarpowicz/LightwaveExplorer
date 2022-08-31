@@ -240,7 +240,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     {
         return FALSE;
     }
-
+    ShowWindow(maingui.plotBox1, nCmdShow);
+    ShowWindow(maingui.plotBox2, nCmdShow);
+    ShowWindow(maingui.plotBox3, nCmdShow);
+    ShowWindow(maingui.plotBox4, nCmdShow);
+    ShowWindow(maingui.plotBox5, nCmdShow);
+    ShowWindow(maingui.plotBox6, nCmdShow);
+    ShowWindow(maingui.plotBox7, nCmdShow);
+    ShowWindow(maingui.plotBox8, nCmdShow);
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_MPQNONLINEARPROPAGATION));
 
     MSG msg;
@@ -892,14 +899,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case ID_BTNLOAD:
             if (openDialogBoxAndLoad(hWnd)) {
-                plotSim = (int)getDoubleFromHWND(maingui.tbWhichSimToPlot);
-                plotSim = min(plotSim, (int)(*activeSetPtr).Nsims);
-                plotSim--;
-                plotSim = max(plotSim, 0);
-
-                (*activeSetPtr).plotSim = plotSim;
-                plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+                (*activeSetPtr).plotSim = 0;
+                
                 setInterfaceValuesToActiveValues();
+                //plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+                //Sleep(2000);
+                if (isGridAllocated) {
+                    drawSimPlots(activeSetPtr);
+                }
+                
             }
             else {
                 printToConsole(maingui.textboxSims, L"Read failure.\r\n");
@@ -999,6 +1007,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
         
         if (isGridAllocated) {
+            ShowWindow(maingui.plotBox1, 0);
+            ShowWindow(maingui.plotBox2, 0);
+            ShowWindow(maingui.plotBox5, 0);
+            ShowWindow(maingui.plotBox6, 0);
             drawSimPlots(activeSetPtr);
         }
         break;
@@ -1778,13 +1790,17 @@ int openDialogBoxAndLoad(HWND hWnd) {
 //  cm = 2: similar to matlab's jet
 //  cm = 3: similar to Colorcet L07
 //  cn = 4: vaporwave (symmetric amplitude)
-int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm) {
-
+int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm) {
+    if (Nx * Ny == 0) {
+        printToConsole(maingui.textboxSims, L"what are you doing");
+    }
     // creating input
     unsigned char* pixels = (unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
     if (pixels == NULL) {
         return 1;
     }
+
+
     INT64 i;
     INT64 Ntot = Nx * Ny;
     float nval;
@@ -1888,51 +1904,65 @@ int drawArrayAsBitmap(HDC hdc, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 heigh
     dbmi.bmiColors->rgbRed = 0;
     dbmi.bmiColors->rgbReserved = 0;
 
+    HDC hdc = GetWindowDC(plotBox);
+    if (hdc == NULL) {
+        printToConsole(maingui.textboxSims,L"no context\r\n");
+        return 1;
+    }
     HBITMAP hbmp;
     ZeroMemory(&hbmp, sizeof(HBITMAP));
     hbmp = CreateDIBitmap(hdc, &bmih, CBM_INIT, pixels, &dbmi, DIB_RGB_COLORS);
     BITMAP bm;
     ZeroMemory(&bm, sizeof(BITMAP));
     HDC hdcMem = CreateCompatibleDC(hdc);
-
+    if (hdcMem == NULL) {
+        printToConsole(maingui.textboxSims, L"no cdc\r\n");
+        return 1;
+    }
     SelectObject(hdcMem, hbmp);
     GetObject(hbmp, sizeof(bm), &bm);
-    StretchBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+    //StretchBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+    if (0 == BitBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, SRCCOPY)) {
+        printToConsole(maingui.textboxSims, L"draw fail\r\n");
+    }
     free(pixels);
     DeleteDC(hdcMem);
     DeleteObject(hbmp);
+    ReleaseDC(plotBox, hdc);
     return 0;
 }
 
 DWORD WINAPI imagePlotThread(LPVOID lpParam) {
     imagePlotStruct *s = (imagePlotStruct*)lpParam;
     RECT plotRect, mainRect;
-    HDC hdc = GetWindowDC(maingui.mainWindow);
+    
     GetWindowRect((*s).plotBox, &plotRect);
     GetWindowRect(maingui.mainWindow, &mainRect);
 
-    ShowWindow((*s).plotBox, 0);
 
     int dx = plotRect.right - plotRect.left;
     int dy = plotRect.bottom - plotRect.top;
+    if (dx == 0 || dy == 0) {
+        return 1;
+    }
     size_t plotSize = (size_t)dx * (size_t)dy;
     float* plotarr2 = (float*)malloc(plotSize * sizeof(float));
-    size_t simIndex = (*activeSetPtr).plotSim;
-
 
     switch ((*s).dataType) {
     case 0:
+        //if ((*s).data == (*activeSetPtr).ExtOut)printToConsole(maingui.textboxSims, L"Remapping\r\n");
         linearRemapDoubleToFloat((*s).data, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         break;
     case 1:
+
         std::complex<double> *shiftedFFT = (std::complex<double>*)malloc((*activeSetPtr).Nspace * (*activeSetPtr).Nfreq * sizeof(std::complex<double>));
         fftshiftD2Z((*s).complexData, shiftedFFT, (*activeSetPtr).Nfreq, (*activeSetPtr).Nspace);
         linearRemapZToLogFloat(shiftedFFT, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
         free(shiftedFFT);
         break;
     }
-    
-    drawArrayAsBitmap(hdc, 
+    //if ((*s).data == (*activeSetPtr).ExtOut)printToConsole(maingui.textboxSims, L"Remapped\r\n");
+    drawArrayAsBitmap(maingui.mainWindow,
         plotRect.right - plotRect.left, 
         plotRect.bottom - plotRect.top, 
         plotRect.left - mainRect.left, 
@@ -1940,9 +1970,10 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
         plotRect.bottom - plotRect.top, 
         plotRect.right - plotRect.left, 
         plotarr2, (*s).colorMap);
-    
-    ReleaseDC(maingui.mainWindow, hdc);
+    //if ((*s).data == (*activeSetPtr).ExtOut)printToConsole(maingui.textboxSims, L"Drew\r\n");
+
     free(plotarr2);
+
     return 0;
 }
 
@@ -1950,10 +1981,12 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if (!isGridAllocated || isPlotting) {
         return 0;
     }
+    isPlotting = TRUE;
+
     imagePlotStruct sTime1, sTime2, sFreq1, sFreq2;
     HANDLE plotThreads[4];
     DWORD plotHandles[4];
-	isPlotting = TRUE;
+	
 	bool logPlot = TRUE;
 	if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
 		logPlot = FALSE;
@@ -1974,7 +2007,10 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
 	size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 
-
+    if ((*activeSetPtr).ExtOut == NULL) {
+        printToConsole(maingui.textboxSims, L"WTF m8\r\n");
+        return 1;
+    }
 	sTime1.data = 
         &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
 	sTime1.plotBox = maingui.plotBox1;
@@ -2014,6 +2050,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + (*activeSetPtr).Ntime * (*activeSetPtr).Nspace / 2];
     sWave1.Npts = (*activeSetPtr).Ntime;
     sWave1.unitY = 1e9;
+    sWave1.color = D2D1::ColorF(0, 1, 1, 1);
     plotXYDirect2d(&sWave1);
 
     sWave2.plotBox = maingui.plotBox4;
@@ -2023,6 +2060,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + (*activeSetPtr).Ntime * (*activeSetPtr).Nspace / 2];
     sWave2.Npts = (*activeSetPtr).Ntime;
     sWave2.unitY = 1e9;
+    sWave2.color = D2D1::ColorF(1, 0, 1, 1);
     plotXYDirect2d(&sWave2);
 
     sSpectrum1.plotBox = maingui.plotBox7;
@@ -2032,6 +2070,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum1.logScale = logPlot;
     sSpectrum1.forceYmin = logPlot;
     sSpectrum1.forcedYmin = -4.0;
+    sSpectrum1.color = D2D1::ColorF(0.5, 0, 1, 1);
     plotXYDirect2d(&sSpectrum1);
 
     sSpectrum2.plotBox = maingui.plotBox8;
@@ -2041,9 +2080,13 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum2.logScale = logPlot;
     sSpectrum2.forceYmin = logPlot;
     sSpectrum2.forcedYmin = -4.0;
+    sSpectrum2.color = D2D1::ColorF(1, 0, 0.5, 1);
     plotXYDirect2d(&sSpectrum2);
 
-    WaitForMultipleObjects(4, plotThreads, TRUE, INFINITE);
+
+    if (WAIT_TIMEOUT == WaitForMultipleObjects(4, plotThreads, TRUE, 1000)) {
+        printToConsole(maingui.textboxSims,L"Warning, an image thread timed out!\r\n");
+    }
     for (unsigned int i = 0; i < 4; i++) {
         if (plotThreads[i] != 0)CloseHandle(plotThreads[i]);
     }
@@ -2078,21 +2121,15 @@ int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, 
 //B is overwritten with the resized matrix
 int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby) {
     int i, j;
-    float A00;
-    float f;
-
     int nx0, ny0;
     int Ni, Nj;
     for (i = 0; i < nbx; i++) {
-        f = i * (nax / (float)nbx);
-        Ni = (int)f;
+        Ni = (int)(i * (nax / (float)nbx));
         nx0 = nay * min(Ni, nax);
         for (j = 0; j < nby; j++) {
-            f = (j * (nay / (float)nby));
-            Nj = (int)f;
+            Nj = (int)((j * (nay / (float)nby)));
             ny0 = min(nay, Nj);
-            A00 = (float)A[ny0 + nx0];
-            B[i * nby + j] = A00;
+            B[i * nby + j] = (float)A[ny0 + nx0];
         }
     }
     return 0;
@@ -2230,8 +2267,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
 
     if (SUCCEEDED(hr))
     {
-        const D2D1_COLOR_F color = D2D1::ColorF(1, 1, 1, 1);
-        hr = pRenderTarget->CreateSolidColorBrush(color, &pBrush);
+        hr = pRenderTarget->CreateSolidColorBrush((*s).color, &pBrush);
 
         if (SUCCEEDED(hr))
         {

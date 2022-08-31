@@ -364,7 +364,7 @@ __global__ void expandCylindricalBeam(cudaParameterSet* s, double* polarization1
 	expandedBeam2[pos1] = polarization2[i];
 	expandedBeam2[pos2] = polarization2[i];
 }
-__device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long long j, double f, double* sellmeierCoefficients, cudaParameterSet s) {
+__device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long long j, double f, double* sellmeierCoefficients, cudaParameterSet *s) {
 	//Find walkoff angle, starting from zero
 	// in the case of an extraordinary axis, the angle of propagation is related to the transverse
 	// momentum in a complicated way:
@@ -382,16 +382,16 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 	double crystalPhi = sellmeierCoefficients[67];
 	double kStep = sellmeierCoefficients[70];
 	double tol = sellmeierCoefficients[72];
-	double dk = j * kStep - (j >= (s.Nspace / 2)) * (kStep * s.Nspace); //frequency grid in transverse direction
+	double dk = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
 	double rhs = LIGHTC * dk / (TWOPI * f);
 
 	//if not biaxial, the o-axis can be solved analytically.
 	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-		crystalTheta, crystalPhi, s.axesNumber, s.sellmeierType);
+		crystalTheta, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 	*alphaO = asin(rhs / cuCreal(no));
-	if (s.axesNumber == 2) {
+	if ((*s).axesNumber == 2) {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-			crystalTheta + *alphaO, crystalPhi, s.axesNumber, s.sellmeierType);
+			crystalTheta + *alphaO, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 		nePlus = cuCreal(no);
 		err = abs(nePlus * sin(*alphaO) - rhs);
 
@@ -402,12 +402,12 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 			iters++;
 
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-				crystalTheta + *alphaO + dAlpha, crystalPhi, s.axesNumber, s.sellmeierType);
+				crystalTheta + *alphaO + dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 			nePlus = cuCreal(no);
 			errPlus = abs(nePlus * sin(*alphaO + dAlpha) - rhs);
 
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-				crystalTheta + *alphaO - dAlpha, crystalPhi, s.axesNumber, s.sellmeierType);
+				crystalTheta + *alphaO - dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 			neMinus = cuCreal(no);
 			errMinus = abs(neMinus * sin(*alphaO - dAlpha) - rhs);
 
@@ -433,9 +433,9 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 
 	//find the extraordinary angle if the crystal isn't isotropic
 	*alphaE = *alphaO;
-	if (s.axesNumber > 0) {
+	if ((*s).axesNumber > 0) {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-			crystalTheta + *alphaE, crystalPhi, s.axesNumber, s.sellmeierType);
+			crystalTheta + *alphaE, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 		nePlus = cuCreal(ne);
 		err = abs(nePlus * sin(*alphaE) - rhs);
 
@@ -447,12 +447,12 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 			iters++;
 
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-				crystalTheta + *alphaE + dAlpha, crystalPhi, s.axesNumber, s.sellmeierType);
+				crystalTheta + *alphaE + dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 			nePlus = cuCreal(ne);
 			errPlus = abs(nePlus * sin(*alphaE + dAlpha) - rhs);
 
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-				crystalTheta + *alphaE - dAlpha, crystalPhi, s.axesNumber, s.sellmeierType);
+				crystalTheta + *alphaE - dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 			neMinus = cuCreal(ne);
 			errMinus = abs(neMinus * sin(*alphaE - dAlpha) - rhs);
 
@@ -483,13 +483,13 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 //prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
 //note that the sellmeier coefficients have extra values appended to the end
 //to give info about the current simulation
-__global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* sellmeierCoefficients2, cudaParameterSet s) {
+__global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* sellmeierCoefficients2, cudaParameterSet* s) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	double alpha1, alpha2, alphaO1, alphaO2;
 	long long j, k;
-	long long Ntime = s.Ntime;
-	int axesNumber = s.axesNumber;
-	int sellmeierType = s.sellmeierType;
+	long long Ntime = (*s).Ntime;
+	int axesNumber = (*s).axesNumber;
+	int sellmeierType = (*s).sellmeierType;
 	cuDoubleComplex ne1, no1, ne2, no2, n0;
 	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
 	j = i / Ntime; //spatial coordinate
@@ -512,9 +512,9 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 
 
 	sellmeierCuda(&ne1, &no1, sellmeierCoefficients1, abs(f),
-		crystalTheta + alpha1, crystalPhi, axesNumber, sellmeierType);
+		crystalTheta + 0*alpha1, crystalPhi, axesNumber, sellmeierType);
 	sellmeierCuda(&n0, &no1, sellmeierCoefficients1, abs(f),
-		crystalTheta + alphaO1, crystalPhi, axesNumber, sellmeierType);
+		crystalTheta + 0*alphaO1, crystalPhi, axesNumber, sellmeierType);
 	if (isnan(cuCreal(ne1)) || isnan(cuCreal(no1))) {
 		ne1 = make_cuDoubleComplex(1, 0);
 		no1 = make_cuDoubleComplex(1, 0);
@@ -534,55 +534,118 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 	cuDoubleComplex tp = 2 * ne1 * cos(alpha1) / (ne2 * cos(alpha1) + ne1 * cos(alpha2));
 	if (isnan(ts.x) || isnan(ts.y)) ts = make_cuDoubleComplex(0, 0);
 	if (isnan(tp.x) || isnan(tp.y)) ts = make_cuDoubleComplex(0, 0);
-	s.gridEFrequency1[i] = ts * s.gridEFrequency1[i];
-	s.gridEFrequency2[i] = tp * s.gridEFrequency2[i];
+	(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
+	(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
+}
+
+__global__ void apertureKernel(cudaParameterSet* s, double radius, double activationParameter) {
+	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long j, k, col;
+
+	col = i / (*s).Ntime;
+	j = col % (*s).Nspace;
+	k = col / (*s).Nspace;
+	double r;
+	if ((*s).is3D) {
+		double x = ((*s).dx * (j - (*s).Nspace / 2.0));
+		double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+		r = sqrt(x * x + y * y);
+	} 
+	else {
+		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+	}
+
+	double a = 1.0 - (1.0 / (1.0 + exp( - activationParameter*(r - radius)/(*s).dx)));
+
+	//if (r>radius) a = 0;
+	(*s).gridETime1[i] *= a;
+	(*s).gridETime2[i] *= a;
 }
 
 
-__global__ void applyLinearPropagationKernel(double* sellmeierCoefficients, double thickness, cudaParameterSet s) {
+__global__ void sphericalMirrorKernel(cudaParameterSet* s, double ROC) {
+	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long j, k, h, col;
+	h = 1 + i % ((*s).Nfreq - 1);
+	col = i / ((*s).Nfreq - 1);
+	i = h + col * (*s).Nfreq;
+	j = col % (*s).Nspace;
+	k = col / (*s).Nspace;
+
+	double w = TWOPI * h * (*s).fStep;
+	double r;
+	if ((*s).is3D) {
+		double x = ((*s).dx * (j - (*s).Nspace / 2.0));
+		double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+		r = sqrt(x * x + y * y);
+	}
+	else {
+		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+	}
+	bool isNegative = signbit(ROC);
+	ROC = 2 * abs(ROC);
+	cuDoubleComplex u = make_cuDoubleComplex(0.0, 0.0);
+	if (r < ROC) {
+		u = cuCexpd(make_cuDoubleComplex(0.0, pow(-1,isNegative)*w*ROC*(sqrt(1.0 - r * r / (ROC * ROC)))/LIGHTC));
+	}
+	
+
+	//if (r>radius) a = 0;
+	(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
+	(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
+}
+__global__ void applyLinearPropagationKernel(double* sellmeierCoefficients, double thickness, cudaParameterSet *s) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	double alpha1, alphaO1;
-	long long j, k;
-	long long Ntime = s.Ntime;
-	int axesNumber = s.axesNumber;
-	int sellmeierType = s.sellmeierType;
+	long long j, h, k, col;
+	int axesNumber = (*s).axesNumber;
+	int sellmeierType = (*s).sellmeierType;
 	cuDoubleComplex ne, no, n0, n0o;
 	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
-	j = i / Ntime; //spatial coordinate
-	k = i % Ntime; //temporal coordinate
+	h = 1 + i % ((*s).Nfreq - 1);
+	col = i / ((*s).Nfreq - 1);
+	i = h + col * ((*s).Nfreq);
+	j = col % (*s).Nspace;
+	k = col / (*s).Nspace;
 	cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
 	double crystalTheta = sellmeierCoefficients[66];
 	double crystalPhi = sellmeierCoefficients[67];
-	double fStep = sellmeierCoefficients[71];
+	double kStep = sellmeierCoefficients[70];
+
 
 	//frequency being resolved by current thread
-	double f = k * fStep;
-	if (k >= Ntime / 2) {
-		f -= fStep * Ntime;
-	}
-	f *= -1;
+	double f = h * (*s).fStep;
 	double omega = TWOPI * f;
 	findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients, s);
+	
+	double dk1 = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace);
+	double dk2 = k * kStep - (k >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace);
 	//walkoff angle has been found, generate the rest of the grids
 
 
-	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-		crystalTheta + alpha1, crystalPhi, axesNumber, sellmeierType);
-	sellmeierCuda(&n0, &n0o, sellmeierCoefficients, abs(f),
-		crystalTheta + alphaO1, crystalPhi, axesNumber, sellmeierType);
+	sellmeierCuda(&ne, &no, sellmeierCoefficients, f,
+		crystalTheta + 0*alpha1, crystalPhi, axesNumber, sellmeierType);
+	sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
+		crystalTheta + 0*alphaO1, crystalPhi, axesNumber, sellmeierType);
 	if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
 		ne = make_cuDoubleComplex(1, 0);
 		no = make_cuDoubleComplex(1, 0);
 	}
 
+	//(*s).gridPropagationFactor1[i] = ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * cuCreal(ke))) * (*s).h;
+	cuDoubleComplex ke = ne * omega / LIGHTC;
+	cuDoubleComplex ko = no * omega / LIGHTC;
+	double k0 = cuCreal(n0 * omega / LIGHTC);
 
+	double kze = cuCreal(cuCsqrt(ke * ke - dk1 * dk1 - dk2 * dk2));
+	double kzo = cuCreal(cuCsqrt(ko * ko - dk1 * dk1 - dk2 * dk2));
 
-	cuDoubleComplex ts = cuCexpd(ii * ((ne - n0) * omega / LIGHTC) * thickness);
-	cuDoubleComplex tp = cuCexpd(ii * ((no - n0) * omega / LIGHTC) * thickness);
+	cuDoubleComplex ts = cuCexpd(ii * (k0 - kze) * thickness);
+	cuDoubleComplex tp = cuCexpd(ii * (k0 - kzo) * thickness);
 	if (isnan(ts.x) || isnan(ts.y)) ts = make_cuDoubleComplex(0, 0);
 	if (isnan(tp.x) || isnan(tp.y)) tp = make_cuDoubleComplex(0, 0);
-	s.gridEFrequency1[i] = ts * s.gridEFrequency1[i];
-	s.gridEFrequency2[i] = tp * s.gridEFrequency2[i];
+	(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
+	(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
 }
 
 
@@ -612,7 +675,7 @@ __global__ void prepareCartesianGridsKernel(double* sellmeierCoefficients, cudaP
 	//transverse wavevector being resolved
 	double dk = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
 
-	findBirefingentCrystalAngle(&alpha, &alphaO, j, f, sellmeierCoefficients, *s);
+	findBirefingentCrystalAngle(&alpha, &alphaO, j, f, sellmeierCoefficients, s);
 
 	//walkoff angle has been found, generate the rest of the grids
 
@@ -699,7 +762,7 @@ __global__ void prepare3DGridsKernel(double* sellmeierCoefficients, cudaParamete
 	//transverse wavevector being resolved
 	double dk1 = k * kStep - (k >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in x direction
 	double dk2 = l * kStep - (l >= ((*s).Nspace2 / 2)) * (kStep * (*s).Nspace2); //frequency grid in y direction
-	findBirefingentCrystalAngle(&alpha, &alphaO, k, f, sellmeierCoefficients, *s);
+	findBirefingentCrystalAngle(&alpha, &alphaO, k, f, sellmeierCoefficients, s);
 
 	//walkoff angle has been found, generate the rest of the grids
 
@@ -797,7 +860,7 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
 	int sellmeierType = (*s).sellmeierType;
 	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
 	j = i / ((*s).Nfreq-1); //spatial coordinate
-	k = 1+i % ((*s).Nfreq-1); //temporal coordinate
+	k = 1 + i % ((*s).Nfreq-1); //temporal coordinate
 	i = k + j * (*s).Nfreq;
 
 
@@ -1988,7 +2051,7 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
 
 	cudaMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
 
-	applyFresnelLossKernel<<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>> (sellmeierCoefficients1, sellmeierCoefficients2, sc);
+	//applyFresnelLossKernel<<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>> (sellmeierCoefficients1, sellmeierCoefficients2, sc);
 
 	//transform final result
 	fixnanKernel<<<(unsigned int)(2 * sc.NgridC/ MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, sc.CUDAStream>>> (sc.gridEFrequency1);
@@ -2007,71 +2070,88 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
 	return 0;
 }
 
+int applyAperature(simulationParameterSet* sCPU, double diameter, double activationParameter) {
+	cudaParameterSet s;
+	initializeCudaParameterSet(sCPU, &s);
+	cudaMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), cudaMemcpyHostToDevice);
 
-int applyLinearPropagation(simulationParameterSet* s, int materialIndex, double thickness) {
-	//cudaParameterSet sc;
-	//sc.Ntime = (*s).Ntime;
-	//sc.Nspace = (*s).Nspace;
-	//sc.dt = (*s).tStep;
-	//sc.dx = (*s).rStep;
-	//sc.fStep = (*s).fStep;
-	//sc.h = (*s).propagationStep;
-	//sc.Nsteps = (*s).Npropagation;
-	//sc.Ngrid = (*s).Ntime * (*s).Nspace;
-	//sc.axesNumber = (*s).axesNumber;
-	//sc.sellmeierType = (*s).sellmeierType;
-	//sc.f0 = (*s).frequency1;
-	//sc.Nthread = THREADS_PER_BLOCK;
-	//sc.Nblock = (int)((*s).Ngrid / THREADS_PER_BLOCK);
-	//sc.isCylindric = (*s).isCylindric;
-	//sc.isNonLinear = ((*s).nonlinearSwitches[0] + (*s).nonlinearSwitches[1]) > 0;
-	//cudaStreamCreate(&sc.CUDAStream);
-	//cufftPlan2d(&sc.fftPlan, (int)sc.Nspace, (int)sc.Ntime, CUFFT_Z2Z);
-	//double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
-	//memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex].sellmeierCoefficients, 66 * (sizeof(double)));
-	//sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
-	//sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
-	//sellmeierCoefficientsAugmentedCPU[68] = (*s).axesNumber;
-	//sellmeierCoefficientsAugmentedCPU[69] = (*s).sellmeierType;
-	//sellmeierCoefficientsAugmentedCPU[70] = (*s).kStep;
-	//sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
-	//sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-	//double* sellmeierCoefficients;
-	//cudaMalloc(&sellmeierCoefficients, 74 * sizeof(double));
-	//cudaMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), cudaMemcpyHostToDevice);
+	cudaParameterSet* sDevice;
+	cudaMalloc(&sDevice, sizeof(cudaParameterSet));
+	cudaMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+	apertureKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(sDevice, 0.5 * diameter, activationParameter);
 
-	//cudaDeviceSynchronize();
-	//cudaMalloc(&sc.gridEFrequency1, (*s).Ngrid * sizeof(cuDoubleComplex));
-	//cudaMalloc(&sc.gridEFrequency2, (*s).Ngrid * sizeof(cuDoubleComplex));
-	//cudaMalloc(&sc.gridETime1, (*s).Ngrid * sizeof(cuDoubleComplex));
-	//cudaMalloc(&sc.gridETime2, (*s).Ngrid * sizeof(cuDoubleComplex));
+	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
+	cudaMemcpy((*sCPU).ExtOut,s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	getTotalSpectrum(sCPU, &s);
+	deallocateCudaParameterSet(&s);
+	cudaFree(sDevice);
+	return 0;
+}
 
-	//cudaMemcpy(sc.gridEFrequency1, (*s).EkwOut, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
-	//cudaMemcpy(sc.gridEFrequency2, &(*s).EkwOut[(*s).Ngrid], (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+int applySphericalMirror(simulationParameterSet* sCPU, double ROC) {
+	cudaParameterSet s;
+	initializeCudaParameterSet(sCPU, &s);
 
-	//applyLinearPropagationKernel<<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>> (sellmeierCoefficients, thickness, sc);
-
-	////transform final result
-	//fixnanKernel<<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>> (sc.gridEFrequency1);
-	//fixnanKernel<<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>> (sc.gridEFrequency2);
-	//cufftExecZ2Z(sc.fftPlan, (cufftDoubleComplex*)sc.gridEFrequency1, (cufftDoubleComplex*)sc.gridETime1, CUFFT_INVERSE);
-	//cufftExecZ2Z(sc.fftPlan, (cufftDoubleComplex*)sc.gridEFrequency2, (cufftDoubleComplex*)sc.gridETime2, CUFFT_INVERSE);
-
-	////copy the field arrays from the GPU to CPU memory
-	//cudaMemcpy((*s).ExtOut, sc.gridETime1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-	//cudaMemcpy((*s).EkwOut, sc.gridEFrequency1, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(&(*s).ExtOut[sc.Ngrid], sc.gridETime2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(&(*s).EkwOut[sc.Ngrid], sc.gridEFrequency2, (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	cudaParameterSet* sDevice;
+	cudaMalloc(&sDevice, sizeof(cudaParameterSet));
+	cudaMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 
 
-	//free(sellmeierCoefficientsAugmentedCPU);
-	//cufftDestroy(sc.fftPlan);
-	//cudaFree(sc.gridEFrequency1);
-	//cudaFree(sc.gridEFrequency2);
-	//cudaFree(sc.gridETime1);
-	//cudaFree(sc.gridETime2);
-	//cudaFree(sellmeierCoefficients);
-	//cudaStreamDestroy(sc.CUDAStream);
+	cufftHandle planBeamFreqToTime;
+	cufftPlan1d(&planBeamFreqToTime, (int)s.Ntime, CUFFT_Z2D, 2 * (int)(s.Nspace * s.Nspace2));
+
+	cufftHandle planBeamTimeToFreq;
+	cufftPlan1d(&planBeamTimeToFreq, (int)s.Ntime, CUFFT_D2Z, 2 * (int)(s.Nspace * s.Nspace2));
+
+	cudaMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), cudaMemcpyHostToDevice);
+	cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, s.gridEFrequency1);
+
+	sphericalMirrorKernel << <s.Nblock/2, s.Nthread, 0, s.CUDAStream >> > (sDevice, ROC);
+
+	cufftExecZ2D(planBeamFreqToTime, s.gridEFrequency1, s.gridETime1);
+	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
+	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	getTotalSpectrum(sCPU, &s);
+	deallocateCudaParameterSet(&s);
+	cudaFree(sDevice);
+	cufftDestroy(planBeamFreqToTime);
+	cufftDestroy(planBeamTimeToFreq);
+	return 0;
+}
+
+int applyLinearPropagation(simulationParameterSet* sCPU, int materialIndex, double thickness) {
+	cudaParameterSet s;
+	initializeCudaParameterSet(sCPU, &s);
+	cudaMemcpy(s.gridEFrequency1, (*sCPU).EkwOut, s.NgridC * 2 * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+
+	double* sellmeierCoefficients = (double*)s.gridEFrequency1Next1;
+	//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
+	double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
+	memcpy(sellmeierCoefficientsAugmentedCPU, (*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients, 66 * (sizeof(double)));
+	sellmeierCoefficientsAugmentedCPU[66] = (*sCPU).crystalTheta;
+	sellmeierCoefficientsAugmentedCPU[67] = (*sCPU).crystalPhi;
+	sellmeierCoefficientsAugmentedCPU[68] = (*sCPU).axesNumber;
+	sellmeierCoefficientsAugmentedCPU[69] = (*sCPU).sellmeierType;
+	sellmeierCoefficientsAugmentedCPU[70] = (*sCPU).kStep;
+	sellmeierCoefficientsAugmentedCPU[71] = (*sCPU).fStep;
+	sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
+	cudaMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), cudaMemcpyHostToDevice);
+	s.axesNumber = (*sCPU).crystalDatabase[materialIndex].axisType;
+	s.sellmeierType = (*sCPU).crystalDatabase[materialIndex].sellmeierType;
+	cudaParameterSet* sDevice;
+	cudaMalloc(&sDevice, sizeof(cudaParameterSet));
+	cudaMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+	applyLinearPropagationKernel<<<s.Nblock/2, s.Nthread, 0, s.CUDAStream>>>(sellmeierCoefficients, thickness, sDevice);
+	
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, s.NgridC * 2 * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	cufftExecZ2D(s.fftPlanZ2D, s.gridEFrequency1, s.gridETime1);
+	multiplyByConstantKernelD<<<2*s.Nblock,s.Nthread,0,s.CUDAStream>>>(s.gridETime1, 1.0 / s.Ngrid);
+	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
+
+	deallocateCudaParameterSet(&s);
+	cudaFree(sDevice);
 	return 0;
 }
 
@@ -3289,6 +3369,8 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
 	//sequence format
 	//0: step type
 	int stepType = (int)offsetArray[0];
+	int materialIndex = 0;
+	double thickness = 0;
 	// 
 	// if stepType == 0, normal propagation
 	//1: material index
@@ -3312,7 +3394,10 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
 	// 
 	// if stepType == 3, spherical mirror
 	// 1: ROC (m)
-
+	//
+	// if stepType == 4, aperture
+	// 1: diameter (m)
+	// 2: activation parameter p (function is 1 - 1/(1 + exp(-p*(r-radius)))
 
 	switch (stepType) {
 	case 0:
@@ -3349,21 +3434,42 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
 			printf("Warning: device memory error (%i).\n", (*s).memoryError);
 		}
 		return 0;
+
 	case 1:
 		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
 		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
 		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-		applyLinearPropagation(s, (int)offsetArray[1], 1.0e6 * offsetArray[8]);
+		thickness = 1.0e-6 * offsetArray[8];
+		if (offsetArray[8] == -1) {
+			thickness = (*s).crystalThickness;
+		}
+		materialIndex = (int)offsetArray[1];
+		if (offsetArray[1] == -1) {
+			materialIndex = (*s).materialIndex;
+		}
+		applyLinearPropagation(s, materialIndex, thickness);
 		if (offsetArray[10] != 0.0) {
 			rotateField(s, DEG2RAD * offsetArray[10]);
 		}
-
 		return 0;
+
 	case 2:
 		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
 		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
 		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
 		applyFresnelLoss(s, (int)offsetArray[4], (int)offsetArray[5]);
+		return 0;
+	case 3:
+		applySphericalMirror(s, offsetArray[8]);
+		if (offsetArray[10] != 0.0) {
+			rotateField(s, DEG2RAD * offsetArray[10]);
+		}
+		return 0;
+	case 4:
+		applyAperature(s, offsetArray[1], offsetArray[2]);
+		if (offsetArray[10] != 0.0) {
+			rotateField(s, DEG2RAD * offsetArray[10]);
+		}
 		return 0;
 	}
 
@@ -3427,25 +3533,6 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 	fclose(spectrumFile);
 	free(outputpath);
 
-	if (GPUisPresent) {
-		cufftHandle fftPlan;
-		cufftPlan2d(&fftPlan, (int)(*sCPU).Nspace, (int)(*sCPU).Ntime, CUFFT_Z2Z);
-
-		cuDoubleComplex* fieldGridkw;
-		cuDoubleComplex* fieldGridxt;
-		cudaMalloc((void**)&fieldGridkw, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
-		cudaMalloc((void**)&fieldGridxt, sizeof(cuDoubleComplex) * (*sCPU).Ngrid);
-
-		for (j = 0; j < 2 * (*sCPU).Nsims * (*sCPU).Nsims2; j++) {
-			cudaMemcpy(fieldGridxt, &(*sCPU).ExtOut[j * (*sCPU).Ngrid], (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
-			cufftExecZ2Z(fftPlan, fieldGridxt, fieldGridkw, CUFFT_FORWARD);
-			cudaMemcpy(&(*sCPU).EkwOut[j * (*sCPU).Ngrid], fieldGridkw, (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-		}
-		cudaFree(fieldGridkw);
-		cudaFree(fieldGridxt);
-		cufftDestroy(fftPlan);
-	}
-	else {
 		MKL_LONG mklError = 0;
 		DFTI_DESCRIPTOR_HANDLE dftiHandle = NULL;
 		if ((*sCPU).is3D) {
@@ -3480,7 +3567,7 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 		free(workspaceFreq);
 		free(workspaceTime);
 		DftiFreeDescriptor(&dftiHandle);
-	}
+	
 
 
 	return 0;
