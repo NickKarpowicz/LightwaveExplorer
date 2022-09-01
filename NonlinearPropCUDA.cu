@@ -562,6 +562,36 @@ __global__ void apertureKernel(cudaParameterSet* s, double radius, double activa
 	(*s).gridETime2[i] *= a;
 }
 
+__global__ void parabolicMirrorKernel(cudaParameterSet* s, double focus) {
+	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long j, k, h, col;
+	h = 1 + i % ((*s).Nfreq - 1);
+	col = i / ((*s).Nfreq - 1);
+	i = h + col * (*s).Nfreq;
+	j = col % (*s).Nspace;
+	k = col / (*s).Nspace;
+
+	double w = TWOPI * h * (*s).fStep;
+	double r;
+	if ((*s).is3D) {
+		double x = ((*s).dx * (j - (*s).Nspace / 2.0));
+		double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+		r = sqrt(x * x + y * y);
+	}
+	else {
+		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+	}
+
+
+	
+
+	cuDoubleComplex	u = cuCexpd(make_cuDoubleComplex(0.0,
+		w * r * r * (0.5 / focus) / LIGHTC));
+
+
+	(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
+	(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
+}
 
 __global__ void sphericalMirrorKernel(cudaParameterSet* s, double ROC) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -582,18 +612,19 @@ __global__ void sphericalMirrorKernel(cudaParameterSet* s, double ROC) {
 	else {
 		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
 	}
+
 	bool isNegative = signbit(ROC);
-	ROC = 2 * abs(ROC);
+	ROC = abs(ROC);
 	cuDoubleComplex u = make_cuDoubleComplex(0.0, 0.0);
 	if (r < ROC) {
-		u = cuCexpd(make_cuDoubleComplex(0.0, pow(-1,isNegative)*w*ROC*(sqrt(1.0 - r * r / (ROC * ROC)))/LIGHTC));
+		u = cuCexpd(make_cuDoubleComplex(0.0, 
+			2.0 * pow(-1,isNegative)*w*ROC*((sqrt(1.0 - r * r / (ROC * ROC))) - 1.0)/LIGHTC));
 	}
-	
 
-	//if (r>radius) a = 0;
 	(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
 	(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
 }
+
 __global__ void applyLinearPropagationKernel(double* sellmeierCoefficients, double thickness, cudaParameterSet *s) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	double alpha1, alphaO1;
@@ -1570,6 +1601,12 @@ unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
 	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
 	int k;
 	for (k = 0; k < (*sCPU).Nsequence; k++) {
+		if ((int)round((*sCPU).sequenceArray[k * 11]) == 6 
+			&& ((int)round((*sCPU).sequenceArray[k*11 + 1])) > 0) {
+			(*sCPUbackup).sequenceArray[k * 11 + 1] -= 1.0;
+			(*sCPUbackup).isFollowerInSequence = TRUE;
+			k = 0;
+		}
 		resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 	}
@@ -1894,7 +1931,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 	cudaParameterSet* scDevice;
 	cudaMalloc(&scDevice, sizeof(cudaParameterSet));
 	cudaMemcpy(scDevice, sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
-	if ((*s).isFollowerInSequence) {
+	if ((*s).isFollowerInSequence && !(*s).isReinjecting) {
 		cudaMemcpy((*sc).gridETime1, (*s).ExtOut, 2*(*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
 		cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
 		//Copy the field into the temporary array
@@ -1991,6 +2028,10 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 	//add the pulses
 	addDoubleArraysKernel<<<2 * (*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream>>> ((*sc).gridETime1, (double*)(*sc).gridEFrequency1Next1);
 
+	if ((*s).isReinjecting) {
+		cudaMemcpy((*sc).workspace1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
+		addDoubleArraysKernel << <2 * (*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridETime1, (double*)(*sc).workspace1);
+	}
 	//fft onto frequency grid
 	cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
 
@@ -2108,6 +2149,38 @@ int applySphericalMirror(simulationParameterSet* sCPU, double ROC) {
 	cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, s.gridEFrequency1);
 
 	sphericalMirrorKernel << <s.Nblock/2, s.Nthread, 0, s.CUDAStream >> > (sDevice, ROC);
+
+	cufftExecZ2D(planBeamFreqToTime, s.gridEFrequency1, s.gridETime1);
+	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
+	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	getTotalSpectrum(sCPU, &s);
+	deallocateCudaParameterSet(&s);
+	cudaFree(sDevice);
+	cufftDestroy(planBeamFreqToTime);
+	cufftDestroy(planBeamTimeToFreq);
+	return 0;
+}
+
+int applyParabolicMirror(simulationParameterSet* sCPU, double focus) {
+	cudaParameterSet s;
+	initializeCudaParameterSet(sCPU, &s);
+
+	cudaParameterSet* sDevice;
+	cudaMalloc(&sDevice, sizeof(cudaParameterSet));
+	cudaMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+
+
+	cufftHandle planBeamFreqToTime;
+	cufftPlan1d(&planBeamFreqToTime, (int)s.Ntime, CUFFT_Z2D, 2 * (int)(s.Nspace * s.Nspace2));
+
+	cufftHandle planBeamTimeToFreq;
+	cufftPlan1d(&planBeamTimeToFreq, (int)s.Ntime, CUFFT_D2Z, 2 * (int)(s.Nspace * s.Nspace2));
+
+	cudaMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), cudaMemcpyHostToDevice);
+	cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, s.gridEFrequency1);
+
+	parabolicMirrorKernel << <s.Nblock / 2, s.Nthread, 0, s.CUDAStream >> > (sDevice, focus);
 
 	cufftExecZ2D(planBeamFreqToTime, s.gridEFrequency1, s.gridETime1);
 	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
@@ -3395,11 +3468,21 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
 	// if stepType == 3, spherical mirror
 	// 1: ROC (m)
 	//
-	// if stepType == 4, aperture
+	// if stepType == 4, parabolic mirror
+	// 1: focus (m)
+	// 
+	// if stepType == 5, aperture
 	// 1: diameter (m)
 	// 2: activation parameter p (function is 1 - 1/(1 + exp(-p*(r-radius)))
+	//
+	// if stepType == 6, loop back to start (handled by solveNonlinearWaveEquationSequence())
+	// 1: counter (counts down to zero)
+	//
+	// if stepType == 7, reinjection, same as 0, but input fields are added to current fields.
 
 	switch (stepType) {
+	case 7:
+		(*s).isReinjecting = TRUE;
 	case 0:
 		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
 		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
@@ -3466,6 +3549,12 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
 		}
 		return 0;
 	case 4:
+		applyParabolicMirror(s, offsetArray[8]);
+		if (offsetArray[10] != 0.0) {
+			rotateField(s, DEG2RAD * offsetArray[10]);
+		}
+		return 0;
+	case 5:
 		applyAperature(s, offsetArray[1], offsetArray[2]);
 		if (offsetArray[10] != 0.0) {
 			rotateField(s, DEG2RAD * offsetArray[10]);
