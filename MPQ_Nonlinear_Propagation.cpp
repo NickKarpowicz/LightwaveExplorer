@@ -96,13 +96,14 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     loadPulseFiles(activeSetPtr);
     readSequenceString(activeSetPtr);
     configureBatchMode(activeSetPtr);
-
+    int error = 0;
     //run the simulations
     isRunning = TRUE;
     progressCounter = 0;
     for (j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         if ((*activeSetPtr).isInSequence) {
-            solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
+            error = solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
+            if (error) break;
             if (!isPlotting) {
                 (*activeSetPtr).plotSim = j;
                 plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
@@ -111,10 +112,11 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
         }
         else {
-            solveNonlinearWaveEquation(&activeSetPtr[j]);
+            error = solveNonlinearWaveEquation(&activeSetPtr[j]);
             if (activeSetPtr[j].memoryError > 0) {
                 printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
             }
+            if (error) break;
         }
 
         if (cancellationCalled) {
@@ -131,8 +133,15 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     }
 
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    printToConsole(maingui.textboxSims, _T("Finished after %8.4lf s. \r\n"), 1e-6 * 
-        (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+    if (error) {
+        printToConsole(maingui.textboxSims, 
+            L"NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
+    }
+    else {
+        printToConsole(maingui.textboxSims, _T("Finished after %8.4lf s. \r\n"), 1e-6 *
+            (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+    }
+
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
 
     free((*activeSetPtr).imdone);

@@ -1600,6 +1600,7 @@ unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
 	simulationParameterSet* sCPUbackup = (simulationParameterSet*)calloc(1, sizeof(simulationParameterSet));
 	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
 	int k;
+	int error = 0;
 	for (k = 0; k < (*sCPU).Nsequence; k++) {
 		if ((int)round((*sCPU).sequenceArray[k * 11]) == 6 
 			&& ((int)round((*sCPU).sequenceArray[k*11 + 1])) > 0) {
@@ -1607,11 +1608,12 @@ unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
 			(*sCPUbackup).isFollowerInSequence = TRUE;
 			k = 0;
 		}
-		resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
+		error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
+		if (error) break;
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 	}
 	free(sCPUbackup);
-	return 0;
+	return error;
 }
 //main thread of the nonlinear wave equation implemented on CUDA
 int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
@@ -1828,6 +1830,8 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 	cudaMalloc(&sDevice, sizeof(cudaParameterSet));
 	cudaParameterSet s;
 	initializeCudaParameterSet(sCPU, &s);
+	double canaryPixel = 0;
+	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
 
 	//prepare the propagation arrays
 	if (s.is3D) {
@@ -1854,6 +1858,11 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 		runRK4Step(&s, sDevice, 2);
 		runRK4Step(&s, sDevice, 3);
 
+		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), cudaMemcpyDeviceToHost);
+		if (isnan(canaryPixel)) {
+			break;
+		}
+
 		if ((*sCPU).imdone[0] == 2) {
 			break;
 		}
@@ -1878,7 +1887,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 	deallocateCudaParameterSet(&s);
 	cudaFree(sDevice);
 	(*sCPU).imdone[0] = 1;
-	return 0;
+	return isnan(canaryPixel);
 }
 
 //function to run a RK4 time step
@@ -3440,7 +3449,7 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 
 int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db) {
 	double* offsetArray = &(*s).sequenceArray[11 * currentIndex];
-
+	int error = 0;
 	//sequence format
 	//0: step type
 	int stepType = (int)offsetArray[0];
@@ -3510,7 +3519,7 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
 		(*s).axesNumber = db[(*s).materialIndex].axisType;
 
 
-		solveNonlinearWaveEquation(s);
+		error = solveNonlinearWaveEquation(s);
 		if (offsetArray[10] != 0.0) {
 			rotateField(s, DEG2RAD * offsetArray[10]);
 		}
@@ -3518,7 +3527,7 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
 		if ((*s).memoryError > 0) {
 			printf("Warning: device memory error (%i).\n", (*s).memoryError);
 		}
-		return 0;
+		return error;
 
 	case 1:
 		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
