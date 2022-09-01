@@ -2151,6 +2151,7 @@ int applySphericalMirror(simulationParameterSet* sCPU, double ROC) {
 	sphericalMirrorKernel << <s.Nblock/2, s.Nthread, 0, s.CUDAStream >> > (sDevice, ROC);
 
 	cufftExecZ2D(planBeamFreqToTime, s.gridEFrequency1, s.gridETime1);
+	multiplyByConstantKernelD<<<2*s.Nblock ,s.Nthread, 0, s.CUDAStream>>>(s.gridETime1, 1.0 / s.Ntime);
 	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
 	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
@@ -2183,6 +2184,7 @@ int applyParabolicMirror(simulationParameterSet* sCPU, double focus) {
 	parabolicMirrorKernel << <s.Nblock / 2, s.Nthread, 0, s.CUDAStream >> > (sDevice, focus);
 
 	cufftExecZ2D(planBeamFreqToTime, s.gridEFrequency1, s.gridETime1);
+	multiplyByConstantKernelD << <2 * s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.gridETime1, 1.0 / s.Ntime);
 	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
 	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
