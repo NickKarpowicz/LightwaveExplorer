@@ -232,6 +232,8 @@ typedef struct cudaParameterSet {
 	double fStep;
 	double dt;
 	double dx;
+    double dk1;
+    double dk2;
 	double h;
 	size_t Nsteps;
 	int Nthread;
