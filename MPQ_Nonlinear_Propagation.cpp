@@ -1260,11 +1260,6 @@ int readParametersFromInterface() {
     (*activeSetPtr).Nsims2 = (size_t)getDoubleFromHWND(maingui.tbNumberSims2);
     //derived parameters and cleanup:
 
-        //fix the grid dimensions so that each is divisble by 16
-    if ((*activeSetPtr).is3D) {
-
-    }
-    
 
 
     (*activeSetPtr).sellmeierType = 0;
