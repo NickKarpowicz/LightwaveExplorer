@@ -17,6 +17,8 @@ simulationParameterSet* fittingReferenceSet;
 
 #define THREADS_PER_BLOCK 32
 #define MIN_GRIDDIM 8
+#define ANGLETOLERANCE 1e-12
+
 #define FALSE 0
 #define TRUE 1
 #define MAX_LOADSTRING 1024
@@ -363,6 +365,41 @@ __global__ void expandCylindricalBeam(cudaParameterSet* s, double* polarization1
 	expandedBeam1[pos2] = polarization1[i];
 	expandedBeam2[pos1] = polarization2[i];
 	expandedBeam2[pos2] = polarization2[i];
+}
+
+//function to find the effective crystal direction (theta,phi) for a given coordinate in k-space
+// trivial in isotropic media (Snell's law) but in birefringent media,
+// the refracted angle depends on refractive index, but refractive
+// index depends on the refracted angle. 
+//  Using conservation of the transverse momentum, we must solve the system of equations:
+//	kx1 = kx2
+//  ky1 = ky2
+//  where 
+//  kx1 = (w/c)sin(alpha_i)
+//  kx2 = (n(theta+alpha,phi+beta)w/c)*sin(alpha)
+//  ky1 = (w/c)sin(beta_i)
+//  ky2 = (n(theta+alpha,phi+beta)w/c)*sin(beta)
+//
+// The k grid is known, meaning kx1 and ky1 are givens; alpha and beta are unknowns
+// minimize n(alpha,beta)*sin(alpha) - kx1*c/w, n(alpha,beta)*sin(beta) - ky1*c/w
+//
+// starting point n = n(alpha=0, beta=0), which is the actual solution for isotropic medium
+// If isotropic, return
+// If uniaxial, solve 1D problem with n(alpha,0)
+// If biaxial, solve 2D problem
+// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
+__device__ void findBirefringentCrystalAnglev2(cudaParameterSet* s, double* sellmeierCoefficients, long long i, double* angles) {
+	long long j, k, h, col;
+	h = 1 + i % ((*s).Nfreq - 1);
+	col = i / ((*s).Nfreq - 1);
+	i = h + col * (*s).Nfreq;
+	j = col % (*s).Nspace;
+	k = col / (*s).Nspace;
+
+	//alpha is deviation from crystal Theta
+	//beta is deviation from crystal Phi
+	//angles array format: {alpha 1, alpha2, beta1, beta2}
+	//
 }
 __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long long j, double f, double* sellmeierCoefficients, cudaParameterSet *s) {
 	//Find walkoff angle, starting from zero
