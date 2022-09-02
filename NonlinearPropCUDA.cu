@@ -397,15 +397,16 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 	k = col / (*s).Nspace;
 
 	double f = (*s).fStep * h;
-	double kx1 = (LIGHTC / (TWOPI * f)) * (j - (*s).Nspace / 2) * (*s).dk1;
-	double ky1 = (LIGHTC / (TWOPI * f)) * (k - (*s).Nspace2 / 2) * (*s).dk2;
-
+	//double kx1 = (LIGHTC / (TWOPI * f)) * (j - (*s).Nspace / 2) * (*s).dk1;
+	//double ky1 = (LIGHTC / (TWOPI * f)) * (k - (*s).Nspace2 / 2) * (*s).dk2;
+	double kx1 = (LIGHTC / (TWOPI * f)) * (j * (*s).dk1 -(j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace));
+	double ky1 = (LIGHTC / (TWOPI * f)) * (k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2));
 	//alpha is deviation from crystal Theta (x2 polarizations)
 	//beta is deviation from crystal Phi
 	//
 	cuDoubleComplex n[4][2];
-
-	sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).sellmeierType, 0);
+	cuDoubleComplex nW;
+	sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 	if ((*s).axesNumber == 0) {
 		*n1 = n[0][0];
 		*n2 = n[0][1];
@@ -418,43 +419,57 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 	
 	double gradientStep = 1.0e-7;
 	double gradientFactor = 0.5 / gradientStep;
-	double theta[2] = { 1.0 };
-	int iter = 0;
-	int maxiter = 2048;
+	int it;
+	int maxiter = 16;
 
-	double y[2][2][2];
-	sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).sellmeierType, 0);
-	sellmeierCuda(&n[1][0], &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).sellmeierType, 0);
-	double err;
+	double errArray[2][2][2];
 	if ((*s).axesNumber == 1) {
-		gradient[0][0] = gradientFactor * (sin(alpha[0] + gradientStep) * n[0][0].x - kx1) - (sin(alpha[0] - gradientStep) * n[1][0].x - kx1);
-		gradient[0][1] = gradientFactor * (sin(alpha[1] + gradientStep) * n[0][1].x - kx1) - (sin(alpha[1] - gradientStep) * n[1][1].x - kx1);
-		y[0][0][0] = alpha[0];
-		y[0][0][1] = alpha[1];
-		err = gradient[0][0] * gradient[0][0] + gradient[0][1] * gradient[0][1];
-		while (err > 1e-12 && iter++ < maxiter) {
-			y[1][0][0] = alpha[0] - gradient[0][0];
-			y[1][0][1] = alpha[1] - gradient[0][1];
-			theta[1] = 0.5 + 0.5 * sqrt(1.0 + 4.0 * theta[0] * theta[0]);
-			alpha[0] = y[1][0][0] +
-				((theta[0] - 1.0) / theta[1]) * (y[1][0][0] - y[0][0][0]) +
-				(theta[0] / theta[1]) * (y[1][0][0] - alpha[0]);
-			alpha[1] = y[1][0][1] +
-				((theta[0] - 1.0) / theta[1]) * (y[1][0][1] - y[0][0][1]) +
-				(theta[0] / theta[1]) * (y[1][0][1] - alpha[1]);
-			y[0][0][0] = y[1][0][0];
-			y[0][0][1] = y[1][0][1];
-			theta[0] = theta[1];
+		sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		errArray[0][0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
+		errArray[1][0][0] = sin(alpha[0] - gradientStep) * n[1][0].x - kx1;
+		gradient[0][0] = gradientFactor * (errArray[0][0][0] - errArray[1][0][0]);
 
-			sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).sellmeierType, 0);
-			sellmeierCuda(&n[1][0], &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).sellmeierType, 0);
-			gradient[0][0] = gradientFactor * (sin(alpha[0] + gradientStep) * n[0][0].x - kx1) - (sin(alpha[0] - gradientStep) * n[1][0].x - kx1);
-			gradient[0][1] = gradientFactor * (sin(alpha[1] + gradientStep) * n[0][1].x - kx1) - (sin(alpha[1] - gradientStep) * n[1][1].x - kx1);
+		for (it = 0; i < maxiter; i++) {
+			if (gradient[0][0] == 0.0) break;
+			alpha[0] -= 0.25 * (errArray[0][0][0] + errArray[1][0][0])/gradient[0][0];
+			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+			errArray[0][0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
+			errArray[1][0][0] = sin(alpha[0] - gradientStep) * n[1][0].x - kx1;
+			gradient[0][0] = gradientFactor * (errArray[0][0][0] - errArray[1][0][0]);
 		}
-		sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).sellmeierType, 0);
-		sellmeierCuda(&n[1][0], &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).sellmeierType, 0);
+		//minus for now, comparison
+		sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] - alpha[0], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] - alpha[1], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		*n1 = n[0][0];
-		*n2 = n[0][1];
+		*n2 = n[1][1];
+		return;
+	}
+
+	if ((*s).axesNumber == 2) {
+		sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&nW, &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&nW, &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
+		errArray[0][0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
+		errArray[1][0][0] = sin(alpha[0] - gradientStep) * n[1][0].x - kx1;
+		gradient[0][0] = gradientFactor * (errArray[0][0][0] - errArray[1][0][0]);
+
+		for (it = 0; i < maxiter; i++) {
+			if (gradient[0][0] == 0.0) break;
+			alpha[0] -= 0.25 * (errArray[0][0][0] + errArray[1][0][0]) / gradient[0][0];
+			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+			errArray[0][0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
+			errArray[1][0][0] = sin(alpha[0] - gradientStep) * n[1][0].x - kx1;
+			gradient[0][0] = gradientFactor * (errArray[0][0][0] - errArray[1][0][0]);
+		}
+		//minus for now, comparison
+		sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] - alpha[0], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] - alpha[1], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		*n1 = n[0][0];
+		*n2 = n[1][1];
 		return;
 	}
 
@@ -742,17 +757,17 @@ __global__ void applyLinearPropagationKernel(double* sellmeierCoefficients, doub
 	//frequency being resolved by current thread
 	double f = h * (*s).fStep;
 	double omega = TWOPI * f;
-	findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients, s);
-	
+	//findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients, s);
+	findBirefringentCrystalIndex(s, sellmeierCoefficients, threadIdx.x + blockIdx.x * blockDim.x, &ne, &no);
 	double dk1 = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace);
 	double dk2 = k * kStep - (k >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace);
 	//walkoff angle has been found, generate the rest of the grids
 
 
-	sellmeierCuda(&ne, &no, sellmeierCoefficients, f,
-		crystalTheta + 0*alpha1, crystalPhi, axesNumber, sellmeierType);
+	//sellmeierCuda(&ne, &no, sellmeierCoefficients, f,
+	//	crystalTheta, crystalPhi, axesNumber, sellmeierType);
 	sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
-		crystalTheta + 0*alphaO1, crystalPhi, axesNumber, sellmeierType);
+		crystalTheta, crystalPhi, axesNumber, sellmeierType);
 	if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
 		ne = make_cuDoubleComplex(1, 0);
 		no = make_cuDoubleComplex(1, 0);
@@ -1725,6 +1740,8 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 	(*s).fftNorm = 1.0 / (*s).Ngrid;
 	(*s).dt = (*sCPU).tStep;
 	(*s).dx = (*sCPU).rStep;
+	(*s).dk1 = TWOPI / ((*sCPU).Nspace * (*sCPU).rStep);
+	(*s).dk2 = TWOPI / ((*sCPU).Nspace2 * (*sCPU).rStep);
 	(*s).fStep = (*sCPU).fStep;
 	(*s).Nsteps = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
 	(*s).h = (*sCPU).crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
