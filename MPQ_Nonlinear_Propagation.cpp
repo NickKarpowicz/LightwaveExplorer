@@ -1770,7 +1770,6 @@ int openDialogBoxAndLoad(HWND hWnd) {
             szFileNameNoExt[MAX_LOADSTRING - 1] = 0;
             wcstombs(fileNameString, szFileNameNoExt, MAX_LOADSTRING);
 
-
             allocateGrids(activeSetPtr);
             isGridAllocated = TRUE;
             int res;

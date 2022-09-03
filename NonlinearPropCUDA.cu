@@ -417,10 +417,14 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 	double gradientStep = 1.0e-7;
 	double gradientFactor = 0.5 / gradientStep;
 	int it;
-	int maxiter = 16;
+	int maxiter = 32;
+	//emperical testing: 
+	// converges to double precision limit in two iterations for BBO
+	// converges in 32 iterations in BiBO
 
 	double errArray[4][2];
 	if ((*s).axesNumber == 1) {
+		maxiter = 4;
 		sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
@@ -428,7 +432,7 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 		gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 
 		for (it = 0; it < maxiter; it++) {
-			if (abs(gradient[0][0]) > 1e-13) alpha[0] -= 0.25 * (errArray[0][0] + errArray[1][0])/gradient[0][0];
+			if (abs(gradient[0][0]) > 1e-13) alpha[0] -= 0.5 * (errArray[0][0] + errArray[1][0])/gradient[0][0];
 
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
@@ -674,6 +678,8 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 	(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
 }
 
+
+
 __global__ void apertureKernel(cudaParameterSet* s, double radius, double activationParameter) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	long long j, k, col;
@@ -786,7 +792,7 @@ __global__ void applyLinearPropagationKernel(double* sellmeierCoefficients, doub
 	double dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 	double dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 	if (!(*s).is3D)dk2 = 0.0;
-
+	//if ((*s).isCylindric) dk2 = dk1;
 	sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
 		crystalTheta, crystalPhi, axesNumber, sellmeierType);
 	if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
@@ -797,7 +803,6 @@ __global__ void applyLinearPropagationKernel(double* sellmeierCoefficients, doub
 	cuDoubleComplex ke = ne * omega / LIGHTC;
 	cuDoubleComplex ko = no * omega / LIGHTC;
 	double k0 = cuCreal(n0 * omega / LIGHTC);
-
 	double kze = cuCreal(cuCsqrt(ke * ke - dk1 * dk1 - dk2 * dk2));
 	double kzo = cuCreal(cuCsqrt(ko * ko - dk1 * dk1 - dk2 * dk2));
 
@@ -906,7 +911,6 @@ __global__ void prepare3DGridsKernel(double* sellmeierCoefficients, cudaParamete
 	cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
 	double crystalTheta = sellmeierCoefficients[66];
 	double crystalPhi = sellmeierCoefficients[67];
-	double fStep = sellmeierCoefficients[71];
 
 	//frequency being resolved by current thread
 	double f = -j * (*s).fStep;
@@ -1756,7 +1760,7 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 	(*s).Nblock = (int)((*s).Ngrid / THREADS_PER_BLOCK);
 	(*s).NblockC = (int)((*s).NgridC / THREADS_PER_BLOCK);
 	(*s).isCylindric = (*sCPU).isCylindric;
-	
+	(*s).forceLinear = (*sCPU).forceLinear;
 	(*s).isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;
 	(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
 	
@@ -1854,6 +1858,10 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 		(*s).hasPlasma = FALSE;
 	}
 
+	if ((*s).forceLinear) {
+		(*s).hasPlasma = FALSE;
+		(*s).isNonLinear = FALSE;
+	}
 	plasmaParametersCPU[0] = (*sCPU).nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
 	plasmaParametersCPU[1] = (*sCPU).drudeGamma; //gamma
 	if ((*sCPU).nonlinearAbsorptionStrength > 0.) {
@@ -2165,7 +2173,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 	//Copy the field into the temporary array
 	cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
 
-	if ((*sc).isUsingMillersRule) {
+	if ((*sc).isUsingMillersRule && !(*sc).forceLinear) {
 		multiplicationKernelCompactVector<<<(unsigned int)((*sc).NgridC/ MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, (*sc).CUDAStream>>> ((*sc).chiLinear1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
 	}
 	else {
@@ -2324,7 +2332,11 @@ int applyParabolicMirror(simulationParameterSet* sCPU, double focus) {
 int applyLinearPropagation(simulationParameterSet* sCPU, int materialIndex, double thickness) {
 	cudaParameterSet s;
 	initializeCudaParameterSet(sCPU, &s);
+
+	
 	cudaMemcpy(s.gridEFrequency1, (*sCPU).EkwOut, s.NgridC * 2 * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+	
+	
 
 	double* sellmeierCoefficients = (double*)s.gridEFrequency1Next1;
 	//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
@@ -2343,11 +2355,16 @@ int applyLinearPropagation(simulationParameterSet* sCPU, int materialIndex, doub
 	cudaParameterSet* sDevice;
 	cudaMalloc(&sDevice, sizeof(cudaParameterSet));
 	cudaMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+
+
+
 	applyLinearPropagationKernel<<<s.Nblock/2, s.Nthread, 0, s.CUDAStream>>>(sellmeierCoefficients, thickness, sDevice);
 	
 	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, s.NgridC * 2 * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 	cufftExecZ2D(s.fftPlanZ2D, s.gridEFrequency1, s.gridETime1);
 	multiplyByConstantKernelD<<<2*s.Nblock,s.Nthread,0,s.CUDAStream>>>(s.gridETime1, 1.0 / s.Ngrid);
+
+
 	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
 
 	deallocateCudaParameterSet(&s);
@@ -3244,10 +3261,10 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	//derived parameters and cleanup:
 	(*sCPU).sellmeierType = 0;
 	(*sCPU).axesNumber = 0;
-	(*sCPU).Ntime = (size_t)(MIN_GRIDDIM * ceil((*sCPU).timeSpan / (MIN_GRIDDIM * (*sCPU).tStep)));
+	(*sCPU).Ntime = (size_t)(MIN_GRIDDIM * round((*sCPU).timeSpan / (MIN_GRIDDIM * (*sCPU).tStep)));
 	(*sCPU).Nfreq = (*sCPU).Ntime / 2 + 1;
-	(*sCPU).Nspace = (size_t)(MIN_GRIDDIM * ceil((*sCPU).spatialWidth / (MIN_GRIDDIM * (*sCPU).rStep)));
-	(*sCPU).Nspace2 = (size_t)(MIN_GRIDDIM * ceil((*sCPU).spatialHeight / (MIN_GRIDDIM * (*sCPU).rStep)));
+	(*sCPU).Nspace = (size_t)(MIN_GRIDDIM * round((*sCPU).spatialWidth / (MIN_GRIDDIM * (*sCPU).rStep)));
+	(*sCPU).Nspace2 = (size_t)(MIN_GRIDDIM * round((*sCPU).spatialHeight / (MIN_GRIDDIM * (*sCPU).rStep)));
 	(*sCPU).Ngrid = (*sCPU).Ntime * (*sCPU).Nspace;
 	(*sCPU).NgridC = (*sCPU).Nfreq * (*sCPU).Nspace;
 	(*sCPU).kStep = TWOPI / ((*sCPU).Nspace * (*sCPU).rStep);
@@ -3646,18 +3663,47 @@ int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* d
 		return error;
 
 	case 1:
-		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-		thickness = 1.0e-6 * offsetArray[8];
-		if (offsetArray[8] == -1) {
-			thickness = (*s).crystalThickness;
+		if ((*s).isCylindric) {
+			if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+			if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+			if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+			if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
+			if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
+			if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
+			if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
+			if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
+			if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
+			if ((int)offsetArray[8] != -1 && (int)offsetArray[8] != -1) (*s).Npropagation
+				= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
+			if (currentIndex > 0) {
+				(*s).isFollowerInSequence = TRUE;
+			}
+			(*s).chi2Tensor = db[(*s).materialIndex].d;
+			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
+			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
+			(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
+			(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
+			(*s).axesNumber = db[(*s).materialIndex].axisType;
+			(*s).forceLinear = TRUE;
+
+			error = solveNonlinearWaveEquation(s);
 		}
-		materialIndex = (int)offsetArray[1];
-		if (offsetArray[1] == -1) {
-			materialIndex = (*s).materialIndex;
+		else {
+			if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+			if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+			if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+			thickness = 1.0e-6 * offsetArray[8];
+			if (offsetArray[8] == -1) {
+				thickness = (*s).crystalThickness;
+			}
+			materialIndex = (int)offsetArray[1];
+			if (offsetArray[1] == -1) {
+				materialIndex = (*s).materialIndex;
+			}
+			applyLinearPropagation(s, materialIndex, thickness);
 		}
-		applyLinearPropagation(s, materialIndex, thickness);
+
 		if (offsetArray[10] != 0.0) {
 			rotateField(s, DEG2RAD * offsetArray[10]);
 		}

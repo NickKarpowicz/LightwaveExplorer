@@ -144,6 +144,7 @@ typedef struct simulationParameterSet {
     bool isInSequence;
     bool isFollowerInSequence;
     bool isReinjecting;
+    bool forceLinear;
     char sequenceString[MAX_LOADSTRING];
     double sequenceArray[MAX_LOADSTRING];
     int Nsequence;
@@ -219,6 +220,7 @@ typedef struct cudaParameterSet {
     bool hasPlasma;
     bool isNonLinear;
     bool isUsingMillersRule;
+    bool forceLinear;
 	size_t Ntime;
     size_t Nfreq;
 	size_t Nspace;
