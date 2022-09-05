@@ -1654,15 +1654,14 @@ int drawLabels(HDC hdc) {
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);
 
-
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox1, _T("s-polarization, space/time:"), -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox2, _T("p-polarization, space/time:"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox3, _T("s-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("p-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox5, _T("s-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox6, _T("p-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("s-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("p-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox1, _T("x-polarization, space/time:"), -maingui.plotSpacerX +8, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox2, _T("y-polarization, space/time:"),  -maingui.plotSpacerX +8, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox3, _T("x-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("y-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox5, _T("x-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox6, _T("y-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("x-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("y-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
 
 
     GetWindowRect(maingui.plotBox8, &mainRect);
