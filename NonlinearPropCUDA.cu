@@ -3348,11 +3348,11 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 		fprintf(textfile, "#SBATCH --gres=gpu:a100:%i", min(gpuCount, 4)); unixNewLine(textfile);
 		fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2 * min(gpuCount, 4)); unixNewLine(textfile);
 	}
-	fprintf(textfile, "#SBATCH --mem=%lliM", 1024 + (18 * sizeof(double) * (*sCPU).Ngrid * max(1, (*sCPU).Nsims)) / 1048576);
+	fprintf(textfile, "#SBATCH --mem=%lliM", 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * max(1, (*sCPU).Nsims)) / 1048576);
 	unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --nodes=1"); unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --ntasks-per-node=1"); unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH --time=01:00:00"); unixNewLine(textfile);
+	fprintf(textfile, "#SBATCH --time=03:00:00"); unixNewLine(textfile);
 	fprintf(textfile, "module purge"); unixNewLine(textfile);
 	fprintf(textfile, "module load cuda/11.6"); unixNewLine(textfile);
 	fprintf(textfile, "module load mkl/2022.1"); unixNewLine(textfile);
@@ -3362,7 +3362,7 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	}
 	if (gpuType == 2) {
 		fprintf(textfile, "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}"); unixNewLine(textfile);
-		fprintf(textfile, "srun ./nnp %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
+		fprintf(textfile, "srun ./lwe %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
 	}
 	fclose(textfile);
 	free(outputpath);
