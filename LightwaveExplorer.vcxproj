@@ -24,6 +24,7 @@
     <ProjectGuid>{c62a9002-9eec-475d-bf37-78c42ecb77f4}</ProjectGuid>
     <RootNamespace>MPQNonlinearPropagation</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>LightwaveExplorer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -132,7 +133,7 @@
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_75,sm_75;compute_86,sm_86;%(CodeGeneration)</CodeGeneration>
+      <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
       <CudaRuntime>Static</CudaRuntime>
     </CudaCompile>
     <Manifest>
@@ -181,29 +182,29 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
-    <ClInclude Include="MPQ_Nonlinear_Propagation.h" />
-    <ClInclude Include="NonlinearPropCUDA.cuh" />
+    <ClInclude Include="LightwaveExplorerFrontend.h" />
+    <ClInclude Include="LightwaveExplorerCore.cuh" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MPQ_Nonlinear_Propagation.cpp" />
+    <ClCompile Include="LightwaveExplorerFrontend.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="MPQ_Nonlinear_Propagation.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="MPQ_Nonlinear_Propagation.ico" />
+    <Image Include="LightwaveExplorer.ico" />
     <Image Include="small.ico" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="NonlinearPropCUDA.cu" />
+    <CudaCompile Include="LightwaveExplorerCore.cu" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CrystalDatabase.txt" />
   </ItemGroup>
   <ItemGroup>
     <None Include="lightwaveExplorer.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="LightwaveExplorer.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

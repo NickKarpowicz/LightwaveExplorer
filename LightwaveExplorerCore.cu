@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "NonlinearPropCUDA.cuh"
+#include "LightwaveExplorerCore.cuh"
 #include <complex>
 #include <cstdlib>
 #include <stdlib.h>

@@ -24,33 +24,28 @@
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MPQ_Nonlinear_Propagation.h">
+    <ClInclude Include="LightwaveExplorerFrontend.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NonlinearPropCUDA.cuh">
+    <ClInclude Include="LightwaveExplorerCore.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MPQ_Nonlinear_Propagation.cpp">
+    <ClCompile Include="LightwaveExplorerFrontend.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="MPQ_Nonlinear_Propagation.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="small.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="MPQ_Nonlinear_Propagation.ico">
+    <Image Include="LightwaveExplorer.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="NonlinearPropCUDA.cu">
+    <CudaCompile Include="LightwaveExplorerCore.cu">
       <Filter>Source Files</Filter>
     </CudaCompile>
   </ItemGroup>
@@ -63,5 +58,10 @@
     <None Include="lightwaveExplorer.py">
       <Filter>Resource Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="LightwaveExplorer.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

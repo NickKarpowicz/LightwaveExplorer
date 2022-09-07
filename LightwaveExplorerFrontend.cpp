@@ -4,8 +4,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #define _CRT_SECURE_NO_DEPRECATE
 #include "framework.h"
-#include "MPQ_Nonlinear_Propagation.h"
-#include "NonlinearPropCUDA.cuh"
+#include "LightwaveExplorerFrontend.h"
+#include "LightwaveExplorerCore.cuh"
 #include<cstdio>
 #include<complex>
 #include<math.h>
