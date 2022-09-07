@@ -2,8 +2,8 @@
 #include "device_launch_parameters.h"
 #include <stdio.h>
 #include <complex>
-#include <cuComplex.h>
 #include "cufft.h"
+#include <thrust/complex.h>
 
 #define MAX_LOADSTRING 1024
 
@@ -168,29 +168,29 @@ typedef struct simulationParameterSet {
 typedef struct cudaParameterSet {
     cudaStream_t CUDAStream;
 
-    cuDoubleComplex* workspace1;
-    cuDoubleComplex* workspace2;
-    cuDoubleComplex* workspace2P;
-	cuDoubleComplex* gridETemp1;
-	cuDoubleComplex* gridETemp2;
-	cuDoubleComplex* gridEFrequency1;
-	cuDoubleComplex* gridEFrequency2;
-	cuDoubleComplex* gridPropagationFactor1;
-	cuDoubleComplex* gridPropagationFactor1Rho1;
-	cuDoubleComplex* gridPropagationFactor1Rho2;
-	cuDoubleComplex* gridPolarizationFactor1;
-	cuDoubleComplex* gridPolarizationFrequency1;
-	cuDoubleComplex* gridPropagationFactor2;
-	cuDoubleComplex* gridPolarizationFactor2;
-	cuDoubleComplex* gridPolarizationFrequency2;
-	cuDoubleComplex* gridEFrequency1Next1;
-	cuDoubleComplex* gridEFrequency1Next2;
-	cuDoubleComplex* gridPlasmaCurrentFrequency1;
-	cuDoubleComplex* gridPlasmaCurrentFrequency2;
-    cuDoubleComplex* chiLinear1;
-    cuDoubleComplex* chiLinear2;
-	cuDoubleComplex* k1;
-	cuDoubleComplex* k2;
+    thrust::complex<double>* workspace1;
+    thrust::complex<double>* workspace2;
+    thrust::complex<double>* workspace2P;
+	thrust::complex<double>* gridETemp1;
+	thrust::complex<double>* gridETemp2;
+	thrust::complex<double>* gridEFrequency1;
+	thrust::complex<double>* gridEFrequency2;
+	thrust::complex<double>* gridPropagationFactor1;
+	thrust::complex<double>* gridPropagationFactor1Rho1;
+	thrust::complex<double>* gridPropagationFactor1Rho2;
+	thrust::complex<double>* gridPolarizationFactor1;
+	thrust::complex<double>* gridPolarizationFrequency1;
+	thrust::complex<double>* gridPropagationFactor2;
+	thrust::complex<double>* gridPolarizationFactor2;
+	thrust::complex<double>* gridPolarizationFrequency2;
+	thrust::complex<double>* gridEFrequency1Next1;
+	thrust::complex<double>* gridEFrequency1Next2;
+	thrust::complex<double>* gridPlasmaCurrentFrequency1;
+	thrust::complex<double>* gridPlasmaCurrentFrequency2;
+    thrust::complex<double>* chiLinear1;
+    thrust::complex<double>* chiLinear2;
+	thrust::complex<double>* k1;
+	thrust::complex<double>* k2;
 
     double* gridRadialLaplacian1;
     double* gridRadialLaplacian2;

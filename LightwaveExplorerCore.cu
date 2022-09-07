@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <chrono>
-#include <cuComplex.h>
 #include <cufft.h>
 #include <mkl.h>
 #include <thread>
+#include<thrust/complex.h>
 
 //fitting parameter set as global variable
 simulationParameterSet* fittingSet;
@@ -36,35 +36,15 @@ simulationParameterSet* fittingReferenceSet;
 #define min(a,b)            (((a) < (b)) ? (a) : (b))
 #endif
 
-//overload the math operators for cuda complex numbers so this code fits inside the observable universe
-__device__ __forceinline__ cuDoubleComplex operator*(cuDoubleComplex a, cuDoubleComplex b) { return cuCmul(a, b); }
-__device__ __forceinline__ cuDoubleComplex operator*(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x * b, a.y * b); }
-__device__ __forceinline__ cuDoubleComplex operator*(double b, cuDoubleComplex a) { return make_cuDoubleComplex(a.x * b, a.y * b); }
-__device__ __forceinline__ cuDoubleComplex operator+(cuDoubleComplex a, cuDoubleComplex b) { return cuCadd(a, b); }
-__device__ __forceinline__ cuDoubleComplex operator+(double a, cuDoubleComplex b) { return make_cuDoubleComplex(b.x + a, b.y); }
-__device__ __forceinline__ cuDoubleComplex operator+(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x + b, a.y); }
-__device__ __forceinline__ cuDoubleComplex operator-(cuDoubleComplex a, cuDoubleComplex b) { return cuCsub(a, b); }
-__device__ __forceinline__ cuDoubleComplex operator-(double a, cuDoubleComplex b) { return make_cuDoubleComplex(a - b.x, -b.y); }
-__device__ __forceinline__ cuDoubleComplex operator-(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x - b, a.y); }
-__device__ __forceinline__ cuDoubleComplex operator/(cuDoubleComplex b, cuDoubleComplex a) { return cuCdiv(b, a); }
-__device__ __forceinline__ cuDoubleComplex operator/(cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x / b, a.y / b); }
-__device__  cuDoubleComplex operator/(double b, cuDoubleComplex a) {
-	double divbByDenominator = b / (a.x * a.x + a.y * a.y);
-	return make_cuDoubleComplex(a.x * divbByDenominator, -a.y * divbByDenominator);
+//temporary functions for adapting cuDoubleComplex functions to thrust::complex
+__device__ double cuCreal(thrust::complex<double> x) {
+	return x.real();
 }
 
-//complex exponential function for cuDoubleComplex
-__device__ cuDoubleComplex cuCexpd(cuDoubleComplex z) {
-	double r = exp(z.x);
-	return make_cuDoubleComplex(r * cos(z.y), r * sin(z.y));
+__device__ double cuCimag(thrust::complex<double> x) {
+	return x.imag();
 }
 
-//sqrt for cuDoubleComplex
-__device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x){
-	double r = cuCabs(x);
-	double c = x.x / r;
-	return make_cuDoubleComplex(sqrt(r * (c + 1.0) / 2), signbit(x.y) * sqrt(r * (1.0 - c) / 2));
-}
 
 //Inner function for the Sellmeier equation to provide the refractive indicies
 //current equation form:
@@ -78,8 +58,8 @@ __device__ cuDoubleComplex cuCsqrt(cuDoubleComplex x){
 //omega: frequency (rad/s)
 //ii: sqrt(-1)
 //kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
-__device__ cuDoubleComplex sellmeierSubfunctionCuda(
-	double* a, double ls, double omega, cuDoubleComplex ii, double kL) {
+__device__ thrust::complex<double> sellmeierSubfunctionCuda(
+	double* a, double ls, double omega, thrust::complex<double> ii, double kL) {
 	double realPart = a[0]
 		+ (a[1] + a[2] * ls) / (ls + a[3])
 		+ (a[4] + a[5] * ls) / (ls + a[6])
@@ -93,19 +73,19 @@ __device__ cuDoubleComplex sellmeierSubfunctionCuda(
 	//means it's out of range and causes instability
 	if (realPart < 0) realPart = 1;
 
-	return cuCsqrt(realPart
+	return thrust::sqrt(realPart
 		+ kL * a[16] / (a[17] - omega * omega + ii * a[18] * omega)
 		+ kL * a[19] / (a[20] - omega * omega + ii * a[21] * omega));
 }
 
 //Sellmeier equation for refractive indicies
-__device__ cuDoubleComplex sellmeierCuda(
-	cuDoubleComplex* ne, cuDoubleComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
-	if (f == 0) return make_cuDoubleComplex(1.0, 0.0); //exit immediately for f=0
+__device__ thrust::complex<double> sellmeierCuda(
+	thrust::complex<double>* ne, thrust::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn) {
+	if (f == 0) return thrust::complex<double>(1.0, 0.0); //exit immediately for f=0
 
 	double ls = 2.99792458e14 / f; //wavelength in microns
 	ls *= ls; //only wavelength^2 is ever used
-	cuDoubleComplex ii = make_cuDoubleComplex(0.0, 1.0);
+	thrust::complex<double> ii(0.0, 1.0);
 	double omega = TWOPI * abs(f);
 	double kL = 3183.9; //(e * e / (epsilon_o * m_e)
 
@@ -119,19 +99,19 @@ __device__ cuDoubleComplex sellmeierCuda(
 	//option 1: uniaxial
 	else if (type == 1) {
 
-		cuDoubleComplex na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
-		cuDoubleComplex nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
+		thrust::complex<double> na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
+		thrust::complex<double> nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
 		no[0] = na;
-		ne[0] = 1.0 / cuCsqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
+		ne[0] = 1.0 / thrust::sqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
 		return ne[0];
 	}
 	else {
 		//type == 2: biaxial
 		// X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
 		// I am sorry if there is a bug and you're trying to find it, i did my best.
-		cuDoubleComplex na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
-		cuDoubleComplex nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
-		cuDoubleComplex nc = sellmeierSubfunctionCuda(&a[44], ls, omega, ii, kL);
+		thrust::complex<double> na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
+		thrust::complex<double> nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
+		thrust::complex<double> nc = sellmeierSubfunctionCuda(&a[44], ls, omega, ii, kL);
 		double cosTheta = cos(theta);
 		double cosTheta2 = cosTheta * cosTheta;
 		double sinTheta = sin(theta);
@@ -140,23 +120,23 @@ __device__ cuDoubleComplex sellmeierCuda(
 		double sinPhi2 = sinPhi * sinPhi;
 		double cosPhi = cos(phi);
 		double cosPhi2 = cosPhi * cosPhi;
-		double realna2 = cuCreal(na) * cuCreal(na);
-		double realnb2 = cuCreal(nb) * cuCreal(nb);
-		cuDoubleComplex na2 = na * na;
-		cuDoubleComplex nb2 = nb * nb;
-		cuDoubleComplex nc2 = nc * nc;
+		double realna2 = na.real() * na.real();
+		double realnb2 = nb.real() * nb.real();
+		thrust::complex<double> na2 = na * na;
+		thrust::complex<double> nb2 = nb * nb;
+		thrust::complex<double> nc2 = nc * nc;
 		double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2)
 			* sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2)
 				+ ((sinPhi2 / realna2 + cosPhi2 / realnb2)
-					* cosTheta2 + sinTheta2 / (cuCreal(nc) * cuCreal(nc)))));
+					* cosTheta2 + sinTheta2 / (nc.real() * nc.real()))));
 		double cosDelta = cos(delta);
 		double sinDelta = sin(delta);
-		ne[0] = 1.0 / cuCsqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 / na2
+		ne[0] = 1.0 / thrust::sqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 / na2
 			+ sinPhi2 / nb2) + sinTheta2 / nc2)
 			+ sinDelta * sinDelta * (sinPhi2 / na2 + cosPhi2 / nb2)
 			- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / na2 - 1. / (nb * nb)));
 
-		no[0] = 1.0 / cuCsqrt(sinDelta * sinDelta * (cosTheta2 * (cosPhi2 / na2
+		no[0] = 1.0 / thrust::sqrt(sinDelta * sinDelta * (cosTheta2 * (cosPhi2 / na2
 			+ sinPhi2 / nb2) + sinTheta2 / nc2)
 			+ cosDelta * cosDelta * (sinPhi2 / na2 + cosPhi2 / nb2)
 			+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / na2 - 1. / nb2));
@@ -170,7 +150,7 @@ __global__ void millersRuleNormalizationKernel(cudaParameterSet* s, double* sell
 	size_t i;
 	double chi11[7];
 	double chi12[7];
-	cuDoubleComplex ne, no;
+	thrust::complex<double> ne, no;
 	for (i = 0; i < 7; i++) {
 		if (referenceFrequencies[i] == 0) {
 			chi11[i] = 100000.0;
@@ -178,8 +158,8 @@ __global__ void millersRuleNormalizationKernel(cudaParameterSet* s, double* sell
 		}
 		else {
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[69], 0);
-			chi11[i] = cuCreal(ne) * cuCreal(ne) - 1;
-			chi12[i] = cuCreal(no) * cuCreal(no) - 1;
+			chi11[i] =ne.real() *ne.real() - 1;
+			chi12[i] =no.real() *no.real() - 1;
 		}
 
 	}
@@ -200,10 +180,10 @@ __global__ void millersRuleNormalizationKernel(cudaParameterSet* s, double* sell
 
 }
 
-__device__ __forceinline__ double cuCModSquared(cuDoubleComplex a) {
-	return a.x * a.x + a.y * a.y;
+__device__ __forceinline__ double cuCModSquared(thrust::complex<double> a) {
+	return a.real() * a.real() + a.imag() * a.imag();
 }
-__global__ void totalSpectrumKernel(cuDoubleComplex* fieldGrid1, cuDoubleComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
+__global__ void totalSpectrumKernel(thrust::complex<double>* fieldGrid1, thrust::complex<double>* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t j;
 	double beamCenter1 = 0.;
@@ -248,7 +228,7 @@ __global__ void totalSpectrumKernel(cuDoubleComplex* fieldGrid1, cuDoubleComplex
 	spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
 }
 
-__global__ void totalSpectrum3DKernel(cuDoubleComplex* fieldGrid1, cuDoubleComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
+__global__ void totalSpectrum3DKernel(thrust::complex<double>* fieldGrid1, thrust::complex<double>* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
 	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
 	size_t j;
 
@@ -272,8 +252,8 @@ __global__ void totalSpectrum3DKernel(cuDoubleComplex* fieldGrid1, cuDoubleCompl
 
 //rotate the field around the propagation axis (basis change)
 __global__ void rotateFieldKernel(
-	cuDoubleComplex* Ein1, cuDoubleComplex* Ein2, cuDoubleComplex* Eout1,
-	cuDoubleComplex* Eout2, double rotationAngle) {
+	thrust::complex<double>* Ein1, thrust::complex<double>* Ein2, thrust::complex<double>* Eout1,
+	thrust::complex<double>* Eout2, double rotationAngle) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
 	Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
@@ -388,7 +368,7 @@ __global__ void expandCylindricalBeam(cudaParameterSet* s, double* polarization1
 // If uniaxial, solve 1D problem with n(alpha,0)
 // If biaxial, solve 2D problem
 // Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
-__device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellmeierCoefficients, long long i, cuDoubleComplex* n1, cuDoubleComplex* n2) {
+__device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellmeierCoefficients, long long i, thrust::complex<double>* n1, thrust::complex<double>* n2) {
 	long long j, k, h, col;
 	h = 1 + i % ((*s).Nfreq - 1);
 	col = i / ((*s).Nfreq - 1);
@@ -401,8 +381,8 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 	//alpha is deviation from crystal Theta (x2 polarizations)
 	//beta is deviation from crystal Phi
 	//
-	cuDoubleComplex n[4][2];
-	cuDoubleComplex nW;
+	thrust::complex<double> n[4][2];
+	thrust::complex<double> nW;
 	sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 	if ((*s).axesNumber == 0) {
 		*n1 = n[0][0];
@@ -411,8 +391,8 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 	}
 
 	double gradient[2][2];
-	double alpha[2] = { asin(kx1 / n[0][0].x),asin(kx1 / n[0][1].x) };
-	double beta[2] = { asin(ky1 / n[0][0].x),asin(ky1 / n[0][1].x) };
+	double alpha[2] = { asin(kx1 / n[0][0].real()),asin(kx1 / n[0][1].real()) };
+	double beta[2] = { asin(ky1 / n[0][0].real()),asin(ky1 / n[0][1].real()) };
 	
 	double gradientStep = 1.0e-7;
 	double gradientFactor = 0.5 / gradientStep;
@@ -427,8 +407,8 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 		maxiter = 4;
 		sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
-		errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
-		errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].x - kx1;
+		errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
+		errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 		gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 
 		for (it = 0; it < maxiter; it++) {
@@ -436,8 +416,8 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
-			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
-			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].x - kx1;
+			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
+			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 			gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 		}
 		sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
@@ -456,14 +436,14 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 		sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
 		sellmeierCuda(&nW, &n[2][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
 		sellmeierCuda(&nW, &n[3][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
-		errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
-		errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].x - kx1;
-		errArray[2][0] = sin(beta[0] + gradientStep) * n[2][0].x - ky1;
-		errArray[3][0] = sin(beta[0] - gradientStep) * n[3][0].x - ky1;
-		errArray[0][1] = sin(alpha[1] + gradientStep) * n[0][1].x - kx1;
-		errArray[1][1] = sin(alpha[1] - gradientStep) * n[1][1].x - kx1;
-		errArray[2][1] = sin(beta[1] + gradientStep) * n[2][1].x - ky1;
-		errArray[3][1] = sin(beta[1] - gradientStep) * n[3][1].x - ky1;
+		errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
+		errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
+		errArray[2][0] = sin(beta[0] + gradientStep) * n[2][0].real() - ky1;
+		errArray[3][0] = sin(beta[0] - gradientStep) * n[3][0].real() - ky1;
+		errArray[0][1] = sin(alpha[1] + gradientStep) * n[0][1].real() - kx1;
+		errArray[1][1] = sin(alpha[1] - gradientStep) * n[1][1].real() - kx1;
+		errArray[2][1] = sin(beta[1] + gradientStep) * n[2][1].real() - ky1;
+		errArray[3][1] = sin(beta[1] - gradientStep) * n[3][1].real() - ky1;
 		gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 		gradient[1][0] = gradientFactor * (errArray[2][0] - errArray[3][0]);
 		gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
@@ -482,14 +462,14 @@ __device__ void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellme
 			sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&nW, &n[2][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&nW, &n[3][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
-			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].x - kx1;
-			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].x - kx1;
-			errArray[2][0] = sin(beta[0] + gradientStep) * n[2][0].x - ky1;
-			errArray[3][0] = sin(beta[0] - gradientStep) * n[3][0].x - ky1;
-			errArray[0][1] = sin(alpha[1] + gradientStep) * n[0][1].x - kx1;
-			errArray[1][1] = sin(alpha[1] - gradientStep) * n[1][1].x - kx1;
-			errArray[2][1] = sin(beta[1] + gradientStep) * n[2][1].x - ky1;
-			errArray[3][1] = sin(beta[1] - gradientStep) * n[3][1].x - ky1;
+			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
+			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
+			errArray[2][0] = sin(beta[0] + gradientStep) * n[2][0].real() - ky1;
+			errArray[3][0] = sin(beta[0] - gradientStep) * n[3][0].real() - ky1;
+			errArray[0][1] = sin(alpha[1] + gradientStep) * n[0][1].real() - kx1;
+			errArray[1][1] = sin(alpha[1] - gradientStep) * n[1][1].real() - kx1;
+			errArray[2][1] = sin(beta[1] + gradientStep) * n[2][1].real() - ky1;
+			errArray[3][1] = sin(beta[1] - gradientStep) * n[3][1].real() - ky1;
 			gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 			gradient[1][0] = gradientFactor * (errArray[2][0] - errArray[3][0]);
 			gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
@@ -514,10 +494,10 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 	double dAlpha = 0.1;
 	double nePlus, neMinus;
 	double err, errPlus, errMinus;
-	cuDoubleComplex ne, no;
+	thrust::complex<double> ne, no;
 
 
-	cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
+	thrust::complex<double> ii = thrust::complex<double>(0, 1);
 	double crystalTheta = sellmeierCoefficients[66];
 	double crystalPhi = sellmeierCoefficients[67];
 	double kStep = sellmeierCoefficients[70];
@@ -528,11 +508,11 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 	//if not biaxial, the o-axis can be solved analytically.
 	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
 		crystalTheta, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-	*alphaO = asin(rhs / cuCreal(no));
+	*alphaO = asin(rhs /no.real());
 	if ((*s).axesNumber == 2) {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
 			crystalTheta + *alphaO, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-		nePlus = cuCreal(no);
+		nePlus =no.real();
 		err = abs(nePlus * sin(*alphaO) - rhs);
 
 		int iters = 0;
@@ -543,12 +523,12 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
 				crystalTheta + *alphaO + dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-			nePlus = cuCreal(no);
+			nePlus =no.real();
 			errPlus = abs(nePlus * sin(*alphaO + dAlpha) - rhs);
 
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
 				crystalTheta + *alphaO - dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-			neMinus = cuCreal(no);
+			neMinus =no.real();
 			errMinus = abs(neMinus * sin(*alphaO - dAlpha) - rhs);
 
 			//Basic hill climbing algorithm
@@ -576,7 +556,7 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 	if ((*s).axesNumber > 0) {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
 			crystalTheta + *alphaE, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-		nePlus = cuCreal(ne);
+		nePlus =ne.real();
 		err = abs(nePlus * sin(*alphaE) - rhs);
 
 		int iters = 0;
@@ -588,12 +568,12 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
 				crystalTheta + *alphaE + dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-			nePlus = cuCreal(ne);
+			nePlus =ne.real();
 			errPlus = abs(nePlus * sin(*alphaE + dAlpha) - rhs);
 
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
 				crystalTheta + *alphaE - dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-			neMinus = cuCreal(ne);
+			neMinus =ne.real();
 			errMinus = abs(neMinus * sin(*alphaE - dAlpha) - rhs);
 
 			//Basic hill climbing algorithm
@@ -630,11 +610,11 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 	long long Ntime = (*s).Ntime;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
-	cuDoubleComplex ne1, no1, ne2, no2, n0;
-	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
+	thrust::complex<double> ne1, no1, ne2, no2, n0;
+	thrust::complex<double> cuZero = thrust::complex<double>(0, 0);
 	j = i / Ntime; //spatial coordinate
 	k = i % Ntime; //temporal coordinate
-	cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
+	thrust::complex<double> ii = thrust::complex<double>(0, 1);
 	double crystalTheta = sellmeierCoefficients1[66];
 	double crystalPhi = sellmeierCoefficients1[67];
 	double fStep = sellmeierCoefficients1[71];
@@ -655,9 +635,9 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 		crystalTheta + 0*alpha1, crystalPhi, axesNumber, sellmeierType);
 	sellmeierCuda(&n0, &no1, sellmeierCoefficients1, abs(f),
 		crystalTheta + 0*alphaO1, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(cuCreal(ne1)) || isnan(cuCreal(no1))) {
-		ne1 = make_cuDoubleComplex(1, 0);
-		no1 = make_cuDoubleComplex(1, 0);
+	if (isnan(ne1.real()) || isnan(no1.real())) {
+		ne1 = thrust::complex<double>(1, 0);
+		no1 = thrust::complex<double>(1, 0);
 	}
 
 
@@ -665,15 +645,15 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 		crystalTheta + alpha2, crystalPhi, axesNumber, sellmeierType);
 	sellmeierCuda(&n0, &no2, sellmeierCoefficients2, abs(f),
 		crystalTheta + alphaO2, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(cuCreal(ne2)) || isnan(cuCreal(no2))) {
-		ne2 = make_cuDoubleComplex(1, 0);
-		no2 = make_cuDoubleComplex(1, 0);
+	if (isnan(ne2.real()) || isnan(no2.real())) {
+		ne2 = thrust::complex<double>(1, 0);
+		no2 = thrust::complex<double>(1, 0);
 	}
 
-	cuDoubleComplex ts = 2 * ne1 * cos(alpha1) / (ne1 * cos(alpha1) + ne2 * cos(alpha2));
-	cuDoubleComplex tp = 2 * ne1 * cos(alpha1) / (ne2 * cos(alpha1) + ne1 * cos(alpha2));
-	if (isnan(ts.x) || isnan(ts.y)) ts = make_cuDoubleComplex(0, 0);
-	if (isnan(tp.x) || isnan(tp.y)) ts = make_cuDoubleComplex(0, 0);
+	thrust::complex<double> ts = 2 * ne1 * cos(alpha1) / (ne1 * cos(alpha1) + ne2 * cos(alpha2));
+	thrust::complex<double> tp = 2 * ne1 * cos(alpha1) / (ne2 * cos(alpha1) + ne1 * cos(alpha2));
+	if (isnan(ts.real()) || isnan(ts.imag())) ts = thrust::complex<double>(0, 0);
+	if (isnan(tp.real()) || isnan(tp.imag())) ts = thrust::complex<double>(0, 0);
 	(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
 	(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
 }
@@ -727,7 +707,7 @@ __global__ void parabolicMirrorKernel(cudaParameterSet* s, double focus) {
 
 	
 
-	cuDoubleComplex	u = cuCexpd(make_cuDoubleComplex(0.0,
+	thrust::complex<double>	u = thrust::exp(thrust::complex<double>(0.0,
 		w * r * r * (0.5 / focus) / LIGHTC));
 
 
@@ -757,9 +737,9 @@ __global__ void sphericalMirrorKernel(cudaParameterSet* s, double ROC) {
 
 	bool isNegative = signbit(ROC);
 	ROC = abs(ROC);
-	cuDoubleComplex u = make_cuDoubleComplex(0.0, 0.0);
+	thrust::complex<double> u = thrust::complex<double>(0.0, 0.0);
 	if (r < ROC) {
-		u = cuCexpd(make_cuDoubleComplex(0.0, 
+		u = thrust::exp(thrust::complex<double>(0.0, 
 			2.0 * pow(-1,isNegative)*w*ROC*((sqrt(1.0 - r * r / (ROC * ROC))) - 1.0)/LIGHTC));
 	}
 
@@ -772,14 +752,14 @@ __global__ void applyLinearPropagationKernel(double* sellmeierCoefficients, doub
 	long long j, h, k, col;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
-	cuDoubleComplex ne, no, n0, n0o;
-	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
+	thrust::complex<double> ne, no, n0, n0o;
+	thrust::complex<double> cuZero = thrust::complex<double>(0, 0);
 	h = 1 + i % ((*s).Nfreq - 1);
 	col = i / ((*s).Nfreq - 1);
 	i = h + col * ((*s).Nfreq);
 	j = col % (*s).Nspace;
 	k = col / (*s).Nspace;
-	cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
+	thrust::complex<double> ii = thrust::complex<double>(0, 1);
 	double crystalTheta = sellmeierCoefficients[66];
 	double crystalPhi = sellmeierCoefficients[67];
 
@@ -795,21 +775,21 @@ __global__ void applyLinearPropagationKernel(double* sellmeierCoefficients, doub
 	//if ((*s).isCylindric) dk2 = dk1;
 	sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
 		crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
-		ne = make_cuDoubleComplex(1, 0);
-		no = make_cuDoubleComplex(1, 0);
+	if (isnan(ne.real()) || isnan(no.real())) {
+		ne = thrust::complex<double>(1, 0);
+		no = thrust::complex<double>(1, 0);
 	}
 
-	cuDoubleComplex ke = ne * omega / LIGHTC;
-	cuDoubleComplex ko = no * omega / LIGHTC;
-	double k0 = cuCreal(n0 * omega / LIGHTC);
-	double kze = cuCreal(cuCsqrt(ke * ke - dk1 * dk1 - dk2 * dk2));
-	double kzo = cuCreal(cuCsqrt(ko * ko - dk1 * dk1 - dk2 * dk2));
+	thrust::complex<double> ke = ne * omega / LIGHTC;
+	thrust::complex<double> ko = no * omega / LIGHTC;
+	double k0 = (n0 * omega / LIGHTC).real();
+	double kze = (thrust::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2)).real();
+	double kzo = (thrust::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2)).real();
 
-	cuDoubleComplex ts = cuCexpd(ii * (k0 - kze) * thickness);
-	cuDoubleComplex tp = cuCexpd(ii * (k0 - kzo) * thickness);
-	if (isnan(ts.x) || isnan(ts.y)) ts = make_cuDoubleComplex(0, 0);
-	if (isnan(tp.x) || isnan(tp.y)) tp = make_cuDoubleComplex(0, 0);
+	thrust::complex<double> ts = thrust::exp(ii * (k0 - kze) * thickness);
+	thrust::complex<double> tp = thrust::exp(ii * (k0 - kzo) * thickness);
+	if (isnan(ts.real()) || isnan(ts.imag())) ts = thrust::complex<double>(0, 0);
+	if (isnan(tp.real()) || isnan(tp.imag())) tp = thrust::complex<double>(0, 0);
 	(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
 	(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
 }
@@ -823,12 +803,12 @@ __global__ void prepareCartesianGridsKernel(double* sellmeierCoefficients, cudaP
 	long long j, k;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
-	cuDoubleComplex ne, no, n0;
-	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
+	thrust::complex<double> ne, no, n0;
+	thrust::complex<double> cuZero = thrust::complex<double>(0, 0);
 	j = i / ((*s).Nfreq-1); //spatial coordinate
 	k = 1 + (i % ((*s).Nfreq-1)); //temporal coordinate
 	i = k + j * (*s).Nfreq;
-	cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
+	thrust::complex<double> ii = thrust::complex<double>(0, 1);
 	double crystalTheta = sellmeierCoefficients[66];
 	double crystalPhi = sellmeierCoefficients[67];
 	double kStep = sellmeierCoefficients[70];
@@ -847,40 +827,40 @@ __global__ void prepareCartesianGridsKernel(double* sellmeierCoefficients, cudaP
 
 
 
-	if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
-		ne = make_cuDoubleComplex(1, 0);
-		no = make_cuDoubleComplex(1, 0);
+	if (isnan(ne.real()) || isnan(no.real())) {
+		ne = thrust::complex<double>(1, 0);
+		no = thrust::complex<double>(1, 0);
 	}
 
-	cuDoubleComplex k0 = make_cuDoubleComplex(TWOPI * cuCreal(n0) * f / LIGHTC, 0);
-	cuDoubleComplex ke = TWOPI * ne * f / LIGHTC;
-	cuDoubleComplex ko = TWOPI * no * f / LIGHTC;
+	thrust::complex<double> k0 = thrust::complex<double>(TWOPI * n0.real() * f / LIGHTC, 0);
+	thrust::complex<double> ke = TWOPI * ne * f / LIGHTC;
+	thrust::complex<double> ko = TWOPI * no * f / LIGHTC;
 
 
-	cuDoubleComplex chi11 = make_cuDoubleComplex(1.0, 0);
-	cuDoubleComplex chi12 = make_cuDoubleComplex(1.0, 0);
+	thrust::complex<double> chi11 = thrust::complex<double>(1.0, 0);
+	thrust::complex<double> chi12 = thrust::complex<double>(1.0, 0);
 	if ((*s).isUsingMillersRule) {
 		chi11 = (*s).chiLinear1[k];
 		chi12 = (*s).chiLinear2[k];
 	}
 	else {
-		chi11 = make_cuDoubleComplex(1, 0);
-		chi12 = make_cuDoubleComplex(1, 0);
+		chi11 = thrust::complex<double>(1, 0);
+		chi12 = thrust::complex<double>(1, 0);
 	}
 
-	if (abs(dk) < cuCabs(ke)) {
-		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * cuCreal(ke))) * (*s).h;
-		if (isnan(cuCreal((*s).gridPropagationFactor1[i]))) {
+	if (abs(dk) < thrust::abs(ke)) {
+		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
+		if (isnan(((*s).gridPropagationFactor1[i]).real())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 		}
 
-		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * cuCreal(ko))) * (*s).h;
-		if (isnan(cuCreal((*s).gridPropagationFactor2[i]))) {
+		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
+		if (isnan(((*s).gridPropagationFactor2[i]).real())) {
 			(*s).gridPropagationFactor2[i] = cuZero;
 		}
 
-		(*s).gridPolarizationFactor1[i] = ii * chi11 * (TWOPI * f) / (2. * cuCreal(ne) * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = ii * chi12 * (TWOPI * f) / (2. * cuCreal(no) * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor1[i] = ii * chi11 * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor2[i] = ii * chi12 * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
 	}
 
 	else {
@@ -900,15 +880,15 @@ __global__ void prepare3DGridsKernel(double* sellmeierCoefficients, cudaParamete
 	long long col,j, k, l;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
-	cuDoubleComplex ne, no, n0;
-	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
+	thrust::complex<double> ne, no, n0;
+	thrust::complex<double> cuZero = thrust::complex<double>(0, 0);
 	col = i / ((*s).Nfreq-1); //spatial coordinate
 	j = 1+i % ((*s).Nfreq-1); // frequency coordinate
 	i = j + col * (*s).Nfreq;
 	k = col % (*s).Nspace;
 	l = col / (*s).Nspace;
 
-	cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
+	thrust::complex<double> ii = thrust::complex<double>(0, 1);
 	double crystalTheta = sellmeierCoefficients[66];
 	double crystalPhi = sellmeierCoefficients[67];
 
@@ -924,40 +904,40 @@ __global__ void prepare3DGridsKernel(double* sellmeierCoefficients, cudaParamete
 
 
 
-	if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
-		ne = make_cuDoubleComplex(1, 0);
-		no = make_cuDoubleComplex(1, 0);
+	if (isnan(ne.real()) || isnan(no.real())) {
+		ne = thrust::complex<double>(1, 0);
+		no = thrust::complex<double>(1, 0);
 	}
 
-	cuDoubleComplex k0 = make_cuDoubleComplex(TWOPI * cuCreal(n0) * f / LIGHTC, 0);
-	cuDoubleComplex ke = TWOPI * ne * f / LIGHTC;
-	cuDoubleComplex ko = TWOPI * no * f / LIGHTC;
+	thrust::complex<double> k0 = thrust::complex<double>(TWOPI * n0.real() * f / LIGHTC, 0);
+	thrust::complex<double> ke = TWOPI * ne * f / LIGHTC;
+	thrust::complex<double> ko = TWOPI * no * f / LIGHTC;
 
 
-	cuDoubleComplex chi11 = make_cuDoubleComplex(1.0, 0);
-	cuDoubleComplex chi12 = make_cuDoubleComplex(1.0, 0);
+	thrust::complex<double> chi11 = thrust::complex<double>(1.0, 0);
+	thrust::complex<double> chi12 = thrust::complex<double>(1.0, 0);
 	if ((*s).isUsingMillersRule) {
 		chi11 = (*s).chiLinear1[j];
 		chi12 = (*s).chiLinear2[j];
 	}
 	else {
-		chi11 = make_cuDoubleComplex(1, 0);
-		chi12 = make_cuDoubleComplex(1, 0);
+		chi11 = thrust::complex<double>(1, 0);
+		chi12 = thrust::complex<double>(1, 0);
 	}
 
-	if (max(abs(dk1),abs(dk2)) < cuCabs(ke)) {
-		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * cuCreal(ke))) * (*s).h;
+	if (max(abs(dk1),abs(dk2)) < thrust::abs(ke)) {
+		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ke.real())) * (*s).h;
 		if (isnan(cuCreal((*s).gridPropagationFactor1[i]))) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 		}
 
-		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * cuCreal(ko))) * (*s).h;
+		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ko.real())) * (*s).h;
 		if (isnan(cuCreal((*s).gridPropagationFactor2[i]))) {
 			(*s).gridPropagationFactor2[i] = cuZero;
 		}
 
-		(*s).gridPolarizationFactor1[i] = ii * chi11 * (TWOPI * f) / (2. * cuCreal(ne) * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = ii * chi12 * (TWOPI * f) / (2. * cuCreal(no) * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor1[i] = ii * chi11 * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor2[i] = ii * chi12 * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
 	}
 
 	else {
@@ -973,30 +953,30 @@ __global__ void getChiLinearKernel(cudaParameterSet* s, double* sellmeierCoeffic
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
-	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
+	thrust::complex<double> cuZero = thrust::complex<double>(0, 0);
 
 
 	double crystalTheta = sellmeierCoefficients[66];
 	double crystalPhi = sellmeierCoefficients[67];
 	double fStep = sellmeierCoefficients[71];
 
-	cuDoubleComplex ne, no, n0;
+	thrust::complex<double> ne, no, n0;
 
 	//frequency being resolved by current thread
 	double f = i * fStep;
 	sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
-		ne = make_cuDoubleComplex(1, 0);
-		no = make_cuDoubleComplex(1, 0);
+	if (isnan(ne.real()) || isnan(no.real())) {
+		ne = thrust::complex<double>(1, 0);
+		no = thrust::complex<double>(1, 0);
 	}
 
 
 	(*s).chiLinear1[i] = -1. + ne * ne;
 	(*s).chiLinear2[i] = -1. + no * no;
 	if ((cuCreal((*s).chiLinear1[i]) == 0) || (cuCreal((*s).chiLinear2[i]) == 0) || isnan(cuCreal((*s).chiLinear1[i])) || isnan(cuCreal((*s).chiLinear2[i]))) {
-		(*s).chiLinear1[i] = make_cuDoubleComplex(1, 0);
-		(*s).chiLinear2[i] = make_cuDoubleComplex(1, 0);
+		(*s).chiLinear1[i] = thrust::complex<double>(1, 0);
+		(*s).chiLinear2[i] = thrust::complex<double>(1, 0);
 	}
 
 }
@@ -1007,19 +987,19 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
 	long long Nspace = (*s).Nspace;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
-	cuDoubleComplex cuZero = make_cuDoubleComplex(0, 0);
+	thrust::complex<double> cuZero = thrust::complex<double>(0, 0);
 	j = i / ((*s).Nfreq-1); //spatial coordinate
 	k = 1 + i % ((*s).Nfreq-1); //temporal coordinate
 	i = k + j * (*s).Nfreq;
 
 
-	cuDoubleComplex ii = make_cuDoubleComplex(0, 1);
+	thrust::complex<double> ii = thrust::complex<double>(0, 1);
 	double crystalTheta = sellmeierCoefficients[66];
 	double crystalPhi = sellmeierCoefficients[67];
 	double kStep = sellmeierCoefficients[70];
 	double fStep = sellmeierCoefficients[71];
 
-	cuDoubleComplex ne, no, n0;
+	thrust::complex<double> ne, no, n0;
 
 	//frequency being resolved by current thread
 	double f = -k * fStep;
@@ -1028,39 +1008,39 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
 	double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 	sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(cuCreal(ne)) || isnan(cuCreal(no))) {
-		ne = make_cuDoubleComplex(1, 0);
-		no = make_cuDoubleComplex(1, 0);
+	if (isnan(ne.real()) || isnan(no.real())) {
+		ne = thrust::complex<double>(1, 0);
+		no = thrust::complex<double>(1, 0);
 	}
 
-	cuDoubleComplex k0 = make_cuDoubleComplex(TWOPI * cuCreal(n0) * f / LIGHTC, 0);
-	cuDoubleComplex ke = TWOPI * ne * f / LIGHTC;
-	cuDoubleComplex ko = TWOPI * no * f / LIGHTC;
+	thrust::complex<double> k0 = thrust::complex<double>(TWOPI * n0.real() * f / LIGHTC, 0);
+	thrust::complex<double> ke = TWOPI * ne * f / LIGHTC;
+	thrust::complex<double> ko = TWOPI * no * f / LIGHTC;
 
-	cuDoubleComplex chi11 = (*s).chiLinear1[k];
-	cuDoubleComplex chi12 = (*s).chiLinear2[k];
+	thrust::complex<double> chi11 = (*s).chiLinear1[k];
+	thrust::complex<double> chi12 = (*s).chiLinear2[k];
 	if (!(*s).isUsingMillersRule) {
-		chi11 = make_cuDoubleComplex(1, 0);
-		chi12 = make_cuDoubleComplex(1, 0);
+		chi11 = thrust::complex<double>(1, 0);
+		chi12 = thrust::complex<double>(1, 0);
 	}
 
-	if (abs(dk) <= min(cuCabs(ke), cuCabs(ko))) {
-		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * cuCreal(ke))) * (*s).h;
-		(*s).gridPropagationFactor1Rho1[i] = ii * (1 / (chi11 * 2. * cuCreal(ke))) * (*s).h;
+	if (abs(dk) <= min(thrust::abs(ke), thrust::abs(ko))) {
+		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
+		(*s).gridPropagationFactor1Rho1[i] = ii * (1 / (chi11 * 2. * ke.real())) * (*s).h;
 		if (isnan(cuCreal((*s).gridPropagationFactor1[i]))) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor1Rho1[i] = cuZero;
 		}
 
-		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * cuCreal(ko))) * (*s).h;
-		(*s).gridPropagationFactor1Rho2[i] = ii * (1 / (chi12 * 2. * cuCreal(ko))) * (*s).h;
+		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
+		(*s).gridPropagationFactor1Rho2[i] = ii * (1 / (chi12 * 2. * ko.real())) * (*s).h;
 		if (isnan(cuCreal((*s).gridPropagationFactor2[i]))) {
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPropagationFactor1Rho2[i] = cuZero;
 		}
 		//factor of 0.5 comes from doubled grid size in cylindrical symmetry mode after expanding the beam
-		(*s).gridPolarizationFactor1[i] = 0.5 * chi11 * ii * (TWOPI * f) / (2. * cuCreal(ne) * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = 0.5 * chi12 * ii * (TWOPI * f) / (2. * cuCreal(no) * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor1[i] = 0.5 * chi11 * ii * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor2[i] = 0.5 * chi12 * ii * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
 
 
 	}
@@ -1078,17 +1058,17 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
 }
 
 //replaces E with its complex conjugate
-__global__ void conjugateKernel(cuDoubleComplex* E) {
+__global__ void conjugateKernel(thrust::complex<double>* E) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
-	E[i] = cuConj(E[i]);
+	E[i] = thrust::conj(E[i]);
 }
 
-__global__ void realToComplexKernel(double* in, cuDoubleComplex* out) {
+__global__ void realToComplexKernel(double* in, thrust::complex<double>* out) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
-	out[i] = make_cuDoubleComplex(in[i], 0.0);
+	out[i] = thrust::complex<double>(in[i], 0.0);
 }
 
-__global__ void complexToRealKernel(cuDoubleComplex* in, double* out) {
+__global__ void complexToRealKernel(thrust::complex<double>* in, double* out) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	out[i] = cuCreal(in[i]);
 }
@@ -1103,7 +1083,7 @@ __global__ void materialPhaseKernel(double df, size_t Ntime, double* a, double f
 
 	//give phase shift relative to group velocity (approximated 
 	// with low-order finite difference) so the pulse doesn't move
-	cuDoubleComplex ne, no, no0, n0p, n0m;
+	thrust::complex<double> ne, no, no0, n0p, n0m;
 	sellmeierCuda(&ne, &no, a, abs(f), 0, 0, 0, 0);
 	f *= -TWOPI;
 	sellmeierCuda(&ne, &no0, a, f01, 0, 0, 0, 0);
@@ -1119,10 +1099,10 @@ __global__ void materialPhaseKernel(double df, size_t Ntime, double* a, double f
 
 }
 //replaces NaN values with 0
-__global__ void fixnanKernel(cuDoubleComplex* E) {
+__global__ void fixnanKernel(thrust::complex<double>* E) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (isnan(cuCreal(E[i])) || isnan(cuCimag(E[i]))) {
-		E[i] = make_cuDoubleComplex(0., 0.);
+		E[i] = thrust::complex<double>(0., 0.);
 	}
 }
 
@@ -1251,13 +1231,13 @@ __global__ void updateKwithPlasmaKernel(cudaParameterSet* sP) {
 	i = h + j * ((*sP).Nfreq);
 
 
-	cuDoubleComplex jfac = make_cuDoubleComplex(0, -1.0 / (h * (*sP).fStep));
+	thrust::complex<double> jfac = thrust::complex<double>(0, -1.0 / (h * (*sP).fStep));
 	h += (j + ((*sP).isCylindric * (j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 
 
 	if ((*sP).isUsingMillersRule) {
-		(*sP).k1[i] = (*sP).k1[i] + jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] / (*sP).chiLinear1[i % ((*sP).Nfreq)].x;
-		(*sP).k2[i] = (*sP).k2[i] + jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] / (*sP).chiLinear2[i % ((*sP).Nfreq)].x;
+		(*sP).k1[i] = (*sP).k1[i] + jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] / (*sP).chiLinear1[i % ((*sP).Nfreq)].real();
+		(*sP).k2[i] = (*sP).k2[i] + jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] / (*sP).chiLinear2[i % ((*sP).Nfreq)].real();
 	}
 	else {
 		(*sP).k1[i] = (*sP).k1[i] + jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
@@ -1271,16 +1251,16 @@ __global__ void rkKernel(cudaParameterSet* sP, uint8_t stepNumber) {
 
 	iC = h + (iC / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
 	if (h == 1) {
-		(*sP).k1[iC - 1] = make_cuDoubleComplex(0., 0.);
-		(*sP).k2[iC - 1] = make_cuDoubleComplex(0., 0.);
-		(*sP).gridEFrequency1[iC - 1] = make_cuDoubleComplex(0., 0.);
-		(*sP).gridEFrequency2[iC - 1] = make_cuDoubleComplex(0., 0.);
-		(*sP).gridEFrequency1Next1[iC - 1] = make_cuDoubleComplex(0., 0.);
-		(*sP).gridEFrequency1Next2[iC - 1] = make_cuDoubleComplex(0., 0.);
-		(*sP).workspace1[iC - 1] = make_cuDoubleComplex(0., 0.);
-		(*sP).workspace2[iC - 1] = make_cuDoubleComplex(0., 0.);
+		(*sP).k1[iC - 1] = thrust::complex<double>(0., 0.);
+		(*sP).k2[iC - 1] = thrust::complex<double>(0., 0.);
+		(*sP).gridEFrequency1[iC - 1] = thrust::complex<double>(0., 0.);
+		(*sP).gridEFrequency2[iC - 1] = thrust::complex<double>(0., 0.);
+		(*sP).gridEFrequency1Next1[iC - 1] = thrust::complex<double>(0., 0.);
+		(*sP).gridEFrequency1Next2[iC - 1] = thrust::complex<double>(0., 0.);
+		(*sP).workspace1[iC - 1] = thrust::complex<double>(0., 0.);
+		(*sP).workspace2[iC - 1] = thrust::complex<double>(0., 0.);
 	}
-	cuDoubleComplex estimate1, estimate2;
+	thrust::complex<double> estimate1, estimate2;
 
 	if ((*sP).isCylindric) {
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
@@ -1367,9 +1347,9 @@ __global__ void addDoubleArraysKernel(double* A, double* B) {
 }
 
 __global__ void beamGenerationKernel2D(
-	cuDoubleComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
+	thrust::complex<double>* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
 	int sgOrder, double cep, double delay, double gdd, double tod,
-	bool hasLoadedField, cuDoubleComplex* loadedField, double* materialPhase,
+	bool hasLoadedField, thrust::complex<double>* loadedField, double* materialPhase,
 	double w0, double z0, double x0, double beamAngle,
 	double polarizationAngle, double circularity,
 	double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
@@ -1382,25 +1362,25 @@ __global__ void beamGenerationKernel2D(
 	double w = TWOPI * (f - frequency);
 
 	//supergaussian pulse spectrum, if no input pulse specified
-	cuDoubleComplex specfac = make_cuDoubleComplex(-pow((f - frequency) / bandwidth, sgOrder), 0);
+	thrust::complex<double> specfac = thrust::complex<double>(-pow((f - frequency) / bandwidth, sgOrder), 0);
 
-	cuDoubleComplex specphase = make_cuDoubleComplex(0,
+	thrust::complex<double> specphase = thrust::complex<double>(0,
 		-(cep
 			+ TWOPI * f * (delay - 0.5 * (*s).dt * (*s).Ntime)
 			+ 0.5 * gdd * w * w
 			+ tod * w * w * w / 6.0
 			+ materialPhase[h]));
-	specfac = cuCexpd(specfac + specphase);
+	specfac = thrust::exp(specfac + specphase);
 
 	if (hasLoadedField) {
-		specfac = loadedField[h] * cuCexpd(specphase);
+		specfac = loadedField[h] * thrust::exp(specphase);
 	}
-	cuDoubleComplex ne, no;
+	thrust::complex<double> ne, no;
 	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
 
 
-	double ko = TWOPI * no.x * f / LIGHTC;
-	double zR = PI * w0 * w0 * ne.x * f / LIGHTC;
+	double ko = TWOPI * no.real() * f / LIGHTC;
+	double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
 	if (f == 0) {
 		zR = 1e3;
 	}
@@ -1415,14 +1395,14 @@ __global__ void beamGenerationKernel2D(
 		Rz = 1.0e15;
 	}
 	double phi = atan(z / zR);
-	cuDoubleComplex Eb = (w0 / wz) * cuCexpd(make_cuDoubleComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+	thrust::complex<double> Eb = (w0 / wz) * thrust::exp(thrust::complex<double>(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
 	Eb = Eb * specfac;
 	if (isnan(cuCModSquared(Eb)) || f <= 0) {
-		Eb = make_cuDoubleComplex(0., 0.);
+		Eb = thrust::complex<double>(0., 0.);
 	}
 
-	pulse[i] = make_cuDoubleComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
-	pulse[i + (*s).NgridC] = make_cuDoubleComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
+	pulse[i] = thrust::complex<double>(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
+	pulse[i + (*s).NgridC] = thrust::complex<double>(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
 	double pointEnergy = abs(r) * (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
 	pointEnergy *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt;
 	//two factors of two cancel here - there should be one for the missing frequency plane, but the sum is over x instead of r
@@ -1432,9 +1412,9 @@ __global__ void beamGenerationKernel2D(
 
 
 __global__ void beamGenerationKernel3D(
-	cuDoubleComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
+	thrust::complex<double>* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
 	int sgOrder, double cep, double delay, double gdd, double tod,
-	bool hasLoadedField, cuDoubleComplex* loadedField, double* materialPhase,
+	bool hasLoadedField, thrust::complex<double>* loadedField, double* materialPhase,
 	double w0, double z0, double y0, double x0, double beamAngle, double beamAnglePhi,
 	double polarizationAngle, double circularity,
 	double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
@@ -1449,25 +1429,25 @@ __global__ void beamGenerationKernel3D(
 	double w = TWOPI * (f - frequency);
 
 	//supergaussian pulse spectrum, if no input pulse specified
-	cuDoubleComplex specfac = make_cuDoubleComplex(-pow((f - frequency) / bandwidth, sgOrder), 0);
+	thrust::complex<double> specfac = thrust::complex<double>(-pow((f - frequency) / bandwidth, sgOrder), 0);
 
-	cuDoubleComplex specphase = make_cuDoubleComplex(0,
+	thrust::complex<double> specphase = thrust::complex<double>(0,
 		-(cep
 			+ TWOPI * f * (delay - 0.5 * (*s).dt * (*s).Ntime)
 			+ 0.5 * gdd * w * w
 			+ tod * w * w * w / 6.0
 			+ materialPhase[h]));
-	specfac = cuCexpd(specfac + specphase);
+	specfac = thrust::exp(specfac + specphase);
 
 	if (hasLoadedField) {
-		specfac = loadedField[h] * cuCexpd(specphase);
+		specfac = loadedField[h] * thrust::exp(specphase);
 	}
-	cuDoubleComplex ne, no;
+	thrust::complex<double> ne, no;
 	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
 
 
-	double ko = TWOPI * no.x * f / LIGHTC;
-	double zR = PI * w0 * w0 * ne.x * f / LIGHTC;
+	double ko = TWOPI * no.real() * f / LIGHTC;
+	double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
 	if (f == 0) {
 		zR = 1e3;
 	}
@@ -1490,14 +1470,14 @@ __global__ void beamGenerationKernel3D(
 	}
 
 	double phi = atan(z / zR);
-	cuDoubleComplex Eb = (w0 / wz) * cuCexpd(make_cuDoubleComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+	thrust::complex<double> Eb = (w0 / wz) * thrust::exp(thrust::complex<double>(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
 	Eb = Eb * specfac;
 	if (isnan(cuCModSquared(Eb)) || f <= 0) {
-		Eb = make_cuDoubleComplex(0., 0.);
+		Eb = thrust::complex<double>(0., 0.);
 	}
 
-	pulse[i] = make_cuDoubleComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
-	pulse[i + (*s).NgridC] = make_cuDoubleComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
+	pulse[i] = thrust::complex<double>(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
+	pulse[i + (*s).NgridC] = thrust::complex<double>(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
 	double pointEnergy = (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
 	pointEnergy *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
 	//factor 2 accounts for the missing negative frequency plane
@@ -1505,20 +1485,20 @@ __global__ void beamGenerationKernel3D(
 }
 
 //Take absolute value of complex array
-__global__ void absKernel(double* absOut, cuDoubleComplex* complexIn) {
+__global__ void absKernel(double* absOut, thrust::complex<double>* complexIn) {
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
-	absOut[i] = cuCabs(complexIn[i]);
+	absOut[i] = thrust::abs(complexIn[i]);
 }
 
 //Apply fft normalization
-__global__ void fftNormalizeKernel(cuDoubleComplex* A, size_t fftSize) {
+__global__ void fftNormalizeKernel(thrust::complex<double>* A, size_t fftSize) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	A[i] = A[i] / fftSize;
 }
 
 
 //Apply fft normalization
-__global__ void multiplyByConstantKernel(cuDoubleComplex* A, double val) {
+__global__ void multiplyByConstantKernel(thrust::complex<double>* A, double val) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	A[i] = val * A[i];
 }
@@ -1531,20 +1511,20 @@ __global__ void multiplyByConstantKernelD(double* A, double val) {
 
 
 //element-wise B*A = C;
-__global__ void multiplicationKernel(cuDoubleComplex* A, cuDoubleComplex* B, cuDoubleComplex* C) {
+__global__ void multiplicationKernel(thrust::complex<double>* A, thrust::complex<double>* B, thrust::complex<double>* C) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	C[i] = B[i] * A[i];
 }
 
 
-__global__ void multiplicationKernelCompactVector(cuDoubleComplex* A, cuDoubleComplex* B, cuDoubleComplex* C, cudaParameterSet* s) {
+__global__ void multiplicationKernelCompactVector(thrust::complex<double>* A, thrust::complex<double>* B, thrust::complex<double>* C, cudaParameterSet* s) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	long long h = i % (*s).Nfreq; //temporal coordinate
 
 	C[i] = A[h] * B[i];
 }
 
-__global__ void multiplicationKernelCompact(cuDoubleComplex* A, cuDoubleComplex* B, cuDoubleComplex* C) {
+__global__ void multiplicationKernelCompact(thrust::complex<double>* A, thrust::complex<double>* B, thrust::complex<double>* C) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
 	C[i] = A[i] * B[i];
 }
@@ -1783,32 +1763,32 @@ int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s
 	cudaMemset((*s).gridETime1, 0, 2 * sizeof(double) * (*s).Ngrid);
 	memErrors += cudaMalloc((void**)&(*s).gridPolarizationTime1, 2 * sizeof(double) * (*s).Ngrid);
 	cudaMemset((*s).gridPolarizationTime1, 0, 2 * sizeof(double) * (*s).Ngrid);
-	memErrors += cudaMalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	cudaMemset((*s).workspace1, 0, beamExpansionFactor * 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	memErrors += cudaMalloc((void**)&(*s).gridEFrequency1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	cudaMemset((*s).gridEFrequency1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	memErrors += cudaMalloc((void**)&(*s).gridPropagationFactor1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	cudaMemset((*s).gridPropagationFactor1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	memErrors += cudaMalloc((void**)&(*s).gridPolarizationFactor1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	cudaMemset((*s).gridPolarizationFactor1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	memErrors += cudaMalloc((void**)&(*s).gridEFrequency1Next1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	cudaMemset((*s).gridEFrequency1Next1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	memErrors += cudaMalloc((void**)&(*s).k1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-	cudaMemset((*s).k1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
+	memErrors += cudaMalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	cudaMemset((*s).workspace1, 0, beamExpansionFactor * 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	memErrors += cudaMalloc((void**)&(*s).gridEFrequency1, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	cudaMemset((*s).gridEFrequency1, 0, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	memErrors += cudaMalloc((void**)&(*s).gridPropagationFactor1, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	cudaMemset((*s).gridPropagationFactor1, 0, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	memErrors += cudaMalloc((void**)&(*s).gridPolarizationFactor1, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	cudaMemset((*s).gridPolarizationFactor1, 0, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	memErrors += cudaMalloc((void**)&(*s).gridEFrequency1Next1, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	cudaMemset((*s).gridEFrequency1Next1, 0, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	memErrors += cudaMalloc((void**)&(*s).k1, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+	cudaMemset((*s).k1, 0, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
 
 	//cylindric sym grids
 	if ((*s).isCylindric) {
-		memErrors += cudaMalloc((void**)&(*s).gridPropagationFactor1Rho1, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-		cudaMemset((*s).gridPropagationFactor1Rho1, 0, 2 * sizeof(cuDoubleComplex) * (*s).NgridC);
-		memErrors += cudaMalloc((void**)&(*s).gridRadialLaplacian1, 2 * sizeof(cuDoubleComplex) * (*s).Ngrid);
-		cudaMemset((*s).gridRadialLaplacian1, 0, 2 * sizeof(cuDoubleComplex) * (*s).Ngrid);
+		memErrors += cudaMalloc((void**)&(*s).gridPropagationFactor1Rho1, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+		cudaMemset((*s).gridPropagationFactor1Rho1, 0, 2 * sizeof(thrust::complex<double>) * (*s).NgridC);
+		memErrors += cudaMalloc((void**)&(*s).gridRadialLaplacian1, 2 * sizeof(thrust::complex<double>) * (*s).Ngrid);
+		cudaMemset((*s).gridRadialLaplacian1, 0, 2 * sizeof(thrust::complex<double>) * (*s).Ngrid);
 	}
 
 	//smaller helper grids
 	memErrors += cudaMalloc((void**)&(*s).expGammaT, 2 * sizeof(double) * (*s).Ntime);
 	double* expGammaTCPU = (double*)malloc(2 * sizeof(double) * (*s).Ntime);
-	memErrors += cudaMalloc((void**)&(*s).chiLinear1, 2 * sizeof(cuDoubleComplex) * (*s).Nfreq);
-	cudaMemset((*s).chiLinear1, 0, 2 * sizeof(cuDoubleComplex) * (*s).Nfreq);
+	memErrors += cudaMalloc((void**)&(*s).chiLinear1, 2 * sizeof(thrust::complex<double>) * (*s).Nfreq);
+	cudaMemset((*s).chiLinear1, 0, 2 * sizeof(thrust::complex<double>) * (*s).Nfreq);
 	for (i = 0; i < (*s).Ntime; i++) {
 		expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 		expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
@@ -1994,7 +1974,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 		if ((*sCPU).imdone[0] == 3) {
 			//copy the field arrays from the GPU to CPU memory if requested by the UI
 			cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-			cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+			cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).Ngrid * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 
 			(*sCPU).imdone[0] = 0;
 		}
@@ -2002,7 +1982,7 @@ unsigned long solveNonlinearWaveEquation(void* lpParam) {
 	}
 
 	////give the result to the CPU
-	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 	cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
 	multiplyByConstantKernelD<<<(int)(s.Ngrid / MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, s.CUDAStream>>> (s.gridETime1, 1.0 / s.Ngrid);
 	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
@@ -2066,29 +2046,29 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 	cudaMemcpy(scDevice, sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 	if ((*s).isFollowerInSequence && !(*s).isReinjecting) {
 		cudaMemcpy((*sc).gridETime1, (*s).ExtOut, 2*(*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
-		cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
+		cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1);
 		//Copy the field into the temporary array
-		cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
+		cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToDevice);
 
 		if ((*sc).isUsingMillersRule) {
 			multiplicationKernelCompactVector << <(unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2*MIN_GRIDDIM, 0, (*sc).CUDAStream >> > ((*sc).chiLinear1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
 		}
 		else {
-			cudaMemcpy((*sc).workspace1, (*sc).gridEFrequency1Next1, 2 * sizeof(cuDoubleComplex) * (*sc).NgridC, cudaMemcpyDeviceToDevice);
+			cudaMemcpy((*sc).workspace1, (*sc).gridEFrequency1Next1, 2 * sizeof(thrust::complex<double>) * (*sc).NgridC, cudaMemcpyDeviceToDevice);
 		}
 
 		multiplicationKernelCompact << <(unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, (*sc).CUDAStream >> > ((*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
-		cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
+		cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToDevice);
 		cudaFree(scDevice);
 		return 0;
 	}
 	double* materialPhase1CUDA, * materialPhase2CUDA;
-	cuDoubleComplex* loadedField1, * loadedField2;
+	thrust::complex<double>* loadedField1, * loadedField2;
 	cufftHandle planBeamFreqToTime;
 	cufftPlan1d(&planBeamFreqToTime, (int)(*sc).Ntime, CUFFT_Z2D, 2 * (int)((*sc).Nspace*(*sc).Nspace2));
 	
-	cudaMalloc(&loadedField1, (*sc).Ntime * sizeof(cuDoubleComplex));
-	cudaMalloc(&loadedField2, (*sc).Ntime * sizeof(cuDoubleComplex));
+	cudaMalloc(&loadedField1, (*sc).Ntime * sizeof(thrust::complex<double>));
+	cudaMalloc(&loadedField2, (*sc).Ntime * sizeof(thrust::complex<double>));
 	
 	//get the material phase
 	double* materialCoefficientsCUDA, * sellmeierPropagationMedium;
@@ -2096,10 +2076,10 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 
 
 	if ((*s).field1IsAllocated) {
-		cudaMemcpy(loadedField1, (*s).loadedField1, (*s).Ntime * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+		cudaMemcpy(loadedField1, (*s).loadedField1, (*s).Ntime * sizeof(thrust::complex<double>), cudaMemcpyHostToDevice);
 	}
 	if ((*s).field2IsAllocated) {
-		cudaMemcpy(loadedField2, (*s).loadedField2, (*s).Ntime * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+		cudaMemcpy(loadedField2, (*s).loadedField2, (*s).Ntime * sizeof(thrust::complex<double>), cudaMemcpyHostToDevice);
 	}
 	cudaMalloc((void**)&materialCoefficientsCUDA, 66 * sizeof(double));
 	cudaMalloc((void**)&sellmeierPropagationMedium, 66 * sizeof(double));
@@ -2113,7 +2093,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 	double* pulseSum = &materialCoefficientsCUDA[0];
 	//calculate pulse 1 and store it in unused memory
 	cudaMemset(pulseSum, 0, sizeof(double));
-	cudaMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(cuDoubleComplex));
+	cudaMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(thrust::complex<double>));
 	if ((*sc).is3D) {
 		beamGenerationKernel3D << <(*sc).Nblock/2, (*sc).Nthread, 0, (*sc).CUDAStream >> > (
 			(*sc).workspace1, pulseSum, scDevice, (*s).frequency1, (*s).bandwidth1,
@@ -2131,13 +2111,13 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 			sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
 	}
 	
-	cufftExecZ2D(planBeamFreqToTime, (*sc).workspace1, (*sc).gridETime1);
+	cufftExecZ2D(planBeamFreqToTime, (cufftDoubleComplex*)(*sc).workspace1, (*sc).gridETime1);
 	beamNormalizeKernel<<<2 * (*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream>>> (scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy1);
 	cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridETime1, (*sc).Ngrid * 2 * sizeof(double), cudaMemcpyDeviceToDevice);
 
 	//calculate pulse 2
 	cudaMemset(pulseSum, 0, sizeof(double));
-	cudaMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(cuDoubleComplex));
+	cudaMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(thrust::complex<double>));
 	if ((*sc).is3D) {
 		beamGenerationKernel3D << <(*sc).Nblock/2, (*sc).Nthread, 0, (*sc).CUDAStream >> > (
 			(*sc).workspace1, pulseSum, scDevice, (*s).frequency2, (*s).bandwidth2,
@@ -2155,7 +2135,7 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 			sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
 	}
 	
-	cufftExecZ2D(planBeamFreqToTime, (*sc).workspace1, (*sc).gridETime1);
+	cufftExecZ2D(planBeamFreqToTime, (cufftDoubleComplex*)(*sc).workspace1, (*sc).gridETime1);
 	beamNormalizeKernel<<<2 * (*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream>>> (scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy2);
 
 	//add the pulses
@@ -2166,22 +2146,22 @@ int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) 
 		addDoubleArraysKernel << <2 * (*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream >> > ((*sc).gridETime1, (double*)(*sc).workspace1);
 	}
 	//fft onto frequency grid
-	cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1);
+	cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1);
 
 
 
 	//Copy the field into the temporary array
-	cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
+	cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToDevice);
 
 	if ((*sc).isUsingMillersRule && !(*sc).forceLinear) {
 		multiplicationKernelCompactVector<<<(unsigned int)((*sc).NgridC/ MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, (*sc).CUDAStream>>> ((*sc).chiLinear1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
 	}
 	else {
-		cudaMemcpy((*sc).workspace1, (*sc).gridEFrequency1Next1, 2 * sizeof(cuDoubleComplex) * (*sc).NgridC, cudaMemcpyDeviceToDevice);
+		cudaMemcpy((*sc).workspace1, (*sc).gridEFrequency1Next1, 2 * sizeof(thrust::complex<double>) * (*sc).NgridC, cudaMemcpyDeviceToDevice);
 	}
 
 	multiplicationKernelCompact<<<(unsigned int)((*sc).NgridC/ MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, (*sc).CUDAStream>>> ((*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
-	cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToDevice);
+	cudaMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToDevice);
 	cufftDestroy(planBeamFreqToTime);
 	cudaFree(materialPhase1CUDA);
 	cudaFree(materialPhase2CUDA);
@@ -2223,7 +2203,7 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
 
 	cudaDeviceSynchronize();
 
-	cudaMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+	cudaMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(thrust::complex<double>), cudaMemcpyHostToDevice);
 
 	//applyFresnelLossKernel<<<sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>> (sellmeierCoefficients1, sellmeierCoefficients2, sc);
 
@@ -2235,7 +2215,7 @@ int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int material
 
 	//copy the field arrays from the GPU to CPU memory
 	cudaMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * (*s).Ngrid * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * (*s).Ngrid * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 
 	free(sellmeierCoefficientsAugmentedCPU);
 	cudaFree(sellmeierCoefficients1);
@@ -2254,9 +2234,9 @@ int applyAperature(simulationParameterSet* sCPU, double diameter, double activat
 	cudaMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 	apertureKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(sDevice, 0.5 * diameter, activationParameter);
 
-	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
+	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
 	cudaMemcpy((*sCPU).ExtOut,s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 	getTotalSpectrum(sCPU, &s);
 	deallocateCudaParameterSet(&s);
 	cudaFree(sDevice);
@@ -2279,15 +2259,15 @@ int applySphericalMirror(simulationParameterSet* sCPU, double ROC) {
 	cufftPlan1d(&planBeamTimeToFreq, (int)s.Ntime, CUFFT_D2Z, 2 * (int)(s.Nspace * s.Nspace2));
 
 	cudaMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), cudaMemcpyHostToDevice);
-	cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, s.gridEFrequency1);
+	cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
 
 	sphericalMirrorKernel << <s.Nblock/2, s.Nthread, 0, s.CUDAStream >> > (sDevice, ROC);
 
-	cufftExecZ2D(planBeamFreqToTime, s.gridEFrequency1, s.gridETime1);
+	cufftExecZ2D(planBeamFreqToTime, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
 	multiplyByConstantKernelD<<<2*s.Nblock ,s.Nthread, 0, s.CUDAStream>>>(s.gridETime1, 1.0 / s.Ntime);
-	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
+	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
 	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 	getTotalSpectrum(sCPU, &s);
 	deallocateCudaParameterSet(&s);
 	cudaFree(sDevice);
@@ -2312,15 +2292,15 @@ int applyParabolicMirror(simulationParameterSet* sCPU, double focus) {
 	cufftPlan1d(&planBeamTimeToFreq, (int)s.Ntime, CUFFT_D2Z, 2 * (int)(s.Nspace * s.Nspace2));
 
 	cudaMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), cudaMemcpyHostToDevice);
-	cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, s.gridEFrequency1);
+	cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
 
 	parabolicMirrorKernel << <s.Nblock / 2, s.Nthread, 0, s.CUDAStream >> > (sDevice, focus);
 
-	cufftExecZ2D(planBeamFreqToTime, s.gridEFrequency1, s.gridETime1);
+	cufftExecZ2D(planBeamFreqToTime, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
 	multiplyByConstantKernelD << <2 * s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.gridETime1, 1.0 / s.Ntime);
-	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1);
+	cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
 	cudaMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 	getTotalSpectrum(sCPU, &s);
 	deallocateCudaParameterSet(&s);
 	cudaFree(sDevice);
@@ -2334,7 +2314,7 @@ int applyLinearPropagation(simulationParameterSet* sCPU, int materialIndex, doub
 	initializeCudaParameterSet(sCPU, &s);
 
 	
-	cudaMemcpy(s.gridEFrequency1, (*sCPU).EkwOut, s.NgridC * 2 * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+	cudaMemcpy(s.gridEFrequency1, (*sCPU).EkwOut, s.NgridC * 2 * sizeof(thrust::complex<double>), cudaMemcpyHostToDevice);
 	
 	
 
@@ -2360,8 +2340,8 @@ int applyLinearPropagation(simulationParameterSet* sCPU, int materialIndex, doub
 
 	applyLinearPropagationKernel<<<s.Nblock/2, s.Nthread, 0, s.CUDAStream>>>(sellmeierCoefficients, thickness, sDevice);
 	
-	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, s.NgridC * 2 * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-	cufftExecZ2D(s.fftPlanZ2D, s.gridEFrequency1, s.gridETime1);
+	cudaMemcpy((*sCPU).EkwOut, s.gridEFrequency1, s.NgridC * 2 * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
+	cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
 	multiplyByConstantKernelD<<<2*s.Nblock,s.Nthread,0,s.CUDAStream>>>(s.gridETime1, 1.0 / s.Ngrid);
 
 
@@ -2403,7 +2383,7 @@ int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc
 	cudaFree(sD);
 
 	//clean up
-	cudaMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(cuDoubleComplex));
+	cudaMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(thrust::complex<double>));
 
 	free(sellmeierCoefficientsAugmentedCPU);
 	cudaFree(referenceFrequencies);
@@ -2443,7 +2423,7 @@ int preparePropagation3D(simulationParameterSet* s, cudaParameterSet sc) {
 	cudaFree(sD);
 
 	//clean up
-	cudaMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(cuDoubleComplex));
+	cudaMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(thrust::complex<double>));
 
 	free(sellmeierCoefficientsAugmentedCPU);
 	cudaFree(referenceFrequencies);
@@ -2481,7 +2461,7 @@ int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc
 	cudaDeviceSynchronize();
 
 	//clean up
-	cudaMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(cuDoubleComplex));
+	cudaMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(thrust::complex<double>));
 	cudaFree(referenceFrequencies);
 	free(sellmeierCoefficientsAugmentedCPU);
 	return 0;
@@ -2828,16 +2808,16 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 int rotateField(simulationParameterSet* s, double rotationAngle) {
 	cudaParameterSet sc;
 	initializeCudaParameterSet(s, &sc);
-	cuDoubleComplex* Ein1, * Eout1, * Ein2, * Eout2;
+	thrust::complex<double>* Ein1, * Eout1, * Ein2, * Eout2;
 	Ein1 = sc.gridEFrequency1;
 	Ein2 = sc.gridEFrequency2;
 	Eout1 = sc.gridEFrequency1Next1;
 	Eout2 = sc.gridEFrequency1Next2;
 
 	//retrieve/rotate the field from the CPU memory
-	cudaMemcpy(Ein1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+	cudaMemcpy(Ein1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(thrust::complex<double>), cudaMemcpyHostToDevice);
 	rotateFieldKernel<<<(unsigned int)(sc.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, 0, sc.CUDAStream>>> (Ein1, Ein2, Eout1, Eout2, rotationAngle);
-	cudaMemcpy((*s).EkwOut, Eout1, 2 * (*s).NgridC * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+	cudaMemcpy((*s).EkwOut, Eout1, 2 * (*s).NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 
 	//transform back to time
 	cufftExecZ2D(sc.fftPlanZ2D, (cufftDoubleComplex*)Eout1, sc.gridETime1);
@@ -3840,7 +3820,7 @@ int getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc) {
 	cufftHandle plan1;
 	cufftPlan1d(&plan1, (int)(*sCPU).Ntime, CUFFT_D2Z, 2 * (int)((*sCPU).Nspace * (*sCPU).Nspace2));
 	cufftSetStream(plan1, (*sc).CUDAStream);
-	cudaMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(cuDoubleComplex));
+	cudaMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(thrust::complex<double>));
 	cufftExecD2Z(plan1, (*sc).gridETime1, (cufftDoubleComplex*)(*sc).workspace1);
 
 	if ((*sc).is3D) {
