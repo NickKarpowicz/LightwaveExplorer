@@ -29,6 +29,7 @@ simulationParameterSet* fittingReferenceSet;
 #define EPS0 8.8541878128e-12
 #define SIXTH 0.1666666666666667
 #define THIRD 0.3333333333333333
+#define KLORENTZIAN 3183.9 //(e * e / (epsilon_o * m_e)
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 #endif
@@ -59,7 +60,7 @@ __device__ double cuCimag(thrust::complex<double> x) {
 //ii: sqrt(-1)
 //kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
 __device__ thrust::complex<double> sellmeierSubfunctionCuda(
-	double* a, double ls, double omega, thrust::complex<double> ii, double kL) {
+	double* a, double ls, double omega) {
 	double realPart = a[0]
 		+ (a[1] + a[2] * ls) / (ls + a[3])
 		+ (a[4] + a[5] * ls) / (ls + a[6])
@@ -74,8 +75,8 @@ __device__ thrust::complex<double> sellmeierSubfunctionCuda(
 	if (realPart < 0) realPart = 1;
 
 	return thrust::sqrt(realPart
-		+ kL * a[16] / (a[17] - omega * omega + ii * a[18] * omega)
-		+ kL * a[19] / (a[20] - omega * omega + ii * a[21] * omega));
+		+ KLORENTZIAN * a[16] / thrust::complex<double>(a[17] - omega * omega, a[18] * omega)
+		+ KLORENTZIAN * a[19] / thrust::complex<double>(a[20] - omega * omega, a[21] * omega));
 }
 
 //Sellmeier equation for refractive indicies
@@ -85,22 +86,18 @@ __device__ thrust::complex<double> sellmeierCuda(
 
 	double ls = 2.99792458e14 / f; //wavelength in microns
 	ls *= ls; //only wavelength^2 is ever used
-	thrust::complex<double> ii(0.0, 1.0);
 	double omega = TWOPI * abs(f);
-	double kL = 3183.9; //(e * e / (epsilon_o * m_e)
-
 
 	//option 0: isotropic
 	if (type == 0) {
-		ne[0] = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
+		ne[0] = sellmeierSubfunctionCuda(a, ls, omega);
 		no[0] = ne[0];
 		return ne[0];
 	}
 	//option 1: uniaxial
 	else if (type == 1) {
-
-		thrust::complex<double> na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
-		thrust::complex<double> nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
+		thrust::complex<double> na = sellmeierSubfunctionCuda(a, ls, omega);
+		thrust::complex<double> nb = sellmeierSubfunctionCuda(&a[22], ls, omega);
 		no[0] = na;
 		ne[0] = 1.0 / thrust::sqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
 		return ne[0];
@@ -109,9 +106,9 @@ __device__ thrust::complex<double> sellmeierCuda(
 		//type == 2: biaxial
 		// X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
 		// I am sorry if there is a bug and you're trying to find it, i did my best.
-		thrust::complex<double> na = sellmeierSubfunctionCuda(a, ls, omega, ii, kL);
-		thrust::complex<double> nb = sellmeierSubfunctionCuda(&a[22], ls, omega, ii, kL);
-		thrust::complex<double> nc = sellmeierSubfunctionCuda(&a[44], ls, omega, ii, kL);
+		thrust::complex<double> na = sellmeierSubfunctionCuda(a, ls, omega);
+		thrust::complex<double> nb = sellmeierSubfunctionCuda(&a[22], ls, omega);
+		thrust::complex<double> nc = sellmeierSubfunctionCuda(&a[44], ls, omega);
 		double cosTheta = cos(theta);
 		double cosTheta2 = cosTheta * cosTheta;
 		double sinTheta = sin(theta);
@@ -161,7 +158,6 @@ __global__ void millersRuleNormalizationKernel(cudaParameterSet* s, double* sell
 			chi11[i] =ne.real() *ne.real() - 1;
 			chi12[i] =no.real() *no.real() - 1;
 		}
-
 	}
 
 	//normalize chi2 tensor values
@@ -173,11 +169,9 @@ __global__ void millersRuleNormalizationKernel(cudaParameterSet* s, double* sell
 	(*s).chi2Tensor[5] /= chi12[0] * chi12[1] * chi12[2];
 
 	//normalize chi3 tensor values
-	// note that currently full chi3 isn't implemented so
-	// this only applies to the first element, chi3_1111 under
-	// the assumption of centrosymmetry
-	(*s).chi3Tensor[0] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
-
+	for (char i = 0; i < 81; i++) {
+		(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
+	}
 }
 
 __device__ __forceinline__ double cuCModSquared(thrust::complex<double> a) {
@@ -592,11 +586,8 @@ __device__ void findBirefingentCrystalAngle(double* alphaE, double* alphaO, long
 			else {
 				dAlpha *= 0.5;
 			}
-
 		}
 	}
-
-
 }
 
 
@@ -621,19 +612,16 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 
 	//frequency being resolved by current thread
 	double f = k * fStep;
-	if (k >= Ntime / 2) {
-		f -= fStep * Ntime;
-	}
-	f *= -1;
+
 
 	findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients1, s);
 	findBirefingentCrystalAngle(&alpha2, &alphaO2, j, f, sellmeierCoefficients2, s);
 	//walkoff angle has been found, generate the rest of the grids
 
 
-	sellmeierCuda(&ne1, &no1, sellmeierCoefficients1, abs(f),
+	sellmeierCuda(&ne1, &no1, sellmeierCoefficients1, f,
 		crystalTheta + 0*alpha1, crystalPhi, axesNumber, sellmeierType);
-	sellmeierCuda(&n0, &no1, sellmeierCoefficients1, abs(f),
+	sellmeierCuda(&n0, &no1, sellmeierCoefficients1, f,
 		crystalTheta + 0*alphaO1, crystalPhi, axesNumber, sellmeierType);
 	if (isnan(ne1.real()) || isnan(no1.real())) {
 		ne1 = thrust::complex<double>(1, 0);
@@ -641,9 +629,9 @@ __global__ void applyFresnelLossKernel(double* sellmeierCoefficients1, double* s
 	}
 
 
-	sellmeierCuda(&ne2, &no2, sellmeierCoefficients2, abs(f),
+	sellmeierCuda(&ne2, &no2, sellmeierCoefficients2, f,
 		crystalTheta + alpha2, crystalPhi, axesNumber, sellmeierType);
-	sellmeierCuda(&n0, &no2, sellmeierCoefficients2, abs(f),
+	sellmeierCuda(&n0, &no2, sellmeierCoefficients2, f,
 		crystalTheta + alphaO2, crystalPhi, axesNumber, sellmeierType);
 	if (isnan(ne2.real()) || isnan(no2.real())) {
 		ne2 = thrust::complex<double>(1, 0);
@@ -1053,8 +1041,6 @@ __global__ void prepareCylindricGridsKernel(double* sellmeierCoefficients, cudaP
 		(*s).gridPropagationFactor1[i] = cuZero;
 		(*s).gridPropagationFactor1Rho2[i] = cuZero;
 	}
-
-
 }
 
 //replaces E with its complex conjugate
