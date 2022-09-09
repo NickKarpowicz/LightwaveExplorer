@@ -6,6 +6,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "framework.h"
 #include "LightwaveExplorerFrontend.h"
 #include "LightwaveExplorerCore.cuh"
+#include "LightwaveExplorerCoreCPU.h"
+#include "LightwaveExplorerUtilities.h"
 #include<cstdio>
 #include<complex>
 #include<math.h>
@@ -114,6 +116,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
         else {
             error = solveNonlinearWaveEquation(&activeSetPtr[j]);
+            //error = solveNonlinearWaveEquationCPU(&activeSetPtr[j]);
             if (activeSetPtr[j].memoryError > 0) {
                 printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
             }

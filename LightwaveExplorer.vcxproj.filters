@@ -30,9 +30,21 @@
     <ClInclude Include="LightwaveExplorerCore.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LightwaveExplorerCoreCPU.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LightwaveExplorerUtilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LightwaveExplorerFrontend.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LightwaveExplorerCoreCPU.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LightwaveExplorerUtilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
