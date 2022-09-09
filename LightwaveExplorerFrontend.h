@@ -181,5 +181,5 @@ DWORD WINAPI        statusMonitorThread(LPVOID lpParam);
 int                 setWindowTextToDoubleExp(HWND win, double in);
 int                 setWindowTextToDouble(HWND win, double in);
 std::complex<double> getDoubleDoublesfromHWND(HWND inputA);
-int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby);
-int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin);
+int                 linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby);
+int                 linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin);
