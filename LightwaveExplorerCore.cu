@@ -1582,11 +1582,11 @@ namespace {
 		uint3 bDim;
 		bDim.x = Nthread;
 		bool isThreaded = Nthread > 1u;
-#pragma omp parallel for collapse(2) private(tIdx,bIdx) if(isThreaded)
+#pragma omp parallel for private(tIdx,bIdx) if(isThreaded)
 		for (int j = 0; j < (int)Nblock; j++) {
-			for (int i = 0; i < (int)Nthread; i++) {
-				tIdx.x = (unsigned int)i;
-				bIdx.x = (unsigned int)j;
+			bIdx.x = (unsigned int)j;
+			for (unsigned int i = 0; i < Nthread; i++) {
+				tIdx.x = i;
 				func(bIdx, tIdx, bDim, args...);
 			}
 		}
@@ -1783,8 +1783,6 @@ namespace {
 		}
 		//fft onto frequency grid
 		combinedFFT(sc, (*sc).gridETime1, (*sc).gridEFrequency1, 0);
-
-
 
 		//Copy the field into the temporary array
 		bilingualMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToDevice);

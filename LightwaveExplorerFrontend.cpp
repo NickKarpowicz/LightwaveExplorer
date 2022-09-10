@@ -1128,8 +1128,6 @@ int freeSemipermanentGrids() {
     isGridAllocated = FALSE;
     free((*activeSetPtr).ExtOut);
     free((*activeSetPtr).EkwOut);
-    //free((*activeSetPtr).Ext);
-    //free((*activeSetPtr).Ekw);
     free((*activeSetPtr).totalSpectrum);
     free((*activeSetPtr).fittingReference);
     return 0;
@@ -1306,7 +1304,7 @@ int readParametersFromInterface() {
         (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     }
-    printToConsole(maingui.textboxSims, L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
+    //printToConsole(maingui.textboxSims, L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
     (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
     (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
@@ -1838,6 +1836,7 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
 
     float oneOver255 = 1.0f/255;
     unsigned char colorMap[256][3];
+\
     for (int j = 0; j < 256; j++) {
         switch (cm) {
         case 0:
@@ -1897,6 +1896,7 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
     }
     unsigned char currentValue;
     if (imin != imax) {
+#pragma omp parallel for private(i, currentValue) num_threads(2)
         for (i = 0; i < Ntot; i++) {
             currentValue = (unsigned char)(255 * (data[i] - imin) / (imax - imin));
             pixels[stride * i + 0] = colorMap[currentValue][0];
@@ -2167,6 +2167,7 @@ int linearRemap(float* A, int nax, int nay, float* B, int nbx, int nby) {
 
     int nx0, ny0;
     int Ni, Nj;
+#pragma omp parallel for private(i,j,A00,f,nx0,ny0,Ni,Nj) num_threads(2)
 	for (i = 0; i < nbx; i++) {
 		f = i*(nax / (float)nbx);
 		Ni = (int)f;
