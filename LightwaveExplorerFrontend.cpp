@@ -1822,14 +1822,14 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
     }
 
 
-    INT64 i;
-    INT64 Ntot = Nx * Ny;
+
+    size_t Ntot = Nx * Ny;
     float nval;
     int stride = 4;
     //Find the image maximum and minimum
     float imin = data[0];
     float imax = data[0];
-    for (i = 1; i < Ntot; i++) {
+    for (size_t i = 1; i < Ntot; i++) {
         if (data[i] > imax) imax = data[i];
         if (data[i] < imin) imin = data[i];
     }
@@ -1896,12 +1896,12 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
     }
     unsigned char currentValue;
     if (imin != imax) {
-#pragma omp parallel for private(i, currentValue) num_threads(2)
-        for (i = 0; i < Ntot; i++) {
-            currentValue = (unsigned char)(255 * (data[i] - imin) / (imax - imin));
-            pixels[stride * i + 0] = colorMap[currentValue][0];
-            pixels[stride * i + 1] = colorMap[currentValue][1];
-            pixels[stride * i + 2] = colorMap[currentValue][2];
+#pragma omp parallel for private(currentValue) num_threads(2)
+        for (int p = 0; p < Ntot; p++) {
+            currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
+            pixels[stride * p + 0] = colorMap[currentValue][0];
+            pixels[stride * p + 1] = colorMap[currentValue][1];
+            pixels[stride * p + 2] = colorMap[currentValue][2];
         }
         
     }
@@ -2161,14 +2161,14 @@ int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int
 //resize matrix A to the size of matrix B
 //B is overwritten with the resized matrix
 int linearRemap(float* A, int nax, int nay, float* B, int nbx, int nby) {
-    int i, j;
+    int j;
     float A00;
     float f;
 
     int nx0, ny0;
     int Ni, Nj;
-#pragma omp parallel for private(i,j,A00,f,nx0,ny0,Ni,Nj) num_threads(2)
-	for (i = 0; i < nbx; i++) {
+#pragma omp parallel for private(j,A00,f,nx0,ny0,Ni,Nj) num_threads(2)
+	for (int i = 0; i < nbx; i++) {
 		f = i*(nax / (float)nbx);
 		Ni = (int)f;
 		nx0 = nay * min(Ni, nax);

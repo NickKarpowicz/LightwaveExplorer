@@ -134,8 +134,8 @@ typedef struct imagePlotStruct {
     std::complex<double>* complexData = NULL;
     int colorMap = 4;
     bool logScale = FALSE;
-    double logMin;
-    int dataType;
+    double logMin = 0;
+    int dataType = 0;
 } imagePlotStruct;
 
 typedef struct plotStruct {
