@@ -35,6 +35,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define ID_BTNADDECHO 11121
 #define ID_BTNADDCRYSTAL 11122
 #define ID_CBLOGPLOT 12000
+#define ID_CBFORCECPU 12001
 #define MAX_SIMULATIONS 16192
 #define MIN_GRIDDIM 8
 #define TWOPI 6.2831853071795862
@@ -74,15 +75,16 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 
-
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
-    int j;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     HANDLE plotThread;
     DWORD hplotThread;
     
-    
+    hasGPU = IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU) != BST_CHECKED;
+    if (!hasGPU) {
+        printToConsole(maingui.textboxSims, L"Forcing to run on CPU!\r\n");
+    }
     if (isGridAllocated) {
         freeSemipermanentGrids();
     }
@@ -103,7 +105,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     //run the simulations
     isRunning = TRUE;
     progressCounter = 0;
-    for (j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
+    for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         if ((*activeSetPtr).isInSequence) {
             if (hasGPU) {
                 error = solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
@@ -594,6 +596,10 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.cbLogPlot = CreateWindow(WC_BUTTON, TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 
         btnoffset2a + btnwidth+50, 17 * vs+4, 12, 12, maingui.mainWindow, (HMENU)ID_CBLOGPLOT, hInstance, NULL);
     SendMessage(maingui.cbLogPlot, BM_SETCHECK, BST_CHECKED, 0);
+
+    maingui.cbForceCPU = CreateWindow(WC_BUTTON, TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+        btnoffset2a + btnwidth + 50, 20 * vs + 12, 12, 12, maingui.mainWindow, (HMENU)ID_CBFORCECPU, hInstance, NULL);
+
 
     maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 

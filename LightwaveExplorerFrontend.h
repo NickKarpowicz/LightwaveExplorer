@@ -72,7 +72,6 @@ typedef struct guiStruct {
 
     HWND pbProgress = NULL;
     HWND pbProgressB = NULL;
-    HWND cbSavePsi = NULL;
     HWND tbFileNameBase = NULL;
     HWND tbPulse1Path = NULL;
     HWND pdPulse1Type = NULL;
@@ -93,6 +92,7 @@ typedef struct guiStruct {
     HWND buttonAddEchoSequence = NULL;
     HWND tbPlotNumber = NULL;
     HWND cbLogPlot = NULL;
+    HWND cbForceCPU = NULL;
     HWND pdClusterSelector = NULL;
     HWND buttonRunOnCluster = NULL;
     HWND tbWhichSimToPlot = NULL;
