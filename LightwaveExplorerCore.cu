@@ -1581,8 +1581,8 @@ namespace {
 		uint3 bIdx;
 		uint3 bDim;
 		bDim.x = Nthread;
-
-#pragma omp parallel for collapse(2) private(tIdx,bIdx)
+		bool isThreaded = Nthread > 1u;
+#pragma omp parallel for collapse(2) private(tIdx,bIdx) if(isThreaded)
 		for (int j = 0; j < (int)Nblock; j++) {
 			for (int i = 0; i < (int)Nthread; i++) {
 				tIdx.x = (unsigned int)i;
@@ -2302,11 +2302,11 @@ namespace {
 			cufftSetStream((*s).fftPlanD2Z, (*s).CUDAStream);
 			cufftSetStream((*s).fftPlanZ2D, (*s).CUDAStream);
 		}
-		//else {
+		else {
 			DftiCreateDescriptor(&(*s).mklPlan1DD2Z, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
 			DftiSetValue((*s).mklPlan1DD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
 			DftiSetValue((*s).mklPlan1DD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-			DftiSetValue((*s).mklPlan1DD2Z, DFTI_NUMBER_OF_TRANSFORMS, (*s).Nspace * (*s).Nspace2);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2 * (*s).Nspace * (*s).Nspace2);
 			DftiSetValue((*s).mklPlan1DD2Z, DFTI_INPUT_DISTANCE, (*s).Ntime);
 			DftiSetValue((*s).mklPlan1DD2Z, DFTI_OUTPUT_DISTANCE, (*s).Nfreq);
 			DftiCommitDescriptor((*s).mklPlan1DD2Z);
@@ -2314,14 +2314,14 @@ namespace {
 			DftiCreateDescriptor(&(*s).mklPlan1DZ2D, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
 			DftiSetValue((*s).mklPlan1DZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
 			DftiSetValue((*s).mklPlan1DZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-			DftiSetValue((*s).mklPlan1DZ2D, DFTI_NUMBER_OF_TRANSFORMS, (*s).Nspace * (*s).Nspace2);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2 * (*s).Nspace * (*s).Nspace2);
 			DftiSetValue((*s).mklPlan1DZ2D, DFTI_INPUT_DISTANCE, (*s).Nfreq);
 			DftiSetValue((*s).mklPlan1DZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ntime);
 			DftiCommitDescriptor((*s).mklPlan1DZ2D);
 
 			if ((*s).is3D) {
-				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Nspace2, (MKL_LONG)(*s).Ntime };
-				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*s).Ntime / 2 + 1, (MKL_LONG)(*s).Nspace, 1 };
+				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace2, (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Ntime };
+				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)((*s).Nspace*(*s).Nfreq), (MKL_LONG)(*s).Nfreq, 1};
 				DftiCreateDescriptor(&(*s).mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
 				DftiSetValue((*s).mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
 				DftiSetValue((*s).mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
@@ -2342,7 +2342,7 @@ namespace {
 			}
 			else {
 				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Ntime};
-				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*s).Ntime / 2 + 1, 1, 1 };
+				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*s).Nfreq, 1, 1 };
 				
 				DftiCreateDescriptor(&(*s).mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
 				DftiSetValue((*s).mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
@@ -2375,8 +2375,7 @@ namespace {
 				}
 
 			}
-
-		//}
+		}
 		
 		
 		
