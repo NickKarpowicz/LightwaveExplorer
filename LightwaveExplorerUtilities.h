@@ -4,7 +4,7 @@
 #include <thrust/complex.h>
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-
+#include "mkl.h"
 typedef struct crystalEntry {
     wchar_t crystalNameW[256];
     int axisType;
@@ -213,6 +213,15 @@ typedef struct cudaParameterSet {
     cufftHandle fftPlanZ2D;
     cufftHandle fftPlanD2Z;
     cufftHandle doublePolfftPlan;
+    cufftHandle fftPlan1DD2Z;
+    cufftHandle fftPlan1DZ2D;
+
+    DFTI_DESCRIPTOR_HANDLE mklPlanZ2D;
+    DFTI_DESCRIPTOR_HANDLE mklPlanD2Z;
+    DFTI_DESCRIPTOR_HANDLE mklPlanDoublePolfft;
+    DFTI_DESCRIPTOR_HANDLE mklPlan1DD2Z;
+    DFTI_DESCRIPTOR_HANDLE mklPlan1DZ2D;
+
     bool isCylindric;
     bool is3D;
     bool hasPlasma;

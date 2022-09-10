@@ -105,7 +105,13 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     progressCounter = 0;
     for (j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         if ((*activeSetPtr).isInSequence) {
-            error = solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
+            if (hasGPU) {
+                error = solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
+            }
+            else {
+                error = solveNonlinearWaveEquationSequenceCPU(&activeSetPtr[j]);
+            }
+            
             if (error) break;
             if (!isPlotting) {
                 (*activeSetPtr).plotSim = j;
@@ -115,8 +121,12 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
         }
         else {
-            error = solveNonlinearWaveEquation(&activeSetPtr[j]);
-            //error = solveNonlinearWaveEquationCPU(&activeSetPtr[j]);
+            if (hasGPU) {
+                error = solveNonlinearWaveEquation(&activeSetPtr[j]);
+            }
+            else{ 
+                error = solveNonlinearWaveEquationCPU(&activeSetPtr[j]); 
+            }
             if (activeSetPtr[j].memoryError > 0) {
                 printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
             }
@@ -787,6 +797,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     else {
         printToConsole(maingui.textboxSims, L"No compatible GPU found.\r\n");
+        hasGPU = FALSE;
     }
     
     //read the crystal database
@@ -2349,7 +2360,12 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
         (*activeSetPtr).fittingROIstart, (*activeSetPtr).fittingROIstop, (*activeSetPtr).fittingROIsize);
 
     //run the simulations
-    runFitting(activeSetPtr);
+    if (hasGPU) {
+        runFitting(activeSetPtr);
+    }
+    else {
+        runFittingCPU(activeSetPtr);
+    }
     (*activeSetPtr).plotSim = 0;
     drawSimPlots(activeSetPtr);
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();

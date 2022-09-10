@@ -38,10 +38,12 @@
 #define FGLOBAL __global__
 #define FDEVICE __device__ __host__
 #define GKERN
+#define RUNTYPE 0
 #else
 #define FGLOBAL
 #define FDEVICE
 #define GKERN uint3 blockIdx, uint3 threadIdx, uint3 blockDim,
+#define RUNTYPE 1
 #endif
 
 #ifdef __CUDACC__
@@ -1415,6 +1417,8 @@ FGLOBAL void beamGenerationKernel2D(GKERN thrust::complex<double>* pulse, double
 	//accordingly we already multiplied by two
 #ifdef __CUDACC__
 	atomicAdd(pulseSum, pointEnergy);
+#else
+	*pulseSum += pointEnergy; //NOT THREAD SAFE, RUN CPU CODE ON SINGLE THREAD
 #endif
 }
 
@@ -1489,6 +1493,8 @@ FGLOBAL void beamGenerationKernel3D(GKERN thrust::complex<double>* pulse, double
 	//factor 2 accounts for the missing negative frequency plane
 #ifdef __CUDACC__
 	atomicAdd(pulseSum, pointEnergy);
+#else
+	*pulseSum += pointEnergy; //NOT THREAD SAFE, RUN CPU CODE ON SINGLE THREAD
 #endif
 }
 
@@ -1552,7 +1558,7 @@ namespace {
 	int             getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc);
 	int				rotateField(simulationParameterSet* s, double rotationAngle);
 	void            runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction);
-	int             resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db);
+//	int             resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db);
 	int				prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc);
 	int             applyLinearPropagation(simulationParameterSet* s, int materialIndex, double thickness);
 	int             fillRotationMatricies(simulationParameterSet* sCPU, cudaParameterSet* s);
@@ -1561,9 +1567,10 @@ namespace {
 	//generate the rotation matricies for translating between the beam coordinates and
 	//crystal coordinates
 
-	//My weird wrapper template that lets me either call CUDA kernels
+//My weird bilingual wrapper template that lets me either call CUDA kernels
 //normally on the GPU, or process them on the CPU
-//This is why kernel declarations have ifdefs around them
+//This is why kernel declarations have FGLOBAL in front of them
+//instead of the usual __global__ tag
 	template<typename Function, typename... Args>
 	void flexLaunch(unsigned int Nblock, unsigned int Nthread, cudaStream_t stream, Function func, Args... args) {
 #ifdef __CUDACC__
@@ -1572,18 +1579,15 @@ namespace {
 		uint3 tIdx;
 		uint3 bIdx;
 		uint3 bDim;
-		bDim.x = THREADS_PER_BLOCK;
 		bDim.x = Nthread;
-		int i;
-		unsigned int j;
-#pragma omp parallel for num_threads(THREADS_PER_BLOCK)
-		for (i = 0; i < (int)Nthread; i++) {
+
+#pragma omp parallel for private(tIdx,bIdx)
+		for (int i = 0; i < (int)Nthread; i++) {
 			tIdx.x = (unsigned int)i;
-			for (j = 0; j < Nblock; j++) {
+			for (unsigned int j = 0; j < Nblock; j++) {
 				bIdx.x = j;
 				func(bIdx, tIdx, bDim, args...);
 			}
-
 		}
 #endif
 	}
@@ -1625,50 +1629,61 @@ namespace {
 		return 0;
 	}
 
-	int combinedFFT(int* plan, void* input, void* output, int type) {
-#ifdef _CUDACC__
+	int combinedFFT(cudaParameterSet* s, void* input, void* output, int type) {
+		type += RUNTYPE * 5;
 		switch (type) {
 		case 0:
-			cufftExecD2Z(*plan, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+			cufftExecD2Z((*s).fftPlanD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
 			break;
 		case 1:
-			cufftExecZ2D(*plan, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
+			cufftExecZ2D((*s).fftPlanZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
 			break;
 		case 2:
-			cufftExecZ2Z(*plan, (cufftDoubleComplex*)input, (cufftDoubleComplex*)output, CUFFT_FORWARD);
+			cufftExecD2Z((*s).fftPlan1DD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
 			break;
 		case 3:
-			cufftExecZ2Z(*plan, (cufftDoubleComplex*)input, (cufftDoubleComplex*)output, CUFFT_INVERSE);
+			cufftExecZ2D((*s).fftPlan1DZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
+			break;
+		case 4:
+			cufftExecD2Z((*s).doublePolfftPlan, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+			break;
+		case 5:
+			DftiComputeForward((*s).mklPlanD2Z, input, output);
+			break;
+		case 6:
+			DftiComputeBackward((*s).mklPlanZ2D, input, output);
+			break;
+		case 7:
+			DftiComputeForward((*s).mklPlan1DD2Z, input, output);
+			break;
+		case 8:
+			DftiComputeBackward((*s).mklPlan1DZ2D, input, output);
+			break;
+		case 9:
+			DftiComputeForward((*s).mklPlanDoublePolfft, input, output);
 			break;
 		}
-#else
-		DFTI_DESCRIPTOR_HANDLE* mklDescriptor = (DFTI_DESCRIPTOR_HANDLE*)plan;
-		switch (type) {
-		case 0:
-			DftiComputeForward(*mklDescriptor, input, output);
-			break;
-		case 1:
-			DftiComputeBackward(*mklDescriptor, input, output);
-			break;
-		case 2:
-			DftiComputeForward(*mklDescriptor, input, output);
-			break;
-		case 3:
-			DftiComputeBackward(*mklDescriptor, input, output);
-			break;
-		}
-#endif
+
 		return 0;
 	}
 
 	int prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc) {
+		
+		//run the beam generation single-threaded on CPU to avoid race condition
+		unsigned int beamBlocks = (*sc).Nblock / 2;
+		unsigned int beamThreads = (*sc).Nthread;
+		if (RUNTYPE == 1) {
+			beamBlocks = beamBlocks * beamThreads;
+			beamThreads = 1;
+		}
+			
 		cudaParameterSet* scDevice;
 		flexCalloc((void**)&scDevice, 1, sizeof(cudaParameterSet));
 		flexMemcpy(scDevice, sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 		if ((*s).isFollowerInSequence && !(*s).isReinjecting) {
 			flexMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
 			//cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1);
-			combinedFFT(&(*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1, 0);
+			combinedFFT(sc, (*sc).gridETime1, (*sc).gridEFrequency1, 0);
 			//Copy the field into the temporary array
 			flexMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToDevice);
 
@@ -1688,10 +1703,6 @@ namespace {
 		}
 		double* materialPhase1CUDA, * materialPhase2CUDA;
 		thrust::complex<double>* loadedField1, * loadedField2;
-
-
-		cufftHandle planBeamFreqToTime;
-		cufftPlan1d(&planBeamFreqToTime, (int)(*sc).Ntime, CUFFT_Z2D, 2 * (int)((*sc).Nspace * (*sc).Nspace2));
 
 		flexCalloc((void**)&loadedField1, (*sc).Ntime, sizeof(thrust::complex<double>));
 		flexCalloc((void**)&loadedField2, (*sc).Ntime, sizeof(thrust::complex<double>));
@@ -1727,7 +1738,7 @@ namespace {
 			//	(*s).field1IsAllocated, loadedField1, materialPhase1CUDA, (*s).beamwaist1,
 			//	(*s).z01, (*s).y01, (*s).x01, (*s).propagationAngle1, (*s).propagationAnglePhi1, (*s).polarizationAngle1, (*s).circularity1,
 			//	sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
-			flexLaunch((*sc).Nblock / 2, (*sc).Nthread, (*sc).CUDAStream, beamGenerationKernel3D,
+			flexLaunch(beamBlocks, beamThreads, (*sc).CUDAStream, beamGenerationKernel3D,
 				(*sc).workspace1, pulseSum, scDevice, (*s).frequency1, (*s).bandwidth1,
 				(*s).sgOrder1, (*s).cephase1, (*s).delay1, (*s).gdd1, (*s).tod1,
 				(*s).field1IsAllocated, loadedField1, materialPhase1CUDA, (*s).beamwaist1,
@@ -1741,7 +1752,7 @@ namespace {
 			//	(*s).field1IsAllocated, loadedField1, materialPhase1CUDA, (*s).beamwaist1,
 			//	(*s).z01, (*s).x01, (*s).propagationAngle1, (*s).polarizationAngle1, (*s).circularity1,
 			//	sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
-			flexLaunch((*sc).Nblock / 2, (*sc).Nthread, (*sc).CUDAStream, beamGenerationKernel2D,
+			flexLaunch(beamBlocks, beamThreads, (*sc).CUDAStream, beamGenerationKernel2D,
 				(*sc).workspace1, pulseSum, scDevice, (*s).frequency1, (*s).bandwidth1,
 				(*s).sgOrder1, (*s).cephase1, (*s).delay1, (*s).gdd1, (*s).tod1,
 				(*s).field1IsAllocated, loadedField1, materialPhase1CUDA, (*s).beamwaist1,
@@ -1750,8 +1761,17 @@ namespace {
 		}
 		
 
-		//cufftExecZ2D(planBeamFreqToTime, (cufftDoubleComplex*)(*sc).workspace1, (*sc).gridETime1);
-		combinedFFT(&planBeamFreqToTime, (*sc).workspace1, (*sc).gridETime1, 1);
+		//cufftExecZ2D((*sc).fftPlan1DZ2D, (cufftDoubleComplex*)(*sc).workspace1, (*sc).gridETime1);
+		combinedFFT(sc, (*sc).workspace1, (*sc).gridETime1, 3);
+
+		//std::complex<double>* TestWorkspace1 = (std::complex<double>*)calloc((*sc).NgridC * 2, sizeof(std::complex<double>));
+		//double* TestField1 = (double*)calloc((*sc).Ngrid * 2, sizeof(double));
+		//cudaMemcpy(TestWorkspace1, (*sc).workspace1, (*sc).NgridC * 2 * 2 * sizeof(double),cudaMemcpyDeviceToHost);
+		//combinedFFT(sc, TestWorkspace1, TestField1, 3 + 5);
+		//cudaMemcpy((*sc).gridETime1, TestField1, 2 * (*sc).Ngrid * sizeof(double), cudaMemcpyHostToDevice);
+		//free(TestWorkspace1);
+		//free(TestField1);
+
 
 		//beamNormalizeKernel<<<2 * (*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream>>> (scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy1);
 		flexLaunch(2 * (*sc).Nblock, (*sc).Nthread, (*sc).CUDAStream, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy1);
@@ -1767,7 +1787,7 @@ namespace {
 			//	(*s).field2IsAllocated, loadedField2, materialPhase2CUDA, (*s).beamwaist2,
 			//	(*s).z02, (*s).y02, (*s).x02, (*s).propagationAngle2, (*s).propagationAnglePhi2, (*s).polarizationAngle2, (*s).circularity2,
 			//	sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
-			flexLaunch((*sc).Nblock / 2, (*sc).Nthread, (*sc).CUDAStream, beamGenerationKernel3D,
+			flexLaunch(beamBlocks, beamThreads, (*sc).CUDAStream, beamGenerationKernel3D,
 				(*sc).workspace1, pulseSum, scDevice, (*s).frequency2, (*s).bandwidth2,
 				(*s).sgOrder2, (*s).cephase2, (*s).delay2, (*s).gdd2, (*s).tod2,
 				(*s).field2IsAllocated, loadedField2, materialPhase2CUDA, (*s).beamwaist2,
@@ -1781,7 +1801,7 @@ namespace {
 				(*s).field2IsAllocated, loadedField2, materialPhase2CUDA, (*s).beamwaist2,
 				(*s).z02, (*s).x02, (*s).propagationAngle2, (*s).polarizationAngle2, (*s).circularity2,
 				sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);*/
-			flexLaunch((*sc).Nblock / 2, (*sc).Nthread, (*sc).CUDAStream, beamGenerationKernel2D,
+			flexLaunch(beamBlocks, beamThreads, (*sc).CUDAStream, beamGenerationKernel2D,
 				(*sc).workspace1, pulseSum, scDevice, (*s).frequency2, (*s).bandwidth2,
 				(*s).sgOrder2, (*s).cephase2, (*s).delay2, (*s).gdd2, (*s).tod2,
 				(*s).field2IsAllocated, loadedField2, materialPhase2CUDA, (*s).beamwaist2,
@@ -1791,7 +1811,7 @@ namespace {
 		
 
 		//cufftExecZ2D(planBeamFreqToTime, (cufftDoubleComplex*)(*sc).workspace1, (*sc).gridETime1);
-		combinedFFT(&planBeamFreqToTime, (*sc).workspace1, (*sc).gridETime1, 1);
+		combinedFFT(sc, (*sc).workspace1, (*sc).gridETime1, 3);
 
 		//beamNormalizeKernel<<<2 * (*sc).Nblock, (*sc).Nthread, 0, (*sc).CUDAStream>>> (scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy2);
 		flexLaunch(2 * (*sc).Nblock, (*sc).Nthread, (*sc).CUDAStream, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy2);
@@ -1807,7 +1827,7 @@ namespace {
 		//fft onto frequency grid
 
 		//cufftExecD2Z((*sc).fftPlanD2Z, (*sc).gridETime1, (cufftDoubleComplex*)(*sc).gridEFrequency1);
-		combinedFFT(&(*sc).fftPlanD2Z, (*sc).gridETime1, (*sc).gridEFrequency1, 0);
+		combinedFFT(sc, (*sc).gridETime1, (*sc).gridEFrequency1, 0);
 
 
 
@@ -1825,8 +1845,6 @@ namespace {
 		//multiplicationKernelCompact<<<(unsigned int)((*sc).NgridC/ MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, (*sc).CUDAStream>>> ((*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 		flexLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, (*sc).CUDAStream, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 		flexMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToDevice);
-
-		cufftDestroy(planBeamFreqToTime);
 
 		flexFree(materialPhase1CUDA);
 		flexFree(materialPhase2CUDA);
@@ -1876,7 +1894,7 @@ namespace {
 		//fixnanKernel<<<(unsigned int)(2 * sc.NgridC/ MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, sc.CUDAStream>>> (sc.gridEFrequency1);
 
 		//cufftExecZ2D(sc.fftPlanZ2D, (cufftDoubleComplex*)sc.gridEFrequency1, sc.gridETime1);
-		combinedFFT(&sc.fftPlanZ2D, sc.gridEFrequency1, sc.gridETime1, 1);
+		combinedFFT(&sc, sc.gridEFrequency1, sc.gridETime1, 1);
 		//multiplyByConstantKernelD<<<2 * sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>> (sc.gridETime1, 1.0 / sc.Ngrid);
 		flexLaunch(2 * sc.Nblock, sc.Nthread, sc.CUDAStream, multiplyByConstantKernelD, sc.gridETime1, 1.0 / sc.Ngrid);
 		//copy the field arrays from the GPU to CPU memory
@@ -1901,7 +1919,7 @@ namespace {
 		//apertureKernel<<<s.Nblock, s.Nthread, 0, s.CUDAStream>>>(sDevice, 0.5 * diameter, activationParameter);
 		flexLaunch(s.Nblock, s.Nthread, s.CUDAStream, apertureKernel, sDevice, 0.5 * diameter, activationParameter);
 		//cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
-		combinedFFT(&s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1, 0);
+		combinedFFT(&s, s.gridETime1, s.gridEFrequency1, 0);
 		flexMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
 		flexMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 		getTotalSpectrum(sCPU, &s);
@@ -1918,31 +1936,23 @@ namespace {
 		flexCalloc((void**)&sDevice, 1, sizeof(cudaParameterSet));
 		flexMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 
-
-		cufftHandle planBeamFreqToTime;
-		cufftPlan1d(&planBeamFreqToTime, (int)s.Ntime, CUFFT_Z2D, 2 * (int)(s.Nspace * s.Nspace2));
-
-		cufftHandle planBeamTimeToFreq;
-		cufftPlan1d(&planBeamTimeToFreq, (int)s.Ntime, CUFFT_D2Z, 2 * (int)(s.Nspace * s.Nspace2));
-
 		flexMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), cudaMemcpyHostToDevice);
 		//cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
-		combinedFFT(&planBeamTimeToFreq, s.gridETime1, s.gridEFrequency1, 0);
+		combinedFFT(&s, s.gridETime1, s.gridEFrequency1, 2);
 		//sphericalMirrorKernel << <s.Nblock/2, s.Nthread, 0, s.CUDAStream >> > (sDevice, ROC);
 		flexLaunch(s.Nblock / 2, s.Nthread, s.CUDAStream, sphericalMirrorKernel, sDevice, ROC);
 		//cufftExecZ2D(planBeamFreqToTime, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
-		combinedFFT(&planBeamFreqToTime, s.gridEFrequency1, s.gridETime1, 1);
+		combinedFFT(&s, s.gridEFrequency1, s.gridETime1, 3);
 		//multiplyByConstantKernelD<<<2*s.Nblock ,s.Nthread, 0, s.CUDAStream>>>(s.gridETime1, 1.0 / s.Ntime);
 		flexLaunch(2 * s.Nblock, s.Nthread, s.CUDAStream, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ntime);
 		//cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
-		combinedFFT(&s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1, 0);
+		combinedFFT(&s, s.gridETime1, s.gridEFrequency1, 0);
 		flexMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
 		flexMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 		getTotalSpectrum(sCPU, &s);
 		deallocateCudaParameterSet(&s);
 		flexFree(sDevice);
-		cufftDestroy(planBeamFreqToTime);
-		cufftDestroy(planBeamTimeToFreq);
+
 		return 0;
 	}
 
@@ -1954,31 +1964,22 @@ namespace {
 		flexCalloc((void**)&sDevice, 1, sizeof(cudaParameterSet));
 		flexMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 
-
-		cufftHandle planBeamFreqToTime;
-		cufftPlan1d(&planBeamFreqToTime, (int)s.Ntime, CUFFT_Z2D, 2 * (int)(s.Nspace * s.Nspace2));
-
-		cufftHandle planBeamTimeToFreq;
-		cufftPlan1d(&planBeamTimeToFreq, (int)s.Ntime, CUFFT_D2Z, 2 * (int)(s.Nspace * s.Nspace2));
-
 		flexMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), cudaMemcpyHostToDevice);
 		//cufftExecD2Z(planBeamTimeToFreq, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
-		combinedFFT(&planBeamTimeToFreq, s.gridETime1, s.gridEFrequency1, 0);
+		combinedFFT(&s, s.gridETime1, s.gridEFrequency1, 2);
 		//parabolicMirrorKernel << <s.Nblock / 2, s.Nthread, 0, s.CUDAStream >> > (sDevice, focus);
 		flexLaunch(s.Nblock / 2, s.Nthread, s.CUDAStream, parabolicMirrorKernel, sDevice, focus);
 		//cufftExecZ2D(planBeamFreqToTime, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
-		combinedFFT(&planBeamFreqToTime, s.gridEFrequency1, s.gridETime1, 1);
+		combinedFFT(&s, s.gridEFrequency1, s.gridETime1, 3);
 		//multiplyByConstantKernelD << <2 * s.Nblock, s.Nthread, 0, s.CUDAStream >> > (s.gridETime1, 1.0 / s.Ntime);
 		flexLaunch(2 * s.Nblock, s.Nthread, s.CUDAStream, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ntime);
 		//cufftExecD2Z(s.fftPlanD2Z, s.gridETime1, (cufftDoubleComplex*)s.gridEFrequency1);
-		combinedFFT(&s.fftPlanD2Z, s.gridETime1, s.gridEFrequency1, 0);
+		combinedFFT(&s, s.gridETime1, s.gridEFrequency1, 0);
 		flexMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
 		flexMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 		getTotalSpectrum(sCPU, &s);
 		deallocateCudaParameterSet(&s);
 		flexFree(sDevice);
-		cufftDestroy(planBeamFreqToTime);
-		cufftDestroy(planBeamTimeToFreq);
 		return 0;
 	}
 
@@ -2015,7 +2016,7 @@ namespace {
 		flexLaunch(s.Nblock / 2, s.Nthread, s.CUDAStream, applyLinearPropagationKernel, sellmeierCoefficients, thickness, sDevice);
 		flexMemcpy((*sCPU).EkwOut, s.gridEFrequency1, s.NgridC * 2 * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 		//cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
-		combinedFFT(&s.fftPlanZ2D, s.gridEFrequency1, s.gridETime1, 1);
+		combinedFFT(&s, s.gridEFrequency1, s.gridETime1, 1);
 		//multiplyByConstantKernelD<<<2*s.Nblock,s.Nthread,0,s.CUDAStream>>>(s.gridETime1, 1.0 / s.Ngrid);
 		flexLaunch(2 * s.Nblock, s.Nthread, s.CUDAStream, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
 
@@ -2173,7 +2174,7 @@ namespace {
 
 		//transform back to time
 		//cufftExecZ2D(sc.fftPlanZ2D, (cufftDoubleComplex*)Eout1, sc.gridETime1);
-		combinedFFT(&sc.fftPlanZ2D, Eout1, sc.gridETime1, 1);
+		combinedFFT(&sc, Eout1, sc.gridETime1, 1);
 		//multiplyByConstantKernelD<<<2 * sc.Nblock, sc.Nthread, 0, sc.CUDAStream>>> (sc.gridETime1, 1.0 / sc.Ngrid);
 		flexLaunch(2 * sc.Nblock, sc.Nthread, sc.CUDAStream, multiplyByConstantKernelD, sc.gridETime1, 1.0 / sc.Ngrid);
 		flexMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
@@ -2340,40 +2341,132 @@ namespace {
 
 
 		//prepare FFT plans
-#ifdef __CUDACC__
-		size_t workSize;
-		if ((*s).is3D) {
-			int cufftSizes1[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-			cufftCreate(&(*s).fftPlanD2Z);
-			cufftGetSizeMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-			cufftMakePlanMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+		//explicitly make different plans for GPU or CPU (most other parts of the code can be universal,
+		//but not this, since the libraries are different).
+		if (RUNTYPE == 0) {
+			size_t workSize;
+			cufftPlan1d(&(*s).fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
+			cufftPlan1d(&(*s).fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
+			cufftSetStream((*s).fftPlan1DD2Z, (*s).CUDAStream);
+			cufftSetStream((*s).fftPlan1DZ2D, (*s).CUDAStream);
+			if ((*s).is3D) {
+				int cufftSizes1[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
+				cufftCreate(&(*s).fftPlanD2Z);
+				cufftGetSizeMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+				cufftMakePlanMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
 
-			cufftCreate(&(*s).fftPlanZ2D);
-			cufftGetSizeMany((*s).fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-			cufftMakePlanMany((*s).fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-		}
-		else {
-			int cufftSizes1[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-
-			cufftCreate(&(*s).fftPlanD2Z);
-			cufftGetSizeMany((*s).fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-			cufftMakePlanMany((*s).fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-
-			cufftCreate(&(*s).fftPlanZ2D);
-			cufftGetSizeMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-			cufftMakePlanMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-
-			if ((*s).isCylindric) {
-				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
-				cufftCreate(&(*s).doublePolfftPlan);
-				cufftGetSizeMany((*s).doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-				cufftMakePlanMany((*s).doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-				cufftSetStream((*s).doublePolfftPlan, (*s).CUDAStream);
+				cufftCreate(&(*s).fftPlanZ2D);
+				cufftGetSizeMany((*s).fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+				cufftMakePlanMany((*s).fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
 			}
+			else {
+				int cufftSizes1[] = { (int)(*s).Nspace, (int)(*s).Ntime };
+
+				cufftCreate(&(*s).fftPlanD2Z);
+				cufftGetSizeMany((*s).fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+				cufftMakePlanMany((*s).fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+
+				cufftCreate(&(*s).fftPlanZ2D);
+				cufftGetSizeMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+				cufftMakePlanMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+
+				if ((*s).isCylindric) {
+					int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
+					cufftCreate(&(*s).doublePolfftPlan);
+					cufftGetSizeMany((*s).doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+					cufftMakePlanMany((*s).doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+					cufftSetStream((*s).doublePolfftPlan, (*s).CUDAStream);
+				}
+			}
+			cufftSetStream((*s).fftPlanD2Z, (*s).CUDAStream);
+			cufftSetStream((*s).fftPlanZ2D, (*s).CUDAStream);
 		}
-		cufftSetStream((*s).fftPlanD2Z, (*s).CUDAStream);
-		cufftSetStream((*s).fftPlanZ2D, (*s).CUDAStream);
-#endif
+		//else {
+			DftiCreateDescriptor(&(*s).mklPlan1DD2Z, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_NUMBER_OF_USER_THREADS, THREADS_PER_BLOCK);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_NUMBER_OF_TRANSFORMS, (*s).Nspace * (*s).Nspace2);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_INPUT_DISTANCE, (*s).Ntime);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_OUTPUT_DISTANCE, (*s).Nfreq);
+			DftiCommitDescriptor((*s).mklPlan1DD2Z);
+
+			DftiCreateDescriptor(&(*s).mklPlan1DZ2D, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_NUMBER_OF_USER_THREADS, THREADS_PER_BLOCK);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_NUMBER_OF_TRANSFORMS, (*s).Nspace * (*s).Nspace2);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_INPUT_DISTANCE, (*s).Nfreq);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ntime);
+			DftiCommitDescriptor((*s).mklPlan1DZ2D);
+
+			if ((*s).is3D) {
+				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Nspace2, (MKL_LONG)(*s).Ntime };
+				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*s).Ntime / 2 + 1, (MKL_LONG)(*s).Nspace, 1 };
+				DftiCreateDescriptor(&(*s).mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_NUMBER_OF_USER_THREADS, THREADS_PER_BLOCK);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_INPUT_DISTANCE, (*s).Ngrid);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*s).NgridC);
+				DftiCommitDescriptor((*s).mklPlanD2Z);
+
+				DftiCreateDescriptor(&(*s).mklPlanZ2D, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_STRIDES, mklStrides);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_NUMBER_OF_USER_THREADS, THREADS_PER_BLOCK);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_DISTANCE, (*s).NgridC);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ngrid);
+				DftiCommitDescriptor((*s).mklPlanZ2D);
+			}
+			else {
+				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Ntime};
+				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*s).Ntime / 2 + 1, 1, 1 };
+				
+				DftiCreateDescriptor(&(*s).mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_NUMBER_OF_USER_THREADS, THREADS_PER_BLOCK);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_INPUT_DISTANCE, (*s).Ngrid);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*s).NgridC);
+				DftiCommitDescriptor((*s).mklPlanD2Z);
+
+				DftiCreateDescriptor(&(*s).mklPlanZ2D, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_STRIDES, mklStrides);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_NUMBER_OF_USER_THREADS, THREADS_PER_BLOCK);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_DISTANCE, (*s).NgridC);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ngrid);
+				DftiCommitDescriptor((*s).mklPlanZ2D);
+
+				if ((*s).isCylindric) {
+					mklSizes[0] *= 2;
+					DftiCreateDescriptor(&(*s).mklPlanDoublePolfft, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_OUTPUT_STRIDES, mklStrides);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_NUMBER_OF_USER_THREADS, THREADS_PER_BLOCK);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_NUMBER_OF_TRANSFORMS, 2);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_INPUT_DISTANCE, 2*(*s).Ngrid);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_OUTPUT_DISTANCE, 2*(*s).NgridC);
+					DftiCommitDescriptor((*s).mklPlanDoublePolfft);
+				}
+
+			}
+
+		//}
+		
+		
+		
+
 		return 0;
 	}
 
@@ -2394,14 +2487,24 @@ namespace {
 		flexFree((*s).expGammaT);
 		flexFree((*s).chiLinear1);
 
-#ifdef __CUDACC__
-		cufftDestroy((*s).fftPlanD2Z);
-		cufftDestroy((*s).fftPlanZ2D);
-		if ((*s).isCylindric) {
-			cufftDestroy((*s).doublePolfftPlan);
+		if (RUNTYPE == 0) {
+			cufftDestroy((*s).fftPlanD2Z);
+			cufftDestroy((*s).fftPlanZ2D);
+			cufftDestroy((*s).fftPlan1DD2Z);
+			cufftDestroy((*s).fftPlan1DZ2D);
+			if ((*s).isCylindric) {
+				cufftDestroy((*s).doublePolfftPlan);
+			}
+			cudaStreamDestroy((*s).CUDAStream);
 		}
-		cudaStreamDestroy((*s).CUDAStream);
-#endif
+		else {
+			DftiFreeDescriptor(&(*s).mklPlan1DD2Z);
+			DftiFreeDescriptor(&(*s).mklPlanD2Z);
+			DftiFreeDescriptor(&(*s).mklPlanZ2D);
+			if((*s).isCylindric)DftiFreeDescriptor(&(*s).mklPlanDoublePolfft);
+		}
+
+
 		//flexFree(s);
 		return 0;
 	}
@@ -2412,48 +2515,54 @@ namespace {
 
 		
 		//operations involving FFT
-#ifdef __CUDACC__
 		if ((*sH).isNonLinear || (*sH).isCylindric) {
 			//perform inverse FFT to get time-space electric field
 			//cufftExecZ2D((*sH).fftPlanZ2D, (cufftDoubleComplex*)(*sH).workspace1, (*sH).gridETime1);
-			combinedFFT(&(*sH).fftPlanZ2D, (cufftDoubleComplex*)(*sH).workspace1, (*sH).gridETime1, 1);
+			combinedFFT(sH, (cufftDoubleComplex*)(*sH).workspace1, (*sH).gridETime1, 1);
 			if ((*sH).isNonLinear) {
-				nonlinearPolarizationKernel << <(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
+				//nonlinearPolarizationKernel << <(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
+				flexLaunch((*sH).Nblock, (*sH).Nthread, (*sH).CUDAStream, nonlinearPolarizationKernel, sD);
 				if ((*sH).isCylindric) {
-					expandCylindricalBeam << < (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> >
-						(sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
+					//expandCylindricalBeam << < (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> >
+					//	(sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
+					flexLaunch((*sH).Nblock, (*sH).Nthread, (*sH).CUDAStream, expandCylindricalBeam, sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
 					//cufftExecD2Z((*sH).doublePolfftPlan, (double*)(*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1);
-					combinedFFT(&(*sH).doublePolfftPlan, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1, 0);
+					combinedFFT(sH, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1, 4);
 				}
 				else {
 					//cufftExecD2Z((*sH).fftPlanD2Z, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).workspace1);
-					combinedFFT(&(*sH).fftPlanD2Z, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).workspace1, 0);
+					combinedFFT(sH, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).workspace1, 0);
 				}
-				updateKwithPolarizationKernel << <(*sH).Nblock / 2, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
+				//updateKwithPolarizationKernel << <(*sH).Nblock / 2, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
+				flexLaunch((*sH).Nblock / 2, (*sH).Nthread, (*sH).CUDAStream, updateKwithPolarizationKernel, sD);
 			}
 
 			if ((*sH).hasPlasma) {
-				plasmaCurrentKernel << <(unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), MIN_GRIDDIM, 0, (*sH).CUDAStream >> > (sD);
+				//plasmaCurrentKernel << <(unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), MIN_GRIDDIM, 0, (*sH).CUDAStream >> > (sD);
+				flexLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), MIN_GRIDDIM, (*sH).CUDAStream, plasmaCurrentKernel, sD);
 				if ((*sH).isCylindric) {
-					expandCylindricalBeam << < (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> >
-						(sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
+					//expandCylindricalBeam << < (*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> >
+					//	(sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
+					flexLaunch((*sH).Nblock, (*sH).Nthread, (*sH).CUDAStream, expandCylindricalBeam, sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
 					//cufftExecD2Z((*sH).doublePolfftPlan, (double*)(*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1);
-					combinedFFT(&(*sH).doublePolfftPlan, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1, 0);
+					combinedFFT(sH, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1, 4);
 				}
 				else {
 					//cufftExecD2Z((*sH).fftPlanD2Z, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).workspace1);
-					combinedFFT(&(*sH).fftPlanD2Z, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).workspace1, 0);
+					combinedFFT(sH, (*sH).gridPolarizationTime1, (cufftDoubleComplex*)(*sH).workspace1, 0);
 				}
-				updateKwithPlasmaKernel << <(*sH).Nblock / 2, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
+				//updateKwithPlasmaKernel << <(*sH).Nblock / 2, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
+				flexLaunch((*sH).Nblock / 2, (*sH).Nthread, (*sH).CUDAStream, updateKwithPlasmaKernel, sD);
 			}
 
 			if ((*sH).isCylindric) {
-				radialLaplacianKernel << <(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
+				//radialLaplacianKernel << <(*sH).Nblock, (*sH).Nthread, 0, (*sH).CUDAStream >> > (sD);
+				flexLaunch((*sH).Nblock, (*sH).Nthread, (*sH).CUDAStream, radialLaplacianKernel, sD);
 				//cufftExecD2Z((*sH).fftPlanD2Z, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1);
-				combinedFFT(&(*sH).fftPlanD2Z, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1, 0);
+				combinedFFT(sH, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1, 0);
 			}
 		}
-#endif
+
 		//advance an RK4 step
 		flexLaunch((*sH).Nblock / 2, (*sH).Nthread, (*sH).CUDAStream, rkKernel, sD, stepNumber);
 		return 0;
@@ -2563,12 +2672,10 @@ namespace {
 	}
 
 	int getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc) {
-		cufftHandle plan1;
-		cufftPlan1d(&plan1, (int)(*sCPU).Ntime, CUFFT_D2Z, 2 * (int)((*sCPU).Nspace * (*sCPU).Nspace2));
-		cufftSetStream(plan1, (*sc).CUDAStream);
+
 		flexMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(thrust::complex<double>));
 		//cufftExecD2Z(plan1, (*sc).gridETime1, (cufftDoubleComplex*)(*sc).workspace1);
-		combinedFFT(&plan1, (*sc).gridETime1, (*sc).workspace1, 0);
+		combinedFFT(sc, (*sc).gridETime1, (*sc).workspace1, 2);
 		if ((*sc).is3D) {
 			//totalSpectrum3DKernel << <(unsigned int)(*sCPU).Nfreq, 1, 0, (*sc).CUDAStream >> > ((*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace * (*sCPU).Nspace2, (*sc).gridPolarizationTime1);
 			flexLaunch((unsigned int)(*sCPU).Nfreq, 1, (*sc).CUDAStream, totalSpectrum3DKernel, (*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace * (*sCPU).Nspace2, (*sc).gridPolarizationTime1);
@@ -2581,170 +2688,11 @@ namespace {
 		cudaDeviceSynchronize();
 		flexMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), cudaMemcpyDeviceToHost);
 		cudaDeviceSynchronize();
-		cufftDestroy(plan1);
+
 		return 0;
 	}
 
 
-	int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db) {
-		double* offsetArray = &(*s).sequenceArray[11 * currentIndex];
-		int error = 0;
-		//sequence format
-		//0: step type
-		int stepType = (int)offsetArray[0];
-		int materialIndex = 0;
-		double thickness = 0;
-		// 
-		// if stepType == 0, normal propagation
-		//1: material index
-		//2: theta,
-		//3: phi, 
-		//4: NL absorption
-		//5: Band gap
-		//6: Drude relaxation
-		//7: Effective mass
-		//8: Crystal thickness
-		//9: Propagation step size
-		//10: rotation angle
-		//
-		// if stepType == 1, linear propagation
-		// same parameters as 0, but only 1,2,3,8, and 10 matter
-		//
-		// if stepType == 2, fresnel loss
-		// 1: incidence material index
-		// 2: transmission material index
-		// other parameters don't matter
-		// 
-		// if stepType == 3, spherical mirror
-		// 1: ROC (m)
-		//
-		// if stepType == 4, parabolic mirror
-		// 1: focus (m)
-		// 
-		// if stepType == 5, aperture
-		// 1: diameter (m)
-		// 2: activation parameter p (function is 1 - 1/(1 + exp(-p*(r-radius)))
-		//
-		// if stepType == 6, loop back to start (handled by solveNonlinearWaveEquationSequence())
-		// 1: counter (counts down to zero)
-		//
-		// if stepType == 7, reinjection, same as 0, but input fields are added to current fields.
-
-		switch (stepType) {
-		case 7:
-			(*s).isReinjecting = TRUE;
-		case 0:
-			if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-			if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-			if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-			if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
-			if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
-			if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
-			if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
-			if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
-			if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
-			if ((int)offsetArray[8] != -1 && (int)offsetArray[8] != -1) (*s).Npropagation
-				= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
-			if (currentIndex > 0) {
-				(*s).isFollowerInSequence = TRUE;
-			}
-			(*s).chi2Tensor = db[(*s).materialIndex].d;
-			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-			(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-			(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
-
-			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-			(*s).axesNumber = db[(*s).materialIndex].axisType;
-
-
-			error = solveNonlinearWaveEquation(s);
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-
-			if ((*s).memoryError > 0) {
-				printf("Warning: device memory error (%i).\n", (*s).memoryError);
-			}
-			return error;
-
-		case 1:
-			if ((*s).isCylindric) {
-				if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-				if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-				if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-				if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
-				if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
-				if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
-				if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
-				if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
-				if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
-				if ((int)offsetArray[8] != -1 && (int)offsetArray[8] != -1) (*s).Npropagation
-					= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
-				if (currentIndex > 0) {
-					(*s).isFollowerInSequence = TRUE;
-				}
-				(*s).chi2Tensor = db[(*s).materialIndex].d;
-				(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-				(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-				(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-				(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
-				(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-				(*s).axesNumber = db[(*s).materialIndex].axisType;
-				(*s).forceLinear = TRUE;
-
-				error = solveNonlinearWaveEquation(s);
-			}
-			else {
-				if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-				if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-				if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-				thickness = 1.0e-6 * offsetArray[8];
-				if (offsetArray[8] == -1) {
-					thickness = (*s).crystalThickness;
-				}
-				materialIndex = (int)offsetArray[1];
-				if (offsetArray[1] == -1) {
-					materialIndex = (*s).materialIndex;
-				}
-				applyLinearPropagation(s, materialIndex, thickness);
-			}
-
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-			return 0;
-
-		case 2:
-			if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-			if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-			if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-			applyFresnelLoss(s, (int)offsetArray[4], (int)offsetArray[5]);
-			return 0;
-		case 3:
-			applySphericalMirror(s, offsetArray[8]);
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-			return 0;
-		case 4:
-			applyParabolicMirror(s, offsetArray[8]);
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-			return 0;
-		case 5:
-			applyAperature(s, offsetArray[1], offsetArray[2]);
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-			return 0;
-		}
-
-
-
-		return 1;
-	}
 }
 //END OF NAMESPACE
 
@@ -2909,21 +2857,192 @@ unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
 	////give the result to the CPU
 	flexMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 	
-#ifdef __CUDACC__
+
 	//cufftExecZ2D(s.fftPlanZ2D, (cufftDoubleComplex*)s.gridEFrequency1, s.gridETime1);
-	combinedFFT(&s.fftPlanZ2D, s.gridEFrequency1, s.gridETime1, 1);
-#endif
+	combinedFFT(&s, s.gridEFrequency1, s.gridETime1, 1);
+
 	flexLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, s.CUDAStream, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
 	//multiplyByConstantKernelD<<<(int)(s.Ngrid / MIN_GRIDDIM), 2* MIN_GRIDDIM, 0, s.CUDAStream>>> (s.gridETime1, 1.0 / s.Ngrid);
 	flexMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-#ifdef __CUDACC__
+
 	getTotalSpectrum(sCPU, &s);
-#endif
+
 	deallocateCudaParameterSet(&s);
 	flexFree(sDevice);
 	(*sCPU).imdone[0] = 1;
 	return isnan(canaryPixel);
 }
+
+#ifdef __CUDACC__
+int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db) {
+#else
+int resolveSequenceCPU(int currentIndex, simulationParameterSet * s, crystalEntry * db) {
+#endif
+
+	double* offsetArray = &(*s).sequenceArray[11 * currentIndex];
+	int error = 0;
+	//sequence format
+	//0: step type
+	int stepType = (int)offsetArray[0];
+	int materialIndex = 0;
+	double thickness = 0;
+	// 
+	// if stepType == 0, normal propagation
+	//1: material index
+	//2: theta,
+	//3: phi, 
+	//4: NL absorption
+	//5: Band gap
+	//6: Drude relaxation
+	//7: Effective mass
+	//8: Crystal thickness
+	//9: Propagation step size
+	//10: rotation angle
+	//
+	// if stepType == 1, linear propagation
+	// same parameters as 0, but only 1,2,3,8, and 10 matter
+	//
+	// if stepType == 2, fresnel loss
+	// 1: incidence material index
+	// 2: transmission material index
+	// other parameters don't matter
+	// 
+	// if stepType == 3, spherical mirror
+	// 1: ROC (m)
+	//
+	// if stepType == 4, parabolic mirror
+	// 1: focus (m)
+	// 
+	// if stepType == 5, aperture
+	// 1: diameter (m)
+	// 2: activation parameter p (function is 1 - 1/(1 + exp(-p*(r-radius)))
+	//
+	// if stepType == 6, loop back to start (handled by solveNonlinearWaveEquationSequence())
+	// 1: counter (counts down to zero)
+	//
+	// if stepType == 7, reinjection, same as 0, but input fields are added to current fields.
+
+	switch (stepType) {
+	case 7:
+		(*s).isReinjecting = TRUE;
+	case 0:
+		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+		if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
+		if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
+		if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
+		if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
+		if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
+		if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
+		if ((int)offsetArray[8] != -1) (*s).Npropagation
+			= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
+		if (currentIndex > 0) {
+			(*s).isFollowerInSequence = TRUE;
+		}
+		(*s).chi2Tensor = db[(*s).materialIndex].d;
+		(*s).chi3Tensor = db[(*s).materialIndex].chi3;
+		(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
+		(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
+		(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+
+		(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
+		(*s).axesNumber = db[(*s).materialIndex].axisType;
+
+#ifdef __CUDACC__
+		error = solveNonlinearWaveEquation(s);
+#else
+		error = solveNonlinearWaveEquationCPU(s);
+#endif
+		if (offsetArray[10] != 0.0) {
+			rotateField(s, DEG2RAD * offsetArray[10]);
+		}
+
+		if ((*s).memoryError > 0) {
+			printf("Warning: device memory error (%i).\n", (*s).memoryError);
+		}
+		return error;
+
+	case 1:
+		if ((*s).isCylindric) {
+			if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+			if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+			if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+			if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
+			if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
+			if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
+			if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
+			if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
+			if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
+			if ((int)offsetArray[8] != -1 && (int)offsetArray[8] != -1) (*s).Npropagation
+				= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
+			if (currentIndex > 0) {
+				(*s).isFollowerInSequence = TRUE;
+			}
+			(*s).chi2Tensor = db[(*s).materialIndex].d;
+			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
+			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
+			(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
+			(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
+			(*s).axesNumber = db[(*s).materialIndex].axisType;
+			(*s).forceLinear = TRUE;
+#ifdef __CUDACC__
+			error = solveNonlinearWaveEquation(s);
+#else
+			error = solveNonlinearWaveEquationCPU(s);
+#endif
+		}
+		else {
+			if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+			if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+			if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+			thickness = 1.0e-6 * offsetArray[8];
+			if (offsetArray[8] == -1) {
+				thickness = (*s).crystalThickness;
+			}
+			materialIndex = (int)offsetArray[1];
+			if (offsetArray[1] == -1) {
+				materialIndex = (*s).materialIndex;
+			}
+			applyLinearPropagation(s, materialIndex, thickness);
+		}
+
+		if (offsetArray[10] != 0.0) {
+			rotateField(s, DEG2RAD * offsetArray[10]);
+		}
+		return 0;
+
+	case 2:
+		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+		applyFresnelLoss(s, (int)offsetArray[4], (int)offsetArray[5]);
+		return 0;
+	case 3:
+		applySphericalMirror(s, offsetArray[8]);
+		if (offsetArray[10] != 0.0) {
+			rotateField(s, DEG2RAD * offsetArray[10]);
+		}
+		return 0;
+	case 4:
+		applyParabolicMirror(s, offsetArray[8]);
+		if (offsetArray[10] != 0.0) {
+			rotateField(s, DEG2RAD * offsetArray[10]);
+		}
+		return 0;
+	case 5:
+		applyAperature(s, offsetArray[1], offsetArray[2]);
+		if (offsetArray[10] != 0.0) {
+			rotateField(s, DEG2RAD * offsetArray[10]);
+		}
+		return 0;
+	}
+
+
+
+	return 1;
+	}
 
 #ifdef __CUDACC__
 unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
@@ -2942,7 +3061,12 @@ unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 			(*sCPUbackup).isFollowerInSequence = TRUE;
 			k = 0;
 		}
+#ifdef __CUDACC__
 		error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
+#else
+		error = resolveSequenceCPU(k, sCPU, (*sCPU).crystalDatabase);
+#endif
+		
 		if (error) break;
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 	}
