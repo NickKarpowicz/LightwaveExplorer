@@ -5,7 +5,7 @@ Lightwave Explorer
 
 What and why
 ---
-Lightwave explorer is an open source nonlinear optics simulator, intended to be fast, visual, and flexible for students and researcher to play with ultrashort laser pulses and nonlinear optics without having to buy them first.
+Lightwave explorer is an open source nonlinear optics simulator, intended to be fast, visual, and flexible for students and researchers to play with ultrashort laser pulses and nonlinear optics without having to buy a laser first.
 
 The simulation itself is written in CUDA in order to run on graphics cards. This makes it fast enough to give almost instant feedback to the user, which can hopefully make it easier to develop that nebulous but important "feeling" for how things fit together. 
 
