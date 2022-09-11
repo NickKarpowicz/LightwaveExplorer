@@ -91,10 +91,27 @@ namespace ordinaryFunctions {
 			+ KLORENTZIAN * a[19] / thrust::complex<double>(a[20] - omega * omega, a[21] * omega));
 	}
 
+	FDEVICE thrust::complex<double> lorentzianSubfunctionCuda(
+		double* a, double ls, double omega) {
+		return thrust::sqrt(
+			+ KLORENTZIAN * a[0] / thrust::complex<double>(a[1] - omega * omega, a[2] * omega)
+			+ KLORENTZIAN * a[3] / thrust::complex<double>(a[4] - omega * omega, a[5] * omega)
+			+ KLORENTZIAN * a[6] / thrust::complex<double>(a[7] - omega * omega, a[8] * omega)
+			+ KLORENTZIAN * a[9] / thrust::complex<double>(a[10] - omega * omega, a[11] * omega)
+			+ KLORENTZIAN * a[12] / thrust::complex<double>(a[13] - omega * omega, a[14] * omega)
+			+ KLORENTZIAN * a[15] / thrust::complex<double>(a[16] - omega * omega, a[17] * omega)
+			+ KLORENTZIAN * a[18] / thrust::complex<double>(a[19] - omega * omega, a[20] * omega));
+	}
+
+
 	//Sellmeier equation for refractive indicies
 	FDEVICE thrust::complex<double> sellmeierCuda(
 		thrust::complex<double>* ne, thrust::complex<double>* no, double* a, double f, double theta, double phi, int type, int eqn) {
 		if (f == 0) return thrust::complex<double>(1.0, 0.0); //exit immediately for f=0
+
+		//pick which equation to use
+		thrust::complex<double>(*sellmeierFunc)(double*, double, double) = &sellmeierSubfunctionCuda;
+		if (eqn == 1) sellmeierFunc = &lorentzianSubfunctionCuda;
 
 		double ls = 2.99792458e14 / f; //wavelength in microns
 		ls *= ls; //only wavelength^2 is ever used
@@ -102,14 +119,14 @@ namespace ordinaryFunctions {
 
 		//option 0: isotropic
 		if (type == 0) {
-			ne[0] = sellmeierSubfunctionCuda(a, ls, omega);
+			ne[0] = (*sellmeierFunc)(a, ls, omega);
 			no[0] = ne[0];
 			return ne[0];
 		}
 		//option 1: uniaxial
 		else if (type == 1) {
-			thrust::complex<double> na = sellmeierSubfunctionCuda(a, ls, omega);
-			thrust::complex<double> nb = sellmeierSubfunctionCuda(&a[22], ls, omega);
+			thrust::complex<double> na = (*sellmeierFunc)(a, ls, omega);
+			thrust::complex<double> nb = (*sellmeierFunc)(&a[22], ls, omega);
 			no[0] = na;
 			ne[0] = 1.0 / thrust::sqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
 			return ne[0];
@@ -118,9 +135,9 @@ namespace ordinaryFunctions {
 			//type == 2: biaxial
 			// X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
 			// I am sorry if there is a bug and you're trying to find it, i did my best.
-			thrust::complex<double> na = sellmeierSubfunctionCuda(a, ls, omega);
-			thrust::complex<double> nb = sellmeierSubfunctionCuda(&a[22], ls, omega);
-			thrust::complex<double> nc = sellmeierSubfunctionCuda(&a[44], ls, omega);
+			thrust::complex<double> na = (*sellmeierFunc)(a, ls, omega);
+			thrust::complex<double> nb = (*sellmeierFunc)(&a[22], ls, omega);
+			thrust::complex<double> nc = (*sellmeierFunc)(&a[44], ls, omega);
 			double cosTheta = cos(theta);
 			double cosTheta2 = cosTheta * cosTheta;
 			double sinTheta = sin(theta);
