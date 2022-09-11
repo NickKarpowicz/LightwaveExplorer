@@ -1810,7 +1810,7 @@ namespace {
 	int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int materialIndex2) {
 		cudaParameterSet sc;
 		initializeCudaParameterSet(s, &sc);
-		double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
+		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
@@ -1847,7 +1847,6 @@ namespace {
 		bilingualMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
 		bilingualMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * (*s).Ngrid * sizeof(thrust::complex<double>), cudaMemcpyDeviceToHost);
 
-		free(sellmeierCoefficientsAugmentedCPU);
 		bilingualFree(sellmeierCoefficients1);
 		bilingualFree(sellmeierCoefficients2);
 		deallocateCudaParameterSet(&sc);
@@ -1928,7 +1927,7 @@ namespace {
 
 		double* sellmeierCoefficients = (double*)s.gridEFrequency1Next1;
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
-		double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
+		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*sCPU).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*sCPU).crystalPhi;
@@ -1967,7 +1966,7 @@ namespace {
 		bilingualMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), cudaMemcpyHostToDevice);
 
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
-		double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
+		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
@@ -1991,7 +1990,6 @@ namespace {
 		//clean up
 		bilingualMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(thrust::complex<double>));
 
-		free(sellmeierCoefficientsAugmentedCPU);
 		bilingualFree(referenceFrequencies);
 		return 0;
 	}
@@ -2007,7 +2005,7 @@ namespace {
 		bilingualMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), cudaMemcpyHostToDevice);
 
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
-		double* sellmeierCoefficientsAugmentedCPU = (double*)calloc(66 + 8, sizeof(double));
+		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
@@ -2031,7 +2029,6 @@ namespace {
 		//clean up
 		bilingualMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(thrust::complex<double>));
 
-		free(sellmeierCoefficientsAugmentedCPU);
 		bilingualFree(referenceFrequencies);
 		return 0;
 	}
@@ -2939,7 +2936,7 @@ unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
 unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 #endif
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	simulationParameterSet* sCPUbackup = (simulationParameterSet*)calloc(1, sizeof(simulationParameterSet));
+	simulationParameterSet sCPUbackup[1];
 	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
 	int k;
 	int error = 0;
@@ -2959,7 +2956,7 @@ unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 		if (error) break;
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 	}
-	free(sCPUbackup);
+
 	return error;
 }
 

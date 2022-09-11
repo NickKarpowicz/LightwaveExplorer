@@ -190,17 +190,14 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 	size_t maxFileSize = 16384;
 	size_t currentRow = 0;
 	double c = 1e9 * LIGHTC;
-	double* loadedWavelengths = (double*)calloc(8192, sizeof(double));
-	double* loadedFrequencies = (double*)calloc(8192, sizeof(double));
-	double* loadedIntensities = (double*)calloc(8192, sizeof(double));
+	double* loadedWavelengths = (double*)calloc(8192*3, sizeof(double));
+	double* loadedFrequencies = loadedWavelengths + 8192;
+	double* loadedIntensities = loadedWavelengths + 16384;;
+	if (loadedWavelengths == NULL) {
+		return 1;
+	}
 	double maxWavelength = 0;
 	double minWavelength = 0;
-	if (fp == NULL) {
-		free(loadedWavelengths);
-		free(loadedIntensities);
-		free(loadedFrequencies);
-		return -1;
-	}
 
 	while (fscanf(fp, "%lf %lf", &loadedWavelengths[currentRow], &loadedIntensities[currentRow]) == 2 && currentRow < maxFileSize) {
 		if (currentRow == 0) {
@@ -238,23 +235,19 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 					+ loadedIntensities[j] * (currentFrequency - loadedFrequencies[j - 1])) / df; //linear interpolation
 		}
 	}
-
 	fclose(fp);
 	free(loadedWavelengths);
-	free(loadedIntensities);
-	free(loadedFrequencies);
+
 	return 0;
 }
 
 
 int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent) {
-	char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+	char outputpath[MAX_LOADSTRING] = { 0 };
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
-	size_t i, j;
 
 	//read fields as binary
 	FILE* ExtOutFile;
-
 	strcpy(outputpath, outputBase);
 	strcat(outputpath, "_Ext.dat");
 	ExtOutFile = fopen(outputpath, "rb");
@@ -270,44 +263,35 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 	spectrumFile = fopen(outputpath, "rb");
 	fread((*sCPU).totalSpectrum, sizeof(double), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq, spectrumFile);
 	fclose(spectrumFile);
-	free(outputpath);
 
-	MKL_LONG mklError = 0;
-	DFTI_DESCRIPTOR_HANDLE dftiHandle = NULL;
+	//FFT the loaded field to give the frequency domain
+	DFTI_DESCRIPTOR_HANDLE mklPlanD2Z = NULL;
 	if ((*sCPU).is3D) {
-		MKL_LONG fftDimensions[3] = { (long)(*sCPU).Nspace2, (long)(*sCPU).Nspace, (long)(*sCPU).Ntime };
-
-		mklError = DftiCreateDescriptor(&dftiHandle, DFTI_DOUBLE, DFTI_COMPLEX, 3, fftDimensions);
+		MKL_LONG mklSizes[] = { (MKL_LONG)(*sCPU).Nspace2, (MKL_LONG)(*sCPU).Nspace, (MKL_LONG)(*sCPU).Ntime };
+		MKL_LONG mklStrides[4] = { 0, (MKL_LONG)((*sCPU).Nspace * (*sCPU).Nfreq), (MKL_LONG)(*sCPU).Nfreq, 1 };
+		DftiCreateDescriptor(&mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
+		DftiSetValue(mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+		DftiSetValue(mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
+		DftiSetValue(mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
+		DftiSetValue(mklPlanD2Z, DFTI_INPUT_DISTANCE, (*sCPU).Ngrid);
+		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*sCPU).NgridC);
+		DftiCommitDescriptor(mklPlanD2Z);
 	}
 	else {
-		MKL_LONG fftDimensions[2] = { (long)(*sCPU).Nspace , (long)(*sCPU).Ntime };
-		mklError = DftiCreateDescriptor(&dftiHandle, DFTI_DOUBLE, DFTI_COMPLEX, 2, fftDimensions);
+		MKL_LONG mklSizes[] = { (MKL_LONG)(*sCPU).Nspace, (MKL_LONG)(*sCPU).Ntime };
+		MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*sCPU).Nfreq, 1, 1 };
+		DftiCreateDescriptor(&mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
+		DftiSetValue(mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+		DftiSetValue(mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
+		DftiSetValue(mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
+		DftiSetValue(mklPlanD2Z, DFTI_INPUT_DISTANCE, (*sCPU).Ngrid);
+		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*sCPU).NgridC);
+		DftiCommitDescriptor(mklPlanD2Z);
 	}
-
-
-	DftiSetValue(dftiHandle, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-	if (mklError != DFTI_NO_ERROR) return 1;
-	mklError = DftiCommitDescriptor(dftiHandle);
-	std::complex<double>* workspaceTime = (std::complex<double>*)calloc((*sCPU).Ngrid, 2 * sizeof(double));
-	std::complex<double>* workspaceFreq = (std::complex<double>*)calloc((*sCPU).Ngrid, 2 * sizeof(double));
-	if (mklError != DFTI_NO_ERROR) return 2;
-	size_t Nfreq = (*sCPU).Ntime / 2 + 1;
-	for (j = 0; j < (2 * (*sCPU).Nsims * (*sCPU).Nsims2); j++) {
-
-		for (i = 0; i < (*sCPU).Ngrid; i++) {
-			workspaceTime[i] = (*sCPU).ExtOut[j * (*sCPU).Ngrid + i];
-		}
-		mklError = DftiComputeForward(dftiHandle, workspaceTime, workspaceFreq);
-		for (i = 0; i < (*sCPU).Nspace * (*sCPU).Nspace2; i++) {
-			memcpy(&(*sCPU).EkwOut[j * Nfreq * (*sCPU).Nspace + i * Nfreq], &workspaceFreq[i * (*sCPU).Ntime], Nfreq * 2 * sizeof(double));
-		}
-		if (mklError != DFTI_NO_ERROR) return 3;
-	}
-	free(workspaceFreq);
-	free(workspaceTime);
-	DftiFreeDescriptor(&dftiHandle);
-
-
+	DftiComputeForward(mklPlanD2Z, (*sCPU).ExtOut, (*sCPU).EkwOut);
+	DftiFreeDescriptor(&mklPlanD2Z);
 
 	return 0;
 }
@@ -315,9 +299,9 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 
 int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	FILE* textfile;
-	char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-	wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
-	char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+	char stringConversionBuffer[MAX_LOADSTRING] = { 0 };
+	wchar_t wideStringConversionBuffer[MAX_LOADSTRING] = { 0 };
+	char outputpath[MAX_LOADSTRING] = { 0 };
 
 	char* fileName = (*sCPU).outputBasePath;
 	while (strchr(fileName, '\\') != NULL) {
@@ -360,9 +344,6 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 		fprintf(textfile, "srun ./lwe %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
 	}
 	fclose(textfile);
-	free(outputpath);
-	free(wideStringConversionBuffer);
-	free(stringConversionBuffer);
 	return 0;
 }
 
@@ -378,9 +359,9 @@ void unixNewLine(FILE* iostream) {
 int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
 	int j, k;
 	FILE* textfile;
-	char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-	wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
-	char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
+	char stringConversionBuffer[MAX_LOADSTRING] = { 0 };
+	wchar_t wideStringConversionBuffer[MAX_LOADSTRING] = { 0 };
+	char outputpath[MAX_LOADSTRING] = { 0 };
 	strcpy(outputpath, (*sCPU).outputBasePath);
 	if ((*sCPU).runType > 0) {
 		strcat(outputpath, ".input");
@@ -463,9 +444,6 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	fwprintf(textfile, L"Code version: 0.31 August 15, 2022\n");
 
 	fclose(textfile);
-	free(outputpath);
-	free(wideStringConversionBuffer);
-	free(stringConversionBuffer);
 	return 0;
 }
 
@@ -718,16 +696,11 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 	int j;
 
 	saveSettingsFile(sCPU, crystalDatabasePtr);
+	char stringConversionBuffer[MAX_LOADSTRING] = { 0 };
+	wchar_t wideStringConversionBuffer[MAX_LOADSTRING] = { 0 };
+	char outputpath[MAX_LOADSTRING] = { 0 };
+	double matlabpadding[1024] = { 0 };
 
-	//Save the results as double instead of complex
-	double* saveEout = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(double));
-	for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2 * 2); j++) {
-		saveEout[j] = ((*sCPU).ExtOut[j]);
-	}
-
-	char* stringConversionBuffer = (char*)calloc(MAX_LOADSTRING, sizeof(char));
-	wchar_t* wideStringConversionBuffer = (wchar_t*)calloc(MAX_LOADSTRING, sizeof(char));
-	char* outputpath = (char*)calloc(MAX_LOADSTRING, sizeof(char));
 	char* outputbaseVar = strrchr(outputbase, '\\');
 	if (!outputbaseVar) {
 		outputbaseVar = outputbase;
@@ -735,18 +708,14 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 	else {
 		outputbaseVar++;
 	}
-	double* matlabpadding = (double*)calloc(1024, sizeof(double));
-
+	
 	//write fields as binary
-	for (j = 0; j < ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2 * 2); j++) {
-		saveEout[j] = ((*sCPU).ExtOut[j]);
-	}
 	FILE* ExtOutFile;
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
 	strcpy(outputpath, outputbase);
 	strcat(outputpath, "_Ext.dat");
 	ExtOutFile = fopen(outputpath, "wb");
-	fwrite(saveEout, sizeof(double), writeSize, ExtOutFile);
+	fwrite((*sCPU).ExtOut, sizeof(double), writeSize, ExtOutFile);
 	fwrite(matlabpadding, sizeof(double), 1024, ExtOutFile);
 	fclose(ExtOutFile);
 
@@ -802,11 +771,6 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 	fprintf(scriptfile, "%s_spectrum.dat", outputbaseVar);
 	fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%i,%zi),order='F')\n", 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Nfreq, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
 	fclose(scriptfile);
-
-	free(saveEout);
-	free(matlabpadding);
-	free(stringConversionBuffer);
-	free(wideStringConversionBuffer);
 	return 0;
 }
 
@@ -1029,7 +993,9 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 	double fmin = 0;
 	int currentRow = 0;
 	std::complex<double>* E = (std::complex<double>*)calloc(maxFileSize, sizeof(std::complex<double>));
-
+	if (E == NULL) {
+		return -2;
+	}
 	//read the data
 	fp = fopen(frogFilePath, "r");
 	if (fp == NULL) {
