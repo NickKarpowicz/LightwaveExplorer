@@ -58,14 +58,6 @@ namespace deviceFunctions {
 #else
 namespace ordinaryFunctions {
 #endif
-	FDEVICE double cuCreal(thrust::complex<double> x) {
-		return x.real();
-	}
-
-	FDEVICE double cuCimag(thrust::complex<double> x) {
-		return x.imag();
-	}
-
 
 	//Inner function for the Sellmeier equation to provide the refractive indicies
 	//current equation form:
@@ -945,12 +937,12 @@ FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParam
 
 	if (max(abs(dk1),abs(dk2)) < thrust::abs(ke) && j < ((long long)(*s).Nfreq-1)) {
 		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ke.real())) * (*s).h;
-		if (isnan(cuCreal((*s).gridPropagationFactor1[i]))) {
+		if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 		}
 
 		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ko.real())) * (*s).h;
-		if (isnan(cuCreal((*s).gridPropagationFactor2[i]))) {
+		if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 			(*s).gridPropagationFactor2[i] = cuZero;
 		}
 
@@ -992,7 +984,7 @@ FGLOBAL void getChiLinearKernel(GKERN cudaParameterSet* s, double* sellmeierCoef
 
 	(*s).chiLinear1[i] = -1. + ne * ne;
 	(*s).chiLinear2[i] = -1. + no * no;
-	if ((cuCreal((*s).chiLinear1[i]) == 0) || (cuCreal((*s).chiLinear2[i]) == 0) || isnan(cuCreal((*s).chiLinear1[i])) || isnan(cuCreal((*s).chiLinear2[i]))) {
+	if ((((*s).chiLinear1[i].real()) == 0) || (((*s).chiLinear2[i].real()) == 0) || isnan(((*s).chiLinear1[i].real())) || isnan(((*s).chiLinear2[i].real()))) {
 		(*s).chiLinear1[i] = thrust::complex<double>(1, 0);
 		(*s).chiLinear2[i] = thrust::complex<double>(1, 0);
 	}
@@ -1045,14 +1037,14 @@ FGLOBAL void prepareCylindricGridsKernel(GKERN double* sellmeierCoefficients, cu
 	if (abs(dk) <= min(thrust::abs(ke), thrust::abs(ko)) && k<((long long)(*s).Nfreq-1)) {
 		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
 		(*s).gridPropagationFactor1Rho1[i] = ii * (1 / (chi11 * 2. * ke.real())) * (*s).h;
-		if (isnan(cuCreal((*s).gridPropagationFactor1[i]))) {
+		if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor1Rho1[i] = cuZero;
 		}
 
 		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
 		(*s).gridPropagationFactor1Rho2[i] = ii * (1 / (chi12 * 2. * ko.real())) * (*s).h;
-		if (isnan(cuCreal((*s).gridPropagationFactor2[i]))) {
+		if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPropagationFactor1Rho2[i] = cuZero;
 		}
@@ -1086,7 +1078,7 @@ FGLOBAL void realToComplexKernel(GKERN double* in, thrust::complex<double>* out)
 
 FGLOBAL void complexToRealKernel(GKERN thrust::complex<double>* in, double* out) {
 	long long i = threadIdx.x + blockIdx.x * blockDim.x;
-	out[i] = cuCreal(in[i]);
+	out[i] = in[i].real();
 }
 
 FGLOBAL void materialPhaseKernel(GKERN double df, size_t Ntime, double* a, double f01, double f02, 
@@ -1107,21 +1099,23 @@ FGLOBAL void materialPhaseKernel(GKERN double df, size_t Ntime, double* a, doubl
 	sellmeierCuda(&ne, &n0p, a, f01 + 1e11, 0, 0, 0, 0);
 	sellmeierCuda(&ne, &n0m, a, f01 - 1e11, 0, 0, 0, 0);
 	no0 = no0 + f01 * (n0p - n0m) / 2e11;
-	phase1[i] = thickness1 * f * cuCreal(no - no0) / LIGHTC;
+	phase1[i] = thickness1 * f * (no.real() - no0.real()) / LIGHTC;
 	sellmeierCuda(&ne, &no0, a, f02, 0, 0, 0, 0);
 	sellmeierCuda(&ne, &n0p, a, f02 + 1e11, 0, 0, 0, 0);
 	sellmeierCuda(&ne, &n0m, a, f02 - 1e11, 0, 0, 0, 0);
 	no0 = no0 + f02 * (n0p - n0m) / 2e11;
-	phase2[i] = thickness2 * f * cuCreal(no - no0) / LIGHTC;
+	phase2[i] = thickness2 * f * (no.real() - no0.real()) / LIGHTC;
 
 }
 //replaces NaN values with 0
-FGLOBAL void fixnanKernel(GKERN thrust::complex<double>* E) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
-	if (isnan(cuCreal(E[i])) || isnan(cuCimag(E[i]))) {
-		E[i] = thrust::complex<double>(0., 0.);
-	}
-}
+// don't use this in a final version of anything, but can be useful for debugging
+// Comment it out when you're done.
+//FGLOBAL void fixnanKernel(GKERN thrust::complex<double>* E) {
+//	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+//	if (isnan(E[i].real()) || isnan(E[i].imag())) {
+//		E[i] = thrust::complex<double>(0., 0.);
+//	}
+//}
 
 //calculate the nonlinear polarization, after FFT to get the field
 //in the time domain
@@ -1497,6 +1491,8 @@ FGLOBAL void beamGenerationKernel3D(GKERN thrust::complex<double>* pulse, double
 	pulse[i + (*s).NgridC] = thrust::complex<double>(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
 	double pointEnergy = (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
 	pointEnergy *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
+
+
 	//factor 2 accounts for the missing negative frequency plane
 #ifdef __CUDACC__
 	atomicAdd(pulseSum, pointEnergy);
@@ -1549,7 +1545,8 @@ FGLOBAL void multiplicationKernelCompact(GKERN thrust::complex<double>* A, thrus
 	C[i] = A[i] * B[i];
 }
 
-
+//anonymous namespace helps to separate functions that have been compiled under nvcc from those
+//compiled by the c++ compiler
 namespace {
 	simulationParameterSet* fittingSet;
 	simulationParameterSet* fittingReferenceSet;
@@ -1592,7 +1589,8 @@ namespace {
 		}
 #endif
 	}
-
+	//memset for either CUDA or c++ depending on which
+	//compiler is running
 	int bilingualMemset(void* ptr, int value, size_t count) {
 #ifdef __CUDACC__
 		cudaMemset(ptr, value, count);
@@ -1601,6 +1599,10 @@ namespace {
 #endif
 		return 0;
 	}
+
+	//calloc for either CUDA or c++ depending on which
+	//compiler is running
+	//in CUDA it's just malloc+memset to zero
 	int bilingualCalloc(void** ptr, size_t N, size_t elementSize) {
 #ifdef __CUDACC__
 		int err = cudaMalloc(ptr, N * elementSize);
@@ -1612,6 +1614,7 @@ namespace {
 #endif
 	}
 
+	//free() or cudaFree() depending on what's compiling
 	int bilingualFree(void* block) {
 #ifdef __CUDACC__
 		cudaFree(block);
@@ -1621,6 +1624,7 @@ namespace {
 		return 0;
 	}
 
+	//memcpy() or cudaMemcpy depending on what's running
 	int bilingualMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
 #ifdef __CUDACC__
 		cudaMemcpy(dst, src, count, kind);
@@ -1630,6 +1634,14 @@ namespace {
 		return 0;
 	}
 
+	//FFT function that can be called from either CUDA or c++ code.
+	//the properly initialized cudaParameterSet s will have either
+	//cuFFT plans, or MKL dfti handles, for the following transform types:
+	// type 0: double to complex (forward)
+	// type 1: complex to double (backward)
+	// type 2: 1D x spatial grid double to complex (forward, used in beam generation)
+	// type 3: 1D x spatial grid complex to double (backward, used in beam generation)
+	// type 4: double to complex with doubled spatial grid dimension (forward in cylindrical propagation)
 	int combinedFFT(cudaParameterSet* s, void* input, void* output, int type) {
 		type += RUNTYPE * 5;
 		switch (type) {
@@ -2122,7 +2134,7 @@ namespace {
 
 	int initializeCudaParameterSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
 		//initialize and take values from the struct handed over by the dispatcher
-		cudaStreamCreate(&(*s).CUDAStream);
+		
 		unsigned long long i;
 		(*s).Ntime = (*sCPU).Ntime;
 		(*s).Nspace = (*sCPU).Nspace;
@@ -2149,13 +2161,17 @@ namespace {
 		(*s).forceLinear = (*sCPU).forceLinear;
 		(*s).isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;
 		(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
-
-
+		int memErrors = 0;
+		double* expGammaTCPU = (double*)malloc(2 * sizeof(double) * (*s).Ntime);
+		if (expGammaTCPU == NULL) return 2;
 
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
 		}
+
+		cudaStreamCreate(&(*s).CUDAStream);
+
 		fillRotationMatricies(sCPU, s);
 
 		//GPU allocations
@@ -2163,7 +2179,7 @@ namespace {
 		// currently 8 large grids, meaning memory use is approximately
 		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
 		// plus a little bit for additional constants/workspaces/etc
-		int memErrors = 0;
+
 		memErrors += bilingualCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(double));
 		memErrors += bilingualCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(double));
 		memErrors += bilingualCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<double>));
@@ -2181,7 +2197,7 @@ namespace {
 
 		//smaller helper grids
 		memErrors += bilingualCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
-		double* expGammaTCPU = (double*)malloc(2 * sizeof(double) * (*s).Ntime);
+
 		memErrors += bilingualCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
 		for (i = 0; i < (*s).Ntime; i++) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
@@ -2371,10 +2387,6 @@ namespace {
 
 			}
 		}
-		
-		
-		
-
 		return 0;
 	}
 
@@ -2411,13 +2423,10 @@ namespace {
 			DftiFreeDescriptor(&(*s).mklPlanZ2D);
 			if((*s).isCylindric)DftiFreeDescriptor(&(*s).mklPlanDoublePolfft);
 		}
-
-
-		//bilingualFree(s);
 		return 0;
 	}
 
-	//function to run a RK4 time step
+//function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
 	int runRK4Step(cudaParameterSet* sH, cudaParameterSet* sD, uint8_t stepNumber) {
 		//operations involving FFT
@@ -2491,6 +2500,7 @@ namespace {
 
 		for (i = 0; i < *n; i++) {
 			fitLocation = (int)round((*fittingSet).fittingArray[3 * i]);
+			if (fitLocation > 35) return;
 			referenceValue = *references[fitLocation];
 			if (referenceValue == 0.0) {
 				referenceValue = 1.;
@@ -2924,8 +2934,6 @@ int resolveSequenceCPU(int currentIndex, simulationParameterSet * s, crystalEntr
 		}
 		return 0;
 	}
-
-
 
 	return 1;
 	}

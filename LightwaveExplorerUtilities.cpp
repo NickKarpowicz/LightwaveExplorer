@@ -693,7 +693,6 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 
 
 int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs) {
-	int j;
 
 	saveSettingsFile(sCPU, crystalDatabasePtr);
 	char stringConversionBuffer[MAX_LOADSTRING] = { 0 };
@@ -709,7 +708,7 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 		outputbaseVar++;
 	}
 	
-	//write fields as binary
+	//write field as binary
 	FILE* ExtOutFile;
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
 	strcpy(outputpath, outputbase);
@@ -777,7 +776,7 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 
 int configureBatchMode(simulationParameterSet* sCPU) {
 	size_t i, j, currentRow;
-	if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims == 1) {
+	if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims == 1 || (*sCPU).batchIndex > 35 || (*sCPU).batchIndex2 > 35) {
 		return 0;
 	}
 
@@ -936,7 +935,7 @@ int readCrystalDatabase(crystalEntry* db) {
 				for (int k = 0; k < 27; k++) {
 					readErrors += 1 != fwscanf(fp, L"%lf", &fd[j + 3 * k]);
 				}
-				fwscanf(fp, L"\n");
+				readErrors += fwscanf(fp, L"\n");
 			}
 		}
 		else if (db[i].nonlinearSwitches[1] == 2) {

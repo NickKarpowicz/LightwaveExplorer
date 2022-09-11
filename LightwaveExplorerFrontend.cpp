@@ -118,7 +118,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             if (!isPlotting) {
                 (*activeSetPtr).plotSim = j;
                 plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-                CloseHandle(plotThread);
+                if(plotThread != 0)CloseHandle(plotThread);
             }
 
         }
@@ -143,7 +143,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         if (!isPlotting) {
             (*activeSetPtr).plotSim = j;
             plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-            CloseHandle(plotThread);
+            if(plotThread != NULL)CloseHandle(plotThread);
         }
 
     }
