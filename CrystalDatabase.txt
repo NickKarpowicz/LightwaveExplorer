@@ -264,7 +264,7 @@ d:
 2.2 -2.2 0 0.08 0 0
 0.08 0.08 0 0 0 0
 d reference:
-I. Shoji, et al., J. Opt. Soc. Am. B 16, 620–624 (1999). 
+I. Shoji, et al., J. Opt. Soc. Am. B 16, 620-624 (1999). 
 chi3 type:
 2
 chi3:
@@ -396,7 +396,7 @@ Sellmeier equation:
 3rd axis coefficients:
 1 0 0.20075 12.07224 0 5.54861 -0.02641 0 35.65066-1268.24708 0 0 0 0 0 0 0 0 0 0 0 0
 Sellmeier reference:
-S. Wang, et al., 4H-SiC: A new nonlinear material for midinfrared lasers, Laser Photonics Rev. 7, 831–838 (2013)
+S. Wang, et al., 4H-SiC: A new nonlinear material for midinfrared lasers, Laser Photonics Rev. 7, 831-838 (2013)
 chi2 type:
 0
 d:

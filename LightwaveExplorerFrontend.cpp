@@ -113,6 +113,15 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             else {
                 error = solveNonlinearWaveEquationSequenceCPU(&activeSetPtr[j]);
             }
+
+            if (activeSetPtr[j].memoryError != 0) {
+                if (activeSetPtr[j].memoryError == -1) {
+                    printToConsole(maingui.textboxSims, _T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                }
+                else {
+                    printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                } 
+            }
             
             if (error) break;
             if (!isPlotting) {
@@ -129,11 +138,19 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             else{ 
                 error = solveNonlinearWaveEquationCPU(&activeSetPtr[j]); 
             }
-            if (activeSetPtr[j].memoryError > 0) {
-                printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+
+            if (activeSetPtr[j].memoryError != 0) {
+                if (activeSetPtr[j].memoryError == -1) {
+                    printToConsole(maingui.textboxSims, _T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                }
+                else {
+                    printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                }
             }
+
             if (error) break;
         }
+
 
         if (cancellationCalled) {
             printToConsole(maingui.textboxSims, _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
@@ -149,7 +166,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     }
 
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    if (error) {
+    if (error==13) {
         printToConsole(maingui.textboxSims, 
             L"NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
     }
@@ -1124,6 +1141,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return (INT_PTR)FALSE;
 }
+
 int freeSemipermanentGrids() {
     isGridAllocated = FALSE;
     free((*activeSetPtr).ExtOut);

@@ -299,8 +299,6 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 
 int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	FILE* textfile;
-	char stringConversionBuffer[MAX_LOADSTRING] = { 0 };
-	wchar_t wideStringConversionBuffer[MAX_LOADSTRING] = { 0 };
 	char outputpath[MAX_LOADSTRING] = { 0 };
 
 	char* fileName = (*sCPU).outputBasePath;
@@ -359,7 +357,6 @@ void unixNewLine(FILE* iostream) {
 int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
 	int j, k;
 	FILE* textfile;
-	char stringConversionBuffer[MAX_LOADSTRING] = { 0 };
 	wchar_t wideStringConversionBuffer[MAX_LOADSTRING] = { 0 };
 	char outputpath[MAX_LOADSTRING] = { 0 };
 	strcpy(outputpath, (*sCPU).outputBasePath);
@@ -695,8 +692,6 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs) {
 
 	saveSettingsFile(sCPU, crystalDatabasePtr);
-	char stringConversionBuffer[MAX_LOADSTRING] = { 0 };
-	wchar_t wideStringConversionBuffer[MAX_LOADSTRING] = { 0 };
 	char outputpath[MAX_LOADSTRING] = { 0 };
 	double matlabpadding[1024] = { 0 };
 
@@ -957,7 +952,6 @@ int readCrystalDatabase(crystalEntry* db) {
 	}
 	db[0].numberOfEntries = i;
 	fclose(fp);
-
 	return i;
 }
 

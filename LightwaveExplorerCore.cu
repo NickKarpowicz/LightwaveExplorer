@@ -11,6 +11,7 @@
 #include <mkl.h>
 #include <thread>
 #include <thrust/complex.h>
+#include <nvml.h>
 #define _CRT_SECTURE_NO_WARNINGS
 
 #define THREADS_PER_BLOCK 32
@@ -2178,6 +2179,148 @@ namespace {
 		(*s).forceLinear = (*sCPU).forceLinear;
 		(*s).isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;
 		(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
+		
+
+
+		//prepare FFT plans
+		//explicitly make different plans for GPU or CPU (most other parts of the code can be universal,
+		//but not this, since the libraries are different).
+		if (RUNTYPE == 0) {
+			size_t workSize;
+			cufftPlan1d(&(*s).fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
+			cufftPlan1d(&(*s).fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
+			cufftSetStream((*s).fftPlan1DD2Z, (*s).CUDAStream);
+			cufftSetStream((*s).fftPlan1DZ2D, (*s).CUDAStream);
+			if ((*s).is3D) {
+				int cufftSizes1[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
+				cufftCreate(&(*s).fftPlanD2Z);
+				cufftGetSizeMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+				cufftMakePlanMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+
+				cufftCreate(&(*s).fftPlanZ2D);
+				cufftGetSizeMany((*s).fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+				cufftMakePlanMany((*s).fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+			}
+			else {
+				int cufftSizes1[] = { (int)(*s).Nspace, (int)(*s).Ntime };
+
+				cufftCreate(&(*s).fftPlanD2Z);
+				cufftGetSizeMany((*s).fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+				cufftMakePlanMany((*s).fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+
+				cufftCreate(&(*s).fftPlanZ2D);
+				cufftGetSizeMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+				cufftMakePlanMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+
+				if ((*s).isCylindric) {
+					int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
+					cufftCreate(&(*s).doublePolfftPlan);
+					cufftGetSizeMany((*s).doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+					cufftMakePlanMany((*s).doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+					cufftSetStream((*s).doublePolfftPlan, (*s).CUDAStream);
+				}
+			}
+			cufftSetStream((*s).fftPlanD2Z, (*s).CUDAStream);
+			cufftSetStream((*s).fftPlanZ2D, (*s).CUDAStream);
+		}
+		else {
+			DftiCreateDescriptor(&(*s).mklPlan1DD2Z, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2 * (*s).Nspace * (*s).Nspace2);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_INPUT_DISTANCE, (*s).Ntime);
+			DftiSetValue((*s).mklPlan1DD2Z, DFTI_OUTPUT_DISTANCE, (*s).Nfreq);
+			DftiCommitDescriptor((*s).mklPlan1DD2Z);
+
+			DftiCreateDescriptor(&(*s).mklPlan1DZ2D, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2 * (*s).Nspace * (*s).Nspace2);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_INPUT_DISTANCE, (*s).Nfreq);
+			DftiSetValue((*s).mklPlan1DZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ntime);
+			DftiCommitDescriptor((*s).mklPlan1DZ2D);
+
+			if ((*s).is3D) {
+				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace2, (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Ntime };
+				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)((*s).Nspace * (*s).Nfreq), (MKL_LONG)(*s).Nfreq, 1 };
+				DftiCreateDescriptor(&(*s).mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_INPUT_DISTANCE, (*s).Ngrid);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*s).NgridC);
+				DftiCommitDescriptor((*s).mklPlanD2Z);
+
+				DftiCreateDescriptor(&(*s).mklPlanZ2D, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_STRIDES, mklStrides);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_DISTANCE, (*s).NgridC);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ngrid);
+				DftiCommitDescriptor((*s).mklPlanZ2D);
+			}
+			else {
+				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Ntime };
+				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*s).Nfreq, 1, 1 };
+
+				DftiCreateDescriptor(&(*s).mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_INPUT_DISTANCE, (*s).Ngrid);
+				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*s).NgridC);
+				DftiCommitDescriptor((*s).mklPlanD2Z);
+
+				DftiCreateDescriptor(&(*s).mklPlanZ2D, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_STRIDES, mklStrides);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_DISTANCE, (*s).NgridC);
+				DftiSetValue((*s).mklPlanZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ngrid);
+				DftiCommitDescriptor((*s).mklPlanZ2D);
+
+				if ((*s).isCylindric) {
+					MKL_LONG mklSizesD[] = { (MKL_LONG)(2 * (*s).Nspace), (MKL_LONG)(*s).Ntime };
+					DftiCreateDescriptor(&(*s).mklPlanDoublePolfft, DFTI_DOUBLE, DFTI_REAL, 2, mklSizesD);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_OUTPUT_STRIDES, mklStrides);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_NUMBER_OF_TRANSFORMS, 2);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_INPUT_DISTANCE, 2 * (*s).Ngrid);
+					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_OUTPUT_DISTANCE, 2 * (*s).NgridC);
+					DftiCommitDescriptor((*s).mklPlanDoublePolfft);
+				}
+
+			}
+		}
+
+		//check if the GPU has enough free memory left for the grids, if not, free the fft plans and quit
+		if (RUNTYPE == 0) {
+			nvmlDevice_t nvmlDevice = 0;
+			nvmlMemory_t nvmlMemoryInfo;
+			nvmlInit_v2();
+			nvmlDeviceGetHandleByIndex_v2((*sCPU).assignedGPU, &nvmlDevice);
+			nvmlDeviceGetMemoryInfo(nvmlDevice, &nvmlMemoryInfo);
+			size_t memoryEstimate = sizeof(double) * ((*s).Ngrid * 2 * 2 + 2 * (*s).NgridC * 6 * 2 + 2 * (*s).isCylindric * 5 * 2 + 2 * (*s).Ntime + 2 * (*s).Nfreq + 81 + 65536);
+			nvmlShutdown();
+			if (nvmlMemoryInfo.free < memoryEstimate) {
+				cufftDestroy((*s).fftPlanD2Z);
+				cufftDestroy((*s).fftPlanZ2D);
+				cufftDestroy((*s).fftPlan1DD2Z);
+				cufftDestroy((*s).fftPlan1DZ2D);
+				if ((*s).isCylindric) {
+					cufftDestroy((*s).doublePolfftPlan);
+				}
+				(*sCPU).memoryError = -1;
+				return 1;
+			}	
+		}
+
+
 		int memErrors = 0;
 		double* expGammaTCPU = (double*)malloc(2 * sizeof(double) * (*s).Ntime);
 		if (expGammaTCPU == NULL) return 2;
@@ -2289,121 +2432,6 @@ namespace {
 		memcpy((*s).firstDerivativeOperation, firstDerivativeOperation, 6 * sizeof(double));
 
 
-		//prepare FFT plans
-		//explicitly make different plans for GPU or CPU (most other parts of the code can be universal,
-		//but not this, since the libraries are different).
-		if (RUNTYPE == 0) {
-			size_t workSize;
-			cufftPlan1d(&(*s).fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
-			cufftPlan1d(&(*s).fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
-			cufftSetStream((*s).fftPlan1DD2Z, (*s).CUDAStream);
-			cufftSetStream((*s).fftPlan1DZ2D, (*s).CUDAStream);
-			if ((*s).is3D) {
-				int cufftSizes1[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-				cufftCreate(&(*s).fftPlanD2Z);
-				cufftGetSizeMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-				cufftMakePlanMany((*s).fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-
-				cufftCreate(&(*s).fftPlanZ2D);
-				cufftGetSizeMany((*s).fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-				cufftMakePlanMany((*s).fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-			}
-			else {
-				int cufftSizes1[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-
-				cufftCreate(&(*s).fftPlanD2Z);
-				cufftGetSizeMany((*s).fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-				cufftMakePlanMany((*s).fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-
-				cufftCreate(&(*s).fftPlanZ2D);
-				cufftGetSizeMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-				cufftMakePlanMany((*s).fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-
-				if ((*s).isCylindric) {
-					int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
-					cufftCreate(&(*s).doublePolfftPlan);
-					cufftGetSizeMany((*s).doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-					cufftMakePlanMany((*s).doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-					cufftSetStream((*s).doublePolfftPlan, (*s).CUDAStream);
-				}
-			}
-			cufftSetStream((*s).fftPlanD2Z, (*s).CUDAStream);
-			cufftSetStream((*s).fftPlanZ2D, (*s).CUDAStream);
-		}
-		else {
-			DftiCreateDescriptor(&(*s).mklPlan1DD2Z, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
-			DftiSetValue((*s).mklPlan1DD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-			DftiSetValue((*s).mklPlan1DD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-			DftiSetValue((*s).mklPlan1DD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2 * (*s).Nspace * (*s).Nspace2);
-			DftiSetValue((*s).mklPlan1DD2Z, DFTI_INPUT_DISTANCE, (*s).Ntime);
-			DftiSetValue((*s).mklPlan1DD2Z, DFTI_OUTPUT_DISTANCE, (*s).Nfreq);
-			DftiCommitDescriptor((*s).mklPlan1DD2Z);
-
-			DftiCreateDescriptor(&(*s).mklPlan1DZ2D, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
-			DftiSetValue((*s).mklPlan1DZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-			DftiSetValue((*s).mklPlan1DZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-			DftiSetValue((*s).mklPlan1DZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2 * (*s).Nspace * (*s).Nspace2);
-			DftiSetValue((*s).mklPlan1DZ2D, DFTI_INPUT_DISTANCE, (*s).Nfreq);
-			DftiSetValue((*s).mklPlan1DZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ntime);
-			DftiCommitDescriptor((*s).mklPlan1DZ2D);
-
-			if ((*s).is3D) {
-				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace2, (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Ntime };
-				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)((*s).Nspace*(*s).Nfreq), (MKL_LONG)(*s).Nfreq, 1};
-				DftiCreateDescriptor(&(*s).mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_INPUT_DISTANCE, (*s).Ngrid);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*s).NgridC);
-				DftiCommitDescriptor((*s).mklPlanD2Z);
-
-				DftiCreateDescriptor(&(*s).mklPlanZ2D, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_STRIDES, mklStrides);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_DISTANCE, (*s).NgridC);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ngrid);
-				DftiCommitDescriptor((*s).mklPlanZ2D);
-			}
-			else {
-				MKL_LONG mklSizes[] = { (MKL_LONG)(*s).Nspace, (MKL_LONG)(*s).Ntime};
-				MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*s).Nfreq, 1, 1 };
-				
-				DftiCreateDescriptor(&(*s).mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_INPUT_DISTANCE, (*s).Ngrid);
-				DftiSetValue((*s).mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*s).NgridC);
-				DftiCommitDescriptor((*s).mklPlanD2Z);
-
-				DftiCreateDescriptor(&(*s).mklPlanZ2D, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_STRIDES, mklStrides);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_NUMBER_OF_TRANSFORMS, 2);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_INPUT_DISTANCE, (*s).NgridC);
-				DftiSetValue((*s).mklPlanZ2D, DFTI_OUTPUT_DISTANCE, (*s).Ngrid);
-				DftiCommitDescriptor((*s).mklPlanZ2D);
-
-				if ((*s).isCylindric) {
-					MKL_LONG mklSizesD[] = { (MKL_LONG)(2*(*s).Nspace), (MKL_LONG)(*s).Ntime };
-					DftiCreateDescriptor(&(*s).mklPlanDoublePolfft, DFTI_DOUBLE, DFTI_REAL, 2, mklSizesD);
-					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_OUTPUT_STRIDES, mklStrides);
-					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_NUMBER_OF_TRANSFORMS, 2);
-					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_INPUT_DISTANCE, 2*(*s).Ngrid);
-					DftiSetValue((*s).mklPlanDoublePolfft, DFTI_OUTPUT_DISTANCE, 2*(*s).NgridC);
-					DftiCommitDescriptor((*s).mklPlanDoublePolfft);
-				}
-
-			}
-		}
 		return 0;
 	}
 
@@ -2450,6 +2478,8 @@ namespace {
 		if ((*sH).isNonLinear || (*sH).isCylindric) {
 			//perform inverse FFT to get time-space electric field
 			combinedFFT(sH, (cufftDoubleComplex*)(*sH).workspace1, (*sH).gridETime1, 1);
+
+			//Nonlinear polarization
 			if ((*sH).isNonLinear) {
 				bilingualLaunch((*sH).Nblock, (*sH).Nthread, (*sH).CUDAStream, nonlinearPolarizationKernel, sD);
 				if ((*sH).isCylindric) {
@@ -2462,6 +2492,7 @@ namespace {
 				bilingualLaunch((*sH).Nblock / 2, (*sH).Nthread, (*sH).CUDAStream, updateKwithPolarizationKernel, sD);
 			}
 
+			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
 				bilingualLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), MIN_GRIDDIM, (*sH).CUDAStream, plasmaCurrentKernel, sD);
 				if ((*sH).isCylindric) {
@@ -2474,6 +2505,7 @@ namespace {
 				bilingualLaunch((*sH).Nblock / 2, (*sH).Nthread, (*sH).CUDAStream, updateKwithPlasmaKernel, sD);
 			}
 
+			//Radial Laplacian
 			if ((*sH).isCylindric) {
 				bilingualLaunch((*sH).Nblock, (*sH).Nthread, (*sH).CUDAStream, radialLaplacianKernel, sD);
 				combinedFFT(sH, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1, 0);
@@ -2749,7 +2781,7 @@ unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
 #ifdef __CUDACC__
 		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), cudaMemcpyDeviceToHost);
 #else
-		//canaryPixel = *canaryPointer;
+		canaryPixel = *canaryPointer;
 #endif
 		if (isnan(canaryPixel)) {
 			break;
@@ -2783,7 +2815,7 @@ unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
 	deallocateCudaParameterSet(&s);
 	bilingualFree(sDevice);
 	(*sCPU).imdone[0] = 1;
-	return isnan(canaryPixel);
+	return isnan(canaryPixel)*13;
 }
 
 #ifdef __CUDACC__
