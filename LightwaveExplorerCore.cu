@@ -54,6 +54,7 @@
 #define RUNTYPE 1
 #endif
 
+//note to self, try this thrust::complex<double> operator/(thrust::complex<double>,double){}
 #ifdef __CUDACC__
 namespace deviceFunctions {
 #else

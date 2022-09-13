@@ -95,16 +95,16 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
     if equationType == 0:
         n = (a[0] + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6]) + (a[7] + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12]) + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls) 
         n[n<0] = 1
-        n += k * a[16] / ((a[17] - w ** 2) +  (a[18] * w) * 1j)
+        n = n + k * a[16] / ((a[17] - w ** 2) +  (a[18] * w) * 1j)
         n += k * a[19] / ((a[20] - w ** 2) +  (a[21] * w) * 1j)
     elif equationType == 1:
         n = k * a[0] / ((a[1] - w ** 2) +  (a[2] * w) * 1j)
-        n = k * a[3] / ((a[4] - w ** 2) +  (a[5] * w) * 1j)
-        n = k * a[6] / ((a[7] - w ** 2) +  (a[8] * w) * 1j)
-        n = k * a[9] / ((a[10] - w ** 2) +  (a[11] * w) * 1j)
-        n = k * a[12] / ((a[13] - w ** 2) +  (a[14] * w) * 1j)
-        n = k * a[15] / ((a[16] - w ** 2) +  (a[17] * w) * 1j)
-        n = k * a[18] / ((a[19] - w ** 2) +  (a[20] * w) * 1j)
+        n += k * a[3] / ((a[4] - w ** 2) +  (a[5] * w) * 1j)
+        n += k * a[6] / ((a[7] - w ** 2) +  (a[8] * w) * 1j)
+        n += k * a[9] / ((a[10] - w ** 2) +  (a[11] * w) * 1j)
+        n += k * a[12] / ((a[13] - w ** 2) +  (a[14] * w) * 1j)
+        n += k * a[15] / ((a[16] - w ** 2) +  (a[17] * w) * 1j)
+        n += k * a[18] / ((a[19] - w ** 2) +  (a[20] * w) * 1j)
     return np.sqrt(n)
 
 def load(filePath: str, loadFieldArray=True):

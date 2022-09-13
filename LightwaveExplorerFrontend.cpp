@@ -81,8 +81,8 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     HANDLE plotThread;
     DWORD hplotThread;
     
-    hasGPU = IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU) != BST_CHECKED;
-    if (!hasGPU) {
+    bool forcingCPU = IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU) == BST_CHECKED;
+    if (forcingCPU) {
         printToConsole(maingui.textboxSims, L"Forcing to run on CPU!\r\n");
     }
     if (isGridAllocated) {
@@ -107,7 +107,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     progressCounter = 0;
     for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         if ((*activeSetPtr).isInSequence) {
-            if (hasGPU) {
+            if (hasGPU && !forcingCPU) {
                 error = solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
             }
             else {
@@ -132,7 +132,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
         }
         else {
-            if (hasGPU) {
+            if (hasGPU && !forcingCPU) {
                 error = solveNonlinearWaveEquation(&activeSetPtr[j]);
             }
             else{ 
@@ -615,7 +615,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     SendMessage(maingui.cbLogPlot, BM_SETCHECK, BST_CHECKED, 0);
 
     maingui.cbForceCPU = CreateWindow(WC_BUTTON, TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        btnoffset2a + btnwidth + 50, 20 * vs + 12, 12, 12, maingui.mainWindow, (HMENU)ID_CBFORCECPU, hInstance, NULL);
+        btnoffset2a + btnwidth + 220, 17 * vs + 4, 12, 12, maingui.mainWindow, (HMENU)ID_CBFORCECPU, hInstance, NULL);
 
 
     maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), 
@@ -1093,6 +1093,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonAddCrystalToSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddEchoSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
+        SetWindowTheme(maingui.cbForceCPU, L"DarkMode_Explorer", L"wstr");
         SetWindowTheme(maingui.pbProgress, L"", L"");
         SetWindowTheme(maingui.pbProgressB, L"", L"");
         SendMessage(maingui.pbProgress, PBM_SETBKCOLOR, 0, RGB(0,0,0));
@@ -1687,6 +1688,7 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 16, -6);
+    labelTextBox(hdc, maingui.mainWindow, maingui.cbForceCPU, _T("CPU"), 16, -6);
     //plot labels
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);

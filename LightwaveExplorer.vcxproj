@@ -55,6 +55,7 @@
     <CharacterSet>Unicode</CharacterSet>
     <UseIntelMKL>Sequential</UseIntelMKL>
     <UseInteloneMKL>Parallel</UseInteloneMKL>
+    <UseMpiLibrary1A>INTELMPI</UseMpiLibrary1A>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
