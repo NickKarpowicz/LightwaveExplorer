@@ -368,3 +368,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 *.code-workspace
+/Documentation/.ipynb_checkpoints
