@@ -89,9 +89,9 @@ def readLine(line: str):
     return float(rr[-1])
     
 def sellmeier(wavelengthMicrons, a, equationType: int):
-    w = 2 * np.pi * 2.9979e8 / (1e-6*wavelengthMicrons)
+    w = 2 * np.pi * 2.99792458e8 / (1e-6*wavelengthMicrons)
     ls = wavelengthMicrons**2
-    k = 3183.9
+    k = 3182.607353999257
     if equationType == 0:
         n = (a[0] + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6]) + (a[7] + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12]) + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls) 
         n[n<0] = 1

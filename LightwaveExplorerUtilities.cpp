@@ -19,7 +19,7 @@
 #define EPS0 8.8541878128e-12
 #define SIXTH 0.1666666666666667
 #define THIRD 0.3333333333333333
-#define KLORENTZIAN 3183.9 //(e * e / (epsilon_o * m_e)
+#define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 #endif

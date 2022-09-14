@@ -27,7 +27,7 @@
 #define EPS0 8.8541878128e-12
 #define SIXTH 0.1666666666666667
 #define THIRD 0.3333333333333333
-#define KLORENTZIAN 3183.9 //(e * e / (epsilon_o * m_e)
+#define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 #endif
@@ -54,12 +54,29 @@
 #define RUNTYPE 1
 #endif
 
-//note to self, try this thrust::complex<double> operator/(thrust::complex<double>,double){}
+
 #ifdef __CUDACC__
 namespace deviceFunctions {
 #else
 namespace ordinaryFunctions {
 #endif
+
+	//In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
+	//In principle, it should matter. Practically, I don't see it? Maybe delete later.
+	FDEVICE thrust::complex<double> operator/(double a, thrust::complex<double> b) {
+		double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
+		return thrust::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
+	}
+	FDEVICE thrust::complex<double> operator/(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() / b, a.imag() / b); }
+
+	FDEVICE thrust::complex<double> operator*(double b, thrust::complex<double> a) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
+	FDEVICE thrust::complex<double> operator*(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
+
+	FDEVICE thrust::complex<double> operator+(double a, thrust::complex<double> b) { return thrust::complex<double>(b.real() + a, b.imag()); }
+	FDEVICE thrust::complex<double> operator+(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() + b, a.imag()); }
+
+	FDEVICE thrust::complex<double> operator-(double a, thrust::complex<double> b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
+	FDEVICE thrust::complex<double> operator-(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() - b, a.imag()); }
 
 	//Inner function for the Sellmeier equation to provide the refractive indicies
 	//current equation form:
@@ -1209,28 +1226,26 @@ FGLOBAL void nonlinearPolarizationKernel(GKERN cudaParameterSet* s) {
 	//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
 	//of the plasma current
 FGLOBAL void plasmaCurrentKernel(GKERN cudaParameterSet* s) {
-	long long j = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
 	j *= (*s).Ntime;
 	double N = 0;
 	double integralx = 0;
 	double integraly = 0;
 	double* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-	double w, Esquared, Ex, Ey, a;
-	long long k;
-	unsigned char p;
+	double Esquared, Ex, Ey, a;
 	unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
 	double Jx, Jy;
-	for (k = 0; k < (long long)(*s).Ntime; k++) {
+	for (unsigned int k = 0; k < (*s).Ntime; k++) {
 		Ex = (*s).gridETime1[j] * (*s).fftNorm;
 		Ey = (*s).gridETime2[j] * (*s).fftNorm;
 		Esquared = Ex * Ex + Ey * Ey;
-		w = (*s).plasmaParameters[0] * Esquared;
-		for (p = 0; p < pMax; p++) {
-			w *= Esquared;
+		a = (*s).plasmaParameters[0] * Esquared;
+		for (unsigned char p = 0; p < pMax; p++) {
+			a *= Esquared;
 		}
 
-		Jx = w * Ex;
-		Jy = w * Ey;
+		Jx = a * Ex;
+		Jy = a * Ey;
 
 		N += (*s).plasmaParameters[2] * (Jx * Ex + Jy * Ey);
 		a = N * (*s).expGammaT[k];
@@ -1249,8 +1264,8 @@ FGLOBAL void updateKwithPolarizationKernel(GKERN cudaParameterSet* sP) {
 	i = h + j * ((*sP).Nfreq);
 	h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 
-	(*sP).k1[i] = (*sP).k1[i] + (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
-	(*sP).k2[i] = (*sP).k2[i] + (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
+	(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
+	(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
 }
 
 FGLOBAL void updateKwithPlasmaKernel(GKERN cudaParameterSet* sP) {
@@ -1264,19 +1279,19 @@ FGLOBAL void updateKwithPlasmaKernel(GKERN cudaParameterSet* sP) {
 
 
 	if ((*sP).isUsingMillersRule) {
-		(*sP).k1[i] = (*sP).k1[i] + jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] / (*sP).chiLinear1[i % ((*sP).Nfreq)].real();
-		(*sP).k2[i] = (*sP).k2[i] + jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] / (*sP).chiLinear2[i % ((*sP).Nfreq)].real();
+		(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] / (*sP).chiLinear1[i % ((*sP).Nfreq)].real();
+		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] / (*sP).chiLinear2[i % ((*sP).Nfreq)].real();
 	}
 	else {
-		(*sP).k1[i] = (*sP).k1[i] + jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
-		(*sP).k2[i] = (*sP).k2[i] + jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
+		(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
+		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
 	}
 }
 
 //Main kernel for RK4 propagation of the field
 FGLOBAL void rkKernel(GKERN cudaParameterSet* sP, uint8_t stepNumber) {
-	long long iC = threadIdx.x + blockIdx.x * blockDim.x;
-	long long h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+	unsigned int iC = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 
 	iC = h + (iC / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
 	if (h == 1) {
@@ -1601,7 +1616,7 @@ namespace {
 #pragma omp parallel for private(tIdx,bIdx) if(isThreaded)
 		for (int j = 0; j < (int)Nblock; j++) {
 			bIdx.x = (unsigned int)j;
-			for (unsigned int i = 0; i < Nthread; i++) {
+			for (unsigned int i = 0u; i < Nthread; i++) {
 				tIdx.x = i;
 				func(bIdx, tIdx, bDim, args...);
 			}
