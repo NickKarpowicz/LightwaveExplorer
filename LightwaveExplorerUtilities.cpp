@@ -290,7 +290,10 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPr
 		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*sCPU).NgridC);
 		DftiCommitDescriptor(mklPlanD2Z);
 	}
-	DftiComputeForward(mklPlanD2Z, (*sCPU).ExtOut, (*sCPU).EkwOut);
+	for (size_t i = 0; i < ((*sCPU).Nsims * (*sCPU).Nsims2); i++) {
+		DftiComputeForward(mklPlanD2Z, &(*sCPU).ExtOut[2*i*(*sCPU).Ngrid], &(*sCPU).EkwOut[2*i * (*sCPU).NgridC]);
+	}
+	
 	DftiFreeDescriptor(&mklPlanD2Z);
 
 	return 0;

@@ -20,7 +20,6 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include<d2d1.h>
 #include<nvml.h>
 
-
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111
 #define ID_BTNGETFILENAME 11112
@@ -36,6 +35,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define ID_BTNADDCRYSTAL 11122
 #define ID_CBLOGPLOT 12000
 #define ID_CBFORCECPU 12001
+#define ID_PLOTSCRUBBER 13001
 #define MAX_SIMULATIONS 16192
 #define MIN_GRIDDIM 8
 #define TWOPI 6.2831853071795862
@@ -80,7 +80,9 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     HANDLE plotThread;
     DWORD hplotThread;
-    
+    HANDLE cpuThread;
+    DWORD hCpuThread;
+
     bool forcingCPU = IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU) == BST_CHECKED;
     if (forcingCPU) {
         printToConsole(maingui.textboxSims, L"Forcing to run on CPU!\r\n");
@@ -96,6 +98,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
+    setTrackbarLimitsToActiveSet();
     (*activeSetPtr).isFollowerInSequence = FALSE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
@@ -105,7 +108,10 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     //run the simulations
     isRunning = TRUE;
     progressCounter = 0;
-    for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
+
+    cpuThread = CreateThread(NULL, 0, offloadToCPU, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
+
+    for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); j++) {
         if ((*activeSetPtr).isInSequence) {
             if (hasGPU && !forcingCPU) {
                 error = solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
@@ -164,7 +170,10 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
 
     }
-
+    if ((*activeSetPtr).NsimsCPU != 0) {
+        WaitForSingleObject(cpuThread, INFINITE);
+        CloseHandle(cpuThread);
+    }
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error==13) {
         printToConsole(maingui.textboxSims, 
@@ -547,6 +556,9 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2b, 6 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
+    maingui.tbCPUsims = CreateWindow(WC_EDIT, TEXT("0"),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        btnoffset2 - btnwidth - 8, 17 * vs +2, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbBatchDestination = CreateWindow(WC_EDIT, TEXT("20"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 10 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -567,19 +579,19 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         btnoffset2, 17 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
     maingui.buttonStop = CreateWindow(WC_BUTTON, TEXT("Stop"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 18 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
+        btnoffset2, 19 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
     maingui.buttonRefreshDB = CreateWindow(WC_BUTTON, TEXT("Reload DB"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2-btnwidth-8, 18 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
+        btnoffset2-btnwidth-8, 19 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNREFRESHDB, hInstance, NULL);
     maingui.buttonRunOnCluster = CreateWindow(WC_BUTTON, TEXT("Cluster file"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 19 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
+        btnoffset2, 20 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNRUNONCLUSTER, hInstance, NULL);
     maingui.pdClusterSelector = CreateWindow(WC_COMBOBOX, TEXT(""), 
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE, 
-        btnoffset2a+1, 19 * vs+1, 205, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a+1, 20 * vs+1, 205, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonFit = CreateWindow(WC_BUTTON, TEXT("Fit"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        btnoffset2, 20 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
+        btnoffset2, 21 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNFIT, hInstance, NULL);
     
     maingui.pbProgress = CreateWindowEx(0, PROGRESS_CLASS, (LPTSTR)NULL, WS_CHILD | WS_VISIBLE, 
         xOffsetRow2 - 160, 24 * vs+5, 180, 10, maingui.mainWindow, NULL, hInstance, NULL);
@@ -606,21 +618,23 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     SendMessage(maingui.pdClusterSelector, CB_SETCURSEL, (WPARAM)0, 0);
     maingui.buttonPlot = CreateWindow(WC_BUTTON, TEXT("Plot"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 17 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
+        btnoffset2, 18 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
     maingui.tbWhichSimToPlot = CreateWindow(WC_EDIT, TEXT("1"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a + btnwidth+1, 17 * vs, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2 - btnwidth - 8, 18 * vs + 2, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.cbLogPlot = CreateWindow(WC_BUTTON, TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 
-        btnoffset2a + btnwidth+50, 17 * vs+4, 12, 12, maingui.mainWindow, (HMENU)ID_CBLOGPLOT, hInstance, NULL);
+        btnoffset2a + btnwidth+60, 18 * vs+5, 12, 12, maingui.mainWindow, (HMENU)ID_CBLOGPLOT, hInstance, NULL);
     SendMessage(maingui.cbLogPlot, BM_SETCHECK, BST_CHECKED, 0);
-
+    maingui.trackbarPlot = CreateWindowEx(0, TRACKBAR_CLASS, L"Plot scrubber", WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS | TBS_ENABLESELRANGE,
+        btnoffset2a, 18 * vs  + 2, btnwidth, 20, maingui.mainWindow, (HMENU)ID_PLOTSCRUBBER, hInstance, NULL);
+    SendMessageW(maingui.trackbarPlot, TBM_SETRANGE, (WPARAM)TRUE, (LPARAM)MAKELONG(0, 1));
     maingui.cbForceCPU = CreateWindow(WC_BUTTON, TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        btnoffset2a + btnwidth + 220, 17 * vs + 4, 12, 12, maingui.mainWindow, (HMENU)ID_CBFORCECPU, hInstance, NULL);
+        btnoffset2a + btnwidth + 60, 17 * vs + 5, 12, 12, maingui.mainWindow, (HMENU)ID_CBFORCECPU, hInstance, NULL);
 
 
     maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2a, 18 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
+        btnoffset2a, 19 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
 
 
     maingui.buttonAddEchoSequence = CreateWindow(WC_BUTTON, TEXT("\x2B83"),
@@ -635,7 +649,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     maingui.tbFitting = CreateWindow(WC_EDIT, TEXT(""),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN,
-        xOffsetRow1 + textboxwidth + 4, 21 * vs - 2+9, xOffsetRow2 - xOffsetRow1, 66, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 4, 22 * vs - 2+9, xOffsetRow2 - xOffsetRow1, 66-vs, maingui.mainWindow, NULL, hInstance, NULL);
 
     maingui.buttonFile = CreateWindow(WC_BUTTON, TEXT("Set Path"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
@@ -952,6 +966,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 //plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
                 //Sleep(2000);
                 if (isGridAllocated) {
+                    setTrackbarLimitsToActiveSet();
                     drawSimPlots(activeSetPtr);
                 }
                 
@@ -1001,6 +1016,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HDC hdc = (HDC)wParam;
         SetBkColor(hdc, uiGrey);
         SetTextColor(hdc, uiGrey);
+        if (HWND(lParam) == maingui.trackbarPlot) {
+            return (LRESULT)greyBrush;
+        }
         return (LRESULT)blackBrush;
     }
     case WM_CTLCOLOREDIT:
@@ -1112,6 +1130,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		UpdateWindow(hWnd);
 		break;
+    case WM_HSCROLL:
+        setWindowTextToInt(maingui.tbWhichSimToPlot, (int)SendMessage(maingui.trackbarPlot, TBM_GETPOS, 0, 0));
+        (*activeSetPtr).plotSim = (int)SendMessage(maingui.trackbarPlot, TBM_GETPOS, 0, 0) - 1;
+        plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+        break;
     case WM_DESTROY:
         free(crystalDatabasePtr);
         PostQuitMessage(0);
@@ -1296,6 +1319,7 @@ int readParametersFromInterface() {
     (*activeSetPtr).batchDestination2 = getDoubleFromHWND(maingui.tbBatchDestination2);
     (*activeSetPtr).Nsims = (size_t)getDoubleFromHWND(maingui.tbNumberSims);
     (*activeSetPtr).Nsims2 = (size_t)getDoubleFromHWND(maingui.tbNumberSims2);
+    (*activeSetPtr).NsimsCPU = (size_t)getDoubleFromHWND(maingui.tbCPUsims);
     //derived parameters and cleanup:
 
 
@@ -1345,6 +1369,7 @@ int readParametersFromInterface() {
     if ((*activeSetPtr).batchIndex2 == 0 || (*activeSetPtr).Nsims2 < 1) {
         (*activeSetPtr).Nsims2 = 1;
     }
+    (*activeSetPtr).NsimsCPU = min((*activeSetPtr).NsimsCPU, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2);
 
     (*activeSetPtr).field1IsAllocated = FALSE;
     (*activeSetPtr).field2IsAllocated = FALSE;
@@ -1683,12 +1708,14 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbGPUStatus, _T("GPU (W)"), -72, -1);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse1Type, _T("Pulse 1:"), labos, 4);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2:"), labos, 4);
+
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbCPUsims, _T("Offloads:"), -70, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdFittingType, _T("Fit type:"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 16, -6);
-    labelTextBox(hdc, maingui.mainWindow, maingui.cbForceCPU, _T("CPU"), 16, -6);
+    labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 16, -1);
+    labelTextBox(hdc, maingui.mainWindow, maingui.cbForceCPU, _T("CPU"), 16, -1);
     //plot labels
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);
@@ -2500,5 +2527,36 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
         nvmlShutdown();
     }
     
+    return 0;
+}
+
+int setTrackbarLimitsToActiveSet() {
+    if (isGridAllocated) {
+        SendMessage(maingui.trackbarPlot, TBM_SETRANGE, (WPARAM)TRUE, (LPARAM)MAKELONG(1, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2));
+    }
+    return 0;
+}
+
+DWORD WINAPI offloadToCPU(LPVOID lpParam) {
+    simulationParameterSet* cpuSims = (simulationParameterSet*)lpParam;
+    int error = 0;
+    if ((*activeSetPtr).isInSequence) {
+        for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; i++) {
+            error = solveNonlinearWaveEquationSequenceCPU(&cpuSims[i]);
+            if (error) break;
+        }
+    }
+    else {
+        for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; i++) {
+            error = solveNonlinearWaveEquationCPU(&cpuSims[i]);
+            if (error) break;
+        }
+    }
+
+    if (error) {
+        printToConsole(maingui.textboxSims, L"Encountered error %i in CPU run.\r\n", error);
+        return 1;
+    }
+
     return 0;
 }

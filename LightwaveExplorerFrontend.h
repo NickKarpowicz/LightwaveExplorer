@@ -25,7 +25,7 @@ typedef struct guiStruct {
     HWND tbNumberSims2 = NULL;
     HWND tbBatchDestination = NULL;
     HWND tbBatchDestination2 = NULL;
-
+    HWND tbCPUsims = NULL;
     HWND tbPulse1Delay = NULL;
     HWND tbPulse2Delay = NULL;
     HWND tbPulseEnergy1 = NULL;
@@ -96,6 +96,7 @@ typedef struct guiStruct {
     HWND pdClusterSelector = NULL;
     HWND buttonRunOnCluster = NULL;
     HWND tbWhichSimToPlot = NULL;
+    HWND trackbarPlot = NULL;
     HWND buttonFit = NULL;
     HWND textboxSims = NULL;
     HWND tbGPUStatus = NULL;
@@ -183,3 +184,6 @@ int                 setWindowTextToDouble(HWND win, double in);
 std::complex<double> getDoubleDoublesfromHWND(HWND inputA);
 int                 linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby);
 int                 linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin);
+int                 setWindowTextToInt(HWND win, int in);
+int                 setTrackbarLimitsToActiveSet();
+DWORD WINAPI        offloadToCPU(LPVOID lpParam);

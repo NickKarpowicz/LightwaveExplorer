@@ -40,6 +40,7 @@ typedef struct simulationParameterSet {
     size_t Nsims = 0;
     size_t Nsims2 = 0;
     size_t* progressCounter = 0;
+    size_t NsimsCPU = 0;
     double spatialWidth = 0;
     double spatialHeight = 0;
     double timeSpan = 0;
