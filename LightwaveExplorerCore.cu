@@ -1024,7 +1024,8 @@ FGLOBAL void getChiLinearKernel(GKERN cudaParameterSet* s, double* sellmeierCoef
 		(*s).chiLinear1[i] = thrust::complex<double>(1, 0);
 		(*s).chiLinear2[i] = thrust::complex<double>(1, 0);
 	}
-
+	(*s).inverseChiLinear1[i] = 1.0 / (*s).chiLinear1[i].real();
+	(*s).inverseChiLinear2[i] = 1.0 / (*s).chiLinear2[i].real();
 }
 //prepare the propagation constants under the assumption of cylindrical symmetry of the beam
 FGLOBAL void prepareCylindricGridsKernel(GKERN double* sellmeierCoefficients, cudaParameterSet* s) {
@@ -1225,35 +1226,45 @@ FGLOBAL void nonlinearPolarizationKernel(GKERN cudaParameterSet* s) {
 	//from the field to the number of free carriers
 	//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
 	//of the plasma current
-FGLOBAL void plasmaCurrentKernel(GKERN cudaParameterSet* s) {
-	unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
-	j *= (*s).Ntime;
-	double N = 0;
-	double integralx = 0;
-	double integraly = 0;
-	double* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
+FGLOBAL void plasmaCurrentKernel_twoStage_A(GKERN cudaParameterSet* s) {
+	unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
 	double Esquared, Ex, Ey, a;
 	unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
-	double Jx, Jy;
+	Ex = (*s).gridETime1[i] * (*s).fftNorm;
+	Ey = (*s).gridETime2[i] * (*s).fftNorm;
+
+	//save values in workspaces, casting to double
+	double* dN = (double*)(*s).workspace1;
+	double* dN2 = dN + (*s).Ngrid;
+	double* Jx = (*s).gridPolarizationTime1;
+	double* Jy = (*s).gridPolarizationTime2;
+	Esquared = Ex * Ex + Ey * Ey;
+	a = (*s).plasmaParameters[0] * Esquared;
+	for (unsigned char p = 0; p < pMax; p++) {
+		a *= Esquared;
+	}
+	Jx[i] = a * Ex;
+	Jy[i] = a * Ey;
+	dN[i] = (*s).plasmaParameters[2] * (Jx[i] * Ex + Jy[i] * Ey);
+	dN2[i] = dN[i];
+}
+
+FGLOBAL void plasmaCurrentKernel_twoStage_B(GKERN cudaParameterSet* s) {
+	unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
+	j *= (unsigned int)(*s).Ntime;
+	double N = 0;
+	double integralx = 0;
+	double* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
+	double Ex, a;
+	double* dN = j + (double*)(*s).workspace1;
+	double* E = &(*s).gridETime1[j];
+	double* P = &(*s).gridPolarizationTime1[j];
 	for (unsigned int k = 0; k < (*s).Ntime; k++) {
-		Ex = (*s).gridETime1[j] * (*s).fftNorm;
-		Ey = (*s).gridETime2[j] * (*s).fftNorm;
-		Esquared = Ex * Ex + Ey * Ey;
-		a = (*s).plasmaParameters[0] * Esquared;
-		for (unsigned char p = 0; p < pMax; p++) {
-			a *= Esquared;
-		}
-
-		Jx = a * Ex;
-		Jy = a * Ey;
-
-		N += (*s).plasmaParameters[2] * (Jx * Ex + Jy * Ey);
+		Ex = E[k] * (*s).fftNorm;
+		N += dN[k];
 		a = N * (*s).expGammaT[k];
 		integralx += a * Ex;
-		integraly += a * Ey;
-		(*s).gridPolarizationTime1[j] = Jx + expMinusGammaT[k] * integralx;
-		(*s).gridPolarizationTime2[j] = Jy + expMinusGammaT[k] * integraly;
-		j++;
+		P[k] = P[k] + expMinusGammaT[k] * integralx;
 	}
 }
 
@@ -1277,15 +1288,8 @@ FGLOBAL void updateKwithPlasmaKernel(GKERN cudaParameterSet* sP) {
 	thrust::complex<double> jfac = thrust::complex<double>(0, -1.0 / (h * (*sP).fStep));
 	h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 
-
-	if ((*sP).isUsingMillersRule) {
-		(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] / (*sP).chiLinear1[i % ((*sP).Nfreq)].real();
-		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] / (*sP).chiLinear2[i % ((*sP).Nfreq)].real();
-	}
-	else {
-		(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
-		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
-	}
+	(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[i % ((*sP).Nfreq)];
+	(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[i % ((*sP).Nfreq)];
 }
 
 //Main kernel for RK4 propagation of the field
@@ -1293,7 +1297,7 @@ FGLOBAL void rkKernel(GKERN cudaParameterSet* sP, uint8_t stepNumber) {
 	unsigned int iC = threadIdx.x + blockIdx.x * blockDim.x;
 	unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 
-	iC = h + (iC / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
+	iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
 	if (h == 1) {
 		(*sP).k1[iC - 1] = thrust::complex<double>(0., 0.);
 		(*sP).k2[iC - 1] = thrust::complex<double>(0., 0.);
@@ -2375,6 +2379,7 @@ namespace {
 		memErrors += bilingualCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
 
 		memErrors += bilingualCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
+		memErrors += bilingualCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
 		for (i = 0; i < (*s).Ntime; i++) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
@@ -2397,6 +2402,7 @@ namespace {
 		(*s).workspace2P = (*s).workspace1 + beamExpansionFactor * (*s).NgridC;
 		(*s).k2 = (*s).k1 + (*s).NgridC;
 		(*s).chiLinear2 = (*s).chiLinear1 + (*s).Nfreq;
+		(*s).inverseChiLinear2 = (*s).inverseChiLinear1 + (*s).Nfreq;
 		(*s).gridRadialLaplacian2 = (*s).gridRadialLaplacian1 + (*s).Ngrid;
 		(*s).gridPropagationFactor1Rho2 = (*s).gridPropagationFactor1Rho1 + (*s).NgridC;
 		(*s).gridPolarizationFactor2 = (*s).gridPolarizationFactor1 + (*s).NgridC;
@@ -2467,7 +2473,7 @@ namespace {
 		bilingualFree((*s).chi3Tensor);
 		bilingualFree((*s).expGammaT);
 		bilingualFree((*s).chiLinear1);
-
+		bilingualFree((*s).inverseChiLinear1);
 		if (RUNTYPE == 0) {
 			cufftDestroy((*s).fftPlanD2Z);
 			cufftDestroy((*s).fftPlanZ2D);
@@ -2510,7 +2516,10 @@ namespace {
 
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
-				bilingualLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), MIN_GRIDDIM, (*sH).CUDAStream, plasmaCurrentKernel, sD);
+				//bilingualLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), MIN_GRIDDIM, (*sH).CUDAStream, plasmaCurrentKernel, sD);
+
+				bilingualLaunch((*sH).Nblock, (*sH).Nthread, (*sH).CUDAStream, plasmaCurrentKernel_twoStage_A, sD);
+				bilingualLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2*MIN_GRIDDIM, (*sH).CUDAStream, plasmaCurrentKernel_twoStage_B, sD);
 				if ((*sH).isCylindric) {
 					bilingualLaunch((*sH).Nblock, (*sH).Nthread, (*sH).CUDAStream, expandCylindricalBeam, sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
 					combinedFFT(sH, (*sH).gridRadialLaplacian1, (cufftDoubleComplex*)(*sH).workspace1, 4);

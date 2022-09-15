@@ -188,6 +188,8 @@ typedef struct cudaParameterSet {
     thrust::complex<double>* gridPlasmaCurrentFrequency2 = 0;
     thrust::complex<double>* chiLinear1 = 0;
     thrust::complex<double>* chiLinear2 = 0;
+    double* inverseChiLinear1 = 0;
+    double* inverseChiLinear2 = 0;
     thrust::complex<double>* k1 = 0;
     thrust::complex<double>* k2 = 0;
 
