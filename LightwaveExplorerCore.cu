@@ -62,7 +62,6 @@ namespace ordinaryFunctions {
 #endif
 
 	//In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
-	//In principle, it should matter. Practically, I don't see it? Maybe delete later.
 	FDEVICE thrust::complex<double> operator/(double a, thrust::complex<double> b) {
 		double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
 		return thrust::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
