@@ -1611,16 +1611,14 @@ namespace {
 #ifdef __CUDACC__
 		func <<<Nblock, Nthread, 0, stream >>> (args...);
 #else
-		uint3 tIdx;
-		uint3 bIdx;
 		uint3 bDim;
 		bDim.x = Nthread;
 		bool isThreaded = Nthread > 1u;
-#pragma omp parallel for private(tIdx,bIdx) if(isThreaded)
+#pragma omp parallel for if(isThreaded)
 		for (int j = 0; j < (int)Nblock; j++) {
+			uint3 bIdx, tIdx;
 			bIdx.x = (unsigned int)j;
-			for (unsigned int i = 0u; i < Nthread; i++) {
-				tIdx.x = i;
+			for (tIdx.x = 0u; tIdx.x < Nthread; tIdx.x++) {
 				func(bIdx, tIdx, bDim, args...);
 			}
 		}
