@@ -6,6 +6,7 @@
 #include <cufft.h>
 #endif
 #include "LightwaveExplorerCore.cuh"
+#include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
 #include <complex>
 #include <cstdlib>
@@ -2556,84 +2557,6 @@ namespace {
 		return 0;
 	}
 
-	#ifdef __CUDACC__
-unsigned long solveNonlinearWaveEquation(void* lpParam) {
-	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	cudaSetDevice((*sCPU).assignedGPU);
-#else
-unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
-	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-#endif
-	size_t i;
-	cudaParameterSet* sDevice;
-	cudaParameterSet s;
-	memset(&s, 0, sizeof(cudaParameterSet));
-	if(initializeCudaParameterSet(sCPU, &s)) return 1;
-
-	//prepare the propagation arrays
-	if (s.is3D) {
-		preparePropagation3D(sCPU, s);
-	}
-	else if (s.isCylindric) {
-		preparePropagation3DCylindric(sCPU, s);
-	}
-	else {
-		preparePropagation2DCartesian(sCPU, s);
-	}
-	prepareElectricFieldArrays(sCPU, &s);
-	double canaryPixel = 0;
-	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
-
-	bilingualCalloc((void**)&sDevice, 1, sizeof(cudaParameterSet));
-	bilingualMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
-
-	//Core propagation loop
-	for (i = 0; i < s.Nsteps; i++) {
-
-		//RK4
-		runRK4Step(&s, sDevice, 0);
-		runRK4Step(&s, sDevice, 1);
-		runRK4Step(&s, sDevice, 2);
-		runRK4Step(&s, sDevice, 3);
-#ifdef __CUDACC__
-		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), cudaMemcpyDeviceToHost);
-#else
-		canaryPixel = *canaryPointer;
-#endif
-		if (isnan(canaryPixel)) {
-			break;
-		}
-
-		if ((*sCPU).imdone[0] == 2) {
-			break;
-		}
-
-		if ((*sCPU).imdone[0] == 3) {
-			//copy the field arrays from the GPU to CPU memory if requested by the UI
-			bilingualMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-			bilingualMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).Ngrid * sizeof(deviceComplex), cudaMemcpyDeviceToHost);
-
-			(*sCPU).imdone[0] = 0;
-		}
-		(*(*sCPU).progressCounter)++;
-	}
-
-	////give the result to the CPU
-	bilingualMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), cudaMemcpyDeviceToHost);
-	
-
-	combinedFFT(&s, s.gridEFrequency1, s.gridETime1, 1);
-
-	bilingualLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, s.CUDAStream, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
-	bilingualMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
-
-	getTotalSpectrum(sCPU, &s);
-
-	deallocateCudaParameterSet(&s);
-	bilingualFree(sDevice);
-	(*sCPU).imdone[0] = 1;
-	return isnan(canaryPixel)*13;
-}
 
 #ifdef __CUDACC__
 int resolveSequence(int currentIndex, simulationParameterSet* s, crystalEntry* db) {
@@ -2804,35 +2727,6 @@ int resolveSequenceCPU(int currentIndex, simulationParameterSet * s, crystalEntr
 	return 1;
 	}
 
-#ifdef __CUDACC__
-unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
-#else
-unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
-#endif
-	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	simulationParameterSet sCPUbackup[1];
-	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
-	int k;
-	int error = 0;
-	for (k = 0; k < (*sCPU).Nsequence; k++) {
-		if ((int)round((*sCPU).sequenceArray[k * 11]) == 6
-			&& ((int)round((*sCPU).sequenceArray[k * 11 + 1])) > 0) {
-			(*sCPUbackup).sequenceArray[k * 11 + 1] -= 1.0;
-			(*sCPUbackup).isFollowerInSequence = TRUE;
-			k = 0;
-		}
-#ifdef __CUDACC__
-		error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
-#else
-		error = resolveSequenceCPU(k, sCPU, (*sCPU).crystalDatabase);
-#endif
-		
-		if (error) break;
-		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
-	}
-
-	return error;
-}
 
 	void runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction) {
 		int i;
@@ -2969,6 +2863,116 @@ unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 //END OF NAMESPACE
 
 #ifdef __CUDACC__
+unsigned long solveNonlinearWaveEquation(void* lpParam) {
+	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
+	cudaSetDevice((*sCPU).assignedGPU);
+#else
+unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
+	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
+#endif
+	size_t i;
+	cudaParameterSet* sDevice;
+	cudaParameterSet s;
+	memset(&s, 0, sizeof(cudaParameterSet));
+	if (initializeCudaParameterSet(sCPU, &s)) return 1;
+
+	//prepare the propagation arrays
+	if (s.is3D) {
+		preparePropagation3D(sCPU, s);
+	}
+	else if (s.isCylindric) {
+		preparePropagation3DCylindric(sCPU, s);
+	}
+	else {
+		preparePropagation2DCartesian(sCPU, s);
+	}
+	prepareElectricFieldArrays(sCPU, &s);
+	double canaryPixel = 0;
+	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
+
+	bilingualCalloc((void**)&sDevice, 1, sizeof(cudaParameterSet));
+	bilingualMemcpy(sDevice, &s, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+
+	//Core propagation loop
+	for (i = 0; i < s.Nsteps; i++) {
+
+		//RK4
+		runRK4Step(&s, sDevice, 0);
+		runRK4Step(&s, sDevice, 1);
+		runRK4Step(&s, sDevice, 2);
+		runRK4Step(&s, sDevice, 3);
+#ifdef __CUDACC__
+		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), cudaMemcpyDeviceToHost);
+#else
+		canaryPixel = *canaryPointer;
+#endif
+		if (isnan(canaryPixel)) {
+			break;
+		}
+
+		if ((*sCPU).imdone[0] == 2) {
+			break;
+		}
+
+		if ((*sCPU).imdone[0] == 3) {
+			//copy the field arrays from the GPU to CPU memory if requested by the UI
+			bilingualMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
+			bilingualMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).Ngrid * sizeof(deviceComplex), cudaMemcpyDeviceToHost);
+
+			(*sCPU).imdone[0] = 0;
+		}
+		(*(*sCPU).progressCounter)++;
+	}
+
+	////give the result to the CPU
+	bilingualMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), cudaMemcpyDeviceToHost);
+
+
+	combinedFFT(&s, s.gridEFrequency1, s.gridETime1, 1);
+
+	bilingualLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, s.CUDAStream, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+	bilingualMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), cudaMemcpyDeviceToHost);
+
+	getTotalSpectrum(sCPU, &s);
+
+	deallocateCudaParameterSet(&s);
+	bilingualFree(sDevice);
+	(*sCPU).imdone[0] = 1;
+	return isnan(canaryPixel) * 13;
+}
+
+#ifdef __CUDACC__
+unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
+#else
+unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
+#endif
+	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
+	simulationParameterSet sCPUbackup[1];
+	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
+	int k;
+	int error = 0;
+	for (k = 0; k < (*sCPU).Nsequence; k++) {
+		if ((int)round((*sCPU).sequenceArray[k * 11]) == 6
+			&& ((int)round((*sCPU).sequenceArray[k * 11 + 1])) > 0) {
+			(*sCPUbackup).sequenceArray[k * 11 + 1] -= 1.0;
+			(*sCPUbackup).isFollowerInSequence = TRUE;
+			k = 0;
+		}
+#ifdef __CUDACC__
+		error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
+#else
+		error = resolveSequenceCPU(k, sCPU, (*sCPU).crystalDatabase);
+#endif
+
+		if (error) break;
+		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
+	}
+
+	return error;
+}
+
+
+#ifdef __CUDACC__
 unsigned long runFitting(simulationParameterSet* sCPU) {
 #else
 unsigned long runFittingCPU(simulationParameterSet * sCPU) {
@@ -3007,7 +3011,7 @@ unsigned long runFittingCPU(simulationParameterSet * sCPU) {
 		upperBounds[i] = (*fittingSet).fittingArray[3 * i + 2];
 		lowerBounds[i] = (*fittingSet).fittingArray[3 * i + 1];
 	}
-	void* fitFunction;
+
 	//initialize fitting function and jacobian
 	for (i = 0; i < m; i++) {
 		fittingValues[i] = 0.0;
