@@ -253,7 +253,7 @@ typedef struct cudaParameterSet {
     int Nblock = 0;
 } cudaParameterSet;
 
-int             loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent);
+int             loadSavedFields(simulationParameterSet* sCPU, char* outputBase);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
@@ -264,7 +264,7 @@ int             saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* cry
 void            unixNewLine(FILE* iostream);
 int             saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount);
 int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
-int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex);
+int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);
 int             readCrystalDatabase(crystalEntry* db);

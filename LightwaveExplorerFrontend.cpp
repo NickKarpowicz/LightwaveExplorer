@@ -367,13 +367,9 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     int xOffsetRow2b = xOffsetRow2 + halfBox + 8;
     int xOffsetRow3 = maingui.xOffsetRow3;
     int vs = maingui.vs;
-    int radioButtonOffset = maingui.radioButtonOffset;
     int btnwidth = maingui.btnwidth;
-    int btnoffset = maingui.btnoffset;
-    int btnoffset0 = maingui.btnoffset0;
     int btnoffset2 = maingui.btnoffset2;
     int btnoffset2a = maingui.btnoffset2a;
-    int rbsize = maingui.rbsize;
     int consoleSize = maingui.consoleSize;
     
     int btnHeight = maingui.btnHeight;
@@ -1053,12 +1049,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         int imagePanelSizeX = mainRect.right - mainRect.left - x0 - 2 * spacerX;
         int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 5 * spacerY;
 
-        size_t simIndex = (*activeSetPtr).plotSim;
         int x = x0;
         int y = y0;
         int dx = imagePanelSizeX / 2;
         int dy = imagePanelSizeY / 4;
-        int plotMargin = 0;
         int xCorrection = 10;
         int yCorrection = 45;
 
@@ -1671,10 +1665,6 @@ int getStringFromHWND(HWND inputA, char* outputString, int bufferSize)
 
 int drawLabels(HDC hdc) {
     int labos = -160;
-    int x0plots = 380;
-    int dxplots = 404;
-    int dyplots = 214;
-    int vs = 26;
     
     labelTextBox(hdc, maingui.mainWindow, maingui.tbMaterialIndex, _T("Material index"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalTheta, _T("Theta, phi (\x00B0)"), labos, 0);
@@ -1777,7 +1767,6 @@ int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
     OPENFILENAME ofn;
     TCHAR szFileName[MAX_PATH]{};
     ZeroMemory(&ofn, sizeof(ofn));
-    WORD fbaseloc = 0;
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = hWnd;
     ofn.lpstrFilter = TEXT("Dat Files (*.dat)\0*.dat\0All Files (*.*)\0*.*\0");
@@ -1838,7 +1827,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
             allocateGrids(activeSetPtr);
             isGridAllocated = TRUE;
             int res;
-            res = loadSavedFields(activeSetPtr, fileNameString, FALSE);
+            res = loadSavedFields(activeSetPtr, fileNameString);
             //printToConsole(maingui.textboxSims,L"loaded with %i\r\n", res);
             return TRUE;
         }
@@ -2276,7 +2265,6 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
 
     //Draw the labels
     int NyTicks = 3;
-    int NxTicks = 3;
     wchar_t messageBuffer[MAX_LOADSTRING];
     double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
     double xTicks1[3] = { 0.25 * (*s).dx*(*s).Npts + (*s).x0, 0.5 * (*s).dx * (*s).Npts + (*s).x0, 0.75 * (*s).dx * (*s).Npts + (*s).x0 };
@@ -2468,9 +2456,7 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
     nvmlDevice_t nvmlDevice = 0;
 
     unsigned int devicePower = 0;
-    unsigned int deviceTemp = 0;
     int i,j;
-    double finishedpercent = 0.;
     nvmlReturn_t nvmlError;
     size_t lengthEstimate = 0;
     double length;

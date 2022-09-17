@@ -242,7 +242,7 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 }
 
 
-int loadSavedFields(simulationParameterSet* sCPU, char* outputBase, bool GPUisPresent) {
+int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	char outputpath[MAX_LOADSTRING] = { 0 };
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
 
@@ -455,7 +455,7 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
 	int frogLines = 0;
 	int errCount = 0;
 	if ((*sCPU).pulse1FileType == 1) {
-		frogLines = loadFrogSpeck((*sCPU).field1FilePath, (*sCPU).loadedField1, (*sCPU).Ntime, (*sCPU).fStep, 0.0, 1);
+		frogLines = loadFrogSpeck((*sCPU).field1FilePath, (*sCPU).loadedField1, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
 		if (frogLines > 1) {
 			(*sCPU).field1IsAllocated = TRUE;
 		}
@@ -466,7 +466,7 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
 	}
 
 	if ((*sCPU).pulse2FileType == 1) {
-		frogLines = loadFrogSpeck((*sCPU).field2FilePath, (*sCPU).loadedField2, (*sCPU).Ntime, (*sCPU).fStep, 0.0, 1);
+		frogLines = loadFrogSpeck((*sCPU).field2FilePath, (*sCPU).loadedField2, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
 		if (frogLines > 1) {
 			(*sCPU).field2IsAllocated = TRUE;
 		}
@@ -979,10 +979,11 @@ double cModulusSquared(std::complex<double>complexNumber) {
 }
 
 
-int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel, int fieldIndex) {
+int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel) {
 	FILE* fp;
 	int maxFileSize = 16384;
-	double wavelength, R, phi, complexX, complexY, f, f0, f1, fmax;
+	double wavelength, R, phi, complexX, complexY, f, f0, f1;
+	double fmax = 0.0;
 	int i, k0, k1;
 	double c = 1e9 * LIGHTC; //for conversion of wavelength in nm to frequency
 	double df = 0;
