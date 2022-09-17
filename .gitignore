@@ -369,3 +369,7 @@ MigrationBackup/
 FodyWeavers.xsd
 *.code-workspace
 /Documentation/.ipynb_checkpoints
+.DS_Store
+.gitignore
+.vscode/tasks.json
+.vscode/c_cpp_properties.json

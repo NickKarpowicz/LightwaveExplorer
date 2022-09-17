@@ -2556,228 +2556,7 @@ namespace {
 		return 0;
 	}
 
-	void runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction) {
-		int i;
-		int fitLocation;
-		double referenceValue;
-		//pointers to values that can be scanned in batch mode
-		double* targets[36] = { 0,
-			&(*fittingSet).pulseEnergy1, &(*fittingSet).pulseEnergy2, &(*fittingSet).frequency1, &(*fittingSet).frequency2,
-			&(*fittingSet).bandwidth1, &(*fittingSet).bandwidth2, &(*fittingSet).cephase1, &(*fittingSet).cephase2,
-			&(*fittingSet).delay1, &(*fittingSet).delay2, &(*fittingSet).gdd1, &(*fittingSet).gdd2,
-			&(*fittingSet).tod1, &(*fittingSet).tod2, &(*fittingSet).phaseMaterialThickness1, &(*fittingSet).phaseMaterialThickness2,
-			&(*fittingSet).beamwaist1, &(*fittingSet).beamwaist2,
-			&(*fittingSet).x01, &(*fittingSet).x02, &(*fittingSet).z01, &(*fittingSet).z02,
-			&(*fittingSet).propagationAngle1, &(*fittingSet).propagationAngle2, &(*fittingSet).polarizationAngle1, &(*fittingSet).polarizationAngle2,
-			&(*fittingSet).circularity1, &(*fittingSet).circularity2, &(*fittingSet).crystalTheta, &(*fittingSet).crystalPhi,
-			&(*fittingSet).nonlinearAbsorptionStrength, &(*fittingSet).drudeGamma, &(*fittingSet).effectiveMass, &(*fittingSet).crystalThickness,
-			&(*fittingSet).propagationStep };
-
-		double* references[36] = { 0,
-		&(*fittingReferenceSet).pulseEnergy1, &(*fittingReferenceSet).pulseEnergy2, &(*fittingReferenceSet).frequency1, &(*fittingReferenceSet).frequency2,
-		&(*fittingReferenceSet).bandwidth1, &(*fittingReferenceSet).bandwidth2, &(*fittingReferenceSet).cephase1, &(*fittingReferenceSet).cephase2,
-		&(*fittingReferenceSet).delay1, &(*fittingReferenceSet).delay2, &(*fittingReferenceSet).gdd1, &(*fittingReferenceSet).gdd2,
-		&(*fittingReferenceSet).tod1, &(*fittingReferenceSet).tod2, &(*fittingReferenceSet).phaseMaterialThickness1, &(*fittingReferenceSet).phaseMaterialThickness2,
-		&(*fittingReferenceSet).beamwaist1, &(*fittingReferenceSet).beamwaist2,
-		&(*fittingReferenceSet).x01, &(*fittingReferenceSet).x02, &(*fittingReferenceSet).z01, &(*fittingReferenceSet).z02,
-		&(*fittingReferenceSet).propagationAngle1, &(*fittingReferenceSet).propagationAngle2, &(*fittingReferenceSet).polarizationAngle1, &(*fittingReferenceSet).polarizationAngle2,
-		&(*fittingReferenceSet).circularity1, &(*fittingReferenceSet).circularity2, &(*fittingReferenceSet).crystalTheta, &(*fittingReferenceSet).crystalPhi,
-		&(*fittingReferenceSet).nonlinearAbsorptionStrength, &(*fittingReferenceSet).drudeGamma, &(*fittingReferenceSet).effectiveMass, &(*fittingReferenceSet).crystalThickness,
-		&(*fittingReferenceSet).propagationStep };
-
-
-		for (i = 0; i < *n; i++) {
-			fitLocation = (int)round((*fittingSet).fittingArray[3 * i]);
-			if (fitLocation > 35) return;
-			referenceValue = *references[fitLocation];
-			if (referenceValue == 0.0) {
-				referenceValue = 1.;
-			}
-			*targets[fitLocation] = fittingValues[i] * referenceValue;
-		}
-		if ((*fittingSet).isInSequence) {
-			solveNonlinearWaveEquationSequence(fittingSet);
-			(*fittingSet).isFollowerInSequence = FALSE;
-		}
-		else {
-			solveNonlinearWaveEquation(fittingSet);
-		}
-
-
-		//mode 0: maximize total spectrum in ROI
-		if ((*fittingSet).fittingMode == 0) {
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
-			}
-		}
-		//mode 1: maximize s-polarized spectrum in ROI
-		if ((*fittingSet).fittingMode == 1) {
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).fittingROIstart + i]));
-			}
-		}
-		//mode 2: maximize p-polarized spectrum in ROI
-		if ((*fittingSet).fittingMode == 2) {
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
-			}
-		}
-		//mode 3: match total spectrum to reference given in ascii file
-		if ((*fittingSet).fittingMode == 3) {
-			double maxSim = 0;
-			double maxRef = 0;
-			double sumSim = 0;
-			double sumRef = 0;
-			double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart];
-			double* refSpec = &(*fittingSet).fittingReference[(*fittingSet).fittingROIstart];
-			for (i = 0; i < *m; i++) {
-				maxSim = max(maxSim, simSpec[i]);
-				maxRef = max(maxRef, refSpec[i]);
-				sumSim += simSpec[i];
-				sumRef += refSpec[i];
-			}
-
-			if (maxSim == 0) {
-				maxSim = 1;
-			}
-			if (maxRef == 0) {
-				maxRef = 1;
-			}
-
-			double sumFF = 0;
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] = log10(1e5 * refSpec[i] / maxRef) - log10(1e5 * simSpec[i] / maxSim);
-				sumFF += fittingFunction[i];
-				//fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]);
-			}
-			sumFF /= *m;
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] -= sumFF;
-			}
-		}
-
-
-		return;
-	}
-
-	int getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc) {
-
-		bilingualMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-		combinedFFT(sc, (*sc).gridETime1, (*sc).workspace1, 2);
-		if ((*sc).is3D) {
-			bilingualLaunch((unsigned int)(*sCPU).Nfreq, 1u, (*sc).CUDAStream, totalSpectrum3DKernel, (*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace * (*sCPU).Nspace2, (*sc).gridPolarizationTime1);
-		}
-		else {
-			bilingualLaunch((unsigned int)(*sCPU).Nfreq, 1u, (*sc).CUDAStream, totalSpectrumKernel, (*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace, (*sc).gridPolarizationTime1);
-		}
-
-		bilingualMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), cudaMemcpyDeviceToHost);
-
-
-		return 0;
-	}
-
-
-}
-//END OF NAMESPACE
-
-#ifdef __CUDACC__
-unsigned long runFitting(simulationParameterSet* sCPU) {
-#else
-unsigned long runFittingCPU(simulationParameterSet * sCPU) {
-#endif
-	int n = (int)(*sCPU).Nfitting;
-	int m = (int)(*sCPU).fittingROIsize;
-	fittingReferenceSet = sCPU;
-	fittingSet = (simulationParameterSet*)malloc((*sCPU).Nsims * sizeof(simulationParameterSet));
-	memcpy(fittingSet, sCPU, (*sCPU).Nsims * sizeof(simulationParameterSet));
-
-	double commonPrecision = (*sCPU).fittingPrecision;
-	const double eps[6] = { commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision }; /* set precisions for stop-criteria */
-	double jacobianPrecision = commonPrecision;
-	double* x = (double*)mkl_malloc(sizeof(double) * n, 64);
-	double* fittingValues = (double*)mkl_malloc(sizeof(double) * m, 64);
-	double* fjac = (double*)mkl_malloc(sizeof(double) * m * n, 64);
-	double* lowerBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
-	double* upperBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
-	const int maxIterations = max((*sCPU).fittingMaxIterations, 2);
-	const int maxTrialIterations = max(maxIterations / 10, 2);
-	/* initial step bound */
-	double rs = 0.0;
-	int RCI_Request;
-	int successful;
-
-	int iter;
-	int stopCriterion;
-	double inputResiduals = 0.0, outputResiduals = 0.0;
-	_TRNSPBC_HANDLE_t handle;
-	int i;
-	int error = 0;
-
-	//initial guess and bounds
-	for (i = 0; i < n; i++) {
-		x[i] = 1.;
-		upperBounds[i] = (*fittingSet).fittingArray[3 * i + 2];
-		lowerBounds[i] = (*fittingSet).fittingArray[3 * i + 1];
-	}
-
-	//initialize fitting function and jacobian
-	for (i = 0; i < m; i++) {
-		fittingValues[i] = 0.0;
-	}
-	for (i = 0; i < m * n; i++) {
-		fjac[i] = 0.0;
-	}
-
-	error += dtrnlspbc_init(&handle, &n, &m, x, lowerBounds, upperBounds, eps, &maxIterations, &maxTrialIterations, &rs) != TR_SUCCESS;
-	size_t currentIteration = 0;
-	if (error == 0) {
-		RCI_Request = 0;
-		successful = 0;
-		while (successful == 0 && (*sCPU).imdone[0] != 2 && currentIteration < maxIterations)
-		{
-			currentIteration++;
-			if (dtrnlspbc_solve(&handle, fittingValues, fjac, &RCI_Request) != TR_SUCCESS)
-			{
-				successful = -1;
-			}
-
-			//check convergence
-			if (RCI_Request > -7 && RCI_Request < -1) successful = 1;
-
-			//recalculate
-			if (RCI_Request == 1)
-			{
-				runFittingIteration(&m, &n, x, fittingValues);
-			}
-
-			//make jacobian
-			if (RCI_Request == 2)
-			{
-				djacobi(runFittingIteration, &n, &m, fjac, x, &jacobianPrecision);
-			}
-		}
-	}
-
-
-	dtrnlspbc_get(&handle, &iter, &stopCriterion, &inputResiduals, &outputResiduals);
-	memcpy(sCPU, fittingSet, (*fittingSet).Nsims * sizeof(simulationParameterSet));
-
-	solveNonlinearWaveEquation(sCPU);
-
-	//free memory
-	dtrnlspbc_delete(&handle);
-	mkl_free(upperBounds);
-	mkl_free(lowerBounds);
-	mkl_free(fjac);
-	mkl_free(fittingValues);
-	mkl_free(x);
-	MKL_Free_Buffers();
-	free(fittingSet);
-	return 0;
-}
-
-#ifdef __CUDACC__
+	#ifdef __CUDACC__
 unsigned long solveNonlinearWaveEquation(void* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
 	cudaSetDevice((*sCPU).assignedGPU);
@@ -3055,15 +2834,249 @@ unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 	return error;
 }
 
+	void runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction) {
+		int i;
+		int fitLocation;
+		double referenceValue;
+		//pointers to values that can be scanned in batch mode
+		double* targets[36] = { 0,
+			&(*fittingSet).pulseEnergy1, &(*fittingSet).pulseEnergy2, &(*fittingSet).frequency1, &(*fittingSet).frequency2,
+			&(*fittingSet).bandwidth1, &(*fittingSet).bandwidth2, &(*fittingSet).cephase1, &(*fittingSet).cephase2,
+			&(*fittingSet).delay1, &(*fittingSet).delay2, &(*fittingSet).gdd1, &(*fittingSet).gdd2,
+			&(*fittingSet).tod1, &(*fittingSet).tod2, &(*fittingSet).phaseMaterialThickness1, &(*fittingSet).phaseMaterialThickness2,
+			&(*fittingSet).beamwaist1, &(*fittingSet).beamwaist2,
+			&(*fittingSet).x01, &(*fittingSet).x02, &(*fittingSet).z01, &(*fittingSet).z02,
+			&(*fittingSet).propagationAngle1, &(*fittingSet).propagationAngle2, &(*fittingSet).polarizationAngle1, &(*fittingSet).polarizationAngle2,
+			&(*fittingSet).circularity1, &(*fittingSet).circularity2, &(*fittingSet).crystalTheta, &(*fittingSet).crystalPhi,
+			&(*fittingSet).nonlinearAbsorptionStrength, &(*fittingSet).drudeGamma, &(*fittingSet).effectiveMass, &(*fittingSet).crystalThickness,
+			&(*fittingSet).propagationStep };
+
+		double* references[36] = { 0,
+		&(*fittingReferenceSet).pulseEnergy1, &(*fittingReferenceSet).pulseEnergy2, &(*fittingReferenceSet).frequency1, &(*fittingReferenceSet).frequency2,
+		&(*fittingReferenceSet).bandwidth1, &(*fittingReferenceSet).bandwidth2, &(*fittingReferenceSet).cephase1, &(*fittingReferenceSet).cephase2,
+		&(*fittingReferenceSet).delay1, &(*fittingReferenceSet).delay2, &(*fittingReferenceSet).gdd1, &(*fittingReferenceSet).gdd2,
+		&(*fittingReferenceSet).tod1, &(*fittingReferenceSet).tod2, &(*fittingReferenceSet).phaseMaterialThickness1, &(*fittingReferenceSet).phaseMaterialThickness2,
+		&(*fittingReferenceSet).beamwaist1, &(*fittingReferenceSet).beamwaist2,
+		&(*fittingReferenceSet).x01, &(*fittingReferenceSet).x02, &(*fittingReferenceSet).z01, &(*fittingReferenceSet).z02,
+		&(*fittingReferenceSet).propagationAngle1, &(*fittingReferenceSet).propagationAngle2, &(*fittingReferenceSet).polarizationAngle1, &(*fittingReferenceSet).polarizationAngle2,
+		&(*fittingReferenceSet).circularity1, &(*fittingReferenceSet).circularity2, &(*fittingReferenceSet).crystalTheta, &(*fittingReferenceSet).crystalPhi,
+		&(*fittingReferenceSet).nonlinearAbsorptionStrength, &(*fittingReferenceSet).drudeGamma, &(*fittingReferenceSet).effectiveMass, &(*fittingReferenceSet).crystalThickness,
+		&(*fittingReferenceSet).propagationStep };
+
+
+		for (i = 0; i < *n; i++) {
+			fitLocation = (int)round((*fittingSet).fittingArray[3 * i]);
+			if (fitLocation > 35) return;
+			referenceValue = *references[fitLocation];
+			if (referenceValue == 0.0) {
+				referenceValue = 1.;
+			}
+			*targets[fitLocation] = fittingValues[i] * referenceValue;
+		}
+#ifdef __CUDACC__
+		if ((*fittingSet).isInSequence) {
+			solveNonlinearWaveEquationSequence(fittingSet);
+			(*fittingSet).isFollowerInSequence = FALSE;
+		}
+		else {
+			solveNonlinearWaveEquation(fittingSet);
+		}
+#else
+		if ((*fittingSet).isInSequence) {
+			solveNonlinearWaveEquationSequenceCPU(fittingSet);
+			(*fittingSet).isFollowerInSequence = FALSE;
+		}
+		else {
+			solveNonlinearWaveEquationCPU(fittingSet);
+		}
+#endif
+
+		//mode 0: maximize total spectrum in ROI
+		if ((*fittingSet).fittingMode == 0) {
+			for (i = 0; i < *m; i++) {
+				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
+			}
+		}
+		//mode 1: maximize s-polarized spectrum in ROI
+		if ((*fittingSet).fittingMode == 1) {
+			for (i = 0; i < *m; i++) {
+				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).fittingROIstart + i]));
+			}
+		}
+		//mode 2: maximize p-polarized spectrum in ROI
+		if ((*fittingSet).fittingMode == 2) {
+			for (i = 0; i < *m; i++) {
+				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
+			}
+		}
+		//mode 3: match total spectrum to reference given in ascii file
+		if ((*fittingSet).fittingMode == 3) {
+			double maxSim = 0;
+			double maxRef = 0;
+			double sumSim = 0;
+			double sumRef = 0;
+			double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart];
+			double* refSpec = &(*fittingSet).fittingReference[(*fittingSet).fittingROIstart];
+			for (i = 0; i < *m; i++) {
+				maxSim = max(maxSim, simSpec[i]);
+				maxRef = max(maxRef, refSpec[i]);
+				sumSim += simSpec[i];
+				sumRef += refSpec[i];
+			}
+
+			if (maxSim == 0) {
+				maxSim = 1;
+			}
+			if (maxRef == 0) {
+				maxRef = 1;
+			}
+
+			double sumFF = 0;
+			for (i = 0; i < *m; i++) {
+				fittingFunction[i] = log10(1e5 * refSpec[i] / maxRef) - log10(1e5 * simSpec[i] / maxSim);
+				sumFF += fittingFunction[i];
+				//fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]);
+			}
+			sumFF /= *m;
+			for (i = 0; i < *m; i++) {
+				fittingFunction[i] -= sumFF;
+			}
+		}
+
+
+		return;
+	}
+
+	int getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc) {
+
+		bilingualMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
+		combinedFFT(sc, (*sc).gridETime1, (*sc).workspace1, 2);
+		if ((*sc).is3D) {
+			bilingualLaunch((unsigned int)(*sCPU).Nfreq, 1u, (*sc).CUDAStream, totalSpectrum3DKernel, (*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace * (*sCPU).Nspace2, (*sc).gridPolarizationTime1);
+		}
+		else {
+			bilingualLaunch((unsigned int)(*sCPU).Nfreq, 1u, (*sc).CUDAStream, totalSpectrumKernel, (*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace, (*sc).gridPolarizationTime1);
+		}
+
+		bilingualMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), cudaMemcpyDeviceToHost);
+
+
+		return 0;
+	}
+
+
+}
+//END OF NAMESPACE
+
+#ifdef __CUDACC__
+unsigned long runFitting(simulationParameterSet* sCPU) {
+#else
+unsigned long runFittingCPU(simulationParameterSet * sCPU) {
+#endif
+	int n = (int)(*sCPU).Nfitting;
+	int m = (int)(*sCPU).fittingROIsize;
+	fittingReferenceSet = sCPU;
+	fittingSet = (simulationParameterSet*)malloc((*sCPU).Nsims * sizeof(simulationParameterSet));
+	memcpy(fittingSet, sCPU, (*sCPU).Nsims * sizeof(simulationParameterSet));
+
+	double commonPrecision = (*sCPU).fittingPrecision;
+	const double eps[6] = { commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision }; /* set precisions for stop-criteria */
+	double jacobianPrecision = commonPrecision;
+	double* x = (double*)mkl_malloc(sizeof(double) * n, 64);
+	double* fittingValues = (double*)mkl_malloc(sizeof(double) * m, 64);
+	double* fjac = (double*)mkl_malloc(sizeof(double) * m * n, 64);
+	double* lowerBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
+	double* upperBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
+	const int maxIterations = max((*sCPU).fittingMaxIterations, 2);
+	const int maxTrialIterations = max(maxIterations / 10, 2);
+	/* initial step bound */
+	double rs = 0.0;
+	int RCI_Request;
+	int successful;
+
+	int iter;
+	int stopCriterion;
+	double inputResiduals = 0.0, outputResiduals = 0.0;
+	_TRNSPBC_HANDLE_t handle;
+	int i;
+	int error = 0;
+
+	//initial guess and bounds
+	for (i = 0; i < n; i++) {
+		x[i] = 1.;
+		upperBounds[i] = (*fittingSet).fittingArray[3 * i + 2];
+		lowerBounds[i] = (*fittingSet).fittingArray[3 * i + 1];
+	}
+	void* fitFunction;
+	//initialize fitting function and jacobian
+	for (i = 0; i < m; i++) {
+		fittingValues[i] = 0.0;
+	}
+	for (i = 0; i < m * n; i++) {
+		fjac[i] = 0.0;
+	}
+
+	error += dtrnlspbc_init(&handle, &n, &m, x, lowerBounds, upperBounds, eps, &maxIterations, &maxTrialIterations, &rs) != TR_SUCCESS;
+	size_t currentIteration = 0;
+	if (error == 0) {
+		RCI_Request = 0;
+		successful = 0;
+
+		while (successful == 0 && (*sCPU).imdone[0] != 2 && currentIteration < maxIterations)
+		{
+			currentIteration++;
+			if (dtrnlspbc_solve(&handle, fittingValues, fjac, &RCI_Request) != TR_SUCCESS)
+			{
+				successful = -1;
+			}
+
+			//check convergence
+			if (RCI_Request > -7 && RCI_Request < -1) successful = 1;
+
+			//recalculate
+			if (RCI_Request == 1)
+			{
+				runFittingIteration(&m, &n, x, fittingValues);
+			}
+
+			//make jacobian
+			if (RCI_Request == 2)
+			{
+				djacobi(runFittingIteration, &n, &m, fjac, x, &jacobianPrecision);
+			}
+		}
+	}
+
+
+	dtrnlspbc_get(&handle, &iter, &stopCriterion, &inputResiduals, &outputResiduals);
+	memcpy(sCPU, fittingSet, (*fittingSet).Nsims * sizeof(simulationParameterSet));
+#ifdef __CUDACC__
+	solveNonlinearWaveEquation(sCPU);
+#endif
+	//free memory
+	dtrnlspbc_delete(&handle);
+	mkl_free(upperBounds);
+	mkl_free(lowerBounds);
+	mkl_free(fjac);
+	mkl_free(fittingValues);
+	mkl_free(x);
+	MKL_Free_Buffers();
+	free(fittingSet);
+	return 0;
+}
+
+
+
 #ifdef __CUDACC__
 int main(int argc, char* argv[]) {
+	char* filepath = argv[1];
 #else
-int mainCPU(int argc, char* argv[]) {
+int mainCPU(int argc, char* filepath) {
 #endif
 	int i, j;
 
 	size_t progressCounter = 0;
-	int CUDAdeviceCount = 0;
+	int CUDAdeviceCount = 1;
 #ifdef __CUDACC__
 	int CUDAdevice;
 	cudaGetDeviceCount(&CUDAdeviceCount);
@@ -3109,7 +3122,7 @@ int mainCPU(int argc, char* argv[]) {
 	}
 
 	// read from settings file
-	if (readInputParametersFile(sCPU, crystalDatabasePtr, argv[1]) == 1) {
+	if (readInputParametersFile(sCPU, crystalDatabasePtr, filepath) == 1) {
 		printf("Could not read input file.\n");
 		free(sCPU);
 		free(crystalDatabasePtr);
