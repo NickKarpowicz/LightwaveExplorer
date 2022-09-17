@@ -1,10 +1,16 @@
 #pragma once
 #define MAX_LOADSTRING 1024
+#ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+#define deviceComplex deviceLib::complex<double>
+#define deviceLib thrust
+#else
+#define deviceComplex std::complex<double>
+#define deviceLib std
+#endif
 #include "mkl.h"
+#include <complex>
 typedef struct crystalEntry {
     wchar_t crystalNameW[256] = { 0 };
     int axisType = 0;
@@ -165,33 +171,36 @@ typedef struct simulationParameterSet {
 } simulationParameterSet;
 
 typedef struct cudaParameterSet {
+#ifdef __CUDACC__
     cudaStream_t CUDAStream = 0;
-
-    thrust::complex<double>* workspace1 = 0;
-    thrust::complex<double>* workspace2 = 0;
-    thrust::complex<double>* workspace2P = 0;
-    thrust::complex<double>* gridETemp1 = 0;
-    thrust::complex<double>* gridETemp2 = 0;
-    thrust::complex<double>* gridEFrequency1 = 0;
-    thrust::complex<double>* gridEFrequency2 = 0;
-    thrust::complex<double>* gridPropagationFactor1 = 0;
-    thrust::complex<double>* gridPropagationFactor1Rho1 = 0;
-    thrust::complex<double>* gridPropagationFactor1Rho2 = 0;
-    thrust::complex<double>* gridPolarizationFactor1 = 0;
-    thrust::complex<double>* gridPolarizationFrequency1 = 0;
-    thrust::complex<double>* gridPropagationFactor2 = 0;
-    thrust::complex<double>* gridPolarizationFactor2 = 0;
-    thrust::complex<double>* gridPolarizationFrequency2 = 0;
-    thrust::complex<double>* gridEFrequency1Next1 = 0;
-    thrust::complex<double>* gridEFrequency1Next2 = 0;
-    thrust::complex<double>* gridPlasmaCurrentFrequency1 = 0;
-    thrust::complex<double>* gridPlasmaCurrentFrequency2 = 0;
-    thrust::complex<double>* chiLinear1 = 0;
-    thrust::complex<double>* chiLinear2 = 0;
+#else
+    int CUDAStream = 0;
+#endif
+    deviceComplex* workspace1 = 0;
+    deviceComplex* workspace2 = 0;
+    deviceComplex* workspace2P = 0;
+    deviceComplex* gridETemp1 = 0;
+    deviceComplex* gridETemp2 = 0;
+    deviceComplex* gridEFrequency1 = 0;
+    deviceComplex* gridEFrequency2 = 0;
+    deviceComplex* gridPropagationFactor1 = 0;
+    deviceComplex* gridPropagationFactor1Rho1 = 0;
+    deviceComplex* gridPropagationFactor1Rho2 = 0;
+    deviceComplex* gridPolarizationFactor1 = 0;
+    deviceComplex* gridPolarizationFrequency1 = 0;
+    deviceComplex* gridPropagationFactor2 = 0;
+    deviceComplex* gridPolarizationFactor2 = 0;
+    deviceComplex* gridPolarizationFrequency2 = 0;
+    deviceComplex* gridEFrequency1Next1 = 0;
+    deviceComplex* gridEFrequency1Next2 = 0;
+    deviceComplex* gridPlasmaCurrentFrequency1 = 0;
+    deviceComplex* gridPlasmaCurrentFrequency2 = 0;
+    deviceComplex* chiLinear1 = 0;
+    deviceComplex* chiLinear2 = 0;
     double* inverseChiLinear1 = 0;
     double* inverseChiLinear2 = 0;
-    thrust::complex<double>* k1 = 0;
-    thrust::complex<double>* k2 = 0;
+    deviceComplex* k1 = 0;
+    deviceComplex* k2 = 0;
 
     double* gridRadialLaplacian1 = 0;
     double* gridRadialLaplacian2 = 0;
@@ -213,11 +222,11 @@ typedef struct cudaParameterSet {
     double rotationBackward[9] = { 0 };
     int nonlinearSwitches[4] = { 0 };
 
-    cufftHandle fftPlanZ2D = 0;
-    cufftHandle fftPlanD2Z = 0;
-    cufftHandle doublePolfftPlan = 0;
-    cufftHandle fftPlan1DD2Z = 0;
-    cufftHandle fftPlan1DZ2D = 0;
+    int fftPlanZ2D = 0;
+    int fftPlanD2Z = 0;
+    int doublePolfftPlan = 0;
+    int fftPlan1DD2Z = 0;
+    int fftPlan1DZ2D = 0;
 
     DFTI_DESCRIPTOR_HANDLE mklPlanZ2D = 0;
     DFTI_DESCRIPTOR_HANDLE mklPlanD2Z = 0;

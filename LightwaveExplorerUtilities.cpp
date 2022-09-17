@@ -441,7 +441,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 		}
 		fwprintf(textfile, L"\n");
 	}
-	fwprintf(textfile, L"Code version: 0.31 August 15, 2022\n");
+	fwprintf(textfile, L"Code version: 0.5 September 16, 2022\n");
 
 	fclose(textfile);
 	return 0;

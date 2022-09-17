@@ -8,6 +8,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
 #include<cstdio>
 #include<complex>
 #include<math.h>
