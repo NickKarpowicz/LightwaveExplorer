@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <mkl.h>
 #include <complex>
 #include "LightwaveExplorerUtilities.h"
 
@@ -246,6 +245,17 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	char outputpath[MAX_LOADSTRING] = { 0 };
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
 
+	fftw_plan fftwPlanD2Z;
+
+	if ((*sCPU).is3D) {
+		const int fftwSizes[] = { (int)(*sCPU).Nspace2, (int)(*sCPU).Nspace, (int)(*sCPU).Ntime };
+		fftwPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, (*sCPU).ExtOut, NULL, 1, (*sCPU).Ngrid, (fftw_complex*)(*sCPU).EkwOut, NULL, 1, (*sCPU).NgridC, FFTW_MEASURE);
+	}
+	else {
+		const int fftwSizes[] = { (int)(*sCPU).Nspace, (int)(*sCPU).Ntime };
+		fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, (*sCPU).ExtOut, NULL, 1, (*sCPU).Ngrid, (fftw_complex*)(*sCPU).EkwOut, NULL, 1, (*sCPU).NgridC, FFTW_MEASURE);
+	}
+
 	//read fields as binary
 	FILE* ExtOutFile;
 	strcpy(outputpath, outputBase);
@@ -265,19 +275,20 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	fclose(spectrumFile);
 
 	//FFT the loaded field to give the frequency domain
-	DFTI_DESCRIPTOR_HANDLE mklPlanD2Z = NULL;
-	if ((*sCPU).is3D) {
-		MKL_LONG mklSizes[] = { (MKL_LONG)(*sCPU).Nspace2, (MKL_LONG)(*sCPU).Nspace, (MKL_LONG)(*sCPU).Ntime };
-		MKL_LONG mklStrides[4] = { 0, (MKL_LONG)((*sCPU).Nspace * (*sCPU).Nfreq), (MKL_LONG)(*sCPU).Nfreq, 1 };
-		DftiCreateDescriptor(&mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
-		DftiSetValue(mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-		DftiSetValue(mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
-		DftiSetValue(mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
-		DftiSetValue(mklPlanD2Z, DFTI_INPUT_DISTANCE, (*sCPU).Ngrid);
-		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*sCPU).NgridC);
-		DftiCommitDescriptor(mklPlanD2Z);
-	}
+	//DFTI_DESCRIPTOR_HANDLE mklPlanD2Z = NULL;
+
+	//if ((*sCPU).is3D) {
+		//MKL_LONG mklSizes[] = { (MKL_LONG)(*sCPU).Nspace2, (MKL_LONG)(*sCPU).Nspace, (MKL_LONG)(*sCPU).Ntime };
+		//MKL_LONG mklStrides[4] = { 0, (MKL_LONG)((*sCPU).Nspace * (*sCPU).Nfreq), (MKL_LONG)(*sCPU).Nfreq, 1 };
+		//DftiCreateDescriptor(&mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
+		//DftiSetValue(mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
+		//DftiSetValue(mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
+		//DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
+		//DftiSetValue(mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
+		//DftiSetValue(mklPlanD2Z, DFTI_INPUT_DISTANCE, (*sCPU).Ngrid);
+		//DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*sCPU).NgridC);
+		//DftiCommitDescriptor(mklPlanD2Z);
+	/*}
 	else {
 		MKL_LONG mklSizes[] = { (MKL_LONG)(*sCPU).Nspace, (MKL_LONG)(*sCPU).Ntime };
 		MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*sCPU).Nfreq, 1, 1 };
@@ -289,12 +300,13 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 		DftiSetValue(mklPlanD2Z, DFTI_INPUT_DISTANCE, (*sCPU).Ngrid);
 		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*sCPU).NgridC);
 		DftiCommitDescriptor(mklPlanD2Z);
-	}
+	}*/
 	for (size_t i = 0; i < ((*sCPU).Nsims * (*sCPU).Nsims2); i++) {
-		DftiComputeForward(mklPlanD2Z, &(*sCPU).ExtOut[2*i*(*sCPU).Ngrid], &(*sCPU).EkwOut[2*i * (*sCPU).NgridC]);
+		//DftiComputeForward(mklPlanD2Z, &(*sCPU).ExtOut[2*i*(*sCPU).Ngrid], &(*sCPU).EkwOut[2*i * (*sCPU).NgridC]);
+		fftw_execute_dft_r2c(fftwPlanD2Z, &(*sCPU).ExtOut[2 * i * (*sCPU).Ngrid], (fftw_complex*) & (*sCPU).EkwOut[2 * i * (*sCPU).NgridC]);
 	}
 	
-	DftiFreeDescriptor(&mklPlanD2Z);
+	//DftiFreeDescriptor(&mklPlanD2Z);
 
 	return 0;
 }

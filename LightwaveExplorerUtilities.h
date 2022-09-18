@@ -10,6 +10,7 @@
 #define deviceLib std
 #endif
 #include "mkl.h"
+#include <fftw3.h>
 #include <complex>
 typedef struct crystalEntry {
     wchar_t crystalNameW[256] = { 0 };
@@ -215,7 +216,7 @@ typedef struct cudaParameterSet {
     //fixed length arrays
     double firstDerivativeOperation[6] = { 0 };
     double plasmaParameters[6] = { 0 }; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
-    double chi2Tensor[9] = { 0 };
+    double chi2Tensor[18] = { 0 };
     double* chi3Tensor = 0;
     double absorptionParameters[6] = { 0 };
     double rotationForward[9] = { 0 };
@@ -228,11 +229,19 @@ typedef struct cudaParameterSet {
     int fftPlan1DD2Z = 0;
     int fftPlan1DZ2D = 0;
 
-    DFTI_DESCRIPTOR_HANDLE mklPlanZ2D = 0;
-    DFTI_DESCRIPTOR_HANDLE mklPlanD2Z = 0;
-    DFTI_DESCRIPTOR_HANDLE mklPlanDoublePolfft = 0;
-    DFTI_DESCRIPTOR_HANDLE mklPlan1DD2Z = 0;
-    DFTI_DESCRIPTOR_HANDLE mklPlan1DZ2D = 0;
+    //DFTI_DESCRIPTOR_HANDLE mklPlanZ2D = 0;
+    //DFTI_DESCRIPTOR_HANDLE mklPlanD2Z = 0;
+    //DFTI_DESCRIPTOR_HANDLE mklPlanDoublePolfft = 0;
+    //DFTI_DESCRIPTOR_HANDLE mklPlan1DD2Z = 0;
+    //DFTI_DESCRIPTOR_HANDLE mklPlan1DZ2D = 0;
+
+    fftw_plan fftwPlanZ2D;
+    fftw_plan fftwPlanD2Z;
+    fftw_plan fftwPlanDoublePolfft;
+    fftw_plan fftwPlan1DD2Z;
+    fftw_plan fftwPlan1DZ2D;
+    fftw_complex* fftwWorkspaceC;
+    double* fftwWorkspaceD;
 
     bool isCylindric = 0;
     bool is3D = 0;

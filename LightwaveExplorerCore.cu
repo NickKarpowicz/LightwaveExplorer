@@ -11,6 +11,8 @@
 #include <math.h>
 #include <chrono>
 #include <thread>
+#include <omp.h>
+
 
 #define _CRT_SECTURE_NO_WARNINGS
 
@@ -41,9 +43,9 @@ typedef struct uint3 {
 	unsigned int y = 0u;
 	unsigned int z = 0u;
 } uint3;
-#define cudaMemcpyDeviceToHost 0
-#define cudaMemcpyHostToDevice 0
-#define cudaMemcpyDeviceToDevice 0
+#define cudaMemcpyDeviceToHost 2
+#define cudaMemcpyHostToDevice 1
+#define cudaMemcpyDeviceToDevice 3
 #define cudaMemcpyKind int
 #endif
 
@@ -486,33 +488,32 @@ using namespace deviceFunctions;
 #else
 using namespace ordinaryFunctions;
 #endif
+
 FGLOBAL void millersRuleNormalizationKernel(GKERN cudaParameterSet* s, double* sellmeierCoefficients, double* referenceFrequencies) {
 	if (!(*s).isUsingMillersRule) {
 		return;
 	}
 	size_t i;
 	double chi11[7];
-	double chi12[7];
+	//double chi12[7];
 	deviceComplex ne, no;
 	for (i = 0; i < 7; i++) {
 		if (referenceFrequencies[i] == 0) {
 			chi11[i] = 100000.0;
-			chi12[i] = 100000.0;
+			//chi12[i] = 100000.0;
 		}
 		else {
 			sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[69], 0);
 			chi11[i] =ne.real() *ne.real() - 1;
-			chi12[i] =no.real() *no.real() - 1;
+			//chi12[i] =no.real() *no.real() - 1;
 		}
 	}
 
 	//normalize chi2 tensor values
-	(*s).chi2Tensor[0] /= chi11[0] * chi11[1] * chi11[2];
-	(*s).chi2Tensor[1] /= chi11[0] * chi11[1] * chi12[2];
-	(*s).chi2Tensor[2] /= chi11[0] * chi12[1] * chi11[2];
-	(*s).chi2Tensor[3] /= chi11[0] * chi12[1] * chi12[2];
-	(*s).chi2Tensor[4] /= chi12[0] * chi12[1] * chi11[2];
-	(*s).chi2Tensor[5] /= chi12[0] * chi12[1] * chi12[2];
+	for (char i = 0; i < 18; i++) {
+		(*s).chi2Tensor[i] /= chi11[0] * chi11[1] * chi11[2];
+	}
+
 
 	//normalize chi3 tensor values
 	for (char i = 0; i < 81; i++) {
@@ -1176,22 +1177,39 @@ FGLOBAL void nonlinearPolarizationKernel(GKERN cudaParameterSet* s) {
 	double Ey2 = Ey * Ey;
 	(*s).gridPolarizationTime1[i] = 0.;
 	(*s).gridPolarizationTime2[i] = 0.;
+	//rotate field into crystal frame
+	double E3[3] = { (*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
+		(*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
+		(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey };
 
 	//The d2eff tensor has the form
 	// | d_xxx d_xyx d_yyx |
 	// | d_xxy d_xyy d_yyy |
+	//if ((*s).nonlinearSwitches[0] == 1) {
+	//	(*s).gridPolarizationTime1[i] += (*s).chi2Tensor[0] * Ex2 + (*s).chi2Tensor[2] * Ex * Ey + (*s).chi2Tensor[4] * Ey2;
+	//	(*s).gridPolarizationTime2[i] += (*s).chi2Tensor[1] * Ex2 + (*s).chi2Tensor[3] * Ex * Ey + (*s).chi2Tensor[5] * Ey2;
+	//}
+
 	if ((*s).nonlinearSwitches[0] == 1) {
-		(*s).gridPolarizationTime1[i] += (*s).chi2Tensor[0] * Ex2 + (*s).chi2Tensor[2] * Ex * Ey + (*s).chi2Tensor[4] * Ey2;
-		(*s).gridPolarizationTime2[i] += (*s).chi2Tensor[1] * Ex2 + (*s).chi2Tensor[3] * Ex * Ey + (*s).chi2Tensor[5] * Ey2;
+		double P2[3] = { 0.0 };
+		for (unsigned char a = 0; a < 3; a++) {
+			P2[a] += 1.0e-12*(*s).chi2Tensor[0+a] * E3[0] * E3[0];
+			P2[a] += 1.0e-12*(*s).chi2Tensor[3+a] * E3[1] * E3[1];
+			P2[a] += 1.0e-12*(*s).chi2Tensor[6+a] * E3[2] * E3[2];
+			P2[a] += 2.0e-12*(*s).chi2Tensor[9+a] * E3[1] * E3[2];
+			P2[a] += 2.0e-12*(*s).chi2Tensor[12+a] * E3[0] * E3[2];
+			P2[a] += 2.0e-12*(*s).chi2Tensor[15+a] * E3[0] * E3[1];
+		}
+		(*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P2[0] + (*s).rotationBackward[1] * P2[1] + (*s).rotationBackward[2] * P2[2];
+		(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P2[0] + (*s).rotationBackward[4] * P2[1] + (*s).rotationBackward[5] * P2[2];
 	}
+
+
 
 	//resolve the full chi3 matrix when (*s).nonlinearSwitches[1]==1
 	if ((*s).nonlinearSwitches[1] == 1) {
 
-		//rotate field into crystal frame
-		double E3[3] = { (*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
-			(*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
-			(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey };
+
 
 		//loop over tensor element X_abcd
 		//i hope the compiler unrolls this, but no way am I writing that out by hand
@@ -1713,19 +1731,24 @@ namespace {
 			break;
 #endif
 		case 5:
-			DftiComputeForward((*s).mklPlanD2Z, input, output);
+			//DftiComputeForward((*s).mklPlanD2Z, input, output);
+			fftw_execute_dft_r2c((*s).fftwPlanD2Z, (double*)input, (fftw_complex*)output);
 			break;
 		case 6:
-			DftiComputeBackward((*s).mklPlanZ2D, input, output);
+			//DftiComputeBackward((*s).mklPlanZ2D, input, output);
+			fftw_execute_dft_c2r((*s).fftwPlanZ2D, (fftw_complex*)input, (double*)output);
 			break;
 		case 7:
-			DftiComputeForward((*s).mklPlan1DD2Z, input, output);
+			//DftiComputeForward((*s).mklPlan1DD2Z, input, output);
+			fftw_execute_dft_r2c((*s).fftwPlan1DD2Z, (double *)input, (fftw_complex*)output);
 			break;
 		case 8:
-			DftiComputeBackward((*s).mklPlan1DZ2D, input, output);
+			//DftiComputeBackward((*s).mklPlan1DZ2D, input, output);
+			fftw_execute_dft_c2r((*s).fftwPlan1DZ2D, (fftw_complex*)input, (double*)output);
 			break;
 		case 9:
-			DftiComputeForward((*s).mklPlanDoublePolfft, input, output);
+			//DftiComputeForward((*s).mklPlanDoublePolfft, input, output);
+			fftw_execute_dft_r2c((*s).fftwPlanDoublePolfft, (double*)input, (fftw_complex*)output);
 			break;
 		}
 
@@ -2142,12 +2165,10 @@ namespace {
 	int rotateField(simulationParameterSet* s, double rotationAngle) {
 		cudaParameterSet sc;
 		initializeCudaParameterSet(s, &sc);
-		deviceComplex* Ein1, * Eout1, * Ein2, * Eout2;
-		Ein1 = sc.gridEFrequency1;
-		Ein2 = sc.gridEFrequency2;
-		Eout1 = sc.gridEFrequency1Next1;
-		Eout2 = sc.gridEFrequency1Next2;
-
+		deviceComplex* Ein1 = sc.gridEFrequency1;
+		deviceComplex* Ein2 = sc.gridEFrequency2;
+		deviceComplex* Eout1 = sc.gridEFrequency1Next1;
+		deviceComplex* Eout2 = sc.gridEFrequency1Next2;
 		//retrieve/rotate the field from the CPU memory
 		bilingualMemcpy(Ein1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(deviceComplex), cudaMemcpyHostToDevice);
 		bilingualLaunch((unsigned int)(sc.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, sc.CUDAStream, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, rotationAngle);
@@ -2212,13 +2233,13 @@ namespace {
 		(*s).forceLinear = (*sCPU).forceLinear;
 		(*s).isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;
 		(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
-		
 
 
 		//prepare FFT plans
 		//explicitly make different plans for GPU or CPU (most other parts of the code can be universal,
 		//but not this, since the libraries are different).
 #ifdef __CUDACC__
+			cudaStreamCreate(&(*s).CUDAStream);
 			size_t workSize;
 			cufftPlan1d(&(*s).fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
 			cufftPlan1d(&(*s).fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
@@ -2256,7 +2277,7 @@ namespace {
 			cufftSetStream((*s).fftPlanD2Z, (*s).CUDAStream);
 			cufftSetStream((*s).fftPlanZ2D, (*s).CUDAStream);
 #else
-			DftiCreateDescriptor(&(*s).mklPlan1DD2Z, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
+			/*DftiCreateDescriptor(&(*s).mklPlan1DD2Z, DFTI_DOUBLE, DFTI_REAL, 1, (*s).Ntime);
 			DftiSetValue((*s).mklPlan1DD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
 			DftiSetValue((*s).mklPlan1DD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
 			DftiSetValue((*s).mklPlan1DD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2 * (*s).Nspace * (*s).Nspace2);
@@ -2327,7 +2348,32 @@ namespace {
 					DftiCommitDescriptor((*s).mklPlanDoublePolfft);
 				}
 
+			}*/
+
+			(*s).fftwWorkspaceD = (double*)calloc((*s).Ngrid * (2 + 2 * (*s).isCylindric), sizeof(double));
+			(*s).fftwWorkspaceC = (fftw_complex*)calloc((*s).NgridC * (2 + 2 * (*s).isCylindric), sizeof(fftw_complex));
+			fftw_plan_with_nthreads(omp_get_max_threads());
+			
+			const int fftw1[1] = { (int)(*s).Ntime };
+			(*s).fftwPlan1DD2Z = fftw_plan_many_dft_r2c(1, fftw1, (*s).Nspace * (*s).Nspace2 * 2, (*s).fftwWorkspaceD, fftw1, 1, (*s).Ntime, (*s).fftwWorkspaceC, fftw1, 1, (*s).Nfreq, FFTW_ESTIMATE);
+			(*s).fftwPlan1DZ2D = fftw_plan_many_dft_c2r(1, fftw1, (*s).Nspace * (*s).Nspace2 * 2, (*s).fftwWorkspaceC, fftw1, 1, (*s).Nfreq, (*s).fftwWorkspaceD, fftw1, 1, (*s).Ntime, FFTW_ESTIMATE);
+			if ((*s).is3D) {
+				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
+				(*s).fftwPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, (*s).fftwWorkspaceD, NULL, 1, (*s).Ngrid, (*s).fftwWorkspaceC, NULL, 1, (*s).NgridC, FFTW_MEASURE);
+				(*s).fftwPlanZ2D = fftw_plan_many_dft_c2r(3, fftwSizes, 2, (*s).fftwWorkspaceC, NULL, 1, (*s).NgridC, (*s).fftwWorkspaceD, NULL, 1, (*s).Ngrid, FFTW_MEASURE);
 			}
+			else {
+				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
+				(*s).fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, (*s).fftwWorkspaceD, NULL, 1, (*s).Ngrid, (*s).fftwWorkspaceC, NULL, 1, (*s).NgridC, FFTW_MEASURE);
+				(*s).fftwPlanZ2D = fftw_plan_many_dft_c2r(2, fftwSizes, 2, (*s).fftwWorkspaceC, NULL, 1, (*s).NgridC, (*s).fftwWorkspaceD, NULL, 1, (*s).Ngrid, FFTW_MEASURE);
+
+				if ((*s).isCylindric) {
+					const int fftwSizesCyl[] = { (int)(2*(*s).Nspace), (int)(*s).Ntime };
+					(*s).fftwPlanDoublePolfft = fftw_plan_many_dft_r2c(2, fftwSizesCyl, 2, (*s).fftwWorkspaceD, NULL, 1, 2*(*s).Ngrid, (*s).fftwWorkspaceC, NULL, 1, 2*(*s).NgridC, FFTW_MEASURE);
+				}
+			}
+			free((*s).fftwWorkspaceC);
+			free((*s).fftwWorkspaceD);
 #endif
 
 		//check if the GPU has enough free memory left for the grids, if not, free the fft plans and quit
@@ -2361,9 +2407,8 @@ namespace {
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
 		}
-#ifdef __CUDACC__
-		cudaStreamCreate(&(*s).CUDAStream);
-#endif
+		
+
 		fillRotationMatricies(sCPU, s);
 
 		//GPU allocations
@@ -2400,7 +2445,7 @@ namespace {
 		free(expGammaTCPU);
 
 		memErrors += bilingualCalloc((void**)&(*s).chi3Tensor, 81, sizeof(double));
-
+		//memErrors += bilingualCalloc((void**)&(*s).chi2Tensor, 18, sizeof(double));
 		(*sCPU).memoryError = memErrors;
 		if (memErrors > 0) {
 			return memErrors;
@@ -2456,8 +2501,8 @@ namespace {
 			plasmaParametersCPU[2] = 0;
 		}
 
-		calcEffectiveChi2Tensor((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
-		memcpy((*s).chi2Tensor, (*sCPU).deffTensor, 9 * sizeof(double));
+		//calcEffectiveChi2Tensor((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
+		memcpy((*s).chi2Tensor, (*sCPU).chi2Tensor, 18 * sizeof(double));
 		memcpy((*s).nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int));
 
 		bilingualMemcpy((*s).chi3Tensor, (*sCPU).chi3Tensor, 81 * sizeof(double), cudaMemcpyHostToDevice);
@@ -2482,6 +2527,7 @@ namespace {
 		bilingualFree((*s).gridEFrequency1Next1);
 		bilingualFree((*s).k1);
 		bilingualFree((*s).gridPolarizationTime1);
+		//bilingualFree((*s).chi2Tensor);
 		bilingualFree((*s).chi3Tensor);
 		bilingualFree((*s).expGammaT);
 		bilingualFree((*s).chiLinear1);
@@ -2496,10 +2542,20 @@ namespace {
 		}
 		cudaStreamDestroy((*s).CUDAStream);
 #else
-		DftiFreeDescriptor(&(*s).mklPlan1DD2Z);
-		DftiFreeDescriptor(&(*s).mklPlanD2Z);
-		DftiFreeDescriptor(&(*s).mklPlanZ2D);
-		if ((*s).isCylindric)DftiFreeDescriptor(&(*s).mklPlanDoublePolfft);
+		//DftiFreeDescriptor(&(*s).mklPlan1DD2Z);
+		//DftiFreeDescriptor(&(*s).mklPlan1DZ2D);
+		//DftiFreeDescriptor(&(*s).mklPlanD2Z);
+		//DftiFreeDescriptor(&(*s).mklPlanZ2D);
+		//if ((*s).isCylindric)DftiFreeDescriptor(&(*s).mklPlanDoublePolfft);
+		fftw_destroy_plan((*s).fftwPlan1DD2Z);
+		fftw_destroy_plan((*s).fftwPlan1DZ2D);
+		fftw_destroy_plan((*s).fftwPlanD2Z);
+		fftw_destroy_plan((*s).fftwPlanZ2D);
+		if ((*s).isCylindric)fftw_destroy_plan((*s).fftwPlanDoublePolfft);
+		fftw_cleanup_threads();
+		fftw_cleanup();
+	
+
 #endif
 		return 0;
 	}
