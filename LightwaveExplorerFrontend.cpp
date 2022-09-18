@@ -10,11 +10,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "LightwaveExplorerUtilities.h"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include<cstdio>
-#include<complex>
-#include<math.h>
 #include<Commdlg.h>
-#include<stdlib.h>
 #include<chrono>
 #include<Windows.h>
 #include<Uxtheme.h>

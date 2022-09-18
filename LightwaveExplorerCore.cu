@@ -1,19 +1,15 @@
 #ifdef __CUDACC__
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include <thrust/complex.h>
 #include <nvml.h>
-#include <cufft.h>
 #endif
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
-#include <complex>
 #include <cstdlib>
 #include <stdlib.h>
 #include <math.h>
 #include <chrono>
-#include <mkl.h>
 #include <thread>
 
 #define _CRT_SECTURE_NO_WARNINGS
@@ -2901,13 +2897,18 @@ unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
 		runRK4Step(&s, sDevice, 1);
 		runRK4Step(&s, sDevice, 2);
 		runRK4Step(&s, sDevice, 3);
+
+
+		//periodically check if the simulation diverged
+		if (i % 8 == 0) {
 #ifdef __CUDACC__
-		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), cudaMemcpyDeviceToHost);
+			cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), cudaMemcpyDeviceToHost);
 #else
-		canaryPixel = *canaryPointer;
+			canaryPixel = *canaryPointer;
 #endif
-		if (isnan(canaryPixel)) {
-			break;
+			if (isnan(canaryPixel)) {
+				break;
+			}
 		}
 
 		if ((*sCPU).imdone[0] == 2) {
