@@ -200,6 +200,8 @@ typedef struct cudaParameterSet {
     deviceComplex* chiLinear2 = 0;
     double* inverseChiLinear1 = 0;
     double* inverseChiLinear2 = 0;
+    double* fieldFactor1 = 0;
+    double* fieldFactor2 = 0;
     deviceComplex* k1 = 0;
     deviceComplex* k2 = 0;
 

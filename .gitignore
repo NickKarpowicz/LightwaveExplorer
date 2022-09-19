@@ -373,3 +373,4 @@ FodyWeavers.xsd
 .gitignore
 .vscode/tasks.json
 .vscode/c_cpp_properties.json
+/lib

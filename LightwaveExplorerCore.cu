@@ -30,6 +30,7 @@
 #define SIXTH 0.1666666666666667
 #define THIRD 0.3333333333333333
 #define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
+#define CHI2CONVENTION 0.5
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 #endif
@@ -1038,6 +1039,12 @@ FGLOBAL void getChiLinearKernel(GKERN cudaParameterSet* s, double* sellmeierCoef
 	}
 	(*s).inverseChiLinear1[i] = 1.0 / (*s).chiLinear1[i].real();
 	(*s).inverseChiLinear2[i] = 1.0 / (*s).chiLinear2[i].real();
+	(*s).fieldFactor1[i] = 1.0 / pow((*s).chiLinear1[i].real() + 1.0, 0.25); //account for the effective field strength in the medium (1/n)
+	(*s).fieldFactor2[i] = 1.0 / pow((*s).chiLinear2[i].real() + 1.0, 0.25);
+	if ((*s).isUsingMillersRule) {
+		(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
+		(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
+	}
 }
 //prepare the propagation constants under the assumption of cylindrical symmetry of the beam
 FGLOBAL void prepareCylindricGridsKernel(GKERN double* sellmeierCoefficients, cudaParameterSet* s) {
@@ -1193,12 +1200,12 @@ FGLOBAL void nonlinearPolarizationKernel(GKERN cudaParameterSet* s) {
 	if ((*s).nonlinearSwitches[0] == 1) {
 		double P2[3] = { 0.0 };
 		for (unsigned char a = 0; a < 3; a++) {
-			P2[a] += 1.0e-12*(*s).chi2Tensor[0+a] * E3[0] * E3[0];
-			P2[a] += 1.0e-12*(*s).chi2Tensor[3+a] * E3[1] * E3[1];
-			P2[a] += 1.0e-12*(*s).chi2Tensor[6+a] * E3[2] * E3[2];
-			P2[a] += 2.0e-12*(*s).chi2Tensor[9+a] * E3[1] * E3[2];
-			P2[a] += 2.0e-12*(*s).chi2Tensor[12+a] * E3[0] * E3[2];
-			P2[a] += 2.0e-12*(*s).chi2Tensor[15+a] * E3[0] * E3[1];
+			P2[a] += (*s).chi2Tensor[0+a] * E3[0] * E3[0];
+			P2[a] += (*s).chi2Tensor[3+a] * E3[1] * E3[1];
+			P2[a] += (*s).chi2Tensor[6+a] * E3[2] * E3[2];
+			P2[a] += (*s).chi2Tensor[9+a] * E3[1] * E3[2];
+			P2[a] += (*s).chi2Tensor[12+a] * E3[0] * E3[2];
+			P2[a] += (*s).chi2Tensor[15+a] * E3[0] * E3[1];
 		}
 		(*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P2[0] + (*s).rotationBackward[1] * P2[1] + (*s).rotationBackward[2] * P2[2];
 		(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P2[0] + (*s).rotationBackward[4] * P2[1] + (*s).rotationBackward[5] * P2[2];
@@ -1352,14 +1359,11 @@ FGLOBAL void rkKernel(GKERN cudaParameterSet* sP, uint8_t stepNumber) {
 		estimate2 = (*sP).gridEFrequency2[iC] + 0.5 * (*sP).k2[iC];
 		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
 		(*sP).gridEFrequency1Next2[iC] = SIXTH * (*sP).k2[iC] + (*sP).gridEFrequency2[iC];
-		if ((*sP).isUsingMillersRule) {
-			(*sP).workspace1[iC] = (*sP).chiLinear1[h] * estimate1;
-			(*sP).workspace2[iC] = (*sP).chiLinear2[h] * estimate2;
-		}
-		else {
-			(*sP).workspace1[iC] = estimate1;
-			(*sP).workspace2[iC] = estimate2;
-		}
+
+		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).workspace2[iC] = (*sP).fieldFactor2[h] * estimate2;
+		
+
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
 		(*sP).k2[iC] = (*sP).gridPropagationFactor2[iC] * estimate2;
 		break;
@@ -1368,14 +1372,10 @@ FGLOBAL void rkKernel(GKERN cudaParameterSet* sP, uint8_t stepNumber) {
 		estimate2 = (*sP).gridEFrequency2[iC] + 0.5 * (*sP).k2[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next2[iC] = (*sP).gridEFrequency1Next2[iC] + THIRD * (*sP).k2[iC];
-		if ((*sP).isUsingMillersRule) {
-			(*sP).workspace1[iC] = (*sP).chiLinear1[h] * estimate1;
-			(*sP).workspace2[iC] = (*sP).chiLinear2[h] * estimate2;
-		}
-		else {
-			(*sP).workspace1[iC] = estimate1;
-			(*sP).workspace2[iC] = estimate2;
-		}
+
+		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).workspace2[iC] = (*sP).fieldFactor2[h] * estimate2;
+		
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
 		(*sP).k2[iC] = (*sP).gridPropagationFactor2[iC] * estimate2;
 		break;
@@ -1384,28 +1384,20 @@ FGLOBAL void rkKernel(GKERN cudaParameterSet* sP, uint8_t stepNumber) {
 		estimate2 = (*sP).gridEFrequency2[iC] + (*sP).k2[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next2[iC] = (*sP).gridEFrequency1Next2[iC] + THIRD * (*sP).k2[iC];
-		if ((*sP).isUsingMillersRule) {
-			(*sP).workspace1[iC] = (*sP).chiLinear1[h] * estimate1;
-			(*sP).workspace2[iC] = (*sP).chiLinear2[h] * estimate2;
-		}
-		else {
-			(*sP).workspace1[iC] = estimate1;
-			(*sP).workspace2[iC] = estimate2;
-		}
+
+		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).workspace2[iC] = (*sP).fieldFactor2[h] * estimate2;
+		
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
 		(*sP).k2[iC] = (*sP).gridPropagationFactor2[iC] * estimate2;
 		break;
 	case 3:
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
 		(*sP).gridEFrequency2[iC] = (*sP).gridEFrequency1Next2[iC] + SIXTH * (*sP).k2[iC];
-		if ((*sP).isUsingMillersRule) {
-			(*sP).workspace1[iC] = (*sP).chiLinear1[h] * (*sP).gridEFrequency1[iC];
-			(*sP).workspace2[iC] = (*sP).chiLinear2[h] * (*sP).gridEFrequency2[iC];
-		}
-		else {
-			(*sP).workspace1[iC] = (*sP).gridEFrequency1[iC];
-			(*sP).workspace2[iC] = (*sP).gridEFrequency2[iC];
-		}
+
+		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
+		(*sP).workspace2[iC] = (*sP).fieldFactor2[h] * (*sP).gridEFrequency2[iC];
+
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
 		(*sP).k2[iC] = (*sP).gridPropagationFactor2[iC] * (*sP).gridEFrequency2[iC];
 		break;
@@ -2436,6 +2428,7 @@ namespace {
 		memErrors += bilingualCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
 
 		memErrors += bilingualCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
+		memErrors += bilingualCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(double));
 		memErrors += bilingualCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
 		for (i = 0; i < (*s).Ntime; i++) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
@@ -2459,6 +2452,7 @@ namespace {
 		(*s).workspace2P = (*s).workspace1 + beamExpansionFactor * (*s).NgridC;
 		(*s).k2 = (*s).k1 + (*s).NgridC;
 		(*s).chiLinear2 = (*s).chiLinear1 + (*s).Nfreq;
+		(*s).fieldFactor2 = (*s).fieldFactor1 + (*s).Nfreq;
 		(*s).inverseChiLinear2 = (*s).inverseChiLinear1 + (*s).Nfreq;
 		(*s).gridRadialLaplacian2 = (*s).gridRadialLaplacian1 + (*s).Ngrid;
 		(*s).gridPropagationFactor1Rho2 = (*s).gridPropagationFactor1Rho1 + (*s).NgridC;
@@ -2501,8 +2495,13 @@ namespace {
 			plasmaParametersCPU[2] = 0;
 		}
 
-		//calcEffectiveChi2Tensor((*sCPU).deffTensor, (*sCPU).chi2Tensor, (*sCPU).crystalTheta, (*sCPU).crystalPhi);
+
 		memcpy((*s).chi2Tensor, (*sCPU).chi2Tensor, 18 * sizeof(double));
+		for (int j = 0; j < 18; j++) {
+			(*s).chi2Tensor[j] *= 2e-12; //go from d in pm/V to chi2 in m/V
+			if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
+			(*s).chi2Tensor[j] *= CHI2CONVENTION; //apply an anti-correction for the weird conventions people use for the tensor values
+		}
 		memcpy((*s).nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int));
 
 		bilingualMemcpy((*s).chi3Tensor, (*sCPU).chi3Tensor, 81 * sizeof(double), cudaMemcpyHostToDevice);
@@ -2531,6 +2530,7 @@ namespace {
 		bilingualFree((*s).chi3Tensor);
 		bilingualFree((*s).expGammaT);
 		bilingualFree((*s).chiLinear1);
+		bilingualFree((*s).fieldFactor1);
 		bilingualFree((*s).inverseChiLinear1);
 #ifdef __CUDACC__
 		cufftDestroy((*s).fftPlanD2Z);
