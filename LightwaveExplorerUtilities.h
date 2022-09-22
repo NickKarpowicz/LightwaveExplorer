@@ -9,7 +9,9 @@
 #define deviceComplex std::complex<double>
 #define deviceLib std
 #endif
-#include "mkl.h"
+//#include "mkl_rci.h"
+//#include "mkl_types.h"
+//#include "mkl_service.h"
 #include <fftw3.h>
 #include <complex>
 typedef struct crystalEntry {
@@ -159,7 +161,7 @@ typedef struct simulationParameterSet {
     bool isInFittingMode;
     char fittingString[1024] = { 0 };
     char fittingPath[1024] = { 0 };
-    double fittingArray[1024] = { 0 };
+    int fittingArray[1024] = { 0 };
     double fittingPrecision = 0;
     double* fittingReference = 0;
     int Nfitting = 0;
@@ -168,6 +170,8 @@ typedef struct simulationParameterSet {
     size_t fittingROIstart = 0;
     size_t fittingROIstop = 0;
     size_t fittingROIsize = 0;
+    double fittingResult[64];
+    double fittingError[64];
 
 } simulationParameterSet;
 
@@ -283,7 +287,7 @@ int             readFittingString(simulationParameterSet* sCPU);
 int             saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr);
 void            unixNewLine(FILE* iostream);
 int             saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount);
-int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
+//int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);

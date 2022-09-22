@@ -41,17 +41,16 @@ int readFittingString(simulationParameterSet* sCPU) {
 	(*sCPU).fittingROIsize = min(max(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
 	int fittingCount = 0;
 	tokToken = strtok(NULL, ";");
-	int lastread = 3;
-	while (tokToken != NULL && lastread == 3) {
-		lastread = sscanf(tokToken, "%lf %lf %lf",
-			&(*sCPU).fittingArray[fittingCount], &(*sCPU).fittingArray[fittingCount + 1],
-			&(*sCPU).fittingArray[fittingCount + 2]);
-		if (lastread > 0) {
-			fittingCount += lastread;
-		}
-		tokToken = strtok(NULL, ";");
+	int lastread = 1;
+	int offset = 0;
+	int currentValue = 0;
+	char* strArray = tokToken;
+	while (sscanf(strArray,"%i%n",&currentValue,&offset)==1) {
+		(*sCPU).fittingArray[fittingCount] = currentValue;
+		strArray += offset;
+		fittingCount++;
 	}
-	(*sCPU).Nfitting = fittingCount / 3;
+	(*sCPU).Nfitting = fittingCount;
 	(*sCPU).isInFittingMode = (((*sCPU).Nfitting) > 0 && paramsRead);
 
 	if (!(*sCPU).isInFittingMode) {
@@ -1063,50 +1062,50 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 }
 
 
-int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi) {
-	double delta = 0.; //this angle is used for biaxial crystals, but I'm ignorning it for the moment
-	int i, j, k;
-	//Rotation matrix between the angles of the electric field and the crystal axes
-	double R[] = { cos(theta) * cos(phi) * cos(delta) - sin(phi) * sin(delta), cos(theta) * sin(phi) * cos(delta) + cos(phi) * sin(delta),
-		-sin(theta) * cos(delta), -cos(theta) * cos(phi) * sin(delta) - sin(phi) * cos(delta),
-		-cos(theta) * sin(phi) * sin(delta) + cos(phi) * cos(delta), sin(theta) * sin(delta) };
-
-	//Matrix to translate the mixed field matrix in the reduced notation into the crystalline frame
-	double Ore[] = { R[0] * R[0], R[1] * R[1], R[2] * R[2], 2 * R[1] * R[2], 2 * R[0] * R[2], 2 * R[0] * R[1],
-		2 * R[0] * R[3], 2 * R[1] * R[4], 2 * R[2] * R[5], 2 * (R[4] * R[2] + R[1] * R[5]), 2 * (R[3] * R[2] + R[0] * R[5]), 2 * (R[3] * R[1] + R[0] * R[4]),
-		R[3] * R[3], R[4] * R[4], R[5] * R[5], 2 * R[4] * R[5], 2 * R[3] * R[5], 2 * R[3] * R[4]
-	};
-
-	//The deff tensor is given by the equation R deff = d Ore, solve for deff, find d Ore first
-	double dOre[9] = { 0 };
-	for (i = 0; i < 3; i++) {
-		for (j = 0; j < 3; j++) {
-			for (k = 0; k < 6; k++) {
-				dOre[i + 3 * j] += dtensor[i + 3 * k] * Ore[k + 6 * j];
-			}
-		}
-	}
-
-	//Least squares solution to get the deff tensor
-	double* work = (double*)malloc(128 * sizeof(double));
-	int dgelsInfo;
-	int dgelsParams[6] = { 3,2,3,3,3,64 };
-	dgels("N", &dgelsParams[0], &dgelsParams[1], &dgelsParams[2], R, &dgelsParams[3], dOre, &dgelsParams[4], work, &dgelsParams[5], &dgelsInfo);
-	defftensor[0] = dOre[0];
-	defftensor[1] = dOre[1];
-	defftensor[2] = dOre[3];
-	defftensor[3] = dOre[4];
-	defftensor[4] = dOre[6];
-	defftensor[5] = dOre[7];
-	free(work);
-
-	//correct cross-terms
-	for (i = 2; i < 4; i++) {
-		defftensor[i] *= 0.5;
-	}
-
-	for (i = 0; i < 6; i++) {
-		defftensor[i] *= 2e-12; //change from pm/V to m/V and multiply by 2 for chi(2) instead of d
-	}
-	return dgelsInfo;
-}
+//int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi) {
+//	double delta = 0.; //this angle is used for biaxial crystals, but I'm ignorning it for the moment
+//	int i, j, k;
+//	//Rotation matrix between the angles of the electric field and the crystal axes
+//	double R[] = { cos(theta) * cos(phi) * cos(delta) - sin(phi) * sin(delta), cos(theta) * sin(phi) * cos(delta) + cos(phi) * sin(delta),
+//		-sin(theta) * cos(delta), -cos(theta) * cos(phi) * sin(delta) - sin(phi) * cos(delta),
+//		-cos(theta) * sin(phi) * sin(delta) + cos(phi) * cos(delta), sin(theta) * sin(delta) };
+//
+//	//Matrix to translate the mixed field matrix in the reduced notation into the crystalline frame
+//	double Ore[] = { R[0] * R[0], R[1] * R[1], R[2] * R[2], 2 * R[1] * R[2], 2 * R[0] * R[2], 2 * R[0] * R[1],
+//		2 * R[0] * R[3], 2 * R[1] * R[4], 2 * R[2] * R[5], 2 * (R[4] * R[2] + R[1] * R[5]), 2 * (R[3] * R[2] + R[0] * R[5]), 2 * (R[3] * R[1] + R[0] * R[4]),
+//		R[3] * R[3], R[4] * R[4], R[5] * R[5], 2 * R[4] * R[5], 2 * R[3] * R[5], 2 * R[3] * R[4]
+//	};
+//
+//	//The deff tensor is given by the equation R deff = d Ore, solve for deff, find d Ore first
+//	double dOre[9] = { 0 };
+//	for (i = 0; i < 3; i++) {
+//		for (j = 0; j < 3; j++) {
+//			for (k = 0; k < 6; k++) {
+//				dOre[i + 3 * j] += dtensor[i + 3 * k] * Ore[k + 6 * j];
+//			}
+//		}
+//	}
+//
+//	//Least squares solution to get the deff tensor
+//	double* work = (double*)malloc(128 * sizeof(double));
+//	int dgelsInfo;
+//	int dgelsParams[6] = { 3,2,3,3,3,64 };
+//	dgels("N", &dgelsParams[0], &dgelsParams[1], &dgelsParams[2], R, &dgelsParams[3], dOre, &dgelsParams[4], work, &dgelsParams[5], &dgelsInfo);
+//	defftensor[0] = dOre[0];
+//	defftensor[1] = dOre[1];
+//	defftensor[2] = dOre[3];
+//	defftensor[3] = dOre[4];
+//	defftensor[4] = dOre[6];
+//	defftensor[5] = dOre[7];
+//	free(work);
+//
+//	//correct cross-terms
+//	for (i = 2; i < 4; i++) {
+//		defftensor[i] *= 0.5;
+//	}
+//
+//	for (i = 0; i < 6; i++) {
+//		defftensor[i] *= 2e-12; //change from pm/V to m/V and multiply by 2 for chi(2) instead of d
+//	}
+//	return dgelsInfo;
+//}

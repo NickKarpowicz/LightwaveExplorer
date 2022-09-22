@@ -643,7 +643,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     maingui.tbFitting = CreateWindow(WC_EDIT, TEXT(""),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN,
-        xOffsetRow1 + textboxwidth + 4, 22 * vs - 2+9, xOffsetRow2 - xOffsetRow1, 66-vs, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 4, 22 * vs + 2, xOffsetRow2 - xOffsetRow1, 71-vs, maingui.mainWindow, NULL, hInstance, NULL);
 
     maingui.buttonFile = CreateWindow(WC_BUTTON, TEXT("Set Path"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
@@ -768,8 +768,8 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         xOffsetRow1, 22 * vs+1, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR pdFittingNames[4][64] = {
         TEXT("Maximize"),
-        TEXT("Maximize s"),
-        TEXT("Maximize p"),
+        TEXT("Maximize x"),
+        TEXT("Maximize y"),
         TEXT("Match spectrum")
     };
     memset(&A, 0, sizeof(A));
@@ -1486,7 +1486,7 @@ int setWindowTextToDouble(HWND win, double in) {
     }
     int digits = getNumberOfDecimalsToDisplay(in, FALSE);
     if (digits == 0) {
-        swprintf_s(textBuffer, 128, L"%i", (int)in);
+        swprintf_s(textBuffer, 128, L"%i", (int)round(in));
     }
     else if (digits == 1) {
         swprintf_s(textBuffer, 128, L"%2.1lf", in);
@@ -1570,8 +1570,8 @@ int setInterfaceValuesToActiveValues() {
     SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse2FileType, 0);
     setWindowTextToInt(maingui.tbMaterialIndex, (*activeSetPtr).materialIndex);
     setWindowTextToInt(maingui.tbMaterialIndexAlternate, (*activeSetPtr).materialIndexAlternate);
-    setWindowTextToDouble(maingui.tbCrystalTheta, RAD2DEG * (*activeSetPtr).crystalTheta);
-    setWindowTextToDouble(maingui.tbCrystalPhi, RAD2DEG * (*activeSetPtr).crystalPhi);
+    setWindowTextToDouble(maingui.tbCrystalTheta, RAD2DEG * asin(sin((*activeSetPtr).crystalTheta)));
+    setWindowTextToDouble(maingui.tbCrystalPhi, RAD2DEG * asin(sin((*activeSetPtr).crystalPhi)));
     setWindowTextToDoubleExp(maingui.tbNonlinearAbsortion, (*activeSetPtr).nonlinearAbsorptionStrength);
     setWindowTextToDouble(maingui.tbBandGap, (*activeSetPtr).bandGapElectronVolts);
     setWindowTextToDouble(maingui.tbDrudeGamma, 1e-12 * (*activeSetPtr).drudeGamma);
@@ -2359,8 +2359,6 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
         pRenderTarget->Release();
 
     }
-
-    
     return 0;
 }
 
@@ -2395,9 +2393,8 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
 
     }
 
-    printToConsole(maingui.textboxSims, L"Nfit: %i %i\r\nROI: %lli %lli %lli\r\n", 
-        (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode,
-        (*activeSetPtr).fittingROIstart, (*activeSetPtr).fittingROIstop, (*activeSetPtr).fittingROIsize);
+    printToConsole(maingui.textboxSims, L"Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
+        (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
 
     //run the simulations
     if (hasGPU) {
@@ -2412,7 +2409,11 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     printToConsole(maingui.textboxSims, _T("Finished fitting after %8.4lf s. \r\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
-
+    setInterfaceValuesToActiveValues();
+    printToConsole(maingui.textboxSims, L"Fitting result:\r\n (index, value, error)\r\n");
+    for (int i = 0; i < (*activeSetPtr).Nfitting; i++) {
+        printToConsole(maingui.textboxSims, L"%i,  %lf, %lf\r\n", i, (*activeSetPtr).fittingResult[i], (*activeSetPtr).fittingError[i]);
+    }
     free((*activeSetPtr).imdone);
     free((*activeSetPtr).deffTensor);
     free((*activeSetPtr).loadedField1);

@@ -12,7 +12,10 @@
 #include <chrono>
 #include <thread>
 #include <omp.h>
-
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_blas.h>
+#include <gsl/gsl_multifit_nlinear.h>
 
 #define _CRT_SECTURE_NO_WARNINGS
 
@@ -918,8 +921,8 @@ FGLOBAL void prepareCartesianGridsKernel(GKERN double* sellmeierCoefficients, cu
 			(*s).gridPropagationFactor2[i] = cuZero;
 		}
 
-		(*s).gridPolarizationFactor1[i] = ii * chi11 * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = ii * chi12 * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
 	}
 
 	else {
@@ -995,8 +998,8 @@ FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParam
 			(*s).gridPropagationFactor2[i] = cuZero;
 		}
 
-		(*s).gridPolarizationFactor1[i] = ii * chi11 * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = ii * chi12 * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
 	}
 
 	else {
@@ -1105,8 +1108,8 @@ FGLOBAL void prepareCylindricGridsKernel(GKERN double* sellmeierCoefficients, cu
 			(*s).gridPropagationFactor1Rho2[i] = cuZero;
 		}
 		//factor of 0.5 comes from doubled grid size in cylindrical symmetry mode after expanding the beam
-		(*s).gridPolarizationFactor1[i] = 0.5 * chi11 * ii * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = 0.5 * chi12 * ii * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor1[i] = 0.5 * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * ii * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor2[i] = 0.5 * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * ii * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
 
 
 	}
@@ -1613,7 +1616,7 @@ namespace {
 	int             preparePropagation3D(simulationParameterSet* s, cudaParameterSet sc);
 	int             getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc);
 	int				rotateField(simulationParameterSet* s, double rotationAngle);
-	void            runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction);
+	int            runFittingIteration(const gsl_vector* fittingValuesIn, void* dataSet, gsl_vector* fittingFunctionIn);
 	int				prepareElectricFieldArrays(simulationParameterSet* s, cudaParameterSet* sc);
 	int             applyLinearPropagation(simulationParameterSet* s, int materialIndex, double thickness);
 	int             fillRotationMatricies(simulationParameterSet* sCPU, cudaParameterSet* s);
@@ -2780,10 +2783,12 @@ int resolveSequenceCPU(int currentIndex, simulationParameterSet * s, crystalEntr
 	}
 
 
-	void runFittingIteration(int* m, int* n, double* fittingValues, double* fittingFunction) {
+	int runFittingIteration(const gsl_vector* fittingValuesIn, void* dataSet, gsl_vector* fittingFunctionIn) {
 		int i;
 		int fitLocation;
 		double referenceValue;
+		double* fittingValues = (*fittingValuesIn).data;
+
 		//pointers to values that can be scanned in batch mode
 		double* targets[36] = { 0,
 			&(*fittingSet).pulseEnergy1, &(*fittingSet).pulseEnergy2, &(*fittingSet).frequency1, &(*fittingSet).frequency2,
@@ -2810,15 +2815,17 @@ int resolveSequenceCPU(int currentIndex, simulationParameterSet * s, crystalEntr
 		&(*fittingReferenceSet).propagationStep };
 
 
-		for (i = 0; i < *n; i++) {
-			fitLocation = (int)round((*fittingSet).fittingArray[3 * i]);
-			if (fitLocation > 35) return;
+		for (i = 0; i < (*fittingSet).Nfitting; i++) {
+			fitLocation = (*fittingSet).fittingArray[i];
+			if (fitLocation > 35) return 1;
 			referenceValue = *references[fitLocation];
 			if (referenceValue == 0.0) {
 				referenceValue = 1.;
 			}
 			*targets[fitLocation] = fittingValues[i] * referenceValue;
 		}
+
+		
 #ifdef __CUDACC__
 		if ((*fittingSet).isInSequence) {
 			solveNonlinearWaveEquationSequence(fittingSet);
@@ -2839,20 +2846,20 @@ int resolveSequenceCPU(int currentIndex, simulationParameterSet * s, crystalEntr
 
 		//mode 0: maximize total spectrum in ROI
 		if ((*fittingSet).fittingMode == 0) {
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
+			for (i = 0; i < (*fittingSet).fittingROIsize; i++) {
+				gsl_vector_set(fittingFunctionIn, i, 1.0e11 - ((*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
 			}
 		}
 		//mode 1: maximize s-polarized spectrum in ROI
 		if ((*fittingSet).fittingMode == 1) {
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).fittingROIstart + i]));
+			for (i = 0; i < (*fittingSet).fittingROIsize; i++) {
+				gsl_vector_set(fittingFunctionIn, i, 1.0e11 - ((*fittingSet).totalSpectrum[0 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
 			}
 		}
 		//mode 2: maximize p-polarized spectrum in ROI
 		if ((*fittingSet).fittingMode == 2) {
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] = (1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
+			for (i = 0; i < (*fittingSet).fittingROIsize; i++) {
+				gsl_vector_set(fittingFunctionIn, i, 1.0e11 - ((*fittingSet).totalSpectrum[1 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i]));
 			}
 		}
 		//mode 3: match total spectrum to reference given in ascii file
@@ -2863,7 +2870,7 @@ int resolveSequenceCPU(int currentIndex, simulationParameterSet * s, crystalEntr
 			double sumRef = 0;
 			double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart];
 			double* refSpec = &(*fittingSet).fittingReference[(*fittingSet).fittingROIstart];
-			for (i = 0; i < *m; i++) {
+			for (i = 0; i < (*fittingSet).fittingROIsize; i++) {
 				maxSim = max(maxSim, simSpec[i]);
 				maxRef = max(maxRef, refSpec[i]);
 				sumSim += simSpec[i];
@@ -2877,20 +2884,17 @@ int resolveSequenceCPU(int currentIndex, simulationParameterSet * s, crystalEntr
 				maxRef = 1;
 			}
 
-			double sumFF = 0;
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] = log10(1e5 * refSpec[i] / maxRef) - log10(1e5 * simSpec[i] / maxSim);
-				sumFF += fittingFunction[i];
-				//fittingFunction[i] = 1.0e8 / ((*fittingSet).totalSpectrum[(*fittingSet).Ntime + (*fittingSet).fittingROIstart + i]);
+			double* workVector = (double*)calloc((*fittingSet).fittingROIsize, sizeof(double));
+			if (workVector == NULL) return 1;
+			for (i = 0; i < (*fittingSet).fittingROIsize; i++) {
+				workVector[i] = log10(refSpec[i] / maxRef) - log10(simSpec[i] / maxSim);
+				gsl_vector_set(fittingFunctionIn, i, workVector[i]);
 			}
-			sumFF /= *m;
-			for (i = 0; i < *m; i++) {
-				fittingFunction[i] -= sumFF;
-			}
+			free(workVector);
 		}
 
 
-		return;
+		return 0;
 	}
 
 	int getTotalSpectrum(simulationParameterSet* sCPU, cudaParameterSet* sc) {
@@ -3004,7 +3008,8 @@ unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
 unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 #endif
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	simulationParameterSet sCPUbackup[1];
+	simulationParameterSet sCPUbackupValues;
+	simulationParameterSet* sCPUbackup = &sCPUbackupValues;
 	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
 	int k;
 	int error = 0;
@@ -3029,100 +3034,215 @@ unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 }
 
 
+//#ifdef __CUDACC__
+//unsigned long runFitting(simulationParameterSet* sCPU) {
+//#else
+//unsigned long runFittingCPU(simulationParameterSet * sCPU) {
+//#endif
+//	int n = (int)(*sCPU).Nfitting;
+//	int m = (int)(*sCPU).fittingROIsize;
+//	fittingReferenceSet = sCPU;
+//	fittingSet = (simulationParameterSet*)malloc((*sCPU).Nsims * sizeof(simulationParameterSet));
+//	memcpy(fittingSet, sCPU, (*sCPU).Nsims * sizeof(simulationParameterSet));
+//
+//	double commonPrecision = (*sCPU).fittingPrecision;
+//	const double eps[6] = { commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision }; /* set precisions for stop-criteria */
+//	double jacobianPrecision = commonPrecision;
+//	double* x = (double*)mkl_malloc(sizeof(double) * n, 64);
+//	double* fittingValues = (double*)mkl_malloc(sizeof(double) * m, 64);
+//	double* fjac = (double*)mkl_malloc(sizeof(double) * m * n, 64);
+//	double* lowerBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
+//	double* upperBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
+//	const int maxIterations = max((*sCPU).fittingMaxIterations, 2);
+//	const int maxTrialIterations = max(maxIterations / 10, 2);
+//	/* initial step bound */
+//	double rs = 0.0;
+//	int RCI_Request;
+//	int successful;
+//
+//	int iter;
+//	int stopCriterion;
+//	double inputResiduals = 0.0, outputResiduals = 0.0;
+//	_TRNSPBC_HANDLE_t handle;
+//	int i;
+//	int error = 0;
+//
+//	//initial guess and bounds
+//	for (i = 0; i < n; i++) {
+//		x[i] = 1.;
+//		upperBounds[i] = (*fittingSet).fittingArray[3 * i + 2];
+//		lowerBounds[i] = (*fittingSet).fittingArray[3 * i + 1];
+//	}
+//
+//	//initialize fitting function and jacobian
+//	for (i = 0; i < m; i++) {
+//		fittingValues[i] = 0.0;
+//	}
+//	for (i = 0; i < m * n; i++) {
+//		fjac[i] = 0.0;
+//	}
+//
+//	error += dtrnlspbc_init(&handle, &n, &m, x, lowerBounds, upperBounds, eps, &maxIterations, &maxTrialIterations, &rs) != TR_SUCCESS;
+//	size_t currentIteration = 0;
+//	if (error == 0) {
+//		RCI_Request = 0;
+//		successful = 0;
+//
+//		while (successful == 0 && (*sCPU).imdone[0] != 2 && currentIteration < maxIterations)
+//		{
+//			currentIteration++;
+//			if (dtrnlspbc_solve(&handle, fittingValues, fjac, &RCI_Request) != TR_SUCCESS)
+//			{
+//				successful = -1;
+//			}
+//
+//			//check convergence
+//			if (RCI_Request > -7 && RCI_Request < -1) successful = 1;
+//
+//			//recalculate
+//			if (RCI_Request == 1)
+//			{
+//				runFittingIteration(&m, &n, x, fittingValues);
+//			}
+//
+//			//make jacobian
+//			if (RCI_Request == 2)
+//			{
+//				djacobi(runFittingIteration, &n, &m, fjac, x, &jacobianPrecision);
+//			}
+//		}
+//	}
+//
+//
+//	dtrnlspbc_get(&handle, &iter, &stopCriterion, &inputResiduals, &outputResiduals);
+//	memcpy(sCPU, fittingSet, (*fittingSet).Nsims * sizeof(simulationParameterSet));
+//#ifdef __CUDACC__
+//	solveNonlinearWaveEquation(sCPU);
+//#endif
+//	//free memory
+//	dtrnlspbc_delete(&handle);
+//	mkl_free(upperBounds);
+//	mkl_free(lowerBounds);
+//	mkl_free(fjac);
+//	mkl_free(fittingValues);
+//	mkl_free(x);
+//	MKL_Free_Buffers();
+//	free(fittingSet);
+//	return 0;
+//}
+
+
 #ifdef __CUDACC__
 unsigned long runFitting(simulationParameterSet* sCPU) {
 #else
 unsigned long runFittingCPU(simulationParameterSet * sCPU) {
 #endif
-	int n = (int)(*sCPU).Nfitting;
-	int m = (int)(*sCPU).fittingROIsize;
+	size_t parameterCount = (*sCPU).Nfitting;
+	double chisq, chisq0;
+	int info;
 	fittingReferenceSet = sCPU;
 	fittingSet = (simulationParameterSet*)malloc((*sCPU).Nsims * sizeof(simulationParameterSet));
 	memcpy(fittingSet, sCPU, (*sCPU).Nsims * sizeof(simulationParameterSet));
 
-	double commonPrecision = (*sCPU).fittingPrecision;
-	const double eps[6] = { commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision,commonPrecision }; /* set precisions for stop-criteria */
-	double jacobianPrecision = commonPrecision;
-	double* x = (double*)mkl_malloc(sizeof(double) * n, 64);
-	double* fittingValues = (double*)mkl_malloc(sizeof(double) * m, 64);
-	double* fjac = (double*)mkl_malloc(sizeof(double) * m * n, 64);
-	double* lowerBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
-	double* upperBounds = (double*)mkl_malloc(sizeof(double) * n, 64);
-	const int maxIterations = max((*sCPU).fittingMaxIterations, 2);
-	const int maxTrialIterations = max(maxIterations / 10, 2);
-	/* initial step bound */
-	double rs = 0.0;
-	int RCI_Request;
-	int successful;
-
-	int iter;
-	int stopCriterion;
-	double inputResiduals = 0.0, outputResiduals = 0.0;
-	_TRNSPBC_HANDLE_t handle;
-	int i;
-	int error = 0;
-
-	//initial guess and bounds
-	for (i = 0; i < n; i++) {
-		x[i] = 1.;
-		upperBounds[i] = (*fittingSet).fittingArray[3 * i + 2];
-		lowerBounds[i] = (*fittingSet).fittingArray[3 * i + 1];
+	//set up the GSL fitting routine's workspace
+	const gsl_multifit_nlinear_type* T = gsl_multifit_nlinear_trust;
+	gsl_multifit_nlinear_workspace* fittingWorkspace;
+	gsl_multifit_nlinear_fdf fdf;
+	gsl_multifit_nlinear_parameters fdf_params = gsl_multifit_nlinear_default_parameters();
+	size_t n = (*fittingSet).fittingROIsize;
+	gsl_vector* fCostFunction;
+	gsl_matrix* Jacobian;
+	gsl_matrix* covar = gsl_matrix_alloc(parameterCount, parameterCount);
+	double* t = (double*)calloc(n, sizeof(double));
+	double* y = (double*)calloc(n, sizeof(double));
+	double* weights = (double*)malloc(n * sizeof(double));
+	double* x_init = (double*)malloc(parameterCount * sizeof(double));
+	if (weights == NULL || t == NULL || y == NULL || x_init == NULL) return 1;
+	for (int i = 0; i < n; i++) {
+		weights[i] = 1.0;
+	}
+	
+	for (int i = 0; i < parameterCount; i++) {
+		x_init[i] = 1.0;
 	}
 
-	//initialize fitting function and jacobian
-	for (i = 0; i < m; i++) {
-		fittingValues[i] = 0.0;
+	gsl_vector_view x = gsl_vector_view_array(x_init, parameterCount);
+	gsl_vector_view wts = gsl_vector_view_array(weights, n);
+
+	const double xtol = 1e-8;
+	const double gtol = (*fittingSet).fittingPrecision;
+	const double ftol = 0.0;
+
+	fdf.f = runFittingIteration;
+	fdf.df = NULL;
+	fdf.fvv = NULL;
+	fdf.n = n;
+	fdf.p = parameterCount;
+	fdf.params = (void*)fittingSet;
+
+	fdf_params.trs = gsl_multifit_nlinear_trs_dogleg;
+	fdf_params.factor_up = 2.0;
+	fittingWorkspace = gsl_multifit_nlinear_alloc(T, &fdf_params, n, parameterCount);
+	if (fittingWorkspace == NULL) {
+		return 1;
 	}
-	for (i = 0; i < m * n; i++) {
-		fjac[i] = 0.0;
-	}
+	
+	gsl_multifit_nlinear_init(&x.vector, &fdf, fittingWorkspace);
 
-	error += dtrnlspbc_init(&handle, &n, &m, x, lowerBounds, upperBounds, eps, &maxIterations, &maxTrialIterations, &rs) != TR_SUCCESS;
-	size_t currentIteration = 0;
-	if (error == 0) {
-		RCI_Request = 0;
-		successful = 0;
+	fCostFunction = gsl_multifit_nlinear_residual(fittingWorkspace);
+	gsl_blas_ddot(fCostFunction, fCostFunction, &chisq0);
 
-		while (successful == 0 && (*sCPU).imdone[0] != 2 && currentIteration < maxIterations)
-		{
-			currentIteration++;
-			if (dtrnlspbc_solve(&handle, fittingValues, fjac, &RCI_Request) != TR_SUCCESS)
-			{
-				successful = -1;
-			}
+	gsl_multifit_nlinear_driver((*fittingSet).fittingMaxIterations, xtol, gtol, ftol, NULL, NULL, &info, fittingWorkspace);
 
-			//check convergence
-			if (RCI_Request > -7 && RCI_Request < -1) successful = 1;
+	/* compute covariance of best fit parameters */
+	Jacobian = gsl_multifit_nlinear_jac(fittingWorkspace);
+	gsl_multifit_nlinear_covar(Jacobian, 0.0, covar);
 
-			//recalculate
-			if (RCI_Request == 1)
-			{
-				runFittingIteration(&m, &n, x, fittingValues);
-			}
+	/* compute final cost */
+	gsl_blas_ddot(fCostFunction, fCostFunction, &chisq);
 
-			//make jacobian
-			if (RCI_Request == 2)
-			{
-				djacobi(runFittingIteration, &n, &m, fjac, x, &jacobianPrecision);
-			}
+
+
+	size_t dof = n - parameterCount;
+	double c = sqrt(chisq / dof);
+
+	double* references[36] = { 0,
+	&(*fittingReferenceSet).pulseEnergy1, &(*fittingReferenceSet).pulseEnergy2, &(*fittingReferenceSet).frequency1, &(*fittingReferenceSet).frequency2,
+	&(*fittingReferenceSet).bandwidth1, &(*fittingReferenceSet).bandwidth2, &(*fittingReferenceSet).cephase1, &(*fittingReferenceSet).cephase2,
+	&(*fittingReferenceSet).delay1, &(*fittingReferenceSet).delay2, &(*fittingReferenceSet).gdd1, &(*fittingReferenceSet).gdd2,
+	&(*fittingReferenceSet).tod1, &(*fittingReferenceSet).tod2, &(*fittingReferenceSet).phaseMaterialThickness1, &(*fittingReferenceSet).phaseMaterialThickness2,
+	&(*fittingReferenceSet).beamwaist1, &(*fittingReferenceSet).beamwaist2,
+	&(*fittingReferenceSet).x01, &(*fittingReferenceSet).x02, &(*fittingReferenceSet).z01, &(*fittingReferenceSet).z02,
+	&(*fittingReferenceSet).propagationAngle1, &(*fittingReferenceSet).propagationAngle2, &(*fittingReferenceSet).polarizationAngle1, &(*fittingReferenceSet).polarizationAngle2,
+	&(*fittingReferenceSet).circularity1, &(*fittingReferenceSet).circularity2, &(*fittingReferenceSet).crystalTheta, &(*fittingReferenceSet).crystalPhi,
+	&(*fittingReferenceSet).nonlinearAbsorptionStrength, &(*fittingReferenceSet).drudeGamma, &(*fittingReferenceSet).effectiveMass, &(*fittingReferenceSet).crystalThickness,
+	&(*fittingReferenceSet).propagationStep };
+	int fitLocation;
+	double referenceValue;
+	for (int i = 0; i < (*fittingSet).Nfitting; i++) {
+		fitLocation = (*fittingSet).fittingArray[i];
+		referenceValue = *references[fitLocation];
+		if (referenceValue == 0.0) {
+			referenceValue = 1.;
 		}
+		(*fittingSet).fittingResult[i] = referenceValue * gsl_vector_get((*fittingWorkspace).x, i);
+		(*fittingSet).fittingError[i] = referenceValue * sqrt(gsl_matrix_get(covar, i, i));
 	}
 
 
-	dtrnlspbc_get(&handle, &iter, &stopCriterion, &inputResiduals, &outputResiduals);
 	memcpy(sCPU, fittingSet, (*fittingSet).Nsims * sizeof(simulationParameterSet));
 #ifdef __CUDACC__
 	solveNonlinearWaveEquation(sCPU);
 #endif
+
 	//free memory
-	dtrnlspbc_delete(&handle);
-	mkl_free(upperBounds);
-	mkl_free(lowerBounds);
-	mkl_free(fjac);
-	mkl_free(fittingValues);
-	mkl_free(x);
-	MKL_Free_Buffers();
 	free(fittingSet);
+	free(t);
+	free(y);
+	free(weights);
+	free(x_init);
+	gsl_matrix_free(covar);
+	gsl_multifit_nlinear_free(fittingWorkspace);
 	return 0;
 }
 
