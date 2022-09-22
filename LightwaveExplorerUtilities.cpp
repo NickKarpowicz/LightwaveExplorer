@@ -41,7 +41,6 @@ int readFittingString(simulationParameterSet* sCPU) {
 	(*sCPU).fittingROIsize = min(max(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
 	int fittingCount = 0;
 	tokToken = strtok(NULL, ";");
-	int lastread = 1;
 	int offset = 0;
 	int currentValue = 0;
 	char* strArray = tokToken;
