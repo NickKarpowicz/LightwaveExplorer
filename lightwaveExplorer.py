@@ -88,6 +88,19 @@ def readLine(line: str):
     rr = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", line)
     return float(rr[-1])
     
+#fwhm
+# gives the full-width at (height) maximum (default 0.5)
+# copied from Stackoverflow...
+def fwhm(x: np.ndarray, y: np.ndarray, height: float = 0.5) -> float:
+    heightLevel = np.max(y) * height
+    indexMax = np.argmax(y)
+    xLower = np.interp(heightLevel, y[:indexMax], x[:indexMax])
+    xUpper = np.interp(heightLevel, np.flip(y[indexMax:]), np.flip(x[indexMax:]))
+    return xUpper - xLower
+
+def norma(v: np.ndarray):
+    return v/v.max()
+
 def sellmeier(wavelengthMicrons, a, equationType: int):
     w = 2 * np.pi * 2.99792458e8 / (1e-6*wavelengthMicrons)
     ls = wavelengthMicrons**2

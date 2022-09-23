@@ -998,8 +998,8 @@ FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParam
 			(*s).gridPropagationFactor2[i] = cuZero;
 		}
 
-		(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[j] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. *ne.real() * LIGHTC) * (*s).h;
+		(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[j] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. *no.real() * LIGHTC) * (*s).h;
 	}
 
 	else {
