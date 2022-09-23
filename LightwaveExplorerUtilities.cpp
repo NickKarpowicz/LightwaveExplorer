@@ -44,7 +44,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 	int offset = 0;
 	int currentValue = 0;
 	char* strArray = tokToken;
-	while (sscanf(strArray,"%i%n",&currentValue,&offset)==1) {
+	while (paramsRead && sscanf(strArray,"%i%n",&currentValue,&offset)==1) {
 		(*sCPU).fittingArray[fittingCount] = currentValue;
 		strArray += offset;
 		fittingCount++;
