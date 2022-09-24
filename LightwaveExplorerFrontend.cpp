@@ -8,6 +8,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
+#include "LightwaveExplorerFitting.h"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include<Commdlg.h>
@@ -767,9 +768,9 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
         xOffsetRow1, 22 * vs+1, textboxwidth, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     TCHAR pdFittingNames[4][64] = {
-        TEXT("Maximize"),
         TEXT("Maximize x"),
         TEXT("Maximize y"),
+        TEXT("Maximize total"),
         TEXT("Match spectrum")
     };
     memset(&A, 0, sizeof(A));
@@ -2396,13 +2397,11 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     printToConsole(maingui.textboxSims, L"Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
 
+    (*activeSetPtr).runningOnCPU = (!hasGPU || IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU));
+
     //run the simulations
-    if (hasGPU) {
-        runFitting(activeSetPtr);
-    }
-    else {
-        runFittingCPU(activeSetPtr);
-    }
+    runDlibFitting(activeSetPtr);
+
     (*activeSetPtr).plotSim = 0;
     drawSimPlots(activeSetPtr);
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
@@ -2410,9 +2409,9 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
     setInterfaceValuesToActiveValues();
-    printToConsole(maingui.textboxSims, L"Fitting result:\r\n (index, value, error)\r\n");
+    printToConsole(maingui.textboxSims, L"Fitting result:\r\n (index, value)\r\n");
     for (int i = 0; i < (*activeSetPtr).Nfitting; i++) {
-        printToConsole(maingui.textboxSims, L"%i,  %lf, %lf\r\n", i, (*activeSetPtr).fittingResult[i], (*activeSetPtr).fittingError[i]);
+        printToConsole(maingui.textboxSims, L"%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
     }
     free((*activeSetPtr).imdone);
     free((*activeSetPtr).deffTensor);

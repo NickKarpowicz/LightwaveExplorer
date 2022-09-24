@@ -54,8 +54,9 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseIntelMKL>Sequential</UseIntelMKL>
-    <UseInteloneMKL>No</UseInteloneMKL>
-    <UseMpiLibrary1A>MSMPI</UseMpiLibrary1A>
+    <UseInteloneMKL>Parallel</UseInteloneMKL>
+    <UseMpiLibrary1A>INTELMPI</UseMpiLibrary1A>
+    <UseILP64Interfaces1A>false</UseILP64Interfaces1A>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -87,6 +88,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -169,7 +171,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>cblas.lib;gsl.lib;libfftw3-3.lib;%(AdditionalDependencies);cudart_static.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;ComCtl32.lib;nvml.lib</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies);cudart_static.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;ComCtl32.lib;nvml.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
@@ -194,6 +196,7 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="LightwaveExplorerFitting.h" />
     <ClInclude Include="LightwaveExplorerUtilities.h" />
     <ClInclude Include="LightwaveExplorerCoreCPU.h" />
     <ClInclude Include="LightwaveExplorerFrontend.h" />
@@ -202,9 +205,11 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\dlib\dlib\all\source.cpp" />
     <ClCompile Include="LightwaveExplorerFrontend.cpp" />
     <ClCompile Include="LightwaveExplorerCoreCPU.cpp" />
     <ClCompile Include="LightwaveExplorerUtilities.cpp" />
+    <ClCompile Include="LightwaveExplorerFitting.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="LightwaveExplorer.ico" />
@@ -217,6 +222,7 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
     <Text Include="CrystalDatabase.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cpp.hint" />
     <None Include="lightwaveExplorer.py" />
   </ItemGroup>
   <ItemGroup>

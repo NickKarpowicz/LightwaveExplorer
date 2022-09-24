@@ -3,16 +3,16 @@
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
-#define deviceComplex deviceLib::complex<double>
 #define deviceLib thrust
+#define deviceComplex thrust::complex<double>
 #else
 #define deviceComplex std::complex<double>
 #define deviceLib std
 #endif
-//#include "mkl_rci.h"
-//#include "mkl_types.h"
-//#include "mkl_service.h"
-#include <fftw3.h>
+#include "mkl_rci.h"
+#include "mkl_types.h"
+#include "mkl_service.h"
+#include <fftw3_mkl.h>
 #include <complex>
 typedef struct crystalEntry {
     wchar_t crystalNameW[256] = { 0 };
@@ -147,6 +147,7 @@ typedef struct simulationParameterSet {
     double batchDestination2 = 0;
     char outputBasePath[MAX_LOADSTRING] = { 0 };
     int runType = 0;
+    bool runningOnCPU = 0;
 
     //sequence
     bool isInSequence = 0;
@@ -161,7 +162,7 @@ typedef struct simulationParameterSet {
     bool isInFittingMode;
     char fittingString[1024] = { 0 };
     char fittingPath[1024] = { 0 };
-    int fittingArray[1024] = { 0 };
+    double fittingArray[256] = { 0 };
     double fittingPrecision = 0;
     double* fittingReference = 0;
     int Nfitting = 0;
@@ -235,18 +236,12 @@ typedef struct cudaParameterSet {
     int fftPlan1DD2Z = 0;
     int fftPlan1DZ2D = 0;
 
-    //DFTI_DESCRIPTOR_HANDLE mklPlanZ2D = 0;
-    //DFTI_DESCRIPTOR_HANDLE mklPlanD2Z = 0;
-    //DFTI_DESCRIPTOR_HANDLE mklPlanDoublePolfft = 0;
-    //DFTI_DESCRIPTOR_HANDLE mklPlan1DD2Z = 0;
-    //DFTI_DESCRIPTOR_HANDLE mklPlan1DZ2D = 0;
-
     fftw_plan fftwPlanZ2D;
     fftw_plan fftwPlanD2Z;
     fftw_plan fftwPlanDoublePolfft;
     fftw_plan fftwPlan1DD2Z;
     fftw_plan fftwPlan1DZ2D;
-    fftw_complex* fftwWorkspaceC;
+    std::complex<double>* fftwWorkspaceC;
     double* fftwWorkspaceD;
 
     bool isCylindric = 0;
@@ -287,7 +282,6 @@ int             readFittingString(simulationParameterSet* sCPU);
 int             saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr);
 void            unixNewLine(FILE* iostream);
 int             saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount);
-//int				calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);
@@ -298,3 +292,10 @@ int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalD
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* filePath);
 int             loadPulseFiles(simulationParameterSet* sCPU);
 int             skipFileUntilCharacter(FILE* fstream, char target);
+
+#ifndef max
+#define max(a,b)            (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef min
+#define min(a,b)            (((a) < (b)) ? (a) : (b))
+#endif

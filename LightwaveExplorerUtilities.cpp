@@ -34,22 +34,24 @@ int readFittingString(simulationParameterSet* sCPU) {
 	double ROIend;
 	strcpy(fittingString, (*sCPU).fittingString);
 	char* tokToken = strtok(fittingString, ";");
-	bool paramsRead = (4 == sscanf(fittingString, "%lf %lf %lf %d",
-		&ROIbegin, &ROIend, &(*sCPU).fittingPrecision, &(*sCPU).fittingMaxIterations));
+	bool paramsRead = (3 == sscanf(fittingString, "%lf %lf %d",
+		&ROIbegin, &ROIend, &(*sCPU).fittingMaxIterations));
 	(*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
 	(*sCPU).fittingROIstop = (size_t)min(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
 	(*sCPU).fittingROIsize = min(max(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
 	int fittingCount = 0;
 	tokToken = strtok(NULL, ";");
-	int offset = 0;
-	int currentValue = 0;
-	char* strArray = tokToken;
-	while (paramsRead && sscanf(strArray,"%i%n",&currentValue,&offset)==1) {
-		(*sCPU).fittingArray[fittingCount] = currentValue;
-		strArray += offset;
-		fittingCount++;
+	int lastread = 3;
+	while (tokToken != NULL && lastread == 3) {
+		lastread = sscanf(tokToken, "%lf %lf %lf",
+			&(*sCPU).fittingArray[fittingCount], &(*sCPU).fittingArray[fittingCount + 1],
+			&(*sCPU).fittingArray[fittingCount + 2]);
+		if (lastread > 0) {
+			fittingCount += lastread;
+		}
+		tokToken = strtok(NULL, ";");
 	}
-	(*sCPU).Nfitting = fittingCount;
+	(*sCPU).Nfitting = fittingCount / 3;
 	(*sCPU).isInFittingMode = (((*sCPU).Nfitting) > 0 && paramsRead);
 
 	if (!(*sCPU).isInFittingMode) {
@@ -247,11 +249,11 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 
 	if ((*sCPU).is3D) {
 		const int fftwSizes[] = { (int)(*sCPU).Nspace2, (int)(*sCPU).Nspace, (int)(*sCPU).Ntime };
-		fftwPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, (*sCPU).ExtOut, NULL, 1, (*sCPU).Ngrid, (fftw_complex*)(*sCPU).EkwOut, NULL, 1, (*sCPU).NgridC, FFTW_MEASURE);
+		fftwPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, (*sCPU).ExtOut, NULL, 1, (int)(*sCPU).Ngrid, (fftw_complex*)(*sCPU).EkwOut, NULL, 1, (int)(*sCPU).NgridC, FFTW_MEASURE);
 	}
 	else {
 		const int fftwSizes[] = { (int)(*sCPU).Nspace, (int)(*sCPU).Ntime };
-		fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, (*sCPU).ExtOut, NULL, 1, (*sCPU).Ngrid, (fftw_complex*)(*sCPU).EkwOut, NULL, 1, (*sCPU).NgridC, FFTW_MEASURE);
+		fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, (*sCPU).ExtOut, NULL, 1, (int)(*sCPU).Ngrid, (fftw_complex*)(*sCPU).EkwOut, NULL, 1, (int)(*sCPU).NgridC, FFTW_MEASURE);
 	}
 
 	//read fields as binary
@@ -272,39 +274,10 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	fread((*sCPU).totalSpectrum, sizeof(double), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq, spectrumFile);
 	fclose(spectrumFile);
 
-	//FFT the loaded field to give the frequency domain
-	//DFTI_DESCRIPTOR_HANDLE mklPlanD2Z = NULL;
-
-	//if ((*sCPU).is3D) {
-		//MKL_LONG mklSizes[] = { (MKL_LONG)(*sCPU).Nspace2, (MKL_LONG)(*sCPU).Nspace, (MKL_LONG)(*sCPU).Ntime };
-		//MKL_LONG mklStrides[4] = { 0, (MKL_LONG)((*sCPU).Nspace * (*sCPU).Nfreq), (MKL_LONG)(*sCPU).Nfreq, 1 };
-		//DftiCreateDescriptor(&mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 3, mklSizes);
-		//DftiSetValue(mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-		//DftiSetValue(mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-		//DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
-		//DftiSetValue(mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
-		//DftiSetValue(mklPlanD2Z, DFTI_INPUT_DISTANCE, (*sCPU).Ngrid);
-		//DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*sCPU).NgridC);
-		//DftiCommitDescriptor(mklPlanD2Z);
-	/*}
-	else {
-		MKL_LONG mklSizes[] = { (MKL_LONG)(*sCPU).Nspace, (MKL_LONG)(*sCPU).Ntime };
-		MKL_LONG mklStrides[4] = { 0, (MKL_LONG)(*sCPU).Nfreq, 1, 1 };
-		DftiCreateDescriptor(&mklPlanD2Z, DFTI_DOUBLE, DFTI_REAL, 2, mklSizes);
-		DftiSetValue(mklPlanD2Z, DFTI_PLACEMENT, DFTI_NOT_INPLACE);
-		DftiSetValue(mklPlanD2Z, DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX);
-		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_STRIDES, mklStrides);
-		DftiSetValue(mklPlanD2Z, DFTI_NUMBER_OF_TRANSFORMS, 2);
-		DftiSetValue(mklPlanD2Z, DFTI_INPUT_DISTANCE, (*sCPU).Ngrid);
-		DftiSetValue(mklPlanD2Z, DFTI_OUTPUT_DISTANCE, (*sCPU).NgridC);
-		DftiCommitDescriptor(mklPlanD2Z);
-	}*/
 	for (size_t i = 0; i < ((*sCPU).Nsims * (*sCPU).Nsims2); i++) {
-		//DftiComputeForward(mklPlanD2Z, &(*sCPU).ExtOut[2*i*(*sCPU).Ngrid], &(*sCPU).EkwOut[2*i * (*sCPU).NgridC]);
 		fftw_execute_dft_r2c(fftwPlanD2Z, &(*sCPU).ExtOut[2 * i * (*sCPU).Ngrid], (fftw_complex*) & (*sCPU).EkwOut[2 * i * (*sCPU).NgridC]);
 	}
-	
-	//DftiFreeDescriptor(&mklPlanD2Z);
+	fftw_destroy_plan(fftwPlanD2Z);
 
 	return 0;
 }
@@ -1060,51 +1033,3 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 	return currentRow;
 }
 
-
-//int calcEffectiveChi2Tensor(double* defftensor, double* dtensor, double theta, double phi) {
-//	double delta = 0.; //this angle is used for biaxial crystals, but I'm ignorning it for the moment
-//	int i, j, k;
-//	//Rotation matrix between the angles of the electric field and the crystal axes
-//	double R[] = { cos(theta) * cos(phi) * cos(delta) - sin(phi) * sin(delta), cos(theta) * sin(phi) * cos(delta) + cos(phi) * sin(delta),
-//		-sin(theta) * cos(delta), -cos(theta) * cos(phi) * sin(delta) - sin(phi) * cos(delta),
-//		-cos(theta) * sin(phi) * sin(delta) + cos(phi) * cos(delta), sin(theta) * sin(delta) };
-//
-//	//Matrix to translate the mixed field matrix in the reduced notation into the crystalline frame
-//	double Ore[] = { R[0] * R[0], R[1] * R[1], R[2] * R[2], 2 * R[1] * R[2], 2 * R[0] * R[2], 2 * R[0] * R[1],
-//		2 * R[0] * R[3], 2 * R[1] * R[4], 2 * R[2] * R[5], 2 * (R[4] * R[2] + R[1] * R[5]), 2 * (R[3] * R[2] + R[0] * R[5]), 2 * (R[3] * R[1] + R[0] * R[4]),
-//		R[3] * R[3], R[4] * R[4], R[5] * R[5], 2 * R[4] * R[5], 2 * R[3] * R[5], 2 * R[3] * R[4]
-//	};
-//
-//	//The deff tensor is given by the equation R deff = d Ore, solve for deff, find d Ore first
-//	double dOre[9] = { 0 };
-//	for (i = 0; i < 3; i++) {
-//		for (j = 0; j < 3; j++) {
-//			for (k = 0; k < 6; k++) {
-//				dOre[i + 3 * j] += dtensor[i + 3 * k] * Ore[k + 6 * j];
-//			}
-//		}
-//	}
-//
-//	//Least squares solution to get the deff tensor
-//	double* work = (double*)malloc(128 * sizeof(double));
-//	int dgelsInfo;
-//	int dgelsParams[6] = { 3,2,3,3,3,64 };
-//	dgels("N", &dgelsParams[0], &dgelsParams[1], &dgelsParams[2], R, &dgelsParams[3], dOre, &dgelsParams[4], work, &dgelsParams[5], &dgelsInfo);
-//	defftensor[0] = dOre[0];
-//	defftensor[1] = dOre[1];
-//	defftensor[2] = dOre[3];
-//	defftensor[3] = dOre[4];
-//	defftensor[4] = dOre[6];
-//	defftensor[5] = dOre[7];
-//	free(work);
-//
-//	//correct cross-terms
-//	for (i = 2; i < 4; i++) {
-//		defftensor[i] *= 0.5;
-//	}
-//
-//	for (i = 0; i < 6; i++) {
-//		defftensor[i] *= 2e-12; //change from pm/V to m/V and multiply by 2 for chi(2) instead of d
-//	}
-//	return dgelsInfo;
-//}
