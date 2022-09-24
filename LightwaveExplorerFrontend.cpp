@@ -8,7 +8,6 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
-#include "LightwaveExplorerFitting.h"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include<Commdlg.h>
@@ -2400,7 +2399,13 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     (*activeSetPtr).runningOnCPU = (!hasGPU || IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU));
 
     //run the simulations
-    runDlibFitting(activeSetPtr);
+    if ((*activeSetPtr).runningOnCPU) {
+        runDlibFittingCPU(activeSetPtr);
+    }
+    else {
+        runDlibFitting(activeSetPtr);
+    }
+    
 
     (*activeSetPtr).plotSim = 0;
     drawSimPlots(activeSetPtr);

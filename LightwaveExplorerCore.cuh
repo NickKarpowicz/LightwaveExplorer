@@ -2,6 +2,7 @@
 
 unsigned long   solveNonlinearWaveEquationSequence(void* lpParam);
 unsigned long	solveNonlinearWaveEquation(void* lpParam);
+unsigned long   runDlibFitting(simulationParameterSet* sCPU);
 
 #ifdef __CUDACC__
 //In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.

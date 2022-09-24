@@ -12,6 +12,8 @@
 #include <chrono>
 #include <thread>
 #include <omp.h>
+#include <dlib/optimization.h>
+#include <dlib/global_optimization.h>
 
 #define _CRT_SECTURE_NO_WARNINGS
 
@@ -44,6 +46,12 @@ typedef struct uint3 {
 #define cudaMemcpyKind int
 #endif
 
+#ifndef max
+#define max(a,b)            (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef min
+#define min(a,b)            (((a) < (b)) ? (a) : (b))
+#endif
 
 //depending on if the compilation pass is being made by nvcc
 //or the c++ compiler, change the prefix to global and
@@ -1610,6 +1618,10 @@ void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, int stream, Func
 //anonymous namespace helps to separate functions that have been compiled under nvcc from those
 //compiled by the c++ compiler
 namespace {
+	typedef dlib::matrix<double, 0, 1> column_vector;
+	simulationParameterSet* fittingSet;
+
+
 	//memset for either CUDA or c++ depending on which
 	//compiler is running
 	int bilingualMemset(void* ptr, int value, size_t count) {
@@ -2663,6 +2675,96 @@ namespace {
 
 		return 1;
 	}
+
+
+	double getResidual(const column_vector& x) {
+
+		double multipliers[36] = { 0,
+	1, 1, 1e12, 1e12,
+	1e12, 1e12, PI, PI,
+	1e-15, 1e-15, 1e-30, 1e-30,
+	1e-45, 1e-45, 1e-6, 1e-6,
+	1e-6, 1e-6,
+	1e-6, 1e-6, 1e-6, 1e-6,
+	DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
+	1, 1, DEG2RAD, DEG2RAD,
+	1, 1e12, 1, 1e-6,
+
+	1e-9 };
+		double result = 0.0;
+		double* targets[36] = { 0,
+		&(*fittingSet).pulseEnergy1, &(*fittingSet).pulseEnergy2, &(*fittingSet).frequency1, &(*fittingSet).frequency2,
+		&(*fittingSet).bandwidth1, &(*fittingSet).bandwidth2, &(*fittingSet).cephase1, &(*fittingSet).cephase2,
+		&(*fittingSet).delay1, &(*fittingSet).delay2, &(*fittingSet).gdd1, &(*fittingSet).gdd2,
+		&(*fittingSet).tod1, &(*fittingSet).tod2, &(*fittingSet).phaseMaterialThickness1, &(*fittingSet).phaseMaterialThickness2,
+		&(*fittingSet).beamwaist1, &(*fittingSet).beamwaist2,
+		&(*fittingSet).x01, &(*fittingSet).x02, &(*fittingSet).z01, &(*fittingSet).z02,
+		&(*fittingSet).propagationAngle1, &(*fittingSet).propagationAngle2, &(*fittingSet).polarizationAngle1, &(*fittingSet).polarizationAngle2,
+		&(*fittingSet).circularity1, &(*fittingSet).circularity2, &(*fittingSet).crystalTheta, &(*fittingSet).crystalPhi,
+		&(*fittingSet).nonlinearAbsorptionStrength, &(*fittingSet).drudeGamma, &(*fittingSet).effectiveMass, &(*fittingSet).crystalThickness,
+		&(*fittingSet).propagationStep };
+
+		for (int i = 0; i < (*fittingSet).Nfitting; i++) {
+			*targets[(int)(*fittingSet).fittingArray[3 * i]] = multipliers[(int)(*fittingSet).fittingArray[3 * i]] * x(i);
+		}
+
+#ifdef __CUDACC__
+		if ((*fittingSet).isInSequence) {
+			solveNonlinearWaveEquationSequence(fittingSet);
+		}
+		else {
+			solveNonlinearWaveEquation(fittingSet);
+		}
+#else
+
+		if ((*fittingSet).isInSequence) {
+			solveNonlinearWaveEquationSequenceCPU(fittingSet);
+		}
+		else {
+			solveNonlinearWaveEquationCPU(fittingSet);
+		}
+#endif
+
+
+
+
+
+		//maximize total spectrum in ROI
+		if ((*fittingSet).fittingMode != 3) {
+			for (int i = 0; i < (*fittingSet).fittingROIsize; i++) {
+				result += (*fittingSet).totalSpectrum[(*fittingSet).fittingMode * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i];
+			}
+			return result;
+		}
+
+		//mode 3: match total spectrum to reference given in ascii file
+		double a;
+		double maxSim = 0;
+		double maxRef = 0;
+		double sumSim = 0;
+		double sumRef = 0;
+		double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart];
+		double* refSpec = &(*fittingSet).fittingReference[(*fittingSet).fittingROIstart];
+		for (int i = 0; i < (*fittingSet).fittingROIsize; i++) {
+			maxSim = max(maxSim, simSpec[i]);
+			maxRef = max(maxRef, refSpec[i]);
+			sumSim += simSpec[i];
+			sumRef += refSpec[i];
+		}
+
+		if (maxSim == 0) {
+			maxSim = 1;
+		}
+		if (maxRef == 0) {
+			maxRef = 1;
+		}
+		result = 0.0;
+		for (int i = 0; i < (*fittingSet).fittingROIsize; i++) {
+			a = (refSpec[i] / maxRef) - (simSpec[i] / maxSim);
+			result += a * a;
+		}
+		return sqrt(result);
+}
 }
 //END OF NAMESPACE
 
@@ -2779,6 +2881,86 @@ unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 	return error;
 }
 
+#ifdef __CUDACC__
+unsigned long runDlibFitting(simulationParameterSet* sCPU) {
+#else
+unsigned long runDlibFittingCPU(simulationParameterSet * sCPU) {
+#endif
+	fittingSet = (simulationParameterSet*)calloc(1, sizeof(simulationParameterSet));
+	if (fittingSet == NULL) return 1;
+	memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
+
+	column_vector parameters;
+	parameters.set_size((*sCPU).Nfitting);
+	column_vector lowerBounds;
+	lowerBounds.set_size((*sCPU).Nfitting);
+	column_vector upperBounds;
+	upperBounds.set_size((*sCPU).Nfitting);
+	double* targets[36] = { 0,
+	&(*sCPU).pulseEnergy1, &(*sCPU).pulseEnergy2, &(*sCPU).frequency1, &(*sCPU).frequency2,
+	&(*sCPU).bandwidth1, &(*sCPU).bandwidth2, &(*sCPU).cephase1, &(*sCPU).cephase2,
+	&(*sCPU).delay1, &(*sCPU).delay2, &(*sCPU).gdd1, &(*sCPU).gdd2,
+	&(*sCPU).tod1, &(*sCPU).tod2, &(*sCPU).phaseMaterialThickness1, &(*sCPU).phaseMaterialThickness2,
+	&(*sCPU).beamwaist1, &(*sCPU).beamwaist2,
+	&(*sCPU).x01, &(*sCPU).x02, &(*sCPU).z01, &(*sCPU).z02,
+	&(*sCPU).propagationAngle1, &(*sCPU).propagationAngle2, &(*sCPU).polarizationAngle1, &(*sCPU).polarizationAngle2,
+	&(*sCPU).circularity1, &(*sCPU).circularity2, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
+	&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
+	&(*sCPU).propagationStep };
+
+	double multipliers[36] = { 0,
+	1, 1, 1e12, 1e12,
+	1e12, 1e12, PI, PI,
+	1e-15, 1e-15, 1e-30, 1e-30,
+	1e-45, 1e-45, 1e-6, 1e-6,
+	1e-6, 1e-6,
+	1e-6, 1e-6, 1e-6, 1e-6,
+	DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
+	1, 1, DEG2RAD, DEG2RAD,
+	1, 1e12, 1, 1e-6,
+	1e-9 };
+
+	for (int i = 0; i < (*sCPU).Nfitting; i++) {
+		parameters(i) = *targets[(int)(*sCPU).fittingArray[3 * i]];
+		lowerBounds(i) = (*sCPU).fittingArray[3 * i + 1];
+		upperBounds(i) = (*sCPU).fittingArray[3 * i + 2];
+	}
+
+	dlib::function_evaluation result;
+
+	if ((*sCPU).fittingMode != 3) {
+		result = dlib::find_max_global(getResidual, lowerBounds, upperBounds, dlib::max_function_calls((*sCPU).fittingMaxIterations));
+	}
+	else {
+		result = dlib::find_min_global(getResidual, lowerBounds, upperBounds, dlib::max_function_calls((*sCPU).fittingMaxIterations));
+	}
+
+	for (int i = 0; i < (*sCPU).Nfitting; i++) {
+		*targets[(int)round((*sCPU).fittingArray[3 * i])] = multipliers[(int)round((*sCPU).fittingArray[3 * i])] * result.x(i);
+		(*sCPU).fittingResult[i] = result.x(i);
+	}
+
+#ifdef __CUDACC__
+	if ((*sCPU).isInSequence) {
+		solveNonlinearWaveEquationSequence(sCPU);
+	}
+	else {
+		solveNonlinearWaveEquation(sCPU);
+	}
+#else
+	if ((*sCPU).isInSequence) {
+		solveNonlinearWaveEquationSequenceCPU(sCPU);
+	}
+	else {
+		solveNonlinearWaveEquationCPU(sCPU);
+	}
+#endif
+
+	
+	free(fittingSet);
+
+	return 0;
+}
 
 #ifdef __CUDACC__
 int main(int argc, char* argv[]) {
@@ -2857,9 +3039,37 @@ int mainCPU(int argc, char* filepath) {
 	readSequenceString(sCPU);
 	printf("Found %i steps in sequence\n", (*sCPU).Nsequence);
 	configureBatchMode(sCPU);
-
+	readFittingString(sCPU);
 	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
+	if ((*sCPU).Nfitting != 0) {
+		printf("Running optimization for %i iterations...\n", (*sCPU).fittingMaxIterations);
+#ifdef __CUDACC__
+		runDlibFitting(sCPU);
+#else
+		runDlibFittingCPU(sCPU);
+#endif
+		auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
+		printf("Finished after %8.4lf s. \n",
+			1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+		saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
+
+		printf("Optimization result:\n (index, value)\n");
+		for (int i = 0; i < (*sCPU).Nfitting; i++) {
+			printf("%i,  %lf\r\n", i, (*sCPU).fittingResult[i]);
+		}
+
+		free((*sCPU).imdone);
+		free((*sCPU).deffTensor);
+		free((*sCPU).loadedField1);
+		free((*sCPU).loadedField2);
+		free((*sCPU).ExtOut);
+		free((*sCPU).EkwOut);
+		free((*sCPU).totalSpectrum);
+		free(sCPU);
+		free(crystalDatabasePtr);
+		return 0;
+	}
 	// run simulations
 	std::thread* threadBlock = (std::thread*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::thread));
 	size_t maxThreads = min(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
@@ -2903,7 +3113,6 @@ int mainCPU(int argc, char* filepath) {
 
 
 	saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
-	//free
 	free(threadBlock);
 	free((*sCPU).imdone);
 	free((*sCPU).deffTensor);

@@ -36,9 +36,6 @@
     <ClInclude Include="LightwaveExplorerUtilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LightwaveExplorerFitting.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LightwaveExplorerFrontend.cpp">
@@ -48,9 +45,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="LightwaveExplorerUtilities.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="LightwaveExplorerFitting.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\dlib\dlib\all\source.cpp">
