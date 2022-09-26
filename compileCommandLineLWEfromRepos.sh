@@ -18,18 +18,6 @@ git clone https://github.com/davisking/dlib
 
 cd LightwaveExplorer
 
-# I have to rename my own max() due to leftover junk that will keep it from
-# compiling on linux
-# Ya'll need namespaces.
-sed -i 's/max(/maxLINUXWORKAROUNDFORBADMAXFUNCTION(/g' LightwaveExplorerUtilities.h
-sed -i 's/min(/minLINUXWORKAROUNDFORBADMAXFUNCTION(/g' LightwaveExplorerUtilities.h
-sed -i 's/max(/maxLINUXWORKAROUNDFORBADMAXFUNCTION(/g' LightwaveExplorerUtilities.cpp
-sed -i 's/min(/minLINUXWORKAROUNDFORBADMAXFUNCTION(/g' LightwaveExplorerUtilities.cpp
-sed -i 's/max(/maxLINUXWORKAROUNDFORBADMAXFUNCTION(/g' LightwaveExplorerCore.cuh
-sed -i 's/min(/minLINUXWORKAROUNDFORBADMAXFUNCTION(/g' LightwaveExplorerCore.cuh
-sed -i 's/max(/maxLINUXWORKAROUNDFORBADMAXFUNCTION(/g' LightwaveExplorerCore.cu
-sed -i 's/min(/minLINUXWORKAROUNDFORBADMAXFUNCTION(/g' LightwaveExplorerCore.cu
-
 echo "Starting to compile, this will take a couple of minutes... "
 nvcc -gencode=arch=compute_70,code=\"sm_70,compute_70\" -gencode=arch=compute_75,code=\"sm_75,compute_75\" -gencode=arch=compute_80,code=\"sm_80,compute_80\" -x cu -I$MKL_HOME/include -I$MKL_HOME/include/fftw -I../dlib --machine 64 -use_fast_math -O3 -L$MKL_HOME/lib/intel64 -L/raven/u/karpon/CompileLWE/lib -lcufft -lnvidia-ml -lmkl_sequential -lmkl_core -lmkl_intel_lp64 -o lwe LightwaveExplorerCore.cu LightwaveExplorerUtilities.cpp
 
