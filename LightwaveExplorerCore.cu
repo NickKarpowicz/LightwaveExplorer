@@ -33,12 +33,9 @@
 #define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
 #define CHI2CONVENTION 0.5
 
-#ifndef max
-#define max(a,b)            (((a) > (b)) ? (a) : (b))
-#endif
-#ifndef min
-#define min(a,b)            (((a) < (b)) ? (a) : (b))
-#endif
+#define maxN(a,b)            (((a) > (b)) ? (a) : (b))
+#define minN(a,b)            (((a) < (b)) ? (a) : (b))
+
 
 //depending on if the compilation pass is being made by nvcc
 //or the c++ compiler, change the prefix to global and
@@ -964,7 +961,7 @@ FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParam
 		chi12 = deviceComplex(1, 0);
 	}
 
-	if (max(abs(dk1),abs(dk2)) < deviceLib::abs(ke) && j < ((long long)(*s).Nfreq-1)) {
+	if (maxN(abs(dk1),abs(dk2)) < deviceLib::abs(ke) && j < ((long long)(*s).Nfreq-1)) {
 		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ke.real())) * (*s).h;
 		if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 			(*s).gridPropagationFactor1[i] = cuZero;
@@ -1070,7 +1067,7 @@ FGLOBAL void prepareCylindricGridsKernel(GKERN double* sellmeierCoefficients, cu
 		chi12 = deviceComplex(1, 0);
 	}
 
-	if (abs(dk) <= min(deviceLib::abs(ke), deviceLib::abs(ko)) && k<((long long)(*s).Nfreq-1)) {
+	if (abs(dk) <= minN(deviceLib::abs(ke), deviceLib::abs(ko)) && k<((long long)(*s).Nfreq-1)) {
 		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
 		(*s).gridPropagationFactor1Rho1[i] = ii * (1. / (chi11 * 2. * ke.real())) * (*s).h;
 		if (isnan(((*s).gridPropagationFactor1[i].real()))) {
@@ -2740,8 +2737,8 @@ namespace {
 		double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart];
 		double* refSpec = &(*fittingSet).fittingReference[(*fittingSet).fittingROIstart];
 		for (int i = 0; i < (*fittingSet).fittingROIsize; i++) {
-			maxSim = max(maxSim, simSpec[i]);
-			maxRef = max(maxRef, refSpec[i]);
+			maxSim = maxN(maxSim, simSpec[i]);
+			maxRef = maxN(maxRef, refSpec[i]);
 			sumSim += simSpec[i];
 			sumRef += refSpec[i];
 		}
@@ -2826,9 +2823,9 @@ unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
 
 			(*sCPU).imdone[0] = 0;
 		}
-		(*(*sCPU).progressCounter)++;
+		if(!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 	}
-
+	if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
 	////give the result to the CPU
 	bilingualMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), cudaMemcpyDeviceToHost);
 
@@ -2871,7 +2868,7 @@ unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
 		if (error) break;
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 	}
-
+	if ((*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 	return error;
 }
 
@@ -2881,6 +2878,7 @@ unsigned long runDlibFitting(simulationParameterSet* sCPU) {
 unsigned long runDlibFittingCPU(simulationParameterSet * sCPU) {
 #endif
 	fittingSet = (simulationParameterSet*)calloc(1, sizeof(simulationParameterSet));
+
 	if (fittingSet == NULL) return 1;
 	memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
 
@@ -2934,6 +2932,9 @@ unsigned long runDlibFittingCPU(simulationParameterSet * sCPU) {
 		(*sCPU).fittingResult[i] = result.x(i);
 	}
 
+	size_t fitCounter = 0;
+	size_t* originalCounter = (*sCPU).progressCounter;
+	(*sCPU).progressCounter = &fitCounter;
 #ifdef __CUDACC__
 	if ((*sCPU).isInSequence) {
 		solveNonlinearWaveEquationSequence(sCPU);
@@ -2950,9 +2951,11 @@ unsigned long runDlibFittingCPU(simulationParameterSet * sCPU) {
 	}
 #endif
 
-	
-	free(fittingSet);
 
+	(*sCPU).progressCounter = originalCounter;
+
+	free(fittingSet);
+	
 	return 0;
 }
 
@@ -3066,7 +3069,7 @@ int mainCPU(int argc, char* filepath) {
 	}
 	// run simulations
 	std::thread* threadBlock = (std::thread*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::thread));
-	size_t maxThreads = min(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
+	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
 	for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; j++) {
 
 		sCPU[j].assignedGPU = j % CUDAdeviceCount;

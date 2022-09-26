@@ -2379,7 +2379,8 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     readSequenceString(activeSetPtr);
     configureBatchMode(activeSetPtr);
     readFittingString(activeSetPtr);
-    
+    progressCounter = 0;
+    (*activeSetPtr).progressCounter = &progressCounter;
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
             printToConsole(maingui.textboxSims, L"Could not read reference file!\r\n");
@@ -2502,7 +2503,15 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
             }
             
         }
-        
+        else {
+            lengthEstimate = (*activeSetPtr).fittingMaxIterations;
+            if (lengthEstimate > 0) {
+                SendMessage(maingui.pbProgress, PBM_SETPOS, (int)((100 * progressCounter) / lengthEstimate), 0);
+                SendMessage(maingui.pbProgressB, PBM_SETPOS, (int)((100 * progressCounter) / lengthEstimate), 0);
+                //SendMessage(maingui.pbProgress, PBM_SETPOS, (int)(10*progressCounter), 0);
+            }
+        }
+
         if (hasGPU) {
             nvmlError = nvmlDeviceGetPowerUsage(nvmlDevice, &devicePower);
             setWindowTextToDouble(maingui.tbGPUStatus, round(devicePower / 1000));

@@ -37,12 +37,9 @@
 #define SIXTH 0.1666666666666667
 #define THIRD 0.3333333333333333
 #define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
-#ifndef max
-#define max(a,b)            (((a) > (b)) ? (a) : (b))
-#endif
-#ifndef min
-#define min(a,b)            (((a) < (b)) ? (a) : (b))
-#endif
+
+#define maxN(a,b)            (((a) > (b)) ? (a) : (b))
+#define minN(a,b)            (((a) < (b)) ? (a) : (b))
 
 
 int readFittingString(simulationParameterSet* sCPU) {
@@ -55,8 +52,8 @@ int readFittingString(simulationParameterSet* sCPU) {
 	bool paramsRead = (3 == sscanf(fittingString, "%lf %lf %d",
 		&ROIbegin, &ROIend, &(*sCPU).fittingMaxIterations));
 	(*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
-	(*sCPU).fittingROIstop = (size_t)min(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
-	(*sCPU).fittingROIsize = min(max(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
+	(*sCPU).fittingROIstop = (size_t)minN(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
+	(*sCPU).fittingROIsize = minN(maxN(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
 	int fittingCount = 0;
 	tokToken = strtok(NULL, ";");
 	int lastread = 3;
@@ -222,8 +219,8 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 			minWavelength = loadedWavelengths[currentRow];
 		}
 		else {
-			maxWavelength = max(maxWavelength, loadedWavelengths[currentRow]);
-			minWavelength = min(minWavelength, loadedWavelengths[currentRow]);
+			maxWavelength = maxN(maxWavelength, loadedWavelengths[currentRow]);
+			minWavelength = minN(minWavelength, loadedWavelengths[currentRow]);
 		}
 		//rescale to frequency spacing
 		loadedIntensities[currentRow] *= loadedWavelengths[currentRow] * loadedWavelengths[currentRow];
@@ -320,16 +317,16 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	fprintf(textfile, "#SBATCH -J lightwave");  unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --constraint=\"gpu\""); unixNewLine(textfile);
 	if (gpuType == 0) {
-		fprintf(textfile, "#SBATCH --gres=gpu:rtx5000:%i", min(gpuCount, 2)); unixNewLine(textfile);
+		fprintf(textfile, "#SBATCH --gres=gpu:rtx5000:%i", minN(gpuCount, 2)); unixNewLine(textfile);
 	}
 	if (gpuType == 1) {
-		fprintf(textfile, "#SBATCH --gres=gpu:v100:%i", min(gpuCount, 2)); unixNewLine(textfile);
+		fprintf(textfile, "#SBATCH --gres=gpu:v100:%i", minN(gpuCount, 2)); unixNewLine(textfile);
 	}
 	if (gpuType == 2) {
-		fprintf(textfile, "#SBATCH --gres=gpu:a100:%i", min(gpuCount, 4)); unixNewLine(textfile);
-		fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2 * min(gpuCount, 4)); unixNewLine(textfile);
+		fprintf(textfile, "#SBATCH --gres=gpu:a100:%i", minN(gpuCount, 4)); unixNewLine(textfile);
+		fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2 * minN(gpuCount, 4)); unixNewLine(textfile);
 	}
-	fprintf(textfile, "#SBATCH --mem=%lliM", 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * max(1, (*sCPU).Nsims)) / 1048576);
+	fprintf(textfile, "#SBATCH --mem=%lliM", 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN(1, (*sCPU).Nsims)) / 1048576);
 	unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --nodes=1"); unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --ntasks-per-node=1"); unixNewLine(textfile);
