@@ -193,7 +193,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     return 0;
 }
 
-
 //Instead of running locally, make the files needed to run it on
 //one of the GPU-equipped clusters. Specifically, Raven and Cobra
 //of the MPCDF

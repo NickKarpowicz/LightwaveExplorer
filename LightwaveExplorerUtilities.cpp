@@ -5,6 +5,15 @@
 #include <complex>
 #include "LightwaveExplorerUtilities.h"
 
+//Include dlib optimization in the build of utilities
+//This is part of the Dlib library
+// Copyright (C) 2006  Davis E. King (davis@dlib.net)
+// License: Boost Software License   See LICENSE.txt for the full license.
+#include "dlib/test_for_odr_violations.cpp"
+#include "dlib/threads/thread_pool_extension.cpp"
+#include "dlib/threads/async.cpp"
+#include "dlib/global_optimization/global_function_search.cpp"
+
 #define THREADS_PER_BLOCK 32
 #define MIN_GRIDDIM 8
 #define ANGLETOLERANCE 1e-12

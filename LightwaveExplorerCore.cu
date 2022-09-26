@@ -33,19 +33,6 @@
 #define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
 #define CHI2CONVENTION 0.5
 
-
-#ifndef __CUDACC__
-typedef struct uint3 {
-	unsigned int x = 0u;
-	unsigned int y = 0u;
-	unsigned int z = 0u;
-} uint3;
-#define cudaMemcpyDeviceToHost 2
-#define cudaMemcpyHostToDevice 1
-#define cudaMemcpyDeviceToDevice 3
-#define cudaMemcpyKind int
-#endif
-
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 #endif
@@ -69,6 +56,15 @@ typedef struct uint3 {
 #define FDEVICE
 #define GKERN uint3 blockIdx, uint3 threadIdx, uint3 blockDim,
 #define RUNTYPE 1
+typedef struct uint3 {
+	unsigned int x = 0u;
+	unsigned int y = 0u;
+	unsigned int z = 0u;
+} uint3;
+#define cudaMemcpyDeviceToHost 2
+#define cudaMemcpyHostToDevice 1
+#define cudaMemcpyDeviceToDevice 3
+#define cudaMemcpyKind int
 #endif
 
 
@@ -78,8 +74,6 @@ namespace deviceFunctions {
 #else
 namespace ordinaryFunctions {
 #endif
-
-
 	//Inner function for the Sellmeier equation to provide the refractive indicies
 	//current equation form:
 	//n^2 = a[0] //background (high freq) contribution
