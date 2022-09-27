@@ -5,23 +5,16 @@
 #include <complex>
 #include "LightwaveExplorerUtilities.h"
 
-//Include dlib optimization in the build of utilities
-//This is part of the Dlib library
+// Include dlib optimization in the build of utilities
+// This is part of the Dlib library, whose repo should 
+// be cloned to ../dlib
+// See dlib.net for more info
 // Copyright (C) 2006  Davis E. King (davis@dlib.net)
 // License: Boost Software License   See LICENSE.txt for the full license.
-#ifndef DLIB_ALL_SOURCe_
 #define DLIB_ALL_SOURCe_
-#if defined(DLIB_ALGs_) || defined(DLIB_PLATFORm_)
-#include "dlib/dlib_basic_cpp_build_tutorial.txt"
-#endif
 #include "dlib/test_for_odr_violations.cpp"
-#ifndef DLIB_ISO_CPP_ONLY
 #include "dlib/threads/thread_pool_extension.cpp"
-#include "dlib/threads/async.cpp"
 #include "dlib/global_optimization/global_function_search.cpp"
-#endif // DLIB_ISO_CPP_ONLY
-#define DLIB_ALL_SOURCE_END
-#endif // DLIB_ALL_SOURCe_
 
 #define THREADS_PER_BLOCK 32
 #define MIN_GRIDDIM 8

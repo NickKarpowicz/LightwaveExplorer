@@ -11,7 +11,6 @@
 #include <math.h>
 #include <chrono>
 #include <thread>
-#include <omp.h>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
@@ -1802,7 +1801,6 @@ namespace {
 
 		(*s).fftwWorkspaceD = (double*)calloc((*s).Ngrid * (2 + 2 * (*s).isCylindric), sizeof(double));
 		(*s).fftwWorkspaceC = (std::complex<double>*)calloc((*s).NgridC * (2 + 2 * (*s).isCylindric), sizeof(fftw_complex));
-		fftw_plan_with_nthreads(omp_get_max_threads());
 
 		const int fftw1[1] = { (int)(*s).Ntime };
 		(*s).fftwPlan1DD2Z = fftw_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (*s).fftwWorkspaceD, fftw1, 1, (int)(*s).Ntime, (fftw_complex*)(*s).fftwWorkspaceC, fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
