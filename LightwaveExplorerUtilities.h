@@ -9,9 +9,6 @@
 #define deviceComplex std::complex<double>
 #define deviceLib std
 #endif
-#include "mkl_rci.h"
-#include "mkl_types.h"
-#include "mkl_service.h"
 #include <fftw3_mkl.h>
 #include <complex>
 typedef struct crystalEntry {
