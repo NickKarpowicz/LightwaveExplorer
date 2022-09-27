@@ -1126,7 +1126,7 @@ FGLOBAL void materialPhaseKernel(GKERN double df, size_t Ntime, double* a, doubl
 	// with low-order finite difference) so the pulse doesn't move
 	deviceComplex ne, no, no0, n0p, n0m;
 	sellmeierCuda(&ne, &no, a, abs(f), 0, 0, 0, 0);
-	f *= -TWOPI;
+	f *= TWOPI;
 	sellmeierCuda(&ne, &no0, a, f01, 0, 0, 0, 0);
 	sellmeierCuda(&ne, &n0p, a, f01 + 1e11, 0, 0, 0, 0);
 	sellmeierCuda(&ne, &n0m, a, f01 - 1e11, 0, 0, 0, 0);
@@ -1999,10 +1999,7 @@ namespace {
 		fftw_destroy_plan((*s).fftwPlanD2Z);
 		fftw_destroy_plan((*s).fftwPlanZ2D);
 		if ((*s).isCylindric)fftw_destroy_plan((*s).fftwPlanDoublePolfft);
-		fftw_cleanup_threads();
 		fftw_cleanup();
-
-
 #endif
 		return 0;
 	}
