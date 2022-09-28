@@ -127,7 +127,6 @@ typedef struct simulationParameterSet {
     double circularity1 = 0;
     double circularity2 = 0;
 
-
     int pulsetype = 0;
     double* InfoVec = 0;
     double* ExtOut = 0;
