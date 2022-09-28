@@ -282,6 +282,7 @@ int             saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int g
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);
+int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems);
 int             readCrystalDatabase(crystalEntry* db);
 int             readSequenceString(simulationParameterSet* sCPU);
 int             configureBatchMode(simulationParameterSet* sCPU);

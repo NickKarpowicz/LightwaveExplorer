@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <chrono>
 #include <thread>
+#include <memory>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
@@ -1845,14 +1846,12 @@ namespace {
 
 
 		int memErrors = 0;
-		double* expGammaTCPU = (double*)malloc(2 * sizeof(double) * (*s).Ntime);
-		if (expGammaTCPU == NULL) return 2;
-
+		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
 		}
-
 
 		fillRotationMatricies(sCPU, s);
 
@@ -1861,7 +1860,6 @@ namespace {
 		// currently 8 large grids, meaning memory use is approximately
 		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
 		// plus a little bit for additional constants/workspaces/etc
-
 		memErrors += bilingualCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(double));
 		memErrors += bilingualCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(double));
 		memErrors += bilingualCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<double>));
@@ -1879,7 +1877,6 @@ namespace {
 
 		//smaller helper grids
 		memErrors += bilingualCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
-
 		memErrors += bilingualCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
 		memErrors += bilingualCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(double));
 		memErrors += bilingualCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
@@ -1888,8 +1885,7 @@ namespace {
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
 		bilingualMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, cudaMemcpyHostToDevice);
-		free(expGammaTCPU);
-
+		delete[] expGammaTCPU;
 		memErrors += bilingualCalloc((void**)&(*s).chi3Tensor, 81, sizeof(double));
 		(*sCPU).memoryError = memErrors;
 		if (memErrors > 0) {
@@ -2987,17 +2983,17 @@ int mainCPU(int argc, char* filepath) {
 	}
 
 	// allocate databases, main structs
-	simulationParameterSet* sCPU = (simulationParameterSet*)calloc(512, sizeof(simulationParameterSet));
-	crystalEntry* crystalDatabasePtr = (crystalEntry*)calloc(512, sizeof(crystalEntry));
-	(*sCPU).crystalDatabase = crystalDatabasePtr;
-	(*sCPU).progressCounter = &progressCounter;
+	simulationParameterSet initializationStruct;
+	memset(&initializationStruct, 0, sizeof(simulationParameterSet));
+	crystalEntry* crystalDatabasePtr = new crystalEntry[512];
+	initializationStruct.crystalDatabase = crystalDatabasePtr;
+	initializationStruct.progressCounter = &progressCounter;
 	// read crystal database
 	if (readCrystalDatabase(crystalDatabasePtr) == -2) {
 		return 11;
 	}
 	if ((*crystalDatabasePtr).numberOfEntries == 0) {
 		printf("Could not read crystal database.\n");
-		free(sCPU);
 		free(crystalDatabasePtr);
 		return 12;
 	}
@@ -3007,22 +3003,19 @@ int mainCPU(int argc, char* filepath) {
 	}
 
 	// read from settings file
-	if (readInputParametersFile(sCPU, crystalDatabasePtr, filepath) == 1) {
+	if (readInputParametersFile(&initializationStruct, crystalDatabasePtr, filepath) == 1) {
 		printf("Could not read input file.\n");
-		free(sCPU);
-		free(crystalDatabasePtr);
+		delete[] crystalDatabasePtr;
 		return 13;
 	}
-
+	simulationParameterSet* sCPU = new simulationParameterSet[initializationStruct.Nsims];
+	memcpy(sCPU, &initializationStruct, sizeof(simulationParameterSet));
 	allocateGrids(sCPU);
 	if (loadPulseFiles(sCPU) == 1) {
 		printf("Could not read pulse file.\n");
-		free((*sCPU).imdone);
-		free((*sCPU).deffTensor);
-		free((*sCPU).loadedField1);
-		free((*sCPU).loadedField2);
-		free(sCPU);
-		free(crystalDatabasePtr);
+		deallocateGrids(sCPU, TRUE);
+		delete[] sCPU;
+		delete[] crystalDatabasePtr;
 		return 14;
 	}
 
@@ -3049,19 +3042,14 @@ int mainCPU(int argc, char* filepath) {
 			printf("%i,  %lf\r\n", i, (*sCPU).fittingResult[i]);
 		}
 
-		free((*sCPU).imdone);
-		free((*sCPU).deffTensor);
-		free((*sCPU).loadedField1);
-		free((*sCPU).loadedField2);
-		free((*sCPU).ExtOut);
-		free((*sCPU).EkwOut);
-		free((*sCPU).totalSpectrum);
-		free(sCPU);
-		free(crystalDatabasePtr);
+		deallocateGrids(sCPU, TRUE);
+		delete[] sCPU;
+		delete[] crystalDatabasePtr;
 		return 0;
 	}
 	// run simulations
-	std::thread* threadBlock = (std::thread*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::thread));
+	//std::thread* threadBlock = (std::thread*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::thread));
+	std::thread* threadBlock = new std::thread[(*sCPU).Nsims * (*sCPU).Nsims2];
 	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
 	for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; j++) {
 
@@ -3101,17 +3089,10 @@ int mainCPU(int argc, char* filepath) {
 	printf("Finished after %8.4lf s. \n",
 		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
 
-
 	saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
-	free(threadBlock);
-	free((*sCPU).imdone);
-	free((*sCPU).deffTensor);
-	free((*sCPU).loadedField1);
-	free((*sCPU).loadedField2);
-	free((*sCPU).ExtOut);
-	free((*sCPU).EkwOut);
-	free((*sCPU).totalSpectrum);
-	free(sCPU);
-	free(crystalDatabasePtr);
+	delete[] threadBlock;
+	deallocateGrids(sCPU, TRUE);
+	delete[] sCPU;
+	delete[] crystalDatabasePtr;
 	return 0;
 }

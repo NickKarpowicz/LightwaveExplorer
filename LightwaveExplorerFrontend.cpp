@@ -108,7 +108,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     progressCounter = 0;
 
     cpuThread = CreateThread(NULL, 0, offloadToCPU, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
-
+ 
     for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); j++) {
         if ((*activeSetPtr).isInSequence) {
             if (hasGPU && !forcingCPU) {
@@ -168,7 +168,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
 
     }
-    if ((*activeSetPtr).NsimsCPU != 0) {
+    if ((*activeSetPtr).NsimsCPU != 0 && cpuThread != 0) {
         WaitForSingleObject(cpuThread, INFINITE);
         CloseHandle(cpuThread);
     }
@@ -183,12 +183,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     }
 
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
-
-    free((*activeSetPtr).imdone);
-    free((*activeSetPtr).deffTensor);
-    free((*activeSetPtr).loadedField1);
-    free((*activeSetPtr).loadedField2);
-    
+    deallocateGrids(activeSetPtr, FALSE);
     isRunning = FALSE;
     return 0;
 }
@@ -874,14 +869,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case IDM_EXIT:
             if (isGridAllocated) {
-                free((*activeSetPtr).ExtOut);
-                free((*activeSetPtr).EkwOut);
-                //free((*activeSetPtr).Ext);
-                //free((*activeSetPtr).Ekw);
+                freeSemipermanentGrids();
             }
-            free((*activeSetPtr).outputBasePath);
-            free((*activeSetPtr).field1FilePath);
-            free((*activeSetPtr).field2FilePath);
             free(activeSetPtr);
             free(crystalDatabasePtr);
             DestroyWindow(hWnd);
@@ -1159,10 +1148,9 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 int freeSemipermanentGrids() {
     isGridAllocated = FALSE;
-    free((*activeSetPtr).ExtOut);
-    free((*activeSetPtr).EkwOut);
-    free((*activeSetPtr).totalSpectrum);
-    free((*activeSetPtr).fittingReference);
+    delete[] (*activeSetPtr).ExtOut;
+    delete[] (*activeSetPtr).EkwOut;
+    delete[] (*activeSetPtr).totalSpectrum;
     return 0;
 }
 

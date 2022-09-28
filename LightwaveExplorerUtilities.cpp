@@ -949,14 +949,28 @@ int readCrystalDatabase(crystalEntry* db) {
 }
 
 int allocateGrids(simulationParameterSet* sCPU) {
-	(*sCPU).loadedField1 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
-	(*sCPU).loadedField2 = (std::complex<double>*)calloc((*sCPU).Ntime, sizeof(std::complex<double>));
-	(*sCPU).ExtOut = (double*)calloc((*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(double));
-	(*sCPU).EkwOut = (std::complex<double>*)calloc((*sCPU).NgridC * 2 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::complex<double>));
-	(*sCPU).deffTensor = (double*)calloc(9 * (*sCPU).Nsims * (*sCPU).Nsims2, sizeof(double));
-	(*sCPU).totalSpectrum = (double*)calloc((*sCPU).Nsims * (*sCPU).Nsims2 * (*sCPU).Nfreq * 3, sizeof(double));
-	(*sCPU).imdone = (int*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(int));
-	(*sCPU).fittingReference = (double*)calloc((*sCPU).Nfreq, sizeof(double));
+	(*sCPU).loadedField1 = new std::complex<double>[(*sCPU).Ntime];
+	(*sCPU).loadedField2 = new std::complex<double>[(*sCPU).Ntime];
+	(*sCPU).ExtOut = new double[(*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2];
+	(*sCPU).EkwOut = new std::complex<double>[(*sCPU).NgridC * 2 * (*sCPU).Nsims * (*sCPU).Nsims2];
+	(*sCPU).deffTensor = new double[9 * (*sCPU).Nsims * (*sCPU).Nsims2];
+	(*sCPU).totalSpectrum = new double[(*sCPU).Nsims * (*sCPU).Nsims2 * (*sCPU).Nfreq * 3];
+	(*sCPU).imdone = new int[(*sCPU).Nsims * (*sCPU).Nsims2];
+	(*sCPU).fittingReference = new double[(*sCPU).Nfreq];
+	return 0;
+}
+
+int deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems) {
+	delete[] (*sCPU).loadedField1;
+	delete[] (*sCPU).loadedField2;
+	delete[] (*sCPU).deffTensor;
+	delete[] (*sCPU).imdone;
+	delete[] (*sCPU).fittingReference;
+	if (alsoDeleteDisplayItems) {
+		delete[](*sCPU).ExtOut;
+		delete[](*sCPU).EkwOut;
+		delete[](*sCPU).totalSpectrum;
+	}
 	return 0;
 }
 
