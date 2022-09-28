@@ -8,15 +8,15 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-#include<Commdlg.h>
-#include<chrono>
-#include<Windows.h>
-#include<Uxtheme.h>
-#include<dwmapi.h>
-#include<d2d1.h>
-#include<nvml.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <Commdlg.h>
+#include <chrono>
+#include <Windows.h>
+#include <Uxtheme.h>
+#include <dwmapi.h>
+#include <d2d1.h>
+#include <nvml.h>
 
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111
@@ -2452,7 +2452,6 @@ int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
     }
     return 0;
 }
-
 
 DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
 

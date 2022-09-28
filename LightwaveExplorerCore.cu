@@ -1,14 +1,12 @@
 #ifdef __CUDACC__
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 #include <nvml.h>
 #endif
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
-#include <cstdlib>
 #include <stdlib.h>
-#include <math.h>
 #include <chrono>
 #include <thread>
 #include <dlib/optimization.h>
@@ -30,7 +28,6 @@
 #define SIXTH 0.1666666666666667
 #define THIRD 0.3333333333333333
 #define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
-#define CHI2CONVENTION 0.5
 
 #define maxN(a,b)            (((a) > (b)) ? (a) : (b))
 #define minN(a,b)            (((a) < (b)) ? (a) : (b))
@@ -472,30 +469,30 @@ FGLOBAL void millersRuleNormalizationKernel(GKERN cudaParameterSet* s, double* s
 	if (!(*s).isUsingMillersRule) {
 		return;
 	}
-	size_t i;
+
 	double chi11[7];
 	//double chi12[7];
 	deviceComplex ne, no;
-	for (i = 0; i < 7; i++) {
+	for (int i = 0; i < 7; i++) {
 		if (referenceFrequencies[i] == 0) {
 			chi11[i] = 100000.0;
 			//chi12[i] = 100000.0;
 		}
 		else {
-			sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[69], 0);
-			chi11[i] =ne.real() *ne.real() - 1;
+			sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[68], (int)sellmeierCoefficients[69]);
+			chi11[i] =ne.real() * ne.real() - 1.0;
 			//chi12[i] =no.real() *no.real() - 1;
 		}
 	}
 
 	//normalize chi2 tensor values
-	for (char i = 0; i < 18; i++) {
+	for (int i = 0; i < 18; i++) {
 		(*s).chi2Tensor[i] /= chi11[0] * chi11[1] * chi11[2];
 	}
 
 
 	//normalize chi3 tensor values
-	for (char i = 0; i < 81; i++) {
+	for (int i = 0; i < 81; i++) {
 		(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
 	}
 }
@@ -1954,7 +1951,6 @@ namespace {
 		for (int j = 0; j < 18; j++) {
 			(*s).chi2Tensor[j] *= 2e-12; //go from d in pm/V to chi2 in m/V
 			if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
-			(*s).chi2Tensor[j] *= CHI2CONVENTION; //apply an anti-correction for the weird conventions people use for the tensor values
 		}
 		memcpy((*s).nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int));
 		bilingualMemcpy((*s).chi3Tensor, (*sCPU).chi3Tensor, 81 * sizeof(double), cudaMemcpyHostToDevice);
@@ -2310,9 +2306,9 @@ namespace {
 		return 0;
 	}
 
-	int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet sc) {
+	int preparePropagation2DCartesian(simulationParameterSet* s, cudaParameterSet *sc) {
 		//recycle allocated device memory for the grids needed
-		double* sellmeierCoefficients = (double*)sc.gridEFrequency1Next1;
+		double* sellmeierCoefficients = (double*)(*sc).gridEFrequency1Next1;
 
 		double* referenceFrequencies;
 		bilingualCalloc((void**)&referenceFrequencies, 7, sizeof(double));
@@ -2333,23 +2329,23 @@ namespace {
 		//prepare the propagation grids
 		cudaParameterSet* sD;
 		bilingualCalloc((void**)&sD, 1, sizeof(cudaParameterSet));
-		bilingualMemcpy(sD, &sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
-		bilingualLaunch((unsigned int)sc.Nfreq, 1, sc.CUDAStream, getChiLinearKernel, sD, sellmeierCoefficients);
-		bilingualLaunch(sc.Nblock / 2, sc.Nthread, sc.CUDAStream, prepareCartesianGridsKernel, sellmeierCoefficients, sD);
-		bilingualLaunch(1, 1, sc.CUDAStream, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
-
+		bilingualMemcpy(sD, sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+		bilingualLaunch((unsigned int)(*sc).Nfreq, 1, (*sc).CUDAStream, getChiLinearKernel, sD, sellmeierCoefficients);
+		bilingualLaunch((*sc).Nblock / 2, (*sc).Nthread, (*sc).CUDAStream, prepareCartesianGridsKernel, sellmeierCoefficients, sD);
+		bilingualLaunch(1, 1, (*sc).CUDAStream, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
+		bilingualMemcpy(sc, sD, sizeof(cudaParameterSet), cudaMemcpyDeviceToHost);
 		bilingualFree(sD);
 
 		//clean up
-		bilingualMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		bilingualMemset((*sc).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
 
 		bilingualFree(referenceFrequencies);
 		return 0;
 	}
 
-	int preparePropagation3D(simulationParameterSet* s, cudaParameterSet sc) {
+	int preparePropagation3D(simulationParameterSet* s, cudaParameterSet *sc) {
 		//recycle allocated device memory for the grids needed
-		double* sellmeierCoefficients = (double*)sc.gridEFrequency1Next1;
+		double* sellmeierCoefficients = (double*)(*sc).gridEFrequency1Next1;
 
 		double* referenceFrequencies;
 		bilingualCalloc((void**)&referenceFrequencies, 7, sizeof(double));
@@ -2370,23 +2366,24 @@ namespace {
 		//prepare the propagation grids
 		cudaParameterSet* sD;
 		bilingualCalloc((void**)&sD, 1, sizeof(cudaParameterSet));
-		bilingualMemcpy(sD, &sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+		bilingualMemcpy(sD, sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
 
-		bilingualLaunch((unsigned int)sc.Nfreq, 1u, sc.CUDAStream, getChiLinearKernel, sD, sellmeierCoefficients);
-		bilingualLaunch((unsigned int)sc.Nblock / 2u, (unsigned int)sc.Nthread, sc.CUDAStream, prepare3DGridsKernel, sellmeierCoefficients, sD);
-		bilingualLaunch(1, 1, sc.CUDAStream, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
+		bilingualLaunch((unsigned int)(*sc).Nfreq, 1u, (*sc).CUDAStream, getChiLinearKernel, sD, sellmeierCoefficients);
+		bilingualLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, (*sc).CUDAStream, prepare3DGridsKernel, sellmeierCoefficients, sD);
+		bilingualLaunch(1, 1, (*sc).CUDAStream, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
+		bilingualMemcpy(sc, sD, sizeof(cudaParameterSet), cudaMemcpyDeviceToHost);
 		bilingualFree(sD);
 
 		//clean up
-		bilingualMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		bilingualMemset((*sc).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
 
 		bilingualFree(referenceFrequencies);
 		return 0;
 	}
 
-	int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet sc) {
+	int preparePropagation3DCylindric(simulationParameterSet* s, cudaParameterSet *sc) {
 		//recycle allocated device memory for the grids needed
-		double* sellmeierCoefficients = (double*)sc.gridEFrequency1Next1;
+		double* sellmeierCoefficients = (double*)(*sc).gridEFrequency1Next1;
 		double* referenceFrequencies;
 		bilingualCalloc((void**)&referenceFrequencies, 7, sizeof(double));
 		bilingualMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), cudaMemcpyHostToDevice);
@@ -2406,15 +2403,16 @@ namespace {
 		//prepare the propagation grids
 		cudaParameterSet* sD;
 		bilingualCalloc((void**)&sD, 1, sizeof(cudaParameterSet));
-		bilingualMemcpy(sD, &sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
-		bilingualLaunch((unsigned int)sc.Nfreq, 1, sc.CUDAStream, getChiLinearKernel, sD, sellmeierCoefficients);
-		bilingualLaunch((unsigned int)sc.Nblock / 2u, (unsigned int)sc.Nthread, sc.CUDAStream, prepareCylindricGridsKernel, sellmeierCoefficients, sD);
-		bilingualLaunch(1, 1, sc.CUDAStream, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
+		bilingualMemcpy(sD, sc, sizeof(cudaParameterSet), cudaMemcpyHostToDevice);
+		bilingualLaunch((unsigned int)(*sc).Nfreq, 1, (*sc).CUDAStream, getChiLinearKernel, sD, sellmeierCoefficients);
+		bilingualLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, (*sc).CUDAStream, prepareCylindricGridsKernel, sellmeierCoefficients, sD);
+		bilingualLaunch(1, 1, (*sc).CUDAStream, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
+		bilingualMemcpy(sc, sD, sizeof(cudaParameterSet), cudaMemcpyDeviceToHost);
 		bilingualFree(sD);
 
 
 		//clean up
-		bilingualMemset(sc.gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		bilingualMemset((*sc).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
 		bilingualFree(referenceFrequencies);
 		return 0;
 	}
@@ -2770,13 +2768,13 @@ unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
 
 	//prepare the propagation arrays
 	if (s.is3D) {
-		preparePropagation3D(sCPU, s);
+		preparePropagation3D(sCPU, &s);
 	}
 	else if (s.isCylindric) {
-		preparePropagation3DCylindric(sCPU, s);
+		preparePropagation3DCylindric(sCPU, &s);
 	}
 	else {
-		preparePropagation2DCartesian(sCPU, s);
+		preparePropagation2DCartesian(sCPU, &s);
 	}
 	prepareElectricFieldArrays(sCPU, &s);
 	double canaryPixel = 0;

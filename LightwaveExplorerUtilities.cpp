@@ -11,7 +11,6 @@
 // See dlib.net for more info
 // Copyright (C) 2006  Davis E. King (davis@dlib.net)
 // License: Boost Software License   See LICENSE.txt for the full license.
-#define DLIB_ALL_SOURCe_
 #include "dlib/test_for_odr_violations.cpp"
 #include "dlib/threads/thread_pool_extension.cpp"
 #include "dlib/global_optimization/global_function_search.cpp"
