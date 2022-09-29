@@ -707,7 +707,7 @@ FGLOBAL void apertureKernel(GKERN cudaParameterSet* s, double radius, double act
 		r = sqrt(x * x + y * y);
 	} 
 	else {
-		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
 	}
 
 	double a = 1.0 - (1.0 / (1.0 + exp( - activationParameter*(r - radius)/(*s).dx)));
@@ -734,7 +734,7 @@ FGLOBAL void parabolicMirrorKernel(GKERN cudaParameterSet* s, double focus) {
 		r = sqrt(x * x + y * y);
 	}
 	else {
-		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
 	}
 
 
@@ -765,7 +765,7 @@ FGLOBAL void sphericalMirrorKernel(GKERN cudaParameterSet* s, double ROC) {
 		r = sqrt(x * x + y * y);
 	}
 	else {
-		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
 	}
 
 	bool isNegative = signbit(ROC);
@@ -857,9 +857,6 @@ FGLOBAL void prepareCartesianGridsKernel(GKERN double* sellmeierCoefficients, cu
 	findBirefringentCrystalIndex(s, sellmeierCoefficients, threadIdx.x + blockIdx.x * blockDim.x, &ne, &no);
 
 	//walkoff angle has been found, generate the rest of the grids
-
-
-
 	if (isnan(ne.real()) || isnan(no.real())) {
 		ne = deviceComplex(1, 0);
 		no = deviceComplex(1, 0);
@@ -902,7 +899,6 @@ FGLOBAL void prepareCartesianGridsKernel(GKERN double* sellmeierCoefficients, cu
 		(*s).gridPolarizationFactor1[i] = cuZero;
 		(*s).gridPolarizationFactor2[i] = cuZero;
 	}
-
 }
 
 //prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
@@ -935,8 +931,6 @@ FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParam
 		crystalTheta, crystalPhi, axesNumber, sellmeierType);
 	findBirefringentCrystalIndex(s, sellmeierCoefficients, threadIdx.x + blockIdx.x * blockDim.x, &ne, &no);
 
-
-
 	if (isnan(ne.real()) || isnan(no.real())) {
 		ne = deviceComplex(1, 0);
 		no = deviceComplex(1, 0);
@@ -945,7 +939,6 @@ FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParam
 	deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
 	deviceComplex ke = TWOPI * ne * f / LIGHTC;
 	deviceComplex ko = TWOPI * no * f / LIGHTC;
-
 
 	deviceComplex chi11 = deviceComplex(1.0, 0);
 	deviceComplex chi12 = deviceComplex(1.0, 0);
@@ -1135,17 +1128,7 @@ FGLOBAL void materialPhaseKernel(GKERN double df, size_t Ntime, double* a, doubl
 	sellmeierCuda(&ne, &n0m, a, f02 - 1e11, 0, 0, 0, 0);
 	no0 = no0 + f02 * (n0p - n0m) / 2e11;
 	phase2[i] = thickness2 * f * (no.real() - no0.real()) / LIGHTC;
-
 }
-//replaces NaN values with 0
-// don't use this in a final version of anything, but can be useful for debugging
-// Comment it out when you're done.
-//FGLOBAL void fixnanKernel(GKERN deviceComplex* E) {
-//	long long i = threadIdx.x + blockIdx.x * blockDim.x;
-//	if (isnan(E[i].real()) || isnan(E[i].imag())) {
-//		E[i] = deviceComplex(0., 0.);
-//	}
-//}
 
 //calculate the nonlinear polarization, after FFT to get the field
 //in the time domain
@@ -1185,13 +1168,8 @@ FGLOBAL void nonlinearPolarizationKernel(GKERN cudaParameterSet* s) {
 		(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P2[0] + (*s).rotationBackward[4] * P2[1] + (*s).rotationBackward[5] * P2[2];
 	}
 
-
-
 	//resolve the full chi3 matrix when (*s).nonlinearSwitches[1]==1
 	if ((*s).nonlinearSwitches[1] == 1) {
-
-
-
 		//loop over tensor element X_abcd
 		//i hope the compiler unrolls this, but no way am I writing that out by hand
 		unsigned char a, b, c, d;
@@ -1589,7 +1567,7 @@ void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, cudaStream_t str
 void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, int stream, Function func, Args... args) {
 #endif
 #ifdef __CUDACC__
-	func << <Nblock, Nthread, 0, stream >> > (args...);
+	func <<<Nblock, Nthread, 0, stream>>> (args...);
 #else
 	uint3 bDim;
 	bDim.x = Nthread;
@@ -1609,8 +1587,6 @@ void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, int stream, Func
 namespace {
 	typedef dlib::matrix<double, 0, 1> column_vector;
 	simulationParameterSet* fittingSet;
-
-
 	//memset for either CUDA or c++ depending on which
 	//compiler is running
 	int bilingualMemset(void* ptr, int value, size_t count) {
@@ -1628,7 +1604,7 @@ namespace {
 	int bilingualCalloc(void** ptr, size_t N, size_t elementSize) {
 #ifdef __CUDACC__
 		int err = cudaMalloc(ptr, N * elementSize);
-		bilingualMemset(*ptr, 0, N * elementSize);
+		cudaMemset(*ptr, 0, N * elementSize);
 		return err;
 #else
 		(*ptr) = calloc(N, elementSize);
@@ -1970,7 +1946,6 @@ namespace {
 		bilingualFree((*s).gridEFrequency1Next1);
 		bilingualFree((*s).k1);
 		bilingualFree((*s).gridPolarizationTime1);
-		//bilingualFree((*s).chi2Tensor);
 		bilingualFree((*s).chi3Tensor);
 		bilingualFree((*s).expGammaT);
 		bilingualFree((*s).chiLinear1);
