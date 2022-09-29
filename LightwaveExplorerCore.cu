@@ -1452,7 +1452,8 @@ FGLOBAL void beamGenerationKernel2D(GKERN deviceComplex* pulse, double* pulseSum
 #ifdef __CUDACC__
 	atomicAdd(pulseSum, pointEnergy);
 #else
-	*pulseSum += pointEnergy; //NOT THREAD SAFE, RUN CPU CODE ON SINGLE THREAD
+	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+	(*pulseSumAtomic).fetch_add(pointEnergy);
 #endif
 }
 
@@ -1530,7 +1531,8 @@ FGLOBAL void beamGenerationKernel3D(GKERN deviceComplex* pulse, double* pulseSum
 #ifdef __CUDACC__
 	atomicAdd(pulseSum, pointEnergy);
 #else
-	*pulseSum += pointEnergy; //NOT THREAD SAFE, RUN CPU CODE ON SINGLE THREAD
+	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+	(*pulseSumAtomic).fetch_add(pointEnergy);
 #endif
 }
 
@@ -1591,8 +1593,7 @@ void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, int stream, Func
 #else
 	uint3 bDim;
 	bDim.x = Nthread;
-	bool isThreaded = Nthread > 1u;
-#pragma omp parallel for if(isThreaded)
+#pragma omp parallel for
 	for (int j = 0; j < (int)Nblock; j++) {
 		uint3 bIdx, tIdx;
 		bIdx.x = (unsigned int)j;
@@ -2018,10 +2019,6 @@ namespace {
 		//run the beam generation single-threaded on CPU to avoid race condition
 		unsigned int beamBlocks = (*sc).Nblock / 2;
 		unsigned int beamThreads = (*sc).Nthread;
-		if (RUNTYPE == 1) {
-			beamBlocks = beamBlocks * beamThreads;
-			beamThreads = 1;
-		}
 			
 		cudaParameterSet* scDevice;
 		bilingualCalloc((void**)&scDevice, 1, sizeof(cudaParameterSet));
@@ -2114,7 +2111,6 @@ namespace {
 				(*s).z02, (*s).x02, (*s).propagationAngle2, (*s).polarizationAngle2, (*s).circularity2,
 				sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
 		}
-		
 
 		combinedFFT(sc, (*sc).workspace1, (*sc).gridETime1, 3);
 
