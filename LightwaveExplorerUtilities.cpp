@@ -318,7 +318,7 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 		fprintf(textfile, "#SBATCH --gres=gpu:a100:%i", minN(gpuCount, 4)); unixNewLine(textfile);
 		fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2 * minN(gpuCount, 4)); unixNewLine(textfile);
 	}
-	fprintf(textfile, "#SBATCH --mem=%lliM", 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN(1, (*sCPU).Nsims)) / 1048576);
+	fprintf(textfile, "#SBATCH --mem=%zuM", 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN(1, (*sCPU).Nsims)) / 1048576);
 	unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --nodes=1"); unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH --ntasks-per-node=1"); unixNewLine(textfile);
@@ -594,13 +594,13 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).batchDestination);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lli", &(*sCPU).Nsims);
+	readValueCount += fscanf(textfile, "%zu", &(*sCPU).Nsims);
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%i", &(*sCPU).batchIndex2);
 	skipFileUntilCharacter(textfile, ':');
 	readValueCount += fscanf(textfile, "%lf", &(*sCPU).batchDestination2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lli", &(*sCPU).Nsims2);
+	readValueCount += fscanf(textfile, "%zu", &(*sCPU).Nsims2);
 	readValueCount += fscanf(textfile, "\nSequence: ");
 	fgets((*sCPU).sequenceString, MAX_LOADSTRING, textfile);
 	readValueCount += fscanf(textfile, "Fitting: ");
@@ -722,18 +722,18 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 
 	if (saveInputs) {
 		fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
-		fprintf(matlabfile, "%s_ExtIn = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
-		fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
+		fprintf(matlabfile, "%s_ExtIn = fread(fid, %zu, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
+		fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%zu %zu %zu]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
 		fprintf(matlabfile, "fclose(fid); \n");
 	}
 
 	fprintf(matlabfile, "fid = fopen('%s_Ext.dat','rb'); \n", outputbaseVar);
-	fprintf(matlabfile, "%s_Ext = fread(fid, %lli, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
-	fprintf(matlabfile, "%s_Ext = reshape(%s_Ext,[%lli %lli %lli]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
+	fprintf(matlabfile, "%s_Ext = fread(fid, %zu, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
+	fprintf(matlabfile, "%s_Ext = reshape(%s_Ext,[%zu %zu %zu]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
 	fprintf(matlabfile, "fclose(fid); \n");
 	fprintf(matlabfile, "fid = fopen('%s_spectrum.dat','rb'); \n", outputbaseVar);
-	fprintf(matlabfile, "%s_spectrum = fread(fid, %lli, 'double'); \n", outputbaseVar, 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2);
-	fprintf(matlabfile, "%s_spectrum = reshape(%s_spectrum,[%lli %i %zi]); \n", outputbaseVar, outputbaseVar, (*sCPU).Nfreq, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
+	fprintf(matlabfile, "%s_spectrum = fread(fid, %zu, 'double'); \n", outputbaseVar, 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2);
+	fprintf(matlabfile, "%s_spectrum = reshape(%s_spectrum,[%zu %d %zu]); \n", outputbaseVar, outputbaseVar, (*sCPU).Nfreq, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
 	fprintf(matlabfile, "fclose(fid); \n");
 	fprintf(matlabfile, "dt = %e;\ndz = %e;\ndx = %e;\ndf = %e;\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep, (*sCPU).fStep);
 	fclose(matlabfile);
@@ -749,14 +749,14 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 	if (saveInputs) {
 		fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
 		fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
-		fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
+		fprintf(scriptfile, "\",dtype=np.double)[0:%zu],(%zu,%zu,%zu),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
 	}
 	fprintf(scriptfile, "%s_Ext = np.reshape(np.fromfile(\"", outputbaseVar);
 	fprintf(scriptfile, "%s_Ext.dat", outputbaseVar);
-	fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%lli,%lli),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
+	fprintf(scriptfile, "\",dtype=np.double)[0:%zu],(%zu,%zu,%zu),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
 	fprintf(scriptfile, "%s_spectrum = np.reshape(np.fromfile(\"", outputbaseVar);
 	fprintf(scriptfile, "%s_spectrum.dat", outputbaseVar);
-	fprintf(scriptfile, "\",dtype=np.double)[0:%lli],(%lli,%i,%zi),order='F')\n", 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Nfreq, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
+	fprintf(scriptfile, "\",dtype=np.double)[0:%zu],(%zu,%i,%zu),order='F')\n", 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Nfreq, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
 	fclose(scriptfile);
 	return 0;
 }
