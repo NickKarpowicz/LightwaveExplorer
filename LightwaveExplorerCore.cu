@@ -10,6 +10,7 @@
 #include <chrono>
 #include <thread>
 #include <memory>
+#include <atomic>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
@@ -32,6 +33,7 @@
 
 #define maxN(a,b)            (((a) > (b)) ? (a) : (b))
 #define minN(a,b)            (((a) < (b)) ? (a) : (b))
+
 
 
 //depending on if the compilation pass is being made by nvcc
@@ -61,7 +63,12 @@ typedef struct uint3 {
 #define cudaMemcpyKind int
 #endif
 
-
+#ifdef __APPLE__
+void applePatchFetchAdd(std::atomic<double> *a, double b) {
+  	double expected = a->load();
+  	while(!std::atomic_compare_exchange_weak(a, &expected, expected + b));
+}
+#endif
 
 #ifdef __CUDACC__
 namespace deviceFunctions {
@@ -1429,6 +1436,9 @@ FGLOBAL void beamGenerationKernel2D(GKERN deviceComplex* pulse, double* pulseSum
 	//accordingly we already multiplied by two
 #ifdef __CUDACC__
 	atomicAdd(pulseSum, pointEnergy);
+#elif __APPLE__
+	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+	applePatchFetchAdd(pulseSumAtomic, pointEnergy);
 #else
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
@@ -1508,6 +1518,9 @@ FGLOBAL void beamGenerationKernel3D(GKERN deviceComplex* pulse, double* pulseSum
 	//factor 2 accounts for the missing negative frequency plane
 #ifdef __CUDACC__
 	atomicAdd(pulseSum, pointEnergy);
+#elif __APPLE__
+	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+	applePatchFetchAdd(pulseSumAtomic, pointEnergy);
 #else
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
@@ -1679,6 +1692,8 @@ namespace {
 
 		return 0;
 	}
+
+
 
 	int fillRotationMatricies(simulationParameterSet* sCPU, cudaParameterSet* s) {
 		double cosT = cos((*sCPU).crystalTheta);
