@@ -10,6 +10,8 @@
 #include <chrono>
 #include <thread>
 #include <memory>
+#include <future>
+#include <vector>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
@@ -51,9 +53,7 @@
 #define GKERN uint3 blockIdx, uint3 threadIdx, uint3 blockDim,
 #define RUNTYPE 1
 typedef struct uint3 {
-	unsigned int x = 0u;
-	unsigned int y = 0u;
-	unsigned int z = 0u;
+	unsigned int x;
 } uint3;
 #define cudaMemcpyDeviceToHost 2
 #define cudaMemcpyHostToDevice 1
@@ -1556,6 +1556,7 @@ FGLOBAL void multiplicationKernelCompact(GKERN deviceComplex* A, deviceComplex* 
 	C[i] = A[i] * B[i];
 }
 
+
 //My weird bilingual wrapper template that lets me either call CUDA kernels
 //normally on the GPU, or process them on the CPU
 //This is why kernel declarations have FGLOBAL in front of them
@@ -1571,6 +1572,7 @@ void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, int stream, Func
 #else
 	uint3 bDim;
 	bDim.x = Nthread;
+
 #pragma omp parallel for
 	for (int j = 0; j < (int)Nblock; j++) {
 		uint3 bIdx, tIdx;
@@ -1579,6 +1581,37 @@ void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, int stream, Func
 			func(bIdx, tIdx, bDim, args...);
 		}
 	}
+
+	//auto threadLambda = [&](uint3 bIdx) {
+	//	uint3 tIdx;
+	//	for (tIdx.x = 0u; tIdx.x < Nthread; tIdx.x++) {
+	//		func(bIdx, tIdx, bDim, args...);
+	//	}
+	//	return;
+	//};
+
+	//std::future<void>* futures = new std::future<void>[Nblock];
+	//uint3 bIdx;
+	//for (bIdx.x = 0u; bIdx.x < Nblock; bIdx.x++) {
+	//	futures[bIdx.x] = std::async(std::launch::async, [&,bIdx] {threadLambda(bIdx); });
+	//}
+	//for (unsigned int j = 0u; j < Nblock; j++) {
+	//	futures[j].wait();
+	//}
+	//delete[] futures;
+
+
+	//std::thread* threads = new std::thread[Nblock];
+	//uint3 bIdx;
+	//for (bIdx.x = 0u; bIdx.x < Nblock; bIdx.x++) {
+	//	threads[bIdx.x] = std::thread([&, bIdx] {threadLambda(bIdx); });
+	//}
+	//for (unsigned int j = 0u; j < Nblock; j++) {
+	//	threads[j].join();
+	//}
+	//delete[] threads;
+	
+
 #endif
 }
 

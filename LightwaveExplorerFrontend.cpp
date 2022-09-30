@@ -260,7 +260,6 @@ DWORD WINAPI createRunFile(LPVOID lpParam) {
 
 	}
     saveSlurmScript(activeSetPtr, gpuType, gpuCount);
-
     isRunning = FALSE;
     return 0;
 }
@@ -313,9 +312,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int)msg.wParam;
 }
 
-
-
-//
 //  FUNCTION: MyRegisterClass()
 //
 //  PURPOSE: Registers the window class.
