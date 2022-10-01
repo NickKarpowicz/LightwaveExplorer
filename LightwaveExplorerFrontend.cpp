@@ -17,6 +17,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <dwmapi.h>
 #include <d2d1.h>
 #include <nvml.h>
+#include <thread>
 
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111

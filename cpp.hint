@@ -7,5 +7,4 @@
 #define deviceComplex std::complex<double>
 #define deviceLib std
 #define KERNELID
-#ifdef __CUDACC__
-#ifdef __APPLE__
+#define RUNTYPE

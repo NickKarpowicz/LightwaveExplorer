@@ -220,7 +220,7 @@ typedef struct cudaParameterSet {
     double firstDerivativeOperation[6] = { 0 };
     double plasmaParameters[6] = { 0 }; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
     double chi2Tensor[18] = { 0 };
-    double* chi3Tensor = 0;
+    double chi3Tensor[81] = { 0 };
     double absorptionParameters[6] = { 0 };
     double rotationForward[9] = { 0 };
     double rotationBackward[9] = { 0 };
