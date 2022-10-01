@@ -48,10 +48,12 @@
 #define FDEVICE __device__
 #define GKERN
 #define RUNTYPE 0
+#define KERNELID threadIdx.x + blockIdx.x * blockDim.x
 #else
 #define FGLOBAL
 #define FDEVICE
-#define GKERN uint3 blockIdx, uint3 threadIdx, uint3 blockDim,
+//#define GKERN uint3 blockIdx, uint3 threadIdx, uint3 blockDim,
+#define GKERN size_t bilingualLaunchID,
 #define RUNTYPE 1
 typedef struct uint3 {
 	unsigned int x;
@@ -59,14 +61,8 @@ typedef struct uint3 {
 #define cudaMemcpyDeviceToHost 2
 #define cudaMemcpyHostToDevice 1
 #define cudaMemcpyDeviceToDevice 3
+#define KERNELID bilingualLaunchID
 #define cudaMemcpyKind int
-#endif
-
-#ifdef __APPLE__
-void applePatchFetchAdd(std::atomic<double> *a, double b) {
-  	double expected = a->load();
-  	while(!std::atomic_compare_exchange_weak(a, &expected, expected + b));
-}
 #endif
 
 #ifdef __CUDACC__
@@ -505,7 +501,7 @@ FGLOBAL void millersRuleNormalizationKernel(GKERN cudaParameterSet* s, double* s
 }
 
 FGLOBAL void totalSpectrumKernel(GKERN deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
-	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t i = KERNELID;
 	size_t j;
 	double beamCenter1 = 0.;
 	double beamCenter2 = 0.;
@@ -550,7 +546,7 @@ FGLOBAL void totalSpectrumKernel(GKERN deviceComplex* fieldGrid1, deviceComplex*
 }
 
 FGLOBAL void totalSpectrum3DKernel(GKERN deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
-	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t i = KERNELID;
 	size_t j;
 
 	double beamTotal1 = 0.;
@@ -574,7 +570,7 @@ FGLOBAL void totalSpectrum3DKernel(GKERN deviceComplex* fieldGrid1, deviceComple
 //rotate the field around the propagation axis (basis change)
 FGLOBAL void rotateFieldKernel(GKERN deviceComplex* Ein1, deviceComplex* Ein2, deviceComplex* Eout1,
 	deviceComplex* Eout2, double rotationAngle) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
 	Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
 }
@@ -582,7 +578,7 @@ FGLOBAL void rotateFieldKernel(GKERN deviceComplex* Ein1, deviceComplex* Ein2, d
 
 
 FGLOBAL void radialLaplacianKernel(GKERN cudaParameterSet* s) {
-	unsigned long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned long long i = KERNELID;
 	long long j = i / (*s).Ntime; //spatial coordinate
 	long long h = i % (*s).Ntime; //temporal coordinate
 	long long neighbors[6];
@@ -624,7 +620,7 @@ FGLOBAL void radialLaplacianKernel(GKERN cudaParameterSet* s) {
 // in such a way as to avoid aliasing, which inside the simulation is most
 // likely the appear (and cause instability) in the nonlinear terms.
 FGLOBAL void expandCylindricalBeam(GKERN cudaParameterSet* s, double* polarization1, double* polarization2) {
-	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t i = KERNELID;
 	size_t j = i / (*s).Ntime; //spatial coordinate
 	size_t k = i % (*s).Ntime; //temporal coordinate
 
@@ -647,7 +643,7 @@ FGLOBAL void expandCylindricalBeam(GKERN cudaParameterSet* s, double* polarizati
 //note that the sellmeier coefficients have extra values appended to the end
 //to give info about the current simulation
 FGLOBAL void applyFresnelLossKernel(GKERN double* sellmeierCoefficients1, double* sellmeierCoefficients2, cudaParameterSet* s) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	double alpha1, alpha2, alphaO1, alphaO2;
 	long long j, k;
 	long long Ntime = (*s).Ntime;
@@ -700,7 +696,7 @@ FGLOBAL void applyFresnelLossKernel(GKERN double* sellmeierCoefficients1, double
 
 
 FGLOBAL void apertureKernel(GKERN cudaParameterSet* s, double radius, double activationParameter) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long j, k, col;
 
 	col = i / (*s).Ntime;
@@ -724,7 +720,7 @@ FGLOBAL void apertureKernel(GKERN cudaParameterSet* s, double radius, double act
 }
 
 FGLOBAL void parabolicMirrorKernel(GKERN cudaParameterSet* s, double focus) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long j, k, h, col;
 	h = 1 + i % ((*s).Nfreq - 1);
 	col = i / ((*s).Nfreq - 1);
@@ -755,7 +751,7 @@ FGLOBAL void parabolicMirrorKernel(GKERN cudaParameterSet* s, double focus) {
 }
 
 FGLOBAL void sphericalMirrorKernel(GKERN cudaParameterSet* s, double ROC) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long j, k, h, col;
 	h = 1 + i % ((*s).Nfreq - 1);
 	col = i / ((*s).Nfreq - 1);
@@ -787,7 +783,7 @@ FGLOBAL void sphericalMirrorKernel(GKERN cudaParameterSet* s, double ROC) {
 }
 
 FGLOBAL void applyLinearPropagationKernel(GKERN double* sellmeierCoefficients, double thickness, cudaParameterSet *s) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long j, h, k, col;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
@@ -807,7 +803,7 @@ FGLOBAL void applyLinearPropagationKernel(GKERN double* sellmeierCoefficients, d
 	//frequency being resolved by current thread
 	double f = h * (*s).fStep;
 	double omega = TWOPI * f;
-	findBirefringentCrystalIndex(s, sellmeierCoefficients, threadIdx.x + blockIdx.x * blockDim.x, &ne, &no);
+	findBirefringentCrystalIndex(s, sellmeierCoefficients, KERNELID, &ne, &no);
 	double dk1 = j * (*s).dk1 - (j >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 	double dk2 = k * (*s).dk2 - (k >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 	if (!(*s).is3D)dk2 = 0.0;
@@ -838,7 +834,7 @@ FGLOBAL void applyLinearPropagationKernel(GKERN double* sellmeierCoefficients, d
 //note that the sellmeier coefficients have extra values appended to the end
 //to give info about the current simulation
 FGLOBAL void prepareCartesianGridsKernel(GKERN double* sellmeierCoefficients, cudaParameterSet* s) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long j, k;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
@@ -860,7 +856,7 @@ FGLOBAL void prepareCartesianGridsKernel(GKERN double* sellmeierCoefficients, cu
 	double dk = j * kStep - (j >= ((long long)(*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
 	sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
 		crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	findBirefringentCrystalIndex(s, sellmeierCoefficients, threadIdx.x + blockIdx.x * blockDim.x, &ne, &no);
+	findBirefringentCrystalIndex(s, sellmeierCoefficients, KERNELID, &ne, &no);
 
 	//walkoff angle has been found, generate the rest of the grids
 	if (isnan(ne.real()) || isnan(no.real())) {
@@ -911,7 +907,7 @@ FGLOBAL void prepareCartesianGridsKernel(GKERN double* sellmeierCoefficients, cu
 //note that the sellmeier coefficients have extra values appended to the end
 //to give info about the current simulation
 FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParameterSet* s) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long col,j, k, l;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
@@ -935,7 +931,7 @@ FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParam
 	double dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 	sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
 		crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	findBirefringentCrystalIndex(s, sellmeierCoefficients, threadIdx.x + blockIdx.x * blockDim.x, &ne, &no);
+	findBirefringentCrystalIndex(s, sellmeierCoefficients, KERNELID, &ne, &no);
 
 	if (isnan(ne.real()) || isnan(no.real())) {
 		ne = deviceComplex(1, 0);
@@ -982,7 +978,7 @@ FGLOBAL void prepare3DGridsKernel(GKERN double* sellmeierCoefficients, cudaParam
 }
 
 FGLOBAL void getChiLinearKernel(GKERN cudaParameterSet* s, double* sellmeierCoefficients) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	int axesNumber = (*s).axesNumber;
 	int sellmeierType = (*s).sellmeierType;
 	deviceComplex cuZero = deviceComplex(0, 0);
@@ -1021,7 +1017,7 @@ FGLOBAL void getChiLinearKernel(GKERN cudaParameterSet* s, double* sellmeierCoef
 }
 //prepare the propagation constants under the assumption of cylindrical symmetry of the beam
 FGLOBAL void prepareCylindricGridsKernel(GKERN double* sellmeierCoefficients, cudaParameterSet* s) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long j, k;
 	long long Nspace = (*s).Nspace;
 	int axesNumber = (*s).axesNumber;
@@ -1096,23 +1092,23 @@ FGLOBAL void prepareCylindricGridsKernel(GKERN double* sellmeierCoefficients, cu
 
 //replaces E with its complex conjugate
 FGLOBAL void conjugateKernel(GKERN deviceComplex* E) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	E[i] = deviceLib::conj(E[i]);
 }
 
 FGLOBAL void realToComplexKernel(GKERN double* in, deviceComplex* out) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	out[i] = deviceComplex(in[i], 0.0);
 }
 
 FGLOBAL void complexToRealKernel(GKERN deviceComplex* in, double* out) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	out[i] = in[i].real();
 }
 
 FGLOBAL void materialPhaseKernel(GKERN double df, size_t Ntime, double* a, double f01, double f02, 
 	double thickness1, double thickness2, double* phase1, double* phase2) {
-	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	size_t i = KERNELID;
 	//frequency being resolved by current thread
 	double f = i * df;
 	if (i >= Ntime / 2) {
@@ -1139,7 +1135,7 @@ FGLOBAL void materialPhaseKernel(GKERN double df, size_t Ntime, double* a, doubl
 //calculate the nonlinear polarization, after FFT to get the field
 //in the time domain
 FGLOBAL void nonlinearPolarizationKernel(GKERN cudaParameterSet* s) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	double Ex = (*s).fftNorm * (*s).gridETime1[i];
 	double Ey = (*s).fftNorm * (*s).gridETime2[i];
 
@@ -1221,7 +1217,7 @@ FGLOBAL void nonlinearPolarizationKernel(GKERN cudaParameterSet* s) {
 	//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
 	//of the plasma current
 FGLOBAL void plasmaCurrentKernel_twoStage_A(GKERN cudaParameterSet* s) {
-	unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int i = KERNELID;
 	double Esquared, Ex, Ey, a;
 	unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
 	Ex = (*s).gridETime1[i] * (*s).fftNorm;
@@ -1244,7 +1240,7 @@ FGLOBAL void plasmaCurrentKernel_twoStage_A(GKERN cudaParameterSet* s) {
 }
 
 FGLOBAL void plasmaCurrentKernel_twoStage_B(GKERN cudaParameterSet* s) {
-	unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int j = KERNELID;
 	j *= (unsigned int)(*s).Ntime;
 	double N = 0;
 	double integralx = 0;
@@ -1263,7 +1259,7 @@ FGLOBAL void plasmaCurrentKernel_twoStage_B(GKERN cudaParameterSet* s) {
 }
 
 FGLOBAL void updateKwithPolarizationKernel(GKERN cudaParameterSet* sP) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 	long long j = i / ((*sP).Nfreq - 1); //spatial coordinate
 	i = h + j * ((*sP).Nfreq);
@@ -1274,7 +1270,7 @@ FGLOBAL void updateKwithPolarizationKernel(GKERN cudaParameterSet* sP) {
 }
 
 FGLOBAL void updateKwithPlasmaKernel(GKERN cudaParameterSet* sP) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 	long long j = i / ((*sP).Nfreq - 1); //spatial coordinate
 	i = h + j * ((*sP).Nfreq);
@@ -1288,7 +1284,7 @@ FGLOBAL void updateKwithPlasmaKernel(GKERN cudaParameterSet* sP) {
 
 //Main kernel for RK4 propagation of the field
 FGLOBAL void rkKernel(GKERN cudaParameterSet* sP, uint8_t stepNumber) {
-	unsigned int iC = threadIdx.x + blockIdx.x * blockDim.x;
+	unsigned int iC = KERNELID;
 	unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 
 	iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
@@ -1363,13 +1359,13 @@ FGLOBAL void rkKernel(GKERN cudaParameterSet* sP, uint8_t stepNumber) {
 }
 
 FGLOBAL void beamNormalizeKernel(GKERN cudaParameterSet* s, double* rawSum, double* pulse, double pulseEnergy) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	double normFactor = sqrt(pulseEnergy / ((*s).Ntime * (*rawSum)));
 	pulse[i] *= normFactor;
 }
 
 FGLOBAL void addDoubleArraysKernel(GKERN double* A, double* B) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	A[i] += B[i];
 }
 
@@ -1379,7 +1375,7 @@ FGLOBAL void beamGenerationKernel2D(GKERN deviceComplex* pulse, double* pulseSum
 	double w0, double z0, double x0, double beamAngle,
 	double polarizationAngle, double circularity,
 	double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long j, h;
 	h = 1 + i % ((*s).Nfreq - 1);
 	j = i / ((*s).Nfreq - 1);
@@ -1437,7 +1433,8 @@ FGLOBAL void beamGenerationKernel2D(GKERN deviceComplex* pulse, double* pulseSum
 	atomicAdd(pulseSum, pointEnergy);
 #elif __APPLE__
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-	applePatchFetchAdd(pulseSumAtomic, pointEnergy);
+	double expected = pulseSumAtomic->load();
+	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 #else
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
@@ -1450,7 +1447,7 @@ FGLOBAL void beamGenerationKernel3D(GKERN deviceComplex* pulse, double* pulseSum
 	double w0, double z0, double y0, double x0, double beamAngle, double beamAnglePhi,
 	double polarizationAngle, double circularity,
 	double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long j, k, h, col;
 	h = 1 + i % ((*s).Nfreq - 1);
 	col = i / ((*s).Nfreq - 1);
@@ -1519,7 +1516,8 @@ FGLOBAL void beamGenerationKernel3D(GKERN deviceComplex* pulse, double* pulseSum
 	atomicAdd(pulseSum, pointEnergy);
 #elif __APPLE__
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-	applePatchFetchAdd(pulseSumAtomic, pointEnergy);
+	double expected = pulseSumAtomic->load();
+	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 #else
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
@@ -1528,43 +1526,43 @@ FGLOBAL void beamGenerationKernel3D(GKERN deviceComplex* pulse, double* pulseSum
 
 //Take absolute value of complex array
 FGLOBAL void absKernel(GKERN double* absOut, deviceComplex* complexIn) {
-	int i = threadIdx.x + blockIdx.x * blockDim.x;
+	int i = KERNELID;
 	absOut[i] = deviceLib::abs(complexIn[i]);
 }
 
 //Apply fft normalization
 //Take absolute value of complex array
 FGLOBAL void fftNormalizeKernel(GKERN deviceComplex* A, size_t fftSize) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	A[i] = A[i] / (double)fftSize;
 }
 
 //Apply fft normalization
  FGLOBAL void multiplyByConstantKernel(GKERN deviceComplex* A, double val) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	A[i] = val * A[i];
 }
 
 FGLOBAL void multiplyByConstantKernelD(GKERN double* A, double val) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	A[i] = val * A[i];
 }
 
 //element-wise B*A = C;
 FGLOBAL void multiplicationKernel(GKERN deviceComplex* A, deviceComplex* B, deviceComplex* C) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	C[i] = B[i] * A[i];
 }
 
 FGLOBAL void multiplicationKernelCompactVector(GKERN deviceComplex* A, deviceComplex* B, deviceComplex* C, cudaParameterSet* s) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	long long h = i % (*s).Nfreq; //temporal coordinate
 
 	C[i] = A[h] * B[i];
 }
 
 FGLOBAL void multiplicationKernelCompact(GKERN deviceComplex* A, deviceComplex* B, deviceComplex* C) {
-	long long i = threadIdx.x + blockIdx.x * blockDim.x;
+	long long i = KERNELID;
 	C[i] = A[i] * B[i];
 }
 
@@ -1575,55 +1573,20 @@ FGLOBAL void multiplicationKernelCompact(GKERN deviceComplex* A, deviceComplex* 
 //instead of the usual __global__ tag
 template<typename Function, typename... Args>
 #ifdef __CUDACC__
-void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, cudaStream_t stream, Function func, Args... args) {
+void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, cudaStream_t stream, Function kernel, Args... args) {
 #else
-void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, int stream, Function func, Args... args) {
+void bilingualLaunch(unsigned int Nblock, unsigned int Nthread, int stream, Function kernel, Args... args) {
 #endif
 #ifdef __CUDACC__
-	func <<<Nblock, Nthread, 0, stream>>> (args...);
+	kernel <<<Nblock, Nthread, 0, stream>>> (args...);
 #else
-	uint3 bDim;
-	bDim.x = Nthread;
 
 #pragma omp parallel for
-	for (int j = 0; j < (int)Nblock; j++) {
-		uint3 bIdx, tIdx;
-		bIdx.x = (unsigned int)j;
-		for (tIdx.x = 0u; tIdx.x < Nthread; tIdx.x++) {
-			func(bIdx, tIdx, bDim, args...);
+	for (int i = 0; i < (int)Nthread; i++) {
+		for (size_t j = 0u; j < Nblock; j++) {
+			kernel(j + Nblock * i, args...);
 		}
 	}
-
-	//auto threadLambda = [&](uint3 bIdx) {
-	//	uint3 tIdx;
-	//	for (tIdx.x = 0u; tIdx.x < Nthread; tIdx.x++) {
-	//		func(bIdx, tIdx, bDim, args...);
-	//	}
-	//	return;
-	//};
-
-	//std::future<void>* futures = new std::future<void>[Nblock];
-	//uint3 bIdx;
-	//for (bIdx.x = 0u; bIdx.x < Nblock; bIdx.x++) {
-	//	futures[bIdx.x] = std::async(std::launch::async, [&,bIdx] {threadLambda(bIdx); });
-	//}
-	//for (unsigned int j = 0u; j < Nblock; j++) {
-	//	futures[j].wait();
-	//}
-	//delete[] futures;
-
-
-	//std::thread* threads = new std::thread[Nblock];
-	//uint3 bIdx;
-	//for (bIdx.x = 0u; bIdx.x < Nblock; bIdx.x++) {
-	//	threads[bIdx.x] = std::thread([&, bIdx] {threadLambda(bIdx); });
-	//}
-	//for (unsigned int j = 0u; j < Nblock; j++) {
-	//	threads[j].join();
-	//}
-	//delete[] threads;
-	
-
 #endif
 }
 
@@ -1724,8 +1687,6 @@ namespace {
 
 		return 0;
 	}
-
-
 
 	int fillRotationMatricies(simulationParameterSet* sCPU, cudaParameterSet* s) {
 		double cosT = cos((*sCPU).crystalTheta);
