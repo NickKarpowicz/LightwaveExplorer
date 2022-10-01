@@ -7,14 +7,8 @@
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
 #include <stdlib.h>
-#include <chrono>
-#include <thread>
-#include <memory>
-#include <future>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
-
-#define _CRT_SECTURE_NO_WARNINGS
 
 #define THREADS_PER_BLOCK 32
 #define MIN_GRIDDIM 8
@@ -33,8 +27,6 @@
 
 #define maxN(a,b)            (((a) > (b)) ? (a) : (b))
 #define minN(a,b)            (((a) < (b)) ? (a) : (b))
-
-
 
 //depending on if the compilation pass is being made by nvcc
 //or the c++ compiler, change the prefix to global and
@@ -2903,7 +2895,7 @@ int mainCPU(int argc, char* filepath) {
 	}
 	if ((*crystalDatabasePtr).numberOfEntries == 0) {
 		printf("Could not read crystal database.\n");
-		free(crystalDatabasePtr);
+		delete[] crystalDatabasePtr;
 		return 12;
 	}
 	printf("Read %i crystal database entries:\n", (*crystalDatabasePtr).numberOfEntries);

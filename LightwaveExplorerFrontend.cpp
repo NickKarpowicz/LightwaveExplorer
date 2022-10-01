@@ -2,7 +2,6 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
-#define _CRT_SECURE_NO_DEPRECATE
 #include "framework.h"
 #include "LightwaveExplorerFrontend.h"
 #include "LightwaveExplorerCore.cuh"
