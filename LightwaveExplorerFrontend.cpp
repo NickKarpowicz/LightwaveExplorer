@@ -820,7 +820,6 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         printToConsole(maingui.textboxSims, L"No compatible GPU found.\r\n");
         hasGPU = FALSE;
     }
-    
     //read the crystal database
     crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
     if (crystalDatabasePtr != NULL) {

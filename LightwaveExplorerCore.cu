@@ -10,24 +10,6 @@
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
-#define THREADS_PER_BLOCK 32
-#define MIN_GRIDDIM 8
-#define ANGLETOLERANCE 1e-12
-#define FALSE 0
-#define TRUE 1
-#define MAX_LOADSTRING 1024
-#define TWOPI 6.2831853071795862
-#define PI 3.1415926535897931
-#define DEG2RAD 1.7453292519943295e-02
-#define LIGHTC 2.99792458e8
-#define EPS0 8.8541878128e-12
-#define SIXTH 0.1666666666666667
-#define THIRD 0.3333333333333333
-#define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
-
-#define maxN(a,b)            (((a) > (b)) ? (a) : (b))
-#define minN(a,b)            (((a) < (b)) ? (a) : (b))
-
 //depending on if the compilation pass is being made by nvcc
 //or the c++ compiler, change the prefix to global and
 //device kernels. This allows them to work properly on CUDA
@@ -41,15 +23,15 @@
 #define RUNTYPE 0
 #define KERNELID threadIdx.x + blockIdx.x * blockDim.x
 #else
-#define FGLOBAL __forceinline
+#define FGLOBAL
 #define FDEVICE
 #define GKERN size_t bilingualLaunchID,
 #define RUNTYPE 1
-#define cudaMemcpyDeviceToHost 2
+#define cudaMemcpyKind int
 #define cudaMemcpyHostToDevice 1
+#define cudaMemcpyDeviceToHost 2
 #define cudaMemcpyDeviceToDevice 3
 #define KERNELID bilingualLaunchID
-#define cudaMemcpyKind int
 #endif
 
 #ifdef __CUDACC__

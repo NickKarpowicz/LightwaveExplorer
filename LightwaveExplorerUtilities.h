@@ -11,6 +11,24 @@
 #endif
 #include <fftw3_mkl.h>
 #include <complex>
+
+#define THREADS_PER_BLOCK 32
+#define MIN_GRIDDIM 8
+#define ANGLETOLERANCE 1e-12
+#define FALSE 0
+#define TRUE 1
+#define MAX_LOADSTRING 1024
+#define TWOPI 6.2831853071795862
+#define PI 3.1415926535897931
+#define DEG2RAD 1.7453292519943295e-02
+#define LIGHTC 2.99792458e8
+#define EPS0 8.8541878128e-12
+#define SIXTH 0.1666666666666667
+#define THIRD 0.3333333333333333
+#define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
+#define maxN(a,b)            (((a) > (b)) ? (a) : (b))
+#define minN(a,b)            (((a) < (b)) ? (a) : (b))
+
 typedef struct crystalEntry {
     wchar_t crystalNameW[256] = { 0 };
     int axisType = 0;

@@ -15,25 +15,6 @@
 #include "dlib/threads/thread_pool_extension.cpp"
 #include "dlib/global_optimization/global_function_search.cpp"
 
-#define THREADS_PER_BLOCK 32
-#define MIN_GRIDDIM 8
-#define ANGLETOLERANCE 1e-12
-#define MAX_LOADSTRING 1024
-#define FALSE 0
-#define TRUE 1
-#define TWOPI 6.2831853071795862
-#define PI 3.1415926535897931
-#define DEG2RAD 1.7453292519943295e-02
-#define LIGHTC 2.99792458e8
-#define EPS0 8.8541878128e-12
-#define SIXTH 0.1666666666666667
-#define THIRD 0.3333333333333333
-#define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
-
-#define maxN(a,b)            (((a) > (b)) ? (a) : (b))
-#define minN(a,b)            (((a) < (b)) ? (a) : (b))
-
-
 int readFittingString(simulationParameterSet* sCPU) {
 	//read the fitting string (if there is one), convert it into an array if it exists
 	char fittingString[MAX_LOADSTRING];
@@ -94,9 +75,6 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	}
 	return 0;
 }
-
-
-
 
 //c implementation of fftshift, working on complex double precision
 //A is the input array, B is the output
