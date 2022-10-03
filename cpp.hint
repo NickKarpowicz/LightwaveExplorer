@@ -8,3 +8,4 @@
 #define deviceLib std
 #define KERNELID
 #define RUNTYPE
+#define asKernel
