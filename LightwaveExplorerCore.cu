@@ -11,21 +11,33 @@
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
+
+
+//Name assignments for the result functions compiled under CUDA, SYCL, and c++
 #ifdef __CUDACC__
 #define deviceFunctions deviceFunctionsCUDA
+#define hostFunctions hostFunctionsCUDA
 #define mainX main
+#define mainArgumentX char* argv[]
+#define resolveArgv char* filepath = argv[1];
 #define runDlibFittingX runDlibFitting
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquation
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequence
 #elif defined RUNONSYCL
 #define deviceFunctions deviceFunctionsSYCL
+#define hostFunctions hostFunctionsSYCL
 #define mainX mainSYCL
+#define mainArgumentX char* filepath
+#define resolveArgv
 #define runDlibFittingX runDlibFittingSYCL
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCL
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
 #else
 #define deviceFunctions deviceFunctionsCPU
+#define hostFunctions hostFunctionsCPU
 #define mainX mainCPU
+#define mainArgumentX char* filepath
+#define resolveArgv
 #define runDlibFittingX runDlibFittingCPU
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPU
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPU
@@ -425,1037 +437,1041 @@ namespace deviceFunctions {
 }
 using namespace deviceFunctions;
 
+namespace kernels {
 
-trilingual millersRuleNormalizationKernel asKernel(withID cudaParameterSet* s, double* sellmeierCoefficients, double* referenceFrequencies) {
-	if (!(*s).isUsingMillersRule) {
-		return;
-	}
-
-	double chi11[7];
-	//double chi12[7];
-	deviceComplex ne, no;
-	for (int i = 0; i < 7; i++) {
-		if (referenceFrequencies[i] == 0) {
-			chi11[i] = 100000.0;
-			//chi12[i] = 100000.0;
-		}
-		else {
-			sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[68], (int)sellmeierCoefficients[69]);
-			chi11[i] = ne.real() * ne.real() - 1.0;
-			//chi12[i] =no.real() *no.real() - 1;
-		}
-	}
-
-	//normalize chi2 tensor values
-	for (int i = 0; i < 18; i++) {
-		(*s).chi2Tensor[i] /= chi11[0] * chi11[1] * chi11[2];
-	}
-
-
-	//normalize chi3 tensor values
-	for (int i = 0; i < 81; i++) {
-		(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
-	}
-};
-
-trilingual totalSpectrumKernel asKernel(withID deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
-	size_t i = localIndex;
-	size_t j;
-	double beamCenter1 = 0.;
-	double beamCenter2 = 0.;
-	double beamTotal1 = 0.;
-	double beamTotal2 = 0.;
-	double a, x;
-
-	//find beam centers
-	for (j = 0; j < Nspace; j++) {
-		x = gridStep * j;
-		a = cuCModSquared(fieldGrid1[i + j * Ntime]);
-		beamTotal1 += a;
-		beamCenter1 += x * a;
-		a = cuCModSquared(fieldGrid2[i + j * Ntime]);
-		beamTotal2 += a;
-		beamCenter2 += x * a;
-	}
-	if (beamTotal1 > 0) {
-		beamCenter1 /= beamTotal1;
-	}
-	if (beamTotal2 > 0) {
-		beamCenter2 /= beamTotal2;
-	}
-
-
-	//Integrate total beam power, assuming radially-symmetric beam around
-	//the center
-	beamTotal1 = 0.;
-	beamTotal2 = 0.;
-	for (j = 0; j < Nspace; j++) {
-		x = gridStep * j;
-		beamTotal1 += PI * abs(x - beamCenter1) * cuCModSquared(fieldGrid1[i + j * Ntime]);
-		beamTotal2 += PI * abs(x - beamCenter2) * cuCModSquared(fieldGrid2[i + j * Ntime]);
-	}
-	beamTotal1 *= gridStep / Ntime;
-	beamTotal2 *= gridStep / Ntime;
-
-	//put the values into the output spectrum
-	spectrum[i] = beamTotal1;
-	spectrum[i + Ntime] = beamTotal2;
-	spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
-};
-
-trilingual totalSpectrum3DKernel asKernel(withID deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
-	size_t i = localIndex;
-	size_t j;
-
-	double beamTotal1 = 0.;
-	double beamTotal2 = 0.;
-	//Integrate total beam power
-	beamTotal1 = 0.;
-	beamTotal2 = 0.;
-	for (j = 0; j < Nspace; j++) {
-		beamTotal1 += cuCModSquared(fieldGrid1[i + j * Ntime]);
-		beamTotal2 += cuCModSquared(fieldGrid2[i + j * Ntime]);
-	}
-	beamTotal1 *= gridStep * gridStep / Ntime;
-	beamTotal2 *= gridStep * gridStep / Ntime;
-
-	//put the values into the output spectrum
-	spectrum[i] = beamTotal1;
-	spectrum[i + Ntime] = beamTotal2;
-	spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
-};
-
-//rotate the field around the propagation axis (basis change)
-trilingual rotateFieldKernel asKernel(withID deviceComplex* Ein1, deviceComplex* Ein2, deviceComplex* Eout1,
-	deviceComplex* Eout2, double rotationAngle) {
-	long long i = localIndex;
-	Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
-	Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
-};
-
-
-
-trilingual radialLaplacianKernel asKernel(withID cudaParameterSet* s) {
-	unsigned long long i = localIndex;
-	long long j = i / (*s).Ntime; //spatial coordinate
-	long long h = i % (*s).Ntime; //temporal coordinate
-	long long neighbors[6];
-
-	//zero at edges of grid
-	if (j<3 || j>((long long)(*s).Nspace - 4)) {
-		(*s).gridRadialLaplacian1[i] = 0.;
-		(*s).gridRadialLaplacian2[i] = 0.;
-	}
-	else {
-		double rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, (int)j, (*s).dx, (*s).Ntime, h);
-		rho = -1.0 / rho;
-		(*s).gridRadialLaplacian1[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
-			+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
-			+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
-			+ (*s).firstDerivativeOperation[3] * (*s).gridETime1[neighbors[3]]
-			+ (*s).firstDerivativeOperation[4] * (*s).gridETime1[neighbors[4]]
-			+ (*s).firstDerivativeOperation[5] * (*s).gridETime1[neighbors[5]]);
-		(*s).gridRadialLaplacian2[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime2[neighbors[0]]
-			+ (*s).firstDerivativeOperation[1] * (*s).gridETime2[neighbors[1]]
-			+ (*s).firstDerivativeOperation[2] * (*s).gridETime2[neighbors[2]]
-			+ (*s).firstDerivativeOperation[3] * (*s).gridETime2[neighbors[3]]
-			+ (*s).firstDerivativeOperation[4] * (*s).gridETime2[neighbors[4]]
-			+ (*s).firstDerivativeOperation[5] * (*s).gridETime2[neighbors[5]]);
-	}
-
-}
-//Expand the information contained in the radially-symmetric beam in the offset grid
-// representation.
-// The grid is offset from the origin; rather than ...-2 -1 0 1 2... etc, which would
-// contain redundant information (the symmetry means that -1 and -1 are equivalent)
-// the grid is at the points -1.75 -0.75 0.25 1.25 2.25, etc.
-// the grid spacing is the same, but now the two sides of the origin contain different
-// information. This has effectively doubled the resolution of the nonlinear
-// polarization. 
-// We make use of this by expanding into the full-resolution beam on the grid
-// -2.25 -1.75 -1.25 -0.75 -0.25 0.25 0.75 1.25 1.75 2.25...
-// after FFT, we can discard the high frequencies. Thus we have downsampled
-// in such a way as to avoid aliasing, which inside the simulation is most
-// likely the appear (and cause instability) in the nonlinear terms.
-trilingual expandCylindricalBeam asKernel(withID cudaParameterSet* s, double* polarization1, double* polarization2) {
-	size_t i = localIndex;
-	size_t j = i / (*s).Ntime; //spatial coordinate
-	size_t k = i % (*s).Ntime; //temporal coordinate
-
-	//positions on the expanded grid corresponding the the current index
-	size_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
-	size_t pos2 = (2 * j + 1) * (*s).Ntime + k;
-
-	//reuse memory allocated for the radial Laplacian, casting complex double
-	//to a 2x larger double real grid
-	double* expandedBeam1 = (double*)(*s).gridRadialLaplacian1;
-	double* expandedBeam2 = expandedBeam1 + 2 * (*s).Ngrid;
-
-	expandedBeam1[pos1] = polarization1[i];
-	expandedBeam1[pos2] = polarization1[i];
-	expandedBeam2[pos1] = polarization2[i];
-	expandedBeam2[pos2] = polarization2[i];
-};
-
-//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
-//note that the sellmeier coefficients have extra values appended to the end
-//to give info about the current simulation
-trilingual applyFresnelLossKernel asKernel(withID double* sellmeierCoefficients1, double* sellmeierCoefficients2, cudaParameterSet* s) {
-	long long i = localIndex;
-	double alpha1, alpha2, alphaO1, alphaO2;
-	long long j, k;
-	long long Ntime = (*s).Ntime;
-	int axesNumber = (*s).axesNumber;
-	int sellmeierType = (*s).sellmeierType;
-	deviceComplex ne1, no1, ne2, no2, n0;
-	deviceComplex cuZero = deviceComplex(0, 0);
-	j = i / Ntime; //spatial coordinate
-	k = i % Ntime; //temporal coordinate
-	deviceComplex ii = deviceComplex(0, 1);
-	double crystalTheta = sellmeierCoefficients1[66];
-	double crystalPhi = sellmeierCoefficients1[67];
-	double fStep = sellmeierCoefficients1[71];
-
-	//frequency being resolved by current thread
-	double f = k * fStep;
-
-	findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients1, s);
-	findBirefingentCrystalAngle(&alpha2, &alphaO2, j, f, sellmeierCoefficients2, s);
-	//walkoff angle has been found, generate the rest of the grids
-
-	sellmeierCuda(&ne1, &no1, sellmeierCoefficients1, f,
-		crystalTheta + 0 * alpha1, crystalPhi, axesNumber, sellmeierType);
-	sellmeierCuda(&n0, &no1, sellmeierCoefficients1, f,
-		crystalTheta + 0 * alphaO1, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(ne1.real()) || isnan(no1.real())) {
-		ne1 = deviceComplex(1, 0);
-		no1 = deviceComplex(1, 0);
-	}
-
-	sellmeierCuda(&ne2, &no2, sellmeierCoefficients2, f,
-		crystalTheta + alpha2, crystalPhi, axesNumber, sellmeierType);
-	sellmeierCuda(&n0, &no2, sellmeierCoefficients2, f,
-		crystalTheta + alphaO2, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(ne2.real()) || isnan(no2.real())) {
-		ne2 = deviceComplex(1, 0);
-		no2 = deviceComplex(1, 0);
-	}
-
-	deviceComplex ts = 2. * ne1 * cos(alpha1) / (ne1 * cos(alpha1) + ne2 * cos(alpha2));
-	deviceComplex tp = 2. * ne1 * cos(alpha1) / (ne2 * cos(alpha1) + ne1 * cos(alpha2));
-	if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
-	if (isnan(tp.real()) || isnan(tp.imag())) ts = deviceComplex(0, 0);
-	(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
-	(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
-};
-
-trilingual apertureKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter) {
-	long long i = localIndex;
-	long long j, k, col;
-
-	col = i / (*s).Ntime;
-	j = col % (*s).Nspace;
-	k = col / (*s).Nspace;
-	double r;
-	if ((*s).is3D) {
-		double x = ((*s).dx * (j - (*s).Nspace / 2.0));
-		double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
-		r = sqrt(x * x + y * y);
-	}
-	else {
-		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
-	}
-
-	double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (r - radius) / (*s).dx)));
-
-	//if (r>radius) a = 0;
-	(*s).gridETime1[i] *= a;
-	(*s).gridETime2[i] *= a;
-};
-
-trilingual parabolicMirrorKernel asKernel(withID cudaParameterSet* s, double focus) {
-	long long i = localIndex;
-	long long j, k, h, col;
-	h = 1 + i % ((*s).Nfreq - 1);
-	col = i / ((*s).Nfreq - 1);
-	i = h + col * (*s).Nfreq;
-	j = col % (*s).Nspace;
-	k = col / (*s).Nspace;
-
-	double w = TWOPI * h * (*s).fStep;
-	double r;
-	if ((*s).is3D) {
-		double x = ((*s).dx * (j - (*s).Nspace / 2.0));
-		double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
-		r = sqrt(x * x + y * y);
-	}
-	else {
-		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
-	}
-
-	deviceComplex	u = deviceLib::exp(deviceComplex(0.0,
-		w * r * r * (0.5 / focus) / LIGHTC));
-
-	(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
-	(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
-};
-
-trilingual sphericalMirrorKernel asKernel(withID cudaParameterSet* s, double ROC) {
-	long long i = localIndex;
-	long long j, k, h, col;
-	h = 1 + i % ((*s).Nfreq - 1);
-	col = i / ((*s).Nfreq - 1);
-	i = h + col * (*s).Nfreq;
-	j = col % (*s).Nspace;
-	k = col / (*s).Nspace;
-
-	double w = TWOPI * h * (*s).fStep;
-	double r;
-	if ((*s).is3D) {
-		double x = ((*s).dx * (j - (*s).Nspace / 2.0));
-		double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
-		r = sqrt(x * x + y * y);
-	}
-	else {
-		r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
-	}
-
-	bool isNegative = signbit(ROC);
-	ROC = abs(ROC);
-	deviceComplex u = deviceComplex(0.0, 0.0);
-	if (r < ROC) {
-		u = deviceLib::exp(deviceComplex(0.0,
-			2.0 * pow(-1, isNegative) * w * ROC * ((sqrt(1.0 - r * r / (ROC * ROC))) - 1.0) / LIGHTC));
-	}
-
-	(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
-	(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
-};
-
-trilingual applyLinearPropagationKernel asKernel(withID double* sellmeierCoefficients, double thickness, cudaParameterSet* s) {
-	long long i = localIndex;
-	long long j, h, k, col;
-	int axesNumber = (*s).axesNumber;
-	int sellmeierType = (*s).sellmeierType;
-	deviceComplex ne, no, n0, n0o;
-	deviceComplex cuZero = deviceComplex(0, 0);
-	h = 1 + i % ((*s).Nfreq - 1);
-	col = i / ((*s).Nfreq - 1);
-	i = h + col * ((*s).Nfreq);
-	j = col % (*s).Nspace;
-	k = col / (*s).Nspace;
-	deviceComplex ii = deviceComplex(0, 1);
-	double crystalTheta = sellmeierCoefficients[66];
-	double crystalPhi = sellmeierCoefficients[67];
-
-	//frequency being resolved by current thread
-	double f = h * (*s).fStep;
-	double omega = TWOPI * f;
-	findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-	double dk1 = j * (*s).dk1 - (j >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
-	double dk2 = k * (*s).dk2 - (k >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
-	if (!(*s).is3D)dk2 = 0.0;
-	//if ((*s).isCylindric) dk2 = dk1;
-	sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
-		crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(ne.real()) || isnan(no.real())) {
-		ne = deviceComplex(1, 0);
-		no = deviceComplex(1, 0);
-	}
-
-	deviceComplex ke = ne * omega / LIGHTC;
-	deviceComplex ko = no * omega / LIGHTC;
-	double k0 = (n0 * omega / LIGHTC).real();
-	double kze = (deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2)).real();
-	double kzo = (deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2)).real();
-
-	deviceComplex ts = deviceLib::exp(ii * (k0 - kze) * thickness);
-	deviceComplex tp = deviceLib::exp(ii * (k0 - kzo) * thickness);
-	if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
-	if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0, 0);
-	(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
-	(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
-};
-
-
-//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
-//note that the sellmeier coefficients have extra values appended to the end
-//to give info about the current simulation
-trilingual prepareCartesianGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
-	long long i = localIndex;
-	long long j, k;
-	int axesNumber = (*s).axesNumber;
-	int sellmeierType = (*s).sellmeierType;
-	deviceComplex ne, no, n0;
-	deviceComplex cuZero = deviceComplex(0, 0);
-	j = i / ((*s).Nfreq - 1); //spatial coordinate
-	k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
-	i = k + j * (*s).Nfreq;
-	deviceComplex ii = deviceComplex(0, 1);
-	double crystalTheta = sellmeierCoefficients[66];
-	double crystalPhi = sellmeierCoefficients[67];
-	double kStep = sellmeierCoefficients[70];
-	double fStep = sellmeierCoefficients[71];
-
-	//frequency being resolved by current thread
-	double f = -k * fStep;
-
-	//transverse wavevector being resolved
-	double dk = j * kStep - (j >= ((long long)(*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
-	sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
-		crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-
-	//walkoff angle has been found, generate the rest of the grids
-	if (isnan(ne.real()) || isnan(no.real())) {
-		ne = deviceComplex(1, 0);
-		no = deviceComplex(1, 0);
-	}
-
-	deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
-	deviceComplex ke = TWOPI * ne * f / LIGHTC;
-	deviceComplex ko = TWOPI * no * f / LIGHTC;
-
-	deviceComplex chi11 = deviceComplex(1.0, 0);
-	deviceComplex chi12 = deviceComplex(1.0, 0);
-	if ((*s).isUsingMillersRule) {
-		chi11 = (*s).chiLinear1[k];
-		chi12 = (*s).chiLinear2[k];
-	}
-	else {
-		chi11 = deviceComplex(1, 0);
-		chi12 = deviceComplex(1, 0);
-	}
-
-	if (abs(dk) < deviceLib::abs(ke) && k < ((long long)(*s).Nfreq - 1)) {
-		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
-		if (isnan(((*s).gridPropagationFactor1[i]).real())) {
-			(*s).gridPropagationFactor1[i] = cuZero;
+	trilingual millersRuleNormalizationKernel asKernel(withID cudaParameterSet* s, double* sellmeierCoefficients, double* referenceFrequencies) {
+		if (!(*s).isUsingMillersRule) {
+			return;
 		}
 
-		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
-		if (isnan(((*s).gridPropagationFactor2[i]).real())) {
-			(*s).gridPropagationFactor2[i] = cuZero;
-		}
-
-		(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. * ne.real() * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. * no.real() * LIGHTC) * (*s).h;
-	}
-
-	else {
-		(*s).gridPropagationFactor1[i] = cuZero;
-		(*s).gridPropagationFactor2[i] = cuZero;
-		(*s).gridPolarizationFactor1[i] = cuZero;
-		(*s).gridPolarizationFactor2[i] = cuZero;
-	}
-};
-
-//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
-//note that the sellmeier coefficients have extra values appended to the end
-//to give info about the current simulation
-trilingual prepare3DGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
-	long long i = localIndex;
-	long long col, j, k, l;
-	int axesNumber = (*s).axesNumber;
-	int sellmeierType = (*s).sellmeierType;
-	deviceComplex ne, no, n0;
-	deviceComplex cuZero = deviceComplex(0, 0);
-	col = i / ((*s).Nfreq - 1); //spatial coordinate
-	j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
-	i = j + col * (*s).Nfreq;
-	k = col % (*s).Nspace;
-	l = col / (*s).Nspace;
-
-	deviceComplex ii = deviceComplex(0, 1);
-	double crystalTheta = sellmeierCoefficients[66];
-	double crystalPhi = sellmeierCoefficients[67];
-
-	//frequency being resolved by current thread
-	double f = -j * (*s).fStep;
-
-	//transverse wavevector being resolved
-	double dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
-	double dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
-	sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
-		crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-
-	if (isnan(ne.real()) || isnan(no.real())) {
-		ne = deviceComplex(1, 0);
-		no = deviceComplex(1, 0);
-	}
-
-	deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
-	deviceComplex ke = TWOPI * ne * f / LIGHTC;
-	deviceComplex ko = TWOPI * no * f / LIGHTC;
-
-	deviceComplex chi11 = deviceComplex(1.0, 0);
-	deviceComplex chi12 = deviceComplex(1.0, 0);
-	if ((*s).isUsingMillersRule) {
-		chi11 = (*s).chiLinear1[j];
-		chi12 = (*s).chiLinear2[j];
-	}
-	else {
-		chi11 = deviceComplex(1, 0);
-		chi12 = deviceComplex(1, 0);
-	}
-
-	if (maxN(abs(dk1), abs(dk2)) < deviceLib::abs(ke) && j < ((long long)(*s).Nfreq - 1)) {
-		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ke.real())) * (*s).h;
-		if (isnan(((*s).gridPropagationFactor1[i].real()))) {
-			(*s).gridPropagationFactor1[i] = cuZero;
-		}
-
-		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ko.real())) * (*s).h;
-		if (isnan(((*s).gridPropagationFactor2[i].real()))) {
-			(*s).gridPropagationFactor2[i] = cuZero;
-		}
-
-		(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[j] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. * ne.real() * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[j] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. * no.real() * LIGHTC) * (*s).h;
-	}
-
-	else {
-		(*s).gridPropagationFactor1[i] = cuZero;
-		(*s).gridPropagationFactor2[i] = cuZero;
-		(*s).gridPolarizationFactor1[i] = cuZero;
-		(*s).gridPolarizationFactor2[i] = cuZero;
-	}
-};
-
-trilingual getChiLinearKernel asKernel(withID cudaParameterSet* s, double* sellmeierCoefficients) {
-	long long i = localIndex;
-	int axesNumber = (*s).axesNumber;
-	int sellmeierType = (*s).sellmeierType;
-	deviceComplex cuZero = deviceComplex(0, 0);
-
-	double crystalTheta = sellmeierCoefficients[66];
-	double crystalPhi = sellmeierCoefficients[67];
-	double fStep = sellmeierCoefficients[71];
-
-	deviceComplex ne, no, n0;
-
-	//frequency being resolved by current thread
-	double f = i * fStep;
-	sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(ne.real()) || isnan(no.real())) {
-		ne = deviceComplex(1, 0);
-		no = deviceComplex(1, 0);
-	}
-
-	(*s).chiLinear1[i] = -1. + ne * ne;
-	(*s).chiLinear2[i] = -1. + no * no;
-	if ((((*s).chiLinear1[i].real()) == 0) || (((*s).chiLinear2[i].real()) == 0) || isnan(((*s).chiLinear1[i].real())) || isnan(((*s).chiLinear2[i].real()))) {
-		(*s).chiLinear1[i] = deviceComplex(1, 0);
-		(*s).chiLinear2[i] = deviceComplex(1, 0);
-	}
-	(*s).inverseChiLinear1[i] = 1.0 / (*s).chiLinear1[i].real();
-	(*s).inverseChiLinear2[i] = 1.0 / (*s).chiLinear2[i].real();
-	(*s).fieldFactor1[i] = 1.0 / pow((*s).chiLinear1[i].real() + 1.0, 0.25); //account for the effective field strength in the medium (1/n)
-	(*s).fieldFactor2[i] = 1.0 / pow((*s).chiLinear2[i].real() + 1.0, 0.25);
-	if ((*s).isUsingMillersRule) {
-		(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
-		(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
-	}
-};
-//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
-trilingual prepareCylindricGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
-	long long i = localIndex;
-	long long j, k;
-	long long Nspace = (*s).Nspace;
-	int axesNumber = (*s).axesNumber;
-	int sellmeierType = (*s).sellmeierType;
-	deviceComplex cuZero = deviceComplex(0, 0);
-	j = i / ((*s).Nfreq - 1); //spatial coordinate
-	k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
-	i = k + j * (*s).Nfreq;
-
-
-	deviceComplex ii = deviceComplex(0, 1);
-	double crystalTheta = sellmeierCoefficients[66];
-	double crystalPhi = sellmeierCoefficients[67];
-	double kStep = sellmeierCoefficients[70];
-	double fStep = sellmeierCoefficients[71];
-
-	deviceComplex ne, no, n0;
-
-	//frequency being resolved by current thread
-	double f = -k * fStep;
-
-	//transverse wavevector being resolved
-	double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
-	sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-	if (isnan(ne.real()) || isnan(no.real())) {
-		ne = deviceComplex(1, 0);
-		no = deviceComplex(1, 0);
-	}
-
-	deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
-	deviceComplex ke = TWOPI * ne * f / LIGHTC;
-	deviceComplex ko = TWOPI * no * f / LIGHTC;
-
-	deviceComplex chi11 = (*s).chiLinear1[k];
-	deviceComplex chi12 = (*s).chiLinear2[k];
-	if (!(*s).isUsingMillersRule) {
-		chi11 = deviceComplex(1, 0);
-		chi12 = deviceComplex(1, 0);
-	}
-
-	if (abs(dk) <= minN(deviceLib::abs(ke), deviceLib::abs(ko)) && k < ((long long)(*s).Nfreq - 1)) {
-		(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
-		(*s).gridPropagationFactor1Rho1[i] = ii * (1. / (chi11 * 2. * ke.real())) * (*s).h;
-		if (isnan(((*s).gridPropagationFactor1[i].real()))) {
-			(*s).gridPropagationFactor1[i] = cuZero;
-			(*s).gridPropagationFactor1Rho1[i] = cuZero;
-		}
-
-		(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
-		(*s).gridPropagationFactor1Rho2[i] = ii * (1. / (chi12 * 2. * ko.real())) * (*s).h;
-		if (isnan(((*s).gridPropagationFactor2[i].real()))) {
-			(*s).gridPropagationFactor2[i] = cuZero;
-			(*s).gridPropagationFactor1Rho2[i] = cuZero;
-		}
-		//factor of 0.5 comes from doubled grid size in cylindrical symmetry mode after expanding the beam
-		(*s).gridPolarizationFactor1[i] = 0.5 * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * ii * (TWOPI * f) / (2. * ne.real() * LIGHTC) * (*s).h;
-		(*s).gridPolarizationFactor2[i] = 0.5 * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * ii * (TWOPI * f) / (2. * no.real() * LIGHTC) * (*s).h;
-
-
-	}
-
-	else {
-		(*s).gridPropagationFactor1[i] = cuZero;
-		(*s).gridPropagationFactor2[i] = cuZero;
-		(*s).gridPolarizationFactor1[i] = cuZero;
-		(*s).gridPolarizationFactor2[i] = cuZero;
-		(*s).gridPropagationFactor1[i] = cuZero;
-		(*s).gridPropagationFactor1Rho2[i] = cuZero;
-	}
-};
-
-//replaces E with its complex conjugate
-trilingual conjugateKernel asKernel(withID deviceComplex* E) {
-	long long i = localIndex;
-	E[i] = deviceLib::conj(E[i]);
-};
-
-trilingual realToComplexKernel asKernel(withID double* in, deviceComplex* out) {
-	long long i = localIndex;
-	out[i] = deviceComplex(in[i], 0.0);
-};
-
-trilingual complexToRealKernel asKernel(withID deviceComplex* in, double* out) {
-	long long i = localIndex;
-	out[i] = in[i].real();
-};
-
-trilingual materialPhaseKernel asKernel(withID double df, size_t Ntime, double* a, double f01, double f02,
-	double thickness1, double thickness2, double* phase1, double* phase2) {
-	size_t i = localIndex;
-	//frequency being resolved by current thread
-	double f = i * df;
-	if (i >= Ntime / 2) {
-		f -= df * Ntime;
-	}
-
-	//give phase shift relative to group velocity (approximated 
-	// with low-order finite difference) so the pulse doesn't move
-	deviceComplex ne, no, no0, n0p, n0m;
-	sellmeierCuda(&ne, &no, a, abs(f), 0, 0, 0, 0);
-	f *= TWOPI;
-	sellmeierCuda(&ne, &no0, a, f01, 0, 0, 0, 0);
-	sellmeierCuda(&ne, &n0p, a, f01 + 1e11, 0, 0, 0, 0);
-	sellmeierCuda(&ne, &n0m, a, f01 - 1e11, 0, 0, 0, 0);
-	no0 = no0 + f01 * (n0p - n0m) / 2e11;
-	phase1[i] = thickness1 * f * (no.real() - no0.real()) / LIGHTC;
-	sellmeierCuda(&ne, &no0, a, f02, 0, 0, 0, 0);
-	sellmeierCuda(&ne, &n0p, a, f02 + 1e11, 0, 0, 0, 0);
-	sellmeierCuda(&ne, &n0m, a, f02 - 1e11, 0, 0, 0, 0);
-	no0 = no0 + f02 * (n0p - n0m) / 2e11;
-	phase2[i] = thickness2 * f * (no.real() - no0.real()) / LIGHTC;
-};
-
-//calculate the nonlinear polarization, after FFT to get the field
-//in the time domain
-trilingual nonlinearPolarizationKernel asKernel(withID cudaParameterSet* s) {
-	size_t i = localIndex;
-	double Ex = (*s).fftNorm * (*s).gridETime1[i];
-	double Ey = (*s).fftNorm * (*s).gridETime2[i];
-
-	double Ex2 = Ex * Ex;
-	double Ey2 = Ey * Ey;
-	(*s).gridPolarizationTime1[i] = 0.;
-	(*s).gridPolarizationTime2[i] = 0.;
-	//rotate field into crystal frame
-	double E3[3] = { (*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
-		(*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
-		(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey };
-
-	if ((*s).nonlinearSwitches[0] == 1) {
-		double P2[3] = { 0.0 };
-		for (unsigned char a = 0; a < 3; a++) {
-			P2[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
-			P2[a] += (*s).chi2Tensor[3 + a] * E3[1] * E3[1];
-			P2[a] += (*s).chi2Tensor[6 + a] * E3[2] * E3[2];
-			P2[a] += (*s).chi2Tensor[9 + a] * E3[1] * E3[2];
-			P2[a] += (*s).chi2Tensor[12 + a] * E3[0] * E3[2];
-			P2[a] += (*s).chi2Tensor[15 + a] * E3[0] * E3[1];
-		}
-		(*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P2[0] + (*s).rotationBackward[1] * P2[1] + (*s).rotationBackward[2] * P2[2];
-		(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P2[0] + (*s).rotationBackward[4] * P2[1] + (*s).rotationBackward[5] * P2[2];
-	}
-
-	//resolve the full chi3 matrix when (*s).nonlinearSwitches[1]==1
-	if ((*s).nonlinearSwitches[1] == 1) {
-		//loop over tensor element X_abcd
-		//i hope the compiler unrolls this, but no way am I writing that out by hand
-		unsigned char a, b, c, d;
-		double P3[3] = { 0 };
-		for (a = 0; a < 3; a++) {
-			for (b = 0; b < 3; b++) {
-				for (c = 0; c < 3; c++) {
-					for (d = 0; d < 3; d++) {
-						P3[d] += (*s).chi3Tensor[a + 3 * b + 9 * c + 27 * d] * E3[a] * E3[b] * E3[c];
-					}
-				}
+		double chi11[7];
+		//double chi12[7];
+		deviceComplex ne, no;
+		for (int i = 0; i < 7; i++) {
+			if (referenceFrequencies[i] == 0) {
+				chi11[i] = 100000.0;
+				//chi12[i] = 100000.0;
+			}
+			else {
+				sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[68], (int)sellmeierCoefficients[69]);
+				chi11[i] = ne.real() * ne.real() - 1.0;
+				//chi12[i] =no.real() *no.real() - 1;
 			}
 		}
 
-		//rotate back into simulation frame
-		(*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P3[0] + (*s).rotationBackward[1] * P3[1] + (*s).rotationBackward[2] * P3[2];
-		(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P3[0] + (*s).rotationBackward[4] * P3[1] + (*s).rotationBackward[5] * P3[2];
+		//normalize chi2 tensor values
+		for (int i = 0; i < 18; i++) {
+			(*s).chi2Tensor[i] /= chi11[0] * chi11[1] * chi11[2];
+		}
+
+
+		//normalize chi3 tensor values
+		for (int i = 0; i < 81; i++) {
+			(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
+		}
+	};
+
+	trilingual totalSpectrumKernel asKernel(withID deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
+		size_t i = localIndex;
+		size_t j;
+		double beamCenter1 = 0.;
+		double beamCenter2 = 0.;
+		double beamTotal1 = 0.;
+		double beamTotal2 = 0.;
+		double a, x;
+
+		//find beam centers
+		for (j = 0; j < Nspace; j++) {
+			x = gridStep * j;
+			a = cuCModSquared(fieldGrid1[i + j * Ntime]);
+			beamTotal1 += a;
+			beamCenter1 += x * a;
+			a = cuCModSquared(fieldGrid2[i + j * Ntime]);
+			beamTotal2 += a;
+			beamCenter2 += x * a;
+		}
+		if (beamTotal1 > 0) {
+			beamCenter1 /= beamTotal1;
+		}
+		if (beamTotal2 > 0) {
+			beamCenter2 /= beamTotal2;
+		}
+
+
+		//Integrate total beam power, assuming radially-symmetric beam around
+		//the center
+		beamTotal1 = 0.;
+		beamTotal2 = 0.;
+		for (j = 0; j < Nspace; j++) {
+			x = gridStep * j;
+			beamTotal1 += PI * abs(x - beamCenter1) * cuCModSquared(fieldGrid1[i + j * Ntime]);
+			beamTotal2 += PI * abs(x - beamCenter2) * cuCModSquared(fieldGrid2[i + j * Ntime]);
+		}
+		beamTotal1 *= gridStep / Ntime;
+		beamTotal2 *= gridStep / Ntime;
+
+		//put the values into the output spectrum
+		spectrum[i] = beamTotal1;
+		spectrum[i + Ntime] = beamTotal2;
+		spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
+	};
+
+	trilingual totalSpectrum3DKernel asKernel(withID deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
+		size_t i = localIndex;
+		size_t j;
+
+		double beamTotal1 = 0.;
+		double beamTotal2 = 0.;
+		//Integrate total beam power
+		beamTotal1 = 0.;
+		beamTotal2 = 0.;
+		for (j = 0; j < Nspace; j++) {
+			beamTotal1 += cuCModSquared(fieldGrid1[i + j * Ntime]);
+			beamTotal2 += cuCModSquared(fieldGrid2[i + j * Ntime]);
+		}
+		beamTotal1 *= gridStep * gridStep / Ntime;
+		beamTotal2 *= gridStep * gridStep / Ntime;
+
+		//put the values into the output spectrum
+		spectrum[i] = beamTotal1;
+		spectrum[i + Ntime] = beamTotal2;
+		spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
+	};
+
+	//rotate the field around the propagation axis (basis change)
+	trilingual rotateFieldKernel asKernel(withID deviceComplex* Ein1, deviceComplex* Ein2, deviceComplex* Eout1,
+		deviceComplex* Eout2, double rotationAngle) {
+		long long i = localIndex;
+		Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
+		Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
+	};
+
+
+
+	trilingual radialLaplacianKernel asKernel(withID cudaParameterSet* s) {
+		unsigned long long i = localIndex;
+		long long j = i / (*s).Ntime; //spatial coordinate
+		long long h = i % (*s).Ntime; //temporal coordinate
+		long long neighbors[6];
+
+		//zero at edges of grid
+		if (j<3 || j>((long long)(*s).Nspace - 4)) {
+			(*s).gridRadialLaplacian1[i] = 0.;
+			(*s).gridRadialLaplacian2[i] = 0.;
+		}
+		else {
+			double rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, (int)j, (*s).dx, (*s).Ntime, h);
+			rho = -1.0 / rho;
+			(*s).gridRadialLaplacian1[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
+				+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
+				+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
+				+ (*s).firstDerivativeOperation[3] * (*s).gridETime1[neighbors[3]]
+				+ (*s).firstDerivativeOperation[4] * (*s).gridETime1[neighbors[4]]
+				+ (*s).firstDerivativeOperation[5] * (*s).gridETime1[neighbors[5]]);
+			(*s).gridRadialLaplacian2[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime2[neighbors[0]]
+				+ (*s).firstDerivativeOperation[1] * (*s).gridETime2[neighbors[1]]
+				+ (*s).firstDerivativeOperation[2] * (*s).gridETime2[neighbors[2]]
+				+ (*s).firstDerivativeOperation[3] * (*s).gridETime2[neighbors[3]]
+				+ (*s).firstDerivativeOperation[4] * (*s).gridETime2[neighbors[4]]
+				+ (*s).firstDerivativeOperation[5] * (*s).gridETime2[neighbors[5]]);
+		}
+
 	}
-	//using only one value of chi3, under assumption of centrosymmetry
-	if ((*s).nonlinearSwitches[1] == 2) {
-		double Esquared = (*s).chi3Tensor[0] * (Ex2 + Ey2);
-		(*s).gridPolarizationTime1[i] += Ex * Esquared;
-		(*s).gridPolarizationTime2[i] += Ey * Esquared;
-	}
-};
+	//Expand the information contained in the radially-symmetric beam in the offset grid
+	// representation.
+	// The grid is offset from the origin; rather than ...-2 -1 0 1 2... etc, which would
+	// contain redundant information (the symmetry means that -1 and -1 are equivalent)
+	// the grid is at the points -1.75 -0.75 0.25 1.25 2.25, etc.
+	// the grid spacing is the same, but now the two sides of the origin contain different
+	// information. This has effectively doubled the resolution of the nonlinear
+	// polarization. 
+	// We make use of this by expanding into the full-resolution beam on the grid
+	// -2.25 -1.75 -1.25 -0.75 -0.25 0.25 0.75 1.25 1.75 2.25...
+	// after FFT, we can discard the high frequencies. Thus we have downsampled
+	// in such a way as to avoid aliasing, which inside the simulation is most
+	// likely the appear (and cause instability) in the nonlinear terms.
+	trilingual expandCylindricalBeam asKernel(withID cudaParameterSet* s, double* polarization1, double* polarization2) {
+		size_t i = localIndex;
+		size_t j = i / (*s).Ntime; //spatial coordinate
+		size_t k = i % (*s).Ntime; //temporal coordinate
+
+		//positions on the expanded grid corresponding the the current index
+		size_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
+		size_t pos2 = (2 * j + 1) * (*s).Ntime + k;
+
+		//reuse memory allocated for the radial Laplacian, casting complex double
+		//to a 2x larger double real grid
+		double* expandedBeam1 = (double*)(*s).gridRadialLaplacian1;
+		double* expandedBeam2 = expandedBeam1 + 2 * (*s).Ngrid;
+
+		expandedBeam1[pos1] = polarization1[i];
+		expandedBeam1[pos2] = polarization1[i];
+		expandedBeam2[pos1] = polarization2[i];
+		expandedBeam2[pos2] = polarization2[i];
+	};
+
+	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
+	//note that the sellmeier coefficients have extra values appended to the end
+	//to give info about the current simulation
+	trilingual applyFresnelLossKernel asKernel(withID double* sellmeierCoefficients1, double* sellmeierCoefficients2, cudaParameterSet* s) {
+		long long i = localIndex;
+		double alpha1, alpha2, alphaO1, alphaO2;
+		long long j, k;
+		long long Ntime = (*s).Ntime;
+		int axesNumber = (*s).axesNumber;
+		int sellmeierType = (*s).sellmeierType;
+		deviceComplex ne1, no1, ne2, no2, n0;
+		deviceComplex cuZero = deviceComplex(0, 0);
+		j = i / Ntime; //spatial coordinate
+		k = i % Ntime; //temporal coordinate
+		deviceComplex ii = deviceComplex(0, 1);
+		double crystalTheta = sellmeierCoefficients1[66];
+		double crystalPhi = sellmeierCoefficients1[67];
+		double fStep = sellmeierCoefficients1[71];
+
+		//frequency being resolved by current thread
+		double f = k * fStep;
+
+		findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients1, s);
+		findBirefingentCrystalAngle(&alpha2, &alphaO2, j, f, sellmeierCoefficients2, s);
+		//walkoff angle has been found, generate the rest of the grids
+
+		sellmeierCuda(&ne1, &no1, sellmeierCoefficients1, f,
+			crystalTheta + 0 * alpha1, crystalPhi, axesNumber, sellmeierType);
+		sellmeierCuda(&n0, &no1, sellmeierCoefficients1, f,
+			crystalTheta + 0 * alphaO1, crystalPhi, axesNumber, sellmeierType);
+		if (isnan(ne1.real()) || isnan(no1.real())) {
+			ne1 = deviceComplex(1, 0);
+			no1 = deviceComplex(1, 0);
+		}
+
+		sellmeierCuda(&ne2, &no2, sellmeierCoefficients2, f,
+			crystalTheta + alpha2, crystalPhi, axesNumber, sellmeierType);
+		sellmeierCuda(&n0, &no2, sellmeierCoefficients2, f,
+			crystalTheta + alphaO2, crystalPhi, axesNumber, sellmeierType);
+		if (isnan(ne2.real()) || isnan(no2.real())) {
+			ne2 = deviceComplex(1, 0);
+			no2 = deviceComplex(1, 0);
+		}
+
+		deviceComplex ts = 2. * ne1 * cos(alpha1) / (ne1 * cos(alpha1) + ne2 * cos(alpha2));
+		deviceComplex tp = 2. * ne1 * cos(alpha1) / (ne2 * cos(alpha1) + ne1 * cos(alpha2));
+		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
+		if (isnan(tp.real()) || isnan(tp.imag())) ts = deviceComplex(0, 0);
+		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
+		(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
+	};
+
+	trilingual apertureKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter) {
+		long long i = localIndex;
+		long long j, k, col;
+
+		col = i / (*s).Ntime;
+		j = col % (*s).Nspace;
+		k = col / (*s).Nspace;
+		double r;
+		if ((*s).is3D) {
+			double x = ((*s).dx * (j - (*s).Nspace / 2.0));
+			double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+			r = sqrt(x * x + y * y);
+		}
+		else {
+			r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
+		}
+
+		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (r - radius) / (*s).dx)));
+
+		//if (r>radius) a = 0;
+		(*s).gridETime1[i] *= a;
+		(*s).gridETime2[i] *= a;
+	};
+
+	trilingual parabolicMirrorKernel asKernel(withID cudaParameterSet* s, double focus) {
+		long long i = localIndex;
+		long long j, k, h, col;
+		h = 1 + i % ((*s).Nfreq - 1);
+		col = i / ((*s).Nfreq - 1);
+		i = h + col * (*s).Nfreq;
+		j = col % (*s).Nspace;
+		k = col / (*s).Nspace;
+
+		double w = TWOPI * h * (*s).fStep;
+		double r;
+		if ((*s).is3D) {
+			double x = ((*s).dx * (j - (*s).Nspace / 2.0));
+			double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+			r = sqrt(x * x + y * y);
+		}
+		else {
+			r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
+		}
+
+		deviceComplex	u = deviceLib::exp(deviceComplex(0.0,
+			w * r * r * (0.5 / focus) / LIGHTC));
+
+		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
+		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
+	};
+
+	trilingual sphericalMirrorKernel asKernel(withID cudaParameterSet* s, double ROC) {
+		long long i = localIndex;
+		long long j, k, h, col;
+		h = 1 + i % ((*s).Nfreq - 1);
+		col = i / ((*s).Nfreq - 1);
+		i = h + col * (*s).Nfreq;
+		j = col % (*s).Nspace;
+		k = col / (*s).Nspace;
+
+		double w = TWOPI * h * (*s).fStep;
+		double r;
+		if ((*s).is3D) {
+			double x = ((*s).dx * (j - (*s).Nspace / 2.0));
+			double y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+			r = sqrt(x * x + y * y);
+		}
+		else {
+			r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
+		}
+
+		bool isNegative = signbit(ROC);
+		ROC = abs(ROC);
+		deviceComplex u = deviceComplex(0.0, 0.0);
+		if (r < ROC) {
+			u = deviceLib::exp(deviceComplex(0.0,
+				2.0 * pow(-1, isNegative) * w * ROC * ((sqrt(1.0 - r * r / (ROC * ROC))) - 1.0) / LIGHTC));
+		}
+
+		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
+		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
+	};
+
+	trilingual applyLinearPropagationKernel asKernel(withID double* sellmeierCoefficients, double thickness, cudaParameterSet* s) {
+		long long i = localIndex;
+		long long j, h, k, col;
+		int axesNumber = (*s).axesNumber;
+		int sellmeierType = (*s).sellmeierType;
+		deviceComplex ne, no, n0, n0o;
+		deviceComplex cuZero = deviceComplex(0, 0);
+		h = 1 + i % ((*s).Nfreq - 1);
+		col = i / ((*s).Nfreq - 1);
+		i = h + col * ((*s).Nfreq);
+		j = col % (*s).Nspace;
+		k = col / (*s).Nspace;
+		deviceComplex ii = deviceComplex(0, 1);
+		double crystalTheta = sellmeierCoefficients[66];
+		double crystalPhi = sellmeierCoefficients[67];
+
+		//frequency being resolved by current thread
+		double f = h * (*s).fStep;
+		double omega = TWOPI * f;
+		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+		double dk1 = j * (*s).dk1 - (j >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
+		double dk2 = k * (*s).dk2 - (k >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
+		if (!(*s).is3D)dk2 = 0.0;
+		//if ((*s).isCylindric) dk2 = dk1;
+		sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
+			crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		if (isnan(ne.real()) || isnan(no.real())) {
+			ne = deviceComplex(1, 0);
+			no = deviceComplex(1, 0);
+		}
+
+		deviceComplex ke = ne * omega / LIGHTC;
+		deviceComplex ko = no * omega / LIGHTC;
+		double k0 = (n0 * omega / LIGHTC).real();
+		double kze = (deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2)).real();
+		double kzo = (deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2)).real();
+
+		deviceComplex ts = deviceLib::exp(ii * (k0 - kze) * thickness);
+		deviceComplex tp = deviceLib::exp(ii * (k0 - kzo) * thickness);
+		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
+		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0, 0);
+		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
+		(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
+	};
 
 
-//Plasma response with time-dependent carrier density
-//This polarization needs a different factor in the nonlinear wave equation
-//to account for the integration
-//plasmaParameters vector:
-// 0    e^2/m_eff
-// 1    gamma_drude
-// 2    ionization rate/E^N
-// 3    absorption strength
-//equation for the plasma current:
-//J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
-//J_absorption(t) = beta*E^(2*Nphot-2)*E
-//plasmaParameters[0] is the nonlinear absorption parameter
-	//nonlinearSwitches[3] is Nphotons-2
-	//plasmaParameters[2] is the 1/photon energy, translating the loss of power
-	//from the field to the number of free carriers
-	//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
-	//of the plasma current
-trilingual plasmaCurrentKernel_twoStage_A asKernel(withID cudaParameterSet* s) {
-	size_t i = localIndex;
-	double Esquared, Ex, Ey, a;
-	unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
-	Ex = (*s).gridETime1[i] * (*s).fftNorm;
-	Ey = (*s).gridETime2[i] * (*s).fftNorm;
+	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
+	//note that the sellmeier coefficients have extra values appended to the end
+	//to give info about the current simulation
+	trilingual prepareCartesianGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
+		long long i = localIndex;
+		long long j, k;
+		int axesNumber = (*s).axesNumber;
+		int sellmeierType = (*s).sellmeierType;
+		deviceComplex ne, no, n0;
+		deviceComplex cuZero = deviceComplex(0, 0);
+		j = i / ((*s).Nfreq - 1); //spatial coordinate
+		k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
+		i = k + j * (*s).Nfreq;
+		deviceComplex ii = deviceComplex(0, 1);
+		double crystalTheta = sellmeierCoefficients[66];
+		double crystalPhi = sellmeierCoefficients[67];
+		double kStep = sellmeierCoefficients[70];
+		double fStep = sellmeierCoefficients[71];
 
-	//save values in workspaces, casting to double
-	double* dN = (double*)(*s).workspace1;
-	double* dN2 = dN + (*s).Ngrid;
-	double* Jx = (*s).gridPolarizationTime1;
-	double* Jy = (*s).gridPolarizationTime2;
-	Esquared = Ex * Ex + Ey * Ey;
-	a = (*s).plasmaParameters[0] * Esquared;
-	for (unsigned char p = 0; p < pMax; p++) {
-		a *= Esquared;
-	}
-	Jx[i] = a * Ex;
-	Jy[i] = a * Ey;
-	dN[i] = (*s).plasmaParameters[2] * (Jx[i] * Ex + Jy[i] * Ey);
-	dN2[i] = dN[i];
-};
+		//frequency being resolved by current thread
+		double f = -k * fStep;
 
-trilingual plasmaCurrentKernel_twoStage_B asKernel(withID cudaParameterSet* s) {
-	size_t j = localIndex;
-	j *= (*s).Ntime;
-	double N = 0;
-	double integralx = 0;
-	double* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-	double Ex, a;
-	double* dN = j + (double*)(*s).workspace1;
-	double* E = &(*s).gridETime1[j];
-	double* P = &(*s).gridPolarizationTime1[j];
-	for (unsigned int k = 0; k < (*s).Ntime; k++) {
-		Ex = E[k] * (*s).fftNorm;
-		N += dN[k];
-		a = N * (*s).expGammaT[k];
-		integralx += a * Ex;
-		P[k] = P[k] + expMinusGammaT[k] * integralx;
-	}
-};
+		//transverse wavevector being resolved
+		double dk = j * kStep - (j >= ((long long)(*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
+		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
+			crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
-trilingual updateKwithPolarizationKernel asKernel(withID cudaParameterSet* sP) {
-	size_t i = localIndex;
-	unsigned int h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-	unsigned int j = i / ((*sP).Nfreq - 1); //spatial coordinate
-	i = h + j * ((*sP).Nfreq);
-	h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
+		//walkoff angle has been found, generate the rest of the grids
+		if (isnan(ne.real()) || isnan(no.real())) {
+			ne = deviceComplex(1, 0);
+			no = deviceComplex(1, 0);
+		}
 
-	(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
-	(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
-};
+		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
+		deviceComplex ke = TWOPI * ne * f / LIGHTC;
+		deviceComplex ko = TWOPI * no * f / LIGHTC;
 
-trilingual updateKwithPlasmaKernel asKernel(withID cudaParameterSet* sP) {
-	size_t i = localIndex;
-	unsigned int h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-	unsigned int j = i / ((*sP).Nfreq - 1); //spatial coordinate
-	i = h + j * ((*sP).Nfreq);
+		deviceComplex chi11 = deviceComplex(1.0, 0);
+		deviceComplex chi12 = deviceComplex(1.0, 0);
+		if ((*s).isUsingMillersRule) {
+			chi11 = (*s).chiLinear1[k];
+			chi12 = (*s).chiLinear2[k];
+		}
+		else {
+			chi11 = deviceComplex(1, 0);
+			chi12 = deviceComplex(1, 0);
+		}
 
-	deviceComplex jfac = deviceComplex(0, -1.0 / (h * (*sP).fStep));
-	h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
+		if (abs(dk) < deviceLib::abs(ke) && k < ((long long)(*s).Nfreq - 1)) {
+			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
+			if (isnan(((*s).gridPropagationFactor1[i]).real())) {
+				(*s).gridPropagationFactor1[i] = cuZero;
+			}
 
-	(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[i % ((*sP).Nfreq)];
-	(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[i % ((*sP).Nfreq)];
-};
+			(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
+			if (isnan(((*s).gridPropagationFactor2[i]).real())) {
+				(*s).gridPropagationFactor2[i] = cuZero;
+			}
 
-//Main kernel for RK4 propagation of the field
-trilingual rkKernel asKernel(withID cudaParameterSet* sP, uint8_t stepNumber) {
-	size_t iC = localIndex;
-	unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+			(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. * ne.real() * LIGHTC) * (*s).h;
+			(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. * no.real() * LIGHTC) * (*s).h;
+		}
 
-	iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-	if (h == 1) {
-		(*sP).k1[iC - 1] = deviceComplex(0., 0.);
-		(*sP).gridEFrequency1[iC - 1] = deviceComplex(0., 0.);
-		(*sP).gridEFrequency1Next1[iC - 1] = deviceComplex(0., 0.);
-		(*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
-	}
-	deviceComplex estimate1;
+		else {
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor2[i] = cuZero;
+			(*s).gridPolarizationFactor1[i] = cuZero;
+			(*s).gridPolarizationFactor2[i] = cuZero;
+		}
+	};
 
-	if ((*sP).isCylindric) {
-		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-	}
+	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
+	//note that the sellmeier coefficients have extra values appended to the end
+	//to give info about the current simulation
+	trilingual prepare3DGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
+		long long i = localIndex;
+		long long col, j, k, l;
+		int axesNumber = (*s).axesNumber;
+		int sellmeierType = (*s).sellmeierType;
+		deviceComplex ne, no, n0;
+		deviceComplex cuZero = deviceComplex(0, 0);
+		col = i / ((*s).Nfreq - 1); //spatial coordinate
+		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+		i = j + col * (*s).Nfreq;
+		k = col % (*s).Nspace;
+		l = col / (*s).Nspace;
 
-	//generate the estimates and do the weighted sum to get the grid at the next step
-	//with weights determined by the step number
-	switch (stepNumber) {
-	case 0:
-		estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
-		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
-		break;
-	case 1:
-		estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
-		break;
-	case 2:
-		estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
-		break;
-	case 3:
-		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
-		break;
-	}
-};
+		deviceComplex ii = deviceComplex(0, 1);
+		double crystalTheta = sellmeierCoefficients[66];
+		double crystalPhi = sellmeierCoefficients[67];
 
-trilingual beamNormalizeKernel asKernel(withID cudaParameterSet* s, double* rawSum, double* pulse, double pulseEnergy) {
-	size_t i = localIndex;
-	double normFactor = sqrt(pulseEnergy / ((*s).Ntime * (*rawSum)));
-	pulse[i] *= normFactor;
-};
+		//frequency being resolved by current thread
+		double f = -j * (*s).fStep;
 
-trilingual addDoubleArraysKernel asKernel(withID double* A, double* B) {
-	size_t i = localIndex;
-	A[i] += B[i];
-};
+		//transverse wavevector being resolved
+		double dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
+		double dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
+		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
+			crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
-trilingual beamGenerationKernel2D asKernel(withID deviceComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
-	int sgOrder, double cep, double delay, double gdd, double tod,
-	bool hasLoadedField, deviceComplex* loadedField, double* materialPhase,
-	double w0, double z0, double x0, double beamAngle,
-	double polarizationAngle, double circularity,
-	double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
-	long long i = localIndex;
-	long long j, h;
-	h = 1 + i % ((*s).Nfreq - 1);
-	j = i / ((*s).Nfreq - 1);
-	i = h + j * ((*s).Nfreq);
-	double f = h * (*s).fStep;
-	double w = TWOPI * (f - frequency);
+		if (isnan(ne.real()) || isnan(no.real())) {
+			ne = deviceComplex(1, 0);
+			no = deviceComplex(1, 0);
+		}
 
-	//supergaussian pulse spectrum, if no input pulse specified
-	deviceComplex specfac = deviceComplex(-pow((f - frequency) / bandwidth, sgOrder), 0);
+		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
+		deviceComplex ke = TWOPI * ne * f / LIGHTC;
+		deviceComplex ko = TWOPI * no * f / LIGHTC;
 
-	deviceComplex specphase = deviceComplex(0,
-		-(cep
-			+ TWOPI * f * (delay - 0.5 * (*s).dt * (*s).Ntime)
-			+ 0.5 * gdd * w * w
-			+ tod * w * w * w / 6.0
-			+ materialPhase[h]));
-	specfac = deviceLib::exp(specfac + specphase);
+		deviceComplex chi11 = deviceComplex(1.0, 0);
+		deviceComplex chi12 = deviceComplex(1.0, 0);
+		if ((*s).isUsingMillersRule) {
+			chi11 = (*s).chiLinear1[j];
+			chi12 = (*s).chiLinear2[j];
+		}
+		else {
+			chi11 = deviceComplex(1, 0);
+			chi12 = deviceComplex(1, 0);
+		}
 
-	if (hasLoadedField) {
-		specfac = loadedField[h] * deviceLib::exp(specphase);
-	}
-	deviceComplex ne, no;
-	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
+		if (maxN(abs(dk1), abs(dk2)) < deviceLib::abs(ke) && j < ((long long)(*s).Nfreq - 1)) {
+			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ke.real())) * (*s).h;
+			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
+				(*s).gridPropagationFactor1[i] = cuZero;
+			}
+
+			(*s).gridPropagationFactor2[i] = ii * (ko - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ko.real())) * (*s).h;
+			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
+				(*s).gridPropagationFactor2[i] = cuZero;
+			}
+
+			(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[j] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. * ne.real() * LIGHTC) * (*s).h;
+			(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[j] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. * no.real() * LIGHTC) * (*s).h;
+		}
+
+		else {
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor2[i] = cuZero;
+			(*s).gridPolarizationFactor1[i] = cuZero;
+			(*s).gridPolarizationFactor2[i] = cuZero;
+		}
+	};
+
+	trilingual getChiLinearKernel asKernel(withID cudaParameterSet* s, double* sellmeierCoefficients) {
+		long long i = localIndex;
+		int axesNumber = (*s).axesNumber;
+		int sellmeierType = (*s).sellmeierType;
+		deviceComplex cuZero = deviceComplex(0, 0);
+
+		double crystalTheta = sellmeierCoefficients[66];
+		double crystalPhi = sellmeierCoefficients[67];
+		double fStep = sellmeierCoefficients[71];
+
+		deviceComplex ne, no, n0;
+
+		//frequency being resolved by current thread
+		double f = i * fStep;
+		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		if (isnan(ne.real()) || isnan(no.real())) {
+			ne = deviceComplex(1, 0);
+			no = deviceComplex(1, 0);
+		}
+
+		(*s).chiLinear1[i] = -1. + ne * ne;
+		(*s).chiLinear2[i] = -1. + no * no;
+		if ((((*s).chiLinear1[i].real()) == 0) || (((*s).chiLinear2[i].real()) == 0) || isnan(((*s).chiLinear1[i].real())) || isnan(((*s).chiLinear2[i].real()))) {
+			(*s).chiLinear1[i] = deviceComplex(1, 0);
+			(*s).chiLinear2[i] = deviceComplex(1, 0);
+		}
+		(*s).inverseChiLinear1[i] = 1.0 / (*s).chiLinear1[i].real();
+		(*s).inverseChiLinear2[i] = 1.0 / (*s).chiLinear2[i].real();
+		(*s).fieldFactor1[i] = 1.0 / pow((*s).chiLinear1[i].real() + 1.0, 0.25); //account for the effective field strength in the medium (1/n)
+		(*s).fieldFactor2[i] = 1.0 / pow((*s).chiLinear2[i].real() + 1.0, 0.25);
+		if ((*s).isUsingMillersRule) {
+			(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
+			(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
+		}
+	};
+	//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
+	trilingual prepareCylindricGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
+		long long i = localIndex;
+		long long j, k;
+		long long Nspace = (*s).Nspace;
+		int axesNumber = (*s).axesNumber;
+		int sellmeierType = (*s).sellmeierType;
+		deviceComplex cuZero = deviceComplex(0, 0);
+		j = i / ((*s).Nfreq - 1); //spatial coordinate
+		k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
+		i = k + j * (*s).Nfreq;
 
 
-	double ko = TWOPI * no.real() * f / LIGHTC;
-	double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
-	if (f == 0) {
-		zR = 1e3;
-	}
-	double rB = (x0 - (*s).dx * (j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
-	double r = rB * cos(beamAngle) - z0 * sin(beamAngle);
-	double z = rB * sin(beamAngle) + z0 * cos(beamAngle);
+		deviceComplex ii = deviceComplex(0, 1);
+		double crystalTheta = sellmeierCoefficients[66];
+		double crystalPhi = sellmeierCoefficients[67];
+		double kStep = sellmeierCoefficients[70];
+		double fStep = sellmeierCoefficients[71];
 
-	double wz = w0 * sqrt(1 + (z * z / (zR * zR)));
-	double Rz = z * (1. + (zR * zR / (z * z)));
+		deviceComplex ne, no, n0;
 
-	if (z == 0) {
-		Rz = 1.0e15;
-	}
-	double phi = atan(z / zR);
-	deviceComplex Eb = (w0 / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
-	Eb = Eb * specfac;
-	if (isnan(cuCModSquared(Eb)) || f <= 0) {
-		Eb = deviceComplex(0., 0.);
-	}
+		//frequency being resolved by current thread
+		double f = -k * fStep;
 
-	pulse[i] = deviceComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
-	pulse[i + (*s).NgridC] = deviceComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
-	double pointEnergy = abs(r) * (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
-	pointEnergy *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt;
-	//two factors of two cancel here - there should be one for the missing frequency plane, but the sum is over x instead of r
-	//accordingly we already multiplied by two
+		//transverse wavevector being resolved
+		double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
+		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		if (isnan(ne.real()) || isnan(no.real())) {
+			ne = deviceComplex(1, 0);
+			no = deviceComplex(1, 0);
+		}
+
+		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
+		deviceComplex ke = TWOPI * ne * f / LIGHTC;
+		deviceComplex ko = TWOPI * no * f / LIGHTC;
+
+		deviceComplex chi11 = (*s).chiLinear1[k];
+		deviceComplex chi12 = (*s).chiLinear2[k];
+		if (!(*s).isUsingMillersRule) {
+			chi11 = deviceComplex(1, 0);
+			chi12 = deviceComplex(1, 0);
+		}
+
+		if (abs(dk) <= minN(deviceLib::abs(ke), deviceLib::abs(ko)) && k < ((long long)(*s).Nfreq - 1)) {
+			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
+			(*s).gridPropagationFactor1Rho1[i] = ii * (1. / (chi11 * 2. * ke.real())) * (*s).h;
+			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
+				(*s).gridPropagationFactor1[i] = cuZero;
+				(*s).gridPropagationFactor1Rho1[i] = cuZero;
+			}
+
+			(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
+			(*s).gridPropagationFactor1Rho2[i] = ii * (1. / (chi12 * 2. * ko.real())) * (*s).h;
+			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
+				(*s).gridPropagationFactor2[i] = cuZero;
+				(*s).gridPropagationFactor1Rho2[i] = cuZero;
+			}
+			//factor of 0.5 comes from doubled grid size in cylindrical symmetry mode after expanding the beam
+			(*s).gridPolarizationFactor1[i] = 0.5 * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * ii * (TWOPI * f) / (2. * ne.real() * LIGHTC) * (*s).h;
+			(*s).gridPolarizationFactor2[i] = 0.5 * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * ii * (TWOPI * f) / (2. * no.real() * LIGHTC) * (*s).h;
+
+
+		}
+
+		else {
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor2[i] = cuZero;
+			(*s).gridPolarizationFactor1[i] = cuZero;
+			(*s).gridPolarizationFactor2[i] = cuZero;
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor1Rho2[i] = cuZero;
+		}
+	};
+
+	//replaces E with its complex conjugate
+	trilingual conjugateKernel asKernel(withID deviceComplex* E) {
+		long long i = localIndex;
+		E[i] = deviceLib::conj(E[i]);
+	};
+
+	trilingual realToComplexKernel asKernel(withID double* in, deviceComplex* out) {
+		long long i = localIndex;
+		out[i] = deviceComplex(in[i], 0.0);
+	};
+
+	trilingual complexToRealKernel asKernel(withID deviceComplex* in, double* out) {
+		long long i = localIndex;
+		out[i] = in[i].real();
+	};
+
+	trilingual materialPhaseKernel asKernel(withID double df, size_t Ntime, double* a, double f01, double f02,
+		double thickness1, double thickness2, double* phase1, double* phase2) {
+		size_t i = localIndex;
+		//frequency being resolved by current thread
+		double f = i * df;
+		if (i >= Ntime / 2) {
+			f -= df * Ntime;
+		}
+
+		//give phase shift relative to group velocity (approximated 
+		// with low-order finite difference) so the pulse doesn't move
+		deviceComplex ne, no, no0, n0p, n0m;
+		sellmeierCuda(&ne, &no, a, abs(f), 0, 0, 0, 0);
+		f *= TWOPI;
+		sellmeierCuda(&ne, &no0, a, f01, 0, 0, 0, 0);
+		sellmeierCuda(&ne, &n0p, a, f01 + 1e11, 0, 0, 0, 0);
+		sellmeierCuda(&ne, &n0m, a, f01 - 1e11, 0, 0, 0, 0);
+		no0 = no0 + f01 * (n0p - n0m) / 2e11;
+		phase1[i] = thickness1 * f * (no.real() - no0.real()) / LIGHTC;
+		sellmeierCuda(&ne, &no0, a, f02, 0, 0, 0, 0);
+		sellmeierCuda(&ne, &n0p, a, f02 + 1e11, 0, 0, 0, 0);
+		sellmeierCuda(&ne, &n0m, a, f02 - 1e11, 0, 0, 0, 0);
+		no0 = no0 + f02 * (n0p - n0m) / 2e11;
+		phase2[i] = thickness2 * f * (no.real() - no0.real()) / LIGHTC;
+	};
+
+	//calculate the nonlinear polarization, after FFT to get the field
+	//in the time domain
+	trilingual nonlinearPolarizationKernel asKernel(withID cudaParameterSet* s) {
+		size_t i = localIndex;
+		double Ex = (*s).fftNorm * (*s).gridETime1[i];
+		double Ey = (*s).fftNorm * (*s).gridETime2[i];
+
+		double Ex2 = Ex * Ex;
+		double Ey2 = Ey * Ey;
+		(*s).gridPolarizationTime1[i] = 0.;
+		(*s).gridPolarizationTime2[i] = 0.;
+		//rotate field into crystal frame
+		double E3[3] = { (*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
+			(*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
+			(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey };
+
+		if ((*s).nonlinearSwitches[0] == 1) {
+			double P2[3] = { 0.0 };
+			for (unsigned char a = 0; a < 3; a++) {
+				P2[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
+				P2[a] += (*s).chi2Tensor[3 + a] * E3[1] * E3[1];
+				P2[a] += (*s).chi2Tensor[6 + a] * E3[2] * E3[2];
+				P2[a] += (*s).chi2Tensor[9 + a] * E3[1] * E3[2];
+				P2[a] += (*s).chi2Tensor[12 + a] * E3[0] * E3[2];
+				P2[a] += (*s).chi2Tensor[15 + a] * E3[0] * E3[1];
+			}
+			(*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P2[0] + (*s).rotationBackward[1] * P2[1] + (*s).rotationBackward[2] * P2[2];
+			(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P2[0] + (*s).rotationBackward[4] * P2[1] + (*s).rotationBackward[5] * P2[2];
+		}
+
+		//resolve the full chi3 matrix when (*s).nonlinearSwitches[1]==1
+		if ((*s).nonlinearSwitches[1] == 1) {
+			//loop over tensor element X_abcd
+			//i hope the compiler unrolls this, but no way am I writing that out by hand
+			unsigned char a, b, c, d;
+			double P3[3] = { 0 };
+			for (a = 0; a < 3; a++) {
+				for (b = 0; b < 3; b++) {
+					for (c = 0; c < 3; c++) {
+						for (d = 0; d < 3; d++) {
+							P3[d] += (*s).chi3Tensor[a + 3 * b + 9 * c + 27 * d] * E3[a] * E3[b] * E3[c];
+						}
+					}
+				}
+			}
+
+			//rotate back into simulation frame
+			(*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P3[0] + (*s).rotationBackward[1] * P3[1] + (*s).rotationBackward[2] * P3[2];
+			(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P3[0] + (*s).rotationBackward[4] * P3[1] + (*s).rotationBackward[5] * P3[2];
+		}
+		//using only one value of chi3, under assumption of centrosymmetry
+		if ((*s).nonlinearSwitches[1] == 2) {
+			double Esquared = (*s).chi3Tensor[0] * (Ex2 + Ey2);
+			(*s).gridPolarizationTime1[i] += Ex * Esquared;
+			(*s).gridPolarizationTime2[i] += Ey * Esquared;
+		}
+	};
+
+
+	//Plasma response with time-dependent carrier density
+	//This polarization needs a different factor in the nonlinear wave equation
+	//to account for the integration
+	//plasmaParameters vector:
+	// 0    e^2/m_eff
+	// 1    gamma_drude
+	// 2    ionization rate/E^N
+	// 3    absorption strength
+	//equation for the plasma current:
+	//J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
+	//J_absorption(t) = beta*E^(2*Nphot-2)*E
+	//plasmaParameters[0] is the nonlinear absorption parameter
+		//nonlinearSwitches[3] is Nphotons-2
+		//plasmaParameters[2] is the 1/photon energy, translating the loss of power
+		//from the field to the number of free carriers
+		//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
+		//of the plasma current
+	trilingual plasmaCurrentKernel_twoStage_A asKernel(withID cudaParameterSet* s) {
+		size_t i = localIndex;
+		double Esquared, Ex, Ey, a;
+		unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
+		Ex = (*s).gridETime1[i] * (*s).fftNorm;
+		Ey = (*s).gridETime2[i] * (*s).fftNorm;
+
+		//save values in workspaces, casting to double
+		double* dN = (double*)(*s).workspace1;
+		double* dN2 = dN + (*s).Ngrid;
+		double* Jx = (*s).gridPolarizationTime1;
+		double* Jy = (*s).gridPolarizationTime2;
+		Esquared = Ex * Ex + Ey * Ey;
+		a = (*s).plasmaParameters[0] * Esquared;
+		for (unsigned char p = 0; p < pMax; p++) {
+			a *= Esquared;
+		}
+		Jx[i] = a * Ex;
+		Jy[i] = a * Ey;
+		dN[i] = (*s).plasmaParameters[2] * (Jx[i] * Ex + Jy[i] * Ey);
+		dN2[i] = dN[i];
+	};
+
+	trilingual plasmaCurrentKernel_twoStage_B asKernel(withID cudaParameterSet* s) {
+		size_t j = localIndex;
+		j *= (*s).Ntime;
+		double N = 0;
+		double integralx = 0;
+		double* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
+		double Ex, a;
+		double* dN = j + (double*)(*s).workspace1;
+		double* E = &(*s).gridETime1[j];
+		double* P = &(*s).gridPolarizationTime1[j];
+		for (unsigned int k = 0; k < (*s).Ntime; k++) {
+			Ex = E[k] * (*s).fftNorm;
+			N += dN[k];
+			a = N * (*s).expGammaT[k];
+			integralx += a * Ex;
+			P[k] = P[k] + expMinusGammaT[k] * integralx;
+		}
+	};
+
+	trilingual updateKwithPolarizationKernel asKernel(withID cudaParameterSet* sP) {
+		size_t i = localIndex;
+		unsigned int h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+		unsigned int j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		i = h + j * ((*sP).Nfreq);
+		h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
+
+		(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
+		(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
+	};
+
+	trilingual updateKwithPlasmaKernel asKernel(withID cudaParameterSet* sP) {
+		size_t i = localIndex;
+		unsigned int h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+		unsigned int j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		i = h + j * ((*sP).Nfreq);
+
+		deviceComplex jfac = deviceComplex(0, -1.0 / (h * (*sP).fStep));
+		h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
+
+		(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[i % ((*sP).Nfreq)];
+		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[i % ((*sP).Nfreq)];
+	};
+
+	//Main kernel for RK4 propagation of the field
+	trilingual rkKernel asKernel(withID cudaParameterSet* sP, uint8_t stepNumber) {
+		size_t iC = localIndex;
+		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+
+		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		if (h == 1) {
+			(*sP).k1[iC - 1] = deviceComplex(0., 0.);
+			(*sP).gridEFrequency1[iC - 1] = deviceComplex(0., 0.);
+			(*sP).gridEFrequency1Next1[iC - 1] = deviceComplex(0., 0.);
+			(*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
+		}
+		deviceComplex estimate1;
+
+		if ((*sP).isCylindric) {
+			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
+		}
+
+		//generate the estimates and do the weighted sum to get the grid at the next step
+		//with weights determined by the step number
+		switch (stepNumber) {
+		case 0:
+			estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
+			(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
+			(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+			(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+			break;
+		case 1:
+			estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
+			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
+			(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+			(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+			break;
+		case 2:
+			estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
+			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
+			(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+			(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+			break;
+		case 3:
+			(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
+			(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
+			(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
+			break;
+		}
+	};
+
+	trilingual beamNormalizeKernel asKernel(withID cudaParameterSet* s, double* rawSum, double* pulse, double pulseEnergy) {
+		size_t i = localIndex;
+		double normFactor = sqrt(pulseEnergy / ((*s).Ntime * (*rawSum)));
+		pulse[i] *= normFactor;
+	};
+
+	trilingual addDoubleArraysKernel asKernel(withID double* A, double* B) {
+		size_t i = localIndex;
+		A[i] += B[i];
+	};
+
+	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
+		int sgOrder, double cep, double delay, double gdd, double tod,
+		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase,
+		double w0, double z0, double x0, double beamAngle,
+		double polarizationAngle, double circularity,
+		double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
+		long long i = localIndex;
+		long long j, h;
+		h = 1 + i % ((*s).Nfreq - 1);
+		j = i / ((*s).Nfreq - 1);
+		i = h + j * ((*s).Nfreq);
+		double f = h * (*s).fStep;
+		double w = TWOPI * (f - frequency);
+
+		//supergaussian pulse spectrum, if no input pulse specified
+		deviceComplex specfac = deviceComplex(-pow((f - frequency) / bandwidth, sgOrder), 0);
+
+		deviceComplex specphase = deviceComplex(0,
+			-(cep
+				+ TWOPI * f * (delay - 0.5 * (*s).dt * (*s).Ntime)
+				+ 0.5 * gdd * w * w
+				+ tod * w * w * w / 6.0
+				+ materialPhase[h]));
+		specfac = deviceLib::exp(specfac + specphase);
+
+		if (hasLoadedField) {
+			specfac = loadedField[h] * deviceLib::exp(specphase);
+		}
+		deviceComplex ne, no;
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
+
+
+		double ko = TWOPI * no.real() * f / LIGHTC;
+		double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
+		if (f == 0) {
+			zR = 1e3;
+		}
+		double rB = (x0 - (*s).dx * (j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+		double r = rB * cos(beamAngle) - z0 * sin(beamAngle);
+		double z = rB * sin(beamAngle) + z0 * cos(beamAngle);
+
+		double wz = w0 * sqrt(1 + (z * z / (zR * zR)));
+		double Rz = z * (1. + (zR * zR / (z * z)));
+
+		if (z == 0) {
+			Rz = 1.0e15;
+		}
+		double phi = atan(z / zR);
+		deviceComplex Eb = (w0 / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+		Eb = Eb * specfac;
+		if (isnan(cuCModSquared(Eb)) || f <= 0) {
+			Eb = deviceComplex(0., 0.);
+		}
+
+		pulse[i] = deviceComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
+		pulse[i + (*s).NgridC] = deviceComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
+		double pointEnergy = abs(r) * (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
+		pointEnergy *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt;
+		//two factors of two cancel here - there should be one for the missing frequency plane, but the sum is over x instead of r
+		//accordingly we already multiplied by two
 #ifdef __CUDACC__
-	atomicAdd(pulseSum, pointEnergy);
+		atomicAdd(pulseSum, pointEnergy);
 #elif __APPLE__
-	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-	double expected = pulseSumAtomic->load();
-	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
+		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+		double expected = pulseSumAtomic->load();
+		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 #else
-	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-	(*pulseSumAtomic).fetch_add(pointEnergy);
+		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+		(*pulseSumAtomic).fetch_add(pointEnergy);
 #endif
-};
+	};
 
-//note to self: please make a beamParameters struct
-trilingual beamGenerationKernel3D asKernel(withID deviceComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
-	int sgOrder, double cep, double delay, double gdd, double tod,
-	bool hasLoadedField, deviceComplex* loadedField, double* materialPhase,
-	double w0, double z0, double y0, double x0, double beamAngle, double beamAnglePhi,
-	double polarizationAngle, double circularity,
-	double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
-	long long i = localIndex;
-	long long j, k, h, col;
-	h = 1 + i % ((*s).Nfreq - 1);
-	col = i / ((*s).Nfreq - 1);
-	i = h + col * ((*s).Nfreq);
-	j = col % (*s).Nspace;
-	k = col / (*s).Nspace;
-	double f = h * (*s).fStep;
-	double w = TWOPI * (f - frequency);
+	//note to self: please make a beamParameters struct
+	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
+		int sgOrder, double cep, double delay, double gdd, double tod,
+		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase,
+		double w0, double z0, double y0, double x0, double beamAngle, double beamAnglePhi,
+		double polarizationAngle, double circularity,
+		double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
+		long long i = localIndex;
+		long long j, k, h, col;
+		h = 1 + i % ((*s).Nfreq - 1);
+		col = i / ((*s).Nfreq - 1);
+		i = h + col * ((*s).Nfreq);
+		j = col % (*s).Nspace;
+		k = col / (*s).Nspace;
+		double f = h * (*s).fStep;
+		double w = TWOPI * (f - frequency);
 
-	//supergaussian pulse spectrum, if no input pulse specified
-	deviceComplex specfac = deviceComplex(-pow((f - frequency) / bandwidth, sgOrder), 0);
+		//supergaussian pulse spectrum, if no input pulse specified
+		deviceComplex specfac = deviceComplex(-pow((f - frequency) / bandwidth, sgOrder), 0);
 
-	deviceComplex specphase = deviceComplex(0,
-		-(cep
-			+ TWOPI * f * (delay - 0.5 * (*s).dt * (*s).Ntime)
-			+ 0.5 * gdd * w * w
-			+ tod * w * w * w / 6.0
-			+ materialPhase[h]));
-	specfac = deviceLib::exp(specfac + specphase);
+		deviceComplex specphase = deviceComplex(0,
+			-(cep
+				+ TWOPI * f * (delay - 0.5 * (*s).dt * (*s).Ntime)
+				+ 0.5 * gdd * w * w
+				+ tod * w * w * w / 6.0
+				+ materialPhase[h]));
+		specfac = deviceLib::exp(specfac + specphase);
 
-	if (hasLoadedField) {
-		specfac = loadedField[h] * deviceLib::exp(specphase);
-	}
-	deviceComplex ne, no;
-	sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
-
-
-	double ko = TWOPI * no.real() * f / LIGHTC;
-	double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
-	if (f == 0) {
-		zR = 1e3;
-	}
-	double xo = ((*s).dx * (j - (*s).Nspace / 2.0)) - x0;
-	double yo = ((*s).dx * (k - (*s).Nspace2 / 2.0)) - y0;
-	double zo = z0;
-	double cB = cos(beamAngle);
-	double cA = cos(beamAnglePhi);
-	double sB = sin(beamAngle);
-	double sA = sin(beamAnglePhi);
-	double x = cB * xo + sA * sB * yo + sA * sB * zo;
-	double y = cA * yo - sA * zo;
-	double z = -sB * xo + sA * cB * yo + cA * cB * zo;
-	double r = sqrt(x * x + y * y);
-
-	double wz = w0 * sqrt(1 + (z * z / (zR * zR)));
-	double Rz = 1.0e15;
-	if (z != 0.0) {
-		Rz = z * (1. + (zR * zR / (z * z)));
-	}
-
-	double phi = atan(z / zR);
-	deviceComplex Eb = (w0 / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
-	Eb = Eb * specfac;
-	if (isnan(cuCModSquared(Eb)) || f <= 0) {
-		Eb = deviceComplex(0., 0.);
-	}
-
-	pulse[i] = deviceComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
-	pulse[i + (*s).NgridC] = deviceComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
-	double pointEnergy = (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
-	pointEnergy *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
+		if (hasLoadedField) {
+			specfac = loadedField[h] * deviceLib::exp(specphase);
+		}
+		deviceComplex ne, no;
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
 
 
-	//factor 2 accounts for the missing negative frequency plane
+		double ko = TWOPI * no.real() * f / LIGHTC;
+		double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
+		if (f == 0) {
+			zR = 1e3;
+		}
+		double xo = ((*s).dx * (j - (*s).Nspace / 2.0)) - x0;
+		double yo = ((*s).dx * (k - (*s).Nspace2 / 2.0)) - y0;
+		double zo = z0;
+		double cB = cos(beamAngle);
+		double cA = cos(beamAnglePhi);
+		double sB = sin(beamAngle);
+		double sA = sin(beamAnglePhi);
+		double x = cB * xo + sA * sB * yo + sA * sB * zo;
+		double y = cA * yo - sA * zo;
+		double z = -sB * xo + sA * cB * yo + cA * cB * zo;
+		double r = sqrt(x * x + y * y);
+
+		double wz = w0 * sqrt(1 + (z * z / (zR * zR)));
+		double Rz = 1.0e15;
+		if (z != 0.0) {
+			Rz = z * (1. + (zR * zR / (z * z)));
+		}
+
+		double phi = atan(z / zR);
+		deviceComplex Eb = (w0 / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+		Eb = Eb * specfac;
+		if (isnan(cuCModSquared(Eb)) || f <= 0) {
+			Eb = deviceComplex(0., 0.);
+		}
+
+		pulse[i] = deviceComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
+		pulse[i + (*s).NgridC] = deviceComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
+		double pointEnergy = (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
+		pointEnergy *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
+
+
+		//factor 2 accounts for the missing negative frequency plane
 #ifdef __CUDACC__
-	atomicAdd(pulseSum, pointEnergy);
+		atomicAdd(pulseSum, pointEnergy);
 #elif __APPLE__
-	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-	double expected = pulseSumAtomic->load();
-	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
+		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+		double expected = pulseSumAtomic->load();
+		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 #else
-	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-	(*pulseSumAtomic).fetch_add(pointEnergy);
+		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+		(*pulseSumAtomic).fetch_add(pointEnergy);
 #endif
-};
+	};
 
 
-trilingual multiplyByConstantKernelD asKernel(withID double* A, double val) {
-	long long i = localIndex;
-	A[i] = val * A[i];
-};
+	trilingual multiplyByConstantKernelD asKernel(withID double* A, double val) {
+		long long i = localIndex;
+		A[i] = val * A[i];
+	};
 
-trilingual multiplicationKernelCompactVector asKernel(withID deviceComplex* A, deviceComplex* B, deviceComplex* C, cudaParameterSet* s) {
-	long long i = localIndex;
-	long long h = i % (*s).Nfreq; //temporal coordinate
+	trilingual multiplicationKernelCompactVector asKernel(withID deviceComplex* A, deviceComplex* B, deviceComplex* C, cudaParameterSet* s) {
+		long long i = localIndex;
+		long long h = i % (*s).Nfreq; //temporal coordinate
 
-	C[i] = A[h] * B[i];
-};
+		C[i] = A[h] * B[i];
+	};
 
-trilingual multiplicationKernelCompact asKernel(withID deviceComplex* A, deviceComplex* B, deviceComplex* C) {
-	long long i = localIndex;
-	C[i] = A[i] * B[i];
-};
+	trilingual multiplicationKernelCompact asKernel(withID deviceComplex* A, deviceComplex* B, deviceComplex* C) {
+		long long i = localIndex;
+		C[i] = A[i] * B[i];
+	};
+}
+using namespace kernels;
+
+
 
 
 
 //anonymous namespace helps to separate functions that have been compiled under nvcc from those
 //compiled by the c++ compiler
-namespace {
-
+namespace hostFunctions{
 	//activeDevice d;
 	typedef dlib::matrix<double, 0, 1> column_vector;
 	simulationParameterSet* fittingSet;
@@ -2196,18 +2212,13 @@ namespace {
 		return sqrt(result);
 }
 }
-//END OF NAMESPACE
+using namespace hostFunctions;
 
-#ifdef __CUDACC__
-unsigned long solveNonlinearWaveEquation(void* lpParam) {
+
+unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	cudaSetDevice((*sCPU).assignedGPU);
-#else
-unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
-	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-#endif
+
 	size_t i;
-
 	cudaParameterSet s;
 	activeDevice d;
 	memset(&s, 0, sizeof(cudaParameterSet));
@@ -2283,11 +2294,9 @@ unsigned long solveNonlinearWaveEquationCPU(void* lpParam) {
 	return isnan(canaryPixel) * 13;
 }
 
-#ifdef __CUDACC__
-unsigned long solveNonlinearWaveEquationSequence(void* lpParam) {
-#else
-unsigned long solveNonlinearWaveEquationSequenceCPU(void* lpParam) {
-#endif
+
+unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
+
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
 	simulationParameterSet sCPUbackupValues;
 	simulationParameterSet* sCPUbackup = &sCPUbackupValues;
@@ -2386,12 +2395,8 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	return 0;
 }
 
-#ifdef __CUDACC__
-int main(int argc, char* argv[]) {
-	char* filepath = argv[1];
-#else
-int mainCPU(int argc, char* filepath) {
-#endif
+int mainX(int argc, mainArgumentX){
+	resolveArgv;
 	int i, j;
 
 	size_t progressCounter = 0;
@@ -2484,7 +2489,6 @@ int mainCPU(int argc, char* filepath) {
 		return 0;
 	}
 	// run simulations
-	//std::thread* threadBlock = (std::thread*)calloc((*sCPU).Nsims * (*sCPU).Nsims2, sizeof(std::thread));
 	std::thread* threadBlock = new std::thread[(*sCPU).Nsims * (*sCPU).Nsims2];
 	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
 	for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; j++) {

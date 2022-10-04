@@ -298,6 +298,7 @@ public:
 	int allocateSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
 		dParams = s;
 		cParams = sCPU;
+		cudaSetDevice((*sCPU).assignedGPU);
 		initializeDeviceParameters(sCPU, s);
 		fftInitialize(s);
 		if (checkDeviceMemory(sCPU, s)) {
