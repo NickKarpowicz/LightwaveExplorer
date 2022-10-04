@@ -1,7 +1,6 @@
 #include <memory>
 #include "LightwaveExplorerUtilities.h"
 
-
 // the anonymous namespace contains a few helper functions that are identical
 // for all classes, taken out here to have less duplicated code
 namespace {
@@ -217,7 +216,6 @@ public:
 			fftDestroy();
 		}
 		isCylindric = 0;
-		(*s).CUDAStream = stream;
 		size_t workSize;
 		cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
 		cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
@@ -442,7 +440,6 @@ public:
 			fftDestroy();
 		}
 		isCylindric = 0;
-		/*(*s).CUDAStream = stream;
 		size_t workSize;
 		cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
 		cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));

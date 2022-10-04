@@ -1,8 +1,3 @@
-#ifdef __CUDACC__
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-#include <nvml.h>
-#endif
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
@@ -11,10 +6,11 @@
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
-
-
 //Name assignments for the result functions compiled under CUDA, SYCL, and c++
 #ifdef __CUDACC__
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <nvml.h>
 #define deviceFunctions deviceFunctionsCUDA
 #define hostFunctions hostFunctionsCUDA
 #define mainX main
@@ -1465,12 +1461,6 @@ namespace kernels {
 }
 using namespace kernels;
 
-
-
-
-
-//anonymous namespace helps to separate functions that have been compiled under nvcc from those
-//compiled by the c++ compiler
 namespace hostFunctions{
 	//activeDevice d;
 	typedef dlib::matrix<double, 0, 1> column_vector;
@@ -1930,8 +1920,6 @@ namespace hostFunctions{
 
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
-				//bilingualLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), MIN_GRIDDIM, (*sH).CUDAStream, plasmaCurrentKernel, sD);
-
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
 				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2*MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
 				if ((*sH).isCylindric) {
@@ -2213,7 +2201,6 @@ namespace hostFunctions{
 }
 }
 using namespace hostFunctions;
-
 
 unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;

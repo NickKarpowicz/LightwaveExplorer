@@ -1,16 +1,16 @@
 #pragma once
-#define MAX_LOADSTRING 1024
+#include <complex>
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
 #define deviceLib thrust
 #define deviceComplex thrust::complex<double>
 #else
+#include <fftw3_mkl.h>
 #define deviceComplex std::complex<double>
 #define deviceLib std
 #endif
-#include <fftw3_mkl.h>
-#include <complex>
+
 
 #define THREADS_PER_BLOCK 32
 #define MIN_GRIDDIM 8
@@ -191,11 +191,6 @@ typedef struct simulationParameterSet {
 } simulationParameterSet;
 
 typedef struct cudaParameterSet {
-#ifdef __CUDACC__
-    cudaStream_t CUDAStream = 0;
-#else
-    int CUDAStream = 0;
-#endif
     deviceComplex* workspace1 = 0;
     deviceComplex* workspace2 = 0;
     deviceComplex* workspace2P = 0;
@@ -243,20 +238,6 @@ typedef struct cudaParameterSet {
     double rotationForward[9] = { 0 };
     double rotationBackward[9] = { 0 };
     int nonlinearSwitches[4] = { 0 };
-
-    int fftPlanZ2D = 0;
-    int fftPlanD2Z = 0;
-    int doublePolfftPlan = 0;
-    int fftPlan1DD2Z = 0;
-    int fftPlan1DZ2D = 0;
-
-    fftw_plan fftwPlanZ2D;
-    fftw_plan fftwPlanD2Z;
-    fftw_plan fftwPlanDoublePolfft;
-    fftw_plan fftwPlan1DD2Z;
-    fftw_plan fftwPlan1DZ2D;
-    std::complex<double>* fftwWorkspaceC;
-    double* fftwWorkspaceD;
 
     bool isCylindric = 0;
     bool is3D = 0;
