@@ -199,6 +199,7 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="LightwaveExplorerCoreSYCL.h" />
     <ClInclude Include="LightwaveExplorerTrilingual.h" />
     <ClInclude Include="LightwaveExplorerUtilities.h" />
     <ClInclude Include="LightwaveExplorerCoreCPU.h" />

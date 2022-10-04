@@ -39,6 +39,9 @@
     <ClInclude Include="LightwaveExplorerTrilingual.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LightwaveExplorerCoreSYCL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LightwaveExplorerFrontend.cpp">

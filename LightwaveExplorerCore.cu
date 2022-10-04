@@ -1,5 +1,6 @@
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
+#include "LightwaveExplorerCoreSYCL.h"
 #include "LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerTrilingual.h"
 #include <stdlib.h>
@@ -572,7 +573,7 @@ namespace kernels {
 				+ (*s).firstDerivativeOperation[5] * (*s).gridETime2[neighbors[5]]);
 		}
 
-	}
+	};
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
 	// The grid is offset from the origin; rather than ...-2 -1 0 1 2... etc, which would
@@ -1347,10 +1348,12 @@ namespace kernels {
 		//accordingly we already multiplied by two
 #ifdef __CUDACC__
 		atomicAdd(pulseSum, pointEnergy);
-#elif __APPLE__
+#elif defined(__APPLE__)
 		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 		double expected = pulseSumAtomic->load();
 		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
+#elif defined(NOFETCHADD)
+		(*pulseSum) += pointEnergy; //YOLO
 #else
 		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 		(*pulseSumAtomic).fetch_add(pointEnergy);
@@ -1431,10 +1434,12 @@ namespace kernels {
 		//factor 2 accounts for the missing negative frequency plane
 #ifdef __CUDACC__
 		atomicAdd(pulseSum, pointEnergy);
-#elif __APPLE__
+#elif defined(__APPLE__)
 		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 		double expected = pulseSumAtomic->load();
 		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
+#elif defined (NOFETCHADD)
+		(*pulseSum) += pointEnergy; //YOLO
 #else
 		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 		(*pulseSumAtomic).fetch_add(pointEnergy);
@@ -2017,11 +2022,8 @@ namespace hostFunctions{
 			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
 			(*s).axesNumber = db[(*s).materialIndex].axisType;
 
-#ifdef __CUDACC__
-			error = solveNonlinearWaveEquation(s);
-#else
-			error = solveNonlinearWaveEquationCPU(s);
-#endif
+			error = solveNonlinearWaveEquationX(s);
+
 			if (offsetArray[10] != 0.0) {
 				rotateField(s, DEG2RAD * offsetArray[10]);
 			}
@@ -2055,11 +2057,7 @@ namespace hostFunctions{
 				(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
 				(*s).axesNumber = db[(*s).materialIndex].axisType;
 				(*s).forceLinear = TRUE;
-#ifdef __CUDACC__
-				error = solveNonlinearWaveEquation(s);
-#else
-				error = solveNonlinearWaveEquationCPU(s);
-#endif
+				solveNonlinearWaveEquationX(s);
 			}
 			else {
 				if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
@@ -2142,22 +2140,16 @@ namespace hostFunctions{
 			*targets[(int)(*fittingSet).fittingArray[3 * i]] = multipliers[(int)(*fittingSet).fittingArray[3 * i]] * x(i);
 		}
 
-#ifdef __CUDACC__
-		if ((*fittingSet).isInSequence) {
-			solveNonlinearWaveEquationSequence(fittingSet);
-		}
-		else {
-			solveNonlinearWaveEquation(fittingSet);
-		}
-#else
 
 		if ((*fittingSet).isInSequence) {
-			solveNonlinearWaveEquationSequenceCPU(fittingSet);
+			solveNonlinearWaveEquationSequenceX(fittingSet);
 		}
 		else {
-			solveNonlinearWaveEquationCPU(fittingSet);
+			solveNonlinearWaveEquationX(fittingSet);
 		}
-#endif
+
+
+
 
 
 
@@ -2208,10 +2200,11 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	size_t i;
 	cudaParameterSet s;
 	activeDevice d;
+
 	memset(&s, 0, sizeof(cudaParameterSet));
 	if (d.allocateSet(sCPU, &s)) return 1;
-	//if (initializeCudaParameterSet(sCPU, &s)) return 1;
-	
+
+
 	
 	//prepare the propagation arrays
 	if (s.is3D) {
@@ -2223,7 +2216,9 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	else {
 		preparePropagation2DCartesian(d);
 	}
+
 	prepareElectricFieldArrays(d);
+
 	double canaryPixel = 0;
 	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
 
@@ -2244,7 +2239,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 #ifdef __CUDACC__
 			cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
 #else
-			canaryPixel = *canaryPointer;
+			d.deviceMemcpy(&canaryPixel, canaryPointer, sizeof(double),DeviceToHost);
 #endif
 			if (isnan(canaryPixel)) {
 				break;
@@ -2265,6 +2260,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 		if(!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 	}
 	if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
+
 	////give the result to the CPU
 	d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 
@@ -2495,7 +2491,6 @@ int mainX(int argc, mainArgumentX){
 		}
 
 	}
-
 	for (i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; i++) {
 		if (sCPU[i].memoryError > 0) {
 			printf("Warning: device memory error (%i).\n", sCPU[i].memoryError);

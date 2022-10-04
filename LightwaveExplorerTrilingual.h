@@ -358,6 +358,7 @@ public:
 #elif defined RUNONSYCL
 #include <CL/sycl.hpp>
 #include <oneapi/mkl.hpp>
+//#include <dpct/dpct.hpp>
 #define trilingual const auto 
 #define deviceFunction 
 #define RUNTYPE 2
@@ -376,11 +377,26 @@ private:
 	bool isCylindric;
 
 	//to do
-	int fftPlanD2Z;
-	int fftPlanZ2D;
-	int fftPlan1DD2Z;
-	int fftPlan1DZ2D;
-	int doublePolfftPlan;
+	std::shared_ptr<
+		oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
+		oneapi::mkl::dft::domain::REAL>>
+		fftPlanD2Z;
+	std::shared_ptr<
+		oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
+		oneapi::mkl::dft::domain::REAL>>
+		fftPlanZ2D;
+	std::shared_ptr<
+		oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
+		oneapi::mkl::dft::domain::REAL>>
+		fftPlan1DD2Z;
+	std::shared_ptr<
+		oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
+		oneapi::mkl::dft::domain::REAL>>
+		fftPlan1DZ2D;
+	std::shared_ptr<
+		oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
+		oneapi::mkl::dft::domain::REAL>>
+		doublePolfftPlan;
 
 	void fftDestroy() {
 		//to do
@@ -397,12 +413,13 @@ public:
 		cl::sycl::default_selector syclDefaultSelector;
 		cl::sycl::queue initStream(syclDefaultSelector);
 		stream = initStream;
+		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
 	}
 
 	~deviceSYCL() {
-		fftDestroy();
+		stream.wait();
+		//fftDestroy();
 		deviceFree(dParamsDevice);
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
 	}
 
 	template<typename Function, typename... Args>
@@ -441,42 +458,135 @@ public:
 		}
 		isCylindric = 0;
 		size_t workSize;
-		cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
-		cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
-		cufftSetStream(fftPlan1DD2Z, stream);
-		cufftSetStream(fftPlan1DZ2D, stream);
+		int Ntime = (*s).Ntime;
+		int Nspace = (*s).Nspace;
+		int Nspace2 = (*s).Nspace2;
+		//cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
+		fftPlan1DD2Z = std::make_shared<oneapi::mkl::dft::descriptor<
+			oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>>(
+				(int)Ntime);
+		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+			DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+		std::int64_t output_stride_ct1[2] = { 0, 1 };
+		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+			output_stride_ct1);
+		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+			(int)Ntime);
+		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+			((int)Ntime) / 2 + 1);
+		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+			2 * (int)(Nspace * Nspace2));
+		
+		//cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
+		fftPlan1DZ2D = std::make_shared<oneapi::mkl::dft::descriptor<
+			oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>>(
+				(int)Ntime);
+		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+			DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+		std::int64_t input_stride_ct2[2] = { 0, 1 };
+		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+			input_stride_ct2);
+		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+			(int)Ntime);
+		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+			((int)Ntime) / 2 + 1);
+		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+			2 * (int)(Nspace * Nspace2));
+
 		if ((*s).is3D) {
 			int cufftSizes1[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-			cufftCreate(&fftPlanD2Z);
-			cufftGetSizeMany(fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-			cufftMakePlanMany(fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+			std::int64_t output_stride_ct11[4] = {
+				0, cufftSizes1[1] * (cufftSizes1[2] / 2 + 1),
+				(cufftSizes1[2] / 2 + 1), 1 };
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+				output_stride_ct11);
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+				cufftSizes1[2] * cufftSizes1[1] * cufftSizes1[0]);
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+				cufftSizes1[2] * cufftSizes1[1] *
+				(cufftSizes1[0] / 2 + 1));
 
-			cufftCreate(&fftPlanZ2D);
-			cufftGetSizeMany(fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-			cufftMakePlanMany(fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+			fftPlanZ2D = std::make_shared<oneapi::mkl::dft::descriptor<
+				oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>>(
+					std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1],
+					cufftSizes1[2]});
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+				DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+				2);
+			std::int64_t input_stride_ct14[4] = {
+	0, cufftSizes1[1] * (cufftSizes1[2] / 2 + 1),
+	(cufftSizes1[2] / 2 + 1), 1 };
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+				input_stride_ct14);
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+				cufftSizes1[2] * cufftSizes1[1] * cufftSizes1[0]);
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+				cufftSizes1[2] * cufftSizes1[1] *
+				(cufftSizes1[0] / 2 + 1));
+
 		}
 		else {
 			int cufftSizes1[] = { (int)(*s).Nspace, (int)(*s).Ntime };
 
-			cufftCreate(&fftPlanD2Z);
-			cufftGetSizeMany(fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-			cufftMakePlanMany(fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+			fftPlanD2Z = std::make_shared<oneapi::mkl::dft::descriptor<
+				oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>>(
+					std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1]});
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+				DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+				2);
+			std::int64_t output_stride_ct19[3] = { 0, (cufftSizes1[1] / 2 + 1), 1 };
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+				output_stride_ct19);
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+				cufftSizes1[1] * cufftSizes1[0]);
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+				cufftSizes1[1] * (cufftSizes1[0] / 2 + 1));
 
-			cufftCreate(&fftPlanZ2D);
-			cufftGetSizeMany(fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-			cufftMakePlanMany(fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+			fftPlanZ2D = std::make_shared<oneapi::mkl::dft::descriptor<
+				oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>>(
+					std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1]});
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+				DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+				2);
+			std::int64_t input_stride_ct22[3] = { 0, (cufftSizes1[1] / 2 + 1), 1 };
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+				input_stride_ct22);
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+				cufftSizes1[1] * cufftSizes1[0]);
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+				cufftSizes1[1] * (cufftSizes1[0] / 2 + 1));
 
 			if ((*s).isCylindric) {
 				isCylindric = 1;
 				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
-				cufftCreate(&doublePolfftPlan);
-				cufftGetSizeMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-				cufftMakePlanMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-				cufftSetStream(doublePolfftPlan, stream);
+				doublePolfftPlan = std::make_shared<oneapi::mkl::dft::descriptor<
+					oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>>(
+						std::vector<std::int64_t>{cufftSizes2[0], cufftSizes2[1]});
+				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+					DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+				doublePolfftPlan->set_value(
+					oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
+				std::int64_t output_stride_ct27[3] = { 0, (cufftSizes2[1] / 2 + 1), 1 };
+				doublePolfftPlan->set_value(
+					oneapi::mkl::dft::config_param::OUTPUT_STRIDES, output_stride_ct27);
+				doublePolfftPlan->set_value(
+					oneapi::mkl::dft::config_param::FWD_DISTANCE,
+					cufftSizes2[1] * cufftSizes2[0]);
+				doublePolfftPlan->set_value(
+					oneapi::mkl::dft::config_param::BWD_DISTANCE,
+					cufftSizes2[1] * (cufftSizes2[0] / 2 + 1));
+				doublePolfftPlan->commit(stream);
 			}
 		}
-		cufftSetStream(fftPlanD2Z, stream);
-		cufftSetStream(fftPlanZ2D, stream);*/
+
+		fftPlan1DD2Z->commit(stream);
+		fftPlan1DZ2D->commit(stream);
+		fftPlanD2Z->commit(stream);
+		fftPlanZ2D->commit(stream);
+		
 		configuredFFT = 1;
 	}
 
@@ -484,19 +594,19 @@ public:
 	void fft(void* input, void* output, int type) {
 		switch (type) {
 		case 0:
-			//cufftExecD2Z(fftPlanD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+			(oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (double*)input, (double*)(sycl::double2*)output), 0);
 			break;
 		case 1:
-			//cufftExecZ2D(fftPlanZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
+			(oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (double*)(sycl::double2*)input, (double*)output), 0);
 			break;
 		case 2:
-			//cufftExecD2Z(fftPlan1DD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+			(oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (double*)input, (double*)(sycl::double2*)output), 0);
 			break;
 		case 3:
-			//cufftExecZ2D(fftPlan1DZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
+			(oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (double*)(sycl::double2*)input, (double*)output), 0);
 			break;
 		case 4:
-			//cufftExecD2Z(doublePolfftPlan, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+			(oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (double*)input, (double*)(sycl::double2*)output), 0);
 			break;
 		}
 	}
@@ -532,7 +642,6 @@ public:
 		}
 
 		fillRotationMatricies(sCPU, s);
-
 		//GPU allocations
 		//
 		// currently 8 large grids, meaning memory use is approximately
