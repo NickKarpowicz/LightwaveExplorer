@@ -7,6 +7,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
+#include "LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <Commdlg.h>
@@ -115,7 +116,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
                 error = solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
             }
             else {
-                error = solveNonlinearWaveEquationSequenceCPU(&activeSetPtr[j]);
+                error = solveNonlinearWaveEquationSequenceSYCL(&activeSetPtr[j]);
             }
 
             if (activeSetPtr[j].memoryError != 0) {
@@ -140,7 +141,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
                 error = solveNonlinearWaveEquation(&activeSetPtr[j]);
             }
             else{ 
-                error = solveNonlinearWaveEquationCPU(&activeSetPtr[j]); 
+                error = solveNonlinearWaveEquationSYCL(&activeSetPtr[j]); 
             }
 
             if (activeSetPtr[j].memoryError != 0) {

@@ -1,6 +1,6 @@
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerCoreCPU.h"
-#include "LightwaveExplorerCoreSYCL.h"
+//#include "LightwaveExplorerSYCL.h"
 #include "LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerTrilingual.h"
 #include <stdlib.h>

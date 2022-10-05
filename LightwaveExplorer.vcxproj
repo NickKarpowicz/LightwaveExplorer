@@ -88,7 +88,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\LightwaveExplorerSYCL;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -155,7 +155,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\include\sycl;$(ProjectDir)/lib;$(ProjectDir)../dlib;C:\Program Files %28x86%29\Intel\oneAPI\mkl\latest\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
@@ -173,15 +173,15 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>%(AdditionalDependencies);cudart_static.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;ComCtl32.lib;nvml.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>LightwaveExplorerSYCL.lib;%(AdditionalDependencies);cudart_static.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;ComCtl32.lib;nvml.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\lib;$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
-      <CudaRuntime>Static</CudaRuntime>
-      <Runtime>MT</Runtime>
+      <CudaRuntime>Shared</CudaRuntime>
+      <Runtime>MD</Runtime>
       <FastMath>true</FastMath>
       <Optimization>O2</Optimization>
       <Include>%(Include)</Include>
@@ -199,7 +199,6 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
-    <ClInclude Include="LightwaveExplorerCoreSYCL.h" />
     <ClInclude Include="LightwaveExplorerTrilingual.h" />
     <ClInclude Include="LightwaveExplorerUtilities.h" />
     <ClInclude Include="LightwaveExplorerCoreCPU.h" />

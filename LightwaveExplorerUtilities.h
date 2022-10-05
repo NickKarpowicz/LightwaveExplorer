@@ -7,7 +7,6 @@
 #define deviceComplex thrust::complex<double>
 #elif defined RUNONSYCL
 #include <fftw3_mkl.h>
-#define deviceComplex
 #define deviceLib std
 #define deviceComplex std::complex<double>
 #else
