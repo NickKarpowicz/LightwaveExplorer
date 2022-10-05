@@ -5,6 +5,11 @@
 #include <thrust/complex.h>
 #define deviceLib thrust
 #define deviceComplex thrust::complex<double>
+#elif defined RUNONSYCL
+#include <fftw3_mkl.h>
+#define deviceComplex
+#define deviceLib std
+#define deviceComplex std::complex<double>
 #else
 #include <fftw3_mkl.h>
 #define deviceComplex std::complex<double>

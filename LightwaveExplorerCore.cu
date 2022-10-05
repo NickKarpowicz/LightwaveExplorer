@@ -230,25 +230,41 @@ namespace deviceFunctions {
 		double alpha[2] = { asin(kx1 / n[0][0].real()),asin(kx1 / n[0][1].real()) };
 		double beta[2] = { asin(ky1 / n[0][0].real()),asin(ky1 / n[0][1].real()) };
 
-		double gradientStep = 1.0e-7;
+		double gradientStep = 1.0e-6;
 		double gradientFactor = 0.5 / gradientStep;
 		int it;
-		int maxiter = 32;
+		int maxiter = 64;
+		double gradientTol = 1e-2;
 		//emperical testing: 
 		// converges to double precision limit in two iterations for BBO
 		// converges in 32 iterations in BiBO
 
 		double errArray[4][2];
 		if ((*s).axesNumber == 1) {
-			maxiter = 4;
+			maxiter = 64;
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+			if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
+				*n1 = deviceComplex(0.0, 0.0);
+				*n2 = deviceComplex(0.0, 0.0);
+				return;
+			}
 			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
 			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 			gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 
 			for (it = 0; it < maxiter; it++) {
-				if (abs(gradient[0][0]) > 1e-13) alpha[0] -= 0.5 * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
+				if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
+					*n1 = deviceComplex(0.0, 0.0);
+					*n2 = deviceComplex(0.0, 0.0);
+					return;
+				}
+				if (abs(gradient[0][0]) > gradientTol) {
+					alpha[0] -= 0.5 * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
+				} 
+				else {
+					break;
+				}
 
 				sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 				sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
@@ -272,6 +288,11 @@ namespace deviceFunctions {
 			sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&nW, &n[2][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&nW, &n[3][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
+			if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
+				*n1 = n[0][0];
+				*n2 = n[0][1];
+				return;
+			}
 			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
 			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 			errArray[2][0] = sin(beta[0] + gradientStep) * n[2][0].real() - ky1;
@@ -286,10 +307,17 @@ namespace deviceFunctions {
 			gradient[1][1] = gradientFactor * (errArray[2][1] - errArray[3][1]);
 
 			for (it = 0; it < maxiter; it++) {
-				if (abs(gradient[0][0]) > 1e-13) alpha[0] -= 0.25 * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
-				if (abs(gradient[1][0]) > 1e-13) beta[0] -= 0.25 * (errArray[2][0] + errArray[3][0]) / gradient[1][0];
-				if (abs(gradient[0][1]) > 1e-13) alpha[1] -= 0.25 * (errArray[0][1] + errArray[1][1]) / gradient[0][1];
-				if (abs(gradient[1][1]) > 1e-13) beta[1] -= 0.25 * (errArray[2][1] + errArray[3][1]) / gradient[1][1];
+				if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
+					*n1 = deviceComplex(0.0, 0.0);
+					*n2 = deviceComplex(0.0, 0.0);
+					return;
+				}
+				if (abs(gradient[0][0]) > 1e-2) alpha[0] -= 0.25 * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
+				if (abs(gradient[1][0]) > 1e-2) beta[0] -= 0.25 * (errArray[2][0] + errArray[3][0]) / gradient[1][0];
+				if (abs(gradient[0][1]) > 1e-2) alpha[1] -= 0.25 * (errArray[0][1] + errArray[1][1]) / gradient[0][1];
+				if (abs(gradient[1][1]) > 1e-2) beta[1] -= 0.25 * (errArray[2][1] + errArray[3][1]) / gradient[1][1];
+
+				if (maxN(maxN(abs(gradient[0][0]), abs(gradient[1][0])), maxN(abs(gradient[0][1]), abs(gradient[1][1]))) < gradientTol) break;
 				sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
 				sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
 				sellmeierCuda(&n[2][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67] + beta[0] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
@@ -816,6 +844,14 @@ namespace kernels {
 			crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
+		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
+		if (ne.real() < 0.9) {
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor2[i] = cuZero;
+			(*s).gridPolarizationFactor1[i] = cuZero;
+			(*s).gridPolarizationFactor2[i] = cuZero;
+			return;
+		}
 		//walkoff angle has been found, generate the rest of the grids
 		if (isnan(ne.real()) || isnan(no.real())) {
 			ne = deviceComplex(1, 0);
@@ -836,8 +872,9 @@ namespace kernels {
 			chi11 = deviceComplex(1, 0);
 			chi12 = deviceComplex(1, 0);
 		}
-
-		if (abs(dk) < deviceLib::abs(ke) && k < ((long long)(*s).Nfreq - 1)) {
+		
+		if (dk*dk < minN(ke.real() * ke.real() + ke.imag()*ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag()) 
+			&& k < ((long long)(*s).Nfreq - 1)) {
 			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
 			if (isnan(((*s).gridPropagationFactor1[i]).real())) {
 				(*s).gridPropagationFactor1[i] = cuZero;
@@ -851,7 +888,6 @@ namespace kernels {
 			(*s).gridPolarizationFactor1[i] = ii * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * (TWOPI * f) / (2. * ne.real() * LIGHTC) * (*s).h;
 			(*s).gridPolarizationFactor2[i] = ii * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * (TWOPI * f) / (2. * no.real() * LIGHTC) * (*s).h;
 		}
-
 		else {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
@@ -1352,6 +1388,9 @@ namespace kernels {
 		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 		double expected = pulseSumAtomic->load();
 		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
+#elif defined RUNONSYCL
+		cl::sycl::atomic_ref<double, cl::sycl::memory_order::relaxed,cl::sycl::memory_scope::device> a(*pulseSum);
+		a.fetch_add(pointEnergy);
 #elif defined(NOFETCHADD)
 		(*pulseSum) += pointEnergy; //YOLO
 #else
@@ -1438,6 +1477,9 @@ namespace kernels {
 		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 		double expected = pulseSumAtomic->load();
 		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
+#elif defined RUNONSYCL
+		cl::sycl::atomic_ref<double, cl::sycl::memory_order::relaxed, cl::sycl::memory_scope::device> a(*pulseSum);
+		a.fetch_add(pointEnergy);
 #elif defined (NOFETCHADD)
 		(*pulseSum) += pointEnergy; //YOLO
 #else
@@ -1780,7 +1822,7 @@ namespace hostFunctions{
 
 		//prepare the propagation grids
 		cudaParameterSet* sD = d.dParamsDevice;
-		d.deviceMemcpy(sD, sc, sizeof(cudaParameterSet), HostToDevice);
+		//d.deviceMemcpy(sD, sc, sizeof(cudaParameterSet), HostToDevice);
 		d.deviceLaunch((unsigned int)(*sc).Nfreq, 1, getChiLinearKernel, sD, sellmeierCoefficients);
 		d.deviceLaunch((*sc).Nblock / 2, (*sc).Nthread, prepareCartesianGridsKernel, sellmeierCoefficients, sD);
 		d.deviceLaunch(1, 1, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
@@ -2205,7 +2247,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	if (d.allocateSet(sCPU, &s)) return 1;
 
 
-	
+	printf("Grid prep.\n");
 	//prepare the propagation arrays
 	if (s.is3D) {
 		preparePropagation3D(d);
@@ -2216,7 +2258,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	else {
 		preparePropagation2DCartesian(d);
 	}
-
+	printf("Field prep.\n");
 	prepareElectricFieldArrays(d);
 
 	double canaryPixel = 0;
@@ -2224,7 +2266,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 
 	
 	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(cudaParameterSet), HostToDevice);
-
+	printf("Loop\n");
 	//Core propagation loop
 	for (i = 0; i < s.Nsteps; i++) {
 
