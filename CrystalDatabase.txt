@@ -369,19 +369,19 @@ d:
 54 -54 0 0 0 0
 0 0 0 0 0 0
 d reference:
-(old code, look up later)
+D.A. Roberts, IEEE J. Quant. Electr. 28(10), 2056-2074 (1992)
 chi3 type:
-0
+2
 chi3:
-1.0e-18 0 0 0 0 0 0 0 0
+2.8e-21 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 chi3 reference:
-Empty matrix awaiting input
+T. Kawamori et al., CLEO 2021 STu4C.1
 Spectral file:
 None
 Nonlinear reference frequencies:
-0 0 0 0 0 0 0
+28.3e12 28.3e12 56.6e12 128e12 128e12 128e12 128e12
 ~~~crystal end~~~
 Name:
 4H-SiC

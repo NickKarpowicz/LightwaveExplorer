@@ -445,7 +445,6 @@ public:
 		if (configuredFFT) {
 			fftDestroy();
 		}
-		printf("Starting fft init\n");
 		isCylindric = 0;
 		size_t workSize;
 		int Ntime = (*s).Ntime;
@@ -524,13 +523,11 @@ public:
 				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq * 2 * Nspace);
 			}
 		}
-		printf("committing plans\n");
 		fftPlan1DD2Z->commit(stream);
 		fftPlan1DZ2D->commit(stream);
 		fftPlanD2Z->commit(stream);
 		fftPlanZ2D->commit(stream);
 		if((*s).isCylindric) doublePolfftPlan->commit(stream);
-		printf("configured\n");
 		configuredFFT = 1;
 	}
 

@@ -1033,6 +1033,16 @@ namespace kernels {
 		double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
+		if (ne.real() < 0.9) {
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor2[i] = cuZero;
+			(*s).gridPolarizationFactor1[i] = cuZero;
+			(*s).gridPolarizationFactor2[i] = cuZero;
+			return;
+		}
+		
+		
 		if (isnan(ne.real()) || isnan(no.real())) {
 			ne = deviceComplex(1, 0);
 			no = deviceComplex(1, 0);
@@ -2246,8 +2256,6 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	memset(&s, 0, sizeof(cudaParameterSet));
 	if (d.allocateSet(sCPU, &s)) return 1;
 
-
-	printf("Grid prep.\n");
 	//prepare the propagation arrays
 	if (s.is3D) {
 		preparePropagation3D(d);
@@ -2258,7 +2266,6 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	else {
 		preparePropagation2DCartesian(d);
 	}
-	printf("Field prep.\n");
 	prepareElectricFieldArrays(d);
 
 	double canaryPixel = 0;
@@ -2266,7 +2273,6 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 
 	
 	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(cudaParameterSet), HostToDevice);
-	printf("Loop\n");
 	//Core propagation loop
 	for (i = 0; i < s.Nsteps; i++) {
 
