@@ -399,8 +399,10 @@ public:
 		
 		configuredFFT = 0;
 		isCylindric = 0;
-		cl::sycl::default_selector syclDefaultSelector;
-		cl::sycl::queue initStream(syclDefaultSelector);
+		//cl::sycl::device d;
+		//d = cl::sycl::device(cl::sycl::cpu_selector());
+		cl::sycl::default_selector d;
+		cl::sycl::queue initStream(d);
 		stream = initStream;
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
 	}

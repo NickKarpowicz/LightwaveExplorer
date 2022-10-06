@@ -843,7 +843,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
     int syclCount = readSYCLDevices(syclDeviceList, syclDefault);
-    //printToConsole(maingui.textboxSims, syclDeviceList);
+    printToConsole(maingui.textboxSims, syclDeviceList);
     printToConsole(maingui.textboxSims, syclDefault);
 
     if (CUDAdeviceCount > 0) {
@@ -878,8 +878,6 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
             printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
     }
-
-
 
     char defaultFilename[] = "DefaultValues.ini";
     readInputParametersFile(activeSetPtr, crystalDatabasePtr, defaultFilename);

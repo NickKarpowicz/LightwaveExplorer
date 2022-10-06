@@ -16,7 +16,6 @@ int readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) {
     for (const auto& p : cl::sycl::platform::get_platforms()) {
         for (const auto& d : p.get_devices()) {
             deviceCount++;
-
             mbstowcs_s(&convertedChars, deviceCharString, d.get_info<cl::sycl::info::device::name>().c_str(), MAX_LOADSTRING);
             offset = wcsnlen_s(deviceListString, MAX_LOADSTRING);
             swprintf_s(&deviceListString[offset], MAX_LOADSTRING, L"SYCL found: %ls\r\n", deviceCharString);
