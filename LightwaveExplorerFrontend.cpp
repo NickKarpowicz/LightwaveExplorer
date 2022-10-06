@@ -59,6 +59,7 @@ bool isPlotting = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
 bool hasGPU = FALSE;
+int cudaCount = 0;
 size_t progressCounter = 0;
 //UI colors
 COLORREF uiWhite = RGB(255, 255, 255);
@@ -77,12 +78,13 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
-    HANDLE plotThread;
+    HANDLE plotThread = NULL;
     DWORD hplotThread;
-    HANDLE cpuThread;
+    HANDLE cpuThread = NULL;
     DWORD hCpuThread;
 
-    bool forcingCPU = IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU) == BST_CHECKED;
+    //bool forcingCPU = IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU) == BST_CHECKED;
+    bool forcingCPU = 0;
     if (forcingCPU) {
         printToConsole(maingui.textboxSims, L"Forcing to run on CPU!\r\n");
     }
@@ -107,17 +109,30 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     //run the simulations
     isRunning = TRUE;
     progressCounter = 0;
-
     cpuThread = CreateThread(NULL, 0, offloadToCPU, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
+
+    int pulldownSelection = (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+    auto normalFunction = &solveNonlinearWaveEquationCPU;
+    int assignedGPU = 0;
+
+    if ((pulldownSelection - cudaCount) == 0) {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else if ((pulldownSelection - cudaCount) == 1) {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+        normalFunction = &solveNonlinearWaveEquationCPU;
+    }
+    else if ((pulldownSelection - cudaCount) < 0) {
+        sequenceFunction = &solveNonlinearWaveEquationSequence;
+        normalFunction = &solveNonlinearWaveEquation;
+        assignedGPU = pulldownSelection;
+    }
  
     for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); j++) {
         if ((*activeSetPtr).isInSequence) {
-            if (hasGPU && !forcingCPU) {
-                error = solveNonlinearWaveEquationSequence(&activeSetPtr[j]);
-            }
-            else {
-                error = solveNonlinearWaveEquationSequenceSYCL(&activeSetPtr[j]);
-            }
+            error = sequenceFunction(&activeSetPtr[j]);
 
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
@@ -127,7 +142,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
                     printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
                 } 
             }
-            
             if (error) break;
             if (!isPlotting) {
                 (*activeSetPtr).plotSim = j;
@@ -137,13 +151,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
         }
         else {
-            if (hasGPU && !forcingCPU) {
-                error = solveNonlinearWaveEquation(&activeSetPtr[j]);
-            }
-            else{ 
-                error = solveNonlinearWaveEquationSYCL(&activeSetPtr[j]); 
-            }
-
+            error = normalFunction(&activeSetPtr[j]); 
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
                     printToConsole(maingui.textboxSims, _T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
@@ -169,6 +177,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
 
     }
+
     if ((*activeSetPtr).NsimsCPU != 0 && cpuThread != 0) {
         WaitForSingleObject(cpuThread, INFINITE);
         CloseHandle(cpuThread);
@@ -541,9 +550,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2b, 6 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
     
-    maingui.tbCPUsims = CreateWindow(WC_EDIT, TEXT("0"),
-        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        btnoffset2 - btnwidth - 8, 17 * vs +2, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
+
     maingui.tbBatchDestination = CreateWindow(WC_EDIT, TEXT("20"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 10 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -613,8 +620,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.trackbarPlot = CreateWindowEx(0, TRACKBAR_CLASS, L"Plot scrubber", WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS | TBS_ENABLESELRANGE,
         btnoffset2a, 18 * vs  + 2, btnwidth, 20, maingui.mainWindow, (HMENU)ID_PLOTSCRUBBER, hInstance, NULL);
     SendMessageW(maingui.trackbarPlot, TBM_SETRANGE, (WPARAM)TRUE, (LPARAM)MAKELONG(0, 1));
-    maingui.cbForceCPU = CreateWindow(WC_BUTTON, TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        btnoffset2a + btnwidth + 60, 17 * vs + 5, 12, 12, maingui.mainWindow, (HMENU)ID_CBFORCECPU, hInstance, NULL);
+
 
 
     maingui.buttonLoad = CreateWindow(WC_BUTTON, TEXT("Load"), 
@@ -787,6 +793,15 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         return FALSE;
     }
 
+    maingui.tbCPUsims = CreateWindow(WC_EDIT, TEXT("0"),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        btnoffset2a + 84 + 80 + 6, 17 * vs + 2, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.pdPrimaryQueue = CreateWindow(WC_COMBOBOX, TEXT(""),
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        btnoffset2a, 17 * vs, 80, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.pdSecondaryQueue = CreateWindow(WC_COMBOBOX, TEXT(""),
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        btnoffset2a + 84, 17 * vs, 80, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     SetWindowTheme(maingui.mainWindow, L"DarkMode_Explorer", NULL);
     ShowWindow(maingui.mainWindow, nCmdShow);
     SetWindowTheme(maingui.mainWindow, L"DarkMode_Explorer", NULL);
@@ -794,9 +809,11 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     activeSetPtr = (simulationParameterSet*)calloc(MAX_SIMULATIONS, sizeof(simulationParameterSet));
 
     //Find, count, and name the GPUs
+
     int CUDAdevice, i;
     int CUDAdeviceCount = 0;
     cudaGetDeviceCount(&CUDAdeviceCount);    
+    cudaCount = CUDAdeviceCount;
     cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
     struct cudaDeviceProp activeCUDADeviceProp;
     wchar_t wcstring[514];
@@ -806,7 +823,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
             hasGPU = TRUE;
         }
         
-        printToConsole(maingui.textboxSims, _T("Found %i GPU(s): \r\n"), CUDAdeviceCount);
+        printToConsole(maingui.textboxSims, _T("CUDA found %i GPU(s): \r\n"), CUDAdeviceCount);
         for (i = 0; i < CUDAdeviceCount; i++) {
             cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
             memset(wcstring, 0, sizeof(wchar_t));
@@ -818,9 +835,39 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     }
     else {
-        printToConsole(maingui.textboxSims, L"No compatible GPU found.\r\n");
+        printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found.\r\n");
         hasGPU = FALSE;
     }
+
+    //read SYCL devices
+    wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
+    wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
+    int syclCount = readSYCLDevices(syclDeviceList, syclDefault);
+    //printToConsole(maingui.textboxSims, syclDeviceList);
+    printToConsole(maingui.textboxSims, syclDefault);
+
+    if (CUDAdeviceCount > 0) {
+        swprintf_s(A, MAX_LOADSTRING, L"CUDA");
+        SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+        SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+        memset(&A, 0, sizeof(A));
+        for (i = 1; i < CUDAdeviceCount; i++) {
+            swprintf_s(A, MAX_LOADSTRING, L"CUDA %i", i);
+            SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            memset(&A, 0, sizeof(A));
+        }
+    }
+    swprintf_s(A, MAX_LOADSTRING, L"SYCL");
+    SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    memset(&A, 0, sizeof(A));
+    swprintf_s(A, MAX_LOADSTRING, L"OpenMP");
+    SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    memset(&A, 0, sizeof(A));
+    SendMessage(maingui.pdPrimaryQueue, (UINT)CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_SETCURSEL, (WPARAM)1, (LPARAM)1);
     //read the crystal database
     crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
     if (crystalDatabasePtr != NULL) {
@@ -831,6 +878,8 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
             printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
     }
+
+
 
     char defaultFilename[] = "DefaultValues.ini";
     readInputParametersFile(activeSetPtr, crystalDatabasePtr, defaultFilename);
@@ -1020,16 +1069,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_SIZE:
     {
         RECT mainRect;
-        GetWindowRect(maingui.mainWindow, &mainRect);
-        SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 25*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 27*maingui.vs -4, NULL);
-        SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs+5, mainRect.right - mainRect.left - maingui.xOffsetRow3- 30, 20, NULL);
-
+        GetClientRect(maingui.mainWindow, &mainRect);
+        SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 25*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 25*maingui.vs, NULL);
+        SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs+5, mainRect.right - mainRect.left - maingui.xOffsetRow3- 10, 20, NULL);
+ 
         int spacerX = maingui.plotSpacerX;
         int spacerY = maingui.plotSpacerY;
         int x0 = maingui.consoleSize + spacerX + 12;
         int y0 = 90 + spacerY;
-        int imagePanelSizeX = mainRect.right - mainRect.left - x0 - 2 * spacerX;
-        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 5 * spacerY;
+        int imagePanelSizeX = mainRect.right - mainRect.left - x0 - spacerX;
+        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 3 * spacerY;
 
         int x = x0;
         int y = y0;
@@ -1073,6 +1122,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.pdClusterSelector, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdFittingType, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdPropagationMode, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.pdPrimaryQueue, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.pdSecondaryQueue, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdPulse1Type, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdPulse2Type, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.buttonFile, L"DarkMode_Explorer", NULL);
@@ -1087,7 +1138,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonAddCrystalToSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddEchoSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
-        SetWindowTheme(maingui.cbForceCPU, L"DarkMode_Explorer", L"wstr");
+        //SetWindowTheme(maingui.cbForceCPU, L"DarkMode_Explorer", L"wstr");
         SetWindowTheme(maingui.pbProgress, L"", L"");
         SetWindowTheme(maingui.pbProgressB, L"", L"");
         SendMessage(maingui.pbProgress, PBM_SETBKCOLOR, 0, RGB(0,0,0));
@@ -1102,8 +1153,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SendMessage(maingui.pdPulse1Type, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdPulse2Type, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdRStep, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
-
-
+        SendMessage(maingui.pdPrimaryQueue, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
+        SendMessage(maingui.pdSecondaryQueue, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
 		UpdateWindow(hWnd);
 		break;
     case WM_HSCROLL:
@@ -1680,13 +1731,13 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse1Type, _T("Pulse 1:"), labos, 4);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2:"), labos, 4);
 
-    labelTextBox(hdc, maingui.mainWindow, maingui.tbCPUsims, _T("Offloads:"), -70, 0);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.tbCPUsims, _T("Offloads:"), -70, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdFittingType, _T("Fit type:"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 16, -1);
-    labelTextBox(hdc, maingui.mainWindow, maingui.cbForceCPU, _T("CPU"), 16, -1);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.cbForceCPU, _T("CPU"), 16, -1);
     //plot labels
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);
@@ -2519,17 +2570,45 @@ int setTrackbarLimitsToActiveSet() {
 }
 
 DWORD WINAPI offloadToCPU(LPVOID lpParam) {
+    if ((*activeSetPtr).NsimsCPU < 1) return 0;
     simulationParameterSet* cpuSims = (simulationParameterSet*)lpParam;
+    int pulldownSelection = (int)SendMessage(maingui.pdSecondaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+    auto normalFunction = &solveNonlinearWaveEquationCPU;
+    int assignedGPU = 0;
+
+    if ( (pulldownSelection - cudaCount) == 0) {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+        if (pulldownSelection == (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0)) {
+            printToConsole(maingui.textboxSims, L"Warning: can't launch two SYCL simulations simultaneously.\r\n The secondary queue will be done on OpenMP.\r\n");
+            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+            normalFunction = &solveNonlinearWaveEquationCPU;
+        }
+    }
+    else if ((pulldownSelection - cudaCount) == 1) {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+        normalFunction = &solveNonlinearWaveEquationCPU;
+    }
+    else if ((pulldownSelection - cudaCount) < 0) {
+        sequenceFunction = &solveNonlinearWaveEquationSequence;
+        normalFunction = &solveNonlinearWaveEquation;
+        assignedGPU = pulldownSelection;
+    }
+
+
     int error = 0;
     if ((*activeSetPtr).isInSequence) {
         for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; i++) {
-            error = solveNonlinearWaveEquationSequenceCPU(&cpuSims[i]);
+            cpuSims[i].assignedGPU = assignedGPU;
+            error = sequenceFunction(&cpuSims[i]);
             if (error) break;
         }
     }
     else {
         for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; i++) {
-            error = solveNonlinearWaveEquationCPU(&cpuSims[i]);
+            cpuSims[i].assignedGPU = assignedGPU;
+            error = normalFunction(&cpuSims[i]);
             if (error) break;
         }
     }

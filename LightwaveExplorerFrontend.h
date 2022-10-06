@@ -70,6 +70,9 @@ typedef struct guiStruct {
     HWND tbSequence = NULL;
     HWND tbFitting = NULL;
 
+    HWND pdPrimaryQueue;
+    HWND pdSecondaryQueue;
+
     HWND pbProgress = NULL;
     HWND pbProgressB = NULL;
     HWND tbFileNameBase = NULL;
@@ -92,7 +95,7 @@ typedef struct guiStruct {
     HWND buttonAddEchoSequence = NULL;
     HWND tbPlotNumber = NULL;
     HWND cbLogPlot = NULL;
-    HWND cbForceCPU = NULL;
+    //HWND cbForceCPU = NULL;
     HWND pdClusterSelector = NULL;
     HWND buttonRunOnCluster = NULL;
     HWND tbWhichSimToPlot = NULL;
