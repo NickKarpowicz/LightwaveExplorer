@@ -230,6 +230,25 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	char outputpath[MAX_LOADSTRING] = { 0 };
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
 
+
+
+	//read fields as binary
+	FILE* ExtOutFile;
+	strcpy(outputpath, outputBase);
+	strcat(outputpath, "_Ext.dat");
+	ExtOutFile = fopen(outputpath, "rb");
+	if (ExtOutFile == NULL) return 1;
+	fread((*sCPU).ExtOut, sizeof(double), writeSize, ExtOutFile);
+	fclose(ExtOutFile);
+
+	FILE* spectrumFile;
+	strcpy(outputpath, outputBase);
+	strcat(outputpath, "_spectrum.dat");
+	spectrumFile = fopen(outputpath, "rb");
+	if (spectrumFile == NULL) return 1;
+	fread((*sCPU).totalSpectrum, sizeof(double), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq, spectrumFile);
+	fclose(spectrumFile);
+
 	fftw_plan fftwPlanD2Z;
 
 	if ((*sCPU).is3D) {
@@ -240,24 +259,6 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 		const int fftwSizes[] = { (int)(*sCPU).Nspace, (int)(*sCPU).Ntime };
 		fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, (*sCPU).ExtOut, NULL, 1, (int)(*sCPU).Ngrid, (fftw_complex*)(*sCPU).EkwOut, NULL, 1, (int)(*sCPU).NgridC, FFTW_MEASURE);
 	}
-
-	//read fields as binary
-	FILE* ExtOutFile;
-	strcpy(outputpath, outputBase);
-	strcat(outputpath, "_Ext.dat");
-	ExtOutFile = fopen(outputpath, "rb");
-	if (ExtOutFile == NULL) {
-		return 1;
-	}
-	fread((*sCPU).ExtOut, sizeof(double), writeSize, ExtOutFile);
-	fclose(ExtOutFile);
-
-	FILE* spectrumFile;
-	strcpy(outputpath, outputBase);
-	strcat(outputpath, "_spectrum.dat");
-	spectrumFile = fopen(outputpath, "rb");
-	fread((*sCPU).totalSpectrum, sizeof(double), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq, spectrumFile);
-	fclose(spectrumFile);
 
 	for (size_t i = 0; i < ((*sCPU).Nsims * (*sCPU).Nsims2); i++) {
 		fftw_execute_dft_r2c(fftwPlanD2Z, &(*sCPU).ExtOut[2 * i * (*sCPU).Ngrid], (fftw_complex*) & (*sCPU).EkwOut[2 * i * (*sCPU).NgridC]);

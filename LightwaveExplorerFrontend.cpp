@@ -1794,6 +1794,8 @@ int openDialogBoxAndLoad(HWND hWnd) {
             isGridAllocated = FALSE;
         }
         readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, fileNameString);
+        allocateGrids(activeSetPtr);
+        isGridAllocated = TRUE;
         //There should be 50 parameters, remember to update this if adding new ones!
         if (readParameters == 61) {
             //get the base of the file name, so that different files can be made with different extensions based on that
@@ -1805,8 +1807,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
             szFileNameNoExt[MAX_LOADSTRING - 1] = 0;
             wcstombs(fileNameString, szFileNameNoExt, MAX_LOADSTRING);
 
-            allocateGrids(activeSetPtr);
-            isGridAllocated = TRUE;
+
             int res;
             res = loadSavedFields(activeSetPtr, fileNameString);
             //printToConsole(maingui.textboxSims,L"loaded with %i\r\n", res);
