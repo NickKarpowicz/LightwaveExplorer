@@ -135,6 +135,10 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <FSYCLEarlyOptimizations>Yes</FSYCLEarlyOptimizations>
+      <FSYCLDeadArgsOptimization>Yes</FSYCLDeadArgsOptimization>
+      <OpenMP>None</OpenMP>
+      <OpenMPOffloading>None</OpenMPOffloading>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -142,6 +146,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <SpecifyGPUTargetForAOT>Default</SpecifyGPUTargetForAOT>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(TargetPath)" "$(ProjectDir)..\Executable\"

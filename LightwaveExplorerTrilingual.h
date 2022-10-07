@@ -399,12 +399,7 @@ public:
 		
 		configuredFFT = 0;
 		isCylindric = 0;
-		//cl::sycl::device d;
-		//d = cl::sycl::device(cl::sycl::cpu_selector());
-		cl::sycl::default_selector d;
-		cl::sycl::queue initStream(d);
-		stream = initStream;
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
+
 	}
 
 	~deviceSYCL() {
@@ -422,7 +417,7 @@ public:
 	}
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
-		(*ptr) = cl::sycl::malloc_device(N * elementSize, stream.get_device(), stream.get_context());
+		(*ptr) = cl::sycl::aligned_alloc_device(8*sizeof(double), N * elementSize, stream.get_device(), stream.get_context());
 		auto event = stream.memset((*ptr), 0, N * elementSize);
 		event.wait();
 		return 0;
@@ -439,6 +434,7 @@ public:
 	}
 
 	void deviceFree(void* block) {
+		stream.wait();
 		cl::sycl::free(block, stream);
 	}
 
@@ -573,6 +569,19 @@ public:
 		deviceFree((*s).inverseChiLinear1);
 	}
 	int allocateSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
+
+		cl::sycl::cpu_selector dCPU;
+		cl::sycl::default_selector d;
+		cl::sycl::queue defaultStream(d);
+		cl::sycl::queue cpuStream(dCPU);
+		if ((*sCPU).runningOnCPU) {
+			stream = cpuStream;
+		}
+		else {
+			stream = defaultStream;
+		}
+		
+		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
 		dParams = s;
 		cParams = sCPU;
 		initializeDeviceParameters(sCPU, s);

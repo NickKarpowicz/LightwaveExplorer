@@ -1890,7 +1890,8 @@ namespace hostFunctions{
 		simulationParameterSet* s = d.cParams;
 
 		//recycle allocated device memory for the grids needed
-		double* sellmeierCoefficients = (double*)(*sc).gridEFrequency1Next1;
+		double* sellmeierCoefficients;
+		d.deviceCalloc((void**) & sellmeierCoefficients, 74, sizeof(double));
 		double* referenceFrequencies;
 		d.deviceCalloc((void**)&referenceFrequencies, 7, sizeof(double));
 		d.deviceMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), HostToDevice);
@@ -1918,7 +1919,7 @@ namespace hostFunctions{
 
 
 		//clean up
-		d.deviceMemset((*sc).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		d.deviceFree(sellmeierCoefficients);
 		d.deviceFree(referenceFrequencies);
 		return 0;
 	}
@@ -2247,10 +2248,12 @@ namespace hostFunctions{
 using namespace hostFunctions;
 
 unsigned long solveNonlinearWaveEquationX(void* lpParam) {
+
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
 
 	size_t i;
 	cudaParameterSet s;
+
 	activeDevice d;
 
 	memset(&s, 0, sizeof(cudaParameterSet));
@@ -2270,8 +2273,6 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 
 	double canaryPixel = 0;
 	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
-
-	
 	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(cudaParameterSet), HostToDevice);
 	//Core propagation loop
 	for (i = 0; i < s.Nsteps; i++) {

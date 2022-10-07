@@ -84,10 +84,8 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     DWORD hCpuThread;
 
     //bool forcingCPU = IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU) == BST_CHECKED;
-    bool forcingCPU = 0;
-    if (forcingCPU) {
-        printToConsole(maingui.textboxSims, L"Forcing to run on CPU!\r\n");
-    }
+    bool forceCPU = 0;
+
     if (isGridAllocated) {
         freeSemipermanentGrids();
     }
@@ -109,18 +107,23 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     //run the simulations
     isRunning = TRUE;
     progressCounter = 0;
-    cpuThread = CreateThread(NULL, 0, offloadToCPU, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
-
+    
     int pulldownSelection = (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
 
+
     if ((pulldownSelection - cudaCount) == 0) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
     }
-    else if ((pulldownSelection - cudaCount) == 1) {
+    if ((pulldownSelection - cudaCount) == 1) {
+        forceCPU = 1;
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else if ((pulldownSelection - cudaCount) == 2) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
         normalFunction = &solveNonlinearWaveEquationCPU;
     }
@@ -130,7 +133,9 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         assignedGPU = pulldownSelection;
     }
  
+    cpuThread = CreateThread(NULL, 0, offloadToCPU, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
     for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); j++) {
+        (*activeSetPtr).runningOnCPU = forceCPU;
         if ((*activeSetPtr).isInSequence) {
             error = sequenceFunction(&activeSetPtr[j]);
 
@@ -845,29 +850,44 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     int syclCount = readSYCLDevices(syclDeviceList, syclDefault);
     printToConsole(maingui.textboxSims, syclDeviceList);
     printToConsole(maingui.textboxSims, syclDefault);
-
+    int openMPposition = 0;
     if (CUDAdeviceCount > 0) {
         swprintf_s(A, MAX_LOADSTRING, L"CUDA");
         SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
         SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+        openMPposition++;
         memset(&A, 0, sizeof(A));
         for (i = 1; i < CUDAdeviceCount; i++) {
             swprintf_s(A, MAX_LOADSTRING, L"CUDA %i", i);
             SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
             SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
             memset(&A, 0, sizeof(A));
+            openMPposition++;
         }
     }
     swprintf_s(A, MAX_LOADSTRING, L"SYCL");
     SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     memset(&A, 0, sizeof(A));
+    openMPposition++;
+    swprintf_s(A, MAX_LOADSTRING, L"SYCL(CPU)");
+    SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+    memset(&A, 0, sizeof(A));
+    openMPposition++;
     swprintf_s(A, MAX_LOADSTRING, L"OpenMP");
     SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     memset(&A, 0, sizeof(A));
-    SendMessage(maingui.pdPrimaryQueue, (UINT)CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
-    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_SETCURSEL, (WPARAM)1, (LPARAM)1);
+
+    if (CUDAdeviceCount > 0) {
+        SendMessage(maingui.pdPrimaryQueue, (UINT)CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+    }
+    else {
+        SendMessage(maingui.pdPrimaryQueue, (UINT)CB_SETCURSEL, (WPARAM)openMPposition, (LPARAM)0);
+    }
+    
+    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_SETCURSEL, (WPARAM)openMPposition, (LPARAM)1);
     //read the crystal database
     crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
     if (crystalDatabasePtr != NULL) {
@@ -2574,7 +2594,7 @@ DWORD WINAPI offloadToCPU(LPVOID lpParam) {
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
-
+    bool forceCPU = 0;
     if ( (pulldownSelection - cudaCount) == 0) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -2584,7 +2604,17 @@ DWORD WINAPI offloadToCPU(LPVOID lpParam) {
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
     }
-    else if ((pulldownSelection - cudaCount) == 1) {
+    if ((pulldownSelection - cudaCount) == 1) {
+        forceCPU = 1;
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+        if (pulldownSelection == (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0)) {
+            printToConsole(maingui.textboxSims, L"Warning: can't launch two SYCL simulations simultaneously.\r\n The secondary queue will be done on OpenMP.\r\n");
+            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+            normalFunction = &solveNonlinearWaveEquationCPU;
+        }
+    }
+    else if ((pulldownSelection - cudaCount) == 2) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
         normalFunction = &solveNonlinearWaveEquationCPU;
     }
@@ -2599,6 +2629,7 @@ DWORD WINAPI offloadToCPU(LPVOID lpParam) {
     if ((*activeSetPtr).isInSequence) {
         for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; i++) {
             cpuSims[i].assignedGPU = assignedGPU;
+            cpuSims[i].runningOnCPU = forceCPU;
             error = sequenceFunction(&cpuSims[i]);
             if (error) break;
         }
@@ -2606,13 +2637,14 @@ DWORD WINAPI offloadToCPU(LPVOID lpParam) {
     else {
         for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; i++) {
             cpuSims[i].assignedGPU = assignedGPU;
+            cpuSims[i].runningOnCPU = forceCPU;
             error = normalFunction(&cpuSims[i]);
             if (error) break;
         }
     }
 
     if (error) {
-        printToConsole(maingui.textboxSims, L"Encountered error %i in CPU run.\r\n", error);
+        printToConsole(maingui.textboxSims, L"Encountered error %i in secondary queue.\r\n", error);
         return 1;
     }
 
