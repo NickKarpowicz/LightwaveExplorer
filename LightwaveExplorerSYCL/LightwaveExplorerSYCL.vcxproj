@@ -133,12 +133,13 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <FSYCLEarlyOptimizations>Yes</FSYCLEarlyOptimizations>
-      <FSYCLDeadArgsOptimization>Yes</FSYCLDeadArgsOptimization>
+      <FSYCLDeadArgsOptimization>Default</FSYCLDeadArgsOptimization>
       <OpenMP>None</OpenMP>
       <OpenMPOffloading>None</OpenMPOffloading>
+      <FSYCLUnnamedLambda>Yes</FSYCLUnnamedLambda>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

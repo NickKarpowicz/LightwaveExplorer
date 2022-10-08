@@ -2176,7 +2176,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum1.plotBox = maingui.plotBox7;
     sSpectrum1.dx = (float)(*activeSetPtr).fStep / 1e12f;
     sSpectrum1.data = &(*activeSetPtr).totalSpectrum[simIndex * 3 * (*activeSetPtr).Nfreq];
-    sSpectrum1.Npts = (*activeSetPtr).Nfreq;
+    sSpectrum1.Npts = (*activeSetPtr).Nfreq-1;
     sSpectrum1.logScale = logPlot;
     sSpectrum1.forceYmin = logPlot;
     sSpectrum1.forcedYmin = -4.0;
@@ -2186,7 +2186,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum2.plotBox = maingui.plotBox8;
     sSpectrum2.dx = (float)(*activeSetPtr).fStep / 1e12f;
     sSpectrum2.data = &(*activeSetPtr).totalSpectrum[(1 + simIndex * 3) * (*activeSetPtr).Nfreq];
-    sSpectrum2.Npts = (*activeSetPtr).Nfreq;
+    sSpectrum2.Npts = (*activeSetPtr).Nfreq-1;
     sSpectrum2.logScale = logPlot;
     sSpectrum2.forceYmin = logPlot;
     sSpectrum2.forcedYmin = -4.0;
@@ -2598,21 +2598,21 @@ DWORD WINAPI offloadToCPU(LPVOID lpParam) {
     if ( (pulldownSelection - cudaCount) == 0) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
-        if (pulldownSelection == (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0)) {
-            printToConsole(maingui.textboxSims, L"Warning: can't launch two SYCL simulations simultaneously.\r\n The secondary queue will be done on OpenMP.\r\n");
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-            normalFunction = &solveNonlinearWaveEquationCPU;
-        }
+        //if (pulldownSelection == (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0)) {
+        //    printToConsole(maingui.textboxSims, L"Warning: can't launch two SYCL simulations simultaneously.\r\n The secondary queue will be done on OpenMP.\r\n");
+        //    sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+        //    normalFunction = &solveNonlinearWaveEquationCPU;
+        //}
     }
     if ((pulldownSelection - cudaCount) == 1) {
         forceCPU = 1;
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
-        if (pulldownSelection == (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0)) {
-            printToConsole(maingui.textboxSims, L"Warning: can't launch two SYCL simulations simultaneously.\r\n The secondary queue will be done on OpenMP.\r\n");
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-            normalFunction = &solveNonlinearWaveEquationCPU;
-        }
+        //if (pulldownSelection == (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0)) {
+        //    printToConsole(maingui.textboxSims, L"Warning: can't launch two SYCL simulations simultaneously.\r\n The secondary queue will be done on OpenMP.\r\n");
+        //    sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+        //    normalFunction = &solveNonlinearWaveEquationCPU;
+        //}
     }
     else if ((pulldownSelection - cudaCount) == 2) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;

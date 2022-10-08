@@ -372,6 +372,9 @@ public:
 #define withID size_t trilingualLaunchID,
 #define withStream , stream
 #define activeDevice deviceSYCL
+
+
+
 class deviceSYCL {
 private:
 	bool configuredFFT;
@@ -396,10 +399,8 @@ public:
 	simulationParameterSet* cParams;
 
 	deviceSYCL() {
-		
 		configuredFFT = 0;
 		isCylindric = 0;
-
 	}
 
 	~deviceSYCL() {
@@ -410,27 +411,27 @@ public:
 
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
-		auto event = stream.submit([&](cl::sycl::handler& h) {
+		//stream.wait();
+		stream.submit([&](cl::sycl::handler& h) {
 			h.parallel_for(Nblock * Nthread, [=](auto i) {kernel(i, args...); });
 			});
-		event.wait();
+
 	}
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
-		(*ptr) = cl::sycl::aligned_alloc_device(8*sizeof(double), N * elementSize, stream.get_device(), stream.get_context());
-		auto event = stream.memset((*ptr), 0, N * elementSize);
-		event.wait();
+		(*ptr) = cl::sycl::aligned_alloc_device(2*sizeof(double), N * elementSize, stream.get_device(), stream.get_context());
+		stream.memset((*ptr), 0, N * elementSize);
 		return 0;
 	}
 
 	void deviceMemset(void* ptr, int value, size_t count) {
-		auto event = stream.memset(ptr, value, count);
-		event.wait();
+		stream.wait();
+		stream.memset(ptr, value, count);
 	}
 
 	void deviceMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
-		auto event = stream.memcpy(dst, src, count);
-		event.wait();
+		stream.wait();
+		stream.memcpy(dst, src, count);
 	}
 
 	void deviceFree(void* block) {
@@ -531,6 +532,7 @@ public:
 
 	//to do
 	void fft(void* input, void* output, int type) {
+		//stream.wait();
 		switch (type) {
 		case 0:
 			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (double*)input, (double*)(sycl::double2*)output);
@@ -548,9 +550,9 @@ public:
 			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (double*)input, (double*)(sycl::double2*)output);
 			break;
 		}
-		stream.wait();
 	}
 	void deallocateSet(cudaParameterSet* s) {
+		stream.wait();
 		deviceFree((*s).gridETime1);
 		deviceFree((*s).workspace1);
 		deviceFree((*s).gridEFrequency1);
@@ -570,16 +572,22 @@ public:
 	}
 	int allocateSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
 
+
+		
+
+
 		cl::sycl::cpu_selector dCPU;
 		cl::sycl::default_selector d;
-		cl::sycl::queue defaultStream(d);
-		cl::sycl::queue cpuStream(dCPU);
+
+		cl::sycl::queue defaultStream(d, { cl::sycl::property::queue::in_order() });
+		cl::sycl::queue cpuStream(dCPU, { cl::sycl::property::queue::in_order() });
 		if ((*sCPU).runningOnCPU) {
 			stream = cpuStream;
 		}
 		else {
 			stream = defaultStream;
 		}
+		stream.is_in_order();
 		
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
 		dParams = s;

@@ -1,14 +1,39 @@
 #pragma once
 #include <complex>
+
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
 #define deviceLib thrust
 #define deviceComplex thrust::complex<double>
 #elif defined RUNONSYCL
-#include <fftw3_mkl.h>
-#define deviceLib std
-#define deviceComplex std::complex<double>
+#include <oneapi/dpl/complex>
+#include <oneapi/dpl/cmath>
+#define deviceComplex oneapi::dpl::complex<double>
+#define deviceLib oneapi::dpl
+#include <CL/sycl.hpp>
+namespace oneapi::dpl {
+    double abs(oneapi::dpl::complex<double>& a) {
+        return oneapi::dpl::sqrt(a.real() * a.real() + a.imag() * a.imag());
+    }
+    double abs(double a) {
+        return oneapi::dpl::sqrt(a * a);
+    }
+}
+ oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b) {
+    double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
+    return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
+}
+ oneapi::dpl::complex<double> operator/(oneapi::dpl::complex<double> a, double b) { return oneapi::dpl::complex<double>(a.real() / b, a.imag() / b); }
+
+ oneapi::dpl::complex<double> operator*(double b, oneapi::dpl::complex<double> a) { return oneapi::dpl::complex<double>(a.real() * b, a.imag() * b); }
+ oneapi::dpl::complex<double> operator*(oneapi::dpl::complex<double> a, double b) { return oneapi::dpl::complex<double>(a.real() * b, a.imag() * b); }
+
+ oneapi::dpl::complex<double> operator+(double a, oneapi::dpl::complex<double> b) { return oneapi::dpl::complex<double>(b.real() + a, b.imag()); }
+ oneapi::dpl::complex<double> operator+(oneapi::dpl::complex<double> a, double b) { return oneapi::dpl::complex<double>(a.real() + b, a.imag()); }
+
+ oneapi::dpl::complex<double> operator-(double a, oneapi::dpl::complex<double> b) { return oneapi::dpl::complex<double>(a - b.real(), -b.imag()); }
+ oneapi::dpl::complex<double> operator-(oneapi::dpl::complex<double> a, double b) { return oneapi::dpl::complex<double>(a.real() - b, a.imag()); }
 #else
 #include <fftw3_mkl.h>
 #define deviceComplex std::complex<double>
@@ -222,7 +247,7 @@ typedef struct cudaParameterSet {
     double* fieldFactor2 = 0;
     deviceComplex* k1 = 0;
     deviceComplex* k2 = 0;
-
+    deviceComplex n0 = 0.0;
     double* gridRadialLaplacian1 = 0;
     double* gridRadialLaplacian2 = 0;
     double* gridETime1 = 0;

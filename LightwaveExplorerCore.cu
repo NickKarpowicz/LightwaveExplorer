@@ -53,73 +53,65 @@ namespace deviceFunctions {
 	//omega: frequency (rad/s)
 	//ii: sqrt(-1)
 	//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
-	deviceFunction deviceComplex sellmeierSubfunctionCuda(
-		double* a, double ls, double omega) {
-		double realPart = a[0]
-			+ (a[1] + a[2] * ls) / (ls + a[3])
-			+ (a[4] + a[5] * ls) / (ls + a[6])
-			+ (a[7] + a[8] * ls) / (ls + a[9])
-			+ (a[10] + a[11] * ls) / (ls + a[12])
-			+ a[13] * ls
-			+ a[14] * ls * ls
-			+ a[15] * ls * ls * ls;
-
-		//traditional sellmeier part is not allowed to give complex values because that almost always
-		//means it's out of range and causes instability
-		if (realPart < 0) realPart = 1;
-
-		return deviceLib::sqrt(realPart
-			+ KLORENTZIAN * a[16] / deviceComplex(a[17] - omega * omega, a[18] * omega)
-			+ KLORENTZIAN * a[19] / deviceComplex(a[20] - omega * omega, a[21] * omega));
-	}
-
-	deviceFunction deviceComplex lorentzianSubfunctionCuda(
-		double* a, double ls, double omega) {
-		return deviceLib::sqrt(
-			+ KLORENTZIAN * a[0] / deviceComplex(a[1] - omega * omega, a[2] * omega)
-			+ KLORENTZIAN * a[3] / deviceComplex(a[4] - omega * omega, a[5] * omega)
-			+ KLORENTZIAN * a[6] / deviceComplex(a[7] - omega * omega, a[8] * omega)
-			+ KLORENTZIAN * a[9] / deviceComplex(a[10] - omega * omega, a[11] * omega)
-			+ KLORENTZIAN * a[12] / deviceComplex(a[13] - omega * omega, a[14] * omega)
-			+ KLORENTZIAN * a[15] / deviceComplex(a[16] - omega * omega, a[17] * omega)
-			+ KLORENTZIAN * a[18] / deviceComplex(a[19] - omega * omega, a[20] * omega));
-	}
-
+	deviceFunction deviceComplex sellmeierFunc(double ls, double omega, double* a, int eqn) {
+		double realPart;
+		deviceComplex compPart;
+		double omega2 = omega * omega;
+		switch (eqn) {
+		case 0:
+			realPart = a[0]
+				+ (a[1] + a[2] * ls) / (ls + a[3])
+				+ (a[4] + a[5] * ls) / (ls + a[6])
+				+ (a[7] + a[8] * ls) / (ls + a[9])
+				+ (a[10] + a[11] * ls) / (ls + a[12])
+				+ a[13] * ls
+				+ a[14] * ls * ls
+				+ a[15] * ls * ls * ls;
+			compPart = a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
+				+ a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
+			return deviceLib::sqrt(maxN(realPart, 0.0) + KLORENTZIAN * compPart);
+		case 1:
+			compPart = a[0] / deviceComplex(a[1] - omega2, a[2] * omega)
+				+ a[3] / deviceComplex(a[4] - omega2, a[5] * omega)
+				+ a[6] / deviceComplex(a[7] - omega2, a[8] * omega)
+				+ a[9] / deviceComplex(a[10] - omega2, a[11] * omega)
+				+ a[12] / deviceComplex(a[13] - omega2, a[14] * omega)
+				+ a[15] / deviceComplex(a[16] - omega2, a[17] * omega)
+				+ a[18] / deviceComplex(a[19] - omega2, a[20] * omega);
+			return deviceLib::sqrt(KLORENTZIAN * compPart);
+		}
+		return deviceComplex(1.0, 0.0);
+	};
 
 	//Sellmeier equation for refractive indicies
 	deviceFunction deviceComplex sellmeierCuda(
 		deviceComplex* ne, deviceComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
 		if (f == 0) return deviceComplex(1.0, 0.0); //exit immediately for f=0
-
-		//pick which equation to use
-		deviceComplex(*sellmeierFunc)(double*, double, double) = &sellmeierSubfunctionCuda;
-		if (eqn == 1) sellmeierFunc = &lorentzianSubfunctionCuda;
-
 		double ls = 2.99792458e14 / f; //wavelength in microns
 		ls *= ls; //only wavelength^2 is ever used
-		double omega = TWOPI * abs(f);
+		double omega = TWOPI * maxN(f,-f);
 
 		//option 0: isotropic
 		if (type == 0) {
-			ne[0] = (*sellmeierFunc)(a, ls, omega);
-			no[0] = ne[0];
-			return ne[0];
+			*ne = sellmeierFunc(ls, omega, a, eqn);
+			*no = *ne;
+			return *ne;
 		}
 		//option 1: uniaxial
 		else if (type == 1) {
-			deviceComplex na = (*sellmeierFunc)(a, ls, omega);
-			deviceComplex nb = (*sellmeierFunc)(&a[22], ls, omega);
-			no[0] = na;
-			ne[0] = 1.0 / deviceLib::sqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
-			return ne[0];
+			deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
+			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
+			*no = na;
+			*ne = 1.0 / deviceLib::sqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
+			return *ne;
 		}
 		else {
 			//type == 2: biaxial
 			// X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
 			// I am sorry if there is a bug and you're trying to find it, i did my best.
-			deviceComplex na = (*sellmeierFunc)(a, ls, omega);
-			deviceComplex nb = (*sellmeierFunc)(&a[22], ls, omega);
-			deviceComplex nc = (*sellmeierFunc)(&a[44], ls, omega);
+			deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
+			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
+			deviceComplex nc = sellmeierFunc(ls, omega, &a[44], eqn);
 			double cosTheta = cos(theta);
 			double cosTheta2 = cosTheta * cosTheta;
 			double sinTheta = sin(theta);
@@ -130,29 +122,30 @@ namespace deviceFunctions {
 			double cosPhi2 = cosPhi * cosPhi;
 			double realna2 = na.real() * na.real();
 			double realnb2 = nb.real() * nb.real();
-			deviceComplex na2 = na * na;
-			deviceComplex nb2 = nb * nb;
-			deviceComplex nc2 = nc * nc;
+			deviceComplex ina2 = 1./ (na * na);
+			deviceComplex inb2 = 1./(nb * nb);
+			deviceComplex inc2 = 1./(nc * nc);
 			double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2)
 				* sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2)
 					+ ((sinPhi2 / realna2 + cosPhi2 / realnb2)
 						* cosTheta2 + sinTheta2 / (nc.real() * nc.real()))));
 			double cosDelta = cos(delta);
 			double sinDelta = sin(delta);
-			ne[0] = 1.0 / deviceLib::sqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 / na2
-				+ sinPhi2 / nb2) + sinTheta2 / nc2)
-				+ sinDelta * sinDelta * (sinPhi2 / na2 + cosPhi2 / nb2)
-				- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / na2 - 1. / (nb * nb)));
+			*ne = 1.0 / deviceLib::sqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 * ina2
+				+ sinPhi2 * inb2) + sinTheta2  * inc2)
+				+ sinDelta * sinDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
+				- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
 
-			no[0] = 1.0 / deviceLib::sqrt(sinDelta * sinDelta * (cosTheta2 * (cosPhi2 / na2
-				+ sinPhi2 / nb2) + sinTheta2 / nc2)
-				+ cosDelta * cosDelta * (sinPhi2 / na2 + cosPhi2 / nb2)
-				+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (1. / na2 - 1. / nb2));
-			return ne[0];
+			*no = 1.0 / deviceLib::sqrt(sinDelta * sinDelta * (cosTheta2 * (cosPhi2 * ina2
+				+ sinPhi2 * inb2) + sinTheta2 * inc2)
+				+ cosDelta * cosDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
+				+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
+
+			return *ne;
 		}
 	}
 
-	deviceFunction double cuCModSquared(deviceComplex a) {
+	deviceFunction double cuCModSquared(deviceComplex& a) {
 		return a.real() * a.real() + a.imag() * a.imag();
 	}
 
@@ -234,14 +227,14 @@ namespace deviceFunctions {
 		double gradientFactor = 0.5 / gradientStep;
 		int it;
 		int maxiter = 64;
-		double gradientTol = 1e-2;
+		double gradientTol = 1e-1;
 		//emperical testing: 
 		// converges to double precision limit in two iterations for BBO
 		// converges in 32 iterations in BiBO
 
 		double errArray[4][2];
 		if ((*s).axesNumber == 1) {
-			maxiter = 64;
+			maxiter = 32;
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
@@ -470,17 +463,14 @@ namespace kernels {
 		}
 
 		double chi11[7];
-		//double chi12[7];
 		deviceComplex ne, no;
 		for (int i = 0; i < 7; i++) {
 			if (referenceFrequencies[i] == 0) {
 				chi11[i] = 100000.0;
-				//chi12[i] = 100000.0;
 			}
 			else {
 				sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[68], (int)sellmeierCoefficients[69]);
 				chi11[i] = ne.real() * ne.real() - 1.0;
-				//chi12[i] =no.real() *no.real() - 1;
 			}
 		}
 
@@ -488,7 +478,6 @@ namespace kernels {
 		for (int i = 0; i < 18; i++) {
 			(*s).chi2Tensor[i] /= chi11[0] * chi11[1] * chi11[2];
 		}
-
 
 		//normalize chi3 tensor values
 		for (int i = 0; i < 81; i++) {
@@ -822,16 +811,13 @@ namespace kernels {
 	trilingual prepareCartesianGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
 		long long i = localIndex;
 		long long j, k;
-		int axesNumber = (*s).axesNumber;
-		int sellmeierType = (*s).sellmeierType;
-		deviceComplex ne, no, n0;
+		deviceComplex ne, no;
+		deviceComplex n0 = (*s).n0;
 		deviceComplex cuZero = deviceComplex(0, 0);
 		j = i / ((*s).Nfreq - 1); //spatial coordinate
 		k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
 		i = k + j * (*s).Nfreq;
 		deviceComplex ii = deviceComplex(0, 1);
-		double crystalTheta = sellmeierCoefficients[66];
-		double crystalPhi = sellmeierCoefficients[67];
 		double kStep = sellmeierCoefficients[70];
 		double fStep = sellmeierCoefficients[71];
 
@@ -840,8 +826,8 @@ namespace kernels {
 
 		//transverse wavevector being resolved
 		double dk = j * kStep - (j >= ((long long)(*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
-		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
-			crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		//sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
+		//	crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
@@ -852,6 +838,7 @@ namespace kernels {
 			(*s).gridPolarizationFactor2[i] = cuZero;
 			return;
 		}
+
 		//walkoff angle has been found, generate the rest of the grids
 		if (isnan(ne.real()) || isnan(no.real())) {
 			ne = deviceComplex(1, 0);
@@ -902,9 +889,8 @@ namespace kernels {
 	trilingual prepare3DGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
 		long long i = localIndex;
 		long long col, j, k, l;
-		int axesNumber = (*s).axesNumber;
-		int sellmeierType = (*s).sellmeierType;
-		deviceComplex ne, no, n0;
+		deviceComplex ne, no;
+		deviceComplex n0 = (*s).n0;
 		deviceComplex cuZero = deviceComplex(0, 0);
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
 		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
@@ -913,8 +899,6 @@ namespace kernels {
 		l = col / (*s).Nspace;
 
 		deviceComplex ii = deviceComplex(0, 1);
-		double crystalTheta = sellmeierCoefficients[66];
-		double crystalPhi = sellmeierCoefficients[67];
 
 		//frequency being resolved by current thread
 		double f = -j * (*s).fStep;
@@ -922,8 +906,7 @@ namespace kernels {
 		//transverse wavevector being resolved
 		double dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
 		double dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
-		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
-			crystalTheta, crystalPhi, axesNumber, sellmeierType);
+
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
 		if (isnan(ne.real()) || isnan(no.real())) {
@@ -979,11 +962,11 @@ namespace kernels {
 		double crystalPhi = sellmeierCoefficients[67];
 		double fStep = sellmeierCoefficients[71];
 
-		deviceComplex ne, no, n0;
+		deviceComplex ne, no;
 
 		//frequency being resolved by current thread
 		double f = i * fStep;
-		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		if (isnan(ne.real()) || isnan(no.real())) {
 			ne = deviceComplex(1, 0);
@@ -1004,6 +987,42 @@ namespace kernels {
 			(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
 			(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
 		}
+
+		if (i == 81) {
+			deviceComplex n0;
+			(*s).n0 = sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+			(*s).chiLinear1[(*s).Ntime / 2] = deviceComplex(1.0, 0.0);
+			(*s).chiLinear2[(*s).Ntime / 2] = deviceComplex(1.0, 0.0);
+			(*s).fieldFactor1[(*s).Ntime / 2] = 0.0;
+			(*s).fieldFactor2[(*s).Ntime / 2] = 0.0;
+			(*s).inverseChiLinear2[(*s).Ntime / 2] = 1.0 / (*s).chiLinear2[i].real();
+			(*s).inverseChiLinear2[(*s).Ntime / 2] = 1.0 / (*s).chiLinear2[i].real();
+		}
+
+		//apply Miller's rule to nonlinear coefficients
+			if (!(*s).isUsingMillersRule || i > 80) {
+				return;
+			}
+			double* referenceFrequencies = &sellmeierCoefficients[72];
+			double chi11[7];
+
+			for (int im = (i>17)*3; im < 7; im++) {
+				if (referenceFrequencies[im] == 0) {
+					chi11[im] = 100000.0;
+				}
+				else {
+					sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[im], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[68], (int)sellmeierCoefficients[69]);
+					chi11[im] = ne.real() * ne.real() - 1.0;
+				}
+			}
+
+			//normalize chi2 tensor values
+			if (i < 18) {
+				(*s).chi2Tensor[i] /= chi11[0] * chi11[1] * chi11[2];
+			}
+
+			//normalize chi3 tensor values
+			(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
 	};
 	//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
 	trilingual prepareCylindricGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
@@ -1024,15 +1043,17 @@ namespace kernels {
 		double kStep = sellmeierCoefficients[70];
 		double fStep = sellmeierCoefficients[71];
 
-		deviceComplex ne, no, n0;
+		deviceComplex ne, no;
+		deviceComplex n0 = (*s).n0;
 
 		//frequency being resolved by current thread
 		double f = -k * fStep;
 
 		//transverse wavevector being resolved
 		double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
-		sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 		if (ne.real() < 0.9) {
 			(*s).gridPropagationFactor1[i] = cuZero;
@@ -1090,11 +1111,6 @@ namespace kernels {
 		}
 	};
 
-	//replaces E with its complex conjugate
-	trilingual conjugateKernel asKernel(withID deviceComplex* E) {
-		long long i = localIndex;
-		E[i] = deviceLib::conj(E[i]);
-	};
 
 	trilingual realToComplexKernel asKernel(withID double* in, deviceComplex* out) {
 		long long i = localIndex;
@@ -1436,13 +1452,12 @@ namespace kernels {
 				+ tod * w * w * w / 6.0
 				+ materialPhase[h]));
 		specfac = deviceLib::exp(specfac + specphase);
-
+		
 		if (hasLoadedField) {
 			specfac = loadedField[h] * deviceLib::exp(specphase);
 		}
 		deviceComplex ne, no;
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
-
 
 		double ko = TWOPI * no.real() * f / LIGHTC;
 		double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
@@ -1519,7 +1534,27 @@ namespace kernels {
 using namespace kernels;
 
 namespace hostFunctions{
-	//activeDevice d;
+	class ticker {
+		std::chrono::steady_clock::time_point time0;
+
+	public:
+		ticker() {
+			time0 = std::chrono::high_resolution_clock::now();
+		}
+		void set() {
+			time0 = std::chrono::high_resolution_clock::now();
+		}
+		void printElapsed() {
+			std::chrono::steady_clock::time_point time1 = std::chrono::high_resolution_clock::now();
+			printf("Elapsed time: %8.4lf ms\n",
+				1.0e-3 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(time1 - time0).count()));
+		}
+
+		void printSet() {
+			printElapsed();
+			set();
+		}
+	};
 	typedef dlib::matrix<double, 0, 1> column_vector;
 	simulationParameterSet* fittingSet;
 	
@@ -1539,13 +1574,14 @@ namespace hostFunctions{
 	}
 	
 	int prepareElectricFieldArrays(activeDevice& d) {
+
 		simulationParameterSet* s = d.cParams;
 		cudaParameterSet* sc = d.dParams;
 		cudaParameterSet* scDevice = d.dParamsDevice;
 		//run the beam generation single-threaded on CPU to avoid race condition
 		unsigned int beamBlocks = (*sc).Nblock / 2;
 		unsigned int beamThreads = (*sc).Nthread;
-			
+		
 		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(cudaParameterSet), HostToDevice);
 		if ((*s).isFollowerInSequence && !(*s).isReinjecting) {
 			d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
@@ -1587,12 +1623,14 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&materialPhase2CUDA, (*s).Ntime, sizeof(double));
 		d.deviceMemcpy(materialCoefficientsCUDA, (*s).crystalDatabase[(*s).phaseMaterialIndex1].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
 		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
+
 		d.deviceLaunch((unsigned int)(*s).Ntime, 1, materialPhaseKernel, (*s).fStep, (*s).Ntime, materialCoefficientsCUDA, (*s).frequency1, (*s).frequency2, (*s).phaseMaterialThickness1, (*s).phaseMaterialThickness2, materialPhase1CUDA, materialPhase2CUDA);
 
 		double* pulseSum = &materialCoefficientsCUDA[0];
 		//calculate pulse 1 and store it in unused memory
 		d.deviceMemset(pulseSum, 0, sizeof(double));
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
+
 		if ((*sc).is3D) {
 			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel3D,
 				(*sc).workspace1, pulseSum, scDevice, (*s).frequency1, (*s).bandwidth1,
@@ -1609,10 +1647,11 @@ namespace hostFunctions{
 				(*s).z01, (*s).x01, (*s).propagationAngle1, (*s).polarizationAngle1, (*s).circularity1,
 				sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
 		}
-		
+
 		d.fft((*sc).workspace1, (*sc).gridETime1, 3);
 
 		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy1);
+
 		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridETime1, (*sc).Ngrid * 2 * sizeof(double), DeviceToDevice);
 
 		//calculate pulse 2
@@ -1636,9 +1675,7 @@ namespace hostFunctions{
 		}
 
 		d.fft((*sc).workspace1, (*sc).gridETime1, 3);
-
 		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy2);
-
 		//add the pulses
 		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, addDoubleArraysKernel, (*sc).gridETime1, (double*)(*sc).gridEFrequency1Next1);
 		if ((*s).isReinjecting) {
@@ -1657,10 +1694,9 @@ namespace hostFunctions{
 		else {
 			d.deviceMemcpy((*sc).workspace1, (*sc).gridEFrequency1Next1, 2 * sizeof(deviceComplex) * (*sc).NgridC, DeviceToDevice);
 		}
-
 		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
-		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
 
+		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
 		d.deviceFree(materialPhase1CUDA);
 		d.deviceFree(materialPhase2CUDA);
 		d.deviceFree(materialCoefficientsCUDA);
@@ -1808,18 +1844,12 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int preparePropagation2DCartesian(activeDevice& d) {
-		simulationParameterSet* s = d.cParams;
+	int preparePropagationGrids(activeDevice& d) {
 		cudaParameterSet* sc = d.dParams;
-		//recycle allocated device memory for the grids needed
+		simulationParameterSet* s = d.cParams;
 		double* sellmeierCoefficients = (double*)(*sc).gridEFrequency1Next1;
-
-		double* referenceFrequencies;
-		d.deviceCalloc((void**)&referenceFrequencies, 7, sizeof(double));
-		d.deviceMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), HostToDevice);
-
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
-		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
+		double sellmeierCoefficientsAugmentedCPU[79];
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
@@ -1828,99 +1858,23 @@ namespace hostFunctions{
 		sellmeierCoefficientsAugmentedCPU[70] = (*s).kStep;
 		sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
 		sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), HostToDevice);
-
-		//prepare the propagation grids
-		cudaParameterSet* sD = d.dParamsDevice;
-		//d.deviceMemcpy(sD, sc, sizeof(cudaParameterSet), HostToDevice);
-		d.deviceLaunch((unsigned int)(*sc).Nfreq, 1, getChiLinearKernel, sD, sellmeierCoefficients);
-		d.deviceLaunch((*sc).Nblock / 2, (*sc).Nthread, prepareCartesianGridsKernel, sellmeierCoefficients, sD);
-		d.deviceLaunch(1, 1, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
-		d.deviceMemcpy(sc, sD, sizeof(cudaParameterSet), DeviceToHost);
-
-
-		//clean up
-		d.deviceMemset((*sc).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-
-		d.deviceFree(referenceFrequencies);
-		return 0;
-	}
-
-	int preparePropagation3D(activeDevice& d) {
-		cudaParameterSet* sc = d.dParams;
-		simulationParameterSet* s = d.cParams;
-		//recycle allocated device memory for the grids needed
-		double* sellmeierCoefficients = (double*)(*sc).gridEFrequency1Next1;
-
-		double* referenceFrequencies;
-		d.deviceCalloc((void**)&referenceFrequencies, 7, sizeof(double));
-		d.deviceMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), HostToDevice);
-
-		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
-		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
-		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).sellmeierCoefficients, 66 * (sizeof(double)));
-		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
-		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
-		sellmeierCoefficientsAugmentedCPU[68] = (*s).axesNumber;
-		sellmeierCoefficientsAugmentedCPU[69] = (*s).sellmeierType;
-		sellmeierCoefficientsAugmentedCPU[70] = (*s).kStep;
-		sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
-		sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), HostToDevice);
+		memcpy(sellmeierCoefficientsAugmentedCPU + 72, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double));
+		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, 79 * sizeof(double), HostToDevice);
 
 		//prepare the propagation grids
 		cudaParameterSet* sD = d.dParamsDevice;
 		d.deviceMemcpy(sD, sc, sizeof(cudaParameterSet), HostToDevice);
-
-		d.deviceLaunch((unsigned int)(*sc).Nfreq, 1u, getChiLinearKernel, sD, sellmeierCoefficients);
-		d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepare3DGridsKernel, sellmeierCoefficients, sD);
-		d.deviceLaunch(1, 1, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
+		d.deviceLaunch((unsigned int)(*sc).Ntime/(2*MIN_GRIDDIM), MIN_GRIDDIM, getChiLinearKernel, sD, sellmeierCoefficients);
+		if ((*s).is3D) {
+			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepare3DGridsKernel, sellmeierCoefficients, sD);
+		}
+		else if ((*s).isCylindric) {
+			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepareCylindricGridsKernel, sellmeierCoefficients, sD);
+		}
+		else {
+			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepareCartesianGridsKernel, sellmeierCoefficients, sD);
+		}
 		d.deviceMemcpy(sc, sD, sizeof(cudaParameterSet), DeviceToHost);
-
-
-		//clean up
-		d.deviceMemset((*sc).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-
-		d.deviceFree(referenceFrequencies);
-		return 0;
-	}
-
-	int preparePropagation3DCylindric(activeDevice& d) {
-		cudaParameterSet* sc = d.dParams;
-		simulationParameterSet* s = d.cParams;
-
-		//recycle allocated device memory for the grids needed
-		double* sellmeierCoefficients;
-		d.deviceCalloc((void**) & sellmeierCoefficients, 74, sizeof(double));
-		double* referenceFrequencies;
-		d.deviceCalloc((void**)&referenceFrequencies, 7, sizeof(double));
-		d.deviceMemcpy(referenceFrequencies, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double), HostToDevice);
-
-		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
-		double sellmeierCoefficientsAugmentedCPU[74];
-		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).sellmeierCoefficients, 66 * (sizeof(double)));
-		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
-		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
-		sellmeierCoefficientsAugmentedCPU[68] = (*s).axesNumber;
-		sellmeierCoefficientsAugmentedCPU[69] = (*s).sellmeierType;
-		sellmeierCoefficientsAugmentedCPU[70] = (*s).kStep;
-		sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
-		sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), HostToDevice);
-
-		//prepare the propagation grids
-		cudaParameterSet* sD = d.dParamsDevice;
-
-		d.deviceMemcpy(sD, sc, sizeof(cudaParameterSet), HostToDevice);
-		d.deviceLaunch((unsigned int)(*sc).Nfreq, 1, getChiLinearKernel, sD, sellmeierCoefficients);
-		d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepareCylindricGridsKernel, sellmeierCoefficients, sD);
-		d.deviceLaunch(1, 1, millersRuleNormalizationKernel, sD, sellmeierCoefficients, referenceFrequencies);
-		d.deviceMemcpy(sc, sD, sizeof(cudaParameterSet), DeviceToHost);
-
-
-		//clean up
-		d.deviceFree(sellmeierCoefficients);
-		d.deviceFree(referenceFrequencies);
 		return 0;
 	}
 
@@ -2248,27 +2202,15 @@ namespace hostFunctions{
 using namespace hostFunctions;
 
 unsigned long solveNonlinearWaveEquationX(void* lpParam) {
-
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-
 	size_t i;
 	cudaParameterSet s;
-
 	activeDevice d;
-
 	memset(&s, 0, sizeof(cudaParameterSet));
 	if (d.allocateSet(sCPU, &s)) return 1;
 
 	//prepare the propagation arrays
-	if (s.is3D) {
-		preparePropagation3D(d);
-	}
-	else if (s.isCylindric) {
-		preparePropagation3DCylindric(d);
-	}
-	else {
-		preparePropagation2DCartesian(d);
-	}
+	preparePropagationGrids(d);
 	prepareElectricFieldArrays(d);
 
 	double canaryPixel = 0;
@@ -2310,7 +2252,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	}
 	if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
 
-	////give the result to the CPU
+	//give the result to the CPU
 	d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 
 
