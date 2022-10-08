@@ -831,18 +831,12 @@ namespace kernels {
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (ne.real() < 0.9) {
+		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
 			(*s).gridPolarizationFactor2[i] = cuZero;
 			return;
-		}
-
-		//walkoff angle has been found, generate the rest of the grids
-		if (isnan(ne.real()) || isnan(no.real())) {
-			ne = deviceComplex(1, 0);
-			no = deviceComplex(1, 0);
 		}
 
 		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
@@ -908,10 +902,12 @@ namespace kernels {
 		double dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-
-		if (isnan(ne.real()) || isnan(no.real())) {
-			ne = deviceComplex(1, 0);
-			no = deviceComplex(1, 0);
+		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real())) {
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor2[i] = cuZero;
+			(*s).gridPolarizationFactor1[i] = cuZero;
+			(*s).gridPolarizationFactor2[i] = cuZero;
+			return;
 		}
 
 		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
@@ -1031,13 +1027,13 @@ namespace kernels {
 		long long Nspace = (*s).Nspace;
 		int axesNumber = (*s).axesNumber;
 		int sellmeierType = (*s).sellmeierType;
-		deviceComplex cuZero = deviceComplex(0, 0);
+		deviceComplex cuZero = deviceComplex(0.0, 0.0);
 		j = i / ((*s).Nfreq - 1); //spatial coordinate
 		k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
 		i = k + j * (*s).Nfreq;
 
 
-		deviceComplex ii = deviceComplex(0, 1);
+		deviceComplex ii = deviceComplex(0.0, 1.0);
 		double crystalTheta = sellmeierCoefficients[66];
 		double crystalPhi = sellmeierCoefficients[67];
 		double kStep = sellmeierCoefficients[70];
@@ -1055,7 +1051,7 @@ namespace kernels {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (ne.real() < 0.9) {
+		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -1063,12 +1059,6 @@ namespace kernels {
 			return;
 		}
 		
-		
-		if (isnan(ne.real()) || isnan(no.real())) {
-			ne = deviceComplex(1, 0);
-			no = deviceComplex(1, 0);
-		}
-
 		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
 		deviceComplex ke = TWOPI * ne * f / LIGHTC;
 		deviceComplex ko = TWOPI * no * f / LIGHTC;
@@ -1076,11 +1066,11 @@ namespace kernels {
 		deviceComplex chi11 = (*s).chiLinear1[k];
 		deviceComplex chi12 = (*s).chiLinear2[k];
 		if (!(*s).isUsingMillersRule) {
-			chi11 = deviceComplex(1, 0);
-			chi12 = deviceComplex(1, 0);
+			chi11 = deviceComplex(1.0, 0.0);
+			chi12 = deviceComplex(1.0, 0.0);
 		}
 
-		if (abs(dk) <= minN(deviceLib::abs(ke), deviceLib::abs(ko)) && k < ((long long)(*s).Nfreq - 1)) {
+		if (maxN(dk,-dk) <= minN(deviceLib::abs(ke), deviceLib::abs(ko)) && k < ((long long)(*s).Nfreq - 1)) {
 			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
 			(*s).gridPropagationFactor1Rho1[i] = ii * (1. / (chi11 * 2. * ke.real())) * (*s).h;
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {

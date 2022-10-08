@@ -133,7 +133,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         assignedGPU = pulldownSelection;
     }
  
-    cpuThread = CreateThread(NULL, 0, offloadToCPU, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
+    cpuThread = CreateThread(NULL, 0, secondaryQueue, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
     for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); j++) {
         (*activeSetPtr).runningOnCPU = forceCPU;
         if ((*activeSetPtr).isInSequence) {
@@ -2587,7 +2587,7 @@ int setTrackbarLimitsToActiveSet() {
     return 0;
 }
 
-DWORD WINAPI offloadToCPU(LPVOID lpParam) {
+DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     if ((*activeSetPtr).NsimsCPU < 1) return 0;
     simulationParameterSet* cpuSims = (simulationParameterSet*)lpParam;
     int pulldownSelection = (int)SendMessage(maingui.pdSecondaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
@@ -2598,21 +2598,11 @@ DWORD WINAPI offloadToCPU(LPVOID lpParam) {
     if ( (pulldownSelection - cudaCount) == 0) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
-        //if (pulldownSelection == (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0)) {
-        //    printToConsole(maingui.textboxSims, L"Warning: can't launch two SYCL simulations simultaneously.\r\n The secondary queue will be done on OpenMP.\r\n");
-        //    sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-        //    normalFunction = &solveNonlinearWaveEquationCPU;
-        //}
     }
     if ((pulldownSelection - cudaCount) == 1) {
         forceCPU = 1;
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
-        //if (pulldownSelection == (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0)) {
-        //    printToConsole(maingui.textboxSims, L"Warning: can't launch two SYCL simulations simultaneously.\r\n The secondary queue will be done on OpenMP.\r\n");
-        //    sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-        //    normalFunction = &solveNonlinearWaveEquationCPU;
-        //}
     }
     else if ((pulldownSelection - cudaCount) == 2) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;

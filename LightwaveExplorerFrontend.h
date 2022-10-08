@@ -189,4 +189,4 @@ int                 linearRemapDoubleToFloat(double* A, int nax, int nay, float*
 int                 linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin);
 int                 setWindowTextToInt(HWND win, int in);
 int                 setTrackbarLimitsToActiveSet();
-DWORD WINAPI        offloadToCPU(LPVOID lpParam);
+DWORD WINAPI        secondaryQueue(LPVOID lpParam);

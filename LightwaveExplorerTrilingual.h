@@ -359,7 +359,6 @@ public:
 #include <CL/sycl.hpp>
 #include <CL/sycl/atomic.hpp>
 #include <oneapi/mkl.hpp>
-//#include <dpct/dpct.hpp>
 #define trilingual const auto 
 #define deviceFunction 
 #define RUNTYPE 2
@@ -372,8 +371,6 @@ public:
 #define withID size_t trilingualLaunchID,
 #define withStream , stream
 #define activeDevice deviceSYCL
-
-
 
 class deviceSYCL {
 private:
@@ -411,7 +408,6 @@ public:
 
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
-		//stream.wait();
 		stream.submit([&](cl::sycl::handler& h) {
 			h.parallel_for(Nblock * Nthread, [=](auto i) {kernel(i, args...); });
 			});
@@ -450,19 +446,19 @@ public:
 		int Nspace = (*s).Nspace;
 		int Nspace2 = (*s).Nspace2;
 		int Nfreq = (*s).Nfreq;
-		//cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
+
 		fftPlan1DD2Z = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>((int)Ntime);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
-		std::int64_t output_stride_ct1[2] = { 0, 1 };
-		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, output_stride_ct1);
+		std::int64_t outputStrides[2] = { 0, 1 };
+		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, outputStrides);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2 * (int)(Nspace * Nspace2));
 
 		fftPlan1DZ2D = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>(Ntime);
 		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
-		std::int64_t input_stride_ct2[2] = { 0, 1 };
-		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES, input_stride_ct2);
+
+		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES, outputStrides);
 		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime);
 		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq);
 		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2 * (Nspace * Nspace2));
@@ -474,8 +470,8 @@ public:
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
 			
-			std::int64_t output_stride_ct11[4] = {0, Nspace * Nfreq, Nfreq, 1 };
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, output_stride_ct11);
+			std::int64_t outputStride3D[4] = {0, Nspace * Nfreq, Nfreq, 1 };
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, outputStride3D);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime * Nspace * Nspace2);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq * Nspace * Nspace2);
 
@@ -484,7 +480,7 @@ public:
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
 			
-			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES, output_stride_ct11);
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES, outputStride3D);
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime * Nspace * Nspace2);
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq * Nspace * Nspace2);
 
@@ -496,8 +492,8 @@ public:
 					std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1]});
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
-			std::int64_t output_stride_ct19[3] = { 0, Nfreq, 1 };
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, output_stride_ct19);
+			std::int64_t outputStride2D[3] = { 0, Nfreq, 1 };
+			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, outputStride2D);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime * Nspace);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq * Nspace);
 
@@ -505,7 +501,7 @@ public:
 					std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1]});
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
-			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES, output_stride_ct19);
+			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES, outputStride2D);
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime * Nspace);
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq * Nspace);
 
@@ -516,8 +512,8 @@ public:
 						std::vector<std::int64_t>{cufftSizes2[0], cufftSizes2[1]});
 				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
-				std::int64_t output_stride_ct27[3] = { 0, Nfreq, 1 };
-				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, output_stride_ct27);
+				std::int64_t outputStrideCyl[3] = { 0, Nfreq, 1 };
+				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, outputStrideCyl);
 				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime * 2 * Nspace);
 				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq * 2 * Nspace);
 			}
@@ -532,7 +528,6 @@ public:
 
 	//to do
 	void fft(void* input, void* output, int type) {
-		//stream.wait();
 		switch (type) {
 		case 0:
 			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (double*)input, (double*)(sycl::double2*)output);
