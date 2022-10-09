@@ -989,15 +989,14 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         SendMessage(maingui.pdSecondaryQueue, (UINT)CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
     }
 
-
     //read the crystal database
     crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
     if (crystalDatabasePtr != NULL) {
         GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
         readCrystalDatabase(crystalDatabasePtr);
-        printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+        printToConsole(maingui.textboxSims, _T("Material database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
         for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
-            printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+            printToConsole(maingui.textboxSims, _T("%2.2i: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
     }
 
