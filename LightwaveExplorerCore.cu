@@ -227,14 +227,14 @@ namespace deviceFunctions {
 		double gradientFactor = 0.5 / gradientStep;
 		int it;
 		int maxiter = 64;
-		double gradientTol = 1e-1;
+		double gradientTol = 1e-3;
 		//emperical testing: 
 		// converges to double precision limit in two iterations for BBO
 		// converges in 32 iterations in BiBO
 
 		double errArray[4][2];
 		if ((*s).axesNumber == 1) {
-			maxiter = 32;
+			maxiter = 64;
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
@@ -902,7 +902,7 @@ namespace kernels {
 		double dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real())) {
+		if (ne.real() < 0.9 || isnan(ne.real()) || isnan(no.real())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -1051,7 +1051,7 @@ namespace kernels {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real())) {
+		if (ne.real() < 0.9 || isnan(ne.real()) || isnan(no.real())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;

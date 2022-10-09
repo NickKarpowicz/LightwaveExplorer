@@ -8,4 +8,4 @@ extern "C" LIGHTWAVEEXPLORERSYCL_API unsigned long	solveNonlinearWaveEquationSYC
 extern "C" LIGHTWAVEEXPLORERSYCL_API unsigned long  solveNonlinearWaveEquationSequenceSYCL(void* lpParam);
 extern "C" LIGHTWAVEEXPLORERSYCL_API int            mainSYCL(int argc, char* filepath);
 extern "C" LIGHTWAVEEXPLORERSYCL_API unsigned long	runDlibFittingSYCL(simulationParameterSet* sCPU);
-extern "C" LIGHTWAVEEXPLORERSYCL_API int			readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString);
+extern "C" LIGHTWAVEEXPLORERSYCL_API size_t			readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString);

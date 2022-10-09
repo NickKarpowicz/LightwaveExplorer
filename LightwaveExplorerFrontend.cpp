@@ -8,6 +8,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include "LightwaveExplorerCoreCPU.h"
 #include "LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
+#include <delayimp.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <Commdlg.h>
@@ -58,8 +59,10 @@ bool isRunning = FALSE;
 bool isPlotting = FALSE;
 bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
-bool hasGPU = FALSE;
-int cudaCount = 0;
+bool CUDAavailable = FALSE;
+bool SYCLavailable = FALSE;
+int cudaGPUCount = 0;
+int syclGPUCount = 0;
 size_t progressCounter = 0;
 //UI colors
 COLORREF uiWhite = RGB(255, 255, 255);
@@ -74,6 +77,118 @@ bool                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
+void checkLibraryAvailability() {
+
+
+    __try {
+        HRESULT hr = __HrLoadAllImportsForDll("nvml.dll");
+        if (SUCCEEDED(hr)) {
+            CUDAavailable = TRUE;
+        }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        CUDAavailable = FALSE;
+    }
+    if (CUDAavailable) {
+        CUDAavailable = FALSE;
+        __try {
+            HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
+            if (SUCCEEDED(hr)) {
+                CUDAavailable = TRUE;
+            }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            CUDAavailable = FALSE;
+            printToConsole(maingui.textboxSims, L"CUDA not available because cufft64_10.dll was not found.\r\n");
+        }
+    }
+    if (CUDAavailable) {
+        CUDAavailable = FALSE;
+        __try {
+            HRESULT hr = __HrLoadAllImportsForDll("cudart64_110.dll");
+            if (SUCCEEDED(hr)) {
+                CUDAavailable = TRUE;
+            }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            CUDAavailable = FALSE;
+            printToConsole(maingui.textboxSims, L"CUDA not available because cudart64_110.dll was not found.\r\n\r\n");
+        }
+    }
+
+    if (CUDAavailable) {
+        //Find, count, and name the GPUs
+        int CUDAdevice, i;
+
+        cudaGetDeviceCount(&cudaGPUCount);
+        cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
+        struct cudaDeviceProp activeCUDADeviceProp;
+        wchar_t wcstring[514];
+        size_t convertedChars = 0;
+        if (cuErr == cudaSuccess) {
+            if (cudaGPUCount > 0) {
+                CUDAavailable = TRUE;
+            }
+
+            printToConsole(maingui.textboxSims, _T("CUDA found %i GPU(s): \r\n"), cudaGPUCount);
+            for (i = 0; i < cudaGPUCount; i++) {
+                cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+                memset(wcstring, 0, sizeof(wchar_t));
+                mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
+                printToConsole(maingui.textboxSims, _T("%ls\r\n"), wcstring);
+                printToConsole(maingui.textboxSims, _T(" Memory: %lli MB; Multiprocessors: %i\r\n"),
+                    activeCUDADeviceProp.totalGlobalMem / 1048576, activeCUDADeviceProp.multiProcessorCount);
+            }
+
+        }
+        else {
+            printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found. 1\r\n");
+            CUDAavailable = FALSE;
+        }
+    }
+    else {
+        printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found. 2\r\n");
+        CUDAavailable = FALSE;
+    }
+
+
+    //read SYCL devices
+    wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
+    wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
+    __try {
+        HRESULT hr = __HrLoadAllImportsForDll("LightwaveExplorerSYCL.dll");
+        if (SUCCEEDED(hr)) {
+            SYCLavailable = TRUE;
+        }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        SYCLavailable = FALSE;
+    }
+
+
+    if (SYCLavailable) {
+        size_t syclDevices = 0;
+        __try {
+            syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            SYCLavailable = FALSE;
+            printToConsole(maingui.textboxSims, L"Couldn't run SYCL check... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printToConsole(maingui.textboxSims, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
+        }
+        unsigned char* deviceCounts = (unsigned char*)&syclDevices;
+        if (deviceCounts[0] == 0u) {
+            printToConsole(maingui.textboxSims, L"Something is wrong - SYCL doesn't think you have a CPU.\r\n");
+            SYCLavailable = FALSE;
+        }
+        else {
+            syclGPUCount = deviceCounts[1];
+            printToConsole(maingui.textboxSims, syclDeviceList);
+            if (syclGPUCount > 0) printToConsole(maingui.textboxSims, syclDefault);
+        }
+    }
+
+}
 
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
     cancellationCalled = FALSE;
@@ -83,8 +198,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     HANDLE cpuThread = NULL;
     DWORD hCpuThread;
 
-    //bool forcingCPU = IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU) == BST_CHECKED;
-    bool forceCPU = 0;
 
     if (isGridAllocated) {
         freeSemipermanentGrids();
@@ -112,30 +225,43 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
-
-
-    if ((pulldownSelection - cudaCount) == 0) {
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+    bool forceCPU = 0;
+    int SYCLitems = 0;
+    if (syclGPUCount == 0) {
+        SYCLitems = (int)SYCLavailable;
     }
-    if ((pulldownSelection - cudaCount) == 1) {
-        forceCPU = 1;
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+    else {
+        SYCLitems = 3;
     }
-    else if ((pulldownSelection - cudaCount) == 2) {
-        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-        normalFunction = &solveNonlinearWaveEquationCPU;
-    }
-    else if ((pulldownSelection - cudaCount) < 0) {
+    if (pulldownSelection < cudaGPUCount) {
         sequenceFunction = &solveNonlinearWaveEquationSequence;
         normalFunction = &solveNonlinearWaveEquation;
         assignedGPU = pulldownSelection;
     }
+    else if (pulldownSelection == cudaGPUCount && SYCLitems > 0) {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
+        assignedGPU = 1;
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
+        forceCPU = 1;
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+        normalFunction = &solveNonlinearWaveEquationCPU;
+    }
  
     cpuThread = CreateThread(NULL, 0, secondaryQueue, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
     for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); j++) {
-        (*activeSetPtr).runningOnCPU = forceCPU;
+
+        activeSetPtr[j].runningOnCPU = forceCPU;
+        activeSetPtr[j].assignedGPU = assignedGPU;
         if ((*activeSetPtr).isInSequence) {
             error = sequenceFunction(&activeSetPtr[j]);
 
@@ -597,7 +723,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         xOffsetRow2 - 160, 24 * vs+8, 180, 4, maingui.mainWindow, NULL, hInstance, NULL);
     SendMessage(maingui.pbProgressB, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
 
-    TCHAR A[64];
+    TCHAR A[MAX_LOADSTRING];
     memset(&A, 0, sizeof(A));
     TCHAR clusterNames[7][64] = { 
         L"Cobra 1xRTX 5000", 
@@ -813,51 +939,17 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     //make the active set pointer
     activeSetPtr = (simulationParameterSet*)calloc(MAX_SIMULATIONS, sizeof(simulationParameterSet));
 
-    //Find, count, and name the GPUs
 
-    int CUDAdevice, i;
-    int CUDAdeviceCount = 0;
-    cudaGetDeviceCount(&CUDAdeviceCount);    
-    cudaCount = CUDAdeviceCount;
-    cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
-    struct cudaDeviceProp activeCUDADeviceProp;
-    wchar_t wcstring[514];
-    size_t convertedChars = 0;
-    if (cuErr == cudaSuccess) {
-        if (CUDAdeviceCount > 0) {
-            hasGPU = TRUE;
-        }
-        
-        printToConsole(maingui.textboxSims, _T("CUDA found %i GPU(s): \r\n"), CUDAdeviceCount);
-        for (i = 0; i < CUDAdeviceCount; i++) {
-            cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-            memset(wcstring, 0, sizeof(wchar_t));
-            mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
-            printToConsole(maingui.textboxSims, _T("%ls\r\n"), wcstring);
-            printToConsole(maingui.textboxSims, _T(" Memory: %lli MB; Multiprocessors: %i\r\n"), 
-                activeCUDADeviceProp.totalGlobalMem/1048576, activeCUDADeviceProp.multiProcessorCount);
-        }
+    checkLibraryAvailability();
 
-    }
-    else {
-        printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found.\r\n");
-        hasGPU = FALSE;
-    }
-
-    //read SYCL devices
-    wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
-    wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
-    int syclCount = readSYCLDevices(syclDeviceList, syclDefault);
-    printToConsole(maingui.textboxSims, syclDeviceList);
-    printToConsole(maingui.textboxSims, syclDefault);
     int openMPposition = 0;
-    if (CUDAdeviceCount > 0) {
+    if (CUDAavailable) {
         swprintf_s(A, MAX_LOADSTRING, L"CUDA");
         SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
         SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
         openMPposition++;
         memset(&A, 0, sizeof(A));
-        for (i = 1; i < CUDAdeviceCount; i++) {
+        for (int i = 1; i < cudaGPUCount; i++) {
             swprintf_s(A, MAX_LOADSTRING, L"CUDA %i", i);
             SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
             SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
@@ -865,36 +957,46 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
             openMPposition++;
         }
     }
-    swprintf_s(A, MAX_LOADSTRING, L"SYCL");
-    SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
-    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
-    memset(&A, 0, sizeof(A));
-    openMPposition++;
-    swprintf_s(A, MAX_LOADSTRING, L"SYCL(CPU)");
-    SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
-    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
-    memset(&A, 0, sizeof(A));
-    openMPposition++;
+    if (SYCLavailable) {
+        swprintf_s(A, MAX_LOADSTRING, L"SYCL");
+        SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+        SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+        memset(&A, 0, sizeof(A));
+        openMPposition++;
+        if (syclGPUCount > 0) {
+            swprintf_s(A, MAX_LOADSTRING, L"SYCL cpu");
+            SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            memset(&A, 0, sizeof(A));
+            openMPposition++;
+            swprintf_s(A, MAX_LOADSTRING, L"SYCL gpu");
+            SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            memset(&A, 0, sizeof(A));
+            openMPposition++;
+        }
+    }
+
     swprintf_s(A, MAX_LOADSTRING, L"OpenMP");
     SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     memset(&A, 0, sizeof(A));
-
-    if (CUDAdeviceCount > 0) {
-        SendMessage(maingui.pdPrimaryQueue, (UINT)CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+    SendMessage(maingui.pdPrimaryQueue, (UINT)CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+    if (openMPposition > 0) {
+        SendMessage(maingui.pdSecondaryQueue, (UINT)CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
     }
     else {
-        SendMessage(maingui.pdPrimaryQueue, (UINT)CB_SETCURSEL, (WPARAM)openMPposition, (LPARAM)0);
+        SendMessage(maingui.pdSecondaryQueue, (UINT)CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
     }
-    
-    SendMessage(maingui.pdSecondaryQueue, (UINT)CB_SETCURSEL, (WPARAM)openMPposition, (LPARAM)1);
+
+
     //read the crystal database
     crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
     if (crystalDatabasePtr != NULL) {
         GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
         readCrystalDatabase(crystalDatabasePtr);
         printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
-        for (i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
+        for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
             printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
     }
@@ -2450,7 +2552,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     printToConsole(maingui.textboxSims, L"Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
 
-    (*activeSetPtr).runningOnCPU = (!hasGPU || IsDlgButtonChecked(maingui.mainWindow, ID_CBFORCECPU));
+    (*activeSetPtr).runningOnCPU = (!CUDAavailable && !SYCLavailable);
 
     //run the simulations
     if ((*activeSetPtr).runningOnCPU) {
@@ -2518,7 +2620,7 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
     double length;
     double step;
 
-    if (hasGPU) {
+    if (CUDAavailable) {
         nvmlInit_v2();
         nvmlDeviceGetHandleByIndex_v2(0, &nvmlDevice);
     }
@@ -2565,15 +2667,14 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
             }
         }
 
-        if (hasGPU) {
+        if (CUDAavailable) {
             nvmlError = nvmlDeviceGetPowerUsage(nvmlDevice, &devicePower);
             setWindowTextToDouble(maingui.tbGPUStatus, round(devicePower / 1000));
-
         }
         
         Sleep(500);
     }
-    if (hasGPU) {
+    if (CUDAavailable) {
         nvmlShutdown();
     }
     
@@ -2595,25 +2696,36 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
     bool forceCPU = 0;
-    if ( (pulldownSelection - cudaCount) == 0) {
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+    int SYCLitems = 0;
+    if (syclGPUCount == 0) {
+        SYCLitems = (int)SYCLavailable;
     }
-    if ((pulldownSelection - cudaCount) == 1) {
-        forceCPU = 1;
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+    else {
+        SYCLitems = 3;
     }
-    else if ((pulldownSelection - cudaCount) == 2) {
-        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-        normalFunction = &solveNonlinearWaveEquationCPU;
-    }
-    else if ((pulldownSelection - cudaCount) < 0) {
+    if (pulldownSelection < cudaGPUCount) {
         sequenceFunction = &solveNonlinearWaveEquationSequence;
         normalFunction = &solveNonlinearWaveEquation;
         assignedGPU = pulldownSelection;
     }
-
+    else if (pulldownSelection == cudaGPUCount && SYCLitems > 0) {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
+        assignedGPU = 1;
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
+        forceCPU = 1;
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else{
+        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+        normalFunction = &solveNonlinearWaveEquationCPU;
+    }
 
     int error = 0;
     if ((*activeSetPtr).isInSequence) {

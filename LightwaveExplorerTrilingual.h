@@ -1,6 +1,5 @@
 #include <memory>
 #include "LightwaveExplorerUtilities.h"
-
 // the anonymous namespace contains a few helper functions that are identical
 // for all classes, taken out here to have less duplicated code
 namespace {
@@ -570,13 +569,22 @@ public:
 
 		
 
-
+		cl::sycl::gpu_selector dGPU;
 		cl::sycl::cpu_selector dCPU;
 		cl::sycl::default_selector d;
-
 		cl::sycl::queue defaultStream(d, { cl::sycl::property::queue::in_order() });
 		cl::sycl::queue cpuStream(dCPU, { cl::sycl::property::queue::in_order() });
-		if ((*sCPU).runningOnCPU) {
+
+		if ((*sCPU).assignedGPU == 1) {
+			try {
+				cl::sycl::queue gpuStream(dGPU, { cl::sycl::property::queue::in_order() });
+				stream = gpuStream;
+			}
+			catch (sycl::exception const& e) {
+				stream = cpuStream;
+			}
+		}
+		else if ((*sCPU).runningOnCPU) {
 			stream = cpuStream;
 		}
 		else {
