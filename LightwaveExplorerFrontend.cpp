@@ -252,12 +252,12 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         normalFunction = &solveNonlinearWaveEquationSYCL;
     }
     else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
-        assignedGPU = 1;
+        forceCPU = 1;
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
     }
     else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
-        forceCPU = 1;
+        assignedGPU = 1;
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
     }
@@ -2620,15 +2620,12 @@ int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
 DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
 
     
-
     unsigned int devicePower = 0;
     int i,j;
 
     size_t lengthEstimate = 0;
     double length;
     double step;
-
-
 
     auto progressLambda = [&]() {
         lengthEstimate = 0;
@@ -2696,8 +2693,6 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
         }
     }
 
-
-    
     return 0;
 }
 
@@ -2733,12 +2728,12 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
         normalFunction = &solveNonlinearWaveEquationSYCL;
     }
     else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
-        assignedGPU = 1;
+        forceCPU = 1;
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
     }
     else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
-        forceCPU = 1;
+        assignedGPU = 1;
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
     }

@@ -1,4 +1,5 @@
 #include <memory>
+
 #include "LightwaveExplorerUtilities.h"
 // the anonymous namespace contains a few helper functions that are identical
 // for all classes, taken out here to have less duplicated code
@@ -622,8 +623,8 @@ public:
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(std::complex<double>));
-			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 4 * (*s).Ngrid, sizeof(std::complex<double>));
+			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<double>));
+			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, beamExpansionFactor * 2 * (*s).Ngrid, sizeof(std::complex<double>));
 		}
 
 		//smaller helper grids

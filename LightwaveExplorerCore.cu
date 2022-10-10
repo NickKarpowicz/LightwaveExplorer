@@ -86,7 +86,11 @@ namespace deviceFunctions {
 	//Sellmeier equation for refractive indicies
 	deviceFunction deviceComplex sellmeierCuda(
 		deviceComplex* ne, deviceComplex* no, double* a, double f, double theta, double phi, int type, int eqn) {
-		if (f == 0) return deviceComplex(1.0, 0.0); //exit immediately for f=0
+		if (f == 0) {
+			*ne = deviceComplex(1.0, 0.0); 
+			*no = deviceComplex(1.0, 0.0); 
+			return deviceComplex(1.0, 0.0);
+		} //exit immediately for f=0
 		double ls = 2.99792458e14 / f; //wavelength in microns
 		ls *= ls; //only wavelength^2 is ever used
 		double omega = TWOPI * maxN(f,-f);
@@ -605,13 +609,13 @@ namespace kernels {
 	// in such a way as to avoid aliasing, which inside the simulation is most
 	// likely the appear (and cause instability) in the nonlinear terms.
 	trilingual expandCylindricalBeam asKernel(withID cudaParameterSet* s, double* polarization1, double* polarization2) {
-		size_t i = localIndex;
-		size_t j = i / (*s).Ntime; //spatial coordinate
-		size_t k = i % (*s).Ntime; //temporal coordinate
+		long long i = (long long)localIndex;
+		long long j = i / (*s).Ntime; //spatial coordinate
+		long long k = i % (*s).Ntime; //temporal coordinate
 
 		//positions on the expanded grid corresponding the the current index
-		size_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
-		size_t pos2 = (2 * j + 1) * (*s).Ntime + k;
+		long long pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
+		long long pos2 = (2 * j + 1) * (*s).Ntime + k;
 
 		//reuse memory allocated for the radial Laplacian, casting complex double
 		//to a 2x larger double real grid
@@ -952,7 +956,7 @@ namespace kernels {
 		long long i = localIndex;
 		int axesNumber = (*s).axesNumber;
 		int sellmeierType = (*s).sellmeierType;
-		deviceComplex cuZero = deviceComplex(0, 0);
+		deviceComplex cuZero = deviceComplex(0.0, 0.0);
 
 		double crystalTheta = sellmeierCoefficients[66];
 		double crystalPhi = sellmeierCoefficients[67];
@@ -1048,29 +1052,38 @@ namespace kernels {
 		//transverse wavevector being resolved
 		double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 
-		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 
+		//NOTE TO SELF: I DON"T KNOW WHY ONLY THIS WORKS AND NOT THE COMMENTED ONES BELOW
+		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex % ((*s).Nfreq-1), &ne, &no);
+		//sellmeierCuda(&ne, &no, sellmeierCoefficients, maxN(f, -f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		//sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (ne.real() < 0.9 || isnan(ne.real()) || isnan(no.real())) {
+		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
 			(*s).gridPolarizationFactor2[i] = cuZero;
+			(*s).gridPropagationFactor1Rho1[i] = cuZero;
+			(*s).gridPropagationFactor1Rho2[i] = cuZero;
 			return;
 		}
-		
+
 		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
 		deviceComplex ke = TWOPI * ne * f / LIGHTC;
 		deviceComplex ko = TWOPI * no * f / LIGHTC;
 
-		deviceComplex chi11 = (*s).chiLinear1[k];
-		deviceComplex chi12 = (*s).chiLinear2[k];
-		if (!(*s).isUsingMillersRule) {
-			chi11 = deviceComplex(1.0, 0.0);
-			chi12 = deviceComplex(1.0, 0.0);
+		deviceComplex chi11 = deviceComplex(1.0, 0);
+		deviceComplex chi12 = deviceComplex(1.0, 0);
+		if ((*s).isUsingMillersRule) {
+			chi11 = (*s).chiLinear1[k];
+			chi12 = (*s).chiLinear2[k];
+		}
+		else {
+			chi11 = deviceComplex(1, 0);
+			chi12 = deviceComplex(1, 0);
 		}
 
-		if (maxN(dk,-dk) <= minN(deviceLib::abs(ke), deviceLib::abs(ko)) && k < ((long long)(*s).Nfreq - 1)) {
+		if (dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())){
 			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
 			(*s).gridPropagationFactor1Rho1[i] = ii * (1. / (chi11 * 2. * ke.real())) * (*s).h;
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
@@ -1087,8 +1100,10 @@ namespace kernels {
 			//factor of 0.5 comes from doubled grid size in cylindrical symmetry mode after expanding the beam
 			(*s).gridPolarizationFactor1[i] = 0.5 * pow((*s).chiLinear1[k] + 1.0, 0.25) * chi11 * ii * (TWOPI * f) / (2. * ne.real() * LIGHTC) * (*s).h;
 			(*s).gridPolarizationFactor2[i] = 0.5 * pow((*s).chiLinear2[k] + 1.0, 0.25) * chi12 * ii * (TWOPI * f) / (2. * no.real() * LIGHTC) * (*s).h;
-
-
+			if (isnan((*s).gridPolarizationFactor1[i].real()) || isnan((*s).gridPolarizationFactor1[i].imag()) || isnan((*s).gridPolarizationFactor2[i].real()) || isnan((*s).gridPolarizationFactor2[i].imag())) {
+				(*s).gridPolarizationFactor1[i] = cuZero;
+				(*s).gridPolarizationFactor2[i] = cuZero;
+			}
 		}
 
 		else {
@@ -1096,7 +1111,7 @@ namespace kernels {
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
 			(*s).gridPolarizationFactor2[i] = cuZero;
-			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor1Rho1[i] = cuZero;
 			(*s).gridPropagationFactor1Rho2[i] = cuZero;
 		}
 	};
@@ -1194,6 +1209,8 @@ namespace kernels {
 			(*s).gridPolarizationTime1[i] += Ex * Esquared;
 			(*s).gridPolarizationTime2[i] += Ey * Esquared;
 		}
+		if (isnan((*s).gridPolarizationTime1[i])) (*s).gridPolarizationTime1[i] = 0.0;
+		if (isnan((*s).gridPolarizationTime2[i])) (*s).gridPolarizationTime2[i] = 0.0;
 	};
 
 
@@ -1257,20 +1274,21 @@ namespace kernels {
 	};
 
 	trilingual updateKwithPolarizationKernel asKernel(withID cudaParameterSet* sP) {
-		size_t i = localIndex;
-		unsigned int h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-		unsigned int j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		long long i = localIndex;
+		long long h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+		long long j = i / ((*sP).Nfreq - 1); //spatial coordinate
 		i = h + j * ((*sP).Nfreq);
 		h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 
 		(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
 		(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
+
 	};
 
 	trilingual updateKwithPlasmaKernel asKernel(withID cudaParameterSet* sP) {
-		size_t i = localIndex;
-		unsigned int h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-		unsigned int j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		long long i = localIndex;
+		long long h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+		long long j = i / ((*sP).Nfreq - 1); //spatial coordinate
 		i = h + j * ((*sP).Nfreq);
 
 		deviceComplex jfac = deviceComplex(0, -1.0 / (h * (*sP).fStep));
@@ -2203,7 +2221,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	preparePropagationGrids(d);
 	prepareElectricFieldArrays(d);
 
-	double canaryPixel = 0;
+	double canaryPixel = 0.0;
 	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
 	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(cudaParameterSet), HostToDevice);
 	//Core propagation loop
