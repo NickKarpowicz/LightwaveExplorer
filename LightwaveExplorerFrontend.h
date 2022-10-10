@@ -70,8 +70,8 @@ typedef struct guiStruct {
     HWND tbSequence = NULL;
     HWND tbFitting = NULL;
 
-    HWND pdPrimaryQueue;
-    HWND pdSecondaryQueue;
+    HWND pdPrimaryQueue = NULL;
+    HWND pdSecondaryQueue = NULL;
 
     HWND pbProgress = NULL;
     HWND pbProgressB = NULL;

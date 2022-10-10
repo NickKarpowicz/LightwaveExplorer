@@ -176,7 +176,7 @@
       <AdditionalDependencies>LightwaveExplorerSYCL.lib;%(AdditionalDependencies);cudart_static.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;ComCtl32.lib;nvml.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)\lib;$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <DelayLoadDLLs>LightwaveExplorerSYCL.dll;nvml.dll;cufft64_10.dll;cudart64_110.dll;sycl.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>LightwaveExplorerSYCL.dll;nvml.dll;cufft64_10.dll;cudart64_110.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>

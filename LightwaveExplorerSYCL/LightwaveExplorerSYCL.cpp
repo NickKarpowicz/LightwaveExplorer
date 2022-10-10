@@ -50,7 +50,7 @@ size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) 
     swprintf_s(defaultDeviceString, MAX_LOADSTRING, L"SYCL likes this one: %ls\r\n", deviceCharString);
     return deviceCount;
 }
-BOOL APIENTRY DllMain( HMODULE hModule,
+BOOL DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
                      )

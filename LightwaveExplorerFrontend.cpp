@@ -79,20 +79,20 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 void checkLibraryAvailability() {
 
-
     __try {
-        HRESULT hr = __HrLoadAllImportsForDll("nvml.dll");
+        HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
         if (SUCCEEDED(hr)) {
             CUDAavailable = TRUE;
         }
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
         CUDAavailable = FALSE;
+        printToConsole(maingui.textboxSims, L"CUDA not available because cufft64_10.dll was not found.\r\n");
     }
     if (CUDAavailable) {
         CUDAavailable = FALSE;
         __try {
-            HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
+            HRESULT hr = __HrLoadAllImportsForDll("nvml.dll");
             if (SUCCEEDED(hr)) {
                 CUDAavailable = TRUE;
             }
@@ -136,18 +136,18 @@ void checkLibraryAvailability() {
                 memset(wcstring, 0, sizeof(wchar_t));
                 mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
                 printToConsole(maingui.textboxSims, _T("%ls\r\n"), wcstring);
-                printToConsole(maingui.textboxSims, _T(" Memory: %lli MB; Multiprocessors: %i\r\n"),
-                    activeCUDADeviceProp.totalGlobalMem / 1048576, activeCUDADeviceProp.multiProcessorCount);
+                printToConsole(maingui.textboxSims, _T("    Memory: %i MB\r\n    Multiprocessors: %i\r\n"),
+                    (int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
             }
 
         }
         else {
-            printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found. 1\r\n");
+            printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found.\r\n");
             CUDAavailable = FALSE;
         }
     }
     else {
-        printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found. 2\r\n");
+        printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found.\r\n");
         CUDAavailable = FALSE;
     }
 
@@ -163,6 +163,15 @@ void checkLibraryAvailability() {
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
         SYCLavailable = FALSE;
+        DWORD SYCLfile = GetFileAttributes(L"LightwaveExplorerSYCL.dll");
+        if (SYCLfile != 0xFFFFFFFF) {
+            printToConsole(maingui.textboxSims, L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printToConsole(maingui.textboxSims, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
+        }
+        else {
+            printToConsole(maingui.textboxSims, L"No SYCL file...\r\n");
+        }
+        
     }
 
 
@@ -173,7 +182,7 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             SYCLavailable = FALSE;
-            printToConsole(maingui.textboxSims, L"Couldn't run SYCL check... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printToConsole(maingui.textboxSims, L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
             printToConsole(maingui.textboxSims, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
         }
         unsigned char* deviceCounts = (unsigned char*)&syclDevices;
@@ -238,7 +247,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         normalFunction = &solveNonlinearWaveEquation;
         assignedGPU = pulldownSelection;
     }
-    else if (pulldownSelection == cudaGPUCount && SYCLitems > 0) {
+    else if (pulldownSelection == cudaGPUCount && SYCLavailable) {
         sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
         normalFunction = &solveNonlinearWaveEquationSYCL;
     }
@@ -994,7 +1003,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     if (crystalDatabasePtr != NULL) {
         GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
         readCrystalDatabase(crystalDatabasePtr);
-        printToConsole(maingui.textboxSims, _T("Material database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+        printToConsole(maingui.textboxSims, _T("\r\nMaterial database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
         for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
             printToConsole(maingui.textboxSims, _T("%2.2i: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
@@ -2610,22 +2619,18 @@ int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
 
 DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
 
-    nvmlDevice_t nvmlDevice = 0;
+    
 
     unsigned int devicePower = 0;
     int i,j;
-    nvmlReturn_t nvmlError;
+
     size_t lengthEstimate = 0;
     double length;
     double step;
 
-    if (CUDAavailable) {
-        nvmlInit_v2();
-        nvmlDeviceGetHandleByIndex_v2(0, &nvmlDevice);
-    }
 
-    while (TRUE) {
-        
+
+    auto progressLambda = [&]() {
         lengthEstimate = 0;
         if (!(*activeSetPtr).isInFittingMode) {
             //estimate the total steps in the current simulation;
@@ -2655,27 +2660,43 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
                 SendMessage(maingui.pbProgress, PBM_SETPOS, (int)((100 * progressCounter) / lengthEstimate), 0);
                 SendMessage(maingui.pbProgressB, PBM_SETPOS, (int)((100 * progressCounter) / lengthEstimate), 0);
             }
-            
+
         }
         else {
             lengthEstimate = (*activeSetPtr).fittingMaxIterations;
             if (lengthEstimate > 0) {
                 SendMessage(maingui.pbProgress, PBM_SETPOS, (int)((100 * progressCounter) / lengthEstimate), 0);
                 SendMessage(maingui.pbProgressB, PBM_SETPOS, (int)((100 * progressCounter) / lengthEstimate), 0);
-                //SendMessage(maingui.pbProgress, PBM_SETPOS, (int)(10*progressCounter), 0);
             }
         }
+    
+    };
 
-        if (CUDAavailable) {
+    if (CUDAavailable) {
+        nvmlDevice_t nvmlDevice = 0;
+        nvmlInit_v2();
+        nvmlDeviceGetHandleByIndex_v2(0, &nvmlDevice);
+        nvmlReturn_t nvmlError;
+        while (TRUE) {
+
+            progressLambda();
+
             nvmlError = nvmlDeviceGetPowerUsage(nvmlDevice, &devicePower);
             setWindowTextToDouble(maingui.tbGPUStatus, round(devicePower / 1000));
+            
+
+            Sleep(500);
         }
-        
-        Sleep(500);
-    }
-    if (CUDAavailable) {
         nvmlShutdown();
     }
+    else {
+        while (TRUE) {
+            progressLambda();
+            Sleep(500);
+        }
+    }
+
+
     
     return 0;
 }
