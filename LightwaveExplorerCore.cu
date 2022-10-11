@@ -69,7 +69,7 @@ namespace deviceFunctions {
 				+ a[15] * ls * ls * ls;
 			compPart = a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
 				+ a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
-			return deviceLib::sqrt(maxN(realPart, 0.0) + KLORENTZIAN * compPart);
+			return deviceLib::sqrt(maxN(realPart, 0.05) + KLORENTZIAN * compPart);
 		case 1:
 			compPart = a[0] / deviceComplex(a[1] - omega2, a[2] * omega)
 				+ a[3] / deviceComplex(a[4] - omega2, a[5] * omega)
@@ -88,7 +88,8 @@ namespace deviceFunctions {
 				+ a[13] * ls
 				+ a[14] * ls * ls
 				+ a[15] * ls * ls * ls;
-			return deviceComplex(sqrt(maxN(realPart, 0.0)), 0.0);
+			//"real-valued equation has no business being < 1" - causality
+			return deviceComplex(sqrt(maxN(realPart, 0.05)), 0.0);
 		}
 		
 		return deviceComplex(1.0, 0.0);
@@ -116,8 +117,17 @@ namespace deviceFunctions {
 		else if (type == 1) {
 			deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
 			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
+
 			*no = na;
-			*ne = 1.0 / deviceLib::sqrt(cos(theta) * cos(theta) / (na * na) + sin(theta) * sin(theta) / (nb * nb));
+			na *= na;
+			nb *= nb;
+			double cosT = cos(theta);
+			cosT *= cosT;
+			double sinT = sin(theta);
+			sinT *= sinT;
+
+			*ne = deviceLib::sqrt((na * nb) / (nb * cosT + na * sinT));
+
 			return *ne;
 		}
 		else {
@@ -980,18 +990,21 @@ namespace kernels {
 		
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		if (isnan(ne.real()) || isnan(no.real())) {
-			ne = deviceComplex(1, 0);
-			no = deviceComplex(1, 0);
+			ne = deviceComplex(1.0, 0);
+			no = ne;
 		}
 
-		(*s).chiLinear1[i] = -1. + ne * ne;
-		(*s).chiLinear2[i] = -1. + no * no;
-		if ((((*s).chiLinear1[i].real()) == 0) || (((*s).chiLinear2[i].real()) == 0) || isnan(((*s).chiLinear1[i].real())) || isnan(((*s).chiLinear2[i].real()))) {
-			(*s).chiLinear1[i] = deviceComplex(1, 0);
-			(*s).chiLinear2[i] = deviceComplex(1, 0);
+		(*s).chiLinear1[i] = ne * ne - 1.0;
+		(*s).chiLinear2[i] = no * no - 1.0;
+		if ((*s).chiLinear1[i].real() != 0.0 && (*s).chiLinear2[i].real() != 0.0) {
+			(*s).inverseChiLinear1[i] = 1.0 / (*s).chiLinear1[i].real();
+			(*s).inverseChiLinear2[i] = 1.0 / (*s).chiLinear2[i].real();
 		}
-		(*s).inverseChiLinear1[i] = 1.0 / (*s).chiLinear1[i].real();
-		(*s).inverseChiLinear2[i] = 1.0 / (*s).chiLinear2[i].real();
+		else {
+			(*s).inverseChiLinear1[i] = 0.0;
+			(*s).inverseChiLinear2[i] = 0.0;
+		}
+
 		(*s).fieldFactor1[i] = 1.0 / pow((*s).chiLinear1[i].real() + 1.0, 0.25); //account for the effective field strength in the medium (1/n)
 		(*s).fieldFactor2[i] = 1.0 / pow((*s).chiLinear2[i].real() + 1.0, 0.25);
 		if ((*s).isUsingMillersRule) {
@@ -1063,7 +1076,7 @@ namespace kernels {
 		//sellmeierCuda(&ne, &no, sellmeierCoefficients, maxN(f, -f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
+		if (minN(ne.real(), no.real()) < 0.9 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
