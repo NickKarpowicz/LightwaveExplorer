@@ -53,10 +53,10 @@ namespace deviceFunctions {
 	//omega: frequency (rad/s)
 	//ii: sqrt(-1)
 	//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
-	deviceFunction deviceComplex sellmeierFunc(double ls, double omega, double* a, int eqn) {
+	deviceFunction deviceComplex sellmeierFunc(double ls, double omega, double* a, int eqn) {		
+		double omega2 = omega * omega;
 		double realPart;
 		deviceComplex compPart;
-		double omega2 = omega * omega;
 		switch (eqn) {
 		case 0:
 			realPart = a[0]
@@ -79,7 +79,18 @@ namespace deviceFunctions {
 				+ a[15] / deviceComplex(a[16] - omega2, a[17] * omega)
 				+ a[18] / deviceComplex(a[19] - omega2, a[20] * omega);
 			return deviceLib::sqrt(KLORENTZIAN * compPart);
+		case 100:
+			realPart = a[0]
+				+ (a[1] + a[2] * ls) / (ls + a[3])
+				+ (a[4] + a[5] * ls) / (ls + a[6])
+				+ (a[7] + a[8] * ls) / (ls + a[9])
+				+ (a[10] + a[11] * ls) / (ls + a[12])
+				+ a[13] * ls
+				+ a[14] * ls * ls
+				+ a[15] * ls * ls * ls;
+			return deviceComplex(sqrt(maxN(realPart, 0.0)), 0.0);
 		}
+		
 		return deviceComplex(1.0, 0.0);
 	};
 
@@ -1029,17 +1040,11 @@ namespace kernels {
 		long long i = localIndex;
 		long long j, k;
 		long long Nspace = (*s).Nspace;
-		int axesNumber = (*s).axesNumber;
-		int sellmeierType = (*s).sellmeierType;
 		deviceComplex cuZero = deviceComplex(0.0, 0.0);
 		j = i / ((*s).Nfreq - 1); //spatial coordinate
 		k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
 		i = k + j * (*s).Nfreq;
-
-
 		deviceComplex ii = deviceComplex(0.0, 1.0);
-		double crystalTheta = sellmeierCoefficients[66];
-		double crystalPhi = sellmeierCoefficients[67];
 		double kStep = sellmeierCoefficients[70];
 		double fStep = sellmeierCoefficients[71];
 
@@ -1054,9 +1059,9 @@ namespace kernels {
 
 
 		//NOTE TO SELF: I DON"T KNOW WHY ONLY THIS WORKS AND NOT THE COMMENTED ONES BELOW
-		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex % ((*s).Nfreq-1), &ne, &no);
+		//findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex % ((*s).Nfreq-1), &ne, &no);
 		//sellmeierCuda(&ne, &no, sellmeierCoefficients, maxN(f, -f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-		//sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;

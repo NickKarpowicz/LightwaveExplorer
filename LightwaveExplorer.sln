@@ -5,10 +5,16 @@ VisualStudioVersion = 17.3.32901.215
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightwaveExplorer", "LightwaveExplorer.vcxproj", "{C62A9002-9EEC-475D-BF37-78C42ECB77F4}"
 	ProjectSection(ProjectDependencies) = postProject
+		{5497503A-5EC8-4153-9713-5312E502BF36} = {5497503A-5EC8-4153-9713-5312E502BF36}
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69} = {FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightwaveExplorerSYCL", "LightwaveExplorerSYCL\LightwaveExplorerSYCL.vcxproj", "{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5497503A-5EC8-4153-9713-5312E502BF36} = {5497503A-5EC8-4153-9713-5312E502BF36}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DlibLibraryComponents", "..\DlibLibraryComponents\DlibLibraryComponents.vcxproj", "{5497503A-5EC8-4153-9713-5312E502BF36}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -34,6 +40,14 @@ Global
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}.Release|x64.Build.0 = Release|x64
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}.Release|x86.ActiveCfg = Release|Win32
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}.Release|x86.Build.0 = Release|Win32
+		{5497503A-5EC8-4153-9713-5312E502BF36}.Debug|x64.ActiveCfg = Debug|x64
+		{5497503A-5EC8-4153-9713-5312E502BF36}.Debug|x64.Build.0 = Debug|x64
+		{5497503A-5EC8-4153-9713-5312E502BF36}.Debug|x86.ActiveCfg = Debug|Win32
+		{5497503A-5EC8-4153-9713-5312E502BF36}.Debug|x86.Build.0 = Debug|Win32
+		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x64.ActiveCfg = Release|x64
+		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x64.Build.0 = Release|x64
+		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x86.ActiveCfg = Release|Win32
+		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -100,6 +100,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>DlibLibraryComponents.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -116,6 +117,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>DlibLibraryComponents.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -133,7 +135,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libfftw3-3.lib;cudart_static.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>DlibLibraryComponents.lib;libfftw3-3.lib;cudart_static.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\nickk\OneDrive\source\repos\fftw\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
@@ -173,7 +175,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>LightwaveExplorerSYCL.lib;%(AdditionalDependencies);cudart.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;ComCtl32.lib;nvml.lib</AdditionalDependencies>
+      <AdditionalDependencies>DlibLibraryComponents.lib;LightwaveExplorerSYCL.lib;%(AdditionalDependencies);cudart.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;ComCtl32.lib;nvml.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)\lib;$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <DelayLoadDLLs>LightwaveExplorerSYCL.dll;nvml.dll;cufft64_10.dll;cudart64_110.dll;%(DelayLoadDLLs)</DelayLoadDLLs>

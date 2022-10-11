@@ -5,46 +5,39 @@
 #include <complex>
 #include "LightwaveExplorerUtilities.h"
 
-// Include dlib optimization in the build of utilities
-// This is part of the Dlib library, whose repo should 
-// be cloned to ../dlib
-// See dlib.net for more info
-// Copyright (C) 2006  Davis E. King (davis@dlib.net)
-// License: Boost Software License   See LICENSE.txt for the full license.
-#include "dlib/test_for_odr_violations.cpp"
-#include "dlib/threads/thread_pool_extension.cpp"
-#include "dlib/global_optimization/global_function_search.cpp"
+
 
 int readFittingString(simulationParameterSet* sCPU) {
 	//read the fitting string (if there is one), convert it into an array if it exists
 	char fittingString[MAX_LOADSTRING];
 	double ROIbegin;
 	double ROIend;
-	strcpy(fittingString, (*sCPU).fittingString);
-	char* tokToken = strtok(fittingString, ";");
-	bool paramsRead = (3 == sscanf(fittingString, "%lf %lf %d",
+	strcpy_s(fittingString, MAX_LOADSTRING, (*sCPU).fittingString);
+	char* nextToken;
+	char* tokToken = strtok_s(fittingString, ";", &nextToken);
+	bool paramsRead = (3 == sscanf_s(fittingString, "%lf %lf %d",
 		&ROIbegin, &ROIend, &(*sCPU).fittingMaxIterations));
 	(*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
 	(*sCPU).fittingROIstop = (size_t)minN(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
 	(*sCPU).fittingROIsize = minN(maxN(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
 	int fittingCount = 0;
-	tokToken = strtok(NULL, ";");
+	tokToken = strtok_s(NULL, ";", &nextToken);
 	int lastread = 3;
 	while (tokToken != NULL && lastread == 3) {
-		lastread = sscanf(tokToken, "%lf %lf %lf",
+		lastread = sscanf_s(tokToken, "%lf %lf %lf",
 			&(*sCPU).fittingArray[fittingCount], &(*sCPU).fittingArray[fittingCount + 1],
 			&(*sCPU).fittingArray[fittingCount + 2]);
 		if (lastread > 0) {
 			fittingCount += lastread;
 		}
-		tokToken = strtok(NULL, ";");
+		tokToken = strtok_s(NULL, ";", &nextToken);
 	}
 	(*sCPU).Nfitting = fittingCount / 3;
 	(*sCPU).isInFittingMode = (((*sCPU).Nfitting) > 0 && paramsRead);
 
 	if (!(*sCPU).isInFittingMode) {
 		char nopeString[] = "None.";
-		strcpy((*sCPU).fittingString, nopeString);
+		strcpy_s((*sCPU).fittingString, MAX_LOADSTRING, nopeString);
 	}
 	return 0;
 }
@@ -166,8 +159,9 @@ int fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long 
 }
 
 int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
-	FILE* fp = fopen(spectrumPath, "r");
-	if (fp == NULL) {
+	
+	FILE* fp;// = fopen(spectrumPath, "r");
+	if (fopen_s(&fp, spectrumPath, "r")) {
 		printf("Could not read reference file\r\n");
 		return 1;
 	}
@@ -183,7 +177,7 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 	double maxWavelength = 0;
 	double minWavelength = 0;
 
-	while (fscanf(fp, "%lf %lf", &loadedWavelengths[currentRow], &loadedIntensities[currentRow]) == 2 && currentRow < maxFileSize) {
+	while (fscanf_s(fp, "%lf %lf", &loadedWavelengths[currentRow], &loadedIntensities[currentRow]) == 2 && currentRow < maxFileSize) {
 		if (currentRow == 0) {
 			maxWavelength = loadedWavelengths[currentRow];
 			minWavelength = loadedWavelengths[currentRow];
@@ -234,19 +228,19 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 
 	//read fields as binary
 	FILE* ExtOutFile;
-	strcpy(outputpath, outputBase);
-	strcat(outputpath, "_Ext.dat");
-	ExtOutFile = fopen(outputpath, "rb");
-	if (ExtOutFile == NULL) return 1;
-	fread((*sCPU).ExtOut, sizeof(double), writeSize, ExtOutFile);
+	strcpy_s(outputpath, MAX_LOADSTRING, outputBase);
+	strcat_s(outputpath, MAX_LOADSTRING, "_Ext.dat");
+	//ExtOutFile = fopen(outputpath, "rb");
+	if (fopen_s(&ExtOutFile,outputpath,"rb")) return 1;
+
+	fread_s((*sCPU).ExtOut, writeSize*sizeof(double), sizeof(double), writeSize, ExtOutFile);
 	fclose(ExtOutFile);
 
 	FILE* spectrumFile;
-	strcpy(outputpath, outputBase);
-	strcat(outputpath, "_spectrum.dat");
-	spectrumFile = fopen(outputpath, "rb");
-	if (spectrumFile == NULL) return 1;
-	fread((*sCPU).totalSpectrum, sizeof(double), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq, spectrumFile);
+	strcpy_s(outputpath, MAX_LOADSTRING, outputBase);
+	strcat_s(outputpath, MAX_LOADSTRING, "_spectrum.dat");
+	if (fopen_s(&spectrumFile, outputpath, "rb")) return 1;
+	fread_s((*sCPU).totalSpectrum, (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq * sizeof(double), sizeof(double), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq, spectrumFile);
 	fclose(spectrumFile);
 
 	fftw_plan fftwPlanD2Z;
@@ -278,9 +272,10 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 		fileName = strchr(fileName, '\\');
 		fileName++;
 	}
-	strcpy(outputpath, (*sCPU).outputBasePath);
-	strcat(outputpath, ".slurmScript");
-	textfile = fopen(outputpath, "wb");
+
+	strcpy_s(outputpath, MAX_LOADSTRING, (*sCPU).outputBasePath);
+	strcat_s(outputpath, MAX_LOADSTRING, ".slurmScript");
+	if (fopen_s(&textfile, outputpath, "wb")) return 1;
 	fprintf(textfile, "#!/bin/bash -l"); unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH -o ./tjob.out.%%j"); unixNewLine(textfile);
 	fprintf(textfile, "#SBATCH -e ./tjob.err.%%j"); unixNewLine(textfile);
@@ -331,15 +326,15 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	FILE* textfile;
 	wchar_t wideStringConversionBuffer[MAX_LOADSTRING] = { 0 };
 	char outputpath[MAX_LOADSTRING] = { 0 };
-	strcpy(outputpath, (*sCPU).outputBasePath);
+	strcpy_s(outputpath, MAX_LOADSTRING, (*sCPU).outputBasePath);
 	if ((*sCPU).runType > 0) {
-		strcat(outputpath, ".input");
+		strcat_s(outputpath, MAX_LOADSTRING, ".input");
 	}
 	else {
-		strcat(outputpath, ".txt");
+		strcat_s(outputpath, MAX_LOADSTRING, ".txt");
 	}
 
-	textfile = fopen(outputpath, "w");
+	if(fopen_s(&textfile, outputpath, "w")) return 1;
 	fwprintf(textfile, L"Pulse energy 1 (J): %14.14e\nPulse energy 2 (J): %14.14e\nFrequency 1 (Hz): %14.14e\n",
 		(*sCPU).pulseEnergy1, (*sCPU).pulseEnergy2, (*sCPU).frequency1);
 	fwprintf(textfile, L"Frequency 2 (Hz): %14.14e\nBandwidth 1 (Hz): %14.14e\nBandwidth 2 (Hz): %14.14e\n",
@@ -373,9 +368,10 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 		(*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
 	fwprintf(textfile, L"Batch mode 2: %i\nBatch destination 2: %14.14e\nBatch steps 2: %lli\n",
 		(*sCPU).batchIndex2, (*sCPU).batchDestination2, (*sCPU).Nsims2);
-	mbstowcs(wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
+	size_t convertedCount;
+	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
 	fwprintf(textfile, L"Sequence: %ls\n", wideStringConversionBuffer);
-	mbstowcs(wideStringConversionBuffer, (*sCPU).fittingString, MAX_LOADSTRING);
+	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).fittingString, MAX_LOADSTRING);
 	fwprintf(textfile, L"Fitting: %ls\n", wideStringConversionBuffer);
 	fwprintf(textfile, L"Fitting mode: %i\n", (*sCPU).fittingMode);
 
@@ -385,21 +381,21 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 			fileName = strchr(fileName, '\\');
 			fileName++;
 		}
-		mbstowcs(wideStringConversionBuffer, fileName, strlen(fileName));
+		mbstowcs_s(&convertedCount, wideStringConversionBuffer, fileName, MAX_LOADSTRING);
 		wideStringConversionBuffer[strlen(fileName)] = L'\0';
 		fwprintf(textfile, L"Output base path: %ls\n", wideStringConversionBuffer);
 	}
 	else {
-		mbstowcs(wideStringConversionBuffer, (*sCPU).outputBasePath, MAX_LOADSTRING);
+		mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).outputBasePath, MAX_LOADSTRING);
 		fwprintf(textfile, L"Output base path: %ls\n", wideStringConversionBuffer);
 	}
 
 	fwprintf(textfile, L"Field 1 from file type: %i\nField 2 from file type: %i\n", (*sCPU).pulse1FileType, (*sCPU).pulse2FileType);
-	mbstowcs(wideStringConversionBuffer, (*sCPU).field1FilePath, MAX_LOADSTRING);
+	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).field1FilePath, MAX_LOADSTRING);
 	fwprintf(textfile, L"Field 1 file path: %ls\n", wideStringConversionBuffer);
-	mbstowcs(wideStringConversionBuffer, (*sCPU).field2FilePath, MAX_LOADSTRING);
+	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).field2FilePath, MAX_LOADSTRING);
 	fwprintf(textfile, L"Field 2 file path: %ls\n", wideStringConversionBuffer);
-	mbstowcs(wideStringConversionBuffer, (*sCPU).fittingPath, MAX_LOADSTRING);
+	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).fittingPath, MAX_LOADSTRING);
 	fwprintf(textfile, L"Fitting reference file path: %ls\n", wideStringConversionBuffer);
 
 	fwprintf(textfile, L"Material name: %ls\nSellmeier reference: %ls\nChi2 reference: %ls\nChi3 reference: %ls\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
@@ -450,8 +446,7 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
 
 int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* filePath) {
 	FILE* textfile;
-	textfile = fopen(filePath, "r");
-	if (textfile == NULL) {
+	if (fopen_s(&textfile, filePath, "r")) {
 		return 1;
 	}
 	//read parameters using fscanf:
@@ -464,136 +459,136 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	// &(*sCPU).outputBasePath -> (*sCPU).outputBasePath
 	int readValueCount = 0;
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).pulseEnergy1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulseEnergy1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).pulseEnergy2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulseEnergy2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).frequency1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).frequency1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).frequency2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).frequency2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).bandwidth1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).bandwidth1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).bandwidth2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).bandwidth2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%i", &(*sCPU).sgOrder1);
+	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).sgOrder1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%i", &(*sCPU).sgOrder2);
+	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).sgOrder2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).cephase1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).cephase1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).cephase2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).cephase2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).delay1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).delay1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).delay2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).delay2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).gdd1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).gdd1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).gdd2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).gdd2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).tod1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).tod1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).tod2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).tod2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%d", &(*sCPU).phaseMaterialIndex1);
+	readValueCount += fscanf_s(textfile, "%d", &(*sCPU).phaseMaterialIndex1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%d", &(*sCPU).phaseMaterialIndex2);
+	readValueCount += fscanf_s(textfile, "%d", &(*sCPU).phaseMaterialIndex2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).phaseMaterialThickness1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).phaseMaterialThickness1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).phaseMaterialThickness2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).phaseMaterialThickness2);
 	skipFileUntilCharacter(textfile, ':');
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).beamwaist1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).beamwaist1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).beamwaist2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).beamwaist2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).x01);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).x01);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).x02);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).x02);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).y01);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).y01);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).y02);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).y02);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).z01);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).z01);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).z02);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).z02);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationAngle1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).propagationAngle1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationAngle2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).propagationAngle2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationAnglePhi1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).propagationAnglePhi1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationAnglePhi2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).propagationAnglePhi2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).polarizationAngle1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).polarizationAngle1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).polarizationAngle2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).polarizationAngle2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).circularity1);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).circularity1);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).circularity2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).circularity2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%i", &(*sCPU).materialIndex);
+	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).materialIndex);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%i", &(*sCPU).materialIndexAlternate);
+	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).materialIndexAlternate);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).crystalTheta);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).crystalTheta);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).crystalPhi);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).crystalPhi);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).spatialWidth);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).spatialWidth);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).spatialHeight);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).spatialHeight);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).rStep);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).rStep);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).timeSpan);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).timeSpan);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).tStep);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).tStep);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).crystalThickness);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).crystalThickness);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).propagationStep);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).propagationStep);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).nonlinearAbsorptionStrength);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).nonlinearAbsorptionStrength);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).bandGapElectronVolts);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).bandGapElectronVolts);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).effectiveMass);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).effectiveMass);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).drudeGamma);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).drudeGamma);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%i", &(*sCPU).symmetryType);
+	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).symmetryType);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%i", &(*sCPU).batchIndex);
+	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).batchIndex);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).batchDestination);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).batchDestination);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%zu", &(*sCPU).Nsims);
+	readValueCount += fscanf_s(textfile, "%zu", &(*sCPU).Nsims);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%i", &(*sCPU).batchIndex2);
+	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).batchIndex2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%lf", &(*sCPU).batchDestination2);
+	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).batchDestination2);
 	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf(textfile, "%zu", &(*sCPU).Nsims2);
-	readValueCount += fscanf(textfile, "\nSequence: ");
+	readValueCount += fscanf_s(textfile, "%zu", &(*sCPU).Nsims2);
+	readValueCount += fscanf_s(textfile, "\nSequence: ");
 	fgets((*sCPU).sequenceString, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf(textfile, "Fitting: ");
+	readValueCount += fscanf_s(textfile, "Fitting: ");
 	fgets((*sCPU).fittingString, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf(textfile, "Fitting mode : %i\n", &(*sCPU).fittingMode);
-	readValueCount += fscanf(textfile, "Output base path: ");
+	readValueCount += fscanf_s(textfile, "Fitting mode : %i\n", &(*sCPU).fittingMode);
+	readValueCount += fscanf_s(textfile, "Output base path: ");
 	fgets((*sCPU).outputBasePath, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n",
+	readValueCount += fscanf_s(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n",
 		&(*sCPU).pulse1FileType, &(*sCPU).pulse2FileType);
-	readValueCount += fscanf(textfile, "Field 1 file path: ");
+	readValueCount += fscanf_s(textfile, "Field 1 file path: ");
 	fgets((*sCPU).field1FilePath, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf(textfile, "Field 2 file path: ");
+	readValueCount += fscanf_s(textfile, "Field 2 file path: ");
 	fgets((*sCPU).field2FilePath, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf(textfile, "Fitting reference file path: ");
+	readValueCount += fscanf_s(textfile, "Fitting reference file path: ");
 	fgets((*sCPU).fittingPath, MAX_LOADSTRING, textfile);
 
 	removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\r');
@@ -678,26 +673,26 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 	//write field as binary
 	FILE* ExtOutFile;
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
-	strcpy(outputpath, outputbase);
-	strcat(outputpath, "_Ext.dat");
-	ExtOutFile = fopen(outputpath, "wb");
+	strcpy_s(outputpath, MAX_LOADSTRING, outputbase);
+	strcat_s(outputpath, MAX_LOADSTRING, "_Ext.dat");
+	if (fopen_s(&ExtOutFile, outputpath, "wb")) return 1;
 	fwrite((*sCPU).ExtOut, sizeof(double), writeSize, ExtOutFile);
 	fwrite(matlabpadding, sizeof(double), 1024, ExtOutFile);
 	fclose(ExtOutFile);
 
 	//Save the spectrum
 	FILE* totalSpectrumFile;
-	strcpy(outputpath, outputbase);
-	strcat(outputpath, "_spectrum.dat");
-	totalSpectrumFile = fopen(outputpath, "wb");
+	strcpy_s(outputpath, MAX_LOADSTRING, outputbase);
+	strcat_s(outputpath, MAX_LOADSTRING, "_spectrum.dat");
+	if(fopen_s(&totalSpectrumFile, outputpath, "wb")) return 1;
 	fwrite((*sCPU).totalSpectrum, sizeof(double), 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2, totalSpectrumFile);
 	fwrite(matlabpadding, sizeof(double), 1024, totalSpectrumFile);
 	fclose(totalSpectrumFile);
 
 	FILE* matlabfile;
-	strcpy(outputpath, outputbase);
-	strcat(outputpath, ".m");
-	matlabfile = fopen(outputpath, "w");
+	strcpy_s(outputpath, MAX_LOADSTRING, outputbase);
+	strcat_s(outputpath, MAX_LOADSTRING, ".m");
+	if(fopen_s(&matlabfile, outputpath, "w")) return 1;
 
 	if (saveInputs) {
 		fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
@@ -719,10 +714,10 @@ int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, 
 
 	//write a python script for loading the output fields in a proper shape
 	char scriptfilename[MAX_LOADSTRING];
-	strcpy(scriptfilename, outputbase);
-	strcat(scriptfilename, ".py");
+	strcpy_s(scriptfilename, MAX_LOADSTRING, outputbase);
+	strcat_s(scriptfilename, MAX_LOADSTRING, ".py");
 	FILE* scriptfile;
-	scriptfile = fopen(scriptfilename, "w");
+	if(fopen_s(&scriptfile, scriptfilename, "w")) return 1;
 	fprintf(scriptfile, "#!/usr/bin/python\nimport numpy as np\n");
 	fprintf(scriptfile, "dt = %e\ndz = %e\ndx = %e\ndf = %e\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep, (*sCPU).fStep);
 	if (saveInputs) {
@@ -817,18 +812,19 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 int readSequenceString(simulationParameterSet* sCPU) {
 	//read the sequence string (if there is one), convert it into an array if it exists
 	char sequenceString[MAX_LOADSTRING];
-	strcpy(sequenceString, (*sCPU).sequenceString);
-	char* tokToken = strtok(sequenceString, ";");
-	int sequenceCount = sscanf(sequenceString, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+	strcpy_s(sequenceString, MAX_LOADSTRING, (*sCPU).sequenceString);
+	char* nextToken;
+	char* tokToken = strtok_s(sequenceString, ";", &nextToken);
+	int sequenceCount = sscanf_s(sequenceString, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 		&(*sCPU).sequenceArray[0], &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2],
 		&(*sCPU).sequenceArray[3], &(*sCPU).sequenceArray[4], &(*sCPU).sequenceArray[5],
 		&(*sCPU).sequenceArray[6], &(*sCPU).sequenceArray[7], &(*sCPU).sequenceArray[8],
 		&(*sCPU).sequenceArray[9], &(*sCPU).sequenceArray[10]);
 
-	tokToken = strtok(NULL, ";");
+	tokToken = strtok_s(NULL, ";", &nextToken);
 	int lastread = sequenceCount;
 	while (tokToken != NULL && lastread == 11) {
-		lastread = sscanf(tokToken, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+		lastread = sscanf_s(tokToken, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 			&(*sCPU).sequenceArray[sequenceCount], &(*sCPU).sequenceArray[sequenceCount + 1],
 			&(*sCPU).sequenceArray[sequenceCount + 2], &(*sCPU).sequenceArray[sequenceCount + 3],
 			&(*sCPU).sequenceArray[sequenceCount + 4], &(*sCPU).sequenceArray[sequenceCount + 5],
@@ -838,14 +834,14 @@ int readSequenceString(simulationParameterSet* sCPU) {
 		if (lastread > 0) {
 			sequenceCount += lastread;
 		}
-		tokToken = strtok(NULL, ";");
+		tokToken = strtok_s(NULL, ";", &nextToken);
 	}
 	(*sCPU).Nsequence = sequenceCount / 11;
 	(*sCPU).isInSequence = ((*sCPU).Nsequence > 0);
 
 	if (!(*sCPU).isInSequence) {
 		char nopeString[] = "None.";
-		strcpy((*sCPU).sequenceString, nopeString);
+		strcpy_s((*sCPU).sequenceString, MAX_LOADSTRING, nopeString);
 	}
 	return 0;
 }
@@ -855,8 +851,7 @@ int readCrystalDatabase(crystalEntry* db) {
 	int i = 0;
 	double* fd;
 	FILE* fp;
-	fp = fopen("CrystalDatabase.txt", "r");
-	if (fp == NULL) {
+	if (fopen_s(&fp, "CrystalDatabase.txt", "r")) {
 		return -2;
 	}
 	wchar_t lineBuffer[MAX_LOADSTRING] = { 0 };
@@ -865,30 +860,33 @@ int readCrystalDatabase(crystalEntry* db) {
 	int readErrors = 0;
 
 	while (readErrors == 0 && !feof(fp) && i < MAX_LOADSTRING) {
-		readErrors += 0 != fwscanf(fp, L"Name:\n");
+		readErrors += 0 != fwscanf_s(fp, L"Name:\n");
 		fgetws(db[i].crystalNameW, 256, fp);
-		readErrors += 1 != fwscanf(fp, L"Type:\n%d\n", &db[i].axisType);
-		readErrors += 1 != fwscanf(fp, L"Sellmeier equation:\n%d\n", &db[i].sellmeierType);
+		readErrors += 1 != fwscanf_s(fp, L"Type:\n%d\n", &db[i].axisType);
+		readErrors += 1 != fwscanf_s(fp, L"Sellmeier equation:\n%d\n", &db[i].sellmeierType);
 		fd = &db[i].sellmeierCoefficients[0];
-		readErrors += 22 != fwscanf(fp, L"1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
+		readErrors += 22 != fwscanf_s(fp, L"1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
 			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
 		fd = &db[i].sellmeierCoefficients[22];
-		readErrors += 22 != fwscanf(fp, L"2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
+		if (db[i].sellmeierType == 0 && db[i].sellmeierCoefficients[16] == 0.0 && db[i].sellmeierCoefficients[19] == 0.0) {
+			db[i].sellmeierType = 100; //use a different equation, 2, for eqn 0 with no imaginary components.
+		}
+		readErrors += 22 != fwscanf_s(fp, L"2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
 			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
 		fd = &db[i].sellmeierCoefficients[44];
-		readErrors += 22 != fwscanf(fp, L"3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
+		readErrors += 22 != fwscanf_s(fp, L"3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
 			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-		readErrors += 0 != fwscanf(fp, L"Sellmeier reference:\n");
+		readErrors += 0 != fwscanf_s(fp, L"Sellmeier reference:\n");
 		fgetws(db[i].sellmeierReference, 512, fp);
-		readErrors += 1 != fwscanf(fp, L"chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
+		readErrors += 1 != fwscanf_s(fp, L"chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
 		fd = &db[i].d[0];
-		readErrors += 18 != fwscanf(fp, L"d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n",
+		readErrors += 18 != fwscanf_s(fp, L"d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n",
 			&fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15],
 			&fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16],
 			&fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
-		readErrors += 0 != fwscanf(fp, L"d reference:\n");
+		readErrors += 0 != fwscanf_s(fp, L"d reference:\n");
 		fgetws(db[i].dReference, 512, fp);
-		readErrors += 1 != fwscanf(fp, L"chi3 type:\n%d\nchi3:\n", &db[i].nonlinearSwitches[1]);
+		readErrors += 1 != fwscanf_s(fp, L"chi3 type:\n%d\nchi3:\n", &db[i].nonlinearSwitches[1]);
 		//handle chi3 in a flexible way to avoid making the user write 81 zeroes when not needed
 		fd = &db[i].chi3[0];
 		memset(fd, 0, 81 * sizeof(double));
@@ -900,26 +898,26 @@ int readCrystalDatabase(crystalEntry* db) {
 		else if (db[i].nonlinearSwitches[1] == 1) {
 			for (int j = 0; j < 3; j++) {
 				for (int k = 0; k < 27; k++) {
-					readErrors += 1 != fwscanf(fp, L"%lf", &fd[j + 3 * k]);
+					readErrors += 1 != fwscanf_s(fp, L"%lf", &fd[j + 3 * k]);
 				}
-				readErrors += fwscanf(fp, L"\n");
+				readErrors += fwscanf_s(fp, L"\n");
 			}
 		}
 		else if (db[i].nonlinearSwitches[1] == 2) {
-			readErrors += 1 != fwscanf(fp, L"%lf", &fd[0]);
+			readErrors += 1 != fwscanf_s(fp, L"%lf", &fd[0]);
 			fgetws(lineBuffer, MAX_LOADSTRING, fp);
 			fgetws(lineBuffer, MAX_LOADSTRING, fp);
 			fgetws(lineBuffer, MAX_LOADSTRING, fp);
 		}
-		readErrors += 0 != fwscanf(fp, L"chi3 reference:\n");
+		readErrors += 0 != fwscanf_s(fp, L"chi3 reference:\n");
 		fgetws(db[i].chi3Reference, 512, fp);
-		readErrors += 0 != fwscanf(fp, L"Spectral file:\n");
+		readErrors += 0 != fwscanf_s(fp, L"Spectral file:\n");
 		fgetws(db[i].spectralFile, 512, fp);
 		fd = db[i].nonlinearReferenceFrequencies;
-		readErrors += 0 != fwscanf(fp, L"Nonlinear reference frequencies:\n");
-		readErrors += 7 != fwscanf(fp, L"%lf %lf %lf %lf %lf %lf %lf\n",
+		readErrors += 0 != fwscanf_s(fp, L"Nonlinear reference frequencies:\n");
+		readErrors += 7 != fwscanf_s(fp, L"%lf %lf %lf %lf %lf %lf %lf\n",
 			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6]);
-		readErrors += 0 != fwscanf(fp, L"~~~crystal end~~~\n");
+		readErrors += 0 != fwscanf_s(fp, L"~~~crystal end~~~\n");
 		if (readErrors == 0) i++;
 	}
 	db[0].numberOfEntries = i;
@@ -977,12 +975,11 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 		return -2;
 	}
 	//read the data
-	fp = fopen(frogFilePath, "r");
-	if (fp == NULL) {
+	if (fopen_s(&fp, frogFilePath, "r")) {
 		free(E);
 		return -1;
 	}
-	while (fscanf(fp, "%lf %lf %lf %lf %lf", &wavelength, &R, &phi, &complexX, &complexY) == 5 && currentRow < maxFileSize) {
+	while (fscanf_s(fp, "%lf %lf %lf %lf %lf", &wavelength, &R, &phi, &complexX, &complexY) == 5 && currentRow < maxFileSize) {
 		//get the complex field from the data
 		E[currentRow].real(complexX);
 		E[currentRow].imag(complexY);
