@@ -856,7 +856,7 @@ namespace kernels {
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (ne.real() < 0.8 || isnan(ne.real()) || isnan(no.real())) {
+		if (minN(ne.real(), no.real()) < 0.9 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -927,7 +927,7 @@ namespace kernels {
 		double dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-		if (ne.real() < 0.9 || isnan(ne.real()) || isnan(no.real())) {
+		if (minN(ne.real(), no.real()) < 0.9 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -1071,10 +1071,11 @@ namespace kernels {
 		double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 
 
-		//NOTE TO SELF: I DON"T KNOW WHY ONLY THIS WORKS AND NOT THE COMMENTED ONES BELOW
-		//findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex % ((*s).Nfreq-1), &ne, &no);
-		//sellmeierCuda(&ne, &no, sellmeierCoefficients, maxN(f, -f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
-		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		//NOTE TO SELF: Using this function is not strictly necessary, but it tends to filter out the invalid region better
+		//than raw application of the sellmeier equation. It might be possible to reduce startup time by making a smarter filter
+		//without all the extra calculations.
+		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex % ((*s).Nfreq-1), &ne, &no);
+		//sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 		if (minN(ne.real(), no.real()) < 0.9 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
