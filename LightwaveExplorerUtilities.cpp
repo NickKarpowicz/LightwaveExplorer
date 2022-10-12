@@ -158,6 +158,7 @@ int fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long 
 	return 0;
 }
 
+
 int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 	
 	FILE* fp;// = fopen(spectrumPath, "r");
@@ -220,6 +221,7 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 }
 
 
+
 int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	char outputpath[MAX_LOADSTRING] = { 0 };
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
@@ -232,7 +234,7 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	strcat_s(outputpath, MAX_LOADSTRING, "_Ext.dat");
 	//ExtOutFile = fopen(outputpath, "rb");
 	if (fopen_s(&ExtOutFile,outputpath,"rb")) return 1;
-
+	
 	fread_s((*sCPU).ExtOut, writeSize*sizeof(double), sizeof(double), writeSize, ExtOutFile);
 	fclose(ExtOutFile);
 
@@ -374,6 +376,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).fittingString, MAX_LOADSTRING);
 	fwprintf(textfile, L"Fitting: %ls\n", wideStringConversionBuffer);
 	fwprintf(textfile, L"Fitting mode: %i\n", (*sCPU).fittingMode);
+	
 
 	if ((*sCPU).runType > 0) {
 		char* fileName = (*sCPU).outputBasePath;

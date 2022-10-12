@@ -4,6 +4,7 @@
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
+#include <fftw3_mkl.h>
 #define deviceLib thrust
 #define deviceComplex thrust::complex<double>
 #elif defined RUNONSYCL
@@ -40,6 +41,39 @@ namespace oneapi::dpl {
 #define deviceLib std
 #endif
 
+
+
+//give linux wrappers for unsafe functions to use as safe functions so it compiles I don't care anymore
+#ifdef __linux__
+char* strtok_s(char* in, const char* delimiter, char** dummy) {
+    return strtok(in, delimiter);
+}
+
+//template<typename... Args>
+//int sscanf_s(char* buffer, const char* format, Args... args) {
+//    sscanf_s(buffer, format, args...);
+//}
+#define sscanf_s sscanf
+#define fscanf_s fscanf
+#define fwscanf_s fwscanf
+int fopen_s(FILE** fp, char* path, const char* kind) {
+    *fp = fopen(path, kind);
+    return (*fp == 0);
+}
+
+char* strcpy_s(char* a, int len, char* c) {
+    return strcpy(a, c);
+}
+
+size_t fread_s(void* buffer, size_t buffersize, size_t elementsize, size_t Nwrite, FILE* file) {
+    return fread(buffer, elementsize, Nwrite, file);
+}
+
+size_t mbstowcs_s(size_t* ct, wchar_t* buf, char* obuf, size_t m) {
+    return mbstowcs(buf, obuf, m);
+}
+
+#endif
 
 #define THREADS_PER_BLOCK 32
 #define MIN_GRIDDIM 8
