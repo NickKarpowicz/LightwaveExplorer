@@ -13,7 +13,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 	double ROIbegin;
 	double ROIend;
 	strcpy_s(fittingString, MAX_LOADSTRING, (*sCPU).fittingString);
-	char* nextToken;
+	char* nextToken = NULL;
 	char* tokToken = strtok_s(fittingString, ";", &nextToken);
 	bool paramsRead = (3 == sscanf_s(fittingString, "%lf %lf %d",
 		&ROIbegin, &ROIend, &(*sCPU).fittingMaxIterations));
@@ -813,7 +813,7 @@ int readSequenceString(simulationParameterSet* sCPU) {
 	//read the sequence string (if there is one), convert it into an array if it exists
 	char sequenceString[MAX_LOADSTRING];
 	strcpy_s(sequenceString, MAX_LOADSTRING, (*sCPU).sequenceString);
-	char* nextToken;
+	char* nextToken = NULL;
 	char* tokToken = strtok_s(sequenceString, ";", &nextToken);
 	int sequenceCount = sscanf_s(sequenceString, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 		&(*sCPU).sequenceArray[0], &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2],
