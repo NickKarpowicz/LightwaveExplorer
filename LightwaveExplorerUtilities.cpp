@@ -658,7 +658,6 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	return readValueCount;
 }
 
-
 int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs) {
 
 	saveSettingsFile(sCPU, crystalDatabasePtr);

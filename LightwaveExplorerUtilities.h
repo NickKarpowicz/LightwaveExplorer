@@ -73,6 +73,10 @@ size_t mbstowcs_s(size_t* ct, wchar_t* buf, char* obuf, size_t m) {
     return mbstowcs(buf, obuf, m);
 }
 
+int strcat_s(char* a, size_t L, char* b) {
+    strcat(a, b);
+    return 0;
+}
 #endif
 
 #define THREADS_PER_BLOCK 32
