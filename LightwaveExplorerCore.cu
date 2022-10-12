@@ -1561,27 +1561,6 @@ namespace kernels {
 using namespace kernels;
 
 namespace hostFunctions{
-	class ticker {
-		std::chrono::steady_clock::time_point time0;
-
-	public:
-		ticker() {
-			time0 = std::chrono::high_resolution_clock::now();
-		}
-		void set() {
-			time0 = std::chrono::high_resolution_clock::now();
-		}
-		void printElapsed() {
-			std::chrono::steady_clock::time_point time1 = std::chrono::high_resolution_clock::now();
-			printf("Elapsed time: %8.4lf ms\n",
-				1.0e-3 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(time1 - time0).count()));
-		}
-
-		void printSet() {
-			printElapsed();
-			set();
-		}
-	};
 	typedef dlib::matrix<double, 0, 1> column_vector;
 	simulationParameterSet* fittingSet;
 	
