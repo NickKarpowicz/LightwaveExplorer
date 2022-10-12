@@ -1,9 +1,3 @@
-// DlibLibraryComponents.cpp : Defines the functions for the static library.
-//
-
-#include "pch.h"
-#include "framework.h"
-
 // Build the necessary components of dlib for optimization
 // This is part of the Dlib library, whose repo should 
 // be cloned to ../dlib
