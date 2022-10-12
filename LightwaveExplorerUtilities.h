@@ -48,7 +48,6 @@ namespace oneapi::dpl {
 char* strtok_s(char* in, const char* delimiter, char** dummy) {
     return strtok(in, delimiter);
 }
-
 //template<typename... Args>
 //int sscanf_s(char* buffer, const char* format, Args... args) {
 //    sscanf_s(buffer, format, args...);
