@@ -166,6 +166,7 @@
       <SpecifyGPUTargetForAOT>Default</SpecifyGPUTargetForAOT>
       <AdditionalDependencies>DlibLibraryComponents.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/LTCG</AdditionalOptions>
+      <SpecifyCPUTargetForAOT>Default</SpecifyCPUTargetForAOT>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(TargetPath)" "$(ProjectDir)..\Executable\"

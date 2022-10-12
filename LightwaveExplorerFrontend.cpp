@@ -78,7 +78,6 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 void checkLibraryAvailability() {
-
     __try {
         HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
         if (SUCCEEDED(hr)) {
@@ -422,6 +421,48 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+    //Check if the SYCL cache is on, if it hasn't been set, turn it on and close (for restart)
+    wchar_t loadBuffer[MAX_LOADSTRING];
+    DWORD envcount = GetEnvironmentVariableW(L"SYCL_CACHE_PERSISTENT", loadBuffer, 16);
+    if (envcount == 0) {
+        STARTUPINFO si;
+        PROCESS_INFORMATION pi;
+
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        ZeroMemory(&pi, sizeof(pi));
+        wchar_t setSYCLpersistent[] = L"setx SYCL_CACHE_PERSISTENT 1";
+        // Start the child process. 
+        CreateProcess(NULL,   // No module name (use command line)
+            setSYCLpersistent,        // Command line
+            NULL,           // Process handle not inheritable
+            NULL,           // Thread handle not inheritable
+            FALSE,          // Set handle inheritance to FALSE
+            CREATE_NO_WINDOW,              // No creation flags
+            NULL,           // Use parent's environment block
+            NULL,           // Use parent's starting directory 
+            &si,            // Pointer to STARTUPINFO structure
+            &pi);           // Pointer to PROCESS_INFORMATION structure
+
+        // Wait until child process exits.
+        WaitForSingleObject(pi.hProcess, INFINITE);
+
+        // Close process and thread handles. 
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+
+        int msgboxID = MessageBox(
+            NULL,
+            L"I have to finish setting up SYCL's environment variables - should be fine now, so just start the program again.\r\n\r\nI'm doing it this way because I don't want to edit your registry, and am just asking the system to do it itself.\r\n\r\nThanks!",
+            L"Setting up environment...",
+            MB_ICONINFORMATION | MB_OK
+        );
+        if (msgboxID == IDOK) {
+            ExitProcess(0);
+        }
+        
+    }
+
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_MPQNONLINEARPROPAGATION, szWindowClass, MAX_LOADSTRING);
@@ -495,6 +536,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     int k = 0;
+
     
     hInst = hInstance; // Store instance handle in our global variable
     int textboxwidth = maingui.textboxwidth;
@@ -2707,6 +2749,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     if ((*activeSetPtr).NsimsCPU < 1) return 0;
     simulationParameterSet* cpuSims = (simulationParameterSet*)lpParam;
     int pulldownSelection = (int)SendMessage(maingui.pdSecondaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    int pulldownSelectionPrimary = (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
@@ -2718,24 +2761,47 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     else {
         SYCLitems = 3;
     }
+    //launch on CUDA if selected, putting in the correct GPU in multi-gpu systems
     if (pulldownSelection < cudaGPUCount) {
         sequenceFunction = &solveNonlinearWaveEquationSequence;
         normalFunction = &solveNonlinearWaveEquation;
         assignedGPU = pulldownSelection;
     }
+    //launch on SYCL, but if the primary queue matches, default to openMP
     else if (pulldownSelection == cudaGPUCount && SYCLitems > 0) {
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+        if (pulldownSelection == pulldownSelectionPrimary) {
+            printToConsole(maingui.textboxSims, L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+            normalFunction = &solveNonlinearWaveEquationCPU;
+        }
+        else {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+            normalFunction = &solveNonlinearWaveEquationSYCL;
+        }
     }
     else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
-        forceCPU = 1;
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+        if (pulldownSelection == pulldownSelectionPrimary) {
+            printToConsole(maingui.textboxSims, L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+            normalFunction = &solveNonlinearWaveEquationCPU;
+        }
+        else {
+            forceCPU = 1;
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+            normalFunction = &solveNonlinearWaveEquationSYCL;
+        }
     }
     else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
-        assignedGPU = 1;
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+        if (pulldownSelection == pulldownSelectionPrimary) {
+            printToConsole(maingui.textboxSims, L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+            normalFunction = &solveNonlinearWaveEquationCPU;
+        }
+        else {
+            assignedGPU = 1;
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+            normalFunction = &solveNonlinearWaveEquationSYCL;
+        }
     }
     else{
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
