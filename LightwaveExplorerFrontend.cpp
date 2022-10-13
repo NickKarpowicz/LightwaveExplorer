@@ -1374,52 +1374,52 @@ int freeSemipermanentGrids() {
 int readParametersFromInterface() {
     std::complex<double> tmp;
 
-    (*activeSetPtr).pulseEnergy1 = getDoubleFromHWND(maingui.tbPulseEnergy1);
-    (*activeSetPtr).pulseEnergy2 = getDoubleFromHWND(maingui.tbPulseEnergy2);
-    (*activeSetPtr).frequency1 = 1e12 * getDoubleFromHWND(maingui.tbFrequency1);
-    (*activeSetPtr).frequency2 = 1e12 * getDoubleFromHWND(maingui.tbFrequency2);
-    (*activeSetPtr).bandwidth1 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth1);
-    (*activeSetPtr).bandwidth2 = 1e12 * getDoubleFromHWND(maingui.tbBandwidth2);
-    (*activeSetPtr).sgOrder1 = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType1) / 2));
-    if ((*activeSetPtr).sgOrder1 < 2) {
-        (*activeSetPtr).sgOrder1 = 2;
+    (*activeSetPtr).pulse1.energy = getDoubleFromHWND(maingui.tbPulseEnergy1);
+    (*activeSetPtr).pulse2.energy = getDoubleFromHWND(maingui.tbPulseEnergy2);
+    (*activeSetPtr).pulse1.frequency = 1e12 * getDoubleFromHWND(maingui.tbFrequency1);
+    (*activeSetPtr).pulse2.frequency = 1e12 * getDoubleFromHWND(maingui.tbFrequency2);
+    (*activeSetPtr).pulse1.bandwidth = 1e12 * getDoubleFromHWND(maingui.tbBandwidth1);
+    (*activeSetPtr).pulse2.bandwidth = 1e12 * getDoubleFromHWND(maingui.tbBandwidth2);
+    (*activeSetPtr).pulse1.sgOrder = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType1) / 2));
+    if ((*activeSetPtr).pulse1.sgOrder < 2) {
+        (*activeSetPtr).pulse1.sgOrder = 2;
     }
-    (*activeSetPtr).sgOrder2 = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType2) / 2));
-    if ((*activeSetPtr).sgOrder2 < 2) {
-        (*activeSetPtr).sgOrder2 = 2;
+    (*activeSetPtr).pulse2.sgOrder = 2 * ((int)ceil(getDoubleFromHWND(maingui.tbPulseType2) / 2));
+    if ((*activeSetPtr).pulse2.sgOrder < 2) {
+        (*activeSetPtr).pulse2.sgOrder = 2;
     }
-    (*activeSetPtr).cephase1 = PI * getDoubleFromHWND(maingui.tbCEPhase1);
-    (*activeSetPtr).cephase2 = PI * getDoubleFromHWND(maingui.tbCEPhase2);
-    (*activeSetPtr).delay1 = 1e-15 * getDoubleFromHWND(maingui.tbPulse1Delay); 
-    (*activeSetPtr).delay2 = 1e-15 * getDoubleFromHWND(maingui.tbPulse2Delay);
-    (*activeSetPtr).gdd1 = 1e-30 * getDoubleFromHWND(maingui.tbGDD1);
-    (*activeSetPtr).gdd2 = 1e-30 * getDoubleFromHWND(maingui.tbGDD2);
-    (*activeSetPtr).tod1 = 1e-45 * getDoubleFromHWND(maingui.tbTOD1);
-    (*activeSetPtr).tod2 = 1e-45 * getDoubleFromHWND(maingui.tbTOD2);
-    (*activeSetPtr).phaseMaterialIndex1 = (int)getDoubleFromHWND(maingui.tbPhaseMaterialIndex1);
-    (*activeSetPtr).phaseMaterialIndex2 = (int)getDoubleFromHWND(maingui.tbPhaseMaterialIndex2);
-    (*activeSetPtr).phaseMaterialThickness1 = 1e-6*getDoubleFromHWND(maingui.tbPhaseMaterialThickness1);
-    (*activeSetPtr).phaseMaterialThickness2 = 1e-6*getDoubleFromHWND(maingui.tbPhaseMaterialThickness2);
-    (*activeSetPtr).beamwaist1 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist1);
-    (*activeSetPtr).beamwaist2 = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist2);
+    (*activeSetPtr).pulse1.cep = PI * getDoubleFromHWND(maingui.tbCEPhase1);
+    (*activeSetPtr).pulse2.cep = PI * getDoubleFromHWND(maingui.tbCEPhase2);
+    (*activeSetPtr).pulse1.delay = 1e-15 * getDoubleFromHWND(maingui.tbPulse1Delay); 
+    (*activeSetPtr).pulse2.delay = 1e-15 * getDoubleFromHWND(maingui.tbPulse2Delay);
+    (*activeSetPtr).pulse1.gdd = 1e-30 * getDoubleFromHWND(maingui.tbGDD1);
+    (*activeSetPtr).pulse2.gdd = 1e-30 * getDoubleFromHWND(maingui.tbGDD2);
+    (*activeSetPtr).pulse1.tod = 1e-45 * getDoubleFromHWND(maingui.tbTOD1);
+    (*activeSetPtr).pulse2.tod = 1e-45 * getDoubleFromHWND(maingui.tbTOD2);
+    (*activeSetPtr).pulse1.phaseMaterial = (int)getDoubleFromHWND(maingui.tbPhaseMaterialIndex1);
+    (*activeSetPtr).pulse2.phaseMaterial = (int)getDoubleFromHWND(maingui.tbPhaseMaterialIndex2);
+    (*activeSetPtr).pulse1.phaseMaterialThickness = 1e-6*getDoubleFromHWND(maingui.tbPhaseMaterialThickness1);
+    (*activeSetPtr).pulse2.phaseMaterialThickness = 1e-6*getDoubleFromHWND(maingui.tbPhaseMaterialThickness2);
+    (*activeSetPtr).pulse1.beamwaist = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist1);
+    (*activeSetPtr).pulse2.beamwaist = 1e-6 * getDoubleFromHWND(maingui.tbBeamwaist2);
     tmp = 1e-6 * getDoubleDoublesfromHWND(maingui.tbXoffset1);
-    (*activeSetPtr).x01 = real(tmp);
-    (*activeSetPtr).y01 = imag(tmp);
+    (*activeSetPtr).pulse1.x0 = real(tmp);
+    (*activeSetPtr).pulse1.y0 = imag(tmp);
     tmp = 1e-6 * getDoubleDoublesfromHWND(maingui.tbXoffset2);
-    (*activeSetPtr).x02 = real(tmp);
-    (*activeSetPtr).y02 = imag(tmp);
-    (*activeSetPtr).z01 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset1);
-    (*activeSetPtr).z02 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset2);
+    (*activeSetPtr).pulse2.x0 = real(tmp);
+    (*activeSetPtr).pulse2.y0 = imag(tmp);
+    (*activeSetPtr).pulse1.z0 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset1);
+    (*activeSetPtr).pulse2.z0 = 1e-6 * getDoubleFromHWND(maingui.tbZoffset2);
     tmp = DEG2RAD * getDoubleDoublesfromHWND(maingui.tbPropagationAngle1);
-    (*activeSetPtr).propagationAngle1 = real(tmp);
-    (*activeSetPtr).propagationAnglePhi1 = imag(tmp);
+    (*activeSetPtr).pulse1.beamAngle = real(tmp);
+    (*activeSetPtr).pulse1.beamAnglePhi = imag(tmp);
     tmp = DEG2RAD * getDoubleDoublesfromHWND(maingui.tbPropagationAngle2);
-    (*activeSetPtr).propagationAngle2 = real(tmp);
-    (*activeSetPtr).propagationAnglePhi2 = imag(tmp);
-    (*activeSetPtr).polarizationAngle1 = DEG2RAD * getDoubleFromHWND(maingui.tbPolarizationAngle1);
-    (*activeSetPtr).polarizationAngle2 = DEG2RAD * getDoubleFromHWND(maingui.tbPolarizationAngle2);
-    (*activeSetPtr).circularity1 = getDoubleFromHWND(maingui.tbCircularity1);
-    (*activeSetPtr).circularity2 = getDoubleFromHWND(maingui.tbCircularity2);
+    (*activeSetPtr).pulse2.beamAngle = real(tmp);
+    (*activeSetPtr).pulse2.beamAnglePhi = imag(tmp);
+    (*activeSetPtr).pulse1.polarizationAngle = DEG2RAD * getDoubleFromHWND(maingui.tbPolarizationAngle1);
+    (*activeSetPtr).pulse2.polarizationAngle = DEG2RAD * getDoubleFromHWND(maingui.tbPolarizationAngle2);
+    (*activeSetPtr).pulse1.circularity = getDoubleFromHWND(maingui.tbCircularity1);
+    (*activeSetPtr).pulse2.circularity = getDoubleFromHWND(maingui.tbCircularity2);
 
     (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);
     (*activeSetPtr).materialIndexAlternate = (int)getDoubleFromHWND(maingui.tbMaterialIndexAlternate);
@@ -1553,10 +1553,10 @@ int readParametersFromInterface() {
 
     (*activeSetPtr).isCylindric = (*activeSetPtr).symmetryType == 1;
     if ((*activeSetPtr).isCylindric) {
-        (*activeSetPtr).x01 = 0;
-        (*activeSetPtr).x02 = 0;
-        (*activeSetPtr).propagationAngle1 = 0;
-        (*activeSetPtr).propagationAngle2 = 0;
+        (*activeSetPtr).pulse1.x0 = 0;
+        (*activeSetPtr).pulse2.x0 = 0;
+        (*activeSetPtr).pulse1.beamAngle = 0;
+        (*activeSetPtr).pulse2.beamAngle = 0;
     }
 
     if ((*activeSetPtr).batchIndex == 0 || (*activeSetPtr).Nsims < 1) {
@@ -1738,38 +1738,38 @@ int setWindowTextToDoubleExp(HWND win, double in) {
 }
 int setInterfaceValuesToActiveValues() {
 
-    setWindowTextToDoubleExp(maingui.tbPulseEnergy1, (*activeSetPtr).pulseEnergy1);
-    setWindowTextToDoubleExp(maingui.tbPulseEnergy2, (*activeSetPtr).pulseEnergy2);
-    setWindowTextToDouble(maingui.tbFrequency1, 1e-12*(*activeSetPtr).frequency1);
-    setWindowTextToDouble(maingui.tbFrequency2, 1e-12*(*activeSetPtr).frequency2);
-    setWindowTextToDouble(maingui.tbBandwidth1, 1e-12 * (*activeSetPtr).bandwidth1);
-    setWindowTextToDouble(maingui.tbBandwidth2, 1e-12 * (*activeSetPtr).bandwidth2);
-    setWindowTextToInt(maingui.tbPulseType1, (*activeSetPtr).sgOrder1);
-    setWindowTextToInt(maingui.tbPulseType2, (*activeSetPtr).sgOrder2);
-    setWindowTextToDouble(maingui.tbCEPhase1, PI * (*activeSetPtr).cephase1);
-    setWindowTextToDouble(maingui.tbCEPhase2, PI * (*activeSetPtr).cephase2);
-    setWindowTextToDouble(maingui.tbPulse1Delay, 1e15 * (*activeSetPtr).delay1);
-    setWindowTextToDouble(maingui.tbPulse2Delay, 1e15 * (*activeSetPtr).delay2);
-    setWindowTextToDouble(maingui.tbGDD1, 1e30*(*activeSetPtr).gdd1);
-    setWindowTextToDouble(maingui.tbGDD2, 1e30*(*activeSetPtr).gdd2);
-    setWindowTextToDouble(maingui.tbTOD1, 1e45*(*activeSetPtr).tod1);
-    setWindowTextToDouble(maingui.tbTOD2, 1e45*(*activeSetPtr).tod2);
-    setWindowTextToInt(maingui.tbPhaseMaterialIndex1, (*activeSetPtr).phaseMaterialIndex1);
-    setWindowTextToInt(maingui.tbPhaseMaterialIndex2, (*activeSetPtr).phaseMaterialIndex2);
-    setWindowTextToDouble(maingui.tbPhaseMaterialThickness1, 1e6 * (*activeSetPtr).phaseMaterialThickness1);
-    setWindowTextToDouble(maingui.tbPhaseMaterialThickness2, 1e6 * (*activeSetPtr).phaseMaterialThickness2);
-    setWindowTextToDouble(maingui.tbBeamwaist1, 1e6 * (*activeSetPtr).beamwaist1);
-    setWindowTextToDouble(maingui.tbBeamwaist2, 1e6 * (*activeSetPtr).beamwaist2);
-    setWindowTextToDouble(maingui.tbXoffset1, 1e6 * (*activeSetPtr).x01);
-    setWindowTextToDouble(maingui.tbXoffset1, 1e6 * (*activeSetPtr).x02);
-    setWindowTextToDouble(maingui.tbZoffset1, 1e6 * (*activeSetPtr).z01);
-    setWindowTextToDouble(maingui.tbZoffset2, 1e6 * (*activeSetPtr).z02);
-    setWindowTextToDouble(maingui.tbPropagationAngle1, RAD2DEG * (*activeSetPtr).propagationAngle1);
-    setWindowTextToDouble(maingui.tbPropagationAngle2, RAD2DEG * (*activeSetPtr).propagationAngle2);
-    setWindowTextToDouble(maingui.tbPolarizationAngle1, 0.001*round(1000*RAD2DEG * (*activeSetPtr).polarizationAngle1));
-    setWindowTextToDouble(maingui.tbPolarizationAngle2, 0.001*round(1000*RAD2DEG * (*activeSetPtr).polarizationAngle2));
-    setWindowTextToDouble(maingui.tbCircularity1, (*activeSetPtr).circularity1);
-    setWindowTextToDouble(maingui.tbCircularity2, (*activeSetPtr).circularity2);
+    setWindowTextToDoubleExp(maingui.tbPulseEnergy1, (*activeSetPtr).pulse1.energy);
+    setWindowTextToDoubleExp(maingui.tbPulseEnergy2, (*activeSetPtr).pulse2.energy);
+    setWindowTextToDouble(maingui.tbFrequency1, 1e-12*(*activeSetPtr).pulse1.frequency);
+    setWindowTextToDouble(maingui.tbFrequency2, 1e-12*(*activeSetPtr).pulse2.frequency);
+    setWindowTextToDouble(maingui.tbBandwidth1, 1e-12 * (*activeSetPtr).pulse1.bandwidth);
+    setWindowTextToDouble(maingui.tbBandwidth2, 1e-12 * (*activeSetPtr).pulse2.bandwidth);
+    setWindowTextToInt(maingui.tbPulseType1, (*activeSetPtr).pulse1.sgOrder);
+    setWindowTextToInt(maingui.tbPulseType2, (*activeSetPtr).pulse2.sgOrder);
+    setWindowTextToDouble(maingui.tbCEPhase1, PI * (*activeSetPtr).pulse1.cep);
+    setWindowTextToDouble(maingui.tbCEPhase2, PI * (*activeSetPtr).pulse2.cep);
+    setWindowTextToDouble(maingui.tbPulse1Delay, 1e15 * (*activeSetPtr).pulse1.delay);
+    setWindowTextToDouble(maingui.tbPulse2Delay, 1e15 * (*activeSetPtr).pulse2.delay);
+    setWindowTextToDouble(maingui.tbGDD1, 1e30*(*activeSetPtr).pulse1.gdd);
+    setWindowTextToDouble(maingui.tbGDD2, 1e30*(*activeSetPtr).pulse2.gdd);
+    setWindowTextToDouble(maingui.tbTOD1, 1e45*(*activeSetPtr).pulse1.tod);
+    setWindowTextToDouble(maingui.tbTOD2, 1e45*(*activeSetPtr).pulse2.tod);
+    setWindowTextToInt(maingui.tbPhaseMaterialIndex1, (*activeSetPtr).pulse1.phaseMaterial);
+    setWindowTextToInt(maingui.tbPhaseMaterialIndex2, (*activeSetPtr).pulse2.phaseMaterial);
+    setWindowTextToDouble(maingui.tbPhaseMaterialThickness1, 1e6 * (*activeSetPtr).pulse1.phaseMaterialThickness);
+    setWindowTextToDouble(maingui.tbPhaseMaterialThickness2, 1e6 * (*activeSetPtr).pulse2.phaseMaterialThickness);
+    setWindowTextToDouble(maingui.tbBeamwaist1, 1e6 * (*activeSetPtr).pulse1.beamwaist);
+    setWindowTextToDouble(maingui.tbBeamwaist2, 1e6 * (*activeSetPtr).pulse2.beamwaist);
+    setWindowTextToDouble(maingui.tbXoffset1, 1e6 * (*activeSetPtr).pulse1.x0);
+    setWindowTextToDouble(maingui.tbXoffset1, 1e6 * (*activeSetPtr).pulse2.x0);
+    setWindowTextToDouble(maingui.tbZoffset1, 1e6 * (*activeSetPtr).pulse1.z0);
+    setWindowTextToDouble(maingui.tbZoffset2, 1e6 * (*activeSetPtr).pulse2.z0);
+    setWindowTextToDouble(maingui.tbPropagationAngle1, RAD2DEG * (*activeSetPtr).pulse1.beamAngle);
+    setWindowTextToDouble(maingui.tbPropagationAngle2, RAD2DEG * (*activeSetPtr).pulse2.beamAngle);
+    setWindowTextToDouble(maingui.tbPolarizationAngle1, 0.001*round(1000*RAD2DEG * (*activeSetPtr).pulse1.polarizationAngle));
+    setWindowTextToDouble(maingui.tbPolarizationAngle2, 0.001*round(1000*RAD2DEG * (*activeSetPtr).pulse2.polarizationAngle));
+    setWindowTextToDouble(maingui.tbCircularity1, (*activeSetPtr).pulse1.circularity);
+    setWindowTextToDouble(maingui.tbCircularity2, (*activeSetPtr).pulse2.circularity);
     SendMessage(maingui.pdPulse1Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse1FileType, 0);
     SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse2FileType, 0);
     setWindowTextToInt(maingui.tbMaterialIndex, (*activeSetPtr).materialIndex);

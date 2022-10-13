@@ -1375,28 +1375,25 @@ namespace kernels {
 		A[i] += B[i];
 	};
 
-	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
-		int sgOrder, double cep, double delay, double gdd, double tod,
-		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase,
-		double w0, double z0, double x0, double beamAngle,
-		double polarizationAngle, double circularity,
-		double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
+	
+	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, cudaParameterSet* s,
+		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase, double* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, h;
 		h = 1 + i % ((*s).Nfreq - 1);
 		j = i / ((*s).Nfreq - 1);
 		i = h + j * ((*s).Nfreq);
 		double f = h * (*s).fStep;
-		double w = TWOPI * (f - frequency);
+		double w = TWOPI * (f - (*p).frequency);
 
 		//supergaussian pulse spectrum, if no input pulse specified
-		deviceComplex specfac = deviceComplex(-pow((f - frequency) / bandwidth, sgOrder), 0);
+		deviceComplex specfac = deviceComplex(-pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 0);
 
 		deviceComplex specphase = deviceComplex(0,
-			-(cep
-				+ TWOPI * f * (delay - 0.5 * (*s).dt * (*s).Ntime)
-				+ 0.5 * gdd * w * w
-				+ tod * w * w * w / 6.0
+			-((*p).cep
+				+ TWOPI * f * ((*p).delay - 0.5 * (*s).dt * (*s).Ntime)
+				+ 0.5 * (*p).gdd * w * w
+				+ (*p).tod * w * w * w / 6.0
 				+ materialPhase[h]));
 		specfac = deviceLib::exp(specfac + specphase);
 
@@ -1404,34 +1401,34 @@ namespace kernels {
 			specfac = loadedField[h] * deviceLib::exp(specphase);
 		}
 		deviceComplex ne, no;
-		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType, 0);
 
 
 		double ko = TWOPI * no.real() * f / LIGHTC;
-		double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
+		double zR = PI * (*p).beamwaist * (*p).beamwaist * ne.real() * f / LIGHTC;
 		if (f == 0) {
 			zR = 1e3;
 		}
-		double rB = (x0 - (*s).dx * (j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
-		double r = rB * cos(beamAngle) - z0 * sin(beamAngle);
-		double z = rB * sin(beamAngle) + z0 * cos(beamAngle);
+		double rB = ((*p).x0 - (*s).dx * (j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+		double r = rB * cos((*p).beamAngle) - (*p).z0 * sin((*p).beamAngle);
+		double z = rB * sin((*p).beamAngle) + (*p).z0 * cos((*p).beamAngle);
 
-		double wz = w0 * sqrt(1 + (z * z / (zR * zR)));
+		double wz = (*p).beamwaist * sqrt(1 + (z * z / (zR * zR)));
 		double Rz = z * (1. + (zR * zR / (z * z)));
 
 		if (z == 0) {
 			Rz = 1.0e15;
 		}
 		double phi = atan(z / zR);
-		deviceComplex Eb = (w0 / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+		deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - (*p).z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
 		Eb = Eb * specfac;
 		if (isnan(cuCModSquared(Eb)) || f <= 0) {
 			Eb = deviceComplex(0., 0.);
 		}
 
-		pulse[i] = deviceComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
-		pulse[i + (*s).NgridC] = deviceComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
-		double pointEnergy = abs(r) * (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
+		field[i] = deviceComplex(cos((*p).polarizationAngle), -(*p).circularity * sin((*p).polarizationAngle)) * Eb;
+		field[i + (*s).NgridC] = deviceComplex(sin((*p).polarizationAngle), (*p).circularity * cos((*p).polarizationAngle)) * Eb;
+		double pointEnergy = abs(r) * (cuCModSquared(field[i]) + cuCModSquared(field[i + (*s).NgridC]));
 		pointEnergy *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt;
 		//two factors of two cancel here - there should be one for the missing frequency plane, but the sum is over x instead of r
 		//accordingly we already multiplied by two
@@ -1453,12 +1450,8 @@ namespace kernels {
 	};
 
 	//note to self: please make a beamParameters struct
-	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* pulse, double* pulseSum, cudaParameterSet* s, double frequency, double bandwidth,
-		int sgOrder, double cep, double delay, double gdd, double tod,
-		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase,
-		double w0, double z0, double y0, double x0, double beamAngle, double beamAnglePhi,
-		double polarizationAngle, double circularity,
-		double* sellmeierCoefficients, double crystalTheta, double crystalPhi, int sellmeierType) {
+	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, cudaParameterSet* s,
+		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase, double* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
@@ -1467,16 +1460,16 @@ namespace kernels {
 		j = col % (*s).Nspace;
 		k = col / (*s).Nspace;
 		double f = h * (*s).fStep;
-		double w = TWOPI * (f - frequency);
+		double w = TWOPI * (f - (*p).frequency);
 
 		//supergaussian pulse spectrum, if no input pulse specified
-		deviceComplex specfac = deviceComplex(-pow((f - frequency) / bandwidth, sgOrder), 0);
+		deviceComplex specfac = deviceComplex(-pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 0);
 
 		deviceComplex specphase = deviceComplex(0,
-			-(cep
-				+ TWOPI * f * (delay - 0.5 * (*s).dt * (*s).Ntime)
-				+ 0.5 * gdd * w * w
-				+ tod * w * w * w / 6.0
+			-((*p).cep
+				+ TWOPI * f * ((*p).delay - 0.5 * (*s).dt * (*s).Ntime)
+				+ 0.5 * (*p).gdd * w * w
+				+ (*p).tod * w * w * w / 6.0
 				+ materialPhase[h]));
 		specfac = deviceLib::exp(specfac + specphase);
 		
@@ -1484,56 +1477,55 @@ namespace kernels {
 			specfac = loadedField[h] * deviceLib::exp(specphase);
 		}
 		deviceComplex ne, no;
-		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), crystalTheta, crystalPhi, sellmeierType, 0);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 
 		double ko = TWOPI * no.real() * f / LIGHTC;
-		double zR = PI * w0 * w0 * ne.real() * f / LIGHTC;
+		double zR = PI * (*p).beamwaist * (*p).beamwaist * ne.real() * f / LIGHTC;
 		if (f == 0) {
 			zR = 1e3;
 		}
-		double xo = ((*s).dx * (j - (*s).Nspace / 2.0)) - x0;
-		double yo = ((*s).dx * (k - (*s).Nspace2 / 2.0)) - y0;
-		double zo = z0;
-		double cB = cos(beamAngle);
-		double cA = cos(beamAnglePhi);
-		double sB = sin(beamAngle);
-		double sA = sin(beamAnglePhi);
+		double xo = ((*s).dx * (j - (*s).Nspace / 2.0)) - (*p).x0;
+		double yo = ((*s).dx * (k - (*s).Nspace2 / 2.0)) - (*p).y0;
+		double zo = (*p).z0;
+		double cB = cos((*p).beamAngle);
+		double cA = cos((*p).beamAnglePhi);
+		double sB = sin((*p).beamAngle);
+		double sA = sin((*p).beamAnglePhi);
 		double x = cB * xo + sA * sB * yo + sA * sB * zo;
 		double y = cA * yo - sA * zo;
 		double z = -sB * xo + sA * cB * yo + cA * cB * zo;
 		double r = sqrt(x * x + y * y);
 
-		double wz = w0 * sqrt(1 + (z * z / (zR * zR)));
+		double wz = (*p).beamwaist * sqrt(1 + (z * z / (zR * zR)));
 		double Rz = 1.0e15;
 		if (z != 0.0) {
 			Rz = z * (1. + (zR * zR / (z * z)));
 		}
 
 		double phi = atan(z / zR);
-		deviceComplex Eb = (w0 / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+		deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - (*p).z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
 		Eb = Eb * specfac;
 		if (isnan(cuCModSquared(Eb)) || f <= 0) {
 			Eb = deviceComplex(0., 0.);
 		}
 
-		pulse[i] = deviceComplex(cos(polarizationAngle), -circularity * sin(polarizationAngle)) * Eb;
-		pulse[i + (*s).NgridC] = deviceComplex(sin(polarizationAngle), circularity * cos(polarizationAngle)) * Eb;
-		double pointEnergy = (cuCModSquared(pulse[i]) + cuCModSquared(pulse[i + (*s).NgridC]));
+		field[i] = deviceComplex(cos((*p).polarizationAngle), -(*p).circularity * sin((*p).polarizationAngle)) * Eb;
+		field[i + (*s).NgridC] = deviceComplex(sin((*p).polarizationAngle), (*p).circularity * cos((*p).polarizationAngle)) * Eb;
+		double pointEnergy = (cuCModSquared(field[i]) + cuCModSquared(field[i + (*s).NgridC]));
 		pointEnergy *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
-
 
 		//factor 2 accounts for the missing negative frequency plane
 #ifdef __CUDACC__
 		atomicAdd(pulseSum, pointEnergy);
 #elif defined(__APPLE__)
-		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*) pulseSum;
 		double expected = pulseSumAtomic->load();
 		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 #elif defined RUNONSYCL
 		cl::sycl::atomic_ref<double, cl::sycl::memory_order::relaxed, cl::sycl::memory_scope::device> a(*pulseSum);
 		a.fetch_add(pointEnergy);
 #elif defined (NOFETCHADD)
-		(*pulseSum) += pointEnergy; //YOLO
+		*pulseSum += pointEnergy; //YOLO
 #else
 		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 		(*pulseSumAtomic).fetch_add(pointEnergy);
@@ -1584,6 +1576,8 @@ namespace hostFunctions{
 		simulationParameterSet* s = d.cParams;
 		cudaParameterSet* sc = d.dParams;
 		cudaParameterSet* scDevice = d.dParamsDevice;
+		pulse* p;
+		d.deviceCalloc((void**) &p, 1, sizeof(pulse));
 		//run the beam generation single-threaded on CPU to avoid race condition
 		unsigned int beamBlocks = (*sc).Nblock / 2;
 		unsigned int beamThreads = (*sc).Nthread;
@@ -1627,61 +1621,50 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&sellmeierPropagationMedium, 66, sizeof(double));
 		d.deviceCalloc((void**)&materialPhase1CUDA, (*s).Ntime, sizeof(double));
 		d.deviceCalloc((void**)&materialPhase2CUDA, (*s).Ntime, sizeof(double));
-		d.deviceMemcpy(materialCoefficientsCUDA, (*s).crystalDatabase[(*s).phaseMaterialIndex1].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
+		d.deviceMemcpy(materialCoefficientsCUDA, (*s).crystalDatabase[(*s).pulse1.phaseMaterial].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
 		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
 
-		d.deviceLaunch((unsigned int)(*s).Ntime, 1, materialPhaseKernel, (*s).fStep, (*s).Ntime, materialCoefficientsCUDA, (*s).frequency1, (*s).frequency2, (*s).phaseMaterialThickness1, (*s).phaseMaterialThickness2, materialPhase1CUDA, materialPhase2CUDA);
+		d.deviceLaunch((unsigned int)(*s).Ntime, 1, materialPhaseKernel, (*s).fStep, (*s).Ntime, materialCoefficientsCUDA, (*s).pulse1.frequency, (*s).pulse2.frequency, (*s).pulse1.phaseMaterialThickness, (*s).pulse2.phaseMaterialThickness, materialPhase1CUDA, materialPhase2CUDA);
 
 		double* pulseSum = &materialCoefficientsCUDA[0];
 		//calculate pulse 1 and store it in unused memory
 		d.deviceMemset(pulseSum, 0, sizeof(double));
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-
+		d.deviceMemcpy(p, &((*s).pulse1), sizeof(pulse), HostToDevice);
 		if ((*sc).is3D) {
 			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel3D,
-				(*sc).workspace1, pulseSum, scDevice, (*s).frequency1, (*s).bandwidth1,
-				(*s).sgOrder1, (*s).cephase1, (*s).delay1, (*s).gdd1, (*s).tod1,
-				(*s).field1IsAllocated, loadedField1, materialPhase1CUDA, (*s).beamwaist1,
-				(*s).z01, (*s).y01, (*s).x01, (*s).propagationAngle1, (*s).propagationAnglePhi1, (*s).polarizationAngle1, (*s).circularity1,
-				sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
+				(*sc).workspace1, p, pulseSum, scDevice, (*s).field1IsAllocated, loadedField1, materialPhase1CUDA, 
+				sellmeierPropagationMedium);
 		}
 		else {
 			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel2D,
-				(*sc).workspace1, pulseSum, scDevice, (*s).frequency1, (*s).bandwidth1,
-				(*s).sgOrder1, (*s).cephase1, (*s).delay1, (*s).gdd1, (*s).tod1,
-				(*s).field1IsAllocated, loadedField1, materialPhase1CUDA, (*s).beamwaist1,
-				(*s).z01, (*s).x01, (*s).propagationAngle1, (*s).polarizationAngle1, (*s).circularity1,
-				sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
+				(*sc).workspace1, p, pulseSum, scDevice, (*s).field1IsAllocated, loadedField1, materialPhase1CUDA,
+				sellmeierPropagationMedium);
 		}
 
 		d.fft((*sc).workspace1, (*sc).gridETime1, 3);
 
-		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy1);
+		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulse1.energy);
 
 		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridETime1, (*sc).Ngrid * 2 * sizeof(double), DeviceToDevice);
 
 		//calculate pulse 2
+		d.deviceMemcpy(p, &((*s).pulse2), sizeof(pulse), HostToDevice);
 		d.deviceMemset(pulseSum, 0, sizeof(double));
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
 		if ((*sc).is3D) {
 			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel3D,
-				(*sc).workspace1, pulseSum, scDevice, (*s).frequency2, (*s).bandwidth2,
-				(*s).sgOrder2, (*s).cephase2, (*s).delay2, (*s).gdd2, (*s).tod2,
-				(*s).field2IsAllocated, loadedField2, materialPhase2CUDA, (*s).beamwaist2,
-				(*s).z02, (*s).y02, (*s).x02, (*s).propagationAngle2, (*s).propagationAnglePhi2, (*s).polarizationAngle2, (*s).circularity2,
-				sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
+				(*sc).workspace1, p, pulseSum, scDevice, (*s).field1IsAllocated, loadedField1, materialPhase2CUDA,
+				sellmeierPropagationMedium);
 		}
 		else {
 			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel2D,
-				(*sc).workspace1, pulseSum, scDevice, (*s).frequency2, (*s).bandwidth2,
-				(*s).sgOrder2, (*s).cephase2, (*s).delay2, (*s).gdd2, (*s).tod2,
-				(*s).field2IsAllocated, loadedField2, materialPhase2CUDA, (*s).beamwaist2,
-				(*s).z02, (*s).x02, (*s).propagationAngle2, (*s).polarizationAngle2, (*s).circularity2,
-				sellmeierPropagationMedium, (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType);
+				(*sc).workspace1, p, pulseSum, scDevice, (*s).field1IsAllocated, loadedField1, materialPhase2CUDA,
+				sellmeierPropagationMedium);
 		}
 
 		d.fft((*sc).workspace1, (*sc).gridETime1, 3);
-		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulseEnergy2);
+		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulse2.energy);
 		//add the pulses
 		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, addDoubleArraysKernel, (*sc).gridETime1, (double*)(*sc).gridEFrequency1Next1);
 		if ((*s).isReinjecting) {
@@ -1709,6 +1692,7 @@ namespace hostFunctions{
 		d.deviceFree(sellmeierPropagationMedium);
 		d.deviceFree(loadedField1);
 		d.deviceFree(loadedField2);
+		d.deviceFree(p);
 		return 0;
 	}
 
@@ -2138,14 +2122,14 @@ namespace hostFunctions{
 	1e-9 };
 		double result = 0.0;
 		double* targets[36] = { 0,
-		&(*fittingSet).pulseEnergy1, &(*fittingSet).pulseEnergy2, &(*fittingSet).frequency1, &(*fittingSet).frequency2,
-		&(*fittingSet).bandwidth1, &(*fittingSet).bandwidth2, &(*fittingSet).cephase1, &(*fittingSet).cephase2,
-		&(*fittingSet).delay1, &(*fittingSet).delay2, &(*fittingSet).gdd1, &(*fittingSet).gdd2,
-		&(*fittingSet).tod1, &(*fittingSet).tod2, &(*fittingSet).phaseMaterialThickness1, &(*fittingSet).phaseMaterialThickness2,
-		&(*fittingSet).beamwaist1, &(*fittingSet).beamwaist2,
-		&(*fittingSet).x01, &(*fittingSet).x02, &(*fittingSet).z01, &(*fittingSet).z02,
-		&(*fittingSet).propagationAngle1, &(*fittingSet).propagationAngle2, &(*fittingSet).polarizationAngle1, &(*fittingSet).polarizationAngle2,
-		&(*fittingSet).circularity1, &(*fittingSet).circularity2, &(*fittingSet).crystalTheta, &(*fittingSet).crystalPhi,
+		&(*fittingSet).pulse1.energy, &(*fittingSet).pulse2.energy, &(*fittingSet).pulse1.frequency, &(*fittingSet).pulse2.frequency,
+		&(*fittingSet).pulse1.bandwidth, &(*fittingSet).pulse2.bandwidth, &(*fittingSet).pulse1.cep, &(*fittingSet).pulse2.cep,
+		&(*fittingSet).pulse1.delay, &(*fittingSet).pulse2.delay, &(*fittingSet).pulse1.gdd, &(*fittingSet).pulse2.gdd,
+		&(*fittingSet).pulse1.tod, &(*fittingSet).pulse2.tod, &(*fittingSet).pulse1.phaseMaterialThickness, &(*fittingSet).pulse2.phaseMaterialThickness,
+		&(*fittingSet).pulse1.beamwaist, &(*fittingSet).pulse2.beamwaist,
+		&(*fittingSet).pulse1.x0, &(*fittingSet).pulse2.x0, &(*fittingSet).pulse1.z0, &(*fittingSet).pulse2.z0,
+		&(*fittingSet).pulse1.beamAngle, &(*fittingSet).pulse2.beamAngle, &(*fittingSet).pulse1.polarizationAngle, &(*fittingSet).pulse2.polarizationAngle,
+		&(*fittingSet).pulse1.circularity, &(*fittingSet).pulse2.circularity, &(*fittingSet).crystalTheta, &(*fittingSet).crystalPhi,
 		&(*fittingSet).nonlinearAbsorptionStrength, &(*fittingSet).drudeGamma, &(*fittingSet).effectiveMass, &(*fittingSet).crystalThickness,
 		&(*fittingSet).propagationStep };
 
@@ -2314,14 +2298,14 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	column_vector upperBounds;
 	upperBounds.set_size((*sCPU).Nfitting);
 	double* targets[36] = { 0,
-	&(*sCPU).pulseEnergy1, &(*sCPU).pulseEnergy2, &(*sCPU).frequency1, &(*sCPU).frequency2,
-	&(*sCPU).bandwidth1, &(*sCPU).bandwidth2, &(*sCPU).cephase1, &(*sCPU).cephase2,
-	&(*sCPU).delay1, &(*sCPU).delay2, &(*sCPU).gdd1, &(*sCPU).gdd2,
-	&(*sCPU).tod1, &(*sCPU).tod2, &(*sCPU).phaseMaterialThickness1, &(*sCPU).phaseMaterialThickness2,
-	&(*sCPU).beamwaist1, &(*sCPU).beamwaist2,
-	&(*sCPU).x01, &(*sCPU).x02, &(*sCPU).z01, &(*sCPU).z02,
-	&(*sCPU).propagationAngle1, &(*sCPU).propagationAngle2, &(*sCPU).polarizationAngle1, &(*sCPU).polarizationAngle2,
-	&(*sCPU).circularity1, &(*sCPU).circularity2, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
+	&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
+	&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
+	&(*sCPU).pulse1.delay, &(*sCPU).pulse2.delay, &(*sCPU).pulse1.gdd, &(*sCPU).pulse2.gdd,
+	&(*sCPU).pulse1.tod, &(*sCPU).pulse2.tod, &(*sCPU).pulse1.phaseMaterialThickness, &(*sCPU).pulse2.phaseMaterialThickness,
+	&(*sCPU).pulse1.beamwaist, &(*sCPU).pulse2.beamwaist,
+	&(*sCPU).pulse1.x0, &(*sCPU).pulse2.x0, &(*sCPU).pulse1.z0, &(*sCPU).pulse2.z0,
+	&(*sCPU).pulse1.beamAngle, &(*sCPU).pulse2.beamAngle, &(*sCPU).pulse1.polarizationAngle, &(*sCPU).pulse2.polarizationAngle,
+	&(*sCPU).pulse1.circularity, &(*sCPU).pulse2.circularity, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
 	&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
 	&(*sCPU).propagationStep };
 

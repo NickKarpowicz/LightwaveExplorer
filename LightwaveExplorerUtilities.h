@@ -80,6 +80,28 @@ typedef struct crystalEntry {
     int numberOfEntries = 0;
 } crystalEntry;
 
+typedef struct pulse {
+    double energy;
+    double frequency;
+    double bandwidth;
+    int sgOrder;
+    double cep;
+    double delay;
+    double gdd;
+    double tod;
+    int phaseMaterial;
+    double phaseMaterialThickness;
+    double beamwaist;
+    double x0;
+    double y0;
+    double z0;
+    double beamAngle;
+    double polarizationAngle;
+    double beamAnglePhi;
+    double circularity;
+    double pulseSum;
+} pulse;
+
 //Simulation parameter struct to pass to the simulations running in threads
 typedef struct simulationParameterSet {
     double rStep = 0;
@@ -98,6 +120,8 @@ typedef struct simulationParameterSet {
     size_t Nsims2 = 0;
     size_t* progressCounter = 0;
     size_t NsimsCPU = 0;
+    pulse pulse1;
+    pulse pulse2;
     double spatialWidth = 0;
     double spatialHeight = 0;
     double timeSpan = 0;
@@ -121,45 +145,9 @@ typedef struct simulationParameterSet {
     double noref = 0;
     int* nonlinearSwitches = 0;
     double pulse1measEnergy = 0;
-
-    //spatial beam properties = 0;
-    double beamwaist1 = 0;
-    double beamwaist2 = 0;
-    double z01 = 0;
-    double z02 = 0;
-    double x01 = 0;
-    double x02 = 0;
-    double y01 = 0;
-    double y02 = 0;
-    double propagationAngle1 = 0;
-    double propagationAngle2 = 0;
-    double propagationAnglePhi1 = 0;
-    double propagationAnglePhi2 = 0;
     bool isCylindric = 0;
     bool is3D = 0;
     int symmetryType = 0;
-
-    //spectral/temporal field properties
-    double pulseEnergy1 = 0;
-    double pulseEnergy2 = 0;
-    double frequency1 = 0;
-    double frequency2 = 0;
-    int sgOrder1 = 0;
-    int sgOrder2 = 0;
-    double bandwidth1 = 0;
-    double bandwidth2 = 0;
-    double cephase1 = 0;
-    double cephase2 = 0;
-    double delay1 = 0;
-    double delay2 = 0;
-    double gdd1 = 0;
-    double gdd2 = 0;
-    double tod1 = 0;
-    double tod2 = 0;
-    double phaseMaterialThickness1 = 0;
-    double phaseMaterialThickness2 = 0;
-    int phaseMaterialIndex1 = 0;
-    int phaseMaterialIndex2 = 0;
 
     //loaded FROG/EOS fields
     std::complex<double>* loadedField1 = 0;
@@ -170,13 +158,6 @@ typedef struct simulationParameterSet {
     int pulse2FileType = 0;
     char field1FilePath[MAX_LOADSTRING] = { 0 };
     char field2FilePath[MAX_LOADSTRING] = { 0 };
-
-
-    //polarization properties
-    double polarizationAngle1 = 0;
-    double polarizationAngle2 = 0;
-    double circularity1 = 0;
-    double circularity2 = 0;
 
     int pulsetype = 0;
     double* InfoVec = 0;
@@ -287,6 +268,8 @@ typedef struct cudaParameterSet {
     double fftNorm = 0;
     int axesNumber = 0;
     int sellmeierType = 0;
+    double crystalTheta;
+    double crystalPhi;
     double f0 = 0;
     double fStep = 0;
     double dt = 0;

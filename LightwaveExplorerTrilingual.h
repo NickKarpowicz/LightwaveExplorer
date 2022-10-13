@@ -41,7 +41,9 @@ namespace {
 		(*s).h = (*sCPU).crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
 		(*s).axesNumber = (*sCPU).axesNumber;
 		(*s).sellmeierType = (*sCPU).sellmeierType;
-		(*s).f0 = (*sCPU).frequency1;
+		(*s).crystalPhi = (*sCPU).crystalPhi;
+		(*s).crystalTheta = (*sCPU).crystalTheta;
+		(*s).f0 = (*sCPU).pulse1.frequency;
 		(*s).Nthread = THREADS_PER_BLOCK;
 		(*s).Nblock = (int)((*s).Ngrid / THREADS_PER_BLOCK);
 		(*s).NblockC = (int)((*s).NgridC / THREADS_PER_BLOCK);
@@ -79,7 +81,7 @@ namespace {
 		}
 
 		//set nonlinearSwitches[3] to the number of photons needed to overcome bandgap
-		(*sCPU).nonlinearSwitches[3] = (int)ceil((*sCPU).bandGapElectronVolts * 241.79893e12 / (*sCPU).frequency1) - 2;
+		(*sCPU).nonlinearSwitches[3] = (int)ceil((*sCPU).bandGapElectronVolts * 241.79893e12 / (*sCPU).pulse1.frequency) - 2;
 		double plasmaParametersCPU[6] = { 0 };
 
 		if ((*sCPU).nonlinearAbsorptionStrength > 0.) {
