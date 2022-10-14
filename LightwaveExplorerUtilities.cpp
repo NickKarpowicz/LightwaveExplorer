@@ -6,7 +6,7 @@
 #include "LightwaveExplorerUtilities.h"
 
 //give linux wrappers for unsafe functions to use as safe functions so it compiles I don't care anymore
-#ifdef __linux__
+#if defined __linux__ || defined __APPLE__
 namespace {
 	char* strtok_s(char* in, const char* delimiter, char** dummy) {
 		return strtok(in, delimiter);

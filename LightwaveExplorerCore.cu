@@ -1486,6 +1486,7 @@ namespace kernels {
 		}
 		double xo = ((*s).dx * (j - (*s).Nspace / 2.0)) - (*p).x0;
 		double yo = ((*s).dx * (k - (*s).Nspace2 / 2.0)) - (*p).y0;
+		if (!(*s).is3D) yo = 0.0;
 		double zo = (*p).z0;
 		double cB = cos((*p).beamAngle);
 		double cA = cos((*p).beamAnglePhi);
@@ -2118,8 +2119,8 @@ namespace hostFunctions{
 	DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
 	1, 1, DEG2RAD, DEG2RAD,
 	1, 1e12, 1, 1e-6,
-
 	1e-9 };
+
 		double result = 0.0;
 		double* targets[36] = { 0,
 		&(*fittingSet).pulse1.energy, &(*fittingSet).pulse2.energy, &(*fittingSet).pulse1.frequency, &(*fittingSet).pulse2.frequency,
