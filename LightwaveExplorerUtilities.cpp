@@ -23,6 +23,11 @@ namespace {
 		return (*fp == 0);
 	}
 
+	int fopen_s(FILE** fp, const char* path, const char* kind) {
+		*fp = fopen(path, kind);
+		return (*fp == 0);
+	}
+
 	char* strcpy_s(char* a, int len, char* c) {
 		return strcpy(a, c);
 	}
