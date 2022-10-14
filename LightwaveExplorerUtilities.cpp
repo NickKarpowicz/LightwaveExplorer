@@ -39,6 +39,11 @@ namespace {
 		strcat(a, b);
 		return 0;
 	}
+
+	int strcat_s(char* a, size_t L, const char* b) {
+		strcat(a, b);
+		return 0;
+	}
 }
 #endif
 
