@@ -165,7 +165,8 @@
       <EnableUAC>false</EnableUAC>
       <SpecifyGPUTargetForAOT>Default</SpecifyGPUTargetForAOT>
       <AdditionalDependencies>DlibLibraryComponents.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/LTCG</AdditionalOptions>
+      <AdditionalOptions>
+      </AdditionalOptions>
       <SpecifyCPUTargetForAOT>Default</SpecifyCPUTargetForAOT>
     </Link>
     <PostBuildEvent>

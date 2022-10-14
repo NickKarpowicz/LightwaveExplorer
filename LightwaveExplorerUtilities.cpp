@@ -5,16 +5,12 @@
 #include <complex>
 #include "LightwaveExplorerUtilities.h"
 
-//give linux wrappers for unsafe functions to use as safe functions so it compiles I don't care anymore
+//give linux wrappers for unsafe functions to use as safe functions since it doesn't have them
 #if defined __linux__ || defined __APPLE__
 namespace {
 	char* strtok_s(char* in, const char* delimiter, char** dummy) {
 		return strtok(in, delimiter);
 	}
-	//template<typename... Args>
-	//int sscanf_s(char* buffer, const char* format, Args... args) {
-	//    sscanf_s(buffer, format, args...);
-	//}
 #define sscanf_s sscanf
 #define fscanf_s fscanf
 #define fwscanf_s fwscanf

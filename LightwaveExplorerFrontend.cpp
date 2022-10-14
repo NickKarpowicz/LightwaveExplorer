@@ -2602,15 +2602,37 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     printToConsole(maingui.textboxSims, L"Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
 
-    (*activeSetPtr).runningOnCPU = (!CUDAavailable && !SYCLavailable);
 
-    //run the simulations
-    if ((*activeSetPtr).runningOnCPU) {
-        runDlibFittingCPU(activeSetPtr);
+    int pulldownSelection = (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    int assignedGPU = 0;
+    bool forceCPU = 0;
+    int SYCLitems = 0;
+    if (syclGPUCount == 0) {
+        SYCLitems = (int)SYCLavailable;
     }
     else {
-        runDlibFitting(activeSetPtr);
+        SYCLitems = 3;
     }
+    auto fittingFunction = &runDlibFittingCPU;
+    if (pulldownSelection < cudaGPUCount) {
+        fittingFunction = &runDlibFitting;
+        assignedGPU = pulldownSelection;
+    }
+    else if (pulldownSelection == cudaGPUCount && SYCLavailable) {
+        fittingFunction = &runDlibFittingSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
+        forceCPU = 1;
+        fittingFunction = &runDlibFittingSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
+        assignedGPU = 1;
+        fittingFunction = &runDlibFittingSYCL;
+    }
+
+ 
+    fittingFunction(activeSetPtr);
+    
     
 
     (*activeSetPtr).plotSim = 0;
