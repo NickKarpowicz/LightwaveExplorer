@@ -2164,9 +2164,9 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
 	size_t i;
 	cudaParameterSet s;
-	activeDevice d;
 	memset(&s, 0, sizeof(cudaParameterSet));
-	if (d.allocateSet(sCPU, &s)) return 1;
+	activeDevice d(sCPU, &s);
+	if (d.memoryStatus) return 1;
 
 	//prepare the propagation arrays
 	preparePropagationGrids(d);

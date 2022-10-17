@@ -177,12 +177,24 @@ public:
 	cudaParameterSet* dParams;
 	cudaParameterSet* dParamsDevice;
 	simulationParameterSet* cParams;
+	int memoryStatus;
 	deviceCUDA() {
+		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
 		cudaStreamCreate(&stream);
 		deviceCalloc((void**) &dParamsDevice, 1, sizeof(cudaParameterSet));
 	}
+
+	deviceCUDA(simulationParameterSet* sCPU, cudaParameterSet* s) {
+		memoryStatus = -1;
+		configuredFFT = 0;
+		isCylindric = 0;
+		cudaStreamCreate(&stream);
+		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
+		memoryStatus = allocateSet(sCPU, s);
+	}
+
 
 	~deviceCUDA() {
 		fftDestroy();
@@ -396,10 +408,18 @@ public:
 	cudaParameterSet* dParams;
 	cudaParameterSet* dParamsDevice;
 	simulationParameterSet* cParams;
-
+	int memoryStatus;
 	deviceSYCL() {
+		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
+	}
+
+	deviceSYCL(simulationParameterSet* sCPU, cudaParameterSet* s) {
+		memoryStatus = -1;
+		configuredFFT = 0;
+		isCylindric = 0;
+		memoryStatus = allocateSet(sCPU, s);
 	}
 
 	~deviceSYCL() {
@@ -682,10 +702,12 @@ private:
 
 public:
 	int stream;
+	int memoryStatus;
 	cudaParameterSet* dParams;
 	simulationParameterSet* cParams;
 	cudaParameterSet* dParamsDevice;
 	deviceCPU() {
+		memoryStatus = -1;
 		stream = 0;
 		dParams = NULL;
 		cParams = NULL;
@@ -699,6 +721,25 @@ public:
 		doublePolfftPlan = 0;
 		dParamsDevice = &dParamslocal;
 	}
+
+	deviceCPU(simulationParameterSet* sCPU, cudaParameterSet *s) {
+		memoryStatus = -1;
+		stream = 0;
+		dParams = NULL;
+		cParams = NULL;
+		dParamsDevice = NULL;
+		configuredFFT = 0;
+		isCylindric = 0;
+		fftPlanD2Z = 0;
+		fftPlanZ2D = 0;
+		fftPlan1DD2Z = 0;
+		fftPlan1DZ2D = 0;
+		doublePolfftPlan = 0;
+		dParamsDevice = &dParamslocal;
+		memoryStatus = allocateSet(sCPU, s);
+	}
+
+
 
 	~deviceCPU() {
 		fftDestroy();
