@@ -1571,110 +1571,84 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), DeviceToHost);
 		return 0;
 	}
-	
-	int prepareElectricFieldArrays(activeDevice& d) {
+
+	int addPulseToFieldArrays(activeDevice& d, pulse& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
 		cudaParameterSet* sc = d.dParams;
 		cudaParameterSet* scDevice = d.dParamsDevice;
 		pulse* p;
-		d.deviceCalloc((void**) &p, 1, sizeof(pulse));
-		//run the beam generation single-threaded on CPU to avoid race condition
-		unsigned int beamBlocks = (*sc).Nblock / 2;
-		unsigned int beamThreads = (*sc).Nthread;
-		
+		d.deviceCalloc((void**)&p, 1, sizeof(pulse));
 		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(cudaParameterSet), HostToDevice);
-		if ((*s).isFollowerInSequence && !(*s).isReinjecting) {
-			d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
-			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
-			//Copy the field into the temporary array
-			d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
 
-			if ((*sc).isUsingMillersRule) {
-				d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), (unsigned int)(2u * MIN_GRIDDIM), multiplicationKernelCompactVector, (*sc).chiLinear1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
-			}
-			else {
-				d.deviceMemcpy((*sc).workspace1, (*sc).gridEFrequency1Next1, 2 * sizeof(deviceComplex) * (*sc).NgridC, DeviceToDevice);
-			}
+		double* materialPhase;
+		deviceComplex* loadedField;
 
-			d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
-			d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
+		d.deviceCalloc((void**)&loadedField, (*sc).Ntime, sizeof(deviceComplex));
 
-			return 0;
-		}
-		double* materialPhase1CUDA, * materialPhase2CUDA;
-		deviceComplex* loadedField1, * loadedField2;
-
-		d.deviceCalloc((void**)&loadedField1, (*sc).Ntime, sizeof(deviceComplex));
-		d.deviceCalloc((void**)&loadedField2, (*sc).Ntime, sizeof(deviceComplex));
 
 		//get the material phase
-		double* materialCoefficientsCUDA, * sellmeierPropagationMedium;
-		//NOTE TO SELF: add second phase material
+		double* materialCoefficients, * sellmeierPropagationMedium;
 
-		if ((*s).field1IsAllocated) {
-			d.deviceMemcpy(loadedField1, (*s).loadedField1, (*s).Ntime * sizeof(deviceComplex), HostToDevice);
-		}
-		if ((*s).field2IsAllocated) {
-			d.deviceMemcpy(loadedField2, (*s).loadedField2, (*s).Ntime * sizeof(deviceComplex), HostToDevice);
-		}
-		d.deviceCalloc((void**)&materialCoefficientsCUDA, 66, sizeof(double));
+		d.deviceCalloc((void**)&materialCoefficients, 66, sizeof(double));
 		d.deviceCalloc((void**)&sellmeierPropagationMedium, 66, sizeof(double));
-		d.deviceCalloc((void**)&materialPhase1CUDA, (*s).Ntime, sizeof(double));
-		d.deviceCalloc((void**)&materialPhase2CUDA, (*s).Ntime, sizeof(double));
-		d.deviceMemcpy(materialCoefficientsCUDA, (*s).crystalDatabase[(*s).pulse1.phaseMaterial].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
+		d.deviceCalloc((void**)&materialPhase, (*s).Ntime, sizeof(double));
+
+		d.deviceMemcpy(materialCoefficients, (*s).crystalDatabase[pCPU.phaseMaterial].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
 		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
+		d.deviceLaunch((unsigned int)(*s).Ntime, 1, materialPhaseKernel, (*s).fStep, (*s).Ntime, materialCoefficients, pCPU.frequency, pCPU.frequency, pCPU.phaseMaterialThickness, pCPU.phaseMaterialThickness, materialPhase, materialPhase);
 
-		d.deviceLaunch((unsigned int)(*s).Ntime, 1, materialPhaseKernel, (*s).fStep, (*s).Ntime, materialCoefficientsCUDA, (*s).pulse1.frequency, (*s).pulse2.frequency, (*s).pulse1.phaseMaterialThickness, (*s).pulse2.phaseMaterialThickness, materialPhase1CUDA, materialPhase2CUDA);
+		double* pulseSum = &materialCoefficients[0];
 
-		double* pulseSum = &materialCoefficientsCUDA[0];
-		//calculate pulse 1 and store it in unused memory
+		if (useLoadedField) {
+			d.deviceMemcpy(loadedField, loadedFieldIn, (*s).Ntime * sizeof(deviceComplex), HostToDevice);
+		}
+
 		d.deviceMemset(pulseSum, 0, sizeof(double));
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-		d.deviceMemcpy(p, &((*s).pulse1), sizeof(pulse), HostToDevice);
+		d.deviceMemcpy(p, &pCPU, sizeof(pulse), HostToDevice);
 		if ((*sc).is3D) {
-			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel3D,
-				(*sc).workspace1, p, pulseSum, scDevice, (*s).field1IsAllocated, loadedField1, materialPhase1CUDA, 
+			d.deviceLaunch((*sc).Nblock / 2, (*sc).Nthread, beamGenerationKernel3D,
+				(*sc).workspace1, p, pulseSum, scDevice, useLoadedField, loadedField, materialPhase,
 				sellmeierPropagationMedium);
 		}
 		else {
-			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel2D,
-				(*sc).workspace1, p, pulseSum, scDevice, (*s).field1IsAllocated, loadedField1, materialPhase1CUDA,
+			d.deviceLaunch((*sc).Nblock / 2, (*sc).Nthread, beamGenerationKernel2D,
+				(*sc).workspace1, p, pulseSum, scDevice, useLoadedField, loadedField, materialPhase,
 				sellmeierPropagationMedium);
 		}
 
-		d.fft((*sc).workspace1, (*sc).gridETime1, 3);
+		d.fft((*sc).workspace1, (*sc).gridPolarizationTime1, 3);
 
-		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulse1.energy);
+		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridPolarizationTime1, pCPU.energy);
 
-		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridETime1, (*sc).Ngrid * 2 * sizeof(double), DeviceToDevice);
-
-		//calculate pulse 2
-		d.deviceMemcpy(p, &((*s).pulse2), sizeof(pulse), HostToDevice);
-		d.deviceMemset(pulseSum, 0, sizeof(double));
-		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-		if ((*sc).is3D) {
-			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel3D,
-				(*sc).workspace1, p, pulseSum, scDevice, (*s).field1IsAllocated, loadedField1, materialPhase2CUDA,
-				sellmeierPropagationMedium);
-		}
-		else {
-			d.deviceLaunch(beamBlocks, beamThreads, beamGenerationKernel2D,
-				(*sc).workspace1, p, pulseSum, scDevice, (*s).field1IsAllocated, loadedField1, materialPhase2CUDA,
-				sellmeierPropagationMedium);
-		}
-
-		d.fft((*sc).workspace1, (*sc).gridETime1, 3);
-		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridETime1, (*s).pulse2.energy);
 		//add the pulses
-		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, addDoubleArraysKernel, (*sc).gridETime1, (double*)(*sc).gridEFrequency1Next1);
-		if ((*s).isReinjecting) {
-			d.deviceMemcpy((*sc).workspace1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
-			d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, addDoubleArraysKernel, (*sc).gridETime1, (double*)(*sc).workspace1);
-		}
+		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, addDoubleArraysKernel, (*sc).gridETime1, (double*)(*sc).gridPolarizationTime1);
+
 		//fft onto frequency grid
 		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
 
+		d.deviceFree(materialPhase);
+		d.deviceFree(materialCoefficients);
+		d.deviceFree(sellmeierPropagationMedium);
+		d.deviceFree(loadedField);
+		d.deviceFree(p);
+		return 0;
+	}
+	
+	int prepareElectricFieldArrays(activeDevice& d) {
+
+		simulationParameterSet* s = d.cParams;
+		cudaParameterSet* sc = d.dParams;
+		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(cudaParameterSet), HostToDevice);
+		cudaParameterSet* scDevice = d.dParamsDevice;
+		d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
+		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
+		if (!(*s).isFollowerInSequence || (*s).isReinjecting) {
+			addPulseToFieldArrays(d, d.cParams->pulse1, d.cParams->field1IsAllocated, d.cParams->loadedField1);
+			addPulseToFieldArrays(d, d.cParams->pulse2, d.cParams->field2IsAllocated, d.cParams->loadedField2);
+		}
+		
 		//Copy the field into the temporary array
 		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
 
@@ -1687,13 +1661,7 @@ namespace hostFunctions{
 		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 
 		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
-		d.deviceFree(materialPhase1CUDA);
-		d.deviceFree(materialPhase2CUDA);
-		d.deviceFree(materialCoefficientsCUDA);
-		d.deviceFree(sellmeierPropagationMedium);
-		d.deviceFree(loadedField1);
-		d.deviceFree(loadedField2);
-		d.deviceFree(p);
+
 		return 0;
 	}
 

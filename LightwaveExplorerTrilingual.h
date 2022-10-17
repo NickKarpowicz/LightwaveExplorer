@@ -528,7 +528,6 @@ public:
 		configuredFFT = 1;
 	}
 
-	//to do
 	void fft(void* input, void* output, int type) {
 		switch (type) {
 		case 0:
@@ -568,9 +567,6 @@ public:
 		deviceFree((*s).inverseChiLinear1);
 	}
 	int allocateSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
-
-
-		
 
 		cl::sycl::gpu_selector dGPU;
 		cl::sycl::cpu_selector dCPU;
