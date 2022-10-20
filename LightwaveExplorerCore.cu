@@ -271,7 +271,7 @@ namespace deviceFunctions {
 			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 			gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 
-			for (it = 0; it < maxiter; ++it) {
+			for (it = 0; it < maxiter; it++) {
 				if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
 					*n1 = deviceComplex(0.0, 0.0);
 					*n2 = deviceComplex(0.0, 0.0);
@@ -324,7 +324,7 @@ namespace deviceFunctions {
 			gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
 			gradient[1][1] = gradientFactor * (errArray[2][1] - errArray[3][1]);
 
-			for (it = 0; it < maxiter; ++it) {
+			for (it = 0; it < maxiter; it++) {
 				if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
 					*n1 = deviceComplex(0.0, 0.0);
 					*n2 = deviceComplex(0.0, 0.0);
@@ -489,7 +489,7 @@ namespace kernels {
 
 		double chi11[7];
 		deviceComplex ne, no;
-		for (int i = 0; i < 7; ++i) {
+		for (int i = 0; i < 7; i++) {
 			if (referenceFrequencies[i] == 0) {
 				chi11[i] = 100000.0;
 			}
@@ -500,12 +500,12 @@ namespace kernels {
 		}
 
 		//normalize chi2 tensor values
-		for (int i = 0; i < 18; ++i) {
+		for (int i = 0; i < 18; i++) {
 			(*s).chi2Tensor[i] /= chi11[0] * chi11[1] * chi11[2];
 		}
 
 		//normalize chi3 tensor values
-		for (int i = 0; i < 81; ++i) {
+		for (int i = 0; i < 81; i++) {
 			(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
 		}
 	};
@@ -520,7 +520,7 @@ namespace kernels {
 		double a, x;
 
 		//find beam centers
-		for (j = 0; j < Nspace; ++j) {
+		for (j = 0; j < Nspace; j++) {
 			x = gridStep * j;
 			a = cuCModSquared(fieldGrid1[i + j * Ntime]);
 			beamTotal1 += a;
@@ -541,7 +541,7 @@ namespace kernels {
 		//the center
 		beamTotal1 = 0.;
 		beamTotal2 = 0.;
-		for (j = 0; j < Nspace; ++j) {
+		for (j = 0; j < Nspace; j++) {
 			x = gridStep * j;
 			beamTotal1 += PI * abs(x - beamCenter1) * cuCModSquared(fieldGrid1[i + j * Ntime]);
 			beamTotal2 += PI * abs(x - beamCenter2) * cuCModSquared(fieldGrid2[i + j * Ntime]);
@@ -564,7 +564,7 @@ namespace kernels {
 		//Integrate total beam power
 		beamTotal1 = 0.;
 		beamTotal2 = 0.;
-		for (j = 0; j < Nspace; ++j) {
+		for (j = 0; j < Nspace; j++) {
 			beamTotal1 += cuCModSquared(fieldGrid1[i + j * Ntime]);
 			beamTotal2 += cuCModSquared(fieldGrid2[i + j * Ntime]);
 		}
@@ -1030,7 +1030,7 @@ namespace kernels {
 			double* referenceFrequencies = &sellmeierCoefficients[72];
 			double chi11[7];
 
-			for (int im = (i>17)*3; im < 7; ++im) {
+			for (int im = (i>17)*3; im < 7; im++) {
 				if (referenceFrequencies[im] == 0) {
 					chi11[im] = 100000.0;
 				}
@@ -1190,7 +1190,7 @@ namespace kernels {
 
 		if ((*s).nonlinearSwitches[0] == 1) {
 			double P2[3] = { 0.0 };
-			for (unsigned char a = 0; a < 3; ++a) {
+			for (unsigned char a = 0; a < 3; a++) {
 				P2[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
 				P2[a] += (*s).chi2Tensor[3 + a] * E3[1] * E3[1];
 				P2[a] += (*s).chi2Tensor[6 + a] * E3[2] * E3[2];
@@ -1208,10 +1208,10 @@ namespace kernels {
 			//i hope the compiler unrolls this, but no way am I writing that out by hand
 			unsigned char a, b, c, d;
 			double P3[3] = { 0 };
-			for (a = 0; a < 3; ++a) {
-				for (b = 0; b < 3; ++b) {
-					for (c = 0; c < 3; ++c) {
-						for (d = 0; d < 3; ++d) {
+			for (a = 0; a < 3; a++) {
+				for (b = 0; b < 3; b++) {
+					for (c = 0; c < 3; c++) {
+						for (d = 0; d < 3; d++) {
 							P3[d] += (*s).chi3Tensor[a + 3 * b + 9 * c + 27 * d] * E3[a] * E3[b] * E3[c];
 						}
 					}
@@ -1264,7 +1264,7 @@ namespace kernels {
 		double* Jy = (*s).gridPolarizationTime2;
 		Esquared = Ex * Ex + Ey * Ey;
 		a = (*s).plasmaParameters[0] * Esquared;
-		for (unsigned char p = 0; p < pMax; ++p) {
+		for (unsigned char p = 0; p < pMax; p++) {
 			a *= Esquared;
 		}
 		Jx[i] = a * Ex;
@@ -1283,7 +1283,7 @@ namespace kernels {
 		double* dN = j + (double*)(*s).workspace1;
 		double* E = &(*s).gridETime1[j];
 		double* P = &(*s).gridPolarizationTime1[j];
-		for (unsigned int k = 0; k < (*s).Ntime; ++k) {
+		for (unsigned int k = 0; k < (*s).Ntime; k++) {
 			Ex = E[k] * (*s).fftNorm;
 			N += dN[k];
 			a = N * (*s).expGammaT[k];
@@ -2102,7 +2102,7 @@ namespace hostFunctions{
 		&(*fittingSet).nonlinearAbsorptionStrength, &(*fittingSet).drudeGamma, &(*fittingSet).effectiveMass, &(*fittingSet).crystalThickness,
 		&(*fittingSet).propagationStep };
 
-		for (int i = 0; i < (*fittingSet).Nfitting; ++i) {
+		for (int i = 0; i < (*fittingSet).Nfitting; i++) {
 			*targets[(int)(*fittingSet).fittingArray[3 * i]] = multipliers[(int)(*fittingSet).fittingArray[3 * i]] * x(i);
 		}
 
@@ -2123,7 +2123,7 @@ namespace hostFunctions{
 
 		//maximize total spectrum in ROI
 		if ((*fittingSet).fittingMode != 3) {
-			for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
+			for (int i = 0; i < (*fittingSet).fittingROIsize; i++) {
 				result += (*fittingSet).totalSpectrum[(*fittingSet).fittingMode * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i];
 			}
 			return result;
@@ -2137,7 +2137,7 @@ namespace hostFunctions{
 		double sumRef = 0;
 		double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart];
 		double* refSpec = &(*fittingSet).fittingReference[(*fittingSet).fittingROIstart];
-		for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
+		for (int i = 0; i < (*fittingSet).fittingROIsize; i++) {
 			maxSim = maxN(maxSim, simSpec[i]);
 			maxRef = maxN(maxRef, refSpec[i]);
 			sumSim += simSpec[i];
@@ -2151,7 +2151,7 @@ namespace hostFunctions{
 			maxRef = 1;
 		}
 		result = 0.0;
-		for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
+		for (int i = 0; i < (*fittingSet).fittingROIsize; i++) {
 			a = (refSpec[i] / maxRef) - (simSpec[i] / maxSim);
 			result += a * a;
 		}
@@ -2176,7 +2176,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
 	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(cudaParameterSet), HostToDevice);
 	//Core propagation loop
-	for (i = 0; i < s.Nsteps; ++i) {
+	for (i = 0; i < s.Nsteps; i++) {
 
 		//RK4
 		runRK4Step(d, 0);
@@ -2236,7 +2236,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
 	int k;
 	int error = 0;
-	for (k = 0; k < (*sCPU).Nsequence; ++k) {
+	for (k = 0; k < (*sCPU).Nsequence; k++) {
 		if ((int)round((*sCPU).sequenceArray[k * 11]) == 6
 			&& ((int)round((*sCPU).sequenceArray[k * 11 + 1])) > 0) {
 			(*sCPUbackup).sequenceArray[k * 11 + 1] -= 1.0;
@@ -2290,7 +2290,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	1, 1e12, 1, 1e-6,
 	1e-9 };
 
-	for (int i = 0; i < (*sCPU).Nfitting; ++i) {
+	for (int i = 0; i < (*sCPU).Nfitting; i++) {
 		parameters(i) = *targets[(int)(*sCPU).fittingArray[3 * i]];
 		lowerBounds(i) = (*sCPU).fittingArray[3 * i + 1];
 		upperBounds(i) = (*sCPU).fittingArray[3 * i + 2];
@@ -2305,7 +2305,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 		result = dlib::find_min_global(getResidual, lowerBounds, upperBounds, dlib::max_function_calls((*sCPU).fittingMaxIterations));
 	}
 
-	for (int i = 0; i < (*sCPU).Nfitting; ++i) {
+	for (int i = 0; i < (*sCPU).Nfitting; i++) {
 		*targets[(int)round((*sCPU).fittingArray[3 * i])] = multipliers[(int)round((*sCPU).fittingArray[3 * i])] * result.x(i);
 		(*sCPU).fittingResult[i] = result.x(i);
 	}
@@ -2341,7 +2341,7 @@ int mainX(int argc, mainArgumentX){
 	struct cudaDeviceProp activeCUDADeviceProp;
 	if (cuErr == cudaSuccess) {
 		printf("Found %i GPU(s): \n", CUDAdeviceCount);
-		for (i = 0; i < CUDAdeviceCount; ++i) {
+		for (i = 0; i < CUDAdeviceCount; i++) {
 			cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
 			printf("%s\r\n", activeCUDADeviceProp.name);
 			printf(" Memory: %lli MB; Multiprocessors: %i\n",
@@ -2374,7 +2374,7 @@ int mainX(int argc, mainArgumentX){
 		return 12;
 	}
 	printf("Read %i crystal database entries:\n", (*crystalDatabasePtr).numberOfEntries);
-	for (j = 0; j < (*crystalDatabasePtr).numberOfEntries; ++j) {
+	for (j = 0; j < (*crystalDatabasePtr).numberOfEntries; j++) {
 		printf("Material %i name: %ls", j, crystalDatabasePtr[j].crystalNameW);
 	}
 
@@ -2412,7 +2412,7 @@ int mainX(int argc, mainArgumentX){
 		saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
 
 		printf("Optimization result:\n (index, value)\n");
-		for (int i = 0; i < (*sCPU).Nfitting; ++i) {
+		for (int i = 0; i < (*sCPU).Nfitting; i++) {
 			printf("%i,  %lf\r\n", i, (*sCPU).fittingResult[i]);
 		}
 
@@ -2424,7 +2424,7 @@ int mainX(int argc, mainArgumentX){
 	// run simulations
 	std::thread* threadBlock = new std::thread[(*sCPU).Nsims * (*sCPU).Nsims2];
 	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
-	for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; ++j) {
+	for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; j++) {
 
 		sCPU[j].assignedGPU = j % CUDAdeviceCount;
 		if (j >= maxThreads) {
@@ -2441,7 +2441,7 @@ int mainX(int argc, mainArgumentX){
 		}
 
 	}
-	for (i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; ++i) {
+	for (i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; i++) {
 		if (sCPU[i].memoryError > 0) {
 			printf("Warning: device memory error (%i).\n", sCPU[i].memoryError);
 		}
