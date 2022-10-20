@@ -76,7 +76,7 @@ namespace {
 		(*s).gridEFrequency2 = (*s).gridEFrequency1 + (*s).NgridC;
 
 		double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
-		for (size_t i = 0; i < 6; i++) {
+		for (size_t i = 0; i < 6; ++i) {
 			firstDerivativeOperation[i] *= (-2.0 / ((*s).Ngrid * (*s).dx));
 		}
 
@@ -107,7 +107,7 @@ namespace {
 		}
 
 		memcpy((*s).chi2Tensor, (*sCPU).chi2Tensor, 18 * sizeof(double));
-		for (int j = 0; j < 18; j++) {
+		for (int j = 0; j < 18; ++j) {
 			(*s).chi2Tensor[j] *= 2e-12; //go from d in pm/V to chi2 in m/V
 			if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
 		}
@@ -353,7 +353,7 @@ public:
 		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
 		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(double));
 		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
-		for (size_t i = 0; i < (*s).Ntime; i++) {
+		for (size_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
@@ -650,7 +650,7 @@ public:
 		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
 		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(double));
 		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
-		for (size_t i = 0; i < (*s).Ntime; i++) {
+		for (size_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
@@ -747,8 +747,8 @@ public:
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
 #pragma omp parallel for
-		for (int i = 0; i < (int)Nthread; i++) {
-			for (unsigned int j = 0u; j < Nblock; j++) {
+		for (int i = 0; i < (int)Nthread; ++i) {
+			for (unsigned int j = 0u; j < Nblock; ++j) {
 				kernel(j + Nblock * (unsigned int)i, args...);
 			}
 		}
@@ -878,7 +878,7 @@ public:
 		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
 		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(double));
 		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
-		for (size_t i = 0; i < (*s).Ntime; i++) {
+		for (size_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}

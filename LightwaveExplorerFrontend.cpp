@@ -130,7 +130,7 @@ void checkLibraryAvailability() {
             }
 
             printToConsole(maingui.textboxSims, _T("CUDA found %i GPU(s): \r\n"), cudaGPUCount);
-            for (i = 0; i < cudaGPUCount; i++) {
+            for (i = 0; i < cudaGPUCount; ++i) {
                 cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
                 memset(wcstring, 0, sizeof(wchar_t));
                 mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
@@ -266,7 +266,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     }
  
     cpuThread = CreateThread(NULL, 0, secondaryQueue, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
-    for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); j++) {
+    for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); ++j) {
 
         activeSetPtr[j].runningOnCPU = forceCPU;
         activeSetPtr[j].assignedGPU = assignedGPU;
@@ -784,7 +784,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         L"Raven A100", 
         L"Raven 2xA100", 
         L"Raven 4xA100"};
-    for (k = 0; k < 7; k++) {
+    for (k = 0; k < 7; ++k) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)clusterNames[k]);
         SendMessage(maingui.pdClusterSelector, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -837,7 +837,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         TEXT("2D Cartesian"), TEXT("3D radial symmetry"), TEXT("3D")
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 3; k++) {
+    for (k = 0; k < 3; ++k) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)energyModeNames[k]);
         SendMessage(maingui.pdPropagationMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -888,12 +888,12 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         L"35: dz",
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 36; k++) {
+    for (k = 0; k < 36; ++k) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)batchModeNames[k]);
         SendMessage(maingui.pdBatchMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 36; k++) {
+    for (k = 0; k < 36; ++k) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)batchModeNames[k]);
         SendMessage(maingui.pdBatchMode2, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -908,7 +908,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         TEXT("load EOS")
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 3; k++) {
+    for (k = 0; k < 3; ++k) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)pdPulse1Names[k]);
         SendMessage(maingui.pdPulse1Type, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -929,7 +929,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         TEXT("load EOS")
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 3; k++) {
+    for (k = 0; k < 3; ++k) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)pdPulse2Names[k]);
         SendMessage(maingui.pdPulse2Type, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -952,7 +952,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         TEXT("Match spectrum")
     };
     memset(&A, 0, sizeof(A));
-    for (k = 0; k < 4; k++) {
+    for (k = 0; k < 4; ++k) {
         wcscpy_s(A, sizeof(A) / sizeof(TCHAR), (TCHAR*)pdFittingNames[k]);
         SendMessage(maingui.pdFittingType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
     }
@@ -1000,7 +1000,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
         openMPposition++;
         memset(&A, 0, sizeof(A));
-        for (int i = 1; i < cudaGPUCount; i++) {
+        for (int i = 1; i < cudaGPUCount; ++i) {
             swprintf_s(A, MAX_LOADSTRING, L"CUDA %i", i);
             SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
             SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
@@ -1046,7 +1046,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
         readCrystalDatabase(crystalDatabasePtr);
         printToConsole(maingui.textboxSims, _T("\r\nMaterial database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
-        for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
+        for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
             printToConsole(maingui.textboxSims, _T("%2.2i: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
     }
@@ -1111,7 +1111,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_BTNSTOP:
             if (isRunning) {
                 cancellationCalled = TRUE;
-                for (int i = 0; i < (*activeSetPtr).Nsims; i++) {
+                for (int i = 0; i < (*activeSetPtr).Nsims; ++i) {
                     (*activeSetPtr).imdone[i] = 2;
                 }
             }
@@ -1133,7 +1133,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             memset(crystalDatabasePtr, 0, 512 * sizeof(crystalEntry));
             readCrystalDatabase(crystalDatabasePtr);
             printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
-            for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; i++) {
+            for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
                 printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
             }
             break;
@@ -2068,7 +2068,7 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
     //Find the image maximum and minimum
     float imin = data[0];
     float imax = data[0];
-    for (size_t i = 1; i < Ntot; i++) {
+    for (size_t i = 1; i < Ntot; ++i) {
         if (data[i] > imax) imax = data[i];
         if (data[i] < imin) imin = data[i];
     }
@@ -2076,7 +2076,7 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
     float oneOver255 = 1.0f/255;
     unsigned char colorMap[256][3];
 \
-    for (int j = 0; j < 256; j++) {
+    for (int j = 0; j < 256; ++j) {
         switch (cm) {
         case 0:
             
@@ -2349,7 +2349,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if (WAIT_TIMEOUT == WaitForMultipleObjects(4, plotThreads, TRUE, 1000)) {
         printToConsole(maingui.textboxSims,L"Warning, an image thread timed out!\r\n");
     }
-    for (unsigned int i = 0; i < 4; i++) {
+    for (unsigned int i = 0; i < 4; ++i) {
         if (plotThreads[i] != 0)CloseHandle(plotThreads[i]);
     }
 
@@ -2365,11 +2365,11 @@ int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, 
 
     int nx0, ny0;
     int Ni, Nj;
-    for (i = 0; i < nbx; i++) {
+    for (i = 0; i < nbx; ++i) {
         f = i * (nax / (float)nbx);
         Ni = (int)f;
         nx0 = nay * min(Ni, nax);
-        for (j = 0; j < nby; j++) {
+        for (j = 0; j < nby; ++j) {
             f = (j * (nay / (float)nby));
             Nj = (int)f;
             ny0 = min(nay, Nj);
@@ -2385,10 +2385,10 @@ int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int
     int i, j;
     int nx0, ny0;
     int Ni, Nj;
-    for (i = 0; i < nbx; i++) {
+    for (i = 0; i < nbx; ++i) {
         Ni = (int)(i * (nax / (float)nbx));
         nx0 = nay * min(Ni, nax);
-        for (j = 0; j < nby; j++) {
+        for (j = 0; j < nby; ++j) {
             Nj = (int)((j * (nay / (float)nby)));
             ny0 = min(nay, Nj);
             B[i * nby + j] = (float)A[ny0 + nx0];
@@ -2407,11 +2407,11 @@ int linearRemap(float* A, int nax, int nay, float* B, int nbx, int nby) {
     int nx0, ny0;
     int Ni, Nj;
 #pragma omp parallel for private(j,A00,f,nx0,ny0,Ni,Nj) num_threads(2)
-	for (int i = 0; i < nbx; i++) {
+	for (int i = 0; i < nbx; ++i) {
 		f = i*(nax / (float)nbx);
 		Ni = (int)f;
 		nx0 = nay * min(Ni, nax);
-		for (j = 0; j < nby; j++) {
+		for (j = 0; j < nby; ++j) {
 			f = (j*(nay / (float)nby));
 			Nj = (int)f;
 			ny0 = min(nay, Nj);
@@ -2446,13 +2446,13 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     float maxY = 0;
     float minY = 0;
     if ((*s).logScale) {
-        for (i = 0; i < (*s).Npts; i++) {
+        for (i = 0; i < (*s).Npts; ++i) {
             maxY = max((float)log10((*s).data[i]), maxY);
             minY = min((float)log10((*s).data[i]), minY);
         }
     }
     else {
-        for (i = 0; i < (*s).Npts; i++) {
+        for (i = 0; i < (*s).Npts; ++i) {
             maxY = max((float)(*s).data[i], maxY);
             minY = min((float)(*s).data[i], minY);
         }
@@ -2486,7 +2486,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     posX -= windowRect.left;
     posY -= windowRect.top;
     wchar_t blankOut[] = L"          ";
-    for (i = 0; i < NyTicks; i++) {
+    for (i = 0; i < NyTicks; ++i) {
         memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
         if (abs(yTicks1[i] / (*s).unitY) > 10.0 || abs(yTicks1[i] / (*s).unitY) < 0.01) {
             swprintf_s(messageBuffer, MAX_LOADSTRING,
@@ -2503,7 +2503,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
 
 
     }
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 3; ++i) {
         memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
         swprintf_s(messageBuffer, MAX_LOADSTRING,
             _T("%i"), (int)round(xTicks1[i]));
@@ -2538,7 +2538,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
             pRenderTarget->BeginDraw();
 
             pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-            for (i = 0; i < (*s).Npts - 1; i++) {
+            for (i = 0; i < (*s).Npts - 1; ++i) {
                 p1.x = scaleX * (i * (float)(*s).dx);
                 p2.x = scaleX * ((i + 1) * (float)(*s).dx);
                 if ((*s).logScale) {
@@ -2643,7 +2643,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
     setInterfaceValuesToActiveValues();
     printToConsole(maingui.textboxSims, L"Fitting result:\r\n (index, value)\r\n");
-    for (int i = 0; i < (*activeSetPtr).Nfitting; i++) {
+    for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
         printToConsole(maingui.textboxSims, L"%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
     }
     free((*activeSetPtr).imdone);
@@ -2696,8 +2696,8 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
         if (!(*activeSetPtr).isInFittingMode) {
             //estimate the total steps in the current simulation;
             if ((*activeSetPtr).Nsequence > 0) {
-                for (i = 0; i < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; i++) {
-                    for (j = 0; j < (*activeSetPtr).Nsequence; j++) {
+                for (i = 0; i < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; ++i) {
+                    for (j = 0; j < (*activeSetPtr).Nsequence; ++j) {
                         if ((int)(*activeSetPtr).sequenceArray[11 * j] == 0) {
                             length = activeSetPtr[i].crystalThickness;
                             step = activeSetPtr[i].propagationStep;
@@ -2713,7 +2713,7 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
                 }
             }
             else {
-                for (i = 0; i < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; i++) {
+                for (i = 0; i < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; ++i) {
                     lengthEstimate += (size_t)round(activeSetPtr[i].crystalThickness / activeSetPtr[i].propagationStep);
                 }
             }
@@ -2832,7 +2832,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
 
     int error = 0;
     if ((*activeSetPtr).isInSequence) {
-        for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; i++) {
+        for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; ++i) {
             cpuSims[i].assignedGPU = assignedGPU;
             cpuSims[i].runningOnCPU = forceCPU;
             error = sequenceFunction(&cpuSims[i]);
@@ -2840,7 +2840,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
         }
     }
     else {
-        for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; i++) {
+        for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; ++i) {
             cpuSims[i].assignedGPU = assignedGPU;
             cpuSims[i].runningOnCPU = forceCPU;
             error = normalFunction(&cpuSims[i]);
