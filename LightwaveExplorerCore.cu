@@ -1645,6 +1645,9 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
 		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
 		if (!(*s).isFollowerInSequence || (*s).isReinjecting) {
+			if (!(*s).isReinjecting) {
+				d.deviceMemset((*sc).gridETime1, 0, 2 * (*sc).Ngrid * sizeof(double));
+			}
 			addPulseToFieldArrays(d, d.cParams->pulse1, d.cParams->field1IsAllocated, d.cParams->loadedField1);
 			addPulseToFieldArrays(d, d.cParams->pulse2, d.cParams->field2IsAllocated, d.cParams->loadedField2);
 		}

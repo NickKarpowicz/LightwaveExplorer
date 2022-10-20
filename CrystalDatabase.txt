@@ -453,3 +453,38 @@ None
 Nonlinear reference frequencies:
 0 0 0 0 0 0 0
 ~~~crystal end~~~
+Name:
+LiNbO3, 5 percent MgO doped
+Type:
+1
+Sellmeier equation:
+0
+1st axis coefficients:
+1 0 2.2454 -0.01242 0.0 1.3005 -0.05313 0.0 6.8972 -331.33 0 0 1 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1 0 2.4272 -0.01478 0.0 1.4617 -0.05612 0.0 9.6536 -371.216 0 0 1 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1 0 2.4272 -0.01478 0.0 1.4617 -0.05612 0.0 9.6536 -371.216 0 0 1 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+Zelmon JOSA B 14, 3319 (1997).
+chi2 type:
+1
+d:
+0 0 0 0 -4.64 -2.46
+-2.46 2.46 0 -4.64 0 0
+-4.64 -4.64 0 -25 0 0
+d reference:
+Nikogosian, Nonlinear Optical Crystals - A Complete Survey, values from stoichimetric, except for d33, reduced to 25
+chi3 type:
+2
+chi3:
+1.6e-21
+0
+0
+chi3 reference:
+Nikogosian
+Spectral file:
+None
+Nonlinear reference frequencies:
+2.85e12 2.85e12 5.7e12 2.85e12 2.85e12 2.85e12 2.85e12
+~~~crystal end~~~
