@@ -1342,7 +1342,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -1517,8 +1516,6 @@ int readParametersFromInterface() {
     (*activeSetPtr).Nsims2 = (size_t)getDoubleFromHWND(maingui.tbNumberSims2);
     (*activeSetPtr).NsimsCPU = (size_t)getDoubleFromHWND(maingui.tbCPUsims);
     //derived parameters and cleanup:
-
-
 
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;

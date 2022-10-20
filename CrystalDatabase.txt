@@ -472,7 +472,7 @@ chi2 type:
 d:
 0 0 0 0 -4.64 -2.46
 -2.46 2.46 0 -4.64 0 0
--4.64 -4.64 0 -25 0 0
+-4.64 -4.64 -25 0 0 0
 d reference:
 Nikogosian, Nonlinear Optical Crystals - A Complete Survey, values from stoichimetric, except for d33, reduced to 25
 chi3 type:
