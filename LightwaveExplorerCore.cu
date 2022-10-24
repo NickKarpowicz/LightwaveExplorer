@@ -1642,14 +1642,21 @@ namespace hostFunctions{
 		cudaParameterSet* sc = d.dParams;
 		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(cudaParameterSet), HostToDevice);
 		cudaParameterSet* scDevice = d.dParamsDevice;
-		d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
-		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
+		
 		if (!(*s).isFollowerInSequence || (*s).isReinjecting) {
 			if (!(*s).isReinjecting) {
 				d.deviceMemset((*sc).gridETime1, 0, 2 * (*sc).Ngrid * sizeof(double));
 			}
+			else {
+				d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
+				d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
+			}
 			addPulseToFieldArrays(d, d.cParams->pulse1, d.cParams->field1IsAllocated, d.cParams->loadedField1);
 			addPulseToFieldArrays(d, d.cParams->pulse2, d.cParams->field2IsAllocated, d.cParams->loadedField2);
+		}
+		else {
+			d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
+			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
 		}
 		
 		//Copy the field into the temporary array
@@ -2232,24 +2239,27 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 
 
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
-
-	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
+	simulationParameterSet sCPUcurrent;
+	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
+	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
 	simulationParameterSet sCPUbackupValues;
 	simulationParameterSet* sCPUbackup = &sCPUbackupValues;
 	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
 	int k;
 	int error = 0;
 	for (k = 0; k < (*sCPU).Nsequence; ++k) {
-		if ((int)round((*sCPU).sequenceArray[k * 11]) == 6
-			&& ((int)round((*sCPU).sequenceArray[k * 11 + 1])) > 0) {
-			(*sCPUbackup).sequenceArray[k * 11 + 1] -= 1.0;
-			(*sCPUbackup).isFollowerInSequence = TRUE;
-			k = 0;
+		if ((int)round((*sCPU).sequenceArray[k * 11]) == 6) {
+			if (((int)round((*sCPU).sequenceArray[k * 11 + 1])) > 0) {
+				(*sCPUbackup).sequenceArray[k * 11 + 1] -= 1.0;
+				(*sCPUbackup).isFollowerInSequence = TRUE;
+				k = (int)round((*sCPU).sequenceArray[k * 11 + 2]);
+				error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
+			}
 		}
-
-		error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
-
-
+		else {
+			error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
+		}
+		
 		if (error) break;
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 	}
