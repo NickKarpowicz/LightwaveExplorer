@@ -486,5 +486,40 @@ Nikogosian
 Spectral file:
 None
 Nonlinear reference frequencies:
-2.85e12 2.85e12 5.7e12 2.85e12 2.85e12 2.85e12 2.85e12
+2.85e14 2.85e14 5.7e14 2.85e14 2.85e14 2.85e14 2.85e14
+~~~crystal end~~~
+Name:
+LGS
+Type:
+2
+Sellmeier equation:
+0
+1st axis coefficients:
+4.326834 0.1030907 0 -0.0309876 0 0 1 0 0 1 0 0 1 -0.0037015 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+4.478907 0.120426 0 -0.034616 0 0 1 0 0 1 0 0 1 -0.0035119 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+4.493881 0.1177452 0 -0.0337004 0 0 1 0 0 1 0 0 1 -0.0037767 0 0 0 0 0 0 0 0
+Sellmeier reference:
+V. Petrov, et al., Appl. Phys. B 78, 543–546 (2004)
+chi2 type:
+1
+d:
+0 0 0 0 5.8 0
+0 0 0 5.1 0 0
+5.8 5.1 -10.7 0 0 0
+d reference:
+V. Petrov, et al., Appl. Phys. B 78, 543–546 (2004)
+chi3 type:
+2
+chi3:
+1.6e-21
+0
+0
+chi3 reference:
+Guess (Lithium niobate value)
+Spectral file:
+None
+Nonlinear reference frequencies:
+129e12 129e12 257e12 285e12 285e12 285e12 285e12
 ~~~crystal end~~~

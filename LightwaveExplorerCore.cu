@@ -147,9 +147,9 @@ namespace deviceFunctions {
 			double cosPhi2 = cosPhi * cosPhi;
 			double realna2 = na.real() * na.real();
 			double realnb2 = nb.real() * nb.real();
-			deviceComplex ina2 = 1./ (na * na);
-			deviceComplex inb2 = 1./(nb * nb);
-			deviceComplex inc2 = 1./(nc * nc);
+			deviceComplex ina2 = 1. / (na * na);
+			deviceComplex inb2 = 1. / (nb * nb);
+			deviceComplex inc2 = 1. / (nc * nc);
 			double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2)
 				* sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2)
 					+ ((sinPhi2 / realna2 + cosPhi2 / realnb2)
@@ -157,7 +157,7 @@ namespace deviceFunctions {
 			double cosDelta = cos(delta);
 			double sinDelta = sin(delta);
 			*ne = 1.0 / deviceLib::sqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 * ina2
-				+ sinPhi2 * inb2) + sinTheta2  * inc2)
+				+ sinPhi2 * inb2) + sinTheta2 * inc2)
 				+ sinDelta * sinDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
 				- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
 
@@ -167,6 +167,8 @@ namespace deviceFunctions {
 				+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
 
 			return *ne;
+
+
 		}
 	}
 
@@ -494,7 +496,7 @@ namespace kernels {
 				chi11[i] = 100000.0;
 			}
 			else {
-				sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[68], (int)sellmeierCoefficients[69]);
+				sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[i], sellmeierCoefficients[66], sellmeierCoefficients[67], s->axesNumber, s->sellmeierType);
 				chi11[i] = ne.real() * ne.real() - 1.0;
 			}
 		}
@@ -1035,7 +1037,7 @@ namespace kernels {
 					chi11[im] = 100000.0;
 				}
 				else {
-					sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[im], sellmeierCoefficients[66], sellmeierCoefficients[67], (int)sellmeierCoefficients[68], (int)sellmeierCoefficients[69]);
+					sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[im], sellmeierCoefficients[66], sellmeierCoefficients[67], axesNumber, sellmeierType);
 					chi11[im] = ne.real() * ne.real() - 1.0;
 				}
 			}
@@ -1401,7 +1403,7 @@ namespace kernels {
 			specfac = loadedField[h] * deviceLib::exp(specphase);
 		}
 		deviceComplex ne, no;
-		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), (*s).crystalTheta, (*s).crystalPhi, (*s).sellmeierType, 0);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 
 
 		double ko = TWOPI * no.real() * f / LIGHTC;
