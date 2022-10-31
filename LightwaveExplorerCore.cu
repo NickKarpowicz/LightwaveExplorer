@@ -131,44 +131,66 @@ namespace deviceFunctions {
 			return *ne;
 		}
 		else {
-			//type == 2: biaxial
-			// X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
-			// I am sorry if there is a bug and you're trying to find it, i did my best.
+			////type == 2: biaxial
+			//// X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
+			//// I am sorry if there is a bug and you're trying to find it, i did my best.
+			//deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
+			//deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
+			//deviceComplex nc = sellmeierFunc(ls, omega, &a[44], eqn);
+			//double cosTheta = cos(theta);
+			//double cosTheta2 = cosTheta * cosTheta;
+			//double sinTheta = sin(theta);
+			//double sinTheta2 = sinTheta * sinTheta;
+			//double sinPhi = sin(phi);
+			//double sinPhi2 = sinPhi * sinPhi;
+			//double cosPhi = cos(phi);
+			//double cosPhi2 = cosPhi * cosPhi;
+			//double realna2 = na.real() * na.real();
+			//double realnb2 = nb.real() * nb.real();
+			//deviceComplex ina2 = 1. / (na * na);
+			//deviceComplex inb2 = 1. / (nb * nb);
+			//deviceComplex inc2 = 1. / (nc * nc);
+			//double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2)
+			//	* sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2)
+			//		+ ((sinPhi2 / realna2 + cosPhi2 / realnb2)
+			//			* cosTheta2 + sinTheta2 / (nc.real() * nc.real()))));
+			//double cosDelta = cos(delta);
+			//double sinDelta = sin(delta);
+			//*ne = 1.0 / deviceLib::sqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 * ina2
+			//	+ sinPhi2 * inb2) + sinTheta2 * inc2)
+			//	+ sinDelta * sinDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
+			//	- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
+
+			//*no = 1.0 / deviceLib::sqrt(sinDelta * sinDelta * (cosTheta2 * (cosPhi2 * ina2
+			//	+ sinPhi2 * inb2) + sinTheta2 * inc2)
+			//	+ cosDelta * cosDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
+			//	+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
+
+			//return *ne;
+
 			deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
 			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
 			deviceComplex nc = sellmeierFunc(ls, omega, &a[44], eqn);
-			double cosTheta = cos(theta);
-			double cosTheta2 = cosTheta * cosTheta;
-			double sinTheta = sin(theta);
-			double sinTheta2 = sinTheta * sinTheta;
-			double sinPhi = sin(phi);
-			double sinPhi2 = sinPhi * sinPhi;
-			double cosPhi = cos(phi);
-			double cosPhi2 = cosPhi * cosPhi;
-			double realna2 = na.real() * na.real();
-			double realnb2 = nb.real() * nb.real();
-			deviceComplex ina2 = 1. / (na * na);
-			deviceComplex inb2 = 1. / (nb * nb);
-			deviceComplex inc2 = 1. / (nc * nc);
-			double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2)
-				* sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2)
-					+ ((sinPhi2 / realna2 + cosPhi2 / realnb2)
-						* cosTheta2 + sinTheta2 / (nc.real() * nc.real()))));
-			double cosDelta = cos(delta);
-			double sinDelta = sin(delta);
-			*ne = 1.0 / deviceLib::sqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 * ina2
-				+ sinPhi2 * inb2) + sinTheta2 * inc2)
-				+ sinDelta * sinDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
-				- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
+			double cp = cos(phi);
+			double sp = sin(phi);
+			double ct = cos(theta);
+			double st = sin(theta);
+			double sq2 = sqrt(2.0);
+			double sp4 = sin(phi + PI * 0.25);
+			deviceComplex a2 = na * na;
+			deviceComplex b2 = nb * nb;
+			deviceComplex c2 = nc * nc;
 
-			*no = 1.0 / deviceLib::sqrt(sinDelta * sinDelta * (cosTheta2 * (cosPhi2 * ina2
-				+ sinPhi2 * inb2) + sinTheta2 * inc2)
-				+ cosDelta * cosDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
-				+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
+			deviceComplex denom = 2.0 * (a2 * st * st * cp + b2 * sp * st * st + c2 * ct * ct);
 
+			deviceComplex t1 = sq2 * a2 * b2 * st * st * sp4 + a2 * c2 * st * st * cp - a2 * c2 * st * st + a2 * c2 + b2 * c2 * sp * st * st - b2 * c2 * st * st + b2 * c2;
+			t1 = deviceLib::sqrt(t1 * t1 - 4.0 * a2 * b2 * c2 * (sq2 * st * st * sp4 + -st * st + 1.0) * (a2 * st * st * cp + b2 * sp * st * st + c2 * ct * ct));
+
+			deviceComplex t2 = sq2 * a2 * b2 * st * st * sp4 + a2 * c2 * st * st * cp - a2 * c2 * st * st + a2 * c2 + b2 * c2 * sp * st * st - b2 * c2 * st * st + b2 * c2;
+
+			*ne = deviceLib::sqrt((t2 + t1) / denom);
+			*no = deviceLib::sqrt((t2 - t1) / denom);
 			return *ne;
-
-
 		}
 	}
 
