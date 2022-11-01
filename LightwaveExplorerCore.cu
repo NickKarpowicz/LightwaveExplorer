@@ -173,7 +173,7 @@ namespace deviceFunctions {
 			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
 			nb *= nb;
 			deviceComplex nc = sellmeierFunc(ls, omega, &a[44], eqn);
-			nc *= nb;
+			nc *= nc;
 			double cp = cos(phi);
 			cp *= cp;
 			double sp = sin(phi);
@@ -257,8 +257,8 @@ namespace deviceFunctions {
 		//alpha is deviation from crystal Theta (x2 polarizations)
 		//beta is deviation from crystal Phi
 		//
-		deviceComplex n[4][2];
-		deviceComplex nW;
+		deviceComplex n[4][2] = { deviceComplex(0.0, 0.0) };
+		deviceComplex nW = deviceComplex(0.0, 0.0);
 		sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		if ((*s).axesNumber == 0) {
 			*n1 = n[0][0];
@@ -266,20 +266,20 @@ namespace deviceFunctions {
 			return;
 		}
 
-		double gradient[2][2];
+		double gradient[2][2] = { 0.0 };
 		double alpha[2] = { asin(kx1 / n[0][0].real()),asin(kx1 / n[0][1].real()) };
 		double beta[2] = { asin(ky1 / n[0][0].real()),asin(ky1 / n[0][1].real()) };
 
 		double gradientStep = 1.0e-6;
 		double gradientFactor = 0.5 / gradientStep;
-		int it;
+		int it = 0;
 		int maxiter = 64;
 		double gradientTol = 1e-3;
 		//emperical testing: 
 		// converges to double precision limit in two iterations for BBO
 		// converges in 32 iterations in BiBO
 
-		double errArray[4][2];
+		double errArray[4][2] = { 0.0 };
 		if ((*s).axesNumber == 1) {
 			maxiter = 64;
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
@@ -386,118 +386,6 @@ namespace deviceFunctions {
 			return;
 		}
 
-	}
-
-	deviceFunction void findBirefingentCrystalAngle(double* alphaE, double* alphaO, unsigned long long j, double f, double* sellmeierCoefficients, cudaParameterSet* s) {
-		//Find walkoff angle, starting from zero
-		// in the case of an extraordinary axis, the angle of propagation is related to the transverse
-		// momentum in a complicated way:
-		// sin(theta) * n(theta) = delta k * c/omega
-		// theta depends on the refractive index, and the refractive index depends on theta
-		// so we solve numerically
-		double dAlpha = 0.1;
-		double nePlus, neMinus;
-		double err, errPlus, errMinus;
-		deviceComplex ne, no;
-
-
-		deviceComplex ii = deviceComplex(0, 1);
-		double crystalTheta = sellmeierCoefficients[66];
-		double crystalPhi = sellmeierCoefficients[67];
-		double kStep = sellmeierCoefficients[70];
-		double tol = sellmeierCoefficients[72];
-		double dk = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
-		double rhs = LIGHTC * dk / (TWOPI * f);
-
-		//if not biaxial, the o-axis can be solved analytically.
-		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-			crystalTheta, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-		*alphaO = asin(rhs / no.real());
-		if ((*s).axesNumber == 2) {
-			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-				crystalTheta + *alphaO, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-			nePlus = no.real();
-			err = abs(nePlus * sin(*alphaO) - rhs);
-
-			int iters = 0;
-			errPlus = 2;
-			errMinus = 2;
-			while (err > tol && iters < 2048) {
-				iters++;
-
-				sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-					crystalTheta + *alphaO + dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-				nePlus = no.real();
-				errPlus = abs(nePlus * sin(*alphaO + dAlpha) - rhs);
-
-				sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-					crystalTheta + *alphaO - dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-				neMinus = no.real();
-				errMinus = abs(neMinus * sin(*alphaO - dAlpha) - rhs);
-
-				//Basic hill climbing algorithm
-				//calculate the error at theta +/- dTheta
-				// if theta + dTheta has lowest error, theta = theta+dTheta, err = errPlus
-				// if theta - dTheta has lowest error, theta = theta-dTheta, err = errMinus
-				// if theta has lowest error, step size is too large, dTheta /= 2;
-				if (errPlus < err && errPlus < errMinus) {
-					*alphaO += dAlpha;
-					err = errPlus;
-				}
-				else if (errMinus < err) {
-					*alphaO -= dAlpha;
-					err = errMinus;
-				}
-				else {
-					dAlpha *= 0.5;
-				}
-
-			}
-		}
-
-		//find the extraordinary angle if the crystal isn't isotropic
-		*alphaE = *alphaO;
-		if ((*s).axesNumber > 0) {
-			sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-				crystalTheta + *alphaE, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-			nePlus = ne.real();
-			err = abs(nePlus * sin(*alphaE) - rhs);
-
-			int iters = 0;
-			errPlus = 2;
-			errMinus = 2;
-			dAlpha = 0.1;
-			while (err > tol && iters < 2048) {
-				iters++;
-
-				sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-					crystalTheta + *alphaE + dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-				nePlus = ne.real();
-				errPlus = abs(nePlus * sin(*alphaE + dAlpha) - rhs);
-
-				sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f),
-					crystalTheta + *alphaE - dAlpha, crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-				neMinus = ne.real();
-				errMinus = abs(neMinus * sin(*alphaE - dAlpha) - rhs);
-
-				//Basic hill climbing algorithm
-				//calculate the error at theta +/- dTheta
-				// if theta + dTheta has lowest error, theta = theta+dTheta, err = errPlus
-				// if theta - dTheta has lowest error, theta = theta-dTheta, err = errMinus
-				// if theta has lowest error, step size is too large, dTheta /= 2;
-				if (errPlus < err && errPlus < errMinus) {
-					*alphaE += dAlpha;
-					err = errPlus;
-				}
-				else if (errMinus < err) {
-					*alphaE -= dAlpha;
-					err = errMinus;
-				}
-				else {
-					dAlpha *= 0.5;
-				}
-			}
-		}
 	}
 }
 using namespace deviceFunctions;
@@ -693,8 +581,8 @@ namespace kernels {
 		//frequency being resolved by current thread
 		double f = k * fStep;
 
-		findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients1, s);
-		findBirefingentCrystalAngle(&alpha2, &alphaO2, j, f, sellmeierCoefficients2, s);
+		//findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients1, s);
+		//findBirefingentCrystalAngle(&alpha2, &alphaO2, j, f, sellmeierCoefficients2, s);
 		//walkoff angle has been found, generate the rest of the grids
 
 		sellmeierCuda(&ne1, &no1, sellmeierCoefficients1, f,
@@ -1096,8 +984,8 @@ namespace kernels {
 		//NOTE TO SELF: Using this function is not strictly necessary, but it tends to filter out the invalid region better
 		//than raw application of the sellmeier equation. It might be possible to reduce startup time by making a smarter filter
 		//without all the extra calculations.
-		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex % ((*s).Nfreq-1), &ne, &no);
-		//sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		//findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex % ((*s).Nfreq-1), &ne, &no);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 		if (minN(ne.real(), no.real()) < 0.9 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
