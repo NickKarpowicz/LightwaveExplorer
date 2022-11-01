@@ -10,15 +10,13 @@ namespace {
 		double cosP = cos((*sCPU).crystalPhi);
 		double sinP = sin((*sCPU).crystalPhi);
 		double forward[9] =
-		{ cosT * cosP, -cosT * sinP, sinT, sinP, cosP, 0, -sinT * cosP, sinT * sinP, cosT };
+		{ cosT * cosP, sinP, -sinT * cosP, -sinP * cosT, cosP, sinP * sinT, sinT, 0, cosT };
 		
 		//{ cosP, sinP, 0, -cosT * sinP, cosT * cosP, sinT, sinT * sinP, -sinT * cosP, cosT };
 
 		//reverse direction (different order of operations)
-		sinT *= -1;
-		sinP *= -1;
 		double backward[9] =
-		{ cosT * cosP, -sinP, sinT * cosP, cosT * sinP, cosP, sinT * sinP, -sinT, 0, cosT };
+		{ cosT * cosP, -sinP * cosT, sinT, sinP, cosP, 0, -sinT * cosP, sinP * sinT, cosT };
 
 		memcpy((*s).rotationForward, forward, 9 * sizeof(double));
 		memcpy((*s).rotationBackward, backward, 9 * sizeof(double));

@@ -170,9 +170,7 @@ void checkLibraryAvailability() {
         else {
             printToConsole(maingui.textboxSims, L"No SYCL file...\r\n");
         }
-        
     }
-
 
     if (SYCLavailable) {
         size_t syclDevices = 0;
@@ -195,7 +193,6 @@ void checkLibraryAvailability() {
             if (syclGPUCount > 0) printToConsole(maingui.textboxSims, syclDefault);
         }
     }
-
 }
 
 DWORD WINAPI mainSimThread(LPVOID lpParam) {
@@ -205,7 +202,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     DWORD hplotThread;
     HANDLE cpuThread = NULL;
     DWORD hCpuThread;
-
 
     if (isGridAllocated) {
         freeSemipermanentGrids();

@@ -169,27 +169,25 @@ namespace deviceFunctions {
 			//return *ne;
 
 			deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
+			na *= na;
 			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
+			nb *= nb;
 			deviceComplex nc = sellmeierFunc(ls, omega, &a[44], eqn);
+			nc *= nb;
 			double cp = cos(phi);
+			cp *= cp;
 			double sp = sin(phi);
+			sp *= sp;
 			double ct = cos(theta);
+			ct *= ct;
 			double st = sin(theta);
-			double sq2 = sqrt(2.0);
-			double sp4 = sin(phi + PI * 0.25);
-			deviceComplex a2 = na * na;
-			deviceComplex b2 = nb * nb;
-			deviceComplex c2 = nc * nc;
+			st *= st;
 
-			deviceComplex denom = 2.0 * (a2 * st * st * cp + b2 * sp * st * st + c2 * ct * ct);
+			*ne = deviceLib::sqrt(na * nb * nc /
+				(na * nb * st + na * nc * sp * ct + nb * nc * cp * ct));
+			*no = deviceLib::sqrt(na * nb /
+				(na * cp + nb * sp));
 
-			deviceComplex t1 = sq2 * a2 * b2 * st * st * sp4 + a2 * c2 * st * st * cp - a2 * c2 * st * st + a2 * c2 + b2 * c2 * sp * st * st - b2 * c2 * st * st + b2 * c2;
-			t1 = deviceLib::sqrt(t1 * t1 - 4.0 * a2 * b2 * c2 * (sq2 * st * st * sp4 + -st * st + 1.0) * (a2 * st * st * cp + b2 * sp * st * st + c2 * ct * ct));
-
-			deviceComplex t2 = sq2 * a2 * b2 * st * st * sp4 + a2 * c2 * st * st * cp - a2 * c2 * st * st + a2 * c2 + b2 * c2 * sp * st * st - b2 * c2 * st * st + b2 * c2;
-
-			*ne = deviceLib::sqrt((t2 + t1) / denom);
-			*no = deviceLib::sqrt((t2 - t1) / denom);
 			return *ne;
 		}
 	}
