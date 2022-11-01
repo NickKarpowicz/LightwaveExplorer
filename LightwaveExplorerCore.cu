@@ -563,52 +563,7 @@ namespace kernels {
 	//note that the sellmeier coefficients have extra values appended to the end
 	//to give info about the current simulation
 	trilingual applyFresnelLossKernel asKernel(withID double* sellmeierCoefficients1, double* sellmeierCoefficients2, cudaParameterSet* s) {
-		long long i = localIndex;
-		double alpha1, alpha2, alphaO1, alphaO2;
-		long long j, k;
-		long long Ntime = (*s).Ntime;
-		int axesNumber = (*s).axesNumber;
-		int sellmeierType = (*s).sellmeierType;
-		deviceComplex ne1, no1, ne2, no2, n0;
-		deviceComplex cuZero = deviceComplex(0, 0);
-		j = i / Ntime; //spatial coordinate
-		k = i % Ntime; //temporal coordinate
-		deviceComplex ii = deviceComplex(0, 1);
-		double crystalTheta = sellmeierCoefficients1[66];
-		double crystalPhi = sellmeierCoefficients1[67];
-		double fStep = sellmeierCoefficients1[71];
-
-		//frequency being resolved by current thread
-		double f = k * fStep;
-
-		//findBirefingentCrystalAngle(&alpha1, &alphaO1, j, f, sellmeierCoefficients1, s);
-		//findBirefingentCrystalAngle(&alpha2, &alphaO2, j, f, sellmeierCoefficients2, s);
-		//walkoff angle has been found, generate the rest of the grids
-
-		sellmeierCuda(&ne1, &no1, sellmeierCoefficients1, f,
-			crystalTheta + 0 * alpha1, crystalPhi, axesNumber, sellmeierType);
-		sellmeierCuda(&n0, &no1, sellmeierCoefficients1, f,
-			crystalTheta + 0 * alphaO1, crystalPhi, axesNumber, sellmeierType);
-		if (isnan(ne1.real()) || isnan(no1.real())) {
-			ne1 = deviceComplex(1, 0);
-			no1 = deviceComplex(1, 0);
-		}
-
-		sellmeierCuda(&ne2, &no2, sellmeierCoefficients2, f,
-			crystalTheta + alpha2, crystalPhi, axesNumber, sellmeierType);
-		sellmeierCuda(&n0, &no2, sellmeierCoefficients2, f,
-			crystalTheta + alphaO2, crystalPhi, axesNumber, sellmeierType);
-		if (isnan(ne2.real()) || isnan(no2.real())) {
-			ne2 = deviceComplex(1, 0);
-			no2 = deviceComplex(1, 0);
-		}
-
-		deviceComplex ts = 2. * ne1 * cos(alpha1) / (ne1 * cos(alpha1) + ne2 * cos(alpha2));
-		deviceComplex tp = 2. * ne1 * cos(alpha1) / (ne2 * cos(alpha1) + ne1 * cos(alpha2));
-		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
-		if (isnan(tp.real()) || isnan(tp.imag())) ts = deviceComplex(0, 0);
-		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
-		(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
+		//the old version was hopelessly broken, make a new one from scratch.
 	};
 
 	trilingual apertureKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter) {

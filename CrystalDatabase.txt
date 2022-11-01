@@ -488,3 +488,38 @@ None
 Nonlinear reference frequencies:
 129e12 129e12 257e12 285e12 285e12 285e12 285e12
 ~~~crystal end~~~
+Name:
+LiIO3
+Type:
+1
+Sellmeier equation:
+0
+1st axis coefficients:
+0 0 2.03132 0 0 1.37623 0.0350823 0 1.06745 169.0 0 0 0 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+0 0 1.83086 0 0 1.08807 0.0313810 0 0.0554582 158.76 0 0 0 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+0 0 2.03132 0 0 1.37623 0.0350823 0 1.06745 169.0 0 0 0 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+Handbook of Optics 2009
+chi2 type:
+1
+d:
+0 0 0 0.22 4.1 0
+0 0 0 4.1 -0.22 0
+4.1 4.1 4.34 0 0 0
+d reference:
+Nikogosian + d14 from SNLO
+chi3 type:
+2
+chi3:
+1.6e-21
+0
+0
+chi3 reference:
+Guess (Lithium niobate value)
+Spectral file:
+None
+Nonlinear reference frequencies:
+282e12 282e12 563e12 285e12 285e12 285e12 285e12
+~~~crystal end~~~

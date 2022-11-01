@@ -224,7 +224,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     //run the simulations
     isRunning = TRUE;
     progressCounter = 0;
-    
     int pulldownSelection = (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
@@ -299,7 +298,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             if (error) break;
         }
 
-
         if (cancellationCalled) {
             printToConsole(maingui.textboxSims, _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
             break;
@@ -326,7 +324,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         printToConsole(maingui.textboxSims, _T("Finished after %8.4lf s. \r\n"), 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
-
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
     deallocateGrids(activeSetPtr, FALSE);
     isRunning = FALSE;
