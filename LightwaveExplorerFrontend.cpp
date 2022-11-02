@@ -308,7 +308,6 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
             if(plotThread != NULL)CloseHandle(plotThread);
         }
-
     }
 
     if ((*activeSetPtr).NsimsCPU != 0 && cpuThread != 0) {
