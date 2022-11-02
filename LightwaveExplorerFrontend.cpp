@@ -1805,9 +1805,6 @@ int setInterfaceValuesToActiveValues() {
         SetWindowText(maingui.tbSequence, L"");
     }
 
-
-        
-
     if (strcmp((*activeSetPtr).field1FilePath, "None") == 0) {
         SetWindowText(maingui.tbPulse1Path, L"");
     }
