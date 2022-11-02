@@ -1886,14 +1886,12 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbGPUStatus, _T("GPU (W)"), -72, -1);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse1Type, _T("Pulse 1:"), labos, 4);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2:"), labos, 4);
-
-    //labelTextBox(hdc, maingui.mainWindow, maingui.tbCPUsims, _T("Offloads:"), -70, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdFittingType, _T("Fit type:"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 16, -1);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.cbForceCPU, _T("CPU"), 16, -1);
+
     //plot labels
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);
@@ -1906,7 +1904,6 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox6, _T("y-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("x-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("y-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
-
 
     GetWindowRect(maingui.plotBox8, &mainRect);
     labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("Frequency (THz)"), (mainRect.right-mainRect.left)/2 - 15*4, (mainRect.bottom-mainRect.top) + 20);
