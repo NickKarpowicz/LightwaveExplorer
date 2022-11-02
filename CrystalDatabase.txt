@@ -489,7 +489,7 @@ Nonlinear reference frequencies:
 129e12 129e12 257e12 285e12 285e12 285e12 285e12
 ~~~crystal end~~~
 Name:
-LiIO3 (alternate dispersion)
+LiIO3
 Type:
 1
 Sellmeier equation:
