@@ -372,7 +372,7 @@ public:
 #elif defined RUNONSYCL
 #include <CL/sycl.hpp>
 #include <CL/sycl/atomic.hpp>
-#include <oneapi/mkl.hpp>
+#include <oneapi/mkl/dfti.hpp>
 #define trilingual const auto 
 #define deviceFunction 
 #define RUNTYPE 2
