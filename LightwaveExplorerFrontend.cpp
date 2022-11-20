@@ -2708,6 +2708,21 @@ int insertLineBreaksAfterClosingParenthesis(char* cString, size_t N) {
     return 0;
 }
 
+int insertLineBreaksAfterClosingAngle(char* cString, size_t N) {
+    size_t i = 0;
+    while (i < N - 1) {
+        if (cString[i] == '>') {
+            memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            cString[i + 1] = '\r';
+            cString[i + 2] = '\n';
+            i += 2;
+        }
+        i++;
+    }
+    return 0;
+}
+
+
 int insertLineBreaksAfterCurlyBraces(char* cString, size_t N) {
     size_t i = 0;
     while (i < N - 1) {
@@ -2732,6 +2747,7 @@ int insertLineBreaksAfterCurlyBraces(char* cString, size_t N) {
 
 int formatSequence(char* cString, size_t N) {
     indentForDepth(cString, N);
+    insertLineBreaksAfterClosingAngle(cString, N);
     insertLineBreaksAfterClosingParenthesis(cString, N);
     insertLineBreaksAfterSemicolons(cString, N);
     insertLineBreaksAfterCurlyBraces(cString, N);

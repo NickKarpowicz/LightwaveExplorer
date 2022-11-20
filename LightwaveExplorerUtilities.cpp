@@ -150,6 +150,20 @@ char* findClosingCurlyBracket(const char* s) {
 	}
 }
 
+char* findClosingAngleBracket(const char* s) {
+	char* b = (char*)s;
+	for (;;) {
+		if (b[0] == 0) return NULL;
+		if (b[0] == '>') {
+			if (b[1] == ';') return b + 1;
+			return b;
+		}
+		else {
+			b++;
+		}
+	}
+}
+
 int copyParamsIntoStrings(char parameterBlock[22][64], const char* cc, int n) {
 	int loc = 0;
 	//scan to opening parenthesis

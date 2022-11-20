@@ -2346,17 +2346,24 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	char* currentString = sequenceString;
 
 	for (;;) {
+		//skip curly braces
+		if (currentString[0] == '{') {
+			currentString = findClosingCurlyBracket(currentString);
+			++currentString;
+		}
+		if (currentString[0] == '<') {
+			currentString = findClosingAngleBracket(currentString);
+			++currentString;
+		}
+
 		interpretCommand(currentString, iBlock, vBlock, sCPU, (*sCPU).crystalDatabase);
 		currentString = findClosingParenthesis(currentString);
-		if (currentString != NULL && currentString[1] == '{') {
-			currentString = findClosingCurlyBracket(currentString);
-		}
 		if (currentString == NULL) {
 			break;
 		}
-		else {
-			++currentString;
-		}
+
+		++currentString;
+		
 		(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 	}
