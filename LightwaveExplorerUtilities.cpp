@@ -110,6 +110,178 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	return 0;
 }
 
+void stripWhiteSpace(char* sequenceString) {
+	removeCharacterFromString(sequenceString, strlen(sequenceString), ' ');
+	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
+	removeCharacterFromString(sequenceString, strlen(sequenceString), '\t');
+	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');
+}
+
+void stripLineBreaks(char* sequenceString) {
+	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
+	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');
+}
+
+char* findClosingParenthesis(const char* s) {
+	char* b = (char*)s;
+	for (;;) {
+		if (b[0] == 0) return NULL;
+		if (b[0] == ')') {
+			if (b[1] == ';') return b + 1;
+			return b;
+		}
+		else {
+			b++;
+		}
+	}
+}
+
+char* findClosingCurlyBracket(const char* s) {
+	char* b = (char*)s;
+	for (;;) {
+		if (b[0] == 0) return NULL;
+		if (b[0] == '}') {
+			if (b[1] == ';') return b + 1;
+			return b;
+		}
+		else {
+			b++;
+		}
+	}
+}
+
+int copyParamsIntoStrings(char parameterBlock[22][64], const char* cc, int n) {
+	int loc = 0;
+	//scan to opening parenthesis
+	for (;;) {
+		if (cc[loc] == '(') break;
+		if (cc[loc] == 0) return 1;
+		loc++;
+	}
+
+	loc++;
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < 64; j++) {
+			if (cc[loc] == ',' || cc[loc] == ')') {
+				j = 64;
+			}
+			else {
+				parameterBlock[i][j] = cc[loc];
+			}
+			loc++;
+		}
+	}
+	return loc;
+}
+
+void applyOp(char op, double* result, double* readout) {
+	switch (op) {
+	case '*':
+		*result *= *readout;
+		return;
+	case '/':
+		*result /= *readout;
+		return;
+	case '-':
+		*result -= *readout;
+		return;
+	case '+':
+		*result += *readout;
+		return;
+	case '^':
+		*result = pow(*result, *readout);
+		return;
+	}
+}
+
+double parameterStringToDouble(const char* pString, double* iBlock, double* vBlock) {
+	int loc = 0;
+	double result = 0.0;
+	double readout = 0.0;
+	int ind = 0;
+	bool previousCharWasOp = 0;
+	char lastOp = 0;
+	while (loc < 64) {
+		if (pString[loc] == 0) return result;
+
+		if (!previousCharWasOp) {
+			if (pString[loc] == 'v') {
+				++loc;
+				sscanf_s(&pString[loc], "%d", &ind);
+				loc += 2;
+				if (ind < 100) result = vBlock[ind];
+			}
+			else if (pString[loc] == 'i') {
+				++loc;
+				sscanf_s(&pString[loc], "%d", &ind);
+				loc += 2;
+				if (ind < 100) result = iBlock[ind];
+			}
+			else if (pString[loc] == '*'
+				|| pString[loc] == '-'
+				|| pString[loc] == '+'
+				|| pString[loc] == '/'
+				|| pString[loc] == '^') {
+				previousCharWasOp = 1;
+				lastOp = pString[loc];
+				loc++;
+			}
+			else {
+				sscanf_s(&pString[loc], "%lf", &result);
+				while (!(pString[loc] == '*'
+					|| pString[loc] == '-'
+					|| pString[loc] == '+'
+					|| pString[loc] == '/'
+					|| pString[loc] == '^')) {
+					if (pString[loc] == 0) {
+						return result;
+					}
+					else {
+						loc++;
+					}
+				}
+			}
+		}
+		else {
+			if (pString[loc] == 'v') {
+				++loc;
+				sscanf_s(&pString[loc], "%d", &ind);
+				loc += 2;
+				if (ind < 100)readout = vBlock[ind];
+				applyOp(lastOp, &result, &readout);
+				previousCharWasOp = 0;
+			}
+			else if (pString[loc] == 'i') {
+				++loc;
+				sscanf_s(&pString[loc], "%d", &ind);
+				loc += 2;
+				if (ind < 100) readout = iBlock[ind];
+				applyOp(lastOp, &result, &readout);
+				previousCharWasOp = 0;
+			}
+			else {
+				sscanf_s(&pString[loc], "%lf", &readout);
+				applyOp(lastOp, &result, &readout);
+				previousCharWasOp = 0;
+				while (!(pString[loc] == '*'
+					|| pString[loc] == '-'
+					|| pString[loc] == '+'
+					|| pString[loc] == '/'
+					|| pString[loc] == '^')) {
+					if (pString[loc] == 0) {
+						return result;
+					}
+					else {
+						loc++;
+					}
+				}
+			}
+		}
+
+	}
+	return result;
+}
+
 //c implementation of fftshift, working on complex double precision
 //A is the input array, B is the output
 //dim1: column length

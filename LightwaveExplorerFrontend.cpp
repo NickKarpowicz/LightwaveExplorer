@@ -218,7 +218,9 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     (*activeSetPtr).isFollowerInSequence = FALSE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
-    readSequenceString(activeSetPtr);
+    
+    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
+    
     configureBatchMode(activeSetPtr);
     int error = 0;
     //run the simulations
@@ -1452,8 +1454,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).sequenceString, noneString);
     }
     else {
-        removeCharacterFromString((*activeSetPtr).sequenceString, strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING), '\r');
-        removeCharacterFromString((*activeSetPtr).sequenceString, strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING), '\n');
+        stripWhiteSpace((*activeSetPtr).sequenceString);
     }
 
     memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING * sizeof(char));
@@ -1462,8 +1463,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).fittingString, noneString);
     }
     else {
-        removeCharacterFromString((*activeSetPtr).fittingString, strnlen_s((*activeSetPtr).fittingString, 1024), '\r');
-        removeCharacterFromString((*activeSetPtr).fittingString, strnlen_s((*activeSetPtr).fittingString, 1024), '\n');
+        stripLineBreaks((*activeSetPtr).fittingString);
     }
 
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1478,8 +1478,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).field1FilePath, noneString);
     }
     else {
-        removeCharacterFromString((*activeSetPtr).field1FilePath, strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING), '\r');
-        removeCharacterFromString((*activeSetPtr).field1FilePath, strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING), '\n');
+        stripLineBreaks((*activeSetPtr).field1FilePath);
     }
 
     memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1488,8 +1487,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).field2FilePath, noneString);
     }
     else {
-        removeCharacterFromString((*activeSetPtr).field2FilePath, strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING), '\r');
-        removeCharacterFromString((*activeSetPtr).field2FilePath, strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING), '\n');
+        stripLineBreaks((*activeSetPtr).field2FilePath);
     }
 
     memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING * sizeof(char));
@@ -1498,8 +1496,7 @@ int readParametersFromInterface() {
         strcpy((*activeSetPtr).fittingPath, noneString);
     }
     else {
-        removeCharacterFromString((*activeSetPtr).fittingPath, strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING), '\r');
-        removeCharacterFromString((*activeSetPtr).fittingPath, strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING), '\n');
+        stripLineBreaks((*activeSetPtr).fittingPath);
     }
 
     (*activeSetPtr).batchDestination = getDoubleFromHWND(maingui.tbBatchDestination);
@@ -1795,8 +1792,9 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToDouble(maingui.tbBatchDestination2, (*activeSetPtr).batchDestination2);
     setWindowTextToInt(maingui.tbNumberSims2, (int)(*activeSetPtr).Nsims2);
 
-    if (strlen((*activeSetPtr).sequenceString)>12) {
-        insertLineBreaksAfterSemicolons((*activeSetPtr).sequenceString, MAX_LOADSTRING);
+    if (strlen((*activeSetPtr).sequenceString)>6) {
+        //insertLineBreaksAfterSemicolons((*activeSetPtr).sequenceString, MAX_LOADSTRING);
+        formatSequence((*activeSetPtr).sequenceString, MAX_LOADSTRING);
         SetWindowTextA(maingui.tbSequence, (*activeSetPtr).sequenceString);
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\r');
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\n');
@@ -2637,6 +2635,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     return 0;
 }
 
+
 int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
     size_t i = 0;
     while (i < N-1) {
@@ -2653,14 +2652,89 @@ int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
             cString[i + 1] = '\r';
             cString[i + 2] = '\n';
             i += 2;
+        }
+        i++;
+    }
+    return 0;
+}
 
-            //trim space following semicolon
-            if (cString[i + 1] == ' ') {
-                memmove(&cString[i + 1], &cString[i + 2], N - i - 1);
+int indentForDepth(char* cString, size_t N) {
+    size_t i = 0;
+    int depth = 0;
+    while (i < N - 1) {
+        if (cString[i] == '{') depth++;
+        if (cString[i+1] == '}') depth--;
+
+        if (cString[i] == ';' || ((cString[i]==')' && cString[i+1] != ';')) || cString[i] == '{') {
+            for (int k = 0; k < 2*depth; k++) {
+                if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
+                    memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+                }
+                else if (cString[i + 1] != ' ') {
+                    memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+                }
+                else if (cString[i + 1] == ' ') {
+                    memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
+                }
+                cString[i + 1] = ' ';
+                cString[i + 2] = ' ';
+                i += 2;
             }
         }
         i++;
     }
+    return 0;
+}
+
+int insertLineBreaksAfterClosingParenthesis(char* cString, size_t N) {
+    size_t i = 0;
+    while (i < N - 1) {
+        if (cString[i] == ')' && cString[i+1] != ';' && cString[i+1] != '{') {
+            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] == ' ') {
+                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
+            }
+            cString[i + 1] = '\r';
+            cString[i + 2] = '\n';
+            i += 2;
+        }
+        i++;
+    }
+    return 0;
+}
+
+int insertLineBreaksAfterCurlyBraces(char* cString, size_t N) {
+    size_t i = 0;
+    while (i < N - 1) {
+        if (cString[i] == '{' || cString[i] == '}') {
+            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] == ' ') {
+                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
+            }
+            cString[i + 1] = '\r';
+            cString[i + 2] = '\n';
+            i += 2;
+        }
+        i++;
+    }
+    return 0;
+}
+
+int formatSequence(char* cString, size_t N) {
+    indentForDepth(cString, N);
+    insertLineBreaksAfterClosingParenthesis(cString, N);
+    insertLineBreaksAfterSemicolons(cString, N);
+    insertLineBreaksAfterCurlyBraces(cString, N);
     return 0;
 }
 

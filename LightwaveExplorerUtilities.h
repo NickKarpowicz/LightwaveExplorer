@@ -304,4 +304,10 @@ int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalD
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* filePath);
 int             loadPulseFiles(simulationParameterSet* sCPU);
 int             skipFileUntilCharacter(FILE* fstream, char target);
-
+char*           findClosingParenthesis(const char* s);
+char*           findClosingCurlyBracket(const char* s);
+int             copyParamsIntoStrings(char parameterBlock[22][64], const char* cc, int n);
+void            applyOp(char op, double* result, double* readout);
+double          parameterStringToDouble(const char* pString, double* iBlock, double* vBlock);
+void            stripWhiteSpace(char* sequenceString);
+void            stripLineBreaks(char* sequenceString);
