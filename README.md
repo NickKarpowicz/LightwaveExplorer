@@ -42,7 +42,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
  
  I have also compiled the command line version on an Intel Mac using a similar procedure. If you wish to do the same, I can send you the configuration files for VS Code, which is likely the easiest way.
  
- The Windows binary does work (minus aesthetics) using Wine, as tested under both Linus and on an Intel MacBook, but as far as I can tell only using the c++ (CPU) propgation.
+ The Windows binary does work (minus aesthetics) using Wine, as tested under both Linux and on an Intel MacBook, but as far as I can tell only using the c++ (CPU) propgation.
  
   ### Libraries used
  For some of the mathematical operations, I use the following libraries. Thanks to the original authors for making their work available! In order to compile Lightwave Explorer, you'll need them. They are all freely available, but of course have their own licenses .etc.
