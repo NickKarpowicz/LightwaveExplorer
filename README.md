@@ -23,6 +23,27 @@ The simulation itself is written in CUDA in order to run on graphics cards. This
  - _A Python module for easy postprocessing of the results:_ I hope that you get something interesting out that you want to plot and maybe publish. One of the nicest platforms for making nice plots is Python in my opinion (that's why this documentation is in a Jupyter notebook), so purely out of self interest I tried to make it easy to load the results in Python. The module also has some functions related to typical operations you'd like to do on the data to make it easy for all of us. The program also gives you a Matlab loading script for those who want to use that.
  - _Command line interface for running on Linux/clusters:_ The main application runs on Windows, but the simulation core can be compiled on Linux. I use this to run it on the clusters of the Max Planck Society, and other institutes and universities likely have similar systems. This lets you do a lot more if your personal resources are limited but you want to run simulations on a large grid or cover a lot of different parameters!
 
+  ### Installation (Windows)
+  In order to install and run Lightwave Explorer on Windows, just download the file LightwaveExplorerWin64.zip from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
+  
+  To use the SYCL version, you will also need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
+  
+  ### Compilation
+  LWE was developed in Visual Studio. If you clone this repo, if you have installed the latest CUDA development kit from NVIDIA, oneAPI from Intel (including the Math Kernel Library and the DPC++ compiler), clone also the dlib repo side-by-side with LWE and it should compile directly.
+  
+  A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, entering the following should work:
+  ```
+          wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/compileCommandLineLWEfromRepos.sh
+
+          chmod +x compileCommandLineLWEfromRepos.sh
+
+          ./compileCommandLineLWEfromRepos.sh 
+ ```
+ 
+ I have also compiled the command line version on an Intel Mac using a similar procedure. If you wish to do the same, I can send you the configuration files for VS Code, which is likely the easiest way.
+ 
+ The Windows binary does work (minus aesthetics) using Wine, as tested under both Linus and on an Intel MacBook, but as far as I can tell only using the c++ (CPU) propgation.
+ 
   ### Libraries used
  For some of the mathematical operations, I use the following libraries. Thanks to the original authors for making their work available! In order to compile Lightwave Explorer, you'll need them. They are all freely available, but of course have their own licenses .etc.
   - [NVIDIA CUDA](https://developer.nvidia.com/cuda-toolkit): This provides the basic CUDA runtime, compiler, and cuFFT (which does the Fourier transforms here).
