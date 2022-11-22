@@ -1939,7 +1939,6 @@ int getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox) {
         szFileNameNoExt[MAX_PATH - 1] = 0;
         SetWindowText(outputTextbox, szFileNameNoExt);
     }
-
     return 0;
 }
 

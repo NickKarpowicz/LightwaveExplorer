@@ -569,6 +569,47 @@ namespace kernels {
 		//the old version was hopelessly broken, make a new one from scratch.
 	};
 
+	trilingual apertureFarFieldKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter, double xOffset, double yOffset) {
+		long long i = localIndex;
+		long long col, j, k, l;
+		deviceComplex cuZero = deviceComplex(0, 0);
+		col = i / ((*s).Nfreq - 1); //spatial coordinate
+		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+		i = j + col * (*s).Nfreq;
+		k = col % (*s).Nspace;
+		l = col / (*s).Nspace;
+
+		deviceComplex ii = deviceComplex(0, 1);
+
+		//magnitude of k vector
+		double ko = TWOPI*j * (*s).fStep/LIGHTC;
+
+		//transverse wavevector being resolved
+		double dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
+		double dk2 = 0.0;
+		if((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
+
+		//light that won't go the the farfield is immediately zero
+		if (dk1*dk1 > ko*ko || dk2*dk2 > ko*ko) {
+			(*s).gridEFrequency1[i] = cuZero;
+			(*s).gridEFrequency2[i] = cuZero;
+			return;
+		}
+
+		double theta1 = asin(dk1 / ko);
+		double theta2 = asin(dk2 / ko);
+
+		theta1 -= (!(*s).isCylindric) *  xOffset;
+		theta2 -= (*s).is3D * yOffset;
+
+		double r = sqrt(theta1 * theta1 + theta2 * theta2);
+
+		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (r-radius))));
+
+		(*s).gridEFrequency1[i] *= a/(*s).Ngrid;
+		(*s).gridEFrequency2[i] *= a/(*s).Ngrid;
+	};
+
 	trilingual apertureKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter) {
 		long long i = localIndex;
 		long long j, k, col;
@@ -1587,6 +1628,26 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	int applyAperatureFarField(simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
+		cudaParameterSet s;
+		activeDevice d;
+		d.allocateSet(sCPU, &s);
+
+		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
+		d.fft(s.gridETime1, s.gridEFrequency1, 0);
+		cudaParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+		d.deviceLaunch(s.Nblock/2, s.Nthread, apertureFarFieldKernel, sDevice, 0.5 * diameter, activationParameter, xOffset, yOffset);
+		d.fft(s.gridEFrequency1, s.gridETime1, 1);
+		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+		getTotalSpectrum(d);
+		d.deallocateSet(&s);
+
+		return 0;
+	}
+
+
 	int applyAperature(simulationParameterSet* sCPU, double diameter, double activationParameter) {
 		cudaParameterSet s;
 		activeDevice d;
@@ -1916,6 +1977,14 @@ namespace hostFunctions{
 			applyAperature(s,
 				parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock),
 				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock));
+			break;
+		case funHash("apertureFarField"):
+			copyParamsIntoStrings(parameterBlock, cc, 4);
+			applyAperatureFarField(s,
+				parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock),
+				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock),
+				parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock),
+				parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock));
 			break;
 		case funHash("for"):
 			copyParamsIntoStrings(parameterBlock, cc, 2);
