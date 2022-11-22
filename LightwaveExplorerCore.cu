@@ -606,8 +606,8 @@ namespace kernels {
 
 		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (r-radius))));
 
-		(*s).gridEFrequency1[i] *= a/(*s).Ngrid;
-		(*s).gridEFrequency2[i] *= a/(*s).Ngrid;
+		(*s).gridEFrequency1[i] *= a;
+		(*s).gridEFrequency2[i] *= a;
 	};
 
 	trilingual apertureKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter) {
@@ -1637,10 +1637,16 @@ namespace hostFunctions{
 		d.fft(s.gridETime1, s.gridEFrequency1, 0);
 		cudaParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
-		d.deviceLaunch(s.Nblock/2, s.Nthread, apertureFarFieldKernel, sDevice, 0.5 * diameter, activationParameter, xOffset, yOffset);
-		d.fft(s.gridEFrequency1, s.gridETime1, 1);
-		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
+		d.deviceLaunch(s.Nblock/2, s.Nthread, apertureFarFieldKernel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
+
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+
+
+		d.fft(s.gridEFrequency1, s.gridETime1, 1);
+
+		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+
 		getTotalSpectrum(d);
 		d.deallocateSet(&s);
 
@@ -1864,7 +1870,7 @@ namespace hostFunctions{
 			return 1;
 		}
 		int error = 0;
-		char parameterBlock[22][64] = { 0 };
+		char parameterBlock[22][256] = { 0 };
 
 		switch (funHash(cc)) {
 		case funHash("rotate"):
@@ -1924,6 +1930,26 @@ namespace hostFunctions{
 		case funHash("default"):
 			error = solveNonlinearWaveEquationX(s);
 			break;
+		case funHash("init"):
+			(*s).materialIndex = 0;
+			(*s).crystalTheta = 0.0;
+			(*s).crystalPhi = 0.0;
+			(*s).crystalThickness = 0;
+			(*s).propagationStep = 1e-9;
+
+			(*s).nonlinearAbsorptionStrength = 0.0;
+			(*s).chi2Tensor = db[(*s).materialIndex].d;
+			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
+			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
+			(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
+			(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+
+			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
+			(*s).axesNumber = db[(*s).materialIndex].axisType;
+			error = solveNonlinearWaveEquationX(s);
+			(*s).isFollowerInSequence = TRUE;
+			break;
+
 		case funHash("linear"):
 			copyParamsIntoStrings(parameterBlock, cc, 5);
 			if ((*s).isCylindric) {
@@ -1978,13 +2004,55 @@ namespace hostFunctions{
 				parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock),
 				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock));
 			break;
-		case funHash("apertureFarField"):
+		case funHash("farFieldAperture"):
 			copyParamsIntoStrings(parameterBlock, cc, 4);
 			applyAperatureFarField(s,
 				parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock),
 				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock),
 				parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock),
 				parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock));
+			break;
+		case funHash("addPulse"):
+		{
+			copyParamsIntoStrings(parameterBlock, cc, 19);
+			cudaParameterSet sc;
+			activeDevice d;
+			d.dParams = &sc;
+			d.cParams = s;
+			d.allocateSet(s, &sc);
+
+			d.deviceMemcpy(sc.gridETime1, (*s).ExtOut, 2 * sc.Ngrid * sizeof(double), HostToDevice);
+			d.deviceMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2 * sc.NgridC * sizeof(deviceComplex), HostToDevice);
+
+			pulse p;
+			memcpy(&p, &(s->pulse1), sizeof(pulse));
+			p.energy = parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock);
+			p.frequency = 1e12 * parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
+			p.bandwidth = 1e12 * parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock);
+			p.sgOrder = (int)parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock);
+			p.cep = parameterStringToDouble(&parameterBlock[4][0], iBlock, vBlock) / PI;
+			p.delay = 1e-15 * parameterStringToDouble(&parameterBlock[5][0], iBlock, vBlock);
+			p.gdd = 1e-30 * parameterStringToDouble(&parameterBlock[6][0], iBlock, vBlock);
+			p.tod = 1e-45 * parameterStringToDouble(&parameterBlock[7][0], iBlock, vBlock);
+			p.phaseMaterial = (int)parameterStringToDouble(&parameterBlock[8][0], iBlock, vBlock);
+			p.phaseMaterialThickness = 1e-6 * parameterStringToDouble(&parameterBlock[9][0], iBlock, vBlock);
+			p.beamwaist = 1e-6 * parameterStringToDouble(&parameterBlock[10][0], iBlock, vBlock);
+			p.x0 = 1e-6 * parameterStringToDouble(&parameterBlock[11][0], iBlock, vBlock);
+			p.z0 = 1e-6 * parameterStringToDouble(&parameterBlock[12][0], iBlock, vBlock);
+			p.beamAngle = DEG2RAD * parameterStringToDouble(&parameterBlock[13][0], iBlock, vBlock);
+			p.polarizationAngle = DEG2RAD * parameterStringToDouble(&parameterBlock[14][0], iBlock, vBlock);
+			p.circularity = parameterStringToDouble(&parameterBlock[15][0], iBlock, vBlock);
+			(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[16][0], iBlock, vBlock);
+			(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[17][0], iBlock, vBlock);
+			(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[18][0], iBlock, vBlock);
+
+			addPulseToFieldArrays(d, p, FALSE, NULL);
+			d.deviceMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * sc.NgridC * sizeof(deviceComplex), DeviceToHost);
+			d.deviceMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), DeviceToHost);
+
+			getTotalSpectrum(d);
+			d.deallocateSet(&sc);
+		}
 			break;
 		case funHash("for"):
 			copyParamsIntoStrings(parameterBlock, cc, 2);
@@ -2335,7 +2403,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 		if ((*sCPU).imdone[0] == 3) {
 			//copy the field arrays from the GPU to CPU memory if requested by the UI
 			d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
-			d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).Ngrid * sizeof(deviceComplex), DeviceToHost);
+			d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).NgridC * sizeof(deviceComplex), DeviceToHost);
 
 			(*sCPU).imdone[0] = 0;
 		}

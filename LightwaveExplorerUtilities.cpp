@@ -164,7 +164,7 @@ char* findClosingAngleBracket(const char* s) {
 	}
 }
 
-int copyParamsIntoStrings(char parameterBlock[22][64], const char* cc, int n) {
+int copyParamsIntoStrings(char parameterBlock[22][256], const char* cc, int n) {
 	int loc = 0;
 	//scan to opening parenthesis
 	for (;;) {
@@ -215,7 +215,7 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 	int ind = 0;
 	bool previousCharWasOp = 0;
 	char lastOp = 0;
-	while (loc < 64) {
+	while (loc < 255) {
 		if (pString[loc] == 0) return result;
 
 		if (!previousCharWasOp) {
@@ -231,6 +231,7 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 				loc += 2;
 				if (ind < 100) result = iBlock[ind];
 			}
+
 			else if (pString[loc] == '*'
 				|| pString[loc] == '-'
 				|| pString[loc] == '+'
@@ -249,6 +250,9 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 					|| pString[loc] == '^')) {
 					if (pString[loc] == 0) {
 						return result;
+					}
+					if (pString[loc] == 'e') {
+						if (pString[loc + 1] == '-' || pString[loc + 1] == '+') loc += 3;
 					}
 					else {
 						loc++;
