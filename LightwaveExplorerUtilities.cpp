@@ -110,8 +110,30 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	return 0;
 }
 
+int removeCharacterFromStringSkippingAngleBrackets(char* cString, size_t N, char removedChar) {
+	size_t i = 0;
+	size_t r = 0;
+	while (i < N - 1) {
+		if (cString[i] == removedChar) {
+			memmove(&cString[i], &cString[i + 1], N - i - r - 1);
+			cString[N - r - 1] = 0;
+			r++;
+		}
+		else if (cString[i] == '<') {
+			i += findClosingAngleBracket(&cString[i]) - &cString[i];
+		}
+		else {
+			i++;
+		}
+	}
+	if (cString[N - 1] == removedChar) {
+		cString[N - 1] = '\0';
+	}
+	return 0;
+}
+
 void stripWhiteSpace(char* sequenceString) {
-	removeCharacterFromString(sequenceString, strlen(sequenceString), ' ');
+	removeCharacterFromStringSkippingAngleBrackets(sequenceString, strlen(sequenceString), ' ');
 	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
 	removeCharacterFromString(sequenceString, strlen(sequenceString), '\t');
 	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');

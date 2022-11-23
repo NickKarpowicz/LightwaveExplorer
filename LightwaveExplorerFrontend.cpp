@@ -46,7 +46,6 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define EPS0 8.8541878128e-12
 #define SIXTH 0.1666666666666667
 #define THIRD 0.3333333333333333
-
 // Global Variables:
 HINSTANCE hInst;                            // current instance
 WCHAR szTitle[MAX_LOADSTRING];              // The title bar text
@@ -86,7 +85,7 @@ void checkLibraryAvailability() {
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
         CUDAavailable = FALSE;
-        printToConsole(maingui.textboxSims, L"CUDA not available because cufft64_10.dll was not found.\r\n");
+        printC(L"CUDA not available because cufft64_10.dll was not found.\r\n");
     }
     if (CUDAavailable) {
         CUDAavailable = FALSE;
@@ -98,7 +97,7 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             CUDAavailable = FALSE;
-            printToConsole(maingui.textboxSims, L"CUDA not available because cufft64_10.dll was not found.\r\n");
+            printC(L"CUDA not available because cufft64_10.dll was not found.\r\n");
         }
     }
     if (CUDAavailable) {
@@ -111,7 +110,7 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             CUDAavailable = FALSE;
-            printToConsole(maingui.textboxSims, L"CUDA not available because cudart64_110.dll was not found.\r\n\r\n");
+            printC(L"CUDA not available because cudart64_110.dll was not found.\r\n\r\n");
         }
     }
 
@@ -129,24 +128,24 @@ void checkLibraryAvailability() {
                 CUDAavailable = TRUE;
             }
 
-            printToConsole(maingui.textboxSims, _T("CUDA found %i GPU(s): \r\n"), cudaGPUCount);
+            printC(_T("CUDA found %i GPU(s): \r\n"), cudaGPUCount);
             for (i = 0; i < cudaGPUCount; ++i) {
                 cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
                 memset(wcstring, 0, sizeof(wchar_t));
                 mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
-                printToConsole(maingui.textboxSims, _T("%ls\r\n"), wcstring);
-                printToConsole(maingui.textboxSims, _T("    Memory: %i MB\r\n    Multiprocessors: %i\r\n"),
+                printC(_T("%ls\r\n"), wcstring);
+                printC(_T("    Memory: %i MB\r\n    Multiprocessors: %i\r\n"),
                     (int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
             }
 
         }
         else {
-            printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found.\r\n");
+            printC(L"No CUDA-compatible GPU found.\r\n");
             CUDAavailable = FALSE;
         }
     }
     else {
-        printToConsole(maingui.textboxSims, L"No CUDA-compatible GPU found.\r\n");
+        printC(L"No CUDA-compatible GPU found.\r\n");
         CUDAavailable = FALSE;
     }
 
@@ -164,11 +163,11 @@ void checkLibraryAvailability() {
         SYCLavailable = FALSE;
         DWORD SYCLfile = GetFileAttributes(L"LightwaveExplorerSYCL.dll");
         if (SYCLfile != 0xFFFFFFFF) {
-            printToConsole(maingui.textboxSims, L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
-            printToConsole(maingui.textboxSims, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
+            printC(L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printC(L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
         }
         else {
-            printToConsole(maingui.textboxSims, L"No SYCL file...\r\n");
+            printC(L"No SYCL file...\r\n");
         }
     }
 
@@ -179,18 +178,18 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             SYCLavailable = FALSE;
-            printToConsole(maingui.textboxSims, L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
-            printToConsole(maingui.textboxSims, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
+            printC(L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printC(L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
         }
         unsigned char* deviceCounts = (unsigned char*)&syclDevices;
         if (deviceCounts[0] == 0u) {
-            printToConsole(maingui.textboxSims, L"Something is wrong - SYCL doesn't think you have a CPU.\r\n");
+            printC(L"Something is wrong - SYCL doesn't think you have a CPU.\r\n");
             SYCLavailable = FALSE;
         }
         else {
             syclGPUCount = deviceCounts[1];
-            printToConsole(maingui.textboxSims, syclDeviceList);
-            if (syclGPUCount > 0) printToConsole(maingui.textboxSims, syclDefault);
+            printC(syclDeviceList);
+            if (syclGPUCount > 0) printC(syclDefault);
         }
     }
 }
@@ -209,7 +208,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     memset(activeSetPtr, 0, sizeof(simulationParameterSet));
     readParametersFromInterface();
     if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
-        printToConsole(maingui.textboxSims, L"Too many simulations in batch mode. Must be under %i total.\r\n", MAX_SIMULATIONS);
+        printC(L"Too many simulations in batch mode. Must be under %i total.\r\n", MAX_SIMULATIONS);
     }
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
@@ -272,10 +271,10 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    printToConsole(maingui.textboxSims, _T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                    printC(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
                 }
                 else {
-                    printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    printC(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
                 } 
             }
             if (error) break;
@@ -290,10 +289,10 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             error = normalFunction(&activeSetPtr[j]); 
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    printToConsole(maingui.textboxSims, _T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                    printC(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
                 }
                 else {
-                    printToConsole(maingui.textboxSims, _T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    printC(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
                 }
             }
 
@@ -301,7 +300,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
 
         if (cancellationCalled) {
-            printToConsole(maingui.textboxSims, _T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
+            printC(_T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
             break;
         }
 
@@ -318,11 +317,11 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     }
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error==13) {
-        printToConsole(maingui.textboxSims, 
+        printC(
             L"NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
     }
     else {
-        printToConsole(maingui.textboxSims, _T("Finished after %8.4lf s. \r\n"), 1e-6 *
+        printC(_T("Finished after %8.4lf s. \r\n"), 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
@@ -361,7 +360,7 @@ DWORD WINAPI createRunFile(LPVOID lpParam) {
     }
     
     mbstowcs(wideBuffer, fileName, strlen(fileName)+1);
-    printToConsole(maingui.textboxSims, 
+    printC(
         L"Run %ls on cluster with:\r\nsbatch %ls.slurmScript\r\n",
         wideBuffer, wideBuffer);
     
@@ -1039,9 +1038,9 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     if (crystalDatabasePtr != NULL) {
         GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
         readCrystalDatabase(crystalDatabasePtr);
-        printToConsole(maingui.textboxSims, _T("\r\nMaterial database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+        printC(_T("\r\nMaterial database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
         for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-            printToConsole(maingui.textboxSims, _T("%2.2i: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+            printC(_T("%2.2i: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
         }
     }
 
@@ -1126,9 +1125,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SetCurrentDirectory(programDirectory);
             memset(crystalDatabasePtr, 0, 512 * sizeof(crystalEntry));
             readCrystalDatabase(crystalDatabasePtr);
-            printToConsole(maingui.textboxSims, _T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+            printC(_T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-                printToConsole(maingui.textboxSims, _T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+                printC(_T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
             }
             break;
         case ID_BTNPLOT:
@@ -1163,25 +1162,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 
             }
             else {
-                printToConsole(maingui.textboxSims, L"Read failure.\r\n");
+                printC(L"Read failure.\r\n");
             }
             break;
         case ID_BTNADDCRYSTAL:
-            if (GetWindowTextLength(maingui.tbSequence) < 11) {
+            if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"%i %i %2.1lf %2.1lf %2.1e %2.1lf %2.1lf %2.1lf %2.1lf %2.1lf %i;\r\n",
-                0, (int)getDoubleFromHWND(maingui.tbMaterialIndex), getDoubleFromHWND(maingui.tbCrystalTheta),
-                getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbNonlinearAbsortion),
-                getDoubleFromHWND(maingui.tbBandGap),getDoubleFromHWND(maingui.tbDrudeGamma),
-                getDoubleFromHWND(maingui.tbEffectiveMass), getDoubleFromHWND(maingui.tbCrystalThickness),
-                getDoubleFromHWND(maingui.tbXstep), 0);
+            if(getDoubleFromHWND(maingui.tbNonlinearAbsortion) != 0.0){
+                printToConsole(maingui.tbSequence, L"plasma(%i,%2.1lf,%2.1lf,%2.1e,%2.1lf,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
+                    (int)getDoubleFromHWND(maingui.tbMaterialIndex), getDoubleFromHWND(maingui.tbCrystalTheta),
+                    getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbNonlinearAbsortion),
+                    getDoubleFromHWND(maingui.tbBandGap), getDoubleFromHWND(maingui.tbDrudeGamma),
+                    getDoubleFromHWND(maingui.tbEffectiveMass), getDoubleFromHWND(maingui.tbCrystalThickness),
+                    getDoubleFromHWND(maingui.tbXstep));
+            }
+            else {
+                printToConsole(maingui.tbSequence, L"nonlinear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
+                    (int)getDoubleFromHWND(maingui.tbMaterialIndex), getDoubleFromHWND(maingui.tbCrystalTheta),
+                    getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbCrystalThickness),
+                    getDoubleFromHWND(maingui.tbXstep));
+            }
+
             break;
         case ID_BTNADDECHO:
-            if (GetWindowTextLength(maingui.tbSequence) < 11) {
+            if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"%i %i %i %i %i %i %i %i %i %i %i;\r\n", 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0);
+            printToConsole(maingui.tbSequence, L"plasma(d,d,d,d,d,d,d,d,d);\r\n");
             break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
@@ -1529,7 +1537,7 @@ int readParametersFromInterface() {
         (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     }
-    //printToConsole(maingui.textboxSims, L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
+    //printC(L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
     (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
     (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
@@ -1645,12 +1653,21 @@ template<typename... Args> void printToConsole(HWND console, const wchar_t* form
     swprintf_s(newBuffer, MAX_LOADSTRING, format, args...);
     appendTextToWindow(console, newBuffer, MAX_LOADSTRING);
 }
+
+template<typename... Args> void printC(const wchar_t* format, Args... args) {
+    wchar_t newBuffer[MAX_LOADSTRING] = { 0 };
+    swprintf_s(newBuffer, MAX_LOADSTRING, format, args...);
+    appendTextToWindow(maingui.textboxSims, newBuffer, MAX_LOADSTRING);
+}
+
 int setWindowTextToInt(HWND win, int in) {
     wchar_t textBuffer[128];
     swprintf_s(textBuffer, 128, L"%i", in);
     SetWindowTextW(win, textBuffer);
     return 0;
 }
+
+
 
 int getNumberOfDecimalsToDisplay(double in, bool isExponential) {
     if (in == 0) return 0;
@@ -2015,7 +2032,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
             return TRUE;
         }
         else {
-            printToConsole(maingui.textboxSims, L"Read %i\r\n", readParameters);
+            printC(L"Read %i\r\n", readParameters);
         }
 
 
@@ -2032,7 +2049,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
 //  cn = 4: vaporwave (symmetric amplitude)
 int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm) {
     if (Nx * Ny == 0) {
-        printToConsole(maingui.textboxSims, L"what are you doing");
+        printC(L"what are you doing");
     }
     // creating input
     unsigned char* pixels = (unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
@@ -2158,14 +2175,14 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
     ZeroMemory(&bm, sizeof(BITMAP));
     HDC hdcMem = CreateCompatibleDC(hdc);
     if (hdcMem == NULL) {
-        printToConsole(maingui.textboxSims, L"no cdc\r\n");
+        printC(L"no cdc\r\n");
         return 1;
     }
     SelectObject(hdcMem, hbmp);
     GetObject(hbmp, sizeof(bm), &bm);
     //StretchBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
     if (0 == BitBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, SRCCOPY)) {
-        printToConsole(maingui.textboxSims, L"draw fail\r\n");
+        printC(L"draw fail\r\n");
     }
     free(pixels);
     DeleteDC(hdcMem);
@@ -2192,7 +2209,7 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
 
     switch ((*s).dataType) {
     case 0:
-        //if ((*s).data == (*activeSetPtr).ExtOut)printToConsole(maingui.textboxSims, L"Remapping\r\n");
+        //if ((*s).data == (*activeSetPtr).ExtOut)printC(L"Remapping\r\n");
         linearRemapDoubleToFloat((*s).data, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         break;
     case 1:
@@ -2203,7 +2220,7 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
         free(shiftedFFT);
         break;
     }
-    //if ((*s).data == (*activeSetPtr).ExtOut)printToConsole(maingui.textboxSims, L"Remapped\r\n");
+    //if ((*s).data == (*activeSetPtr).ExtOut)printC(L"Remapped\r\n");
     drawArrayAsBitmap(maingui.mainWindow,
         plotRect.right - plotRect.left, 
         plotRect.bottom - plotRect.top, 
@@ -2212,7 +2229,7 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
         plotRect.bottom - plotRect.top, 
         plotRect.right - plotRect.left, 
         plotarr2, (*s).colorMap);
-    //if ((*s).data == (*activeSetPtr).ExtOut)printToConsole(maingui.textboxSims, L"Drew\r\n");
+    //if ((*s).data == (*activeSetPtr).ExtOut)printC(L"Drew\r\n");
 
     free(plotarr2);
 
@@ -2250,7 +2267,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 	size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 
     if ((*activeSetPtr).ExtOut == NULL) {
-        printToConsole(maingui.textboxSims, L"WTF m8\r\n");
+        printC(L"WTF m8\r\n");
         return 1;
     }
 	sTime1.data = 
@@ -2569,7 +2586,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     (*activeSetPtr).progressCounter = &progressCounter;
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
-            printToConsole(maingui.textboxSims, L"Could not read reference file!\r\n");
+            printC(L"Could not read reference file!\r\n");
             free((*activeSetPtr).imdone);
             free((*activeSetPtr).deffTensor);
             free((*activeSetPtr).loadedField1);
@@ -2579,7 +2596,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
 
     }
 
-    printToConsole(maingui.textboxSims, L"Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
+    printC(L"Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
 
 
@@ -2618,13 +2635,13 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     (*activeSetPtr).plotSim = 0;
     drawSimPlots(activeSetPtr);
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    printToConsole(maingui.textboxSims, _T("Finished fitting after %8.4lf s. \r\n"), 1e-6 *
+    printC(_T("Finished fitting after %8.4lf s. \r\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
     setInterfaceValuesToActiveValues();
-    printToConsole(maingui.textboxSims, L"Fitting result:\r\n (index, value)\r\n");
+    printC(L"Fitting result:\r\n (index, value)\r\n");
     for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
-        printToConsole(maingui.textboxSims, L"%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
+        printC(L"%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
     }
     free((*activeSetPtr).imdone);
     free((*activeSetPtr).deffTensor);
@@ -2864,7 +2881,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     //launch on SYCL, but if the primary queue matches, default to openMP
     else if (pulldownSelection == cudaGPUCount && SYCLitems > 0) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            printToConsole(maingui.textboxSims, L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            printC(L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -2875,7 +2892,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     }
     else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            printToConsole(maingui.textboxSims, L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            printC(L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -2887,7 +2904,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     }
     else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            printToConsole(maingui.textboxSims, L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            printC(L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -2921,7 +2938,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     }
 
     if (error) {
-        printToConsole(maingui.textboxSims, L"Encountered error %i in secondary queue.\r\n", error);
+        printC(L"Encountered error %i in secondary queue.\r\n", error);
         return 1;
     }
 

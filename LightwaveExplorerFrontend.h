@@ -174,6 +174,7 @@ int                 linearRemap(float* A, int nax, int nay, float* B, int nbx, i
 int                 readParametersFromInterface();
 int                 freeSemipermanentGrids();
 template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args);
+template<typename... Args> void printC(const wchar_t* format, Args... args);
 int                 floatyText(HDC hdc, HWND parentWindow, const wchar_t* labelText, int xOffset, int yOffset);
 int                 openDialogBoxAndLoad(HWND hWnd);
 void                setTitleBarDark(HWND hWnd);
