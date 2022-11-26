@@ -1,6 +1,7 @@
 #include "resource.h"
 #include<complex>
 #include<d2d1.h>
+#include<dwrite.h>
 typedef struct guiStruct {
     HWND mainWindow = NULL;
     
@@ -112,6 +113,8 @@ typedef struct guiStruct {
     HWND plotBox7 = NULL;
     HWND plotBox8 = NULL;
     ID2D1Factory* pFactory = NULL;
+    IDWriteFactory* wFactory = NULL;
+    IDWriteTextFormat* wTextFormat = NULL;
     int xOffsetRow1 = 160;
     int xOffsetRow2 = 480;
     int xOffsetRow3 = 640;
@@ -127,8 +130,8 @@ typedef struct guiStruct {
     int rbsize = 18;
     int consoleSize = 630;
     int textboxwidth = 150;
-    int plotSpacerX = 64;
-    int plotSpacerY = 40;
+    int plotSpacerX = 8;
+    int plotSpacerY = 8;
 
 } guiStruct;
 
@@ -145,6 +148,10 @@ typedef struct imagePlotStruct {
 typedef struct plotStruct {
     HWND plotBox = NULL;
     double* data = NULL;
+    double* dataX = NULL;
+    const wchar_t* xLabel = NULL;
+    const wchar_t* yLabel = NULL;
+    bool hasDataX = FALSE;
     std::complex<double>* complexData = NULL;
     bool logScale = FALSE;
     double logMin = 0;

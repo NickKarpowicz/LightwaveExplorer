@@ -679,7 +679,9 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
         xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
     D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &maingui.pFactory);
-
+    DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&maingui.wFactory));
+    maingui.wFactory->CreateTextFormat(L"Arial", NULL, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+        11.0f, L"en-us", &(maingui.wTextFormat));
     maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -1247,17 +1249,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
  
         int spacerX = maingui.plotSpacerX;
         int spacerY = maingui.plotSpacerY;
-        int x0 = maingui.consoleSize + spacerX + 12;
-        int y0 = 90 + spacerY;
-        int imagePanelSizeX = mainRect.right - mainRect.left - x0 - spacerX;
-        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 3 * spacerY;
+        int x0 = maingui.consoleSize + spacerX;
+        int y0 = 60;
+        int imagePanelSizeX = mainRect.right - mainRect.left - x0 - spacerX - 2;
+        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 3*spacerY - 2;
 
         int x = x0;
         int y = y0;
         int dx = imagePanelSizeX / 2;
         int dy = imagePanelSizeY / 4;
-        int xCorrection = 10;
-        int yCorrection = 45;
+        int xCorrection = 0;
+        int yCorrection = 0;
 
         SetWindowPos(maingui.plotBox1, HWND_BOTTOM, x - xCorrection, y - yCorrection, dx, dy, NULL);
         SetWindowPos(maingui.plotBox2, HWND_BOTTOM, x - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
@@ -1911,19 +1913,19 @@ int drawLabels(HDC hdc) {
     RECT mainRect;
     GetWindowRect(maingui.mainWindow, &mainRect);
 
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox1, _T("x-polarization, space/time:"), -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox2, _T("y-polarization, space/time:"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox3, _T("x-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("y-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox5, _T("x-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox6, _T("y-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("x-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("y-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox1, _T("x-polarization, space/time:"), -maingui.plotSpacerX +8, -22);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox2, _T("y-polarization, space/time:"),  -maingui.plotSpacerX +8, -22);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox3, _T("x-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("y-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox5, _T("x-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox6, _T("y-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("x-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("y-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
 
-    GetWindowRect(maingui.plotBox8, &mainRect);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("Frequency (THz)"), (mainRect.right-mainRect.left)/2 - 15*4, (mainRect.bottom-mainRect.top) + 20);
-    GetWindowRect(maingui.plotBox4, &mainRect);
-    labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("Time (fs)"), (mainRect.right - mainRect.left) / 2 - 9 * 4, (mainRect.bottom - mainRect.top) + 20);
+    //GetWindowRect(maingui.plotBox8, &mainRect);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("Frequency (THz)"), (mainRect.right-mainRect.left)/2 - 15*4, (mainRect.bottom-mainRect.top) + 20);
+    //GetWindowRect(maingui.plotBox4, &mainRect);
+    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("Time (fs)"), (mainRect.right - mainRect.left) / 2 - 9 * 4, (mainRect.bottom - mainRect.top) + 20);
     return 0;
 }
 
@@ -2266,10 +2268,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
 
 	size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 
-    if ((*activeSetPtr).ExtOut == NULL) {
-        printC(L"WTF m8\r\n");
-        return 1;
-    }
+
 	sTime1.data = 
         &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
 	sTime1.plotBox = maingui.plotBox1;
@@ -2310,6 +2309,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sWave1.Npts = (*activeSetPtr).Ntime;
     sWave1.unitY = 1e9;
     sWave1.color = D2D1::ColorF(0, 1, 1, 1);
+    sWave1.yLabel = L"E\x2080 (GV/m)";
+    sWave1.xLabel = L"Time (fs)";
     plotXYDirect2d(&sWave1);
 
     sWave2.plotBox = maingui.plotBox4;
@@ -2320,6 +2321,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sWave2.Npts = (*activeSetPtr).Ntime;
     sWave2.unitY = 1e9;
     sWave2.color = D2D1::ColorF(1, 0, 1, 1);
+    sWave2.yLabel = L"E\x2089\x2080 (GV/m)";
+    sWave2.xLabel = L"Time (fs)";
     plotXYDirect2d(&sWave2);
 
     sSpectrum1.plotBox = maingui.plotBox7;
@@ -2330,6 +2333,8 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum1.forceYmin = logPlot;
     sSpectrum1.forcedYmin = -4.0;
     sSpectrum1.color = D2D1::ColorF(0.5, 0, 1, 1);
+    sSpectrum1.xLabel = L"Frequency (THz)";
+    sSpectrum1.yLabel = L"S\x2080(W/Hz)";
     plotXYDirect2d(&sSpectrum1);
 
     sSpectrum2.plotBox = maingui.plotBox8;
@@ -2339,7 +2344,9 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum2.logScale = logPlot;
     sSpectrum2.forceYmin = logPlot;
     sSpectrum2.forcedYmin = -4.0;
-    sSpectrum2.color = D2D1::ColorF(1, 0, 0.5, 1);
+    sSpectrum2.color = D2D1::ColorF(1, 0, 0.5, 1);    
+    sSpectrum2.xLabel = L"Frequency (THz)";
+    sSpectrum2.yLabel = L"S\x2089\x2080(W/Hz)";
     plotXYDirect2d(&sSpectrum2);
 
 
@@ -2436,12 +2443,19 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     ZeroMemory(&sizeF, sizeof(D2D1_SIZE_F));
     ID2D1HwndRenderTarget *pRenderTarget;
     ID2D1SolidColorBrush* pBrush;
+    ID2D1SolidColorBrush* pBrushText;
+    ID2D1SolidColorBrush* pBrushAxis;
     float markerSize = 1.5;
     float lineWidth = 1.25;
-
+    size_t iMin = 0;
     //get limits of Y
     float maxY = 0;
     float minY = 0;
+    float maxX = (*s).Npts * (*s).dx - (*s).x0;
+    float minX = (*s).x0;
+    float axisSpaceX = 60.0f;
+    float axisSpaceY = 25.0f;
+    float axisLabelSpaceX = 16.0f;
     if ((*s).logScale) {
         for (i = 0; i < (*s).Npts; ++i) {
             maxY = max((float)log10((*s).data[i]), maxY);
@@ -2468,47 +2482,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     wchar_t messageBuffer[MAX_LOADSTRING];
     double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
     double xTicks1[3] = { 0.25 * (*s).dx*(*s).Npts + (*s).x0, 0.5 * (*s).dx * (*s).Npts + (*s).x0, 0.75 * (*s).dx * (*s).Npts + (*s).x0 };
-    HDC hdc = GetWindowDC(maingui.mainWindow);
-    SetTextColor(hdc, uiGrey);
-    SetBkColor(hdc, uiDarkGrey);
-    RECT windowRect;
-    GetWindowRect((*s).plotBox, &windowRect);
-
-    int posX = windowRect.left;
-    int posY = windowRect.top;
-    int pixelsTall = windowRect.bottom - windowRect.top;
-    int pixelsWide = windowRect.right - windowRect.left;
-
-    GetWindowRect(maingui.mainWindow, &windowRect);
-    posX -= windowRect.left;
-    posY -= windowRect.top;
-    wchar_t blankOut[] = L"          ";
-    for (i = 0; i < NyTicks; ++i) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        if (abs(yTicks1[i] / (*s).unitY) > 10.0 || abs(yTicks1[i] / (*s).unitY) < 0.01) {
-            swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("%1.1e "), yTicks1[i] / (*s).unitY);
-            TextOutW(hdc, posX - 59, posY + (int)(i * 0.96 * pixelsTall / 2), blankOut, (int)_tcslen(blankOut));
-            TextOutW(hdc, posX - 59, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
-        }
-        else {
-            swprintf_s(messageBuffer, MAX_LOADSTRING,
-                _T("%1.4f "), yTicks1[i] / (*s).unitY);
-            TextOutW(hdc, posX - 59, posY + (int)(i * 0.96 * pixelsTall / 2), blankOut, (int)_tcslen(blankOut));
-            TextOutW(hdc, posX - 54, posY + (int)(i * 0.96 * pixelsTall / 2), messageBuffer, (int)_tcslen(messageBuffer));
-        }
-
-
-    }
-    for (i = 0; i < 3; ++i) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        swprintf_s(messageBuffer, MAX_LOADSTRING,
-            _T("%i"), (int)round(xTicks1[i]));
-        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i)+1) - 12), posY + pixelsTall, blankOut, (int)_tcslen(blankOut));
-        TextOutW(hdc, posX + (int)(0.25 * pixelsWide * ((size_t)(i)+1) - 12), posY + pixelsTall, messageBuffer, (int)_tcslen(messageBuffer));
-    }
-    ReleaseDC(maingui.mainWindow, hdc);
-
+    
     RECT targetRectangle;
     GetClientRect((*s).plotBox, &targetRectangle);
     D2D1_SIZE_U size = D2D1::SizeU(targetRectangle.right, targetRectangle.bottom);
@@ -2517,24 +2491,126 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
         D2D1::RenderTargetProperties(),
         D2D1::HwndRenderTargetProperties((*s).plotBox, size),
         &pRenderTarget);
+
+
     if (pRenderTarget != NULL) {
         sizeF = pRenderTarget->GetSize();
     }
-    
+
+    sizeF.width -= axisSpaceX;
+    sizeF.height -= axisSpaceY;
+    float pixelsTallF = sizeF.height;
+    float pixelsWideF = sizeF.width;
     float scaleX = sizeF.width / ((*s).Npts * (float)(*s).dx);
     float scaleY = sizeF.height / ((float)(maxY - minY));
 
     if (SUCCEEDED(hr))
     {
         hr = pRenderTarget->CreateSolidColorBrush((*s).color, &pBrush);
-
+        if (SUCCEEDED(hr))hr = pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.5, 0.5, 0.5, 0.5), &pBrushAxis);
+        if (SUCCEEDED(hr))hr = pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.8, 0.8, 0.8, 0.8), &pBrushText);
         if (SUCCEEDED(hr))
         {
             PAINTSTRUCT ps;
             BeginPaint((*s).plotBox, &ps);
             pRenderTarget->BeginDraw();
-
             pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+            UINT32 strLen;
+            D2D1_RECT_F layoutRect;
+
+            for (i = 0; i < NyTicks; ++i) {
+                memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
+                if (abs(yTicks1[i] / (*s).unitY) > 10.0 || abs(yTicks1[i] / (*s).unitY) < 0.01) {
+                    swprintf_s(messageBuffer, MAX_LOADSTRING,
+                        _T("%1.1e "), yTicks1[i] / (*s).unitY);
+                }
+                else {
+                    swprintf_s(messageBuffer, MAX_LOADSTRING,
+                        _T("%1.4f "), yTicks1[i] / (*s).unitY);
+
+                }
+                layoutRect.left = axisLabelSpaceX;
+                layoutRect.top = (i * (0.5*(pixelsTallF)));
+                if (i == 2) layoutRect.top -= 8.0f;
+                if (i == 1) layoutRect.top -= 6.0f;
+                layoutRect.bottom = layoutRect.top + axisSpaceY;
+                layoutRect.right = axisSpaceX;
+                strLen = lstrlenW(messageBuffer);
+                pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrushText);
+            }
+            DWRITE_TEXT_ALIGNMENT ta1 = maingui.wTextFormat->GetTextAlignment();
+            maingui.wTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+            
+            if ((*s).yLabel != NULL) {
+                memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
+                swprintf_s(messageBuffer, MAX_LOADSTRING,
+                    _T("%ls"), (*s).yLabel);
+                layoutRect.left = 0;
+                layoutRect.top = pixelsTallF;
+                layoutRect.bottom = pixelsTallF + axisSpaceY;
+                layoutRect.right = pixelsTallF;
+                strLen = lstrlenW(messageBuffer);
+                pRenderTarget->SetTransform(D2D1::Matrix3x2F::Rotation(-90.0, D2D1::Point2F(0.0f, pixelsTallF)));
+                pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrushText);
+                pRenderTarget->SetTransform(D2D1::IdentityMatrix());
+            }
+
+
+            if ((*s).xLabel != NULL) {
+                layoutRect.left = axisSpaceX;
+                layoutRect.top = pixelsTallF + 12;
+                layoutRect.bottom = pixelsTallF + axisSpaceY;
+                layoutRect.right = axisSpaceX + pixelsWideF;
+                strLen = lstrlenW(messageBuffer);
+                memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
+                swprintf_s(messageBuffer, MAX_LOADSTRING,
+                    _T("%ls"), (*s).xLabel);
+                strLen = lstrlenW(messageBuffer);
+                pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrushText);
+            }
+
+
+            for (i = 0; i < 3; ++i) {
+                memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
+                swprintf_s(messageBuffer, MAX_LOADSTRING,
+                    _T("%i"), (int)round(xTicks1[i]));
+                layoutRect.left = axisSpaceX + 0.25 * pixelsWideF * ((size_t)(i)+1) - axisSpaceX/2;
+                layoutRect.top = pixelsTallF;
+                layoutRect.bottom = pixelsTallF + axisSpaceY;
+                layoutRect.right = layoutRect.left + axisSpaceX;
+                strLen = lstrlenW(messageBuffer);
+                pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrushText);
+            }
+            maingui.wTextFormat->SetTextAlignment(ta1);
+            //Draw axes and tickmarks
+            p1.x = axisSpaceX;
+            p1.y = sizeF.height;
+            p2.x = scaleX * (maxX-minX) + axisSpaceX;
+            p2.y = sizeF.height;
+            pRenderTarget->DrawLine(p1, p2, pBrushAxis, lineWidth, 0);
+
+            p1.x = axisSpaceX;
+            p1.y = sizeF.height;
+            p2.x = p1.x;
+            p2.y = 0.0;
+            pRenderTarget->DrawLine(p1, p2, pBrushAxis, lineWidth, 0);
+
+            for (i = 0; i < 2; ++i) {
+                p1.y = sizeF.height - scaleY * (yTicks1[i] - minY);
+                p2.y = p1.y;
+                p1.x = axisSpaceX;
+                p2.x = p1.x + 10;
+                pRenderTarget->DrawLine(p1, p2, pBrushAxis, lineWidth, 0);
+            }
+
+            for (i = 0; i < 3; ++i) {
+                p1.y = sizeF.height;
+                p2.y = p1.y - 10;
+                p1.x = axisSpaceX + scaleX * (xTicks1[i] - minX);
+                p2.x = p1.x;
+                pRenderTarget->DrawLine(p1, p2, pBrushAxis, lineWidth, 0);
+            }
+
             for (i = 0; i < (*s).Npts - 1; ++i) {
                 p1.x = scaleX * (i * (float)(*s).dx);
                 p2.x = scaleX * ((i + 1) * (float)(*s).dx);
@@ -2546,7 +2622,10 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                     p1.y = sizeF.height - scaleY * ((float)(*s).data[i] - (float)minY);
                     p2.y = sizeF.height - scaleY * ((float)(*s).data[i + 1] - (float)minY);
                 }
-
+                p1.x += axisSpaceX;
+                //p1.y += axisSpaceY;
+                p2.x += axisSpaceX;
+                //p2.y += axisSpaceY;
                 pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
                 marker.point = p1;
                 marker.radiusX = markerSize;
@@ -2558,6 +2637,8 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
             EndPaint((*s).plotBox, &ps);
         }
         pBrush->Release();
+        pBrushAxis->Release();
+        pBrushText->Release();
         pRenderTarget->Release();
 
     }
