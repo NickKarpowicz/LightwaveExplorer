@@ -34,7 +34,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define ID_BTNADDECHO 11121
 #define ID_BTNADDCRYSTAL 11122
 #define ID_CBLOGPLOT 12000
-#define ID_CBFORCECPU 12001
+#define ID_CBOVERLAYTOTAL 12001
 #define ID_PLOTSCRUBBER 13001
 #define MAX_SIMULATIONS 16192
 #define MIN_GRIDDIM 8
@@ -678,6 +678,18 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.plotBox8 = CreateWindow(WC_STATIC, NULL, 
         WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
         xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPlot1XMin = CreateWindow(WC_EDIT, TEXT(""),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow1b, 15 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPlot1XMax = CreateWindow(WC_EDIT, TEXT(""),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow1b, 15 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPlot1YMin = CreateWindow(WC_EDIT, TEXT(""),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow1b, 15 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.tbPlot1YMax = CreateWindow(WC_EDIT, TEXT(""),
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetRow1b, 15 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
     D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &maingui.pFactory);
     DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&maingui.wFactory));
     maingui.wFactory->CreateTextFormat(L"Arial", NULL, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
@@ -794,6 +806,9 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.cbLogPlot = CreateWindow(WC_BUTTON, TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 
         btnoffset2a + btnwidth+60, 18 * vs+5, 12, 12, maingui.mainWindow, (HMENU)ID_CBLOGPLOT, hInstance, NULL);
     SendMessage(maingui.cbLogPlot, BM_SETCHECK, BST_CHECKED, 0);
+    maingui.cbOverlayTotal = CreateWindow(WC_BUTTON, TEXT(""), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+        btnoffset2a + btnwidth + 60, 18 * vs + 5, 12, 12, maingui.mainWindow, (HMENU)ID_CBOVERLAYTOTAL, hInstance, NULL);
+
     maingui.trackbarPlot = CreateWindowEx(0, TRACKBAR_CLASS, L"Plot scrubber", WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS | TBS_ENABLESELRANGE,
         btnoffset2a, 18 * vs  + 2, btnwidth, 20, maingui.mainWindow, (HMENU)ID_PLOTSCRUBBER, hInstance, NULL);
     SendMessageW(maingui.trackbarPlot, TBM_SETRANGE, (WPARAM)TRUE, (LPARAM)MAKELONG(0, 1));
@@ -1252,7 +1267,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         int x0 = maingui.consoleSize + spacerX;
         int y0 = 60;
         int imagePanelSizeX = mainRect.right - mainRect.left - x0 - spacerX - 2;
-        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 3*spacerY - 2;
+        int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 3*spacerY - 2 - 26;
 
         int x = x0;
         int y = y0;
@@ -1261,15 +1276,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         int xCorrection = 0;
         int yCorrection = 0;
 
-        SetWindowPos(maingui.plotBox1, HWND_BOTTOM, x - xCorrection, y - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox2, HWND_BOTTOM, x - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox3, HWND_BOTTOM, x - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox4, HWND_BOTTOM, x - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox5, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 0 * dy + 0 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox6, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 1 * dy + 1 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 2 * dy + 2 * spacerY - yCorrection, dx, dy, NULL);
-        SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX - xCorrection, y + 3 * dy + 3 * spacerY - yCorrection, dx, dy, NULL);
-        
+        SetWindowPos(maingui.plotBox1, HWND_BOTTOM, x, y, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox2, HWND_BOTTOM, x, y + 1 * dy + 1 * spacerY, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox3, HWND_BOTTOM, x, y + 2 * dy + 2 * spacerY, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox4, HWND_BOTTOM, x, y + 3 * dy + 3 * spacerY, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox5, HWND_BOTTOM, x + dx + spacerX, y + 0 * dy + 0 * spacerY, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox6, HWND_BOTTOM, x + dx + spacerX, y + 1 * dy + 1 * spacerY, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX, y + 2 * dy + 2 * spacerY, dx, dy, NULL);
+        SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX, y + 3 * dy + 3 * spacerY, dx, dy, NULL);
+        SetWindowPos(maingui.tbPlot1XMin, HWND_BOTTOM, x + dx + spacerX + 40,                          y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
+        SetWindowPos(maingui.tbPlot1XMax, HWND_BOTTOM, x + dx + spacerX + maingui.textboxwidth/3 + 40,   y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
+        SetWindowPos(maingui.tbPlot1YMin, HWND_BOTTOM, x + dx + spacerX + 2*maingui.textboxwidth/3 + 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
+        SetWindowPos(maingui.tbPlot1YMax, HWND_BOTTOM, x + dx + spacerX + 3*maingui.textboxwidth/3+ 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
+        SetWindowPos(maingui.cbOverlayTotal, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 3 + 84 + 16, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
         if (isGridAllocated) {
             ShowWindow(maingui.plotBox1, 0);
             ShowWindow(maingui.plotBox2, 0);
@@ -1312,6 +1331,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonAddCrystalToSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddEchoSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
+        SetWindowTheme(maingui.cbOverlayTotal, L"DarkMode_Explorer", L"wstr");
         //SetWindowTheme(maingui.cbForceCPU, L"DarkMode_Explorer", L"wstr");
         SetWindowTheme(maingui.pbProgress, L"", L"");
         SetWindowTheme(maingui.pbProgressB, L"", L"");
@@ -1908,6 +1928,11 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 16, -1);
+    labelTextBox(hdc, maingui.mainWindow, maingui.cbOverlayTotal, _T("Total"), 16, -1);
+
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPlot1XMin, _T("xlim"), -34, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbPlot1YMin, _T("ylim"), -34, 0);
+
 
     //plot labels
     RECT mainRect;
@@ -2260,7 +2285,22 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         simIndex = 0;
     }
 
-
+    bool forceX = FALSE;
+    double xMin = getDoubleFromHWND(maingui.tbPlot1XMin);
+    double xMax = getDoubleFromHWND(maingui.tbPlot1XMax);
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = getDoubleFromHWND(maingui.tbPlot1YMin);
+    double yMax = getDoubleFromHWND(maingui.tbPlot1YMax);
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (IsDlgButtonChecked(maingui.mainWindow, ID_CBOVERLAYTOTAL) == BST_CHECKED) {
+        overlayTotal = TRUE;
+    }
 	float logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
 	if ((*activeSetPtr).is3D) {
 		logPlotOffset = (float)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
@@ -2330,11 +2370,25 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum1.data = &(*activeSetPtr).totalSpectrum[simIndex * 3 * (*activeSetPtr).Nfreq];
     sSpectrum1.Npts = (*activeSetPtr).Nfreq-1;
     sSpectrum1.logScale = logPlot;
-    sSpectrum1.forceYmin = logPlot;
+    sSpectrum1.forceYmin = (logPlot || forceY);
     sSpectrum1.forcedYmin = -4.0;
+    sSpectrum1.forceYmax = forceY;
+    sSpectrum1.forcedYmax = yMax;
+    if(forceY)sSpectrum1.forcedYmin = yMin;
     sSpectrum1.color = D2D1::ColorF(0.5, 0, 1, 1);
     sSpectrum1.xLabel = L"Frequency (THz)";
     sSpectrum1.yLabel = L"S\x2080(W/Hz)";
+    sSpectrum1.forceXmax = forceX;
+    sSpectrum1.forceXmin = forceX;
+    sSpectrum1.forcedXmax = xMax;
+    sSpectrum1.forcedXmin = xMin;
+    if (overlayTotal) {
+        sSpectrum1.data2 = &(*activeSetPtr).totalSpectrum[(2 + simIndex * 3) * (*activeSetPtr).Nfreq];
+        sSpectrum1.ExtraLines = 1;
+        sSpectrum1.color2 = D2D1::ColorF(1.0, 0.5, 0.0);
+    }
+
+    
     plotXYDirect2d(&sSpectrum1);
 
     sSpectrum2.plotBox = maingui.plotBox8;
@@ -2342,11 +2396,23 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sSpectrum2.data = &(*activeSetPtr).totalSpectrum[(1 + simIndex * 3) * (*activeSetPtr).Nfreq];
     sSpectrum2.Npts = (*activeSetPtr).Nfreq-1;
     sSpectrum2.logScale = logPlot;
-    sSpectrum2.forceYmin = logPlot;
+    sSpectrum2.forceYmin = (logPlot || forceY);
     sSpectrum2.forcedYmin = -4.0;
+    sSpectrum2.forceYmax = forceY;
+    sSpectrum2.forcedYmax = yMax;
+    if (forceY)sSpectrum2.forcedYmin = yMin;
     sSpectrum2.color = D2D1::ColorF(1, 0, 0.5, 1);    
     sSpectrum2.xLabel = L"Frequency (THz)";
     sSpectrum2.yLabel = L"S\x2089\x2080(W/Hz)";
+    sSpectrum2.forceXmax = forceX;
+    sSpectrum2.forceXmin = forceX;
+    sSpectrum2.forcedXmax = xMax;
+    sSpectrum2.forcedXmin = xMin;
+    if (overlayTotal) {
+        sSpectrum2.data2 = &(*activeSetPtr).totalSpectrum[(2 + simIndex * 3) * (*activeSetPtr).Nfreq];
+        sSpectrum2.ExtraLines = 1;
+        sSpectrum2.color2 = D2D1::ColorF(1.0, 0.5, 0.0);
+    }
     plotXYDirect2d(&sSpectrum2);
 
 
@@ -2443,29 +2509,58 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     ZeroMemory(&sizeF, sizeof(D2D1_SIZE_F));
     ID2D1HwndRenderTarget *pRenderTarget;
     ID2D1SolidColorBrush* pBrush;
+    ID2D1SolidColorBrush* pBrush2;
     ID2D1SolidColorBrush* pBrushText;
     ID2D1SolidColorBrush* pBrushAxis;
+
     float markerSize = 1.5;
     float lineWidth = 1.25;
     size_t iMin = 0;
+    size_t iMax = (*s).Npts;
+
     //get limits of Y
     float maxY = 0;
     float minY = 0;
-    float maxX = (*s).Npts * (*s).dx - (*s).x0;
+    float maxX = (*s).Npts * (*s).dx + (*s).x0;
     float minX = (*s).x0;
+    
     float axisSpaceX = 60.0f;
     float axisSpaceY = 25.0f;
     float axisLabelSpaceX = 16.0f;
-    if ((*s).logScale) {
-        for (i = 0; i < (*s).Npts; ++i) {
-            maxY = max((float)log10((*s).data[i]), maxY);
-            minY = min((float)log10((*s).data[i]), minY);
+    float currentY;
+    float currentX;
+    float* xValues = new float[(*s).Npts]();
+
+    for (i = 0; i < (*s).Npts; ++i) {
+        if ((*s).hasDataX) currentX = (float)(*s).dataX[i];
+        else { currentX = i * (*s).dx + (*s).x0; }
+        if (i == 0) {
+            minX = currentX;
+            if ((*s).forceXmax)maxX = currentX;
         }
+
+        xValues[i] = currentX;
+        if ((*s).forcedXmin && (currentX < (*s).forcedXmin)) {
+            iMin = i + 1;
+        }
+        if ((*s).forcedXmax && (currentX > (*s).forcedXmax)) {
+            iMax = i;
+            break;
+        }
+        maxX = max(currentX, maxX);
+        minX = min(currentX, minX);
     }
-    else {
-        for (i = 0; i < (*s).Npts; ++i) {
-            maxY = max((float)(*s).data[i], maxY);
-            minY = min((float)(*s).data[i], minY);
+
+    for (i = iMin; i < iMax; ++i) {
+        if ((*s).logScale) { currentY = (float)log10((*s).data[i]); }
+        else { currentY = (*s).data[i]; }
+        maxY = max(currentY, maxY);
+        minY = min(currentY, minY);
+        if ((*s).ExtraLines>0) {
+            if ((*s).logScale) { currentY = (float)log10((*s).data2[i]); }
+            else { currentY = (*s).data2[i]; }
+            maxY = max(currentY, maxY);
+            minY = min(currentY, minY);
         }
     }
 
@@ -2476,12 +2571,21 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     if ((*s).forceYmin) {
         minY = (*s).forcedYmin;
     }
+    if ((*s).forceYmax) {
+        maxY = (*s).forcedYmax;
+    }
+    if ((*s).forceXmin) {
+        minX = (*s).forcedXmin;
+    }
+    if ((*s).forceXmax) {
+        maxX = (*s).forcedXmax;
+    }
 
     //Draw the labels
     int NyTicks = 3;
     wchar_t messageBuffer[MAX_LOADSTRING];
-    double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
-    double xTicks1[3] = { 0.25 * (*s).dx*(*s).Npts + (*s).x0, 0.5 * (*s).dx * (*s).Npts + (*s).x0, 0.75 * (*s).dx * (*s).Npts + (*s).x0 };
+    double yTicks1[3] = { maxY, 0.5f * (maxY + minY), minY };
+    double xTicks1[3] = { minX + 0.25f * (maxX - minX), minX + 0.5f * (maxX - minX), minX + 0.75f * (maxX - minX) };
     
     RECT targetRectangle;
     GetClientRect((*s).plotBox, &targetRectangle);
@@ -2492,24 +2596,22 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
         D2D1::HwndRenderTargetProperties((*s).plotBox, size),
         &pRenderTarget);
 
-
     if (pRenderTarget != NULL) {
         sizeF = pRenderTarget->GetSize();
     }
 
     sizeF.width -= axisSpaceX;
     sizeF.height -= axisSpaceY;
-    float pixelsTallF = sizeF.height;
-    float pixelsWideF = sizeF.width;
-    float scaleX = sizeF.width / ((*s).Npts * (float)(*s).dx);
+    float scaleX = sizeF.width / ((float)(maxX - minX));
     float scaleY = sizeF.height / ((float)(maxY - minY));
 
     if (SUCCEEDED(hr))
     {
-        hr = pRenderTarget->CreateSolidColorBrush((*s).color, &pBrush);
-        if (SUCCEEDED(hr))hr = pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.5, 0.5, 0.5, 0.5), &pBrushAxis);
-        if (SUCCEEDED(hr))hr = pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.8, 0.8, 0.8, 0.8), &pBrushText);
-        if (SUCCEEDED(hr))
+        hr *= pRenderTarget->CreateSolidColorBrush((*s).color, &pBrush);
+        hr *= pRenderTarget->CreateSolidColorBrush((*s).color2, &pBrush2);
+        hr *= pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.5, 0.5, 0.5, 0.5), &pBrushAxis);
+        hr *= pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0.8, 0.8, 0.8, 0.8), &pBrushText);
+        if (SUCCEEDED(hr) && pBrushAxis != 0 && pBrushText != 0)
         {
             PAINTSTRUCT ps;
             BeginPaint((*s).plotBox, &ps);
@@ -2530,7 +2632,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
 
                 }
                 layoutRect.left = axisLabelSpaceX;
-                layoutRect.top = (i * (0.5*(pixelsTallF)));
+                layoutRect.top = (i * (0.5*(sizeF.height)));
                 if (i == 2) layoutRect.top -= 8.0f;
                 if (i == 1) layoutRect.top -= 6.0f;
                 layoutRect.bottom = layoutRect.top + axisSpaceY;
@@ -2546,21 +2648,20 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 swprintf_s(messageBuffer, MAX_LOADSTRING,
                     _T("%ls"), (*s).yLabel);
                 layoutRect.left = 0;
-                layoutRect.top = pixelsTallF;
-                layoutRect.bottom = pixelsTallF + axisSpaceY;
-                layoutRect.right = pixelsTallF;
+                layoutRect.top = sizeF.height;
+                layoutRect.bottom = sizeF.height + axisSpaceY;
+                layoutRect.right = sizeF.height;
                 strLen = lstrlenW(messageBuffer);
-                pRenderTarget->SetTransform(D2D1::Matrix3x2F::Rotation(-90.0, D2D1::Point2F(0.0f, pixelsTallF)));
+                pRenderTarget->SetTransform(D2D1::Matrix3x2F::Rotation(-90.0, D2D1::Point2F(0.0f, sizeF.height)));
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrushText);
                 pRenderTarget->SetTransform(D2D1::IdentityMatrix());
             }
 
-
             if ((*s).xLabel != NULL) {
                 layoutRect.left = axisSpaceX;
-                layoutRect.top = pixelsTallF + 12;
-                layoutRect.bottom = pixelsTallF + axisSpaceY;
-                layoutRect.right = axisSpaceX + pixelsWideF;
+                layoutRect.top = sizeF.height + 12;
+                layoutRect.bottom = sizeF.height + axisSpaceY;
+                layoutRect.right = axisSpaceX + sizeF.width;
                 strLen = lstrlenW(messageBuffer);
                 memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
                 swprintf_s(messageBuffer, MAX_LOADSTRING,
@@ -2574,9 +2675,9 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
                 swprintf_s(messageBuffer, MAX_LOADSTRING,
                     _T("%i"), (int)round(xTicks1[i]));
-                layoutRect.left = axisSpaceX + 0.25 * pixelsWideF * ((size_t)(i)+1) - axisSpaceX/2;
-                layoutRect.top = pixelsTallF;
-                layoutRect.bottom = pixelsTallF + axisSpaceY;
+                layoutRect.left = axisSpaceX + 0.25 * sizeF.width * ((size_t)(i)+1) - axisSpaceX/2;
+                layoutRect.top = sizeF.height;
+                layoutRect.bottom = sizeF.height + axisSpaceY;
                 layoutRect.right = layoutRect.left + axisSpaceX;
                 strLen = lstrlenW(messageBuffer);
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrushText);
@@ -2611,9 +2712,9 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 pRenderTarget->DrawLine(p1, p2, pBrushAxis, lineWidth, 0);
             }
 
-            for (i = 0; i < (*s).Npts - 1; ++i) {
-                p1.x = scaleX * (i * (float)(*s).dx);
-                p2.x = scaleX * ((i + 1) * (float)(*s).dx);
+            for (i = iMin; i < iMax-1; ++i) {
+                p1.x = scaleX * (xValues[i] - minX);
+                p2.x = scaleX * (xValues[i + 1] - minX);
                 if ((*s).logScale) {
                     p1.y = sizeF.height - scaleY * ((float)log10((*s).data[i]) - (float)minY);
                     p2.y = sizeF.height - scaleY * ((float)log10((*s).data[i + 1]) - (float)minY);
@@ -2623,9 +2724,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                     p2.y = sizeF.height - scaleY * ((float)(*s).data[i + 1] - (float)minY);
                 }
                 p1.x += axisSpaceX;
-                //p1.y += axisSpaceY;
                 p2.x += axisSpaceX;
-                //p2.y += axisSpaceY;
                 pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
                 marker.point = p1;
                 marker.radiusX = markerSize;
@@ -2633,14 +2732,37 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 pRenderTarget->FillEllipse(&marker, pBrush);
             }
 
+            if ((*s).ExtraLines > 0) {
+                for (i = iMin; i < iMax - 1; ++i) {
+                    p1.x = scaleX * (xValues[i] - minX);
+                    p2.x = scaleX * (xValues[i + 1] - minX);
+                    if ((*s).logScale) {
+                        p1.y = sizeF.height - scaleY * ((float)log10((*s).data2[i]) - (float)minY);
+                        p2.y = sizeF.height - scaleY * ((float)log10((*s).data2[i + 1]) - (float)minY);
+                    }
+                    else {
+                        p1.y = sizeF.height - scaleY * ((float)(*s).data2[i] - (float)minY);
+                        p2.y = sizeF.height - scaleY * ((float)(*s).data2[i + 1] - (float)minY);
+                    }
+                    p1.x += axisSpaceX;
+                    p2.x += axisSpaceX;
+                    pRenderTarget->DrawLine(p1, p2, pBrush2, lineWidth, 0);
+                    marker.point = p1;
+                    marker.radiusX = markerSize;
+                    marker.radiusY = markerSize;
+                    pRenderTarget->FillEllipse(&marker, pBrush2);
+                }
+            }
+
             hr = pRenderTarget->EndDraw();
             EndPaint((*s).plotBox, &ps);
+            pBrush->Release();
+            pBrush2->Release();
+            pBrushAxis->Release();
+            pBrushText->Release();
         }
-        pBrush->Release();
-        pBrushAxis->Release();
-        pBrushText->Release();
         pRenderTarget->Release();
-
+        delete[] xValues;
     }
     return 0;
 }

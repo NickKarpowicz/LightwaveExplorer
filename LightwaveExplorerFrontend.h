@@ -96,6 +96,11 @@ typedef struct guiStruct {
     HWND buttonAddEchoSequence = NULL;
     HWND tbPlotNumber = NULL;
     HWND cbLogPlot = NULL;
+    HWND tbPlot1XMin = NULL;
+    HWND tbPlot1XMax = NULL;
+    HWND tbPlot1YMin = NULL;
+    HWND tbPlot1YMax = NULL;
+    HWND cbOverlayTotal = NULL;
     //HWND cbForceCPU = NULL;
     HWND pdClusterSelector = NULL;
     HWND buttonRunOnCluster = NULL;
@@ -148,6 +153,10 @@ typedef struct imagePlotStruct {
 typedef struct plotStruct {
     HWND plotBox = NULL;
     double* data = NULL;
+    int ExtraLines = 0;
+    double* data2 = NULL;
+    double* data3 = NULL;
+    double* data4 = NULL;
     double* dataX = NULL;
     const wchar_t* xLabel = NULL;
     const wchar_t* yLabel = NULL;
@@ -162,7 +171,16 @@ typedef struct plotStruct {
     float unitY = 1.0;
     bool forceYmin = FALSE;
     float forcedYmin = 0.0;
+    bool forceYmax = FALSE;
+    double forcedYmax = 0.0;
+    bool forceXmin = FALSE;
+    double forcedXmin = 0.0;
+    bool forceXmax = FALSE;
+    double forcedXmax = 0.0;
     D2D1_COLOR_F color = D2D1::ColorF(1, 1, 1, 1);
+    D2D1_COLOR_F color2 = D2D1::ColorF(1, 1, 1, 1);
+    D2D1_COLOR_F color3 = D2D1::ColorF(1, 1, 1, 1);
+    D2D1_COLOR_F color4 = D2D1::ColorF(1, 1, 1, 1);
 } plotStruct;
 
 
