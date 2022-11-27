@@ -26,7 +26,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
  - _Command line interface for running on Linux/clusters:_ The main application runs on Windows, but the simulation core can be compiled on Linux. I use this to run it on the clusters of the Max Planck Society, and other institutes and universities likely have similar systems. This lets you do a lot more if your personal resources are limited but you want to run simulations on a large grid or cover a lot of different parameters!
 
   ### Installation (Windows)
-  In order to install and run Lightwave Explorer on Windows, just download the file LightwaveExplorerWin64.zip from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
+  In order to install and run Lightwave Explorer on Windows, just download the file LightwaveExplorerWin64.zip (or .7z, same contents) from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
   
   To use the SYCL version, you will also need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
   
