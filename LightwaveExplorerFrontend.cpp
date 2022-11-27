@@ -84,7 +84,7 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 void checkLibraryAvailability() {
-    printToConsole(maingui.plotBox2, L"\r\n\r\nDetected harware:\r\n");
+    printToConsole(maingui.plotBox2, L"\r\n");
     __try {
         HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
         if (SUCCEEDED(hr)) {
@@ -105,7 +105,7 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             CUDAavailable = FALSE;
-            printToConsole(maingui.plotBox2, L"CUDA not available because cufft64_10.dll was not found.\r\n");
+            //printToConsole(maingui.plotBox2, L"CUDA not available.\r\n");
         }
     }
     if (CUDAavailable) {
@@ -688,7 +688,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
         xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
     printToConsole(maingui.plotBox1, L"2D space-time slice view (y-polarization)\r\nOnce a simulation is run, this panel will show a slice through the center of the field E(x,y,t) at E(0,y,t)\r\nTo run a simulation with the demo settings, simply press the \"Run\" button.");
-    printToConsole(maingui.plotBox2, L"2D space-time slice view (x-polarization)\r\nSame as the panel above, but shows the other polarization.");
+    printToConsole(maingui.plotBox2, L"2D space-time slice view (x-polarization)\r\nSame as the panel above, but shows the other polarization. There's some extra space here, so here's some diagnostic info about your hardware...");
     printToConsole(maingui.plotBox3, L"Waveform view (y-polarization)\r\nShows the on-axis electric field E(x=0,y=0,t)");
     printToConsole(maingui.plotBox4, L"Waveform view (x-polarization)\r\nThe slider control below lets you flip quickly through simulations in a batch\r\nThe Plot button will redraw the images\r\nThe SVG button will save the four bottom plots as SVG files.");
     printToConsole(maingui.plotBox5, L"2D momentum-frequency slice view (y-polarization)\r\nShows the field in the Fourier domain, on a logarithmic scale. Low frequencies are to the left, higher ones to the right. Vertically, the top of the plot shows high spatial frequencies (pointing up), the center is along the propagation axis, and the bottom is high spatial frequencies, pointing down. The field should not touch the edges of this grid. If it touches it vertically, you need a smaller value of dx.\r\n");
@@ -2757,19 +2757,15 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
         sizeF = pRenderTarget->GetSize();
     }
     
-#define SVGi (*s).svgString + wcslen((*s).svgString), (*s).svgBuffer
-#define SVGh(x) (int)(15*x)
-#define SVGstdline if((*s).makeSVG)_snwprintf(SVGi, L"<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke=\"#%X%X%X\" stroke-width=\"%f\"/>\n",p1.x, p1.y, p2.x, p2.y, SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b),lineWidth);
-#define SVGstdcircle if((*s).makeSVG)_snwprintf(SVGi, L"<circle cx=\"%f\" cy=\"%f\" r=\"%f\" stroke=\"none\" fill=\"#%X%X%X\" />\n",p1.x, p1.y, marker.radiusX, SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b));
-#define SVGstartgroup if((*s).makeSVG)_snwprintf(SVGi, L"<g>\n");
-#define SVGendgroup if((*s).makeSVG)_snwprintf(SVGi, L"</g>\n");
-#define SVGcentertext if ((*s).makeSVG)_snwprintf(SVGi, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), 0.5 * (layoutRect.left + layoutRect.right), layoutRect.top + maingui.wTextFormat->GetFontSize(), messageBuffer);
-#define SVGlefttext if ((*s).makeSVG)_snwprintf(SVGi, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), layoutRect.left, layoutRect.top + maingui.wTextFormat->GetFontSize(), messageBuffer);
+    //Start SVG file if building one
+    auto SVGh = [&](float x) {
+        return (int)(15 * x);
+    };
     if ((*s).makeSVG) {
         _snwprintf((*s).svgString, (*s).svgBuffer, L"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
-        _snwprintf(SVGi, L"<svg width=\"%f\" height=\"%f\" viewBox=\"0 0 %f %f\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+        _snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"<svg width=\"%f\" height=\"%f\" viewBox=\"0 0 %f %f\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
             sizeF.width, sizeF.height, sizeF.width, sizeF.height);
-        _snwprintf(SVGi, L"<rect fill=\"#%X%X%X\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"%f\" height=\"%f\"/>\n",
+        _snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"<rect fill=\"#%X%X%X\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"%f\" height=\"%f\"/>\n",
             SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), sizeF.width, sizeF.height);
     }
     sizeF.width -= axisSpaceX;
@@ -2781,6 +2777,32 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     {
         //make the paintbrush
         hr = pRenderTarget->CreateSolidColorBrush((*s).textColor, &pBrush);
+        
+        //lambdas for writing components of SVG file
+        auto SVGstdline = [&]() {
+            if ((*s).makeSVG)_snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke=\"#%X%X%X\" stroke-width=\"%f\"/>\n", p1.x, p1.y, p2.x, p2.y, SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), lineWidth);
+        };
+
+        auto SVGstdcircle = [&]() {
+            if ((*s).makeSVG)_snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"<circle cx=\"%f\" cy=\"%f\" r=\"%f\" stroke=\"none\" fill=\"#%X%X%X\" />\n", p1.x, p1.y, marker.radiusX, SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b));
+        };
+
+        auto SVGstartgroup = [&]() {
+            if ((*s).makeSVG)_snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"<g>\n");
+        };
+
+        auto SVGendgroup = [&]() {
+            if ((*s).makeSVG)_snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"</g>\n");
+        };
+
+        auto SVGcentertext = [&]() {
+            if ((*s).makeSVG)_snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), 0.5 * (layoutRect.left + layoutRect.right), layoutRect.top + maingui.wTextFormat->GetFontSize(), messageBuffer);
+        };
+
+        auto SVGlefttext = [&]() {
+            if ((*s).makeSVG)_snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), layoutRect.left, layoutRect.top + maingui.wTextFormat->GetFontSize(), messageBuffer);
+        };
+
         if (SUCCEEDED(hr) && pBrush != 0)
         {
             //begin drawing
@@ -2811,7 +2833,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 layoutRect.right = axisSpaceX;
                 strLen = lstrlenW(messageBuffer);
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrush);
-                SVGlefttext
+                SVGlefttext();
             }
             DWRITE_TEXT_ALIGNMENT ta1 = maingui.wTextFormat->GetTextAlignment();
             maingui.wTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
@@ -2829,7 +2851,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 pRenderTarget->SetTransform(D2D1::Matrix3x2F::Rotation(-90.0, D2D1::Point2F(0.0f, sizeF.height)));
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrush);
                 pRenderTarget->SetTransform(D2D1::IdentityMatrix());
-                if ((*s).makeSVG)_snwprintf(SVGi, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\" transform=\"translate(%f, %f) rotate(-90)\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), 0.5 * (layoutRect.left + layoutRect.right), layoutRect.top + maingui.wTextFormat->GetFontSize(), -(layoutRect.left + layoutRect.right), sizeF.height, messageBuffer);
+                if ((*s).makeSVG)_snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\" transform=\"translate(%f, %f) rotate(-90)\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), 0.5 * (layoutRect.left + layoutRect.right), layoutRect.top + maingui.wTextFormat->GetFontSize(), -(layoutRect.left + layoutRect.right), sizeF.height, messageBuffer);
             }
 
             //x-axis name
@@ -2844,7 +2866,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                     _T("%ls"), (*s).xLabel);
                 strLen = lstrlenW(messageBuffer);
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrush);
-                SVGcentertext
+                SVGcentertext();
 
             }
  
@@ -2859,33 +2881,33 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 layoutRect.right = layoutRect.left + axisSpaceX;
                 strLen = lstrlenW(messageBuffer);
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrush);
-                SVGcentertext
+                SVGcentertext();
                 
             }
             maingui.wTextFormat->SetTextAlignment(ta1);
 
             //Draw axes and tickmarks
-            SVGstartgroup
+            SVGstartgroup();
             pBrush->SetColor(&(*s).axisColor);
             p1.x = axisSpaceX;
             p1.y = sizeF.height;
             p2.x = scaleX * (maxX-minX) + axisSpaceX;
             p2.y = sizeF.height;
             pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-            SVGstdline
+            SVGstdline();
             p1.x = axisSpaceX;
             p1.y = sizeF.height;
             p2.x = p1.x;
             p2.y = 0.0;
             pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-            SVGstdline
+            SVGstdline();
             for (int i = 0; i < 2; ++i) {
                 p1.y = (float)(sizeF.height - scaleY * (yTicks1[i] - minY));
                 p2.y = p1.y;
                 p1.x = axisSpaceX;
                 p2.x = p1.x + 10;
                 pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-                SVGstdline
+                SVGstdline();
             }
             for (int i = 0; i < 3; ++i) {
                 p1.y = sizeF.height;
@@ -2893,12 +2915,15 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 p1.x = (float)(axisSpaceX + scaleX * (xTicks1[i] - minX));
                 p2.x = p1.x;
                 pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-                SVGstdline
+                SVGstdline();
             }
-            SVGendgroup
+            SVGendgroup();
+
             //Lambda for plotting a single line
+            //note: SVG could be more compact (and maybe faster to load?) using a big polyline call rather
+            //than individual lines like it is now.
             auto plotLine = [&](double* y) {
-                SVGstartgroup
+                SVGstartgroup();
                 for (size_t i = iMin; i < iMax - 1; ++i) {
                     p1.x = scaleX * (xValues[i] - minX);
                     p2.x = scaleX * (xValues[i + 1] - minX);
@@ -2916,26 +2941,26 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                     if (p1.y <= sizeF.height) {
                         if (p2.y <= sizeF.height) {
                             pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-                            SVGstdline
+                            SVGstdline();
                         }
                         else {
                             p2.x = p1.x + (sizeF.height - p1.y) / ((p2.y - p1.y) / (p2.x - p1.x));
                             p2.y = sizeF.height;
                             pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-                            SVGstdline
+                            SVGstdline();
                         }
                         marker.point = p1;
                         pRenderTarget->FillEllipse(&marker, pBrush);
-                        SVGstdcircle
+                        SVGstdcircle();
                     }
                     else if (p2.y <= sizeF.height) {
                         p1.x = p1.x + (sizeF.height - p1.y) / ((p2.y - p1.y) / (p2.x - p1.x));
                         p1.y = sizeF.height;
                         pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-                        SVGstdline
+                        SVGstdline();
                     }
                 }
-                SVGendgroup
+                SVGendgroup();
             };
 
             //Plot the main line
@@ -2965,7 +2990,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     }
 
     if ((*s).makeSVG) {
-        _snwprintf(SVGi, L"</svg>");
+        _snwprintf((*s).svgString + wcslen((*s).svgString), (*s).svgBuffer, L"</svg>");
     }
     return 0;
 }
