@@ -77,6 +77,7 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 void checkLibraryAvailability() {
+    printToConsole(maingui.plotBox2, L"\r\n\r\nDetected harware:\r\n");
     __try {
         HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
         if (SUCCEEDED(hr)) {
@@ -85,7 +86,7 @@ void checkLibraryAvailability() {
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
         CUDAavailable = FALSE;
-        printC(L"CUDA not available because cufft64_10.dll was not found.\r\n");
+        printToConsole(maingui.plotBox2, L"CUDA not available because cufft64_10.dll was not found.\r\n");
     }
     if (CUDAavailable) {
         CUDAavailable = FALSE;
@@ -97,7 +98,7 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             CUDAavailable = FALSE;
-            printC(L"CUDA not available because cufft64_10.dll was not found.\r\n");
+            printToConsole(maingui.plotBox2, L"CUDA not available because cufft64_10.dll was not found.\r\n");
         }
     }
     if (CUDAavailable) {
@@ -110,7 +111,7 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             CUDAavailable = FALSE;
-            printC(L"CUDA not available because cudart64_110.dll was not found.\r\n\r\n");
+            printToConsole(maingui.plotBox2, L"CUDA not available because cudart64_110.dll was not found.\r\n\r\n");
         }
     }
 
@@ -128,24 +129,24 @@ void checkLibraryAvailability() {
                 CUDAavailable = TRUE;
             }
 
-            printC(_T("CUDA found %i GPU(s): \r\n"), cudaGPUCount);
+            printToConsole(maingui.plotBox2, L"CUDA found %i GPU(s): \r\n", cudaGPUCount);
             for (i = 0; i < cudaGPUCount; ++i) {
                 cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
                 memset(wcstring, 0, sizeof(wchar_t));
                 mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
-                printC(_T("%ls\r\n"), wcstring);
-                printC(_T("    Memory: %i MB\r\n    Multiprocessors: %i\r\n"),
+                printToConsole(maingui.plotBox2, L"%ls\r\n", wcstring);
+                printToConsole(maingui.plotBox2, L"    Memory: %i MB\r\n    Multiprocessors: %i\r\n",
                     (int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
             }
 
         }
         else {
-            printC(L"No CUDA-compatible GPU found.\r\n");
+            printToConsole(maingui.plotBox2, L"No CUDA-compatible GPU found.\r\n");
             CUDAavailable = FALSE;
         }
     }
     else {
-        printC(L"No CUDA-compatible GPU found.\r\n");
+        printToConsole(maingui.plotBox2, L"No CUDA-compatible GPU found.\r\n");
         CUDAavailable = FALSE;
     }
 
@@ -163,11 +164,11 @@ void checkLibraryAvailability() {
         SYCLavailable = FALSE;
         DWORD SYCLfile = GetFileAttributes(L"LightwaveExplorerSYCL.dll");
         if (SYCLfile != 0xFFFFFFFF) {
-            printC(L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
-            printC(L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
+            printToConsole(maingui.plotBox2, L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printToConsole(maingui.plotBox2, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
         }
         else {
-            printC(L"No SYCL file...\r\n");
+            printToConsole(maingui.plotBox2, L"No SYCL file...\r\n");
         }
     }
 
@@ -178,18 +179,18 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             SYCLavailable = FALSE;
-            printC(L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
-            printC(L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
+            printToConsole(maingui.plotBox2, L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printToConsole(maingui.plotBox2, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
         }
         unsigned char* deviceCounts = (unsigned char*)&syclDevices;
         if (deviceCounts[0] == 0u) {
-            printC(L"Something is wrong - SYCL doesn't think you have a CPU.\r\n");
+            printToConsole(maingui.plotBox2, L"Something is wrong - SYCL doesn't think you have a CPU.\r\n");
             SYCLavailable = FALSE;
         }
         else {
             syclGPUCount = deviceCounts[1];
-            printC(syclDeviceList);
-            if (syclGPUCount > 0) printC(syclDefault);
+            printToConsole(maingui.plotBox2, syclDeviceList);
+            if (syclGPUCount > 0) printToConsole(maingui.plotBox2, syclDefault);
         }
     }
 }
@@ -678,6 +679,14 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.plotBox8 = CreateWindow(WC_STATIC, NULL, 
         WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
         xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
+    printToConsole(maingui.plotBox1, L"2D space-time slice view (y-polarization)\r\nOnce a simulation is run, this panel will show a slice through the center of the field E(x,y,t) at E(0,y,t)\r\nTo run a simulation with the demo settings, simply press the \"Run\" button.");
+    printToConsole(maingui.plotBox2, L"2D space-time slice view (x-polarization)\r\nSame as the panel above, but shows the other polarization.");
+    printToConsole(maingui.plotBox3, L"Waveform view (y-polarization)\r\nShows the on axis electric field E(x=0,y=0,t)");
+    printToConsole(maingui.plotBox4, L"Waveform view (x-polarization)\r\n");
+    printToConsole(maingui.plotBox5, L"2D momentum-frequency slice view (y-polarization)\r\nShows the field in the Fourier domain, on a logarithmic scale. Low frequencies are to the left, higher ones to the right. Vertically, the top of the plot shows high spatial frequencies (pointing up), the center is along the propagation axis, and the bottom is high spatial frequencies, pointing down. The field should not touch the edges of this grid. If it touches it vertically, you need a smaller value of dx.\r\n");
+    printToConsole(maingui.plotBox6, L"2D momentum-frequency slice view (x-polarization)\r\n");
+    printToConsole(maingui.plotBox7, L"Spatially-integrated spectrum (y-polarization)\r\nShows the total energy spectrum of the grid at the end of the simulation.\r\n");
+    printToConsole(maingui.plotBox8, L"Spatially-integrated spectrum (x-polarization)\r\nLimits can be set with the boxes below.\r\nThe \"Total\" checkbox will overlay the integrated spectrum of all polarizations.\r\nThe \"Log\" checkbox switches between log and linear scaling.\r\n");
     maingui.tbPlot1XMin = CreateWindow(WC_EDIT, TEXT(""),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
         xOffsetRow1b, 15 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -694,12 +703,15 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&maingui.wFactory));
     maingui.wFactory->CreateTextFormat(L"Arial", NULL, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
         11.0f, L"en-us", &(maingui.wTextFormat));
-    maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), 
-        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        xOffsetRow2, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    maingui.tbMaterialIndexAlternate = CreateWindow(WC_EDIT, TEXT("3"),
-        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        xOffsetRow2b, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    //maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), 
+    //    WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
+    //    xOffsetRow2, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    //maingui.tbMaterialIndexAlternate = CreateWindow(WC_EDIT, TEXT("3"),
+    //    WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
+    //    xOffsetRow2b, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
+    maingui.pdMaterialIndex = CreateWindow(WC_COMBOBOX, TEXT(""),
+        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        xOffsetRow2, 0 * vs, textboxwidth, 8 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.tbCrystalTheta = CreateWindow(WC_EDIT, TEXT("0"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         xOffsetRow2, 1 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -757,7 +769,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         xOffsetRow2 + textboxwidth / 2 + 32, 24 * vs, halfBox-28, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.buttonRun = CreateWindowW(WC_BUTTON, TEXT("Run"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_CENTER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-        btnoffset2, 17 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
+        btnoffset2, 18 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNRUN, hInstance, NULL);
     maingui.buttonStop = CreateWindow(WC_BUTTON, TEXT("Stop"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         btnoffset2, 19 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNSTOP, hInstance, NULL);
@@ -828,7 +840,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         xOffsetRow2 + btnHeight + 4, 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDCRYSTAL, hInstance, NULL);
     maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN, 
-        xOffsetRow1 + textboxwidth + 4, 13 * vs, xOffsetRow2-xOffsetRow1, 4*vs-6, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 4, 13 * vs, xOffsetRow2-xOffsetRow1, 5*vs-6, maingui.mainWindow, NULL, hInstance, NULL);
 
     maingui.tbFitting = CreateWindow(WC_EDIT, TEXT(""),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN,
@@ -987,13 +999,13 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     maingui.tbCPUsims = CreateWindow(WC_EDIT, TEXT("0"),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        btnoffset2a + 84 + 80 + 6, 17 * vs + 2, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + 84 + 80 + 6, 18 * vs + 2, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.pdPrimaryQueue = CreateWindow(WC_COMBOBOX, TEXT(""),
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
-        btnoffset2a, 17 * vs, 80, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a, 18 * vs, 80, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.pdSecondaryQueue = CreateWindow(WC_COMBOBOX, TEXT(""),
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
-        btnoffset2a + 84, 17 * vs, 80, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
+        btnoffset2a + 84, 18 * vs, 80, 9 * 20, maingui.mainWindow, NULL, hInstance, NULL);
     SetWindowTheme(maingui.mainWindow, L"DarkMode_Explorer", NULL);
     ShowWindow(maingui.mainWindow, nCmdShow);
     SetWindowTheme(maingui.mainWindow, L"DarkMode_Explorer", NULL);
@@ -1052,12 +1064,16 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     //read the crystal database
     crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
+    TCHAR materialString[128] = { 0 };
     if (crystalDatabasePtr != NULL) {
         GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
         readCrystalDatabase(crystalDatabasePtr);
-        printC(_T("\r\nMaterial database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+        printC(_T("Material database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
         for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
             printC(_T("%2.2i: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+            memset(materialString, 0, 128 * sizeof(TCHAR));
+            swprintf_s(materialString, 128 * sizeof(TCHAR), L"%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
+            SendMessage(maingui.pdMaterialIndex, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)materialString);
         }
     }
 
@@ -1188,7 +1204,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if(getDoubleFromHWND(maingui.tbNonlinearAbsortion) != 0.0){
                 printToConsole(maingui.tbSequence, L"plasma(%i,%2.1lf,%2.1lf,%2.1e,%2.1lf,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
-                    (int)getDoubleFromHWND(maingui.tbMaterialIndex), getDoubleFromHWND(maingui.tbCrystalTheta),
+                    (int)SendMessage(maingui.pdMaterialIndex, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0), getDoubleFromHWND(maingui.tbCrystalTheta),
                     getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbNonlinearAbsortion),
                     getDoubleFromHWND(maingui.tbBandGap), getDoubleFromHWND(maingui.tbDrudeGamma),
                     getDoubleFromHWND(maingui.tbEffectiveMass), getDoubleFromHWND(maingui.tbCrystalThickness),
@@ -1196,7 +1212,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             else {
                 printToConsole(maingui.tbSequence, L"nonlinear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
-                    (int)getDoubleFromHWND(maingui.tbMaterialIndex), getDoubleFromHWND(maingui.tbCrystalTheta),
+                    (int)SendMessage(maingui.pdMaterialIndex, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0), getDoubleFromHWND(maingui.tbCrystalTheta),
                     getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbCrystalThickness),
                     getDoubleFromHWND(maingui.tbXstep));
             }
@@ -1230,7 +1246,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CTLCOLORSTATIC:
     {
         HDC hdc = (HDC)wParam;
-        SetBkColor(hdc, uiGrey);
+        SetBkColor(hdc, uiBlack);
         SetTextColor(hdc, uiGrey);
         if (HWND(lParam) == maingui.trackbarPlot) {
             return (LRESULT)greyBrush;
@@ -1260,12 +1276,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         RECT mainRect;
         GetClientRect(maingui.mainWindow, &mainRect);
         SetWindowPos(maingui.textboxSims, HWND_TOP, 0, 25*maingui.vs, maingui.consoleSize, mainRect.bottom - mainRect.top - 25*maingui.vs, NULL);
-        SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3, maingui.vs+5, mainRect.right - mainRect.left - maingui.xOffsetRow3- 10, 20, NULL);
+        SetWindowPos(maingui.tbFileNameBase, HWND_TOP, maingui.xOffsetRow3 + maingui.btnwidth + 4, 2, mainRect.right - mainRect.left - maingui.xOffsetRow3- 10 - maingui.btnwidth, 20, NULL);
  
         int spacerX = maingui.plotSpacerX;
         int spacerY = maingui.plotSpacerY;
         int x0 = maingui.consoleSize + spacerX;
-        int y0 = 60;
+        int y0 = 32;
         int imagePanelSizeX = mainRect.right - mainRect.left - x0 - spacerX - 2;
         int imagePanelSizeY = mainRect.bottom - mainRect.top - y0 - 3*spacerY - 2 - 26;
 
@@ -1288,7 +1304,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowPos(maingui.tbPlot1XMax, HWND_BOTTOM, x + dx + spacerX + maingui.textboxwidth/3 + 40,   y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
         SetWindowPos(maingui.tbPlot1YMin, HWND_BOTTOM, x + dx + spacerX + 2*maingui.textboxwidth/3 + 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
         SetWindowPos(maingui.tbPlot1YMax, HWND_BOTTOM, x + dx + spacerX + 3*maingui.textboxwidth/3+ 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
-        SetWindowPos(maingui.cbOverlayTotal, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 3 + 84 + 16, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
+        SetWindowPos(maingui.cbOverlayTotal, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 3 + 92, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
+        SetWindowPos(maingui.cbLogPlot, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 3 + 162, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
+        SetWindowPos(maingui.trackbarPlot, HWND_BOTTOM, x, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
+        SetWindowPos(maingui.tbWhichSimToPlot, HWND_BOTTOM, x + maingui.btnwidth + 4, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
+        SetWindowPos(maingui.buttonPlot, HWND_BOTTOM, x + maingui.btnwidth + 8 + maingui.textboxwidth/3, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
         if (isGridAllocated) {
             ShowWindow(maingui.plotBox1, 0);
             ShowWindow(maingui.plotBox2, 0);
@@ -1315,6 +1335,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.pdClusterSelector, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdFittingType, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdPropagationMode, L"DarkMode_CFD", NULL);
+        SetWindowTheme(maingui.pdMaterialIndex, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdPrimaryQueue, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdSecondaryQueue, L"DarkMode_CFD", NULL);
         SetWindowTheme(maingui.pdPulse1Type, L"DarkMode_CFD", NULL);
@@ -1344,6 +1365,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SendMessage(maingui.pdBatchMode2, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdFittingType, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdPropagationMode, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
+        SendMessage(maingui.pdMaterialIndex, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdPulse1Type, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdPulse2Type, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
         SendMessage(maingui.pdRStep, CB_SETITEMHEIGHT, -1, (WPARAM)maingui.comboBoxHeight);
@@ -1444,8 +1466,8 @@ int readParametersFromInterface() {
     (*activeSetPtr).pulse1.circularity = getDoubleFromHWND(maingui.tbCircularity1);
     (*activeSetPtr).pulse2.circularity = getDoubleFromHWND(maingui.tbCircularity2);
 
-    (*activeSetPtr).materialIndex = (int)getDoubleFromHWND(maingui.tbMaterialIndex);
-    (*activeSetPtr).materialIndexAlternate = (int)getDoubleFromHWND(maingui.tbMaterialIndexAlternate);
+    (*activeSetPtr).materialIndex = (int)SendMessage(maingui.pdMaterialIndex, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+    (*activeSetPtr).materialIndexAlternate = 0;
     (*activeSetPtr).crystalTheta = DEG2RAD * getDoubleFromHWND(maingui.tbCrystalTheta);
     (*activeSetPtr).crystalPhi = DEG2RAD * getDoubleFromHWND(maingui.tbCrystalPhi);
 
@@ -1797,8 +1819,9 @@ int setInterfaceValuesToActiveValues() {
     setWindowTextToDouble(maingui.tbCircularity2, (*activeSetPtr).pulse2.circularity);
     SendMessage(maingui.pdPulse1Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse1FileType, 0);
     SendMessage(maingui.pdPulse2Type, CB_SETCURSEL, (WPARAM)(*activeSetPtr).pulse2FileType, 0);
-    setWindowTextToInt(maingui.tbMaterialIndex, (*activeSetPtr).materialIndex);
-    setWindowTextToInt(maingui.tbMaterialIndexAlternate, (*activeSetPtr).materialIndexAlternate);
+    //setWindowTextToInt(maingui.tbMaterialIndex, (*activeSetPtr).materialIndex);
+    //setWindowTextToInt(maingui.tbMaterialIndexAlternate, (*activeSetPtr).materialIndexAlternate);
+    (int)SendMessage(maingui.pdMaterialIndex, (UINT)CB_SETCURSEL, (*activeSetPtr).materialIndex, 0);
     setWindowTextToDouble(maingui.tbCrystalTheta, RAD2DEG * asin(sin((*activeSetPtr).crystalTheta)));
     setWindowTextToDouble(maingui.tbCrystalPhi, RAD2DEG * asin(sin((*activeSetPtr).crystalPhi)));
     setWindowTextToDoubleExp(maingui.tbNonlinearAbsortion, (*activeSetPtr).nonlinearAbsorptionStrength);
@@ -1891,7 +1914,7 @@ int getStringFromHWND(HWND inputA, char* outputString, int bufferSize)
 int drawLabels(HDC hdc) {
     int labos = -160;
     
-    labelTextBox(hdc, maingui.mainWindow, maingui.tbMaterialIndex, _T("Material index"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.pdMaterialIndex, _T("Material"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbCrystalTheta, _T("Theta, phi (\x00B0)"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbNonlinearAbsortion, _T("NL absorption"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbDrudeGamma, _T("Drude: gamma, m"), labos, 0);
@@ -2716,12 +2739,12 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                     p1.x = scaleX * (xValues[i] - minX);
                     p2.x = scaleX * (xValues[i + 1] - minX);
                     if ((*s).logScale) {
-                        p1.y = sizeF.height - scaleY * ((float)log10((*s).data[i]) - (float)minY);
-                        p2.y = sizeF.height - scaleY * ((float)log10((*s).data[i + 1]) - (float)minY);
+                        p1.y = sizeF.height - scaleY * ((float)log10(y[i]) - (float)minY);
+                        p2.y = sizeF.height - scaleY * ((float)log10(y[i + 1]) - (float)minY);
                     }
                     else {
-                        p1.y = sizeF.height - scaleY * ((float)(*s).data[i] - (float)minY);
-                        p2.y = sizeF.height - scaleY * ((float)(*s).data[i + 1] - (float)minY);
+                        p1.y = sizeF.height - scaleY * ((float)y[i] - (float)minY);
+                        p2.y = sizeF.height - scaleY * ((float)y[i + 1] - (float)minY);
                     }
                     p1.x += axisSpaceX;
                     p2.x += axisSpaceX;

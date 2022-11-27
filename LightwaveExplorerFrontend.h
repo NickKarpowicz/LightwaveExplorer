@@ -5,8 +5,9 @@
 typedef struct guiStruct {
     HWND mainWindow = NULL;
     
-    HWND tbMaterialIndex = NULL;
-    HWND tbMaterialIndexAlternate = NULL;
+    //HWND tbMaterialIndex = NULL;
+    //HWND tbMaterialIndexAlternate = NULL;
+    HWND pdMaterialIndex = NULL;
     HWND tbCrystalTheta = NULL;
     HWND tbCrystalPhi = NULL;
     HWND tbCrystalThickness = NULL;
