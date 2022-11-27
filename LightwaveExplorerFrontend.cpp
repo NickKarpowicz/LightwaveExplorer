@@ -22,6 +22,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #define ID_BTNRUN 11110
 #define ID_BTNPLOT 11111
+#define ID_BTNSVG 11129
 #define ID_BTNGETFILENAME 11112
 #define ID_BTNREFRESHDB 11113
 #define ID_BTNSTOP 11114
@@ -689,7 +690,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     printToConsole(maingui.plotBox1, L"2D space-time slice view (y-polarization)\r\nOnce a simulation is run, this panel will show a slice through the center of the field E(x,y,t) at E(0,y,t)\r\nTo run a simulation with the demo settings, simply press the \"Run\" button.");
     printToConsole(maingui.plotBox2, L"2D space-time slice view (x-polarization)\r\nSame as the panel above, but shows the other polarization.");
     printToConsole(maingui.plotBox3, L"Waveform view (y-polarization)\r\nShows the on-axis electric field E(x=0,y=0,t)");
-    printToConsole(maingui.plotBox4, L"Waveform view (x-polarization)\r\nThe slider control below lets you flip quickly through simulations in a batch\r\nThe Plot button will redraw the images\r\n");
+    printToConsole(maingui.plotBox4, L"Waveform view (x-polarization)\r\nThe slider control below lets you flip quickly through simulations in a batch\r\nThe Plot button will redraw the images\r\nThe SVG button will save the four bottom plots as SVG files.");
     printToConsole(maingui.plotBox5, L"2D momentum-frequency slice view (y-polarization)\r\nShows the field in the Fourier domain, on a logarithmic scale. Low frequencies are to the left, higher ones to the right. Vertically, the top of the plot shows high spatial frequencies (pointing up), the center is along the propagation axis, and the bottom is high spatial frequencies, pointing down. The field should not touch the edges of this grid. If it touches it vertically, you need a smaller value of dx.\r\n");
     printToConsole(maingui.plotBox6, L"2D momentum-frequency slice view (x-polarization)\r\n");
     printToConsole(maingui.plotBox7, L"Spatially-integrated spectrum (y-polarization)\r\nShows the total energy spectrum of the grid at the end of the simulation.\r\n");
@@ -819,6 +820,9 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.buttonPlot = CreateWindow(WC_BUTTON, TEXT("Plot"), 
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         btnoffset2, 18 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNPLOT, hInstance, NULL);
+    maingui.buttonSVG = CreateWindow(WC_BUTTON, TEXT("SVG"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        btnoffset2, 18 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNSVG, hInstance, NULL);
     maingui.tbWhichSimToPlot = CreateWindow(WC_EDIT, TEXT("1"), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
         btnoffset2 - btnwidth - 8, 18 * vs + 2, 40, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -1188,6 +1192,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 printC(_T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
             }
             break;
+        case ID_BTNSVG:
+            maingui.savePlots = TRUE;
         case ID_BTNPLOT:
             if (isGridAllocated && !isPlotting) {
                 plotSim = (int)getDoubleFromHWND(maingui.tbWhichSimToPlot);
@@ -1373,6 +1379,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowPos(maingui.trackbarPlot, HWND_BOTTOM, x, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
         SetWindowPos(maingui.tbWhichSimToPlot, HWND_BOTTOM, x + maingui.btnwidth + 4, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
         SetWindowPos(maingui.buttonPlot, HWND_BOTTOM, x + maingui.btnwidth + 8 + maingui.textboxwidth/3, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
+        SetWindowPos(maingui.buttonSVG, HWND_BOTTOM, x + 2*maingui.btnwidth + 12 + maingui.textboxwidth / 3, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
         if (isGridAllocated) {
             ShowWindow(maingui.plotBox1, 0);
             ShowWindow(maingui.plotBox2, 0);
@@ -1413,6 +1420,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonStop, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonRunOnCluster, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonPlot, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonSVG, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddCrystalToSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddEchoSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddPulseSequence, L"DarkMode_Explorer", NULL);
@@ -2365,7 +2373,13 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     imagePlotStruct sTime1, sTime2, sFreq1, sFreq2;
     HANDLE plotThreads[4];
     DWORD plotHandles[4];
-	
+    wchar_t* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
+    if (maingui.savePlots) {
+        svgFilename = new char[MAX_LOADSTRING]();
+        svgBuf = new wchar_t[1024 * 1024]();
+    }
 	bool logPlot = TRUE;
 	if (IsDlgButtonChecked(maingui.mainWindow, ID_CBLOGPLOT) != BST_CHECKED) {
 		logPlot = FALSE;
@@ -2442,9 +2456,22 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sWave1.Npts = (*activeSetPtr).Ntime;
     sWave1.unitY = 1e9;
     sWave1.color = D2D1::ColorF(0, 1, 1, 1);
-    sWave1.yLabel = L"E\x2080 (GV/m)";
+    sWave1.yLabel = L"Ey (GV/m)";
     sWave1.xLabel = L"Time (fs)";
+    sWave1.makeSVG = maingui.savePlots;
+    sWave1.svgString = svgBuf;
+    sWave1.svgBuffer = 1024 * 1024;
     plotXYDirect2d(&sWave1);
+    if (maingui.savePlots) {
+        memset(svgFilename, 0, MAX_LOADSTRING);
+        getStringFromHWND(maingui.tbFileNameBase, svgFilename, MAX_LOADSTRING);
+        strcat_s(svgFilename, MAX_LOADSTRING, "_Ey.svg");
+        if (fopen_s(&svgFile, svgFilename, "w")) return 1;
+        fwprintf(svgFile, L"%ls", svgBuf);
+        fclose(svgFile);
+        memset(svgBuf, 0, 1024 * 1024 * sizeof(wchar_t));
+    }
+
 
     sWave2.plotBox = maingui.plotBox4;
     sWave2.dx = (*activeSetPtr).tStep / 1e-15f;
@@ -2454,9 +2481,22 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     sWave2.Npts = (*activeSetPtr).Ntime;
     sWave2.unitY = 1e9;
     sWave2.color = D2D1::ColorF(1, 0, 1, 1);
-    sWave2.yLabel = L"E\x2089\x2080 (GV/m)";
+    sWave2.yLabel = L"Ex (GV/m)";
     sWave2.xLabel = L"Time (fs)";
+    sWave2.makeSVG = maingui.savePlots;
+    sWave2.svgString = svgBuf;
+    sWave2.svgBuffer = 1024 * 1024;
     plotXYDirect2d(&sWave2);
+    if (maingui.savePlots) {
+        memset(svgFilename, 0, MAX_LOADSTRING);
+        getStringFromHWND(maingui.tbFileNameBase, svgFilename, MAX_LOADSTRING);
+        strcat_s(svgFilename, MAX_LOADSTRING, "_Ex.svg");
+        if (fopen_s(&svgFile, svgFilename, "w")) return 1;
+        fwprintf(svgFile, L"%ls", svgBuf);
+        fclose(svgFile);
+        memset(svgBuf, 0, 1024 * 1024 * sizeof(wchar_t));
+    }
+
 
     sSpectrum1.plotBox = maingui.plotBox7;
     sSpectrum1.dx = (float)(*activeSetPtr).fStep / 1e12f;
@@ -2470,7 +2510,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if(forceY)sSpectrum1.forcedYmin = (float)yMin;
     sSpectrum1.color = D2D1::ColorF(0.5, 0, 1, 1);
     sSpectrum1.xLabel = L"Frequency (THz)";
-    sSpectrum1.yLabel = L"S\x2080(W/Hz)";
+    sSpectrum1.yLabel = L"Sy (W/Hz)";
     sSpectrum1.forceXmax = forceX;
     sSpectrum1.forceXmin = forceX;
     sSpectrum1.forcedXmax = xMax;
@@ -2480,10 +2520,23 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         sSpectrum1.ExtraLines = 1;
         sSpectrum1.color2 = D2D1::ColorF(1.0, 0.5, 0.0);
     }
+    sSpectrum1.makeSVG = maingui.savePlots;
+    sSpectrum1.svgString = svgBuf;
+    sSpectrum1.svgBuffer = 1024*1024;
+    plotXYDirect2d(&sSpectrum1);
+    
+    if (maingui.savePlots) {
+        memset(svgFilename, 0, MAX_LOADSTRING);
+        getStringFromHWND(maingui.tbFileNameBase, svgFilename, MAX_LOADSTRING);
+        strcat_s(svgFilename, MAX_LOADSTRING, "_Sy.svg");
+        if (fopen_s(&svgFile, svgFilename, "w")) return 1;
+        fwprintf(svgFile, L"%ls", svgBuf);
+        fclose(svgFile);
+        memset(svgBuf, 0, 1024 * 1024 * sizeof(wchar_t));
+    }
+
 
     
-    plotXYDirect2d(&sSpectrum1);
-
     sSpectrum2.plotBox = maingui.plotBox8;
     sSpectrum2.dx = (float)(*activeSetPtr).fStep / 1e12f;
     sSpectrum2.data = &(*activeSetPtr).totalSpectrum[(1 + simIndex * 3) * (*activeSetPtr).Nfreq];
@@ -2496,7 +2549,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     if (forceY)sSpectrum2.forcedYmin = (float)yMin;
     sSpectrum2.color = D2D1::ColorF(1, 0, 0.5, 1);    
     sSpectrum2.xLabel = L"Frequency (THz)";
-    sSpectrum2.yLabel = L"S\x2089\x2080(W/Hz)";
+    sSpectrum2.yLabel = L"Sx (W/Hz)";
     sSpectrum2.forceXmax = forceX;
     sSpectrum2.forceXmin = forceX;
     sSpectrum2.forcedXmax = xMax;
@@ -2506,7 +2559,21 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         sSpectrum2.ExtraLines = 1;
         sSpectrum2.color2 = D2D1::ColorF(1.0, 0.5, 0.0);
     }
+    sSpectrum2.makeSVG = maingui.savePlots;
+    sSpectrum2.svgString = svgBuf;
+    sSpectrum2.svgBuffer = 1024 * 1024;
     plotXYDirect2d(&sSpectrum2);
+    if (maingui.savePlots) {
+        memset(svgFilename, 0, MAX_LOADSTRING);
+        getStringFromHWND(maingui.tbFileNameBase, svgFilename, MAX_LOADSTRING);
+        strcat_s(svgFilename, MAX_LOADSTRING, "_Sx.svg");
+        if (fopen_s(&svgFile, svgFilename, "w")) return 1;
+        fwprintf(svgFile, L"%ls", svgBuf);
+        fclose(svgFile);
+        memset(svgBuf, 0, 1024 * 1024 * sizeof(wchar_t));
+        delete[] svgBuf;
+        delete[] svgFilename;
+    }
 
 
     if (WAIT_TIMEOUT == WaitForMultipleObjects(4, plotThreads, TRUE, 1000)) {
@@ -2517,6 +2584,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
     }
 
     isPlotting = FALSE;
+    maingui.savePlots = FALSE;
     return 0;
 }
 
@@ -2688,6 +2756,22 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
     if (pRenderTarget != NULL) {
         sizeF = pRenderTarget->GetSize();
     }
+    
+#define SVGi (*s).svgString + wcslen((*s).svgString), (*s).svgBuffer
+#define SVGh(x) (int)(15*x)
+#define SVGstdline if((*s).makeSVG)_snwprintf(SVGi, L"<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke=\"#%X%X%X\" stroke-width=\"%f\"/>\n",p1.x, p1.y, p2.x, p2.y, SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b),lineWidth);
+#define SVGstdcircle if((*s).makeSVG)_snwprintf(SVGi, L"<circle cx=\"%f\" cy=\"%f\" r=\"%f\" stroke=\"none\" fill=\"#%X%X%X\" />\n",p1.x, p1.y, marker.radiusX, SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b));
+#define SVGstartgroup if((*s).makeSVG)_snwprintf(SVGi, L"<g>\n");
+#define SVGendgroup if((*s).makeSVG)_snwprintf(SVGi, L"</g>\n");
+#define SVGcentertext if ((*s).makeSVG)_snwprintf(SVGi, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), 0.5 * (layoutRect.left + layoutRect.right), layoutRect.top + maingui.wTextFormat->GetFontSize(), messageBuffer);
+#define SVGlefttext if ((*s).makeSVG)_snwprintf(SVGi, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), layoutRect.left, layoutRect.top + maingui.wTextFormat->GetFontSize(), messageBuffer);
+    if ((*s).makeSVG) {
+        _snwprintf((*s).svgString, (*s).svgBuffer, L"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
+        _snwprintf(SVGi, L"<svg width=\"%f\" height=\"%f\" viewBox=\"0 0 %f %f\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+            sizeF.width, sizeF.height, sizeF.width, sizeF.height);
+        _snwprintf(SVGi, L"<rect fill=\"#%X%X%X\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"%f\" height=\"%f\"/>\n",
+            SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), sizeF.width, sizeF.height);
+    }
     sizeF.width -= axisSpaceX;
     sizeF.height -= axisSpaceY;
     float scaleX = sizeF.width / ((float)(maxX - minX));
@@ -2727,6 +2811,7 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 layoutRect.right = axisSpaceX;
                 strLen = lstrlenW(messageBuffer);
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrush);
+                SVGlefttext
             }
             DWRITE_TEXT_ALIGNMENT ta1 = maingui.wTextFormat->GetTextAlignment();
             maingui.wTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
@@ -2744,7 +2829,9 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 pRenderTarget->SetTransform(D2D1::Matrix3x2F::Rotation(-90.0, D2D1::Point2F(0.0f, sizeF.height)));
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrush);
                 pRenderTarget->SetTransform(D2D1::IdentityMatrix());
+                if ((*s).makeSVG)_snwprintf(SVGi, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\" transform=\"translate(%f, %f) rotate(-90)\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), 0.5 * (layoutRect.left + layoutRect.right), layoutRect.top + maingui.wTextFormat->GetFontSize(), -(layoutRect.left + layoutRect.right), sizeF.height, messageBuffer);
             }
+
 
             //x-axis name
             if ((*s).xLabel != NULL) {
@@ -2758,8 +2845,10 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                     _T("%ls"), (*s).xLabel);
                 strLen = lstrlenW(messageBuffer);
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrush);
-            }
+                SVGcentertext
 
+            }
+ 
             //x-axis tick labels
             for (int i = 0; i < 3; ++i) {
                 memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
@@ -2771,29 +2860,33 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 layoutRect.right = layoutRect.left + axisSpaceX;
                 strLen = lstrlenW(messageBuffer);
                 pRenderTarget->DrawTextW(messageBuffer, strLen, maingui.wTextFormat, &layoutRect, pBrush);
+                SVGcentertext
+                
             }
             maingui.wTextFormat->SetTextAlignment(ta1);
 
             //Draw axes and tickmarks
+            SVGstartgroup
             pBrush->SetColor(&(*s).axisColor);
             p1.x = axisSpaceX;
             p1.y = sizeF.height;
             p2.x = scaleX * (maxX-minX) + axisSpaceX;
             p2.y = sizeF.height;
             pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-
+            SVGstdline
             p1.x = axisSpaceX;
             p1.y = sizeF.height;
             p2.x = p1.x;
             p2.y = 0.0;
             pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
-
+            SVGstdline
             for (int i = 0; i < 2; ++i) {
                 p1.y = (float)(sizeF.height - scaleY * (yTicks1[i] - minY));
                 p2.y = p1.y;
                 p1.x = axisSpaceX;
                 p2.x = p1.x + 10;
                 pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
+                SVGstdline
             }
             for (int i = 0; i < 3; ++i) {
                 p1.y = sizeF.height;
@@ -2801,10 +2894,12 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 p1.x = (float)(axisSpaceX + scaleX * (xTicks1[i] - minX));
                 p2.x = p1.x;
                 pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
+                SVGstdline
             }
-
+            SVGendgroup
             //Lambda for plotting a single line
             auto plotLine = [&](double* y) {
+                SVGstartgroup
                 for (size_t i = iMin; i < iMax - 1; ++i) {
                     p1.x = scaleX * (xValues[i] - minX);
                     p2.x = scaleX * (xValues[i + 1] - minX);
@@ -2822,21 +2917,26 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                     if (p1.y <= sizeF.height) {
                         if (p2.y <= sizeF.height) {
                             pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
+                            SVGstdline
                         }
                         else {
                             p2.x = p1.x + (sizeF.height - p1.y) / ((p2.y - p1.y) / (p2.x - p1.x));
                             p2.y = sizeF.height;
                             pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
+                            SVGstdline
                         }
                         marker.point = p1;
                         pRenderTarget->FillEllipse(&marker, pBrush);
+                        SVGstdcircle
                     }
                     else if (p2.y <= sizeF.height) {
                         p1.x = p1.x + (sizeF.height - p1.y) / ((p2.y - p1.y) / (p2.x - p1.x));
                         p1.y = sizeF.height;
                         pRenderTarget->DrawLine(p1, p2, pBrush, lineWidth, 0);
+                        SVGstdline
                     }
                 }
+                SVGendgroup
             };
 
             //Plot the main line
@@ -2863,6 +2963,10 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
         }
         pRenderTarget->Release();
         delete[] xValues;
+    }
+
+    if ((*s).makeSVG) {
+        _snwprintf(SVGi, L"</svg>");
     }
     return 0;
 }

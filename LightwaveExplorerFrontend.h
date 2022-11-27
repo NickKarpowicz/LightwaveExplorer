@@ -88,6 +88,7 @@ typedef struct guiStruct {
     HWND buttonRefreshDB = NULL;
     HWND buttonStop = NULL;
     HWND buttonLoad = NULL;
+    HWND buttonSVG = NULL;
     HWND buttonAddCrystalToSequence = NULL;
     HWND buttonAddEchoSequence = NULL;
     HWND buttonAddPulseSequence = NULL;
@@ -139,7 +140,7 @@ typedef struct guiStruct {
     int textboxwidth = 150;
     int plotSpacerX = 8;
     int plotSpacerY = 8;
-
+    bool savePlots = FALSE;
 } guiStruct;
 
 typedef struct imagePlotStruct {
@@ -185,6 +186,10 @@ typedef struct plotStruct {
     D2D1_COLOR_F color2 = D2D1::ColorF(1, 1, 1, 1);
     D2D1_COLOR_F color3 = D2D1::ColorF(1, 1, 1, 1);
     D2D1_COLOR_F color4 = D2D1::ColorF(1, 1, 1, 1);
+
+    wchar_t* svgString = NULL;
+    bool makeSVG = FALSE;
+    int svgBuffer = 0;
 } plotStruct;
 
 
