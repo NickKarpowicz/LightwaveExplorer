@@ -2832,7 +2832,6 @@ DWORD WINAPI plotXYDirect2d(LPVOID inputStruct) {
                 if ((*s).makeSVG)_snwprintf(SVGi, L"<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\" transform=\"translate(%f, %f) rotate(-90)\">\n%ls\n</text>\n", maingui.wTextFormat->GetFontSize(), SVGh((pBrush->GetColor()).r), SVGh((pBrush->GetColor()).g), SVGh((pBrush->GetColor()).b), 0.5 * (layoutRect.left + layoutRect.right), layoutRect.top + maingui.wTextFormat->GetFontSize(), -(layoutRect.left + layoutRect.right), sizeF.height, messageBuffer);
             }
 
-
             //x-axis name
             if ((*s).xLabel != NULL) {
                 layoutRect.left = axisSpaceX;
