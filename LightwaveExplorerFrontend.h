@@ -177,6 +177,8 @@ typedef struct plotStruct {
     double forcedXmin = 0.0;
     bool forceXmax = FALSE;
     double forcedXmax = 0.0;
+    D2D1_COLOR_F axisColor = D2D1::ColorF(0.5, 0.5, 0.5, 0.5);
+    D2D1_COLOR_F textColor = D2D1::ColorF(0.8, 0.8, 0.8, 0.8);
     D2D1_COLOR_F color = D2D1::ColorF(1, 1, 1, 1);
     D2D1_COLOR_F color2 = D2D1::ColorF(1, 1, 1, 1);
     D2D1_COLOR_F color3 = D2D1::ColorF(1, 1, 1, 1);
