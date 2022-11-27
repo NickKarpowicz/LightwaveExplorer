@@ -12,6 +12,8 @@
 
 Lightwave explorer is an open source nonlinear optics simulator, intended to be fast, visual, and flexible for students and researchers to play with ultrashort laser pulses and nonlinear optics without having to buy a laser first.
 
+<p style="text-align: center;"><img src="/Documentation/Images/Screenshot1122.png" width="941" height="495"></p>
+
 The simulation was written CUDA in order to run quickly on modern graphics cards. I've subsequently generalized it so that it can be run in two other ways: SYCL on CPUs and Intel GPUs, and using OpenMP to run on CPUs. Accordingly, I hope that the results are fast enough that even complicated system can be simulated within a human attention span.
 
 #### Main goals:
