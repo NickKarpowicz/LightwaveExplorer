@@ -33,6 +33,12 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define ID_BTNFITREFERENCE 11120
 #define ID_BTNADDECHO 11121
 #define ID_BTNADDCRYSTAL 11122
+#define ID_BTNADDPULSE 11123
+#define ID_BTNADDLINEAR 11124
+#define ID_BTNADDAPERTURE 11125
+#define ID_BTNADDFARFIELD 11126
+#define ID_BTNADDROTATION 11127
+#define ID_BTNADDPARABOLA 11128
 #define ID_CBLOGPLOT 12000
 #define ID_CBOVERLAYTOTAL 12001
 #define ID_PLOTSCRUBBER 13001
@@ -539,6 +545,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     int xOffsetRow1b = xOffsetRow1 + halfBox + 8;
     int xOffsetRow2 = maingui.xOffsetRow2;
     int xOffsetRow2b = xOffsetRow2 + halfBox + 8;
+    int xOffsetSequence = xOffsetRow2 - 10;
     int xOffsetRow3 = maingui.xOffsetRow3;
     int vs = maingui.vs;
     int btnwidth = maingui.btnwidth;
@@ -681,8 +688,8 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
     printToConsole(maingui.plotBox1, L"2D space-time slice view (y-polarization)\r\nOnce a simulation is run, this panel will show a slice through the center of the field E(x,y,t) at E(0,y,t)\r\nTo run a simulation with the demo settings, simply press the \"Run\" button.");
     printToConsole(maingui.plotBox2, L"2D space-time slice view (x-polarization)\r\nSame as the panel above, but shows the other polarization.");
-    printToConsole(maingui.plotBox3, L"Waveform view (y-polarization)\r\nShows the on axis electric field E(x=0,y=0,t)");
-    printToConsole(maingui.plotBox4, L"Waveform view (x-polarization)\r\n");
+    printToConsole(maingui.plotBox3, L"Waveform view (y-polarization)\r\nShows the on-axis electric field E(x=0,y=0,t)");
+    printToConsole(maingui.plotBox4, L"Waveform view (x-polarization)\r\nThe slider control below lets you flip quickly through simulations in a batch\r\nThe Plot button will redraw the images\r\n");
     printToConsole(maingui.plotBox5, L"2D momentum-frequency slice view (y-polarization)\r\nShows the field in the Fourier domain, on a logarithmic scale. Low frequencies are to the left, higher ones to the right. Vertically, the top of the plot shows high spatial frequencies (pointing up), the center is along the propagation axis, and the bottom is high spatial frequencies, pointing down. The field should not touch the edges of this grid. If it touches it vertically, you need a smaller value of dx.\r\n");
     printToConsole(maingui.plotBox6, L"2D momentum-frequency slice view (x-polarization)\r\n");
     printToConsole(maingui.plotBox7, L"Spatially-integrated spectrum (y-polarization)\r\nShows the total energy spectrum of the grid at the end of the simulation.\r\n");
@@ -832,15 +839,33 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         btnoffset2a, 19 * vs, btnwidth, btnHeight, maingui.mainWindow, (HMENU)ID_BTNLOAD, hInstance, NULL);
 
 
+    maingui.buttonAddPulseSequence = CreateWindow(WC_BUTTON, TEXT("\x223F"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetSequence + 1 * (btnHeight + 1), 12 *vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDPULSE, hInstance, NULL);
+    maingui.buttonAddLinearSequence = CreateWindow(WC_BUTTON, TEXT("\x21E2"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetSequence - 1 * (btnHeight + 1), 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDLINEAR, hInstance, NULL);
+    maingui.buttonAddApertureSequence = CreateWindow(WC_BUTTON, TEXT("\x25CE"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetSequence + 2*(btnHeight + 1), 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDAPERTURE, hInstance, NULL);
+    maingui.buttonAddFarFieldApertureSequence = CreateWindow(WC_BUTTON, TEXT("\x21F4"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetSequence + 3 * (btnHeight + 1), 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDFARFIELD, hInstance, NULL);
+    maingui.buttonAddRotationSequence = CreateWindow(WC_BUTTON, TEXT("\x21BB"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetSequence + 4 * (btnHeight + 1), 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDROTATION, hInstance, NULL);
+    maingui.buttonAddParabolaSequence = CreateWindow(WC_BUTTON, TEXT("\x25D7"),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
+        xOffsetSequence + 5 * (btnHeight + 1), 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDPARABOLA, hInstance, NULL);
     maingui.buttonAddEchoSequence = CreateWindow(WC_BUTTON, TEXT("\x2B83"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        xOffsetRow2, 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDECHO, hInstance, NULL);
+        xOffsetSequence - 2 * (btnHeight + 1), 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDECHO, hInstance, NULL);
     maingui.buttonAddCrystalToSequence = CreateWindow(WC_BUTTON, TEXT("\x21AF"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP | WS_EX_CONTROLPARENT,
-        xOffsetRow2 + btnHeight + 4, 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDCRYSTAL, hInstance, NULL);
+        xOffsetSequence + 0*(btnHeight + 1), 12 * vs, btnHeight, btnHeight, maingui.mainWindow, (HMENU)ID_BTNADDCRYSTAL, hInstance, NULL);
     maingui.tbSequence = CreateWindow(WC_EDIT, TEXT(""), 
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN, 
-        xOffsetRow1 + textboxwidth + 4, 13 * vs, xOffsetRow2-xOffsetRow1, 5*vs-6, maingui.mainWindow, NULL, hInstance, NULL);
+        xOffsetRow1 + textboxwidth + 2, 13 * vs, xOffsetRow2-xOffsetRow1, 5*vs-6, maingui.mainWindow, NULL, hInstance, NULL);
 
     maingui.tbFitting = CreateWindow(WC_EDIT, TEXT(""),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_EX_CONTROLPARENT | ES_MULTILINE | WS_VSCROLL | ES_WANTRETURN,
@@ -1218,11 +1243,50 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
 
             break;
+		case ID_BTNADDLINEAR:
+			if (GetWindowTextLength(maingui.tbSequence) < 3) {
+				SetWindowText(maingui.tbSequence, L"");
+			}
+			printToConsole(maingui.tbSequence, L"linear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
+				(int)SendMessage(maingui.pdMaterialIndex, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0), getDoubleFromHWND(maingui.tbCrystalTheta),
+				getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbCrystalThickness),
+				getDoubleFromHWND(maingui.tbXstep));
+            break;
         case ID_BTNADDECHO:
             if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"plasma(d,d,d,d,d,d,d,d,d);\r\n");
+            printToConsole(maingui.tbSequence, L"plasma(d,d,d,d,d,d,d,d,d)\r\n");
+            break;
+        case ID_BTNADDPULSE:
+            if (GetWindowTextLength(maingui.tbSequence) < 3) {
+                SetWindowText(maingui.tbSequence, L"");
+            }
+            printToConsole(maingui.tbSequence, L"addPulse(energy, frequency, bandwidth, sgOrder, cep, delay, gdd, tod, phaseMaterial, phaseThickness, beamwaist, x0, z0, beamAngle, polarization, circularity, materialIndex, theta, phi)\r\n");
+            break;
+        case ID_BTNADDAPERTURE:
+            if (GetWindowTextLength(maingui.tbSequence) < 3) {
+                SetWindowText(maingui.tbSequence, L"");
+            }
+            printToConsole(maingui.tbSequence, L"aperture(diameter, activationParameter)\r\n");
+            break;
+        case ID_BTNADDFARFIELD:
+            if (GetWindowTextLength(maingui.tbSequence) < 3) {
+                SetWindowText(maingui.tbSequence, L"");
+            }
+            printToConsole(maingui.tbSequence, L"farFieldAperture(openingAngle, activationParameter, xAngle, yAngle)\r\n");
+            break;
+        case ID_BTNADDROTATION:
+            if (GetWindowTextLength(maingui.tbSequence) < 3) {
+                SetWindowText(maingui.tbSequence, L"");
+            }
+            printToConsole(maingui.tbSequence, L"rotate(90)\r\n");
+            break;
+        case ID_BTNADDPARABOLA:
+            if (GetWindowTextLength(maingui.tbSequence) < 3) {
+                SetWindowText(maingui.tbSequence, L"");
+            }
+            printToConsole(maingui.tbSequence, L"parabolicMirror(focalLength)\r\n");
             break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
@@ -1351,6 +1415,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonPlot, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddCrystalToSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddEchoSequence, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonAddPulseSequence, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonAddLinearSequence, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonAddApertureSequence, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonAddFarFieldApertureSequence, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonAddRotationSequence, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.buttonAddParabolaSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
         SetWindowTheme(maingui.cbOverlayTotal, L"DarkMode_Explorer", L"wstr");
         //SetWindowTheme(maingui.cbForceCPU, L"DarkMode_Explorer", L"wstr");
@@ -1948,7 +2018,7 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPulse2Type, _T("Pulse 2:"), labos, 4);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdPropagationMode, _T("Propagation mode"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.pdFittingType, _T("Fit type:"), labos, 0);
-    labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Crystal sequence:"), 4, -22);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Sequence:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 16, -1);
     labelTextBox(hdc, maingui.mainWindow, maingui.cbOverlayTotal, _T("Total"), 16, -1);

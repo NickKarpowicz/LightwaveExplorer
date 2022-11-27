@@ -4,9 +4,6 @@
 #include<dwrite.h>
 typedef struct guiStruct {
     HWND mainWindow = NULL;
-    
-    //HWND tbMaterialIndex = NULL;
-    //HWND tbMaterialIndexAlternate = NULL;
     HWND pdMaterialIndex = NULL;
     HWND tbCrystalTheta = NULL;
     HWND tbCrystalPhi = NULL;
@@ -41,7 +38,6 @@ typedef struct guiStruct {
     HWND tbPulseType1 = NULL;
     HWND tbPulseType2 = NULL;
 
-
     HWND tbGDD1 = NULL;
     HWND tbGDD2 = NULL;
     HWND tbTOD1 = NULL;
@@ -62,7 +58,6 @@ typedef struct guiStruct {
     HWND tbPolarizationAngle2 = NULL;
     HWND tbCircularity1 = NULL;
     HWND tbCircularity2 = NULL;
-
 
     HWND pdPropagationMode = NULL;
     HWND pdBatchMode = NULL;
@@ -95,6 +90,12 @@ typedef struct guiStruct {
     HWND buttonLoad = NULL;
     HWND buttonAddCrystalToSequence = NULL;
     HWND buttonAddEchoSequence = NULL;
+    HWND buttonAddPulseSequence = NULL;
+    HWND buttonAddLinearSequence = NULL;
+    HWND buttonAddApertureSequence = NULL;
+    HWND buttonAddFarFieldApertureSequence = NULL;
+    HWND buttonAddRotationSequence = NULL;
+    HWND buttonAddParabolaSequence = NULL;
     HWND tbPlotNumber = NULL;
     HWND cbLogPlot = NULL;
     HWND tbPlot1XMin = NULL;
