@@ -499,7 +499,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
-
     }
     return (int)msg.wParam;
 }

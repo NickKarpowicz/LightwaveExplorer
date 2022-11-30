@@ -610,6 +610,23 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= a;
 	};
 
+	trilingual filterKernel asKernel(withID cudaParameterSet* s, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
+		long long i = localIndex;
+		long long col, j;
+		col = i / ((*s).Nfreq - 1); //spatial coordinate
+		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+		i = j + col * (*s).Nfreq;
+
+		double f = (*s).fStep * j - f0;
+		for (int p = 1; p < (int)order; p++) {
+			bandwidth *= bandwidth;
+			f *= f;
+		}
+		double filterFunction = outOfBandAmplitude + inBandAmplitude*exp(-f / (2.0 * bandwidth));
+		(*s).gridEFrequency1[i] *= filterFunction;
+		(*s).gridEFrequency2[i] *= filterFunction;
+	};
+
 	trilingual apertureKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter) {
 		long long i = localIndex;
 		long long j, k, col;
@@ -1628,6 +1645,30 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	int applyFilter(simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
+		cudaParameterSet s;
+		activeDevice d;
+		d.allocateSet(sCPU, &s);
+
+		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
+		d.fft(s.gridETime1, s.gridEFrequency1, 0);
+		cudaParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, filterKernel, sDevice, 1.0e12*f0, 1.0e12*bandwidth, order, inBandAmplitude, outOfBandAmplitude);
+
+		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+
+		d.fft(s.gridEFrequency1, s.gridETime1, 1);
+
+		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+
+		getTotalSpectrum(d);
+		d.deallocateSet(&s);
+
+		return 0;
+	}
+
 	int applyAperatureFarField(simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
 		cudaParameterSet s;
 		activeDevice d;
@@ -2011,6 +2052,15 @@ namespace hostFunctions{
 				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock),
 				parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock),
 				parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock));
+			break;
+		case funHash("filter"):
+			copyParamsIntoStrings(parameterBlock, cc, 5);
+			applyFilter(s,
+				parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock),
+				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock),
+				parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock),
+				parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock),
+				parameterStringToDouble(&parameterBlock[4][0], iBlock, vBlock));
 			break;
 		case funHash("addPulse"):
 		{
