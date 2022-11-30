@@ -1267,7 +1267,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"addPulse(energy, frequency, bandwidth, sgOrder, cep, delay, gdd, tod, phaseMaterial, phaseThickness, beamwaist, x0, z0, beamAngle, polarization, circularity, materialIndex, theta, phi)\r\n");
+            printToConsole(maingui.tbSequence, L"addPulse(energy, frequency, bandwidth, sgOrder, cep, delay, gdd, tod, phaseMaterial, phaseThickness, beamwaist, x0, z0, beamAngle, beamAngleY, polarization, circularity, materialIndex, theta, phi)\r\n");
             break;
         case ID_BTNADDAPERTURE:
             if (GetWindowTextLength(maingui.tbSequence) < 3) {

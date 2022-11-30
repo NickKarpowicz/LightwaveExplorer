@@ -2064,7 +2064,7 @@ namespace hostFunctions{
 			break;
 		case funHash("addPulse"):
 		{
-			copyParamsIntoStrings(parameterBlock, cc, 19);
+			copyParamsIntoStrings(parameterBlock, cc, 20);
 			cudaParameterSet sc;
 			activeDevice d;
 			d.dParams = &sc;
@@ -2090,11 +2090,12 @@ namespace hostFunctions{
 			p.x0 = 1e-6 * parameterStringToDouble(&parameterBlock[11][0], iBlock, vBlock);
 			p.z0 = 1e-6 * parameterStringToDouble(&parameterBlock[12][0], iBlock, vBlock);
 			p.beamAngle = DEG2RAD * parameterStringToDouble(&parameterBlock[13][0], iBlock, vBlock);
-			p.polarizationAngle = DEG2RAD * parameterStringToDouble(&parameterBlock[14][0], iBlock, vBlock);
-			p.circularity = parameterStringToDouble(&parameterBlock[15][0], iBlock, vBlock);
-			(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[16][0], iBlock, vBlock);
-			(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[17][0], iBlock, vBlock);
-			(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[18][0], iBlock, vBlock);
+			p.beamAnglePhi = DEG2RAD * parameterStringToDouble(&parameterBlock[14][0], iBlock, vBlock);
+			p.polarizationAngle = DEG2RAD * parameterStringToDouble(&parameterBlock[15][0], iBlock, vBlock);
+			p.circularity = parameterStringToDouble(&parameterBlock[16][0], iBlock, vBlock);
+			(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[17][0], iBlock, vBlock);
+			(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[18][0], iBlock, vBlock);
+			(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[19][0], iBlock, vBlock);
 
 			addPulseToFieldArrays(d, p, FALSE, NULL);
 			d.deviceMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * sc.NgridC * sizeof(deviceComplex), DeviceToHost);
