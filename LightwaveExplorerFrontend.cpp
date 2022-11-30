@@ -1369,12 +1369,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowPos(maingui.plotBox6, HWND_BOTTOM, x + dx + spacerX, y + 1 * dy + 1 * spacerY, dx, dy, NULL);
         SetWindowPos(maingui.plotBox7, HWND_BOTTOM, x + dx + spacerX, y + 2 * dy + 2 * spacerY, dx, dy, NULL);
         SetWindowPos(maingui.plotBox8, HWND_BOTTOM, x + dx + spacerX, y + 3 * dy + 3 * spacerY, dx, dy, NULL);
-        SetWindowPos(maingui.tbPlot1XMin, HWND_BOTTOM, x + dx + spacerX + 40,                          y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
-        SetWindowPos(maingui.tbPlot1XMax, HWND_BOTTOM, x + dx + spacerX + maingui.textboxwidth/3 + 40,   y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
-        SetWindowPos(maingui.tbPlot1YMin, HWND_BOTTOM, x + dx + spacerX + 2*maingui.textboxwidth/3 + 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
-        SetWindowPos(maingui.tbPlot1YMax, HWND_BOTTOM, x + dx + spacerX + 3*maingui.textboxwidth/3+ 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
-        SetWindowPos(maingui.cbOverlayTotal, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 3 + 92, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
-        SetWindowPos(maingui.cbLogPlot, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 3 + 162, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
+        SetWindowPos(maingui.tbPlot1XMin, HWND_BOTTOM, x + dx + spacerX + 40,                          y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 2 - 2, 20, NULL);
+        SetWindowPos(maingui.tbPlot1XMax, HWND_BOTTOM, x + dx + spacerX + maingui.textboxwidth/2 + 40,   y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 2 - 2, 20, NULL);
+        SetWindowPos(maingui.tbPlot1YMin, HWND_BOTTOM, x + dx + spacerX + 2*maingui.textboxwidth/2 + 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 2 - 2, 20, NULL);
+        SetWindowPos(maingui.tbPlot1YMax, HWND_BOTTOM, x + dx + spacerX + 3*maingui.textboxwidth/2+ 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 2 - 2, 20, NULL);
+        SetWindowPos(maingui.cbOverlayTotal, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 2 + 92, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
+        SetWindowPos(maingui.cbLogPlot, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 2 + 162, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
         SetWindowPos(maingui.trackbarPlot, HWND_BOTTOM, x, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
         SetWindowPos(maingui.tbWhichSimToPlot, HWND_BOTTOM, x + maingui.btnwidth + 4, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
         SetWindowPos(maingui.buttonPlot, HWND_BOTTOM, x + maingui.btnwidth + 8 + maingui.textboxwidth/3, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
