@@ -2295,7 +2295,6 @@ namespace hostFunctions{
 		return 1;
 	}
 
-
 	double getResidual(const column_vector& x) {
 
 		double multipliers[36] = { 0,
@@ -2334,13 +2333,6 @@ namespace hostFunctions{
 		else {
 			solveNonlinearWaveEquationX(fittingSet);
 		}
-
-
-
-
-
-
-
 
 		//maximize total spectrum in ROI
 		if ((*fittingSet).fittingMode != 3) {
@@ -2459,14 +2451,9 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 }
 
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
-
-
-	
-
 	simulationParameterSet sCPUcurrent;
 	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
 	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
-
 
 	double* targets[36] = { 0,
 		&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
