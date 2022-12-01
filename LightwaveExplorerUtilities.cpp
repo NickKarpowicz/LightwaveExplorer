@@ -1187,7 +1187,7 @@ int allocateGrids(simulationParameterSet* sCPU) {
 	(*sCPU).EkwOut = new std::complex<double>[(*sCPU).NgridC * 2 * (*sCPU).Nsims * (*sCPU).Nsims2];
 	(*sCPU).deffTensor = new double[9 * (*sCPU).Nsims * (*sCPU).Nsims2];
 	(*sCPU).totalSpectrum = new double[(*sCPU).Nsims * (*sCPU).Nsims2 * (*sCPU).Nfreq * 3];
-	(*sCPU).imdone = new int[(*sCPU).Nsims * (*sCPU).Nsims2];
+	(*sCPU).statusFlags = new int[(*sCPU).Nsims * (*sCPU).Nsims2];
 	(*sCPU).fittingReference = new double[(*sCPU).Nfreq];
 	return 0;
 }
@@ -1196,7 +1196,7 @@ int deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems) {
 	delete[] (*sCPU).loadedField1;
 	delete[] (*sCPU).loadedField2;
 	delete[] (*sCPU).deffTensor;
-	delete[] (*sCPU).imdone;
+	delete[] (*sCPU).statusFlags;
 	delete[] (*sCPU).fittingReference;
 	if (alsoDeleteDisplayItems) {
 		delete[](*sCPU).ExtOut;
@@ -1284,4 +1284,3 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 	free(E);
 	return currentRow;
 }
-

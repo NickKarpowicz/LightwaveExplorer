@@ -202,6 +202,9 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="LWEActiveDeviceCPU.h" />
+    <ClInclude Include="LWEActiveDeviceCUDA.cuh" />
+    <ClInclude Include="LWEActiveDeviceSYCL.h" />
     <ClInclude Include="LightwaveExplorerTrilingual.h" />
     <ClInclude Include="LightwaveExplorerUtilities.h" />
     <ClInclude Include="LightwaveExplorerCoreCPU.h" />
@@ -214,6 +217,7 @@ copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\"</Command>
     <ClCompile Include="LightwaveExplorerFrontend.cpp" />
     <ClCompile Include="LightwaveExplorerCoreCPU.cpp" />
     <ClCompile Include="LightwaveExplorerUtilities.cpp" />
+    <ClCompile Include="LWEActiveDeviceCommon.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="LightwaveExplorer.ico" />

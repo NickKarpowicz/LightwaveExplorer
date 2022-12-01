@@ -164,7 +164,7 @@ typedef struct simulationParameterSet {
     double* ExtOut = 0;
     std::complex<double>* EkwOut = 0;
     double* totalSpectrum = 0;
-    int* imdone = 0;
+    int* statusFlags = 0;
     int memoryError = 0;
     int assignedGPU = 0;
     int plotSim = 0;

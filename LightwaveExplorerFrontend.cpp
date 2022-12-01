@@ -356,7 +356,7 @@ DWORD WINAPI createRunFile(LPVOID lpParam) {
     readSequenceString(activeSetPtr);
     configureBatchMode(activeSetPtr);
 
-    free((*activeSetPtr).imdone);
+    free((*activeSetPtr).statusFlags);
     free((*activeSetPtr).deffTensor);
     free((*activeSetPtr).loadedField1);
     free((*activeSetPtr).loadedField2);
@@ -1166,7 +1166,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (isRunning) {
                 cancellationCalled = TRUE;
                 for (int i = 0; i < (*activeSetPtr).Nsims; ++i) {
-                    (*activeSetPtr).imdone[i] = 2;
+                    (*activeSetPtr).statusFlags[i] = 2;
                 }
             }
             break;
@@ -1198,10 +1198,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 plotSim = (int)getDoubleFromHWND(maingui.tbWhichSimToPlot);
                 plotSim--;
                 plotSim = max(plotSim, 0);
-                if (isRunning && (*activeSetPtr).imdone[plotSim] == 0 && !(*activeSetPtr).isInFittingMode) {
-                    (*activeSetPtr).imdone[plotSim] = 3;
+                if (isRunning && (*activeSetPtr).statusFlags[plotSim] == 0 && !(*activeSetPtr).isInFittingMode) {
+                    (*activeSetPtr).statusFlags[plotSim] = 3;
                     int failCtr = 0;
-                    while ((*activeSetPtr).imdone[plotSim] == 3 && failCtr<1000) {
+                    while ((*activeSetPtr).statusFlags[plotSim] == 3 && failCtr<1000) {
                         failCtr++;
                         Sleep(30);
                     }
@@ -1373,8 +1373,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowPos(maingui.tbPlot1XMax, HWND_BOTTOM, x + dx + spacerX + maingui.textboxwidth/2 + 40,   y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 2 - 2, 20, NULL);
         SetWindowPos(maingui.tbPlot1YMin, HWND_BOTTOM, x + dx + spacerX + 2*maingui.textboxwidth/2 + 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 2 - 2, 20, NULL);
         SetWindowPos(maingui.tbPlot1YMax, HWND_BOTTOM, x + dx + spacerX + 3*maingui.textboxwidth/2+ 84, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 2 - 2, 20, NULL);
-        SetWindowPos(maingui.cbOverlayTotal, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 2 + 92, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
-        SetWindowPos(maingui.cbLogPlot, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 2 + 162, y + 4 * dy + 3 * spacerY + 6, 12, 12, NULL);
+        SetWindowPos(maingui.cbOverlayTotal, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 2 + 92, y + 4 * dy + 3 * spacerY + 4, 20, 20, NULL);
+        SetWindowPos(maingui.cbLogPlot, HWND_BOTTOM, x + dx + spacerX + 4 * maingui.textboxwidth / 2 + 162, y + 4 * dy + 3 * spacerY + 4, 20, 20, NULL);
         SetWindowPos(maingui.trackbarPlot, HWND_BOTTOM, x, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
         SetWindowPos(maingui.tbWhichSimToPlot, HWND_BOTTOM, x + maingui.btnwidth + 4, y + 4 * dy + 3 * spacerY + 4, maingui.textboxwidth / 3 - 2, 20, NULL);
         SetWindowPos(maingui.buttonPlot, HWND_BOTTOM, x + maingui.btnwidth + 8 + maingui.textboxwidth/3, y + 4 * dy + 3 * spacerY + 4, maingui.btnwidth, 20, NULL);
@@ -1428,9 +1428,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonAddFarFieldApertureSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddRotationSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddParabolaSequence, L"DarkMode_Explorer", NULL);
-        SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
-        SetWindowTheme(maingui.cbOverlayTotal, L"DarkMode_Explorer", L"wstr");
-        //SetWindowTheme(maingui.cbForceCPU, L"DarkMode_Explorer", L"wstr");
+        //SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
+        //SetWindowTheme(maingui.cbOverlayTotal, L"DarkMode_Explorer", L"wstr");
         SetWindowTheme(maingui.pbProgress, L"", L"");
         SetWindowTheme(maingui.pbProgressB, L"", L"");
         SendMessage(maingui.pbProgress, PBM_SETBKCOLOR, 0, RGB(0,0,0));
@@ -2027,8 +2026,8 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.pdFittingType, _T("Fit type:"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbSequence, _T("Sequence:"), 4, -22);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbFitting, _T("Fitting command:"), 4, -22);
-    labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 16, -1);
-    labelTextBox(hdc, maingui.mainWindow, maingui.cbOverlayTotal, _T("Total"), 16, -1);
+    labelTextBox(hdc, maingui.mainWindow, maingui.cbLogPlot, _T("Log"), 21, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.cbOverlayTotal, _T("Total"), 21, 0);
 
     labelTextBox(hdc, maingui.mainWindow, maingui.tbPlot1XMin, _T("xlim"), -34, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbPlot1YMin, _T("ylim"), -34, 0);
@@ -3017,7 +3016,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
             printC(L"Could not read reference file!\r\n");
-            free((*activeSetPtr).imdone);
+            free((*activeSetPtr).statusFlags);
             free((*activeSetPtr).deffTensor);
             free((*activeSetPtr).loadedField1);
             free((*activeSetPtr).loadedField2);
@@ -3073,7 +3072,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
         printC(L"%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
     }
-    free((*activeSetPtr).imdone);
+    free((*activeSetPtr).statusFlags);
     free((*activeSetPtr).deffTensor);
     free((*activeSetPtr).loadedField1);
     free((*activeSetPtr).loadedField2);

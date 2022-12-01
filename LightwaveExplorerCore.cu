@@ -1,46 +1,9 @@
 #include "LightwaveExplorerCore.cuh"
-//#include "LightwaveExplorerCoreCPU.h"
-//#include "LightwaveExplorerSYCL.h"
 #include "LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerTrilingual.h"
 #include <stdlib.h>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
-
-//Name assignments for the result functions compiled under CUDA, SYCL, and c++
-#ifdef __CUDACC__
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-#include <nvml.h>
-#define deviceFunctions deviceFunctionsCUDA
-#define hostFunctions hostFunctionsCUDA
-#define mainX main
-#define mainArgumentX char* argv[]
-#define resolveArgv char* filepath = argv[1];
-#define runDlibFittingX runDlibFitting
-#define solveNonlinearWaveEquationX solveNonlinearWaveEquation
-#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequence
-
-#elif defined RUNONSYCL
-#define deviceFunctions deviceFunctionsSYCL
-#define hostFunctions hostFunctionsSYCL
-#define mainX mainSYCL
-#define mainArgumentX char* filepath
-#define resolveArgv
-#define runDlibFittingX runDlibFittingSYCL
-#define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCL
-#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
-
-#else
-#define deviceFunctions deviceFunctionsCPU
-#define hostFunctions hostFunctionsCPU
-#define mainX mainCPU
-#define mainArgumentX char* filepath
-#define resolveArgv
-#define runDlibFittingX runDlibFittingCPU
-#define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPU
-#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPU
-#endif
 
 namespace deviceFunctions {
 	//Inner function for the Sellmeier equation to provide the refractive indicies
@@ -132,44 +95,8 @@ namespace deviceFunctions {
 
 			return *ne;
 		}
+		//option 2: biaxial
 		else {
-			////type == 2: biaxial
-			//// X. Yin, S. Zhang and Z. Tian, Optics and Laser Technology 39 (2007) 510 - 513.
-			//// I am sorry if there is a bug and you're trying to find it, i did my best.
-			//deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
-			//deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
-			//deviceComplex nc = sellmeierFunc(ls, omega, &a[44], eqn);
-			//double cosTheta = cos(theta);
-			//double cosTheta2 = cosTheta * cosTheta;
-			//double sinTheta = sin(theta);
-			//double sinTheta2 = sinTheta * sinTheta;
-			//double sinPhi = sin(phi);
-			//double sinPhi2 = sinPhi * sinPhi;
-			//double cosPhi = cos(phi);
-			//double cosPhi2 = cosPhi * cosPhi;
-			//double realna2 = na.real() * na.real();
-			//double realnb2 = nb.real() * nb.real();
-			//deviceComplex ina2 = 1. / (na * na);
-			//deviceComplex inb2 = 1. / (nb * nb);
-			//deviceComplex inc2 = 1. / (nc * nc);
-			//double delta = 0.5 * atan(-((1. / realna2 - 1. / realnb2)
-			//	* sin(2 * phi) * cosTheta) / ((cosPhi2 / realna2 + sinPhi2 / realnb2)
-			//		+ ((sinPhi2 / realna2 + cosPhi2 / realnb2)
-			//			* cosTheta2 + sinTheta2 / (nc.real() * nc.real()))));
-			//double cosDelta = cos(delta);
-			//double sinDelta = sin(delta);
-			//*ne = 1.0 / deviceLib::sqrt(cosDelta * cosDelta * (cosTheta2 * (cosPhi2 * ina2
-			//	+ sinPhi2 * inb2) + sinTheta2 * inc2)
-			//	+ sinDelta * sinDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
-			//	- 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
-
-			//*no = 1.0 / deviceLib::sqrt(sinDelta * sinDelta * (cosTheta2 * (cosPhi2 * ina2
-			//	+ sinPhi2 * inb2) + sinTheta2 * inc2)
-			//	+ cosDelta * cosDelta * (sinPhi2 * ina2 + cosPhi2 * inb2)
-			//	+ 0.5 * sin(2 * phi) * cosTheta * sin(2 * delta) * (ina2 - inb2));
-
-			//return *ne;
-
 			deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
 			na *= na;
 			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
@@ -223,7 +150,6 @@ namespace deviceFunctions {
 			return dr * (j - N / 2) + 0.25 * dr;
 		}
 	}
-
 
 	//function to find the effective crystal direction (theta,phi) for a given coordinate in k-space
 	// trivial in isotropic media (Snell's law) but in birefringent media,
@@ -393,7 +319,14 @@ namespace deviceFunctions {
 using namespace deviceFunctions;
 
 namespace kernels {
-
+	//the syntax might look a bit strange due to the "trilingual" mode of operation. In short:
+	// CUDA and OpenMP are fine with function pointers being used to launch kernels, but SYCL
+	// doesn't allow them. However, SYCL does allow named lambdas, which have a nearly identical
+	// structure. The trilingual preprocessor definition handles the return type (void for CUDA,
+	// auto for SYCL, and the askernel definition is empty for CUDA, but contains the []( syntax
+	// to declare a lambda. The widthID definition gives an additional parameter for openMP and
+	// SYCL threads to be passed their ID.
+	// The function's closing } has to be followed by a ; to have valid syntax in SYCL.
 	trilingual millersRuleNormalizationKernel asKernel(withID cudaParameterSet* s, double* sellmeierCoefficients, double* referenceFrequencies) {
 		if (!(*s).isUsingMillersRule) {
 			return;
@@ -448,7 +381,6 @@ namespace kernels {
 			beamCenter2 /= beamTotal2;
 		}
 
-
 		//Integrate total beam power, assuming radially-symmetric beam around
 		//the center
 		beamTotal1 = 0.;
@@ -497,8 +429,6 @@ namespace kernels {
 		Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
 	};
 
-
-
 	trilingual radialLaplacianKernel asKernel(withID cudaParameterSet* s) {
 		unsigned long long i = localIndex;
 		long long j = i / (*s).Ntime; //spatial coordinate
@@ -526,8 +456,8 @@ namespace kernels {
 				+ (*s).firstDerivativeOperation[4] * (*s).gridETime2[neighbors[4]]
 				+ (*s).firstDerivativeOperation[5] * (*s).gridETime2[neighbors[5]]);
 		}
-
 	};
+
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
 	// The grid is offset from the origin; rather than ...-2 -1 0 1 2... etc, which would
@@ -753,7 +683,6 @@ namespace kernels {
 		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
 	};
-
 
 	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
 	//note that the sellmeier coefficients have extra values appended to the end
@@ -995,12 +924,8 @@ namespace kernels {
 		//transverse wavevector being resolved
 		double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 
-
-		//NOTE TO SELF: Using this function is not strictly necessary, but it tends to filter out the invalid region better
-		//than raw application of the sellmeier equation. It might be possible to reduce startup time by making a smarter filter
-		//without all the extra calculations.
-		//findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex % ((*s).Nfreq-1), &ne, &no);
 		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 		if (minN(ne.real(), no.real()) < 0.9 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
@@ -1300,7 +1225,6 @@ namespace kernels {
 		A[i] += B[i];
 	};
 
-	
 	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, cudaParameterSet* s,
 		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase, double* sellmeierCoefficients) {
 		long long i = localIndex;
@@ -1493,7 +1417,7 @@ namespace hostFunctions{
 		simulationParameterSet* sCPU = d.cParams;
 		cudaParameterSet* sc = d.dParams;
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-		d.fft((*sc).gridETime1, (*sc).workspace1, 2);
+		d.fft((*sc).gridETime1, (*sc).workspace1, deviceFFTD2Z1D);
 		if ((*sc).is3D) {
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel, (*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace * (*sCPU).Nspace2, (*sc).gridPolarizationTime1);
 		}
@@ -1517,7 +1441,6 @@ namespace hostFunctions{
 		deviceComplex* loadedField;
 
 		d.deviceCalloc((void**)&loadedField, (*sc).Ntime, sizeof(deviceComplex));
-
 
 		//get the material phase
 		double* materialCoefficients, * sellmeierPropagationMedium;
@@ -1550,7 +1473,7 @@ namespace hostFunctions{
 				sellmeierPropagationMedium);
 		}
 
-		d.fft((*sc).workspace1, (*sc).gridPolarizationTime1, 3);
+		d.fft((*sc).workspace1, (*sc).gridPolarizationTime1, deviceFFTZ2D1D);
 
 		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridPolarizationTime1, pCPU.energy);
 
@@ -1558,7 +1481,7 @@ namespace hostFunctions{
 		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, addDoubleArraysKernel, (*sc).gridETime1, (double*)(*sc).gridPolarizationTime1);
 
 		//fft onto frequency grid
-		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
+		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFTD2Z);
 
 		d.deviceFree(materialPhase);
 		d.deviceFree(materialCoefficients);
@@ -1581,14 +1504,14 @@ namespace hostFunctions{
 			}
 			else {
 				d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
-				d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
+				d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFTD2Z);
 			}
 			addPulseToFieldArrays(d, d.cParams->pulse1, d.cParams->field1IsAllocated, d.cParams->loadedField1);
 			addPulseToFieldArrays(d, d.cParams->pulse2, d.cParams->field2IsAllocated, d.cParams->loadedField2);
 		}
 		else {
 			d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
-			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, 0);
+			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFTD2Z);
 		}
 		
 		//Copy the field into the temporary array
@@ -1632,7 +1555,7 @@ namespace hostFunctions{
 		d.deviceMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(deviceComplex), HostToDevice);
 
 		//transform final result
-		d.fft(sc.gridEFrequency1, sc.gridETime1, 1);
+		d.fft(sc.gridEFrequency1, sc.gridETime1, deviceFFTZ2D);
 		d.deviceLaunch(2 * sc.Nblock, sc.Nthread, multiplyByConstantKernelD, sc.gridETime1, 1.0 / sc.Ngrid);
 		//copy the field arrays from the GPU to CPU memory
 		d.deviceMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), DeviceToHost);
@@ -1650,14 +1573,14 @@ namespace hostFunctions{
 		d.allocateSet(sCPU, &s);
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
-		d.fft(s.gridETime1, s.gridEFrequency1, 0);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		cudaParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
 		d.deviceLaunch(s.Nblock / 2, s.Nthread, filterKernel, sDevice, 1.0e12*f0, 1.0e12*bandwidth, order, inBandAmplitude, outOfBandAmplitude);
 
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 
-		d.fft(s.gridEFrequency1, s.gridETime1, 1);
+		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
 
 		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
@@ -1674,7 +1597,7 @@ namespace hostFunctions{
 		d.allocateSet(sCPU, &s);
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
-		d.fft(s.gridETime1, s.gridEFrequency1, 0);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		cudaParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
 		d.deviceLaunch(s.Nblock/2, s.Nthread, apertureFarFieldKernel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
@@ -1682,7 +1605,7 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 
 
-		d.fft(s.gridEFrequency1, s.gridETime1, 1);
+		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
 
 		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
@@ -1704,7 +1627,7 @@ namespace hostFunctions{
 		cudaParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
 		d.deviceLaunch(s.Nblock, s.Nthread, apertureKernel, sDevice, 0.5 * diameter, activationParameter);
-		d.fft(s.gridETime1, s.gridEFrequency1, 0);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 		getTotalSpectrum(d);
@@ -1722,11 +1645,11 @@ namespace hostFunctions{
 		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
-		d.fft(s.gridETime1, s.gridEFrequency1, 2);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z1D);
 		d.deviceLaunch(s.Nblock / 2, s.Nthread, sphericalMirrorKernel, sDevice, ROC);
-		d.fft(s.gridEFrequency1, s.gridETime1, 3);
+		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D1D);
 		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ntime);
-		d.fft(s.gridETime1, s.gridEFrequency1, 0);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 		getTotalSpectrum(d);
@@ -1741,11 +1664,11 @@ namespace hostFunctions{
 		cudaParameterSet* sDevice = d.dParamsDevice;
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
-		d.fft(s.gridETime1, s.gridEFrequency1, 2);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z1D);
 		d.deviceLaunch(s.Nblock / 2, s.Nthread, parabolicMirrorKernel, sDevice, focus);
-		d.fft(s.gridEFrequency1, s.gridETime1, 3);
+		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D1D);
 		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ntime);
-		d.fft(s.gridETime1, s.gridEFrequency1, 0);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 		getTotalSpectrum(d);
@@ -1779,7 +1702,7 @@ namespace hostFunctions{
 
 		d.deviceLaunch(s.Nblock / 2, s.Nthread, applyLinearPropagationKernel, sellmeierCoefficients, thickness, sDevice);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, s.NgridC * 2 * sizeof(deviceComplex), DeviceToHost);
-		d.fft(s.gridEFrequency1, s.gridETime1, 1);
+		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
 		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
 
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
@@ -1841,7 +1764,7 @@ namespace hostFunctions{
 		d.deviceMemcpy((*s).EkwOut, Eout1, 2 * (*s).NgridC * sizeof(deviceComplex), DeviceToHost);
 
 		//transform back to time
-		d.fft(Eout1, sc.gridETime1, 1);
+		d.fft(Eout1, sc.gridETime1, deviceFFTZ2D);
 		d.deviceLaunch(2 * sc.Nblock, sc.Nthread, multiplyByConstantKernelD, sc.gridETime1, 1.0 / sc.Ngrid);
 		d.deviceMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), DeviceToHost);
 
@@ -1858,19 +1781,20 @@ namespace hostFunctions{
 		cudaParameterSet* sH = d.dParams; 
 		cudaParameterSet* sD = d.dParamsDevice;
 		//operations involving FFT
+		
 		if ((*sH).isNonLinear || (*sH).isCylindric) {
 			//perform inverse FFT to get time-space electric field
-			d.fft((*sH).workspace1, (*sH).gridETime1, 1);
+			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFTZ2D);
 
 			//Nonlinear polarization
 			if ((*sH).isNonLinear) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel, sD);
 				if ((*sH).isCylindric) {
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam, sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
-					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, 4);
+					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
 				}
 				else {
-					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, 0);
+					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
 				}
 				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernel, sD);
 			}
@@ -1881,10 +1805,10 @@ namespace hostFunctions{
 				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2*MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
 				if ((*sH).isCylindric) {
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam, sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
-					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, 4);
+					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
 				}
 				else {
-					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, 0);
+					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
 				}
 				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel, sD);
 			}
@@ -1892,7 +1816,7 @@ namespace hostFunctions{
 			//Radial Laplacian
 			if ((*sH).isCylindric) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, radialLaplacianKernel, sD);
-				d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, 0);
+				d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2Z);
 			}
 		}
 
@@ -2136,6 +2060,7 @@ namespace hostFunctions{
 		return error;
 	}
 
+	//deprecated sequence mode; kept for compatibility with old files, but better to use interpretCommand() instead
 	int resolveSequence(int currentIndex, simulationParameterSet * s, crystalEntry * db) {
 
 
@@ -2425,28 +2350,28 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 		runRK4Step(d, 3);
 
 		//periodically check if the simulation diverged or was cancelled
-		if ((i % 8 == 0 && d.isTheCanaryPixelNaN(canaryPointer)) || (*sCPU).imdone[0] == 2) break;
+		if ((*sCPU).statusFlags[0] == 2 || (i % 10 == 0 && d.isTheCanaryPixelNaN(canaryPointer))) break;
 
 		//copy the field arrays from the GPU to CPU memory if requested by the UI
-		if ((*sCPU).imdone[0] == 3) {
+		if ((*sCPU).statusFlags[0] == 3) {
 			d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 			d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).NgridC * sizeof(deviceComplex), DeviceToHost);
-			(*sCPU).imdone[0] = 0;
+			(*sCPU).statusFlags[0] = 0;
 		}
 		if(!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 	}
 	if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
 
-	//give the result to the CPU
+	//take final spectra and transfer the results to the CPU
 	d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
-	d.fft(s.gridEFrequency1, s.gridETime1, 1);
+	d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
 	d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
 	d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 	getTotalSpectrum(d);
 
 	int returnval = 13 * d.isTheCanaryPixelNaN(canaryPointer);
 	d.deallocateSet(&s);
-	(*sCPU).imdone[0] = 1;
+	(*sCPU).statusFlags[0] = 1;
 	return returnval;
 }
 
