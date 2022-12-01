@@ -202,6 +202,12 @@ public:
 		cudaStreamDestroy(stream);
 	}
 
+	bool isTheCanaryPixelNaN(double* canaryPointer) {
+		double canaryPixel;
+		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
+		return(isnan(canaryPixel));
+	}
+
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
 		kernel << <Nblock, Nthread, 0, stream >> > (args...);
@@ -426,6 +432,12 @@ public:
 		stream.wait();
 		fftDestroy();
 		deviceFree(dParamsDevice);
+	}
+
+	bool isTheCanaryPixelNaN(double* canaryPointer) {
+		double canaryPixel;
+		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
+		return(isnan(canaryPixel));
 	}
 
 	template<typename Function, typename... Args>
@@ -771,6 +783,11 @@ public:
 		free(block);
 	}
 
+	bool isTheCanaryPixelNaN(double* canaryPointer) {
+		double canaryPixel;
+		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
+		return(isnan(canaryPixel));
+	}
 	void fft(void* input, void* output, int type) {
 		if (!configuredFFT) return;
 		switch (type) {

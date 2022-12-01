@@ -40,7 +40,6 @@
 #define runDlibFittingX runDlibFittingCPU
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPU
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPU
-
 #endif
 
 namespace deviceFunctions {
@@ -2413,7 +2412,6 @@ using namespace hostFunctions;
 
 unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	size_t i;
 	cudaParameterSet s;
 	memset(&s, 0, sizeof(cudaParameterSet));
 	activeDevice d(sCPU, &s);
@@ -2422,12 +2420,11 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	//prepare the propagation arrays
 	preparePropagationGrids(d);
 	prepareElectricFieldArrays(d);
-
-	double canaryPixel = 0.0;
-	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
 	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
+
 	//Core propagation loop
-	for (i = 0; i < s.Nsteps; ++i) {
+	for (size_t i = 0; i < s.Nsteps; ++i) {
 
 		//RK4
 		runRK4Step(d, 0);
@@ -2435,27 +2432,13 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 		runRK4Step(d, 2);
 		runRK4Step(d, 3);
 
-		//periodically check if the simulation diverged
-		if (i % 8 == 0) {
-#ifdef __CUDACC__
-			cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
-#else
-			d.deviceMemcpy(&canaryPixel, canaryPointer, sizeof(double),DeviceToHost);
-#endif
-			if (isnan(canaryPixel)) {
-				break;
-			}
-		}
+		//periodically check if the simulation diverged or was cancelled
+		if ((i % 8 == 0 && d.isTheCanaryPixelNaN(canaryPointer)) || (*sCPU).imdone[0] == 2) break;
 
-		if ((*sCPU).imdone[0] == 2) {
-			break;
-		}
-
+		//copy the field arrays from the GPU to CPU memory if requested by the UI
 		if ((*sCPU).imdone[0] == 3) {
-			//copy the field arrays from the GPU to CPU memory if requested by the UI
 			d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 			d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).NgridC * sizeof(deviceComplex), DeviceToHost);
-
 			(*sCPU).imdone[0] = 0;
 		}
 		if(!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
@@ -2464,19 +2447,16 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 
 	//give the result to the CPU
 	d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
-
-
 	d.fft(s.gridEFrequency1, s.gridETime1, 1);
-
 	d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
 	d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
-
 	getTotalSpectrum(d);
+
+	int returnval = 13 * d.isTheCanaryPixelNaN(canaryPointer);
 	d.deallocateSet(&s);
 	(*sCPU).imdone[0] = 1;
-	return isnan(canaryPixel) * 13;
+	return returnval;
 }
-
 
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 
