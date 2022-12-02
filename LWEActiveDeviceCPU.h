@@ -1,28 +1,26 @@
 #include "LWEActiveDeviceCommon.cpp"
-#define trilingual void 
-#define withID size_t trilingualLaunchID, 
-#define asKernel
-#define deviceFunction 
-#define RUNTYPE 1
+#include <fftw3_mkl.h>
 #define DeviceToHost 2
 #define HostToDevice 1
 #define DeviceToDevice 3
-#define localIndex trilingualLaunchID
 #define cudaMemcpyKind int
-#define withStream 
-#define activeDevice deviceCPU
-
-#define deviceFunctions deviceFunctionsCPU
-#define hostFunctions hostFunctionsCPU
-#define mainX mainCPU
-#define mainArgumentX char* filepath
-#define resolveArgv
-#define runDlibFittingX runDlibFittingCPU
-#define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPU
-#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPU
-
+#ifdef __APPLE__
+void atomicAddCPU(double* pulseSum, double pointEnergy) {
+	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+	double expected = pulseSumAtomic->load();
+	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
+}
+#else
+void atomicAddCPU(double* pulseSum, double pointEnergy) {
+	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+	(*pulseSumAtomic).fetch_add(pointEnergy);
+}
+#endif
+int hardwareCheckCPU(int* CUDAdeviceCount) {
+	*CUDAdeviceCount = 1;
+	return 0;
+}
 class deviceCPU {
-#include <fftw3_mkl.h>
 private:
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;

@@ -3,27 +3,30 @@
 #include <device_launch_parameters.h>
 #include <cufft.h>
 #include <nvml.h>
-#include <memory>
-#define trilingual __global__ void
-#define withID 
-#define asKernel
-#define deviceFunction __device__
-#define RUNTYPE 0
-#define localIndex threadIdx.x + blockIdx.x * blockDim.x
-#define withStream 
-#define activeDevice deviceCUDA
 #define DeviceToHost cudaMemcpyDeviceToHost
 #define HostToDevice cudaMemcpyHostToDevice
 #define DeviceToDevice cudaMemcpyDeviceToDevice
 
-#define deviceFunctions deviceFunctionsCUDA
-#define hostFunctions hostFunctionsCUDA
-#define mainX main
-#define mainArgumentX char* argv[]
-#define resolveArgv char* filepath = argv[1];
-#define runDlibFittingX runDlibFitting
-#define solveNonlinearWaveEquationX solveNonlinearWaveEquation
-#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequence
+int hardwareCheckCUDA(int* CUDAdeviceCount) {
+	int CUDAdevice;
+	cudaGetDeviceCount(CUDAdeviceCount);
+	cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
+	struct cudaDeviceProp activeCUDADeviceProp;
+	if (cuErr == cudaSuccess) {
+		printf("Found %i GPU(s): \n", *CUDAdeviceCount);
+		for (int i = 0; i < *CUDAdeviceCount; ++i) {
+			cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+			printf("%s\r\n", activeCUDADeviceProp.name);
+			printf(" Memory: %lli MB; Multiprocessors: %i\n",
+				activeCUDADeviceProp.totalGlobalMem / (1024 * 1024), activeCUDADeviceProp.multiProcessorCount);
+		}
+	}
+	else {
+		printf("No GPU found.\n");
+		return 1;
+	}
+	return 0;
+}
 
 class deviceCUDA {
 private:

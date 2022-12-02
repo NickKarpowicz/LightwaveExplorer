@@ -5,7 +5,6 @@
 #define withID 
 #define asKernel
 #define deviceFunction 
-#define RUNTYPE 
 #define localIndex 
 #define withStream 
 #define activeDevice 

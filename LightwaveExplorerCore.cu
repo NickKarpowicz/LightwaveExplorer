@@ -1281,21 +1281,7 @@ namespace kernels {
 		pointEnergy *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt;
 		//two factors of two cancel here - there should be one for the missing frequency plane, but the sum is over x instead of r
 		//accordingly we already multiplied by two
-#ifdef __CUDACC__
-		atomicAdd(pulseSum, pointEnergy);
-#elif defined(__APPLE__)
-		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-		double expected = pulseSumAtomic->load();
-		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
-#elif defined RUNONSYCL
-		cl::sycl::atomic_ref<double, cl::sycl::memory_order::relaxed,cl::sycl::memory_scope::device> a(*pulseSum);
-		a.fetch_add(pointEnergy);
-#elif defined(NOFETCHADD)
-		(*pulseSum) += pointEnergy; //YOLO
-#else
-		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-		(*pulseSumAtomic).fetch_add(pointEnergy);
-#endif
+		atomicAddDevice(pulseSum, pointEnergy);
 	};
 
 	//note to self: please make a beamParameters struct
@@ -1365,21 +1351,7 @@ namespace kernels {
 		pointEnergy *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
 
 		//factor 2 accounts for the missing negative frequency plane
-#ifdef __CUDACC__
-		atomicAdd(pulseSum, pointEnergy);
-#elif defined(__APPLE__)
-		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*) pulseSum;
-		double expected = pulseSumAtomic->load();
-		while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
-#elif defined RUNONSYCL
-		cl::sycl::atomic_ref<double, cl::sycl::memory_order::relaxed, cl::sycl::memory_scope::device> a(*pulseSum);
-		a.fetch_add(pointEnergy);
-#elif defined (NOFETCHADD)
-		*pulseSum += pointEnergy; //YOLO
-#else
-		std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-		(*pulseSumAtomic).fetch_add(pointEnergy);
-#endif
+		atomicAddDevice(pulseSum, pointEnergy);
 	};
 
 
@@ -2530,25 +2502,7 @@ int mainX(int argc, mainArgumentX){
 
 	size_t progressCounter = 0;
 	int CUDAdeviceCount = 1;
-#ifdef __CUDACC__
-	int CUDAdevice;
-	cudaGetDeviceCount(&CUDAdeviceCount);
-	cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
-	struct cudaDeviceProp activeCUDADeviceProp;
-	if (cuErr == cudaSuccess) {
-		printf("Found %i GPU(s): \n", CUDAdeviceCount);
-		for (i = 0; i < CUDAdeviceCount; ++i) {
-			cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-			printf("%s\r\n", activeCUDADeviceProp.name);
-			printf(" Memory: %lli MB; Multiprocessors: %i\n",
-				activeCUDADeviceProp.totalGlobalMem / (1024 * 1024), activeCUDADeviceProp.multiProcessorCount);
-		}
-	}
-	else {
-		printf("No GPU found.\n");
-		return 1;
-	}
-#endif
+	if (hardwareCheck(&CUDAdeviceCount)) return 1;
 	if (argc < 2) {
 		printf("no input file specified.\n");
 		return 2;
@@ -2591,8 +2545,6 @@ int mainX(int argc, mainArgumentX){
 		return 14;
 	}
 
-	//readSequenceString(sCPU);
-	//printf("Found %i steps in sequence\n", (*sCPU).Nsequence);
 	if (((*sCPU).sequenceString[0] != 'N') && (*sCPU).sequenceString[0] != 0) (*sCPU).isInSequence = TRUE;
 	configureBatchMode(sCPU);
 	readFittingString(sCPU);

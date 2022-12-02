@@ -2,27 +2,19 @@
 #include <CL/sycl.hpp>
 #include <CL/sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
-#define trilingual const auto 
-#define deviceFunction 
-#define RUNTYPE 2
 #define DeviceToHost 2
 #define HostToDevice 1
 #define DeviceToDevice 3
-#define localIndex trilingualLaunchID
 #define cudaMemcpyKind int
-#define asKernel = []
-#define withID size_t trilingualLaunchID,
-#define withStream , stream
-#define activeDevice deviceSYCL
+void atomicAddSYCL(double* pulseSum, double pointEnergy) {
+	cl::sycl::atomic_ref<double, cl::sycl::memory_order::relaxed, cl::sycl::memory_scope::device> a(*pulseSum);
+	a.fetch_add(pointEnergy);
+}
 
-#define deviceFunctions deviceFunctionsSYCL
-#define hostFunctions hostFunctionsSYCL
-#define mainX mainSYCL
-#define mainArgumentX char* filepath
-#define resolveArgv
-#define runDlibFittingX runDlibFittingSYCL
-#define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCL
-#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
+int hardwareCheckSYCL(int* CUDAdeviceCount) {
+	*CUDAdeviceCount = 1;
+	return 0;
+}
 
 class deviceSYCL {
 private:
