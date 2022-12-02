@@ -25,7 +25,7 @@ private:
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;
 	double canaryPixel = 0.0;
-	cudaParameterSet dParamslocal;
+	deviceParameterSet dParamslocal;
 	fftw_plan fftPlanD2Z;
 	fftw_plan fftPlanZ2D;
 	fftw_plan fftPlan1DD2Z;
@@ -44,9 +44,9 @@ private:
 public:
 	int stream;
 	int memoryStatus;
-	cudaParameterSet* dParams;
+	deviceParameterSet* dParams;
 	simulationParameterSet* cParams;
-	cudaParameterSet* dParamsDevice;
+	deviceParameterSet* dParamsDevice;
 	deviceCPU() {
 		memoryStatus = -1;
 		stream = 0;
@@ -63,7 +63,7 @@ public:
 		dParamsDevice = &dParamslocal;
 	}
 
-	deviceCPU(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	deviceCPU(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		memoryStatus = -1;
 		stream = 0;
 		dParams = NULL;
@@ -135,7 +135,7 @@ public:
 		}
 	}
 
-	void fftInitialize(cudaParameterSet* s) {
+	void fftInitialize(deviceParameterSet* s) {
 		if (configuredFFT) fftDestroy();
 		isCylindric = (*s).isCylindric;
 		double* setupWorkD = new double[(*s).Ngrid * (2 + 2 * (*s).isCylindric)];
@@ -162,7 +162,7 @@ public:
 		delete[] setupWorkD;
 		configuredFFT = 1;
 	}
-	void deallocateSet(cudaParameterSet* s) {
+	void deallocateSet(deviceParameterSet* s) {
 		deviceFree((*s).gridETime1);
 		deviceFree((*s).workspace1);
 		deviceFree((*s).gridEFrequency1);
@@ -180,7 +180,7 @@ public:
 		deviceFree((*s).fieldFactor1);
 		deviceFree((*s).inverseChiLinear1);
 	}
-	int allocateSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		dParams = s;
 		cParams = sCPU;
 		initializeDeviceParameters(sCPU, s);
@@ -232,7 +232,7 @@ public:
 			return memErrors;
 		}
 		finishConfiguration(sCPU, s);
-		deviceMemcpy(dParamsDevice, s, sizeof(cudaParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
 		return 0;
 	}
 };

@@ -12,3 +12,5 @@
 
 #endif //PCH_H
 #include<oneapi/mkl/dfti.hpp>
+#include <CL/sycl.hpp>
+#include <CL/sycl/atomic.hpp>

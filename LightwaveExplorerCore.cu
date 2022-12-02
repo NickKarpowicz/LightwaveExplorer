@@ -172,7 +172,7 @@ namespace deviceFunctions {
 	// If uniaxial, solve 1D problem with n(alpha,0)
 	// If biaxial, solve 2D problem
 	// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
-	deviceFunction void findBirefringentCrystalIndex(cudaParameterSet* s, double* sellmeierCoefficients, long long i, deviceComplex* n1, deviceComplex* n2) {
+	deviceFunction void findBirefringentCrystalIndex(deviceParameterSet* s, double* sellmeierCoefficients, long long i, deviceComplex* n1, deviceComplex* n2) {
 		unsigned long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
 		col = i / ((*s).Nfreq - 1);
@@ -327,7 +327,7 @@ namespace kernels {
 	// to declare a lambda. The widthID definition gives an additional parameter for openMP and
 	// SYCL threads to be passed their ID.
 	// The function's closing } has to be followed by a ; to have valid syntax in SYCL.
-	trilingual millersRuleNormalizationKernel asKernel(withID cudaParameterSet* s, double* sellmeierCoefficients, double* referenceFrequencies) {
+	trilingual millersRuleNormalizationKernel asKernel(withID deviceParameterSet* s, double* sellmeierCoefficients, double* referenceFrequencies) {
 		if (!(*s).isUsingMillersRule) {
 			return;
 		}
@@ -429,7 +429,7 @@ namespace kernels {
 		Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
 	};
 
-	trilingual radialLaplacianKernel asKernel(withID cudaParameterSet* s) {
+	trilingual radialLaplacianKernel asKernel(withID deviceParameterSet* s) {
 		unsigned long long i = localIndex;
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long h = i % (*s).Ntime; //temporal coordinate
@@ -471,7 +471,7 @@ namespace kernels {
 	// after FFT, we can discard the high frequencies. Thus we have downsampled
 	// in such a way as to avoid aliasing, which inside the simulation is most
 	// likely the appear (and cause instability) in the nonlinear terms.
-	trilingual expandCylindricalBeam asKernel(withID cudaParameterSet* s, double* polarization1, double* polarization2) {
+	trilingual expandCylindricalBeam asKernel(withID deviceParameterSet* s, double* polarization1, double* polarization2) {
 		long long i = (long long)localIndex;
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long k = i % (*s).Ntime; //temporal coordinate
@@ -494,11 +494,11 @@ namespace kernels {
 	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
 	//note that the sellmeier coefficients have extra values appended to the end
 	//to give info about the current simulation
-	trilingual applyFresnelLossKernel asKernel(withID double* sellmeierCoefficients1, double* sellmeierCoefficients2, cudaParameterSet* s) {
+	trilingual applyFresnelLossKernel asKernel(withID double* sellmeierCoefficients1, double* sellmeierCoefficients2, deviceParameterSet* s) {
 		//the old version was hopelessly broken, make a new one from scratch.
 	};
 
-	trilingual apertureFarFieldKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter, double xOffset, double yOffset) {
+	trilingual apertureFarFieldKernel asKernel(withID deviceParameterSet* s, double radius, double activationParameter, double xOffset, double yOffset) {
 		long long i = localIndex;
 		long long col, j, k, l;
 		deviceComplex cuZero = deviceComplex(0, 0);
@@ -539,7 +539,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= a;
 	};
 
-	trilingual filterKernel asKernel(withID cudaParameterSet* s, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
+	trilingual filterKernel asKernel(withID deviceParameterSet* s, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
 		long long i = localIndex;
 		long long col, j;
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
@@ -556,7 +556,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= filterFunction;
 	};
 
-	trilingual apertureKernel asKernel(withID cudaParameterSet* s, double radius, double activationParameter) {
+	trilingual apertureKernel asKernel(withID deviceParameterSet* s, double radius, double activationParameter) {
 		long long i = localIndex;
 		long long j, k, col;
 
@@ -580,7 +580,7 @@ namespace kernels {
 		(*s).gridETime2[i] *= a;
 	};
 
-	trilingual parabolicMirrorKernel asKernel(withID cudaParameterSet* s, double focus) {
+	trilingual parabolicMirrorKernel asKernel(withID deviceParameterSet* s, double focus) {
 		long long i = localIndex;
 		long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
@@ -607,7 +607,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
 	};
 
-	trilingual sphericalMirrorKernel asKernel(withID cudaParameterSet* s, double ROC) {
+	trilingual sphericalMirrorKernel asKernel(withID deviceParameterSet* s, double ROC) {
 		long long i = localIndex;
 		long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
@@ -639,7 +639,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
 	};
 
-	trilingual applyLinearPropagationKernel asKernel(withID double* sellmeierCoefficients, double thickness, cudaParameterSet* s) {
+	trilingual applyLinearPropagationKernel asKernel(withID double* sellmeierCoefficients, double thickness, deviceParameterSet* s) {
 		long long i = localIndex;
 		long long j, h, k, col;
 		int axesNumber = (*s).axesNumber;
@@ -687,7 +687,7 @@ namespace kernels {
 	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
 	//note that the sellmeier coefficients have extra values appended to the end
 	//to give info about the current simulation
-	trilingual prepareCartesianGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
+	trilingual prepareCartesianGridsKernel asKernel(withID double* sellmeierCoefficients, deviceParameterSet* s) {
 		long long i = localIndex;
 		long long j, k;
 		deviceComplex ne, no;
@@ -759,7 +759,7 @@ namespace kernels {
 	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
 	//note that the sellmeier coefficients have extra values appended to the end
 	//to give info about the current simulation
-	trilingual prepare3DGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
+	trilingual prepare3DGridsKernel asKernel(withID double* sellmeierCoefficients, deviceParameterSet* s) {
 		long long i = localIndex;
 		long long col, j, k, l;
 		deviceComplex ne, no;
@@ -827,7 +827,7 @@ namespace kernels {
 		}
 	};
 
-	trilingual getChiLinearKernel asKernel(withID cudaParameterSet* s, double* sellmeierCoefficients) {
+	trilingual getChiLinearKernel asKernel(withID deviceParameterSet* s, double* sellmeierCoefficients) {
 		long long i = localIndex;
 		int axesNumber = (*s).axesNumber;
 		int sellmeierType = (*s).sellmeierType;
@@ -903,7 +903,7 @@ namespace kernels {
 			(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
 	};
 	//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
-	trilingual prepareCylindricGridsKernel asKernel(withID double* sellmeierCoefficients, cudaParameterSet* s) {
+	trilingual prepareCylindricGridsKernel asKernel(withID double* sellmeierCoefficients, deviceParameterSet* s) {
 		long long i = localIndex;
 		long long j, k;
 		long long Nspace = (*s).Nspace;
@@ -1024,7 +1024,7 @@ namespace kernels {
 
 	//calculate the nonlinear polarization, after FFT to get the field
 	//in the time domain
-	trilingual nonlinearPolarizationKernel asKernel(withID cudaParameterSet* s) {
+	trilingual nonlinearPolarizationKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		double Ex = (*s).fftNorm * (*s).gridETime1[i];
 		double Ey = (*s).fftNorm * (*s).gridETime2[i];
@@ -1100,7 +1100,7 @@ namespace kernels {
 		//from the field to the number of free carriers
 		//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
 		//of the plasma current
-	trilingual plasmaCurrentKernel_twoStage_A asKernel(withID cudaParameterSet* s) {
+	trilingual plasmaCurrentKernel_twoStage_A asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		double Esquared, Ex, Ey, a;
 		unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
@@ -1123,7 +1123,7 @@ namespace kernels {
 		dN2[i] = dN[i];
 	};
 
-	trilingual plasmaCurrentKernel_twoStage_B asKernel(withID cudaParameterSet* s) {
+	trilingual plasmaCurrentKernel_twoStage_B asKernel(withID deviceParameterSet* s) {
 		size_t j = localIndex;
 		j *= (*s).Ntime;
 		double N = 0;
@@ -1142,7 +1142,7 @@ namespace kernels {
 		}
 	};
 
-	trilingual updateKwithPolarizationKernel asKernel(withID cudaParameterSet* sP) {
+	trilingual updateKwithPolarizationKernel asKernel(withID deviceParameterSet* sP) {
 		long long i = localIndex;
 		long long h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 		long long j = i / ((*sP).Nfreq - 1); //spatial coordinate
@@ -1154,7 +1154,7 @@ namespace kernels {
 
 	};
 
-	trilingual updateKwithPlasmaKernel asKernel(withID cudaParameterSet* sP) {
+	trilingual updateKwithPlasmaKernel asKernel(withID deviceParameterSet* sP) {
 		long long i = localIndex;
 		long long h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 		long long j = i / ((*sP).Nfreq - 1); //spatial coordinate
@@ -1168,7 +1168,7 @@ namespace kernels {
 	};
 
 	//Main kernel for RK4 propagation of the field
-	trilingual rkKernel asKernel(withID cudaParameterSet* sP, uint8_t stepNumber) {
+	trilingual rkKernel asKernel(withID deviceParameterSet* sP, uint8_t stepNumber) {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 
@@ -1214,7 +1214,7 @@ namespace kernels {
 		}
 	};
 
-	trilingual beamNormalizeKernel asKernel(withID cudaParameterSet* s, double* rawSum, double* pulse, double pulseEnergy) {
+	trilingual beamNormalizeKernel asKernel(withID deviceParameterSet* s, double* rawSum, double* pulse, double pulseEnergy) {
 		size_t i = localIndex;
 		double normFactor = sqrt(pulseEnergy / ((*s).Ntime * (*rawSum)));
 		pulse[i] *= normFactor;
@@ -1225,7 +1225,7 @@ namespace kernels {
 		A[i] += B[i];
 	};
 
-	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, cudaParameterSet* s,
+	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, deviceParameterSet* s,
 		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase, double* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, h;
@@ -1285,7 +1285,7 @@ namespace kernels {
 	};
 
 	//note to self: please make a beamParameters struct
-	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, cudaParameterSet* s,
+	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, deviceParameterSet* s,
 		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase, double* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, k, h, col;
@@ -1360,14 +1360,14 @@ namespace kernels {
 		A[i] = val * A[i];
 	};
 
-	trilingual multiplicationKernelCompactVector asKernel(withID deviceComplex* A, deviceComplex* B, deviceComplex* C, cudaParameterSet* s) {
+	trilingual multiplicationKernelCompactVector asKernel(withID deviceComplex* A, deviceComplex* B, deviceComplex* C, deviceParameterSet* s) {
 		long long i = localIndex;
 		long long h = i % (*s).Nfreq; //temporal coordinate
 
 		C[i] = A[h] * B[i];
 	};
 
-	trilingual multiplicationKernelCompactDoubleVector asKernel(withID double* A, deviceComplex* B, deviceComplex* C, cudaParameterSet* s) {
+	trilingual multiplicationKernelCompactDoubleVector asKernel(withID double* A, deviceComplex* B, deviceComplex* C, deviceParameterSet* s) {
 		long long i = localIndex;
 		long long h = i % (*s).Nfreq; //temporal coordinate
 
@@ -1387,7 +1387,7 @@ namespace hostFunctions{
 	
 	int getTotalSpectrum(activeDevice& d) {
 		simulationParameterSet* sCPU = d.cParams;
-		cudaParameterSet* sc = d.dParams;
+		deviceParameterSet* sc = d.dParams;
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
 		d.fft((*sc).gridETime1, (*sc).workspace1, deviceFFTD2Z1D);
 		if ((*sc).is3D) {
@@ -1403,11 +1403,11 @@ namespace hostFunctions{
 	int addPulseToFieldArrays(activeDevice& d, pulse& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
-		cudaParameterSet* sc = d.dParams;
-		cudaParameterSet* scDevice = d.dParamsDevice;
+		deviceParameterSet* sc = d.dParams;
+		deviceParameterSet* scDevice = d.dParamsDevice;
 		pulse* p;
 		d.deviceCalloc((void**)&p, 1, sizeof(pulse));
-		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(cudaParameterSet), HostToDevice);
+		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet), HostToDevice);
 
 		double* materialPhase;
 		deviceComplex* loadedField;
@@ -1466,9 +1466,9 @@ namespace hostFunctions{
 	int prepareElectricFieldArrays(activeDevice& d) {
 
 		simulationParameterSet* s = d.cParams;
-		cudaParameterSet* sc = d.dParams;
-		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(cudaParameterSet), HostToDevice);
-		cudaParameterSet* scDevice = d.dParamsDevice;
+		deviceParameterSet* sc = d.dParams;
+		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet), HostToDevice);
+		deviceParameterSet* scDevice = d.dParamsDevice;
 		
 		if (!(*s).isFollowerInSequence || (*s).isReinjecting) {
 			if (!(*s).isReinjecting) {
@@ -1498,7 +1498,7 @@ namespace hostFunctions{
 
 	int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int materialIndex2) {
 		activeDevice d;
-		cudaParameterSet sc;
+		deviceParameterSet sc;
 		d.allocateSet(s, &sc);
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients, 66 * (sizeof(double)));
@@ -1540,14 +1540,14 @@ namespace hostFunctions{
 	}
 
 	int applyFilter(simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
-		cudaParameterSet s;
+		deviceParameterSet s;
 		activeDevice d;
 		d.allocateSet(sCPU, &s);
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
-		cudaParameterSet* sDevice = d.dParamsDevice;
-		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+		deviceParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
 		d.deviceLaunch(s.Nblock / 2, s.Nthread, filterKernel, sDevice, 1.0e12*f0, 1.0e12*bandwidth, order, inBandAmplitude, outOfBandAmplitude);
 
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
@@ -1564,14 +1564,14 @@ namespace hostFunctions{
 	}
 
 	int applyAperatureFarField(simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
-		cudaParameterSet s;
+		deviceParameterSet s;
 		activeDevice d;
 		d.allocateSet(sCPU, &s);
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
-		cudaParameterSet* sDevice = d.dParamsDevice;
-		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+		deviceParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
 		d.deviceLaunch(s.Nblock/2, s.Nthread, apertureFarFieldKernel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
 
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
@@ -1590,14 +1590,14 @@ namespace hostFunctions{
 
 
 	int applyAperature(simulationParameterSet* sCPU, double diameter, double activationParameter) {
-		cudaParameterSet s;
+		deviceParameterSet s;
 		activeDevice d;
 		d.allocateSet(sCPU, &s);
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 
-		cudaParameterSet* sDevice = d.dParamsDevice;
-		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+		deviceParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
 		d.deviceLaunch(s.Nblock, s.Nthread, apertureKernel, sDevice, 0.5 * diameter, activationParameter);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
@@ -1609,12 +1609,12 @@ namespace hostFunctions{
 	}
 
 	int applySphericalMirror(simulationParameterSet* sCPU, double ROC) {
-		cudaParameterSet s;
+		deviceParameterSet s;
 		activeDevice d;
 		d.allocateSet(sCPU, &s);
 
-		cudaParameterSet* sDevice = d.dParamsDevice;
-		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+		deviceParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z1D);
@@ -1630,10 +1630,10 @@ namespace hostFunctions{
 	}
 
 	int applyParabolicMirror(simulationParameterSet* sCPU, double focus) {
-		cudaParameterSet s;
+		deviceParameterSet s;
 		activeDevice d;
 		d.allocateSet(sCPU, &s);
-		cudaParameterSet* sDevice = d.dParamsDevice;
+		deviceParameterSet* sDevice = d.dParamsDevice;
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z1D);
@@ -1649,7 +1649,7 @@ namespace hostFunctions{
 	}
 
 	int applyLinearPropagation(simulationParameterSet* sCPU, int materialIndex, double thickness) {
-		cudaParameterSet s;
+		deviceParameterSet s;
 		activeDevice d;
 		d.allocateSet(sCPU, &s);
 
@@ -1669,8 +1669,8 @@ namespace hostFunctions{
 		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), HostToDevice);
 		s.axesNumber = (*sCPU).crystalDatabase[materialIndex].axisType;
 		s.sellmeierType = (*sCPU).crystalDatabase[materialIndex].sellmeierType;
-		cudaParameterSet* sDevice = d.dParamsDevice;
-		d.deviceMemcpy(sDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+		deviceParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
 
 		d.deviceLaunch(s.Nblock / 2, s.Nthread, applyLinearPropagationKernel, sellmeierCoefficients, thickness, sDevice);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, s.NgridC * 2 * sizeof(deviceComplex), DeviceToHost);
@@ -1685,7 +1685,7 @@ namespace hostFunctions{
 	}
 
 	int preparePropagationGrids(activeDevice& d) {
-		cudaParameterSet* sc = d.dParams;
+		deviceParameterSet* sc = d.dParams;
 		simulationParameterSet* s = d.cParams;
 		double* sellmeierCoefficients = (double*)(*sc).gridEFrequency1Next1;
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
@@ -1702,8 +1702,8 @@ namespace hostFunctions{
 		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, 79 * sizeof(double), HostToDevice);
 
 		//prepare the propagation grids
-		cudaParameterSet* sD = d.dParamsDevice;
-		d.deviceMemcpy(sD, sc, sizeof(cudaParameterSet), HostToDevice);
+		deviceParameterSet* sD = d.dParamsDevice;
+		d.deviceMemcpy(sD, sc, sizeof(deviceParameterSet), HostToDevice);
 		d.deviceLaunch((unsigned int)(*sc).Ntime/(2*MIN_GRIDDIM), MIN_GRIDDIM, getChiLinearKernel, sD, sellmeierCoefficients);
 		if ((*s).is3D) {
 			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepare3DGridsKernel, sellmeierCoefficients, sD);
@@ -1714,7 +1714,7 @@ namespace hostFunctions{
 		else {
 			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepareCartesianGridsKernel, sellmeierCoefficients, sD);
 		}
-		d.deviceMemcpy(sc, sD, sizeof(cudaParameterSet), DeviceToHost);
+		d.deviceMemcpy(sc, sD, sizeof(deviceParameterSet), DeviceToHost);
 		return 0;
 	}
 
@@ -1723,7 +1723,7 @@ namespace hostFunctions{
 	// - inefficient but the general principle is that only the CPU memory is preserved
 	// after simulations finish... and this only runs at the end of the simulation
 	int rotateField(simulationParameterSet* s, double rotationAngle) {
-		cudaParameterSet sc;
+		deviceParameterSet sc;
 		activeDevice d;
 		d.allocateSet(s, &sc);
 		deviceComplex* Ein1 = sc.gridEFrequency1;
@@ -1750,8 +1750,8 @@ namespace hostFunctions{
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
 	int runRK4Step(activeDevice& d, uint8_t stepNumber) {
-		cudaParameterSet* sH = d.dParams; 
-		cudaParameterSet* sD = d.dParamsDevice;
+		deviceParameterSet* sH = d.dParams; 
+		deviceParameterSet* sD = d.dParamsDevice;
 		//operations involving FFT
 		
 		if ((*sH).isNonLinear || (*sH).isCylindric) {
@@ -1960,7 +1960,7 @@ namespace hostFunctions{
 		case funHash("addPulse"):
 		{
 			copyParamsIntoStrings(parameterBlock, cc, 20);
-			cudaParameterSet sc;
+			deviceParameterSet sc;
 			activeDevice d;
 			d.dParams = &sc;
 			d.cParams = s;
@@ -2301,15 +2301,15 @@ using namespace hostFunctions;
 
 unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	cudaParameterSet s;
-	memset(&s, 0, sizeof(cudaParameterSet));
+	deviceParameterSet s;
+	memset(&s, 0, sizeof(deviceParameterSet));
 	activeDevice d(sCPU, &s);
 	if (d.memoryStatus) return 1;
 
 	//prepare the propagation arrays
 	preparePropagationGrids(d);
 	prepareElectricFieldArrays(d);
-	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(cudaParameterSet), HostToDevice);
+	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(deviceParameterSet), HostToDevice);
 	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
 
 	//Core propagation loop
@@ -2322,7 +2322,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 		runRK4Step(d, 3);
 
 		//periodically check if the simulation diverged or was cancelled
-		if ((*sCPU).statusFlags[0] == 2 || (i % 10 == 0 && d.isTheCanaryPixelNaN(canaryPointer))) break;
+		if ((*sCPU).statusFlags[0] == 2 || ((i % 10 == 0) && d.isTheCanaryPixelNaN(canaryPointer))) break;
 
 		//copy the field arrays from the GPU to CPU memory if requested by the UI
 		if ((*sCPU).statusFlags[0] == 3) {

@@ -16,6 +16,17 @@ int hardwareCheckSYCL(int* CUDAdeviceCount) {
 	return 0;
 }
 
+namespace oneapi::dpl {
+	double abs(oneapi::dpl::complex<double>& a) {
+		return oneapi::dpl::sqrt(a.real() * a.real() + a.imag() * a.imag());
+	}
+}
+
+oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b) {
+	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
+	return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
+}
+
 class deviceSYCL {
 private:
 	bool configuredFFT = FALSE;
@@ -36,8 +47,8 @@ private:
 	}
 public:
 	cl::sycl::queue stream;
-	cudaParameterSet* dParams;
-	cudaParameterSet* dParamsDevice;
+	deviceParameterSet* dParams;
+	deviceParameterSet* dParamsDevice;
 	simulationParameterSet* cParams;
 	int memoryStatus;
 	deviceSYCL() {
@@ -46,7 +57,7 @@ public:
 		isCylindric = 0;
 	}
 
-	deviceSYCL(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	deviceSYCL(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
@@ -94,7 +105,7 @@ public:
 	}
 
 	//to do
-	void fftInitialize(cudaParameterSet* s) {
+	void fftInitialize(deviceParameterSet* s) {
 		if (configuredFFT) {
 			fftDestroy();
 		}
@@ -203,7 +214,7 @@ public:
 			break;
 		}
 	}
-	void deallocateSet(cudaParameterSet* s) {
+	void deallocateSet(deviceParameterSet* s) {
 		stream.wait();
 		deviceFree((*s).gridETime1);
 		deviceFree((*s).workspace1);
@@ -222,7 +233,7 @@ public:
 		deviceFree((*s).fieldFactor1);
 		deviceFree((*s).inverseChiLinear1);
 	}
-	int allocateSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
 
 		cl::sycl::gpu_selector dGPU;
 		cl::sycl::cpu_selector dCPU;
@@ -247,7 +258,7 @@ public:
 		}
 		stream.is_in_order();
 
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
+		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
 		dParams = s;
 		cParams = sCPU;
 		initializeDeviceParameters(sCPU, s);
@@ -297,7 +308,7 @@ public:
 			return memErrors;
 		}
 		finishConfiguration(sCPU, s);
-		deviceMemcpy(dParamsDevice, s, sizeof(cudaParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
 		return 0;
 	}
 };

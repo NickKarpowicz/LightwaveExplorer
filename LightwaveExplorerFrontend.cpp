@@ -44,15 +44,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define ID_CBOVERLAYTOTAL 12001
 #define ID_PLOTSCRUBBER 13001
 #define MAX_SIMULATIONS 16192
-#define MIN_GRIDDIM 8
-#define TWOPI 6.2831853071795862
-#define PI 3.1415926535897931
-#define DEG2RAD 1.7453292519943295e-02
-#define RAD2DEG 57.2957795130823229
-#define LIGHTC 2.99792458e8
-#define EPS0 8.8541878128e-12
-#define SIXTH 0.1666666666666667
-#define THIRD 0.3333333333333333
+
 // Global Variables:
 HINSTANCE hInst;                            // current instance
 WCHAR szTitle[MAX_LOADSTRING];              // The title bar text
@@ -156,7 +148,6 @@ void checkLibraryAvailability() {
         printToConsole(maingui.plotBox2, L"No CUDA-compatible GPU found.\r\n");
         CUDAavailable = FALSE;
     }
-
 
     //read SYCL devices
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
@@ -710,12 +701,6 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&maingui.wFactory));
     maingui.wFactory->CreateTextFormat(L"Arial", NULL, DWRITE_FONT_WEIGHT_REGULAR, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
         11.0f, L"en-us", &(maingui.wTextFormat));
-    //maingui.tbMaterialIndex = CreateWindow(WC_EDIT, TEXT("3"), 
-    //    WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT, 
-    //    xOffsetRow2, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
-    //maingui.tbMaterialIndexAlternate = CreateWindow(WC_EDIT, TEXT("3"),
-    //    WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
-    //    xOffsetRow2b, 0 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
     maingui.pdMaterialIndex = CreateWindow(WC_COMBOBOX, TEXT(""),
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
         xOffsetRow2, 0 * vs, textboxwidth, 8 * 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -1040,7 +1025,6 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     //make the active set pointer
     activeSetPtr = (simulationParameterSet*)calloc(MAX_SIMULATIONS, sizeof(simulationParameterSet));
 
-
     checkLibraryAvailability();
 
     int openMPposition = 0;
@@ -1214,15 +1198,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_BTNLOAD:
             if (openDialogBoxAndLoad(hWnd)) {
                 (*activeSetPtr).plotSim = 0;
-                
                 setInterfaceValuesToActiveValues();
-                //plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-                //Sleep(2000);
                 if (isGridAllocated) {
                     setTrackbarLimitsToActiveSet();
                     drawSimPlots(activeSetPtr);
                 }
-                
             }
             else {
                 printC(L"Read failure.\r\n");
@@ -1337,7 +1317,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetBkColor(hdc, uiDarkGrey);
         drawLabels(hdc);
         EndPaint(hWnd, &ps);
-       
         break;
     }
     case WM_SIZE:
@@ -1549,8 +1528,8 @@ int readParametersFromInterface() {
 
     //(*activeSetPtr).spatialWidth = 1e-6 * getDoubleFromHWND(maingui.tbGridXdim);
     tmp = 1e-6 * getDoubleDoublesfromHWND(maingui.tbGridXdim);
-    (*activeSetPtr).spatialWidth = real(tmp);
-    (*activeSetPtr).spatialHeight = imag(tmp);
+    (*activeSetPtr).spatialWidth = tmp.real();
+    (*activeSetPtr).spatialHeight = tmp.imag();
     (*activeSetPtr).rStep = 1e-6 * getDoubleFromHWND(maingui.tbRadialStepSize);
     (*activeSetPtr).timeSpan = 1e-15 * getDoubleFromHWND(maingui.tbTimeSpan);
     (*activeSetPtr).tStep = 1e-15 * getDoubleFromHWND(maingui.tbTimeStepSize);
@@ -1765,7 +1744,6 @@ int appendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
     return 0;
 }
 
-
 //template function that works as a wrapper for swprintf_s, for writing to a text control working as a console
 //don't give it a format string approaching the size of MAX_LOADSTRING, but come on, that's over a thousand characters
 template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args) {
@@ -1786,8 +1764,6 @@ int setWindowTextToInt(HWND win, int in) {
     SetWindowTextW(win, textBuffer);
     return 0;
 }
-
-
 
 int getNumberOfDecimalsToDisplay(double in, bool isExponential) {
     if (in == 0) return 0;
@@ -2032,24 +2008,6 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbPlot1XMin, _T("xlim"), -34, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbPlot1YMin, _T("ylim"), -34, 0);
 
-
-    //plot labels
-    RECT mainRect;
-    GetWindowRect(maingui.mainWindow, &mainRect);
-
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox1, _T("x-polarization, space/time:"), -maingui.plotSpacerX +8, -22);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox2, _T("y-polarization, space/time:"),  -maingui.plotSpacerX +8, -22);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox3, _T("x-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("y-polarization waveform (GV/m):"),  -maingui.plotSpacerX +8, -22);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox5, _T("x-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox6, _T("y-polarization, Fourier, Log:"),  -maingui.plotSpacerX +8, -22);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox7, _T("x-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("y-polarization spectrum:"),  -maingui.plotSpacerX +8, -22);
-
-    //GetWindowRect(maingui.plotBox8, &mainRect);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox8, _T("Frequency (THz)"), (mainRect.right-mainRect.left)/2 - 15*4, (mainRect.bottom-mainRect.top) + 20);
-    //GetWindowRect(maingui.plotBox4, &mainRect);
-    //labelTextBox(hdc, maingui.mainWindow, maingui.plotBox4, _T("Time (fs)"), (mainRect.right - mainRect.left) / 2 - 9 * 4, (mainRect.bottom - mainRect.top) + 20);
     return 0;
 }
 
@@ -2085,9 +2043,7 @@ int getFileNameBaseFromDlg(HWND hWnd, HWND outputTextbox) {
     return 0;
 }
 
-
 int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
-
     //create the dialog box and get the file path
     OPENFILENAME ofn;
     TCHAR szFileName[MAX_PATH]{};
@@ -2102,12 +2058,9 @@ int getFileNameBaseFromDlgDat(HWND hWnd, HWND outputTextbox) {
     ofn.lpstrFile[0] = '\0';
     ofn.nFileExtension = 0;
     ofn.nFileOffset = 0;
-
     if (GetOpenFileNameW(&ofn)) {
-
         SetWindowText(outputTextbox, szFileName);
     }
-
     return 0;
 }
 
@@ -2160,10 +2113,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
         else {
             printC(L"Read %i\r\n", readParameters);
         }
-
-
     }
-    
     return FALSE;
 }
 
@@ -2182,8 +2132,6 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
     if (pixels == NULL) {
         return 1;
     }
-
-
 
     size_t Ntot = Nx * Ny;
     float nval;
@@ -2248,8 +2196,6 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
             colorMap[j][1] = (unsigned char)(255. * (0.95 * exp(-pow(3.5 * (nval - 1.05), 2))));
             colorMap[j][2] = (unsigned char)(255. * (0.9 * exp(-pow(4.5 * (nval - 0.05), 2))+ 0.2 * exp(-pow(3.5 * (nval - 1.05), 2))));
         }
-
-
     }
 
     if (cm == 4) {
@@ -2265,7 +2211,6 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
             pixels[stride * p + 1] = colorMap[currentValue][1];
             pixels[stride * p + 2] = colorMap[currentValue][2];
         }
-        
     }
     BITMAPINFOHEADER bmih{};
 
@@ -2323,8 +2268,6 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
     
     GetWindowRect((*s).plotBox, &plotRect);
     GetWindowRect(maingui.mainWindow, &mainRect);
-
-
     int dx = plotRect.right - plotRect.left;
     int dy = plotRect.bottom - plotRect.top;
     if (dx == 0 || dy == 0) {
@@ -2335,18 +2278,15 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
 
     switch ((*s).dataType) {
     case 0:
-        //if ((*s).data == (*activeSetPtr).ExtOut)printC(L"Remapping\r\n");
         linearRemapDoubleToFloat((*s).data, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         break;
     case 1:
-
         std::complex<double> *shiftedFFT = (std::complex<double>*)malloc((*activeSetPtr).Nspace * (*activeSetPtr).Nfreq * sizeof(std::complex<double>));
         fftshiftD2Z((*s).complexData, shiftedFFT, (*activeSetPtr).Nfreq, (*activeSetPtr).Nspace);
         linearRemapZToLogFloat(shiftedFFT, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
         free(shiftedFFT);
         break;
     }
-    //if ((*s).data == (*activeSetPtr).ExtOut)printC(L"Remapped\r\n");
     drawArrayAsBitmap(maingui.mainWindow,
         plotRect.right - plotRect.left, 
         plotRect.bottom - plotRect.top, 
@@ -2355,8 +2295,6 @@ DWORD WINAPI imagePlotThread(LPVOID lpParam) {
         plotRect.bottom - plotRect.top, 
         plotRect.right - plotRect.left, 
         plotarr2, (*s).colorMap);
-    //if ((*s).data == (*activeSetPtr).ExtOut)printC(L"Drew\r\n");
-
     free(plotarr2);
 
     return 0;
@@ -2469,8 +2407,6 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         fclose(svgFile);
         memset(svgBuf, 0, 1024 * 1024 * sizeof(wchar_t));
     }
-
-
     sWave2.plotBox = maingui.plotBox4;
     sWave2.dx = (*activeSetPtr).tStep / 1e-15f;
     sWave2.x0 = -(float)((sWave2.dx * (*activeSetPtr).Ntime) / 2 - sWave2.dx/2);
@@ -2532,9 +2468,6 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         fclose(svgFile);
         memset(svgBuf, 0, 1024 * 1024 * sizeof(wchar_t));
     }
-
-
-    
     sSpectrum2.plotBox = maingui.plotBox8;
     sSpectrum2.dx = (float)(*activeSetPtr).fStep / 1e12f;
     sSpectrum2.data = &(*activeSetPtr).totalSpectrum[(1 + simIndex * 3) * (*activeSetPtr).Nfreq];
@@ -2572,15 +2505,12 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         delete[] svgBuf;
         delete[] svgFilename;
     }
-
-
     if (WAIT_TIMEOUT == WaitForMultipleObjects(4, plotThreads, TRUE, 1000)) {
         printToConsole(maingui.textboxSims,L"Warning, an image thread timed out!\r\n");
     }
     for (unsigned int i = 0; i < 4; ++i) {
         if (plotThreads[i] != 0)CloseHandle(plotThreads[i]);
     }
-
     isPlotting = FALSE;
     maingui.savePlots = FALSE;
     return 0;
@@ -2632,7 +2562,6 @@ int linearRemap(float* A, int nax, int nay, float* B, int nbx, int nby) {
     int j;
     float A00;
     float f;
-
     int nx0, ny0;
     int Ni, Nj;
 #pragma omp parallel for private(j,A00,f,nx0,ny0,Ni,Nj) num_threads(2)
@@ -3022,12 +2951,10 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
             free((*activeSetPtr).loadedField2);
             return 1;
         }
-
     }
 
     printC(L"Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
-
 
     int pulldownSelection = (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
     int assignedGPU = 0;
@@ -3055,12 +2982,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
         assignedGPU = 1;
         fittingFunction = &runDlibFittingSYCL;
     }
-
- 
     fittingFunction(activeSetPtr);
-    
-    
-
     (*activeSetPtr).plotSim = 0;
     drawSimPlots(activeSetPtr);
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
@@ -3079,7 +3001,6 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     isRunning = FALSE;
     return 0;
 }
-
 
 int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
     size_t i = 0;
@@ -3167,7 +3088,6 @@ int insertLineBreaksAfterClosingAngle(char* cString, size_t N) {
     return 0;
 }
 
-
 int insertLineBreaksAfterCurlyBraces(char* cString, size_t N) {
     size_t i = 0;
     while (i < N - 1) {
@@ -3200,8 +3120,6 @@ int formatSequence(char* cString, size_t N) {
 }
 
 DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
-
-    
     unsigned int devicePower = 0;
     int i,j;
 
@@ -3257,13 +3175,9 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
         nvmlDeviceGetHandleByIndex_v2(0, &nvmlDevice);
         nvmlReturn_t nvmlError;
         while (TRUE) {
-
             progressLambda();
-
             nvmlError = nvmlDeviceGetPowerUsage(nvmlDevice, &devicePower);
             setWindowTextToDouble(maingui.tbGPUStatus, round(devicePower / 1000));
-            
-
             Sleep(500);
         }
         nvmlShutdown();
@@ -3274,7 +3188,6 @@ DWORD WINAPI statusMonitorThread(LPVOID lpParam) {
             Sleep(500);
         }
     }
-
     return 0;
 }
 

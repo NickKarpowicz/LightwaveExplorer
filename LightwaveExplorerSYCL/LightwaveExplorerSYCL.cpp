@@ -8,10 +8,7 @@
 #undef min
 #include "LightwaveExplorerCore.cu"
 
-
-
 size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) {
-
     wchar_t deviceCharString[MAX_LOADSTRING] = { 0 };
     size_t convertedChars;
     size_t offset = 0;

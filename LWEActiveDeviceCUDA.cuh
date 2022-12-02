@@ -39,7 +39,7 @@ private:
 	cufftHandle fftPlan1DZ2D;
 	cufftHandle doublePolfftPlan;
 
-	int checkDeviceMemory(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	int checkDeviceMemory(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		nvmlDevice_t nvmlDevice = 0;
 		nvmlMemory_t nvmlMemoryInfo;
 		nvmlInit_v2();
@@ -66,8 +66,8 @@ private:
 	}
 public:
 	cudaStream_t stream;
-	cudaParameterSet* dParams;
-	cudaParameterSet* dParamsDevice;
+	deviceParameterSet* dParams;
+	deviceParameterSet* dParamsDevice;
 	simulationParameterSet* cParams;
 	int memoryStatus;
 	deviceCUDA() {
@@ -75,15 +75,15 @@ public:
 		configuredFFT = 0;
 		isCylindric = 0;
 		cudaStreamCreate(&stream);
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
+		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
 	}
 
-	deviceCUDA(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	deviceCUDA(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
 		cudaStreamCreate(&stream);
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(cudaParameterSet));
+		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
 		memoryStatus = allocateSet(sCPU, s);
 	}
 
@@ -122,7 +122,7 @@ public:
 		cudaFree(block);
 	}
 
-	void fftInitialize(cudaParameterSet* s) {
+	void fftInitialize(deviceParameterSet* s) {
 		if (configuredFFT) {
 			fftDestroy();
 		}
@@ -186,7 +186,7 @@ public:
 			break;
 		}
 	}
-	void deallocateSet(cudaParameterSet* s) {
+	void deallocateSet(deviceParameterSet* s) {
 		deviceFree((*s).gridETime1);
 		deviceFree((*s).workspace1);
 		deviceFree((*s).gridEFrequency1);
@@ -205,7 +205,7 @@ public:
 		deviceFree((*s).inverseChiLinear1);
 	}
 
-	int allocateSet(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		dParams = s;
 		cParams = sCPU;
 		cudaSetDevice((*sCPU).assignedGPU);
@@ -262,7 +262,7 @@ public:
 			return memErrors;
 		}
 		finishConfiguration(sCPU, s);
-		deviceMemcpy(dParamsDevice, s, sizeof(cudaParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
 		return 0;
 	}
 

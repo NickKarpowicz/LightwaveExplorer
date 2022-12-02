@@ -1,15 +1,13 @@
 #include "LightwaveExplorerUtilities.h"
 
 namespace {
-	int fillRotationMatricies(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	int fillRotationMatricies(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		double cosT = cos((*sCPU).crystalTheta);
 		double sinT = sin((*sCPU).crystalTheta);
 		double cosP = cos((*sCPU).crystalPhi);
 		double sinP = sin((*sCPU).crystalPhi);
 		double forward[9] =
 		{ cosT * cosP, sinP, -sinT * cosP, -sinP * cosT, cosP, sinP * sinT, sinT, 0, cosT };
-
-		//{ cosP, sinP, 0, -cosT * sinP, cosT * cosP, sinT, sinT * sinP, -sinT * cosP, cosT };
 
 		//reverse direction (different order of operations)
 		double backward[9] =
@@ -20,7 +18,7 @@ namespace {
 		return 0;
 	}
 
-	void initializeDeviceParameters(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	void initializeDeviceParameters(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		(*s).Ntime = (*sCPU).Ntime;
 		(*s).Nspace = (*sCPU).Nspace;
 		(*s).Nspace2 = (*sCPU).Nspace2;
@@ -50,7 +48,7 @@ namespace {
 		(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
 	}
 
-	void finishConfiguration(simulationParameterSet* sCPU, cudaParameterSet* s) {
+	void finishConfiguration(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;

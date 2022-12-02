@@ -13,37 +13,11 @@
 #define deviceComplex oneapi::dpl::complex<double>
 #define deviceLib oneapi::dpl
 #include <CL/sycl.hpp>
-namespace oneapi::dpl {
-    double abs(oneapi::dpl::complex<double>& a) {
-        return oneapi::dpl::sqrt(a.real() * a.real() + a.imag() * a.imag());
-    }
-    double abs(double a) {
-        return oneapi::dpl::sqrt(a * a);
-    }
-}
- oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b) {
-    double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
-    return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
-}
- oneapi::dpl::complex<double> operator/(oneapi::dpl::complex<double> a, double b) { return oneapi::dpl::complex<double>(a.real() / b, a.imag() / b); }
-
- oneapi::dpl::complex<double> operator*(double b, oneapi::dpl::complex<double> a) { return oneapi::dpl::complex<double>(a.real() * b, a.imag() * b); }
- oneapi::dpl::complex<double> operator*(oneapi::dpl::complex<double> a, double b) { return oneapi::dpl::complex<double>(a.real() * b, a.imag() * b); }
-
- oneapi::dpl::complex<double> operator+(double a, oneapi::dpl::complex<double> b) { return oneapi::dpl::complex<double>(b.real() + a, b.imag()); }
- oneapi::dpl::complex<double> operator+(oneapi::dpl::complex<double> a, double b) { return oneapi::dpl::complex<double>(a.real() + b, a.imag()); }
-
- oneapi::dpl::complex<double> operator-(double a, oneapi::dpl::complex<double> b) { return oneapi::dpl::complex<double>(a - b.real(), -b.imag()); }
- oneapi::dpl::complex<double> operator-(oneapi::dpl::complex<double> a, double b) { return oneapi::dpl::complex<double>(a.real() - b, a.imag()); }
 #else
 #include <fftw3_mkl.h>
 #define deviceComplex std::complex<double>
 #define deviceLib std
 #endif
-
-
-
-
 
 #define THREADS_PER_BLOCK 32
 #define MIN_GRIDDIM 8
@@ -54,6 +28,7 @@ namespace oneapi::dpl {
 #define TWOPI 6.2831853071795862
 #define PI 3.1415926535897931
 #define DEG2RAD 1.7453292519943295e-02
+#define RAD2DEG 57.2957795130823229
 #define LIGHTC 2.99792458e8
 #define EPS0 8.8541878128e-12
 #define SIXTH 0.1666666666666667
@@ -204,7 +179,7 @@ typedef struct simulationParameterSet {
 
 } simulationParameterSet;
 
-typedef struct cudaParameterSet {
+typedef struct deviceParameterSet {
     deviceComplex* workspace1 = 0;
     deviceComplex* workspace2 = 0;
     deviceComplex* workspace2P = 0;
@@ -281,7 +256,7 @@ typedef struct cudaParameterSet {
     int Nthread = 0;
     int NblockC = 0;
     int Nblock = 0;
-} cudaParameterSet;
+} deviceParameterSet;
 
 int             loadSavedFields(simulationParameterSet* sCPU, char* outputBase);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
