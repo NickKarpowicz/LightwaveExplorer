@@ -41,7 +41,7 @@ size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) 
     cl::sycl::default_selector ddefault;
     cl::sycl::queue q(ddefault);
     mbstowcs_s(&convertedChars, deviceCharString, q.get_device().get_info<cl::sycl::info::device::name>().c_str(), MAX_LOADSTRING);
-    swprintf_s(defaultDeviceString, MAX_LOADSTRING, L"SYCL likes this one: %ls\r\n", deviceCharString);
+    swprintf_s(defaultDeviceString, MAX_LOADSTRING, L"SYCL default: %ls\r\n", deviceCharString);
     return deviceCount;
 }
 BOOL DllMain( HMODULE hModule,
