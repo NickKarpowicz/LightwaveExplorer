@@ -1284,7 +1284,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetTextColor(hdc, uiGrey);
         return (LRESULT)greyBrush;
     }
-
     case WM_CTLCOLORLISTBOX:
     {
         HDC hdc = (HDC)wParam;
@@ -1297,7 +1296,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HDC hdc = (HDC)wParam;
         SetBkColor(hdc, uiBlack);
         SetTextColor(hdc, uiGrey);
-        if (HWND(lParam) == maingui.trackbarPlot) {
+        if (HWND(lParam) == maingui.trackbarPlot || HWND(lParam) == maingui.cbLogPlot || HWND(lParam) == maingui.cbOverlayTotal) {
             return (LRESULT)greyBrush;
         }
         return (LRESULT)blackBrush;
@@ -1407,8 +1406,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SetWindowTheme(maingui.buttonAddFarFieldApertureSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddRotationSequence, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.buttonAddParabolaSequence, L"DarkMode_Explorer", NULL);
-        //SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", L"wstr");
-        //SetWindowTheme(maingui.cbOverlayTotal, L"DarkMode_Explorer", L"wstr");
+        SetWindowTheme(maingui.cbLogPlot, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(maingui.cbOverlayTotal, L"DarkMode_Explorer", NULL);
         SetWindowTheme(maingui.pbProgress, L"", L"");
         SetWindowTheme(maingui.pbProgressB, L"", L"");
         SendMessage(maingui.pbProgress, PBM_SETBKCOLOR, 0, RGB(0,0,0));
@@ -2213,7 +2212,6 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
         }
     }
     BITMAPINFOHEADER bmih{};
-
     bmih.biSize = sizeof(BITMAPINFOHEADER);
     bmih.biWidth = (long)Nx;
     bmih.biHeight = (long)Ny;
