@@ -603,6 +603,12 @@ public:
     void setDigits(int digits) {
         gtk_scale_set_digits(GTK_SCALE(elementHandle), digits);
     }
+    void setFunction(void* sliderFunction) {
+        g_signal_connect_after(elementHandle, "change-value", G_CALLBACK(sliderFunction), NULL);
+    }
+    void setValue(int value) {
+        gtk_range_set_value(GTK_RANGE(elementHandle), (double)value);
+    }
 };
 
 void runButtonClick();
@@ -623,6 +629,12 @@ void setInterfaceValuesToActiveValues();
 int formatSequence(char* cString, size_t N);
 int insertLineBreaksAfterSemicolons(char* cString, size_t N);
 int freeSemipermanentGrids();
-void mainSimThread();
-void simpleSimThread();
+void mainSimThread(int pulldownSelection);
 void launchRunThread();
+void independentPlotQueue();
+void loadCallback(GtkWidget* widget, gpointer pathTarget);
+void launchFitThread();
+void fittingThread(int pulldownSelection);
+void stopButtonCallback();
+void svgCallback();
+void createRunFile();

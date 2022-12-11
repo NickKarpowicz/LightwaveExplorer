@@ -33,6 +33,9 @@ void updateDisplay();
 class mainGui {
     bool isActivated;
     bool queueUpdate;
+    bool queueSliderUpdate;
+    bool queueSliderMove;
+    int sliderTarget;
     std::thread threadPoolSim[3];
 public:
     LweTextBox textBoxes[54];
@@ -47,18 +50,17 @@ public:
     LweSlider plotSlider;
     LweWindow window;
     size_t pathTarget;
-    bool saveSVG = FALSE;
+    int saveSVG = 0;
     bool isRunning = FALSE;
     bool isPlotting = FALSE;
     bool isGridAllocated = FALSE;
     bool cancellationCalled = FALSE;
-    bool CUDAavailable = FALSE;
-    bool SYCLavailable = FALSE;
+
     int cudaGPUCount = 0;
     int syclGPUCount = 0;
     size_t progressCounter = 0;
-    mainGui() : isActivated(0), pathTarget(0), isRunning(0), isPlotting(0),
-    isGridAllocated(0), cancellationCalled(0), CUDAavailable(0), SYCLavailable(0),
+    mainGui() : isActivated(0), pathTarget(0), isRunning(0), isPlotting(0), sliderTarget(0),
+    isGridAllocated(0), cancellationCalled(0), queueSliderUpdate(0), queueSliderMove(0),
     cudaGPUCount(0), syclGPUCount(0), saveSVG(0), queueUpdate(0){}
     ~mainGui() {}
     void requestPlotUpdate() {
@@ -70,6 +72,23 @@ public:
             for (int i = 0; i < 8; ++i) {
                 drawBoxes[i].queueDraw();
             }
+        }
+    }
+    void requestSliderUpdate() {
+        queueSliderUpdate = TRUE;
+    }
+    void requestSliderMove(int target) {
+        queueSliderMove = TRUE;
+        sliderTarget = target;
+    }
+    void updateSlider() {
+        if (queueSliderUpdate) {
+            plotSlider.setRange(0, (*activeSetPtr).Nsims - 1);
+            queueSliderUpdate = FALSE;
+        }
+        if (queueSliderMove) {
+            plotSlider.setValue(sliderTarget);
+            queueSliderMove = FALSE;
         }
     }
     void activate(GtkApplication* app) {
@@ -164,10 +183,7 @@ public:
         textBoxes[50].init(window.parentHandle(4), 8, 0, 2, 1);
         textBoxes[51].init(window.parentHandle(4), 10, 0, 2, 1);
 
-        //textBoxes[52].init(window.parentHandle(3), 4, 0, 1, 1);
-        plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
-        plotSlider.setRange(0.0, 10.0);
-        plotSlider.setDigits(0);
+        
 
         checkBoxes[0].init(_T("Total"), window.parentHandle(4), 12, 0, 1, 1);
         checkBoxes[1].init(_T("Log"), window.parentHandle(4), 13, 0, 1, 1);
@@ -224,20 +240,18 @@ public:
         pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
 
-
+        
+        checkLibraryAvailability();
 
 
 
         int openMPposition = 0;
         char A[128] = { 0 };
-        checkLibraryAvailability();
-        CUDAavailable = TRUE;
+        
+
         if (CUDAavailable) {
             pulldowns[7].addElement("CUDA");
             pulldowns[8].addElement("CUDA");
-            //swprintf_s(A, MAX_LOADSTRING, L"CUDA");
-            //SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
-            //SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
             openMPposition++;
             memset(&A, 0, sizeof(A));
             for (int i = 1; i < cudaGPUCount; ++i) {
@@ -282,19 +296,22 @@ public:
         fitCommand.init(parentHandle, buttonCol1, 21, colWidth, 4);
 
         buttons[0].init(_T("Run"), parentHandle, buttonCol3, 19, buttonWidth, 1, launchRunThread);
-        buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 19, buttonWidth, 1, runButtonClick);
-        buttons[2].init(_T("Cluster"), parentHandle, 2 * buttonWidth, 24, buttonWidth, 1, runButtonClick);
-        buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 20, buttonWidth, 1, runButtonClick);
-        buttons[4].init(_T("Load"), parentHandle, buttonCol1, 19, buttonWidth, 1, runButtonClick);
+        buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 19, buttonWidth, 1, stopButtonCallback);
+        buttons[2].init(_T("Cluster"), parentHandle, 2 * buttonWidth, 24, buttonWidth, 1, createRunFile);
+        buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 20, buttonWidth, 1, launchFitThread);
+        buttons[4].init(_T("Load"), parentHandle, buttonCol1, 19, buttonWidth, 1, loadCallback);
         //buttons[5].init(_T("Reload"), parentHandle, buttonCol2, 18, buttonWidth, 1, runButtonClick);
         buttons[6].init(_T("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
         buttons[7].init(_T("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
         buttons[8].init(_T("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
         buttons[9].init(_T("Path"), parentHandle, textWidth, 22, textWidth, 1, saveFileDialogCallback, (gpointer)3);
-        buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, runButtonClick);
-        buttons[11].init(_T("ylim"), window.parentHandle(4), 6, 0, 1, 1, runButtonClick);
-        buttons[12].init(_T("SVG"), window.parentHandle(3), 5, 0, 1, 1, runButtonClick);
-
+        buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
+        buttons[11].init(_T("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
+        buttons[12].init(_T("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
+        plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
+        plotSlider.setRange(0.0, 10.0);
+        plotSlider.setDigits(0);
+        plotSlider.setFunction(independentPlotQueue);
         console.init(window.parentHandle(1), 0, 0, 1, 1);
 
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
@@ -377,6 +394,7 @@ char programDirectory[MAX_LOADSTRING];     // Program working directory (useful 
 
 void updateDisplay() {
     theGui.console.updateFromBuffer();
+    theGui.updateSlider();
     theGui.applyUpdate();
 }
 
@@ -429,7 +447,7 @@ void setInterfaceValuesToActiveValues(){
     theGui.textBoxes[i++].setToDouble(1e15 * (*activeSetPtr).timeSpan);
     theGui.textBoxes[i++].setToDouble(1e15 * (*activeSetPtr).tStep);
     theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).crystalThickness);
-    theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).propagationStep);
+    theGui.textBoxes[i++].setToDouble(1e9 * (*activeSetPtr).propagationStep);
     theGui.textBoxes[i++].setToDouble((*activeSetPtr).batchDestination);
     theGui.textBoxes[i++].setToDouble((*activeSetPtr).batchDestination2);
     theGui.textBoxes[i++].setToDouble((double)(*activeSetPtr).Nsims);
@@ -500,7 +518,7 @@ void readParametersFromInterface() {
     theGui.textBoxes[i++].valueToPointer(1e-15, &(*activeSetPtr).timeSpan);
     theGui.textBoxes[i++].valueToPointer(1e-15, &(*activeSetPtr).tStep);
     theGui.textBoxes[i++].valueToPointer(1e-6, &(*activeSetPtr).crystalThickness);
-    theGui.textBoxes[i++].valueToPointer(1e-6, &(*activeSetPtr).propagationStep);
+    theGui.textBoxes[i++].valueToPointer(1e-9, &(*activeSetPtr).propagationStep);
     theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).batchDestination);
     theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).batchDestination2);
     theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).Nsims);
@@ -746,44 +764,8 @@ int freeSemipermanentGrids() {
 
 void checkLibraryAvailability() {
     theGui.console.cPrint("\r\n");
-    __try {
-        HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
-        if (SUCCEEDED(hr)) {
-            CUDAavailable = TRUE;
-        }
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER) {
-        CUDAavailable = FALSE;
-        theGui.console.cPrint("CUDA not available because cufft64_10.dll was not found.\r\n");
-    }
-    if (CUDAavailable) {
-        CUDAavailable = FALSE;
-        __try {
-            HRESULT hr = __HrLoadAllImportsForDll("nvml.dll");
-            if (SUCCEEDED(hr)) {
-                CUDAavailable = TRUE;
-            }
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
-            CUDAavailable = FALSE;
-            theGui.console.cPrint("CUDA not available.\r\n");
-        }
-    }
-    if (CUDAavailable) {
-        CUDAavailable = FALSE;
-        __try {
-            HRESULT hr = __HrLoadAllImportsForDll("cudart64_110.dll");
-            if (SUCCEEDED(hr)) {
-                CUDAavailable = TRUE;
-            }
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
-            CUDAavailable = FALSE;
-            theGui.console.cPrint("CUDA not available because cudart64_110.dll was not found.\r\n\r\n");
-        }
-    }
-    CUDAavailable = TRUE;
-    if (CUDAavailable) {
+    
+    if (TRUE) {
         //Find, count, and name the GPUs
         int CUDAdevice, i;
 
@@ -820,47 +802,13 @@ void checkLibraryAvailability() {
     }
 
     //read SYCL devices
+    SYCLavailable = TRUE;
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
-    __try {
-        HRESULT hr = __HrLoadAllImportsForDll("LightwaveExplorerSYCL.dll");
-        if (SUCCEEDED(hr)) {
-            SYCLavailable = TRUE;
-        }
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER) {
-        SYCLavailable = FALSE;
-        DWORD SYCLfile = GetFileAttributes("LightwaveExplorerSYCL.dll");
-        if (SYCLfile != 0xFFFFFFFF) {
-            theGui.console.cPrint("Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
-            theGui.console.cPrint("https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
-        }
-        else {
-            theGui.console.cPrint("No SYCL file...\r\n");
-        }
-    }
+    size_t syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
+    theGui.console.wPrint(syclDeviceList);
 
-    if (SYCLavailable) {
-        size_t syclDevices = 0;
-        __try {
-            syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
-            SYCLavailable = FALSE;
-            theGui.console.cPrint("Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
-            theGui.console.cPrint("https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
-        }
-        unsigned char* deviceCounts = (unsigned char*)&syclDevices;
-        if (deviceCounts[0] == 0u) {
-            theGui.console.cPrint("Something is wrong - SYCL doesn't think you have a CPU.\r\n");
-            SYCLavailable = FALSE;
-        }
-        else {
-            syclGPUCount = deviceCounts[1];
-            //printToConsole(maingui.plotBox2, syclDeviceList);
-            //if (syclGPUCount > 0) printToConsole(maingui.plotBox2, syclDefault);
-        }
-    }
+    
 }
 int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     if (Nx * Ny == 0) return 1;
@@ -982,6 +930,55 @@ void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
 }
 
+void changeToBaseNamePath(char* str, size_t maxSize) {
+    size_t end = strnlen(str, maxSize);
+    for (int i = end - 1; i > 0; --i) {
+        if (str[i] == '.' || str[i] == 0) {
+            str[i] = 0;
+            break;
+        }
+    }
+}
+
+void loadFromDialogBox(GtkDialog* dialog, int response) {
+    if (response == GTK_RESPONSE_ACCEPT) {
+        GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
+        GFile* file = gtk_file_chooser_get_file(chooser);
+        char* path = g_file_get_path(file);
+        if (isGridAllocated) {
+            freeSemipermanentGrids();
+            isGridAllocated = FALSE;
+        }
+        
+        int readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, path);
+        allocateGrids(activeSetPtr);
+        isGridAllocated = TRUE;
+        if (readParameters == 61) {
+            char basePath[MAX_LOADSTRING] = { 0 };
+            strncpy(basePath, path, MAX_LOADSTRING);
+            changeToBaseNamePath(basePath, MAX_LOADSTRING);
+            loadSavedFields(activeSetPtr, basePath);
+            setInterfaceValuesToActiveValues();
+            theGui.requestSliderUpdate();
+            theGui.requestPlotUpdate();
+
+        }
+    }
+    g_object_unref(dialog);
+}
+
+void loadCallback(GtkWidget* widget, gpointer pathTarget) {
+    theGui.pathTarget = (size_t)pathTarget;
+    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Open File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
+    g_signal_connect(fileC, "response", G_CALLBACK(loadFromDialogBox), NULL);
+    gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
+}
+
+void svgCallback() {
+    theGui.saveSVG = 4;
+    theGui.requestPlotUpdate();
+}
+
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     theGui.pathTarget = (size_t)pathTarget;
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_SAVE, "Ok", "Cancel");
@@ -990,6 +987,78 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
 
     g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
+}
+
+void createRunFile() {
+
+    readParametersFromInterface();
+
+    if (isGridAllocated) {
+        freeSemipermanentGrids();
+    }
+
+    allocateGrids(activeSetPtr);
+    isGridAllocated = TRUE;
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    loadPulseFiles(activeSetPtr);
+    readSequenceString(activeSetPtr);
+    configureBatchMode(activeSetPtr);
+
+    free((*activeSetPtr).statusFlags);
+    free((*activeSetPtr).deffTensor);
+    free((*activeSetPtr).loadedField1);
+    free((*activeSetPtr).loadedField2);
+    char* fileName = (*activeSetPtr).outputBasePath;
+    wchar_t wideBuffer[MAX_LOADSTRING];
+    while (strchr(fileName, '\\') != NULL) {
+        fileName = strchr(fileName, '\\');
+        fileName++;
+    }
+
+    mbstowcs(wideBuffer, fileName, strlen(fileName) + 1);
+    theGui.console.threadPrint(
+        "Run %ls on cluster with:\r\nsbatch %ls.slurmScript\r\n",
+        wideBuffer, wideBuffer);
+
+    //create command line settings file
+    saveSettingsFile(activeSetPtr, crystalDatabasePtr);
+
+    //create SLURM script
+    int gpuType = 0;
+    int gpuCount = 1;
+    switch ((*activeSetPtr).runType) {
+    case 1:
+        gpuType = 0;
+        gpuCount = 1;
+        break;
+    case 2:
+        gpuType = 0;
+        gpuCount = 2;
+        break;
+    case 3:
+        gpuType = 1;
+        gpuCount = 1;
+        break;
+    case 4:
+        gpuType = 1;
+        gpuCount = 2;
+        break;
+    case 5:
+        gpuType = 2;
+        gpuCount = 1;
+        break;
+    case 6:
+        gpuType = 2;
+        gpuCount = 2;
+        break;
+    case 7:
+        gpuType = 2;
+        gpuCount = 4;
+        break;
+
+    }
+    saveSlurmScript(activeSetPtr, gpuType, gpuCount);
+    isRunning = FALSE;
 }
 
 static void runButtonClick() {
@@ -1030,9 +1099,9 @@ int LwePlot2d(plotStruct* inputStruct) {
     //Fixed parameters affecting aesthetics
     double radius = 2;
     double lineWidth = 1.5;
-    double axisSpaceX = 70.0;
+    double axisSpaceX = 75.0;
     double axisSpaceY = 35.0;
-    double axisLabelSpaceX = 16.0;
+    double axisLabelSpaceX = 21.0;
 
     //get limits and make the plotting arrays
     double maxY = 0.0;
@@ -1142,11 +1211,11 @@ int LwePlot2d(plotStruct* inputStruct) {
     };
 
     auto SVGcentertext = [&]() {
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\">\n%s\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), layoutTop + fontSize, messageBuffer);
+        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\">\n%s\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), 0.5 * (layoutBottom + layoutTop - te.height), messageBuffer);
     };
 
     auto SVGlefttext = [&]() {
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\">\n%s\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, messageBuffer);
+        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\">\n%s\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, messageBuffer);
     };
 
 
@@ -1195,7 +1264,7 @@ int LwePlot2d(plotStruct* inputStruct) {
         }
         else {
             snprintf(messageBuffer, MAX_LOADSTRING,
-                _T("%1.3f "), yTicks1[i] / (*s).unitY);
+                _T("%1.4f "), yTicks1[i] / (*s).unitY);
 
         }
         layoutLeft = axisLabelSpaceX;
@@ -1354,21 +1423,26 @@ int LwePlot2d(plotStruct* inputStruct) {
 }
 
 void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) return;
+    if (!isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
     plotStruct sPlot;
     char* svgBuf = NULL;
     char* svgFilename = NULL;
     FILE* svgFile;
 
-    if (theGui.saveSVG) {
+    bool saveSVG = theGui.saveSVG > 0;
+    if (saveSVG) {
+        theGui.saveSVG--;
         svgFilename = new char[MAX_LOADSTRING]();
         svgBuf = new char[1024 * 1024]();
     }
-    bool logPlot = FALSE;
-    if (FALSE) {
-        logPlot = FALSE;
-    }
-    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+
+    size_t simIndex = theGui.plotSlider.getIntValue();
     if (simIndex < 0) {
         simIndex = 0;
     }
@@ -1412,7 +1486,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
-    sPlot.makeSVG = FALSE; // theGui.saveSVG;
+    sPlot.makeSVG = saveSVG; // theGui.saveSVG;
     sPlot.svgString = svgBuf;
     sPlot.svgBuffer = 1024 * 1024;
 
@@ -1431,21 +1505,26 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 }
 
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) return;
+    if (!isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
     plotStruct sPlot;
     char* svgBuf = NULL;
     char* svgFilename = NULL;
     FILE* svgFile;
 
-    if (theGui.saveSVG) {
+    bool saveSVG = theGui.saveSVG > 0;
+    if (saveSVG) {
+        theGui.saveSVG--;
         svgFilename = new char[MAX_LOADSTRING]();
         svgBuf = new char[1024 * 1024]();
     }
-    bool logPlot = FALSE;
-    if (FALSE) {
-        logPlot = FALSE;
-    }
-    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+
+    size_t simIndex = theGui.plotSlider.getIntValue();
     if (simIndex < 0) {
         simIndex = 0;
     }
@@ -1489,7 +1568,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ex (GV/m)";
     sPlot.unitY = 1e9;
-    sPlot.makeSVG = FALSE; // theGui.saveSVG;
+    sPlot.makeSVG = saveSVG;
     sPlot.svgString = svgBuf;
     sPlot.svgBuffer = 1024 * 1024;
 
@@ -1508,21 +1587,29 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 }
 
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) return;
+    if (!isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
     plotStruct sPlot;
     char* svgBuf = NULL;
     char* svgFilename = NULL;
     FILE* svgFile;
 
-    if (theGui.saveSVG) {
+    bool saveSVG = theGui.saveSVG > 0;
+    if (saveSVG) {
+        theGui.saveSVG--;
         svgFilename = new char[MAX_LOADSTRING]();
         svgBuf = new char[1024 * 1024]();
     }
     bool logPlot = FALSE;
-    if (FALSE) {
-        logPlot = FALSE;
+    if (theGui.checkBoxes[1].isChecked()) {
+        logPlot = TRUE;
     }
-    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    size_t simIndex = theGui.plotSlider.getIntValue();
     if (simIndex < 0) {
         simIndex = 0;
     }
@@ -1545,10 +1632,6 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     bool overlayTotal = FALSE;
     if (theGui.checkBoxes[0].isChecked()) {
         overlayTotal = TRUE;
-    }
-    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-    if ((*activeSetPtr).is3D) {
-        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
     }
 
     size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
@@ -1579,7 +1662,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
-    sPlot.makeSVG = FALSE; // theGui.saveSVG;
+    sPlot.makeSVG = saveSVG;
     sPlot.svgString = svgBuf;
     sPlot.svgBuffer = 1024 * 1024;
 
@@ -1588,7 +1671,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.saveSVG) {
         memset(svgFilename, 0, MAX_LOADSTRING);
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
-        strcat_s(svgFilename, MAX_LOADSTRING, "_Sx.svg");
+        strcat_s(svgFilename, MAX_LOADSTRING, "_Sy.svg");
         if (fopen_s(&svgFile, svgFilename, "w")) return;
         fprintf(svgFile, "%s", svgBuf);
         fclose(svgFile);
@@ -1598,21 +1681,28 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 }
 
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) return;
+    if (!isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
     plotStruct sPlot;
     char* svgBuf = NULL;
     char* svgFilename = NULL;
     FILE* svgFile;
-
-    if (theGui.saveSVG) {
+    bool saveSVG = theGui.saveSVG > 0;
+    if (saveSVG) {
+        theGui.saveSVG--;
         svgFilename = new char[MAX_LOADSTRING]();
         svgBuf = new char[1024 * 1024]();
     }
     bool logPlot = FALSE;
-    if (FALSE) {
-        logPlot = FALSE;
+    if (theGui.checkBoxes[1].isChecked()) {
+        logPlot = TRUE;
     }
-    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    size_t simIndex = theGui.plotSlider.getIntValue();
     if (simIndex < 0) {
         simIndex = 0;
     }
@@ -1636,13 +1726,6 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.checkBoxes[0].isChecked()) {
         overlayTotal = TRUE;
     }
-    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-    if ((*activeSetPtr).is3D) {
-        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
-    }
-
-    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
-
     sPlot.area = area;
     sPlot.cr = cr;
     sPlot.height = height;
@@ -1669,7 +1752,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
-    sPlot.makeSVG = FALSE; // theGui.saveSVG;
+    sPlot.makeSVG = saveSVG;
     sPlot.svgString = svgBuf;
     sPlot.svgBuffer = 1024 * 1024;
 
@@ -1754,43 +1837,20 @@ void imagePlot(imagePlotStruct* s) {
 
 
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) return;
-    imagePlotStruct sPlot;
-    char* svgBuf = NULL;
-    char* svgFilename = NULL;
-    FILE* svgFile;
-
-    bool logPlot = FALSE;
-    if (FALSE) {
-        logPlot = FALSE;
+    if (!isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
     }
-    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    imagePlotStruct sPlot;
+    size_t simIndex = theGui.plotSlider.getIntValue();
     if (simIndex < 0) {
         simIndex = 0;
     }
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
-    }
-
-    bool forceX = FALSE;
-    double xMin = theGui.textBoxes[48].valueDouble();
-    double xMax = theGui.textBoxes[49].valueDouble();
-    if (xMin != xMax && xMax > xMin) {
-        forceX = TRUE;
-    }
-    bool forceY = FALSE;
-    double yMin = theGui.textBoxes[50].valueDouble();
-    double yMax = theGui.textBoxes[51].valueDouble();
-    if (yMin != yMax && yMax > yMin) {
-        forceY = TRUE;
-    }
-    bool overlayTotal = FALSE;
-    if (theGui.checkBoxes[0].isChecked()) {
-        overlayTotal = TRUE;
-    }
-    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-    if ((*activeSetPtr).is3D) {
-        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
     }
 
     size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
@@ -1807,44 +1867,20 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 }
 
 void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) return;
-    imagePlotStruct sPlot;
-    char* svgBuf = NULL;
-    char* svgFilename = NULL;
-    FILE* svgFile;
-
-
-    bool logPlot = FALSE;
-    if (FALSE) {
-        logPlot = FALSE;
+    if (!isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
     }
-    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    imagePlotStruct sPlot;
+    size_t simIndex = theGui.plotSlider.getIntValue();
     if (simIndex < 0) {
         simIndex = 0;
     }
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
-    }
-
-    bool forceX = FALSE;
-    double xMin = theGui.textBoxes[48].valueDouble();
-    double xMax = theGui.textBoxes[49].valueDouble();
-    if (xMin != xMax && xMax > xMin) {
-        forceX = TRUE;
-    }
-    bool forceY = FALSE;
-    double yMin = theGui.textBoxes[50].valueDouble();
-    double yMax = theGui.textBoxes[51].valueDouble();
-    if (yMin != yMax && yMax > yMin) {
-        forceY = TRUE;
-    }
-    bool overlayTotal = FALSE;
-    if (theGui.checkBoxes[0].isChecked()) {
-        overlayTotal = TRUE;
-    }
-    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-    if ((*activeSetPtr).is3D) {
-        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
     }
 
     size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
@@ -1861,40 +1897,20 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 }
 
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) return;
-    imagePlotStruct sPlot;
-    char* svgBuf = NULL;
-    char* svgFilename = NULL;
-    FILE* svgFile;
-
-
-    bool logPlot = FALSE;
-    if (FALSE) {
-        logPlot = FALSE;
+    if (!isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
     }
-    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    imagePlotStruct sPlot;
+    size_t simIndex = theGui.plotSlider.getIntValue();
     if (simIndex < 0) {
         simIndex = 0;
     }
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
-    }
-
-    bool forceX = FALSE;
-    double xMin = theGui.textBoxes[48].valueDouble();
-    double xMax = theGui.textBoxes[49].valueDouble();
-    if (xMin != xMax && xMax > xMin) {
-        forceX = TRUE;
-    }
-    bool forceY = FALSE;
-    double yMin = theGui.textBoxes[50].valueDouble();
-    double yMax = theGui.textBoxes[51].valueDouble();
-    if (yMin != yMax && yMax > yMin) {
-        forceY = TRUE;
-    }
-    bool overlayTotal = FALSE;
-    if (theGui.checkBoxes[0].isChecked()) {
-        overlayTotal = TRUE;
     }
     double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
     if ((*activeSetPtr).is3D) {
@@ -1916,18 +1932,16 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 }
 
 void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) return;
-    imagePlotStruct sPlot;
-    char* svgBuf = NULL;
-    char* svgFilename = NULL;
-    FILE* svgFile;
-
-
-    bool logPlot = FALSE;
-    if (FALSE) {
-        logPlot = FALSE;
+    if (!isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
     }
-    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    imagePlotStruct sPlot;
+
+    size_t simIndex = theGui.plotSlider.getIntValue();
     if (simIndex < 0) {
         simIndex = 0;
     }
@@ -1935,22 +1949,6 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         simIndex = 0;
     }
 
-    bool forceX = FALSE;
-    double xMin = theGui.textBoxes[48].valueDouble();
-    double xMax = theGui.textBoxes[49].valueDouble();
-    if (xMin != xMax && xMax > xMin) {
-        forceX = TRUE;
-    }
-    bool forceY = FALSE;
-    double yMin = theGui.textBoxes[50].valueDouble();
-    double yMax = theGui.textBoxes[51].valueDouble();
-    if (yMin != yMax && yMax > yMin) {
-        forceY = TRUE;
-    }
-    bool overlayTotal = FALSE;
-    if (theGui.checkBoxes[0].isChecked()) {
-        overlayTotal = TRUE;
-    }
     double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
     if ((*activeSetPtr).is3D) {
         logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
@@ -1972,17 +1970,30 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
 
 void launchRunThread() {
-    if(!isRunning) std::thread(simpleSimThread).detach();
+    if(!isRunning) std::thread(mainSimThread, theGui.pulldowns[7].getValue()).detach();
 }
 
+void launchFitThread() {
+    if (!isRunning) std::thread(fittingThread, theGui.pulldowns[7].getValue()).detach();
+}
 
-void mainSimThread() {
+void stopButtonCallback() {
+    if (isRunning) {
+        cancellationCalled = TRUE;
+        for (int i = 0; i < (*activeSetPtr).Nsims; ++i) {
+            (*activeSetPtr).statusFlags[i] = 2;
+        }
+    }
+}
+
+void independentPlotQueue(){
+    theGui.requestPlotUpdate();
+    theGui.applyUpdate();
+}
+
+void mainSimThread(int pulldownSelection) {
     cancellationCalled = FALSE;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
-    HANDLE plotThread = NULL;
-    DWORD hplotThread;
-    HANDLE cpuThread = NULL;
-    DWORD hCpuThread;
 
     if (isGridAllocated) {
         freeSemipermanentGrids();
@@ -1995,7 +2006,7 @@ void mainSimThread() {
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
-    //setTrackbarLimitsToActiveSet();
+    theGui.requestSliderUpdate();
     (*activeSetPtr).isFollowerInSequence = FALSE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
@@ -2007,7 +2018,6 @@ void mainSimThread() {
     //run the simulations
     isRunning = TRUE;
     progressCounter = 0;
-    int pulldownSelection = theGui.pulldowns[8].getValue();
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
@@ -2053,106 +2063,139 @@ void mainSimThread() {
 
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    theGui.console.cPrint(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.threadPrint(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
                 }
                 else {
-                    theGui.console.cPrint(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.threadPrint(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
                 }
             }
             if (error) break;
-            if (!isPlotting) {
-                (*activeSetPtr).plotSim = j;
-                //plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-                //if (plotThread != 0)CloseHandle(plotThread);
-            }
-
+            theGui.requestSliderMove(j);
+            independentPlotQueue();
         }
         else {
             error = normalFunction(&activeSetPtr[j]);
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    theGui.console.cPrint(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.threadPrint(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
                 }
                 else {
-                    theGui.console.cPrint(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.threadPrint(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
                 }
             }
-
             if (error) break;
         }
 
         if (cancellationCalled) {
-            theGui.console.cPrint(_T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
+            theGui.console.threadPrint(_T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
             break;
         }
-
-        if (!isPlotting) {
-            (*activeSetPtr).plotSim = j;
-            //plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
-            //if (plotThread != NULL)CloseHandle(plotThread);
-        }
+        theGui.requestSliderMove(j);
+        independentPlotQueue();
     }
 
-    if ((*activeSetPtr).NsimsCPU != 0 && cpuThread != 0) {
+    if ((*activeSetPtr).NsimsCPU != 0){// && cpuThread != 0) {
         //WaitForSingleObject(cpuThread, INFINITE);
         //CloseHandle(cpuThread);
     }
-    auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    if (error == 13) {
-        theGui.console.cPrint(
-            "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
-    }
-    else {
-        theGui.console.cPrint(_T("Finished after %8.4lf s. \r\n"), 1e-6 *
-            (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-    }
-    //saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
-    deallocateGrids(activeSetPtr, FALSE);
-    isRunning = FALSE;
-}
-
-
-void simpleSimThread() {
-    cancellationCalled = FALSE;
-    auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
-    if (isGridAllocated) {
-        freeSemipermanentGrids();
-    }
-    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
-    readParametersFromInterface();
-    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
-        theGui.console.threadPrint("Too many simulations in batch mode. Must be under %i total.\r\n", MAX_SIMULATIONS);
-    }
-    (*activeSetPtr).runType = 0;
-    allocateGrids(activeSetPtr);
-    isGridAllocated = TRUE;
-    (*activeSetPtr).isFollowerInSequence = FALSE;
-    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
-    //loadPulseFiles(activeSetPtr);
-
-    //if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
-
-    configureBatchMode(activeSetPtr);
-    int error = 0;
-    //run the simulations
-    isRunning = TRUE;
-    progressCounter = 0;
-    
-    error = solveNonlinearWaveEquation(activeSetPtr);
-    theGui.requestPlotUpdate();
-    //Sleep(500);
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error == 13) {
         theGui.console.threadPrint(
             "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
     }
     else {
-        theGui.console.threadPrint(_T("Finished after %8.4lf s.\n"), 1e-6 *
+        theGui.console.threadPrint(_T("Finished after %8.4lf s. \r\n"), 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
-    
-    //saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
+    saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
     deallocateGrids(activeSetPtr, FALSE);
+    isRunning = FALSE;
+}
+
+void fittingThread(int pulldownSelection) {
+    cancellationCalled = FALSE;
+    auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
+
+    readParametersFromInterface();
+    (*activeSetPtr).runType = 0;
+    if (isGridAllocated) {
+        freeSemipermanentGrids();
+    }
+
+    allocateGrids(activeSetPtr);
+    isGridAllocated = TRUE;
+    (*activeSetPtr).isFollowerInSequence = FALSE;
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    loadPulseFiles(activeSetPtr);
+    readSequenceString(activeSetPtr);
+    configureBatchMode(activeSetPtr);
+    readFittingString(activeSetPtr);
+    if ((*activeSetPtr).Nfitting == 0) {
+        theGui.console.threadPrint("Couldn't interpret fitting command.\n");
+        free((*activeSetPtr).statusFlags);
+        free((*activeSetPtr).deffTensor);
+        free((*activeSetPtr).loadedField1);
+        free((*activeSetPtr).loadedField2);
+        return;
+    }
+    progressCounter = 0;
+    (*activeSetPtr).progressCounter = &progressCounter;
+    if ((*activeSetPtr).fittingMode == 3) {
+        if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
+            theGui.console.threadPrint("Could not read reference file!\n");
+            free((*activeSetPtr).statusFlags);
+            free((*activeSetPtr).deffTensor);
+            free((*activeSetPtr).loadedField1);
+            free((*activeSetPtr).loadedField2);
+            return;
+        }
+    }
+
+    theGui.console.threadPrint("Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n",
+        (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
+
+
+    int assignedGPU = 0;
+    bool forceCPU = 0;
+    int SYCLitems = 0;
+    if (syclGPUCount == 0) {
+        SYCLitems = (int)SYCLavailable;
+    }
+    else {
+        SYCLitems = 3;
+    }
+    auto fittingFunction = &runDlibFittingCPU;
+    if (pulldownSelection < cudaGPUCount) {
+        fittingFunction = &runDlibFitting;
+        assignedGPU = pulldownSelection;
+    }
+    else if (pulldownSelection == cudaGPUCount && SYCLavailable) {
+        fittingFunction = &runDlibFittingSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
+        forceCPU = 1;
+        fittingFunction = &runDlibFittingSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
+        assignedGPU = 1;
+        fittingFunction = &runDlibFittingSYCL;
+    }
+    fittingFunction(activeSetPtr);
+    (*activeSetPtr).plotSim = 0;
+    theGui.requestPlotUpdate();
+    auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
+    theGui.console.threadPrint(_T("Finished fitting after %8.4lf s.\n"), 1e-6 *
+        (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+    saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
+    setInterfaceValuesToActiveValues();
+    theGui.console.threadPrint("Fitting result:\r\n (index, value)\r\n");
+    for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
+        theGui.console.threadPrint("%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
+    }
+    free((*activeSetPtr).statusFlags);
+    free((*activeSetPtr).deffTensor);
+    free((*activeSetPtr).loadedField1);
+    free((*activeSetPtr).loadedField2);
     isRunning = FALSE;
 }
 
