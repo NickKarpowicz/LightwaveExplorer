@@ -49,11 +49,11 @@ typedef struct plotStruct {
     double logMin = 0;
     int dataType = 0;
     double dx = 1.0;
-    float x0 = 0.0;
+    double x0 = 0.0;
     size_t Npts = 0;
-    float unitY = 1.0;
+    double unitY = 1.0;
     bool forceYmin = FALSE;
-    float forcedYmin = 0.0;
+    double forcedYmin = 0.0;
     bool forceYmax = FALSE;
     double forcedYmax = 0.0;
     bool forceXmin = FALSE;
@@ -70,6 +70,20 @@ typedef struct plotStruct {
     bool makeSVG = FALSE;
     int svgBuffer = 0;
 } plotStruct;
+
+typedef struct imagePlotStruct {
+    GtkDrawingArea* area = NULL;
+    cairo_t* cr = NULL;
+    int width = 0;
+    int height = 0;
+    double* data = NULL;
+    std::complex<double>* complexData = NULL;
+    int colorMap = 4;
+    bool logScale = FALSE;
+    double logMin = 0;
+    int dataType = 0;
+} imagePlotStruct;
+
 class LweGuiElement {
 public:
     GtkWidget* label;
@@ -128,6 +142,7 @@ public:
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), 7);
         setPosition(grid, x, y, width, height);
     }
+
     double valueDouble() {
         double sdata;
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
@@ -142,6 +157,89 @@ public:
             return 0.;
         }
     }
+
+    int valueInt() {
+        int sdata;
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        int len = gtk_entry_buffer_get_length(buf);
+        if (len > 0) {
+            char* cbuf = (char*)gtk_entry_buffer_get_text(buf);
+            std::stringstream s(cbuf);
+            s >> sdata;
+            return sdata;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    void valueToPointer(int* sdata) {
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        int len = gtk_entry_buffer_get_length(buf);
+        if (len > 0) {
+            char* cbuf = (char*)gtk_entry_buffer_get_text(buf);
+            std::stringstream s(cbuf);
+            s >> *sdata;
+        }
+    }
+
+    void valueToPointer(size_t* sdata) {
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        int len = gtk_entry_buffer_get_length(buf);
+        if (len > 0) {
+            char* cbuf = (char*)gtk_entry_buffer_get_text(buf);
+            std::stringstream s(cbuf);
+            s >> *sdata;
+        }
+    }
+
+    void valueToPointer(double* sdata) {
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        int len = gtk_entry_buffer_get_length(buf);
+        if (len > 0) {
+            char* cbuf = (char*)gtk_entry_buffer_get_text(buf);
+            std::stringstream s(cbuf);
+            s >> *sdata;
+        }
+    }
+
+    void valueToTwoPointers(double* sdata, double* sdata2) {
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        int len = gtk_entry_buffer_get_length(buf);
+        char c;
+        *sdata2 = 0.0;
+        if (len > 0) {
+            char* cbuf = (char*)gtk_entry_buffer_get_text(buf);
+            std::stringstream s(cbuf);
+            s >> *sdata >> c >> *sdata2;
+        }
+    }
+
+    void valueToTwoPointers(double multiplier, double* sdata, double* sdata2) {
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        int len = gtk_entry_buffer_get_length(buf);
+        char c;
+        *sdata2 = 0.0;
+        if (len > 0) {
+            char* cbuf = (char*)gtk_entry_buffer_get_text(buf);
+            std::stringstream s(cbuf);
+            s >> *sdata >> c >> *sdata2;
+            *sdata *= multiplier;
+            *sdata2 *= multiplier;
+        }
+    }
+
+    void valueToPointer(double multiplier, double* sdata) {
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        int len = gtk_entry_buffer_get_length(buf);
+        if (len > 0) {
+            char* cbuf = (char*)gtk_entry_buffer_get_text(buf);
+            std::stringstream s(cbuf);
+            s >> *sdata;
+            *sdata *= multiplier;
+        }
+    }
+
     void setMaxCharacters(int charLimit) {
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), charLimit);
     }
@@ -203,14 +301,20 @@ public:
         gtk_entry_buffer_set_text(buf, textBuffer, -1);
     }
 
+    void copyBuffer(char* destination, size_t maxLength) {
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        strncpy(destination, gtk_entry_buffer_get_text(buf), maxLength);
+    }
+
 };
 
 class LweConsole : public LweGuiElement {
     GtkWidget* consoleText;
+    bool hasNewText;
 public:
     char* textBuffer;
     LweConsole() :
-        consoleText(0) {
+        consoleText(0), hasNewText(0) {
         textBuffer = new char[65356]();
         _grid = NULL;
     }
@@ -238,28 +342,54 @@ public:
     }
     template<typename... Args> void cPrint(const char* format, Args... args) {
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        GtkTextIter start;
-        GtkTextIter stop;
-        gtk_text_buffer_get_start_iter(buf, &start);
-        gtk_text_buffer_get_end_iter(buf, &stop);
-        char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, FALSE);
         snprintf(&textBuffer[strnlen(textBuffer, 65536)], 65536, format, args...);
         gtk_text_buffer_set_text(buf, textBuffer, -1);
         GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
         gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
     }
+    template<typename... Args> void threadPrint(const char* format, Args... args) {
+        snprintf(&textBuffer[strnlen(textBuffer, 65536)], 65536, format, args...);
+        hasNewText = TRUE;
+    }
+    void updateFromBuffer() {
+        if (hasNewText) {
+            hasNewText = FALSE;
+            GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+            gtk_text_buffer_set_text(buf, textBuffer, -1);
+            GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
+            gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+        }
+
+    }
+    template<typename... Args> void wPrint(const wchar_t* format, Args... args) {
+        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        wchar_t* wideBuffer = new wchar_t[65536]();
+        mbstowcs(wideBuffer, textBuffer, 65536);
+        size_t offset = wcsnlen(wideBuffer, 65536);
+        swprintf(&wideBuffer[offset], 65536, format, args...);
+        wcstombs(textBuffer, wideBuffer, 65536);
+        gtk_text_buffer_set_text(buf, textBuffer, -1);
+        GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
+        gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+        delete[] wideBuffer;
+    }
     template<typename... Args> void overwritePrint(const char* format, Args... args) {
+        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        memset(textBuffer, 0, 65536);
+        snprintf(textBuffer, 65536, format, args...);
+        gtk_text_buffer_set_text(buf, textBuffer, -1);
+        GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
+        gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+    }
+
+    void copyBuffer(char* destination, size_t maxLength) {
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
         char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, FALSE);
-        memset(textBuffer, 0, 65536);
-        snprintf(textBuffer, 65536, format, args...);
-        gtk_text_buffer_set_text(buf, textBuffer, -1);
-        GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
-        gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+        strncpy(destination, realBuf, maxLength);
     }
 };
 
@@ -318,6 +448,14 @@ public:
         strArray[Nelements] = &strings[Nelements * strLength];
         size_t N = strnlen_s(newelement, 127);
         memcpy(strArray[Nelements], newelement, N);
+        stripLineBreaks(strArray[Nelements]);
+        ++Nelements;
+    }
+    void addElementW(const wchar_t* newelement) {
+        if (Nelements == 99) return;
+        strArray[Nelements] = &strings[Nelements * strLength];
+        wcstombs(strArray[Nelements], newelement, 127);
+        stripLineBreaks(strArray[Nelements]);
         ++Nelements;
     }
     void init(GtkWidget* grid, int x, int y, int width, int height) {
@@ -328,6 +466,9 @@ public:
     }
     int getValue() {
         return (int)gtk_drop_down_get_selected(GTK_DROP_DOWN(elementHandle));
+    }
+    void setValue(int target) {
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(elementHandle), target);
     }
 };
 
@@ -434,6 +575,9 @@ public:
             theFunction,
             NULL, NULL);
     }
+    void queueDraw() {
+        gtk_widget_queue_draw(elementHandle);
+    }
 };
 
 class LweSlider : public LweGuiElement {
@@ -475,4 +619,10 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm);
 int LwePlot2d(plotStruct* inputStruct);
 void checkLibraryAvailability();
-
+void setInterfaceValuesToActiveValues();
+int formatSequence(char* cString, size_t N);
+int insertLineBreaksAfterSemicolons(char* cString, size_t N);
+int freeSemipermanentGrids();
+void mainSimThread();
+void simpleSimThread();
+void launchRunThread();

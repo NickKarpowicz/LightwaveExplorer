@@ -12,6 +12,7 @@
 #include <thread>
 #define LABELWIDTH 6
 #define MAX_LOADSTRING 1024
+#define MAX_SIMULATIONS 4096
 #define PI 3.1415926535897931
 #define maxN(a,b)            (((a) > (b)) ? (a) : (b))
 #define minN(a,b)            (((a) < (b)) ? (a) : (b))
@@ -23,10 +24,16 @@ bool CUDAavailable = FALSE;
 bool SYCLavailable = FALSE;
 int cudaGPUCount = 0;
 int syclGPUCount = 0;
+simulationParameterSet* activeSetPtr;       // Main structure containing simulation parameters and pointers
+crystalEntry* crystalDatabasePtr;           // Crystal info database
 size_t progressCounter = 0;
+
+void updateDisplay();
 
 class mainGui {
     bool isActivated;
+    bool queueUpdate;
+    std::thread threadPoolSim[3];
 public:
     LweTextBox textBoxes[54];
     LweButton buttons[16];
@@ -40,6 +47,7 @@ public:
     LweSlider plotSlider;
     LweWindow window;
     size_t pathTarget;
+    bool saveSVG = FALSE;
     bool isRunning = FALSE;
     bool isPlotting = FALSE;
     bool isGridAllocated = FALSE;
@@ -51,10 +59,21 @@ public:
     size_t progressCounter = 0;
     mainGui() : isActivated(0), pathTarget(0), isRunning(0), isPlotting(0),
     isGridAllocated(0), cancellationCalled(0), CUDAavailable(0), SYCLavailable(0),
-    cudaGPUCount(0), syclGPUCount(0){}
+    cudaGPUCount(0), syclGPUCount(0), saveSVG(0), queueUpdate(0){}
     ~mainGui() {}
-
+    void requestPlotUpdate() {
+        queueUpdate = TRUE;
+    }
+    void applyUpdate() {
+        if (queueUpdate) {
+            queueUpdate = FALSE;
+            for (int i = 0; i < 8; ++i) {
+                drawBoxes[i].queueDraw();
+            }
+        }
+    }
     void activate(GtkApplication* app) {
+        activeSetPtr = (simulationParameterSet*)calloc(MAX_SIMULATIONS, sizeof(simulationParameterSet));
         int buttonWidth = 4;
         int textWidth = 3;
         int labelWidth = 6;
@@ -131,10 +150,10 @@ public:
         drawBoxes[3].setDrawingFunction(drawField2Plot);
 
         drawBoxes[4].init(window.parentHandle(2), plotWidth, 0, plotWidth, plotHeight);
-        drawBoxes[4].setDrawingFunction(drawField1Plot);
+        drawBoxes[4].setDrawingFunction(drawFourierImage1);
 
         drawBoxes[5].init(window.parentHandle(2), plotWidth, plotHeight, plotWidth, plotHeight);
-        drawBoxes[5].setDrawingFunction(drawField1Plot);
+        drawBoxes[5].setDrawingFunction(drawFourierImage2);
 
         drawBoxes[6].init(window.parentHandle(2), plotWidth, 2 * plotHeight, plotWidth, plotHeight);
         drawBoxes[6].setDrawingFunction(drawSpectrum1Plot);
@@ -152,44 +171,117 @@ public:
 
         checkBoxes[0].init(_T("Total"), window.parentHandle(4), 12, 0, 1, 1);
         checkBoxes[1].init(_T("Log"), window.parentHandle(4), 13, 0, 1, 1);
-        pulldowns[3].addElement(_T("00: Vacuum"));
-        pulldowns[3].addElement(_T("01: BBO"));
-        pulldowns[3].init(parentHandle, textCol2a, 0, 2 * textWidth, 1);
+
 
         pulldowns[4].addElement(_T("2D Cartesian"));
         pulldowns[4].addElement(_T("3D radial symm."));
         pulldowns[4].addElement(_T("3D"));
         pulldowns[4].init(parentHandle, textCol2a, 7, 2 * textWidth, 1);
 
-        pulldowns[5].addElement(_T("none"));
-        pulldowns[5].addElement(_T("oh lord"));
-        pulldowns[5].addElement(_T("write the fill"));
-        pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
+        char batchModeNames[36][64] = {
+        "none",
+        "01: Energy 1",
+        "02: Energy 2",
+        "03: Frequency 1",
+        "04: Frequency 2",
+        "05: Bandwidth 1",
+        "06: Bandwidth 2",
+        "07: CEP 1",
+        "08: CEP 2",
+        "09: Delay 1",
+        "10: Delay 2",
+        "11: GDD 1",
+        "12: GDD 2",
+        "13: TOD 1",
+        "14: TOD 2",
+        "15: Thickness 1",
+        "16: Thickness 2",
+        "17: Beamwaist 1",
+        "18: Beamwaist 2",
+        "19: x offset 1",
+        "20: x offset 2",
+        "21: z offset 1",
+        "22: z offset 2",
+        "23: NC angle 1",
+        "24: NC angle 2",
+        "25: Polarization 1",
+        "26: Polarization 2",
+        "27: Circularity 1",
+        "28: Circularity 2",
+        "29: Crystal Theta",
+        "30: Crystal Phi",
+        "31: NL absorption",
+        "32: Gamma",
+        "33: Eff. mass",
+        "34: Thickness",
+        "35: dz",
+        };
 
-        pulldowns[6].addElement(_T("none"));
-        pulldowns[6].addElement(_T("oh lord"));
-        pulldowns[6].addElement(_T("write the fill"));
+        for (int i = 0; i < 36; ++i) {
+            pulldowns[5].addElement(batchModeNames[i]);
+            pulldowns[6].addElement(batchModeNames[i]);
+        }
+        pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
 
-        pulldowns[7].addElement(_T("CUDA"));
-        pulldowns[7].addElement(_T("SYCL"));
-        pulldowns[7].addElement(_T("OpenMP"));
-        pulldowns[7].init(window.parentHandle(5), labelWidth, 0, buttonWidth, 1);
 
-        pulldowns[8].addElement(_T("CUDA"));
-        pulldowns[8].addElement(_T("SYCL"));
-        pulldowns[8].addElement(_T("OpenMP"));
+
+
+
+        int openMPposition = 0;
+        char A[128] = { 0 };
+        checkLibraryAvailability();
+        CUDAavailable = TRUE;
+        if (CUDAavailable) {
+            pulldowns[7].addElement("CUDA");
+            pulldowns[8].addElement("CUDA");
+            //swprintf_s(A, MAX_LOADSTRING, L"CUDA");
+            //SendMessage(maingui.pdPrimaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            //SendMessage(maingui.pdSecondaryQueue, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)A);
+            openMPposition++;
+            memset(&A, 0, sizeof(A));
+            for (int i = 1; i < cudaGPUCount; ++i) {
+                snprintf(A, 128, "CUDA %i", i);
+                pulldowns[7].addElement(A);
+                pulldowns[8].addElement(A);
+                memset(&A, 0, sizeof(A));
+                openMPposition++;
+            }
+        }
+        if (SYCLavailable) {
+            snprintf(A, 128, "SYCL");
+            pulldowns[7].addElement(A);
+            pulldowns[8].addElement(A);
+            memset(&A, 0, sizeof(A));
+            openMPposition++;
+            if (syclGPUCount > 0) {
+                snprintf(A, 128, "SYCL cpu");
+                pulldowns[7].addElement(A);
+                pulldowns[8].addElement(A);
+                memset(&A, 0, sizeof(A));
+                openMPposition++;
+                snprintf(A, 128, "SYCL gpu");
+                pulldowns[7].addElement(A);
+                pulldowns[8].addElement(A);
+                memset(&A, 0, sizeof(A));
+                openMPposition++;
+            }
+        }
+
+        snprintf(A, 128, "OpenMP");
+        pulldowns[7].addElement(A);
+        pulldowns[8].addElement(A);
+        memset(&A, 0, sizeof(A));
+
+        pulldowns[7].init(window.parentHandle(5), labelWidth, 0, buttonWidth, 1);
         pulldowns[8].init(window.parentHandle(5), 2 * labelWidth + buttonWidth, 0, buttonWidth, 1);
         textBoxes[52].init(window.parentHandle(5), 2 * labelWidth + 2 * buttonWidth, 0, 1, 1);
-        pulldowns[9].addElement(_T("Cobra 1x R5000"));
-        pulldowns[9].addElement(_T("Cobra 2x R5000"));
-        pulldowns[9].addElement(_T("Raven 1x A100"));
-        pulldowns[9].init(parentHandle, 0, 24, 2 * buttonWidth, 1);
+
 
         sequence.init(parentHandle, buttonCol1, 13, colWidth, 6);
         fitCommand.init(parentHandle, buttonCol1, 21, colWidth, 4);
 
-        buttons[0].init(_T("Run"), parentHandle, buttonCol3, 19, buttonWidth, 1, runButtonClick);
+        buttons[0].init(_T("Run"), parentHandle, buttonCol3, 19, buttonWidth, 1, launchRunThread);
         buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 19, buttonWidth, 1, runButtonClick);
         buttons[2].init(_T("Cluster"), parentHandle, 2 * buttonWidth, 24, buttonWidth, 1, runButtonClick);
         buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 20, buttonWidth, 1, runButtonClick);
@@ -227,7 +319,7 @@ public:
         textBoxes[38].setLabel(-labelWidth, 0, _T("Max x, dx (\xce\xbcm)"));
         textBoxes[40].setLabel(-labelWidth, 0, _T("Time span, dt (fs)"));
         textBoxes[42].setLabel(-labelWidth, 0, _T("Max z, dz (\xce\xbcm,nm)"));
-        pulldowns[3].setLabel(-labelWidth, 0, _T("Material"));
+        
         textBoxes[44].setLabel(-labelWidth, 0, _T("Batch end"));
         textBoxes[46].setLabel(-labelWidth, 0, _T("Batch steps"));
         pulldowns[4].setLabel(-labelWidth, 0, _T("Propagation"));
@@ -237,27 +329,427 @@ public:
         pulldowns[8].setLabel(-labelWidth, 0, _T(" Offload type:"));
         fitCommand.setLabel(0, -1, _T("Fitting:"));
         sequence.setLabel(0, -1, _T("Sequence:"));
-
+        filePaths[3].overwritePrint("TestFile");
         window.present();
 
-        checkLibraryAvailability();
+        
+
+        //read the crystal database
+        crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
+        wchar_t materialString[128] = { 0 };
+        if (crystalDatabasePtr != NULL) {
+            //GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
+            readCrystalDatabase(crystalDatabasePtr);
+            console.wPrint(L"Material database has %i entries:\n", (*crystalDatabasePtr).numberOfEntries);
+            for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
+                console.wPrint(L"%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
+                memset(materialString, 0, 128 * sizeof(wchar_t));
+                swprintf(materialString, 128, L"%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
+                pulldowns[3].addElementW(materialString);
+            }
+        }
+        pulldowns[3].init(parentHandle, textCol2a, 0, 2 * textWidth, 1);
+        pulldowns[3].setLabel(-labelWidth, 0, _T("Material"));
+
+
+        pulldowns[9].addElement(_T("Cobra 1x R5000"));
+        pulldowns[9].addElement(_T("Cobra 2x R5000"));
+        pulldowns[9].addElement(_T("Cobra 1x V100"));
+        pulldowns[9].addElement(_T("Cobra 1x V100"));
+        pulldowns[9].addElement(_T("Raven 1x A100"));
+        pulldowns[9].addElement(_T("Raven 2x A100"));
+        pulldowns[9].addElement(_T("Raven 4x A100"));
+        pulldowns[9].init(parentHandle, 0, 24, 2 * buttonWidth, 1);
+
+        char defaultFilename[] = "DefaultValues.ini";
+        readInputParametersFile(activeSetPtr, crystalDatabasePtr, defaultFilename);
+        setInterfaceValuesToActiveValues();
+        g_timeout_add(100, G_SOURCE_FUNC(updateDisplay), NULL);
     }
 };
 mainGui theGui;
-simulationParameterSet* activeSetPtr;       // Main structure containing simulation parameters and pointers
-crystalEntry* crystalDatabasePtr;           // Crystal info database
+
 char programDirectory[MAX_LOADSTRING];     // Program working directory (useful if the crystal database has to be reloaded)
 
 ///////////////////.
 //Definitions over
 ///////////////////.
+
+void updateDisplay() {
+    theGui.console.updateFromBuffer();
+    theGui.applyUpdate();
+}
+
+void setInterfaceValuesToActiveValues(){
+	int i = 0;
+    pulse* t = &(*activeSetPtr).pulse1;
+    for (int k = 0; k < 2; ++k) {
+        theGui.textBoxes[i++].setToDouble((*t).energy);
+        theGui.textBoxes[i++].setToDouble(1e-12 * (*t).frequency);
+        theGui.textBoxes[i++].setToDouble(1e-12 * (*t).bandwidth);
+        theGui.textBoxes[i++].setToDouble((*t).sgOrder);
+        theGui.textBoxes[i++].setToDouble(PI * (*t).cep);
+        theGui.textBoxes[i++].setToDouble(1e15 * (*t).delay);
+        theGui.textBoxes[i++].setToDouble(1e30 * (*t).gdd);
+        theGui.textBoxes[i++].setToDouble(1e45 * (*t).tod);
+        theGui.textBoxes[i++].setToDouble((*t).phaseMaterial);
+        theGui.textBoxes[i++].setToDouble(1e6 * (*t).phaseMaterialThickness);
+        theGui.textBoxes[i++].setToDouble(1e6 * (*t).beamwaist);
+        theGui.textBoxes[i++].setToDouble(1e6 * (*t).x0);
+        theGui.textBoxes[i++].setToDouble(1e6 * (*t).z0);
+        theGui.textBoxes[i++].setToDouble(RAD2DEG * (*t).beamAngle);
+        theGui.textBoxes[i++].setToDouble(RAD2DEG * (*t).polarizationAngle);
+        theGui.textBoxes[i++].setToDouble((*t).circularity);
+        t = &(*activeSetPtr).pulse2;
+    }
+
+    theGui.pulldowns[0].setValue((*activeSetPtr).pulse1FileType);
+    theGui.pulldowns[1].setValue((*activeSetPtr).pulse2FileType);
+    theGui.pulldowns[2].setValue((*activeSetPtr).fittingMode);
+    theGui.pulldowns[3].setValue((*activeSetPtr).materialIndex);
+    
+    theGui.textBoxes[i++].setToDouble(RAD2DEG * asin(sin((*activeSetPtr).crystalTheta)));
+    theGui.textBoxes[i++].setToDouble(RAD2DEG * asin(sin((*activeSetPtr).crystalPhi)));
+    theGui.textBoxes[i++].setToDouble((*activeSetPtr).nonlinearAbsorptionStrength);
+    theGui.textBoxes[i++].setToDouble((*activeSetPtr).bandGapElectronVolts);
+    theGui.textBoxes[i++].setToDouble(1e-12 * (*activeSetPtr).drudeGamma);
+    theGui.textBoxes[i++].setToDouble((*activeSetPtr).effectiveMass);
+
+    if (!(*activeSetPtr).is3D) {
+        theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).spatialWidth);
+    }
+    else if ((*activeSetPtr).spatialHeight == (*activeSetPtr).spatialWidth
+        || (*activeSetPtr).spatialHeight == 1 || (*activeSetPtr).spatialHeight == 0) {
+        theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).spatialWidth);
+    }
+    else {
+        theGui.textBoxes[i++].overwritePrint("%i;%i", (int)(1e6 * (*activeSetPtr).spatialWidth), (int)(1e6 * (*activeSetPtr).spatialHeight));
+    }
+    theGui.textBoxes[i++].setToDouble(1e6*(*activeSetPtr).rStep);
+    theGui.textBoxes[i++].setToDouble(1e15 * (*activeSetPtr).timeSpan);
+    theGui.textBoxes[i++].setToDouble(1e15 * (*activeSetPtr).tStep);
+    theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).crystalThickness);
+    theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).propagationStep);
+    theGui.textBoxes[i++].setToDouble((*activeSetPtr).batchDestination);
+    theGui.textBoxes[i++].setToDouble((*activeSetPtr).batchDestination2);
+    theGui.textBoxes[i++].setToDouble((double)(*activeSetPtr).Nsims);
+    theGui.textBoxes[i++].setToDouble((double)(*activeSetPtr).Nsims2);
+    theGui.pulldowns[4].setValue((*activeSetPtr).symmetryType);
+    theGui.pulldowns[5].setValue((*activeSetPtr).batchIndex);
+    theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
+
+    if (strlen((*activeSetPtr).sequenceString) > 6) {
+        formatSequence((*activeSetPtr).sequenceString, MAX_LOADSTRING);
+        theGui.sequence.overwritePrint((*activeSetPtr).sequenceString);
+        removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\r');
+        removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\n');
+    }
+    stripLineBreaks((*activeSetPtr).field1FilePath);
+    if (!strncmp((*activeSetPtr).field1FilePath, "None",4)) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
+    if (!strcmp((*activeSetPtr).field2FilePath, "None")) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
+    if (!strcmp((*activeSetPtr).fittingPath, "None")) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
+
+    if (!((*activeSetPtr).fittingString[0] == 'N')) {
+        insertLineBreaksAfterSemicolons((*activeSetPtr).fittingString, MAX_LOADSTRING);
+        theGui.fitCommand.overwritePrint((*activeSetPtr).fittingString);
+        removeCharacterFromString((*activeSetPtr).fittingString, MAX_LOADSTRING, '\r');
+        removeCharacterFromString((*activeSetPtr).fittingString, MAX_LOADSTRING, '\n');
+    }
+}
+
+
+void readParametersFromInterface() {
+    int i = 0;
+    pulse* t = &(*activeSetPtr).pulse1;
+    for (int k = 0; k < 2; ++k) {
+        theGui.textBoxes[i++].valueToPointer(&(*t).energy);
+        theGui.textBoxes[i++].valueToPointer(1e12, &(*t).frequency);
+        theGui.textBoxes[i++].valueToPointer(1e12, &(*t).bandwidth);
+        theGui.textBoxes[i++].valueToPointer(&(*t).sgOrder);
+        theGui.textBoxes[i++].valueToPointer(1.0/PI, &(*t).cep);
+        theGui.textBoxes[i++].valueToPointer(1e-15, &(*t).delay);
+        theGui.textBoxes[i++].valueToPointer(1e-30, &(*t).gdd);
+        theGui.textBoxes[i++].valueToPointer(1e-45, &(*t).tod);
+        theGui.textBoxes[i++].valueToPointer(&(*t).phaseMaterial);
+        theGui.textBoxes[i++].valueToPointer(1e-6, &(*t).phaseMaterialThickness);
+        theGui.textBoxes[i++].valueToPointer(1e-6, &(*t).beamwaist);
+        theGui.textBoxes[i++].valueToPointer(1e-6, &(*t).x0);
+        theGui.textBoxes[i++].valueToPointer(1e-6, &(*t).z0);
+        theGui.textBoxes[i++].valueToPointer(DEG2RAD, &(*t).beamAngle);
+        theGui.textBoxes[i++].valueToPointer(DEG2RAD, &(*t).polarizationAngle);
+        theGui.textBoxes[i++].valueToPointer(&(*t).circularity);
+        t = &(*activeSetPtr).pulse2;
+    }
+    
+    (*activeSetPtr).pulse1FileType = theGui.pulldowns[0].getValue();
+    (*activeSetPtr).pulse2FileType = theGui.pulldowns[1].getValue();
+    (*activeSetPtr).fittingMode = theGui.pulldowns[2].getValue();
+    (*activeSetPtr).materialIndex = theGui.pulldowns[3].getValue();
+
+    theGui.textBoxes[i++].valueToPointer(DEG2RAD, &(*activeSetPtr).crystalTheta);
+    theGui.textBoxes[i++].valueToPointer(DEG2RAD,  &(*activeSetPtr).crystalPhi);
+    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).nonlinearAbsorptionStrength);
+    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).bandGapElectronVolts);
+    theGui.textBoxes[i++].valueToPointer(1e12, &(*activeSetPtr).drudeGamma);
+    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).effectiveMass);
+
+
+    theGui.textBoxes[i++].valueToTwoPointers(1e-6, &(*activeSetPtr).spatialWidth, &(*activeSetPtr).spatialHeight);
+
+    theGui.textBoxes[i++].valueToPointer(1e-6, &(*activeSetPtr).rStep);
+    theGui.textBoxes[i++].valueToPointer(1e-15, &(*activeSetPtr).timeSpan);
+    theGui.textBoxes[i++].valueToPointer(1e-15, &(*activeSetPtr).tStep);
+    theGui.textBoxes[i++].valueToPointer(1e-6, &(*activeSetPtr).crystalThickness);
+    theGui.textBoxes[i++].valueToPointer(1e-6, &(*activeSetPtr).propagationStep);
+    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).batchDestination);
+    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).batchDestination2);
+    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).Nsims);
+    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).Nsims2);
+
+    (*activeSetPtr).symmetryType = theGui.pulldowns[4].getValue();
+    (*activeSetPtr).batchIndex = theGui.pulldowns[5].getValue();
+    (*activeSetPtr).batchIndex2 = theGui.pulldowns[6].getValue();
+
+    theGui.textBoxes[52].valueToPointer(&(*activeSetPtr).NsimsCPU);
+
+    char noneString[] = "None";
+    memset((*activeSetPtr).sequenceString, 0, MAX_LOADSTRING);
+    theGui.sequence.copyBuffer((*activeSetPtr).sequenceString, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).sequenceString, noneString);
+    }
+    else {
+        stripWhiteSpace((*activeSetPtr).sequenceString);
+    }
+    
+    memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
+    theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).fittingString, MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).fittingString, noneString);
+    }
+    else {
+        stripLineBreaks((*activeSetPtr).fittingString);
+    }
+    
+    memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING);
+    theGui.filePaths[0].copyBuffer((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).field1FilePath, noneString);
+    }
+    stripLineBreaks((*activeSetPtr).field1FilePath);
+    memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING);
+    theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).field2FilePath, noneString);
+    }
+    stripLineBreaks((*activeSetPtr).field2FilePath);
+    memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING);
+    theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).outputBasePath, MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).outputBasePath, noneString);
+    }
+    stripLineBreaks((*activeSetPtr).outputBasePath);
+    
+    memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING);
+    theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath, MAX_LOADSTRING);
+    if (strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING) == 0) {
+        strcpy((*activeSetPtr).fittingPath, noneString);
+    }
+    stripLineBreaks((*activeSetPtr).fittingPath);
+
+    //derived parameters and cleanup:
+    (*activeSetPtr).sellmeierType = 0;
+    (*activeSetPtr).axesNumber = 0;
+    (*activeSetPtr).Ntime = (size_t)(MIN_GRIDDIM * ceil((*activeSetPtr).timeSpan / (MIN_GRIDDIM * (*activeSetPtr).tStep)));
+
+    if ((*activeSetPtr).symmetryType == 2) {
+        (*activeSetPtr).is3D = TRUE;
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
+        if ((*activeSetPtr).spatialHeight > 0) {
+            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        }
+        else {
+            (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
+        }
+        (*activeSetPtr).Nspace2 = (size_t)round((*activeSetPtr).spatialHeight / (*activeSetPtr).rStep);
+    }
+    else {
+        (*activeSetPtr).is3D = FALSE;
+        (*activeSetPtr).Nspace2 = 1;
+        (*activeSetPtr).spatialHeight = 0;
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
+    }
+    //printC(L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
+    (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
+    (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
+    (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
+    (*activeSetPtr).kStep = TWOPI / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
+    (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
+    (*activeSetPtr).Npropagation = (size_t)round((*activeSetPtr).crystalThickness / (*activeSetPtr).propagationStep);
+
+    (*activeSetPtr).isCylindric = (*activeSetPtr).symmetryType == 1;
+    if ((*activeSetPtr).isCylindric) {
+        (*activeSetPtr).pulse1.x0 = 0;
+        (*activeSetPtr).pulse2.x0 = 0;
+        (*activeSetPtr).pulse1.beamAngle = 0;
+        (*activeSetPtr).pulse2.beamAngle = 0;
+    }
+
+    if ((*activeSetPtr).batchIndex == 0 || (*activeSetPtr).Nsims < 1) {
+        (*activeSetPtr).Nsims = 1;
+    }
+    if ((*activeSetPtr).batchIndex2 == 0 || (*activeSetPtr).Nsims2 < 1) {
+        (*activeSetPtr).Nsims2 = 1;
+    }
+    (*activeSetPtr).NsimsCPU = min((*activeSetPtr).NsimsCPU, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2);
+
+    (*activeSetPtr).field1IsAllocated = FALSE;
+    (*activeSetPtr).field2IsAllocated = FALSE;
+
+    //crystal from database (database must be loaded!)
+    (*activeSetPtr).chi2Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].d;
+    (*activeSetPtr).chi3Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].chi3;
+    (*activeSetPtr).nonlinearSwitches = crystalDatabasePtr[(*activeSetPtr).materialIndex].nonlinearSwitches;
+    (*activeSetPtr).absorptionParameters = crystalDatabasePtr[(*activeSetPtr).materialIndex].absorptionParameters;
+    (*activeSetPtr).sellmeierCoefficients = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierCoefficients;
+    (*activeSetPtr).sellmeierType = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierType;
+    (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
+    (*activeSetPtr).progressCounter = &progressCounter;
+}
+
+
+int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
+    size_t i = 0;
+    while (i < N - 1) {
+        if (cString[i] == ';') {
+            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] == ' ') {
+                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
+            }
+            cString[i + 1] = '\r';
+            cString[i + 2] = '\n';
+            i += 2;
+        }
+        i++;
+    }
+    return 0;
+}
+
+int indentForDepth(char* cString, size_t N) {
+    size_t i = 0;
+    int depth = 0;
+    while (i < N - 1) {
+        if (cString[i] == '{') depth++;
+        if (cString[i + 1] == '}') depth--;
+
+        if (cString[i] == ';' || ((cString[i] == ')' && cString[i + 1] != ';')) || cString[i] == '{') {
+            for (int k = 0; k < 2 * depth; k++) {
+                if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
+                    memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+                }
+                else if (cString[i + 1] != ' ') {
+                    memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+                }
+                else if (cString[i + 1] == ' ') {
+                    memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
+                }
+                cString[i + 1] = ' ';
+                cString[i + 2] = ' ';
+                i += 2;
+            }
+        }
+        i++;
+    }
+    return 0;
+}
+
+int insertLineBreaksAfterClosingParenthesis(char* cString, size_t N) {
+    size_t i = 0;
+    while (i < N - 1) {
+        if (cString[i] == ')' && cString[i + 1] != ';' && cString[i + 1] != '{') {
+            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] == ' ') {
+                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
+            }
+            cString[i + 1] = '\r';
+            cString[i + 2] = '\n';
+            i += 2;
+        }
+        i++;
+    }
+    return 0;
+}
+
+int insertLineBreaksAfterClosingAngle(char* cString, size_t N) {
+    size_t i = 0;
+    while (i < N - 1) {
+        if (cString[i] == '>') {
+            memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            cString[i + 1] = '\r';
+            cString[i + 2] = '\n';
+            i += 2;
+        }
+        i++;
+    }
+    return 0;
+}
+
+int insertLineBreaksAfterCurlyBraces(char* cString, size_t N) {
+    size_t i = 0;
+    while (i < N - 1) {
+        if (cString[i] == '{' || cString[i] == '}') {
+            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] != ' ') {
+                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+            }
+            else if (cString[i + 1] == ' ') {
+                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
+            }
+            cString[i + 1] = '\r';
+            cString[i + 2] = '\n';
+            i += 2;
+        }
+        i++;
+    }
+    return 0;
+}
+int formatSequence(char* cString, size_t N) {
+    indentForDepth(cString, N);
+    insertLineBreaksAfterClosingAngle(cString, N);
+    insertLineBreaksAfterClosingParenthesis(cString, N);
+    insertLineBreaksAfterSemicolons(cString, N);
+    insertLineBreaksAfterCurlyBraces(cString, N);
+    return 0;
+}
+
+int freeSemipermanentGrids() {
+    isGridAllocated = FALSE;
+    delete[](*activeSetPtr).ExtOut;
+    delete[](*activeSetPtr).EkwOut;
+    delete[](*activeSetPtr).totalSpectrum;
+    return 0;
+}
+
 void checkLibraryAvailability() {
     theGui.console.cPrint("\r\n");
     __try {
         HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
         if (SUCCEEDED(hr)) {
             CUDAavailable = TRUE;
-            theGui.console.cPrint("gofft.\r\n");
         }
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -270,7 +762,6 @@ void checkLibraryAvailability() {
             HRESULT hr = __HrLoadAllImportsForDll("nvml.dll");
             if (SUCCEEDED(hr)) {
                 CUDAavailable = TRUE;
-                theGui.console.cPrint("gofnml.\r\n");
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -284,7 +775,6 @@ void checkLibraryAvailability() {
             HRESULT hr = __HrLoadAllImportsForDll("cudart64_110.dll");
             if (SUCCEEDED(hr)) {
                 CUDAavailable = TRUE;
-                theGui.console.cPrint("nort.\r\n");
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -864,112 +1354,362 @@ int LwePlot2d(plotStruct* inputStruct) {
 }
 
 void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    GtkStyleContext* context;
-    LweColor black(0, 0, 0, 0);
-    LweColor white(0.8, 0.8, 0.8, 0);
-    LweColor magenta(1, 0, 1, 0);
+    if (!isGridAllocated) return;
+    plotStruct sPlot;
+    char* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
 
-    double xData[10] = { 1., 2., 3., 4., 5., 6., 7., 8., 9., 10. };
-    double yData[10] = { 1., 2., 3., 4., 5., -6., -7., -8., -9., -10. };
-    plotStruct testPlot;
-    testPlot.area = area;
-    testPlot.cr = cr;
-    testPlot.width = width;
-    testPlot.height = height;
-    testPlot.data = yData;
-    testPlot.x0 = 1.0;
-    testPlot.dx = 1.0;
-    testPlot.Npts = 10;
-    testPlot.axisColor = white;
-    testPlot.color = magenta;
-    testPlot.xLabel = "x label";
-    testPlot.yLabel = "y label";
-    testPlot.unitY = 1.0;
-    testPlot.makeSVG = FALSE;
-    LwePlot2d(&testPlot);
-    context = gtk_widget_get_style_context(GTK_WIDGET(area));
+    if (theGui.saveSVG) {
+        svgFilename = new char[MAX_LOADSTRING]();
+        svgBuf = new char[1024 * 1024]();
+    }
+    bool logPlot = FALSE;
+    if (FALSE) {
+        logPlot = FALSE;
+    }
+    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = FALSE;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (theGui.checkBoxes[0].isChecked()) {
+        overlayTotal = TRUE;
+    }
+    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+    if ((*activeSetPtr).is3D) {
+        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    }
+
+    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+    sPlot.area = area;
+    sPlot.cr = cr;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dx = (*activeSetPtr).tStep / 1e-15;
+    sPlot.x0 = -((sPlot.dx * (*activeSetPtr).Ntime) / 2 - sPlot.dx / 2);
+    sPlot.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + (*activeSetPtr).Ntime * (*activeSetPtr).Nspace / 2];
+    sPlot.Npts = (*activeSetPtr).Ntime;
+    sPlot.color = LweColor(0, 1, 1, 1);
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Time (fs)";
+    sPlot.yLabel = "Ey (GV/m)";
+    sPlot.unitY = 1e9;
+    sPlot.makeSVG = FALSE; // theGui.saveSVG;
+    sPlot.svgString = svgBuf;
+    sPlot.svgBuffer = 1024 * 1024;
+
+    LwePlot2d(&sPlot);
+
+    if (theGui.saveSVG) {
+        memset(svgFilename, 0, MAX_LOADSTRING);
+        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        strcat_s(svgFilename, MAX_LOADSTRING, "_Ey.svg");
+        if (fopen_s(&svgFile, svgFilename, "w")) return;
+        fprintf(svgFile, "%s", svgBuf);
+        fclose(svgFile);
+        delete[] svgBuf;
+        delete[] svgFilename;
+    }
 }
 
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    GtkStyleContext* context;
-    LweColor black(0, 0, 0, 0);
-    LweColor white(0.8, 0.8, 0.8, 0);
-    LweColor magenta(1, 0, 1, 0);
+    if (!isGridAllocated) return;
+    plotStruct sPlot;
+    char* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
 
-    double xData[10] = { 1., 2., 3., 4., 5., 6., 7., 8., 9., 10. };
-    double yData[10] = { 1., 2., 3., 4., 5., -6., -7., -8., -9., -10. };
-    plotStruct testPlot;
-    testPlot.area = area;
-    testPlot.cr = cr;
-    testPlot.width = width;
-    testPlot.height = height;
-    testPlot.data = yData;
-    testPlot.x0 = 1.0;
-    testPlot.dx = 1.0;
-    testPlot.Npts = 10;
-    testPlot.axisColor = white;
-    testPlot.color = magenta;
-    testPlot.xLabel = "x label";
-    testPlot.yLabel = "y label";
-    testPlot.unitY = 1.0;
-    testPlot.makeSVG = FALSE;
-    LwePlot2d(&testPlot);
-    context = gtk_widget_get_style_context(GTK_WIDGET(area));
+    if (theGui.saveSVG) {
+        svgFilename = new char[MAX_LOADSTRING]();
+        svgBuf = new char[1024 * 1024]();
+    }
+    bool logPlot = FALSE;
+    if (FALSE) {
+        logPlot = FALSE;
+    }
+    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = FALSE;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (theGui.checkBoxes[0].isChecked()) {
+        overlayTotal = TRUE;
+    }
+    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+    if ((*activeSetPtr).is3D) {
+        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    }
+
+    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+    sPlot.area = area;
+    sPlot.cr = cr;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dx = (*activeSetPtr).tStep / 1e-15;
+    sPlot.x0 = -((sPlot.dx * (*activeSetPtr).Ntime) / 2 - sPlot.dx / 2);
+    sPlot.data = &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + (*activeSetPtr).Ntime * (*activeSetPtr).Nspace / 2];
+    sPlot.Npts = (*activeSetPtr).Ntime;
+    sPlot.color = LweColor(1, 0, 1, 1);
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Time (fs)";
+    sPlot.yLabel = "Ex (GV/m)";
+    sPlot.unitY = 1e9;
+    sPlot.makeSVG = FALSE; // theGui.saveSVG;
+    sPlot.svgString = svgBuf;
+    sPlot.svgBuffer = 1024 * 1024;
+
+    LwePlot2d(&sPlot);
+
+    if (theGui.saveSVG) {
+        memset(svgFilename, 0, MAX_LOADSTRING);
+        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        strcat_s(svgFilename, MAX_LOADSTRING, "_Ex.svg");
+        if (fopen_s(&svgFile, svgFilename, "w")) return;
+        fprintf(svgFile, "%s", svgBuf);
+        fclose(svgFile);
+        delete[] svgBuf;
+        delete[] svgFilename;
+    }
 }
 
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    GtkStyleContext* context;
-    LweColor black(0, 0, 0, 0);
-    LweColor white(0.8, 0.8, 0.8, 0);
-    LweColor magenta(1, 0, 1, 0);
+    if (!isGridAllocated) return;
+    plotStruct sPlot;
+    char* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
 
-    double xData[10] = { 1., 2., 3., 4., 5., 6., 7., 8., 9., 10. };
-    double yData[10] = { 1., 2., 3., 4., 5., -6., -7., -8., -9., -10. };
-    plotStruct testPlot;
-    testPlot.area = area;
-    testPlot.cr = cr;
-    testPlot.width = width;
-    testPlot.height = height;
-    testPlot.data = yData;
-    testPlot.x0 = 1.0;
-    testPlot.dx = 1.0;
-    testPlot.Npts = 10;
-    testPlot.axisColor = white;
-    testPlot.color = magenta;
-    testPlot.xLabel = "x label";
-    testPlot.yLabel = "y label";
-    testPlot.unitY = 1.0;
-    testPlot.makeSVG = FALSE;
-    LwePlot2d(&testPlot);
-    context = gtk_widget_get_style_context(GTK_WIDGET(area));
+    if (theGui.saveSVG) {
+        svgFilename = new char[MAX_LOADSTRING]();
+        svgBuf = new char[1024 * 1024]();
+    }
+    bool logPlot = FALSE;
+    if (FALSE) {
+        logPlot = FALSE;
+    }
+    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = FALSE;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (theGui.checkBoxes[0].isChecked()) {
+        overlayTotal = TRUE;
+    }
+    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+    if ((*activeSetPtr).is3D) {
+        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    }
+
+    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+    sPlot.area = area;
+    sPlot.cr = cr;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dx = (*activeSetPtr).fStep / 1e12;
+    sPlot.data = &(*activeSetPtr).totalSpectrum[simIndex * 3 * (*activeSetPtr).Nfreq];
+    sPlot.Npts = (*activeSetPtr).Nfreq;
+    sPlot.logScale = logPlot;
+    sPlot.forceYmin = (logPlot || forceY);
+    sPlot.forcedYmin = -4.0;
+    sPlot.forceYmax = forceY;
+    sPlot.forcedYmax = yMax;
+    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.color = LweColor(0.5, 0, 1, 1);
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Sy (W/Hz)";
+    sPlot.forceXmax = forceX;
+    sPlot.forceXmin = forceX;
+    sPlot.forcedXmax = xMax;
+    sPlot.forcedXmin = xMin;
+    if (overlayTotal) {
+        sPlot.data2 = &(*activeSetPtr).totalSpectrum[(2 + simIndex * 3) * (*activeSetPtr).Nfreq];
+        sPlot.ExtraLines = 1;
+        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
+    }
+    sPlot.makeSVG = FALSE; // theGui.saveSVG;
+    sPlot.svgString = svgBuf;
+    sPlot.svgBuffer = 1024 * 1024;
+
+    LwePlot2d(&sPlot);
+
+    if (theGui.saveSVG) {
+        memset(svgFilename, 0, MAX_LOADSTRING);
+        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        strcat_s(svgFilename, MAX_LOADSTRING, "_Sx.svg");
+        if (fopen_s(&svgFile, svgFilename, "w")) return;
+        fprintf(svgFile, "%s", svgBuf);
+        fclose(svgFile);
+        delete[] svgBuf;
+        delete[] svgFilename;
+    }
 }
 
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    GtkStyleContext* context;
-    LweColor black(0, 0, 0, 0);
-    LweColor white(0.8, 0.8, 0.8, 0);
-    LweColor magenta(1, 0, 1, 0);
+    if (!isGridAllocated) return;
+    plotStruct sPlot;
+    char* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
 
-    double xData[10] = { 1., 2., 3., 4., 5., 6., 7., 8., 9., 10. };
-    double yData[10] = { 1., 2., 3., 4., 5., -6., -7., -8., -9., -10. };
-    plotStruct testPlot;
-    testPlot.area = area;
-    testPlot.cr = cr;
-    testPlot.width = width;
-    testPlot.height = height;
-    testPlot.data = yData;
-    testPlot.x0 = 1.0;
-    testPlot.dx = 1.0;
-    testPlot.Npts = 10;
-    testPlot.axisColor = white;
-    testPlot.color = magenta;
-    testPlot.xLabel = "x label";
-    testPlot.yLabel = "y label";
-    testPlot.unitY = 1.0;
-    testPlot.makeSVG = FALSE;
-    LwePlot2d(&testPlot);
-    context = gtk_widget_get_style_context(GTK_WIDGET(area));
+    if (theGui.saveSVG) {
+        svgFilename = new char[MAX_LOADSTRING]();
+        svgBuf = new char[1024 * 1024]();
+    }
+    bool logPlot = FALSE;
+    if (FALSE) {
+        logPlot = FALSE;
+    }
+    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = FALSE;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (theGui.checkBoxes[0].isChecked()) {
+        overlayTotal = TRUE;
+    }
+    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+    if ((*activeSetPtr).is3D) {
+        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    }
+
+    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+    sPlot.area = area;
+    sPlot.cr = cr;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dx = (*activeSetPtr).fStep / 1e12;
+    sPlot.data = &(*activeSetPtr).totalSpectrum[(1 + simIndex * 3) * (*activeSetPtr).Nfreq];
+    sPlot.Npts = (*activeSetPtr).Nfreq;
+    sPlot.logScale = logPlot;
+    sPlot.forceYmin = (logPlot || forceY);
+    sPlot.forcedYmin = -4.0;
+    sPlot.forceYmax = forceY;
+    sPlot.forcedYmax = yMax;
+    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.color = LweColor(1, 0, 0.5, 0.0);
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Sx (W/Hz)";
+    sPlot.forceXmax = forceX;
+    sPlot.forceXmin = forceX;
+    sPlot.forcedXmax = xMax;
+    sPlot.forcedXmin = xMin;
+    if (overlayTotal) {
+        sPlot.data2 = &(*activeSetPtr).totalSpectrum[(2 + simIndex * 3) * (*activeSetPtr).Nfreq];
+        sPlot.ExtraLines = 1;
+        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
+    }
+    sPlot.makeSVG = FALSE; // theGui.saveSVG;
+    sPlot.svgString = svgBuf;
+    sPlot.svgBuffer = 1024 * 1024;
+
+    LwePlot2d(&sPlot);
+
+	if (theGui.saveSVG) {
+		memset(svgFilename, 0, MAX_LOADSTRING);
+		theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+		strcat_s(svgFilename, MAX_LOADSTRING, "_Sx.svg");
+		if (fopen_s(&svgFile, svgFilename, "w")) return;
+		fprintf(svgFile, "%s", svgBuf);
+		fclose(svgFile);
+		delete[] svgBuf;
+		delete[] svgFilename;
+	}
 }
+
+int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
+    int i, j;
+    float A00;
+    float f;
+
+    int nx0, ny0;
+    int Ni, Nj;
+    for (i = 0; i < nbx; ++i) {
+        f = i * (nax / (float)nbx);
+        Ni = (int)f;
+        nx0 = nay * min(Ni, nax);
+        for (j = 0; j < nby; ++j) {
+            f = (j * (nay / (float)nby));
+            Nj = (int)f;
+            ny0 = min(nay, Nj);
+            A00 = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
+            B[i * nby + j] = A00;
+        }
+    }
+    return 0;
+}
+
+
 
 int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby) {
     int i, j;
@@ -987,30 +1727,434 @@ int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int
     return 0;
 }
 
-void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    int Nx = 64;
-    int Ny = 32;
-    double dataC[64 * 64] = { 0 };
-    for (int i = 0; i < 64; i++) {
-        for (int j = 0; j < 64; j++) {
-            dataC[i + 64 * j] = 0.1 * j;
-        }
+void imagePlot(imagePlotStruct* s) {
+
+    int dx = (*s).width;
+    int dy = (*s).height;
+
+    size_t plotSize = (size_t)dx * (size_t)dy;
+    float* plotarr2 = (float*)malloc(plotSize * sizeof(float));
+
+    switch ((*s).dataType) {
+    case 0:
+        linearRemapDoubleToFloat((*s).data, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
+        break;
+    case 1:
+        std::complex<double> *shiftedFFT = (std::complex<double>*)malloc((*activeSetPtr).Nspace * (*activeSetPtr).Nfreq * sizeof(std::complex<double>));
+        fftshiftD2Z((*s).complexData, shiftedFFT, (*activeSetPtr).Nfreq, (*activeSetPtr).Nspace);
+        linearRemapZToLogFloat(shiftedFFT, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
+        free(shiftedFFT);
+        break;
     }
-    float* scaledData = new float[width * height]();
-    linearRemapDoubleToFloat(dataC, Nx, Ny, scaledData, width, height);
-    drawArrayAsBitmap(cr, width, height, scaledData, 3);
-    delete[] scaledData;
+    drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, (*s).colorMap);
+    free(plotarr2);
+
+
 }
 
-void drawTimeImage2(GtkDrawingArea* area,
-    cairo_t* cr,
-    int             width,
-    int             height,
-    gpointer        data) {}
 
-void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {}
-void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {}
+void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (!isGridAllocated) return;
+    imagePlotStruct sPlot;
+    char* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
 
+    bool logPlot = FALSE;
+    if (FALSE) {
+        logPlot = FALSE;
+    }
+    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = FALSE;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (theGui.checkBoxes[0].isChecked()) {
+        overlayTotal = TRUE;
+    }
+    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+    if ((*activeSetPtr).is3D) {
+        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    }
+
+    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+    sPlot.data =
+        &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+    sPlot.area = area;
+    sPlot.cr = cr;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dataType = 0;
+    sPlot.colorMap = 4;
+    imagePlot(&sPlot);
+}
+
+void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (!isGridAllocated) return;
+    imagePlotStruct sPlot;
+    char* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
+
+
+    bool logPlot = FALSE;
+    if (FALSE) {
+        logPlot = FALSE;
+    }
+    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = FALSE;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (theGui.checkBoxes[0].isChecked()) {
+        overlayTotal = TRUE;
+    }
+    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+    if ((*activeSetPtr).is3D) {
+        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    }
+
+    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+    sPlot.data =
+        &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+    sPlot.area = area;
+    sPlot.cr = cr;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dataType = 0;
+    sPlot.colorMap = 4;
+    imagePlot(&sPlot);
+}
+
+void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (!isGridAllocated) return;
+    imagePlotStruct sPlot;
+    char* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
+
+
+    bool logPlot = FALSE;
+    if (FALSE) {
+        logPlot = FALSE;
+    }
+    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = FALSE;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (theGui.checkBoxes[0].isChecked()) {
+        overlayTotal = TRUE;
+    }
+    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+    if ((*activeSetPtr).is3D) {
+        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    }
+
+    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+    sPlot.complexData =
+        &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2];
+    sPlot.area = area;
+    sPlot.cr = cr;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dataType = 1;
+    sPlot.logMin = logPlotOffset;
+    sPlot.colorMap = 3;
+    imagePlot(&sPlot);
+}
+
+void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
+    if (!isGridAllocated) return;
+    imagePlotStruct sPlot;
+    char* svgBuf = NULL;
+    char* svgFilename = NULL;
+    FILE* svgFile;
+
+
+    bool logPlot = FALSE;
+    if (FALSE) {
+        logPlot = FALSE;
+    }
+    size_t simIndex = 0;// theGui.plotSlider.getIntValue();
+    if (simIndex < 0) {
+        simIndex = 0;
+    }
+    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = FALSE;
+    double xMin = theGui.textBoxes[48].valueDouble();
+    double xMax = theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = TRUE;
+    }
+    bool forceY = FALSE;
+    double yMin = theGui.textBoxes[50].valueDouble();
+    double yMax = theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = TRUE;
+    }
+    bool overlayTotal = FALSE;
+    if (theGui.checkBoxes[0].isChecked()) {
+        overlayTotal = TRUE;
+    }
+    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
+    if ((*activeSetPtr).is3D) {
+        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    }
+
+    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+
+    sPlot.complexData =
+        &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + (*activeSetPtr).NgridC];
+    sPlot.area = area;
+    sPlot.cr = cr;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dataType = 1;
+    sPlot.logMin = logPlotOffset;
+    sPlot.colorMap = 3;
+    imagePlot(&sPlot);
+}
+
+
+void launchRunThread() {
+    if(!isRunning) std::thread(simpleSimThread).detach();
+}
+
+
+void mainSimThread() {
+    cancellationCalled = FALSE;
+    auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
+    HANDLE plotThread = NULL;
+    DWORD hplotThread;
+    HANDLE cpuThread = NULL;
+    DWORD hCpuThread;
+
+    if (isGridAllocated) {
+        freeSemipermanentGrids();
+    }
+    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+    readParametersFromInterface();
+    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
+        theGui.console.cPrint("Too many simulations in batch mode. Must be under %i total.\r\n", MAX_SIMULATIONS);
+    }
+    (*activeSetPtr).runType = 0;
+    allocateGrids(activeSetPtr);
+    isGridAllocated = TRUE;
+    //setTrackbarLimitsToActiveSet();
+    (*activeSetPtr).isFollowerInSequence = FALSE;
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    loadPulseFiles(activeSetPtr);
+
+    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
+
+    configureBatchMode(activeSetPtr);
+    int error = 0;
+    //run the simulations
+    isRunning = TRUE;
+    progressCounter = 0;
+    int pulldownSelection = theGui.pulldowns[8].getValue();
+    auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+    auto normalFunction = &solveNonlinearWaveEquationCPU;
+    int assignedGPU = 0;
+    bool forceCPU = 0;
+    int SYCLitems = 0;
+    if (syclGPUCount == 0) {
+        SYCLitems = (int)SYCLavailable;
+    }
+    else {
+        SYCLitems = 3;
+    }
+    if (pulldownSelection < cudaGPUCount) {
+        sequenceFunction = &solveNonlinearWaveEquationSequence;
+        normalFunction = &solveNonlinearWaveEquation;
+        assignedGPU = pulldownSelection;
+    }
+    else if (pulldownSelection == cudaGPUCount && SYCLavailable) {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
+        forceCPU = 1;
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
+        assignedGPU = 1;
+        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+        normalFunction = &solveNonlinearWaveEquationSYCL;
+    }
+    else {
+        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+        normalFunction = &solveNonlinearWaveEquationCPU;
+    }
+
+    //cpuThread = CreateThread(NULL, 0, secondaryQueue, &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 0, &hCpuThread);
+    for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); ++j) {
+
+        activeSetPtr[j].runningOnCPU = forceCPU;
+        activeSetPtr[j].assignedGPU = assignedGPU;
+        if ((*activeSetPtr).isInSequence) {
+            error = sequenceFunction(&activeSetPtr[j]);
+
+            if (activeSetPtr[j].memoryError != 0) {
+                if (activeSetPtr[j].memoryError == -1) {
+                    theGui.console.cPrint(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                }
+                else {
+                    theGui.console.cPrint(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                }
+            }
+            if (error) break;
+            if (!isPlotting) {
+                (*activeSetPtr).plotSim = j;
+                //plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+                //if (plotThread != 0)CloseHandle(plotThread);
+            }
+
+        }
+        else {
+            error = normalFunction(&activeSetPtr[j]);
+            if (activeSetPtr[j].memoryError != 0) {
+                if (activeSetPtr[j].memoryError == -1) {
+                    theGui.console.cPrint(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                }
+                else {
+                    theGui.console.cPrint(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                }
+            }
+
+            if (error) break;
+        }
+
+        if (cancellationCalled) {
+            theGui.console.cPrint(_T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
+            break;
+        }
+
+        if (!isPlotting) {
+            (*activeSetPtr).plotSim = j;
+            //plotThread = CreateThread(NULL, 0, drawSimPlots, activeSetPtr, 0, &hplotThread);
+            //if (plotThread != NULL)CloseHandle(plotThread);
+        }
+    }
+
+    if ((*activeSetPtr).NsimsCPU != 0 && cpuThread != 0) {
+        //WaitForSingleObject(cpuThread, INFINITE);
+        //CloseHandle(cpuThread);
+    }
+    auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
+    if (error == 13) {
+        theGui.console.cPrint(
+            "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
+    }
+    else {
+        theGui.console.cPrint(_T("Finished after %8.4lf s. \r\n"), 1e-6 *
+            (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+    }
+    //saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
+    deallocateGrids(activeSetPtr, FALSE);
+    isRunning = FALSE;
+}
+
+
+void simpleSimThread() {
+    cancellationCalled = FALSE;
+    auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
+    if (isGridAllocated) {
+        freeSemipermanentGrids();
+    }
+    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+    readParametersFromInterface();
+    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
+        theGui.console.threadPrint("Too many simulations in batch mode. Must be under %i total.\r\n", MAX_SIMULATIONS);
+    }
+    (*activeSetPtr).runType = 0;
+    allocateGrids(activeSetPtr);
+    isGridAllocated = TRUE;
+    (*activeSetPtr).isFollowerInSequence = FALSE;
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    //loadPulseFiles(activeSetPtr);
+
+    //if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
+
+    configureBatchMode(activeSetPtr);
+    int error = 0;
+    //run the simulations
+    isRunning = TRUE;
+    progressCounter = 0;
+    
+    error = solveNonlinearWaveEquation(activeSetPtr);
+    theGui.requestPlotUpdate();
+    //Sleep(500);
+    auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
+    if (error == 13) {
+        theGui.console.threadPrint(
+            "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
+    }
+    else {
+        theGui.console.threadPrint(_T("Finished after %8.4lf s.\n"), 1e-6 *
+            (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+    }
+    
+    //saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
+    deallocateGrids(activeSetPtr, FALSE);
+    isRunning = FALSE;
+}
 
 int main(int argc, char** argv) {
     GtkApplication* app;

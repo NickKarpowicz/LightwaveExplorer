@@ -116,6 +116,8 @@
     <CudaCompile Include="..\LightwaveExplorerCore.cu">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <Defines Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NOCUDAMAIN;%(Defines)</Defines>
+      <Defines Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NOCUDAMAIN;%(Defines)</Defines>
     </CudaCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

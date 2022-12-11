@@ -1,5 +1,4 @@
 // define a compiler-specific activeDevice class and set of macros
-#define NOCUDAMAIN 1
 #ifdef __CUDACC__
 #include "LWEActiveDeviceCUDA.cuh"
 #define trilingual __global__ void
