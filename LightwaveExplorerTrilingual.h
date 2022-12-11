@@ -1,5 +1,5 @@
 // define a compiler-specific activeDevice class and set of macros
-
+#define NOCUDAMAIN 1
 #ifdef __CUDACC__
 #include "LWEActiveDeviceCUDA.cuh"
 #define trilingual __global__ void
@@ -13,7 +13,11 @@
 #define deviceFunctions deviceFunctionsCUDA
 #define atomicAddDevice atomicAdd
 #define hostFunctions hostFunctionsCUDA
+#ifndef NOCUDAMAIN
 #define mainX main
+#else
+#define mainX mainCUDA
+#endif
 #define mainArgumentX char* argv[]
 #define resolveArgv char* filepath = argv[1];
 #define runDlibFittingX runDlibFitting

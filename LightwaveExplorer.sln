@@ -16,6 +16,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightwaveExplorerSYCL", "Li
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DlibLibraryComponents", "DlibLibraryComponents\DlibLibraryComponents.vcxproj", "{5497503A-5EC8-4153-9713-5312E502BF36}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightwaveExplorerGTK", "LightwaveExplorerGTK\LightwaveExplorerGTK.vcxproj", "{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5497503A-5EC8-4153-9713-5312E502BF36} = {5497503A-5EC8-4153-9713-5312E502BF36}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -48,6 +53,14 @@ Global
 		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x64.Build.0 = Release|x64
 		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x86.ActiveCfg = Release|Win32
 		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x86.Build.0 = Release|Win32
+		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Debug|x64.ActiveCfg = Debug|x64
+		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Debug|x64.Build.0 = Debug|x64
+		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Debug|x86.ActiveCfg = Debug|x64
+		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Debug|x86.Build.0 = Debug|x64
+		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Release|x64.ActiveCfg = Release|x64
+		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Release|x64.Build.0 = Release|x64
+		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Release|x86.ActiveCfg = Release|x64
+		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

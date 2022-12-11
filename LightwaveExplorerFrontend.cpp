@@ -1985,8 +1985,8 @@ int drawLabels(HDC hdc) {
     labelTextBox(hdc, maingui.mainWindow, maingui.tbCEPhase1, _T("CEP/pi"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbPulseType1, _T("SG order"), labos, 0);
     
-    labelTextBox(hdc, maingui.mainWindow, maingui.tbGDD1, _T("GDD 1 (fs^2)"), labos, 0);
-    labelTextBox(hdc, maingui.mainWindow, maingui.tbTOD1, _T("TOD 1 (fs^3)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbGDD1, _T("GDD (fs^2)"), labos, 0);
+    labelTextBox(hdc, maingui.mainWindow, maingui.tbTOD1, _T("TOD (fs^3)"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbPhaseMaterialIndex1, _T("Phase material"), labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbPhaseMaterialThickness1, L"Thickness (\x00B5m)", labos, 0);
     labelTextBox(hdc, maingui.mainWindow, maingui.tbXoffset1, _T("x offset (\x00B5m)"), labos, 0);

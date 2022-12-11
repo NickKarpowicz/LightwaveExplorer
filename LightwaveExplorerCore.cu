@@ -705,8 +705,6 @@ namespace kernels {
 
 		//transverse wavevector being resolved
 		double dk = j * kStep - (j >= ((long long)(*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
-		//sellmeierCuda(&n0, &no, sellmeierCoefficients, abs((*s).f0),
-		//	crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
@@ -1353,7 +1351,6 @@ namespace kernels {
 		//factor 2 accounts for the missing negative frequency plane
 		atomicAddDevice(pulseSum, pointEnergy);
 	};
-
 
 	trilingual multiplyByConstantKernelD asKernel(withID double* A, double val) {
 		long long i = localIndex;
