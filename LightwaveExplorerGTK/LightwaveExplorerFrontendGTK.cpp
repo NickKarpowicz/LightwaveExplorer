@@ -307,6 +307,8 @@ public:
         buttons[9].init(_T("Path"), parentHandle, textWidth, 22, textWidth, 1, saveFileDialogCallback, (gpointer)3);
         buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
         buttons[11].init(_T("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
+        checkBoxes[0].setFunction(independentPlotQueue);
+        checkBoxes[1].setFunction(independentPlotQueue);
         buttons[12].init(_T("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
         plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
         plotSlider.setRange(0.0, 10.0);

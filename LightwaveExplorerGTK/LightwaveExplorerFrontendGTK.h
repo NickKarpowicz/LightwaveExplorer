@@ -427,6 +427,9 @@ public:
     bool isChecked() {
         return (bool)gtk_check_button_get_active(GTK_CHECK_BUTTON(elementHandle));
     }
+    void setFunction(void* buttonFunction) {
+        g_signal_connect_after(elementHandle, "toggled", G_CALLBACK(buttonFunction), NULL);
+    }
 };
 
 class LwePulldown : public LweGuiElement {
