@@ -1084,7 +1084,7 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
         for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
             printC(_T("%2.2i: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
             memset(materialString, 0, 128 * sizeof(TCHAR));
-            swprintf_s(materialString, 128 * sizeof(TCHAR), L"%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
+            swprintf_s(materialString, 128, L"%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
             SendMessage(maingui.pdMaterialIndex, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)materialString);
         }
     }

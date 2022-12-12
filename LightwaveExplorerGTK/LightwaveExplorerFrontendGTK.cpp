@@ -1565,7 +1565,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     LwePlot2d(&sPlot);
 
-    if (theGui.saveSVG) {
+    if (saveSVG) {
         memset(svgFilename, 0, MAX_LOADSTRING);
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
         strcat_s(svgFilename, MAX_LOADSTRING, "_Ey.svg");
@@ -1647,7 +1647,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     LwePlot2d(&sPlot);
 
-    if (theGui.saveSVG) {
+    if (saveSVG) {
         memset(svgFilename, 0, MAX_LOADSTRING);
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
         strcat_s(svgFilename, MAX_LOADSTRING, "_Ex.svg");
@@ -1831,7 +1831,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
     LwePlot2d(&sPlot);
 
-	if (theGui.saveSVG) {
+	if (saveSVG) {
 		memset(svgFilename, 0, MAX_LOADSTRING);
 		theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
 		strcat_s(svgFilename, MAX_LOADSTRING, "_Sx.svg");
