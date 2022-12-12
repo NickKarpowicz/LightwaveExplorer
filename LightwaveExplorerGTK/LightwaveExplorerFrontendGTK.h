@@ -113,6 +113,17 @@ public:
         gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
         gtk_grid_attach(GTK_GRID(_grid), label, _x + x, _y + y, 6, 1);
     }
+    void setLabel(int x, int y, const char* labelText, int characters, int grids) {
+        label = gtk_label_new(labelText);
+        gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+        gtk_label_set_max_width_chars(GTK_LABEL(label), characters);
+        gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
+        gtk_grid_attach(GTK_GRID(_grid), label, _x + x, _y + y, grids, 1);
+    }
+    void squeeze() {
+        gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
+        gtk_widget_set_halign(elementHandle, GTK_ALIGN_END);
+    }
 };
 
 class LweTextBox : public LweGuiElement {
@@ -303,7 +314,7 @@ public:
 
     void copyBuffer(char* destination, size_t maxLength) {
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
-        strncpy(destination, gtk_entry_buffer_get_text(buf), maxLength);
+        snprintf(destination, maxLength, "%s", gtk_entry_buffer_get_text(buf));
     }
 
 };
@@ -361,18 +372,6 @@ public:
         }
 
     }
-    template<typename... Args> void wPrint(const wchar_t* format, Args... args) {
-        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        wchar_t* wideBuffer = new wchar_t[65536]();
-        mbstowcs(wideBuffer, textBuffer, 65536);
-        size_t offset = wcsnlen(wideBuffer, 65536);
-        swprintf(&wideBuffer[offset], 65536, format, args...);
-        wcstombs(textBuffer, wideBuffer, 65536);
-        gtk_text_buffer_set_text(buf, textBuffer, -1);
-        GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
-        gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
-        delete[] wideBuffer;
-    }
     template<typename... Args> void overwritePrint(const char* format, Args... args) {
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         memset(textBuffer, 0, 65536);
@@ -389,7 +388,7 @@ public:
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
         char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, FALSE);
-        strncpy(destination, realBuf, maxLength);
+        snprintf(destination, maxLength, "%s", realBuf);
     }
 };
 
@@ -432,6 +431,19 @@ public:
     }
 };
 
+class LweProgressBar : public LweGuiElement {
+public:
+    void init(GtkWidget* grid, int x, int y, int width, int height) {
+        elementHandle = gtk_progress_bar_new();
+        gtk_widget_set_valign(elementHandle, GTK_ALIGN_CENTER);
+        gtk_widget_set_hexpand(elementHandle, TRUE);
+        setPosition(grid, x, y, width, height);
+    }
+    void setValue(double fraction) {
+        gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(elementHandle), fraction);
+    }
+};
+
 class LwePulldown : public LweGuiElement {
     char** strArray;
     char* strings;
@@ -457,7 +469,7 @@ public:
     void addElementW(const wchar_t* newelement) {
         if (Nelements == 99) return;
         strArray[Nelements] = &strings[Nelements * strLength];
-        wcstombs(strArray[Nelements], newelement, 127);
+        snprintf(strArray[Nelements], 127, "%ls", newelement);
         stripLineBreaks(strArray[Nelements]);
         ++Nelements;
     }
@@ -483,6 +495,8 @@ class LweWindow {
     GtkWidget* plotGrid;
     GtkWidget* plotControlsGrid;
     GtkWidget* consoleControlsGrid;
+    GtkWidget* consoleControlsSubgrid1;
+    GtkWidget* consoleControlsSubgrid2;
     GtkWidget* plotControlsSubgrid1;
     GtkWidget* plotControlsSubgrid2;
 public:
@@ -497,6 +511,8 @@ public:
         bigGrid = gtk_grid_new();
         consoleGrid = gtk_grid_new();
         consoleControlsGrid = gtk_grid_new();
+        consoleControlsSubgrid1 = gtk_grid_new();
+        consoleControlsSubgrid2 = gtk_grid_new();
         plotGrid = gtk_grid_new();
         plotControlsGrid = gtk_grid_new();
         plotControlsSubgrid1 = gtk_grid_new();
@@ -510,11 +526,12 @@ public:
         gtk_grid_set_row_spacing(GTK_GRID(plotGrid), 1);
         gtk_grid_set_column_spacing(GTK_GRID(plotGrid), 1);
         gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+        gtk_grid_set_column_homogeneous(GTK_GRID(consoleControlsGrid), TRUE);
         gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
         gtk_grid_set_column_homogeneous(GTK_GRID(plotGrid), TRUE);
-        gtk_grid_set_column_homogeneous(GTK_GRID(plotControlsGrid), TRUE);
         gtk_grid_set_row_homogeneous(GTK_GRID(plotGrid), TRUE);
         gtk_grid_set_row_spacing(GTK_GRID(consoleGrid), 1);
+        gtk_grid_set_column_spacing(GTK_GRID(consoleControlsGrid), 8);
         gtk_grid_set_column_spacing(GTK_GRID(consoleGrid), 1);
         gtk_window_set_child(GTK_WINDOW(window), bigGrid);
         gtk_widget_set_hexpand(grid, FALSE);
@@ -522,11 +539,17 @@ public:
         gtk_widget_set_vexpand(grid, FALSE);
         gtk_widget_set_valign(grid, GTK_ALIGN_START);
         gtk_widget_set_hexpand(consoleGrid, FALSE);
+        gtk_widget_set_hexpand(consoleControlsGrid, FALSE);
         gtk_widget_set_vexpand(consoleGrid, TRUE);
         gtk_widget_set_halign(consoleGrid, GTK_ALIGN_FILL);
+        gtk_widget_set_halign(consoleControlsGrid, GTK_ALIGN_FILL);
         gtk_widget_set_valign(consoleGrid, GTK_ALIGN_FILL);
+        gtk_widget_set_valign(consoleControlsSubgrid1, GTK_ALIGN_CENTER);
+        gtk_widget_set_halign(consoleControlsSubgrid2, GTK_ALIGN_END);
         gtk_grid_attach(GTK_GRID(bigGrid), consoleGrid, 0, 1, 1, 1);
         gtk_grid_attach(GTK_GRID(bigGrid), consoleControlsGrid, 0, 2, 1, 1);
+        gtk_grid_attach(GTK_GRID(consoleControlsGrid), consoleControlsSubgrid1, 0, 0, 1, 1);
+        gtk_grid_attach(GTK_GRID(consoleControlsGrid), consoleControlsSubgrid2, 1, 0, 1, 1);
         gtk_grid_attach(GTK_GRID(bigGrid), plotGrid, 1, 0, 1, 2);
         gtk_grid_attach(GTK_GRID(bigGrid), grid, 0, 0, 1, 1);
         gtk_grid_attach(GTK_GRID(bigGrid), plotControlsGrid, 1, 2, 1, 1);
@@ -553,7 +576,9 @@ public:
         case 4:
             return plotControlsSubgrid2;
         case 5:
-            return consoleControlsGrid;
+            return consoleControlsSubgrid1;
+        case 6:
+            return consoleControlsSubgrid2;
         }
         return grid;
     }
@@ -570,8 +595,8 @@ public:
         gtk_widget_set_hexpand(elementHandle, TRUE);
         gtk_widget_set_vexpand(elementHandle, TRUE);
         setPosition(grid, x, y, width, height);
-        gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(elementHandle), 100);
-        gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(elementHandle), 100);
+        gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(elementHandle), 12);
+        gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(elementHandle), 12);
     }
     void setDrawingFunction(GtkDrawingAreaDrawFunc theFunction) {
         gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(elementHandle),
@@ -580,6 +605,18 @@ public:
     }
     void queueDraw() {
         gtk_widget_queue_draw(elementHandle);
+    }
+    void noVerticalExpantion() {
+        gtk_widget_set_vexpand(elementHandle, FALSE);
+    }
+};
+class LweSpacer : public LweGuiElement {
+public:
+    void init(GtkWidget* grid, int x, int y, int width, int height, int spacing) {
+        elementHandle = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, spacing);
+        gtk_widget_set_hexpand(elementHandle, TRUE);
+        gtk_widget_set_vexpand(elementHandle, TRUE);
+        setPosition(grid, x, y, width, height);
     }
 };
 
@@ -614,7 +651,6 @@ public:
     }
 };
 
-void runButtonClick();
 void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
@@ -625,6 +661,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
+void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm);
 int LwePlot2d(plotStruct* inputStruct);
 void checkLibraryAvailability();
@@ -632,7 +669,7 @@ void setInterfaceValuesToActiveValues();
 int formatSequence(char* cString, size_t N);
 int insertLineBreaksAfterSemicolons(char* cString, size_t N);
 int freeSemipermanentGrids();
-void mainSimThread(int pulldownSelection);
+void mainSimThread(int pulldownSelection, int pulldownSelection2);
 void launchRunThread();
 void independentPlotQueue();
 void loadCallback(GtkWidget* widget, gpointer pathTarget);
@@ -641,3 +678,7 @@ void fittingThread(int pulldownSelection);
 void stopButtonCallback();
 void svgCallback();
 void createRunFile();
+static void buttonAddSameCrystal();
+static void buttonAddDefault();
+static void buttonAddRotation();
+static void buttonAddPulse();

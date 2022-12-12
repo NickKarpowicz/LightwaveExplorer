@@ -19,6 +19,7 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightwaveExplorerGTK", "LightwaveExplorerGTK\LightwaveExplorerGTK.vcxproj", "{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}"
 	ProjectSection(ProjectDependencies) = postProject
 		{5497503A-5EC8-4153-9713-5312E502BF36} = {5497503A-5EC8-4153-9713-5312E502BF36}
+		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69} = {FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}
 	EndProjectSection
 EndProject
 Global
