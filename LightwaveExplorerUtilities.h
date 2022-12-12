@@ -328,5 +328,9 @@ namespace {
         strcat(a, b);
         return 0;
     }
+
+    size_t strnlen_s(char* a, size_t L) {
+        return strnlen(a, L);
+    }
 }
 #endif
