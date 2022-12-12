@@ -173,6 +173,7 @@
     </Link>
     <PostBuildEvent>
       <Command>copy "$(TargetPath)" "$(ProjectDir)..\Executable\"
+copy "$(TargetPath)" "$(ProjectDir)..\Executable\bin"
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>

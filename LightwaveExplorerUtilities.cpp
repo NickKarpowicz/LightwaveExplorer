@@ -5,48 +5,7 @@
 #include <complex>
 #include "LightwaveExplorerUtilities.h"
 
-//give linux wrappers for unsafe functions to use as safe functions since it doesn't have them
-#if defined __linux__ || defined __APPLE__
-namespace {
-	char* strtok_s(char* in, const char* delimiter, char** dummy) {
-		return strtok(in, delimiter);
-	}
-#define sscanf_s sscanf
-#define fscanf_s fscanf
-#define fwscanf_s fwscanf
-	int fopen_s(FILE** fp, char* path, const char* kind) {
-		*fp = fopen(path, kind);
-		return (*fp == 0);
-	}
 
-	int fopen_s(FILE** fp, const char* path, const char* kind) {
-		*fp = fopen(path, kind);
-		return (*fp == 0);
-	}
-
-	char* strcpy_s(char* a, int len, char* c) {
-		return strcpy(a, c);
-	}
-
-	size_t fread_s(void* buffer, size_t buffersize, size_t elementsize, size_t Nwrite, FILE* file) {
-		return fread(buffer, elementsize, Nwrite, file);
-	}
-
-	size_t mbstowcs_s(size_t* ct, wchar_t* buf, char* obuf, size_t m) {
-		return mbstowcs(buf, obuf, m);
-	}
-
-	int strcat_s(char* a, size_t L, char* b) {
-		strcat(a, b);
-		return 0;
-	}
-
-	int strcat_s(char* a, size_t L, const char* b) {
-		strcat(a, b);
-		return 0;
-	}
-}
-#endif
 
 int readFittingString(simulationParameterSet* sCPU) {
 	//read the fitting string (if there is one), convert it into an array if it exists
