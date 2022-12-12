@@ -394,7 +394,7 @@ public:
 
 class LweButton : public LweGuiElement {
 public:
-    void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height, void* buttonFunction) {
+    void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height, auto buttonFunction) {
         elementHandle = gtk_button_new_with_label(buttonName);
         gtk_widget_set_hexpand(elementHandle, FALSE);
         gtk_widget_set_vexpand(elementHandle, FALSE);
@@ -402,17 +402,17 @@ public:
         setPosition(grid, x, y, width, height);
         setFunction(buttonFunction);
     }
-    void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height, void* buttonFunction, gpointer functionData) {
+    void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height, auto buttonFunction, gpointer functionData) {
         elementHandle = gtk_button_new_with_label(buttonName);
         gtk_widget_set_hexpand(elementHandle, FALSE);
         gtk_widget_set_vexpand(elementHandle, FALSE);
         setPosition(grid, x, y, width, height);
         setFunction(buttonFunction, functionData);
     }
-    void setFunction(void* buttonFunction) {
+    void setFunction(auto buttonFunction) {
         g_signal_connect(elementHandle, "clicked", G_CALLBACK(buttonFunction), NULL);
     }
-    void setFunction(void* buttonFunction, gpointer param) {
+    void setFunction(auto buttonFunction, gpointer param) {
         g_signal_connect(elementHandle, "clicked", G_CALLBACK(buttonFunction), param);
     }
 };
@@ -426,7 +426,7 @@ public:
     bool isChecked() {
         return (bool)gtk_check_button_get_active(GTK_CHECK_BUTTON(elementHandle));
     }
-    void setFunction(void* buttonFunction) {
+    void setFunction(auto buttonFunction) {
         g_signal_connect_after(elementHandle, "toggled", G_CALLBACK(buttonFunction), NULL);
     }
 };
@@ -643,7 +643,7 @@ public:
     void setDigits(int digits) {
         gtk_scale_set_digits(GTK_SCALE(elementHandle), digits);
     }
-    void setFunction(void* sliderFunction) {
+    void setFunction(auto sliderFunction) {
         g_signal_connect_after(elementHandle, "change-value", G_CALLBACK(sliderFunction), NULL);
     }
     void setValue(int value) {

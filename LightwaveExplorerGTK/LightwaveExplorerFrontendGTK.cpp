@@ -1,15 +1,15 @@
 #include "LightwaveExplorerFrontendGTK.h"
-#include "../LightwaveExplorerCore.cuh"
-#include "../LightwaveExplorerCoreCPU.h"
-#include "../LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
-
+#include <thread>
 #include <chrono>
-#include <Windows.h>
-#include <delayimp.h>
+#ifndef __APPLE__
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <nvml.h>
-#include <thread>
+#include "../LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
+#include "../LightwaveExplorerCore.cuh"
+#endif
+#include "../LightwaveExplorerCoreCPU.h"
+
 #ifdef _WIN32
 #define preferredStrCpy strncpy_s
 #else
@@ -645,7 +645,7 @@ void readParametersFromInterface() {
     if ((*activeSetPtr).batchIndex2 == 0 || (*activeSetPtr).Nsims2 < 1) {
         (*activeSetPtr).Nsims2 = 1;
     }
-    (*activeSetPtr).NsimsCPU = min((*activeSetPtr).NsimsCPU, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2);
+    (*activeSetPtr).NsimsCPU = minN((*activeSetPtr).NsimsCPU, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2);
 
     (*activeSetPtr).field1IsAllocated = FALSE;
     (*activeSetPtr).field2IsAllocated = FALSE;
@@ -786,7 +786,17 @@ int freeSemipermanentGrids() {
     return 0;
 }
 
-void checkLibraryAvailability() {    
+void checkLibraryAvailability() {   
+#ifdef __APPLE__
+    CUDAavailable = FALSE;
+    SYCLavailable = FALSE;
+#define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
+#define solveNonlinearWaveEquation solveNonlinearWaveEquationCPU
+#define solveNonlinearWaveEquationSequenceSYCL solveNonlinearWaveEquationSequenceCPU
+#define solveNonlinearWaveEquationSYCL solveNonlinearWaveEquationCPU
+#define runDlibFitting runDlibFittingCPU
+#define runDlibFittingSYCL runDlibFittingCPU
+#else
     if (TRUE) {
         //Find, count, and name the GPUs
         int CUDAdevice, i;
@@ -829,7 +839,7 @@ void checkLibraryAvailability() {
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
     size_t syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
     theGui.console.cPrint("%ls",syclDeviceList);
-
+#endif
     
 }
 int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
@@ -1853,19 +1863,17 @@ int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, 
     for (i = 0; i < nbx; ++i) {
         f = i * (nax / (float)nbx);
         Ni = (int)f;
-        nx0 = nay * min(Ni, nax);
+        nx0 = nay * minN(Ni, nax);
         for (j = 0; j < nby; ++j) {
             f = (j * (nay / (float)nby));
             Nj = (int)f;
-            ny0 = min(nay, Nj);
+            ny0 = minN(nay, Nj);
             A00 = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
             B[i * nby + j] = A00;
         }
     }
     return 0;
 }
-
-
 
 int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby) {
     int i, j;
@@ -2315,7 +2323,6 @@ void fittingThread(int pulldownSelection) {
 
     theGui.console.threadPrint("Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n",
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
-
 
     int assignedGPU = 0;
     bool forceCPU = 0;
