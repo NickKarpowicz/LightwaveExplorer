@@ -902,7 +902,9 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     cairo_surface_t* cSurface = cairo_image_surface_create_for_data(pixels, CAIRO_FORMAT_RGB24, Nx, Ny, caiStride);
     cairo_set_source_surface(cr, cSurface, 0, 0);
     cairo_paint(cr);
+    cairo_surface_finish(cSurface);
     cairo_surface_destroy(cSurface);
+    free(pixels);
     return 0;
 }
 
@@ -1831,8 +1833,6 @@ void imagePlot(imagePlotStruct* s) {
     }
     drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, (*s).colorMap);
     free(plotarr2);
-
-
 }
 
 
