@@ -18,6 +18,9 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{36e6f35f-c3d4-4943-b640-99944bc6f6f1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{da350c9e-e3af-4d67-b3b6-6aedb3d183cf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\LightwaveExplorerCore.cu">
@@ -28,5 +31,18 @@
     <ClInclude Include="LightwaveExplorerFrontendGTK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\LightwaveExplorer.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="LightwaveExplorerGTK.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

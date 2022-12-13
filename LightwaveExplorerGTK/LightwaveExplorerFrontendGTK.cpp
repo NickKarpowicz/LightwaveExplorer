@@ -121,7 +121,7 @@ public:
         g_object_set(gtk_settings_get_default(),
             "gtk-application-prefer-dark-theme", TRUE,
             NULL);
-        window.init(app, _T("Lightwave Explorer GTK"), 1080, 800);
+        window.init(app, _T("Lightwave Explorer"), 1080, 800);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
             textBoxes[i].init(parentHandle, textCol1a, i, textWidth, 1);
@@ -390,7 +390,6 @@ public:
         }
         pulldowns[3].init(parentHandle, textCol2a, 0, 2 * textWidth, 1);
         pulldowns[3].setLabel(-labelWidth, 0, _T("Material"));
-
 
         pulldowns[9].addElement(_T("Cobra 1x R5000"));
         pulldowns[9].addElement(_T("Cobra 2x R5000"));
@@ -2372,7 +2371,7 @@ int main(int argc, char** argv) {
     GtkApplication* app;
     int status;
 
-    app = gtk_application_new("lweTest.wtf", G_APPLICATION_FLAGS_NONE);
+    app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);

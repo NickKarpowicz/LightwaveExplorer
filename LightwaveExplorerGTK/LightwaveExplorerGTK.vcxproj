@@ -121,6 +121,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LightwaveExplorerFrontendGTK.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\LightwaveExplorerCore.cu">
@@ -129,6 +130,12 @@
       <Defines Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NOCUDAMAIN;%(Defines)</Defines>
       <Defines Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NOCUDAMAIN;%(Defines)</Defines>
     </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\LightwaveExplorer.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="LightwaveExplorerGTK.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
