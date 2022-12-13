@@ -198,8 +198,6 @@ public:
         textBoxes[50].init(window.parentHandle(4), 8, 0, 2, 1);
         textBoxes[51].init(window.parentHandle(4), 10, 0, 2, 1);
 
-        
-
         checkBoxes[0].init(_T("Total"), window.parentHandle(4), 12, 0, 1, 1);
         checkBoxes[1].init(_T("Log"), window.parentHandle(4), 13, 0, 1, 1);
 
