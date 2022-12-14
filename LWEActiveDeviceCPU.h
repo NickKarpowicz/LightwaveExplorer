@@ -4,6 +4,12 @@
 #define HostToDevice 1
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
+
+
+bool isnan(double x) {
+	return std::isnan(x);
+}
+
 #ifdef __APPLE__
 void atomicAddCPU(double* pulseSum, double pointEnergy) {
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;

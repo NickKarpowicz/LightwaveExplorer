@@ -627,7 +627,7 @@ namespace kernels {
 			r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
 		}
 
-		bool isNegative = signbit(ROC);
+		bool isNegative = ROC < 0.0;
 		ROC = abs(ROC);
 		deviceComplex u = deviceComplex(0.0, 0.0);
 		if (r < ROC) {

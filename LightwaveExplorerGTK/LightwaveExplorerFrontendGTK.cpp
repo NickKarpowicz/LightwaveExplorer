@@ -1,6 +1,7 @@
 #include "LightwaveExplorerFrontendGTK.h"
 #include <thread>
 #include <chrono>
+#include <locale>
 #ifndef __APPLE__
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
@@ -93,7 +94,7 @@ public:
     }
     void updateSlider() {
         if (queueSliderUpdate) {
-            plotSlider.setRange(0, (double)((*activeSetPtr).Nsims - 1));
+            plotSlider.setRange(0, (double)(((*activeSetPtr).Nsims * maxN(1,(*activeSetPtr).Nsims2) - 1)));
             queueSliderUpdate = FALSE;
         }
         if (queueSliderMove) {
@@ -564,7 +565,7 @@ void readParametersFromInterface() {
     memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
     theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).fittingString, MAX_LOADSTRING) == 0) {
-        preferredStrCpy((*activeSetPtr).sequenceString, noneString, 5);
+        preferredStrCpy((*activeSetPtr).fittingString, noneString, 5);
     }
     else {
         stripLineBreaks((*activeSetPtr).fittingString);
@@ -2153,9 +2154,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
 
     return;
 }
-void deadFunction() {
-    return;
-}
+
 void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     cancellationCalled = FALSE;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
@@ -2368,7 +2367,6 @@ void fittingThread(int pulldownSelection) {
 int main(int argc, char** argv) {
     GtkApplication* app;
     int status;
-
     app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     status = g_application_run(G_APPLICATION(app), argc, argv);
