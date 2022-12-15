@@ -122,6 +122,7 @@ public:
         g_object_set(gtk_settings_get_default(),
             "gtk-application-prefer-dark-theme", TRUE,
             NULL);
+
         window.init(app, _T("Lightwave Explorer"), 1080, 800);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
@@ -253,11 +254,8 @@ public:
         }
         pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
-
         
         checkLibraryAvailability();
-
-
 
         int openMPposition = 0;
         char A[128] = { 0 };
@@ -343,8 +341,8 @@ public:
         textBoxes[3].setLabel(-labelWidth, 0, _T("SG order"));
         textBoxes[4].setLabel(-labelWidth, 0, _T("CEP/pi"));
         textBoxes[5].setLabel(-labelWidth, 0, _T("Delay (fs)"));
-        textBoxes[6].setLabel(-labelWidth, 0, _T("GDD (fs^2)"));
-        textBoxes[7].setLabel(-labelWidth, 0, _T("TOD (fs^2)"));
+        textBoxes[6].setLabel(-labelWidth, 0, _T("GDD (fs\xc2\xb2)"));
+        textBoxes[7].setLabel(-labelWidth, 0, _T("TOD (fs\xc2\xb3)"));
         textBoxes[8].setLabel(-labelWidth, 0, _T("Phase material"));
         textBoxes[9].setLabel(-labelWidth, 0, _T("Thickness (\xce\xbcm)"));
         textBoxes[10].setLabel(-labelWidth, 0, _T("Beamwaist (\xce\xbcm)"));
@@ -369,10 +367,14 @@ public:
         fitCommand.setLabel(0, -1, _T("Fitting:"));
         sequence.setLabel(0, -1, _T("Sequence:"),11,3);
         filePaths[3].overwritePrint("TestFile");
-        window.present();
 
-        
 
+        GtkCssProvider* textProvider = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(textProvider, "label, scale { font-family: Arial; font-size: 7.5pt; font-weight: bold; }", -1);
+        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        GtkCssProvider* textProvider2 = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(textProvider2, "button, entry, textview { font-family: Arial; font-size: 7.5pt; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
+        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider2), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
         //read the crystal database
         crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
         char materialString[128] = { 0 };
@@ -404,6 +406,7 @@ public:
         readInputParametersFile(activeSetPtr, crystalDatabasePtr, defaultFilename);
         setInterfaceValuesToActiveValues();
         g_timeout_add(100, G_SOURCE_FUNC(updateDisplay), NULL);
+        window.present();
     }
 };
 mainGui theGui;
@@ -2159,8 +2162,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     cancellationCalled = FALSE;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
+
     if (isGridAllocated) {
         freeSemipermanentGrids();
+        isGridAllocated = FALSE;
     }
     memset(activeSetPtr, 0, sizeof(simulationParameterSet));
     readParametersFromInterface();
@@ -2367,7 +2372,9 @@ void fittingThread(int pulldownSelection) {
 int main(int argc, char** argv) {
     GtkApplication* app;
     int status;
+    //g_setenv("GDK_SCALE", "1.5", TRUE);
     app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_FLAGS_NONE);
+    //g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);

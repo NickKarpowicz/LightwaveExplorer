@@ -288,6 +288,7 @@ double          parameterStringToDouble(const char* pString, double* iBlock, dou
 void            stripWhiteSpace(char* sequenceString);
 void            stripLineBreaks(char* sequenceString);
 
+
 //give linux wrappers for unsafe functions to use as safe functions since it doesn't have them
 #if defined __linux__ || defined __APPLE__
 namespace {
@@ -308,7 +309,7 @@ namespace {
     }
 
     char* strcpy_s(char* a, int len, char* c) {
-        return strcpy(a, c);
+        return strncpy(a, c, len);
     }
 
     size_t fread_s(void* buffer, size_t buffersize, size_t elementsize, size_t Nwrite, FILE* file) {
@@ -320,12 +321,12 @@ namespace {
     }
 
     int strcat_s(char* a, size_t L, char* b) {
-        strcat(a, b);
+        strncat(a, b, L);
         return 0;
     }
 
     int strcat_s(char* a, size_t L, const char* b) {
-        strcat(a, b);
+        strncat(a, b, L);
         return 0;
     }
 
