@@ -77,44 +77,9 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 void checkLibraryAvailability() {
     printToConsole(maingui.plotBox2, L"\r\n");
-    __try {
-        HRESULT hr = __HrLoadAllImportsForDll("cufft64_10.dll");
-        if (SUCCEEDED(hr)) {
-            CUDAavailable = TRUE;
-        }
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER) {
-        CUDAavailable = FALSE;
-        printToConsole(maingui.plotBox2, L"CUDA not available because cufft64_10.dll was not found.\r\n");
-    }
-    if (CUDAavailable) {
-        CUDAavailable = FALSE;
-        __try {
-            HRESULT hr = __HrLoadAllImportsForDll("nvml.dll");
-            if (SUCCEEDED(hr)) {
-                CUDAavailable = TRUE;
-            }
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
-            CUDAavailable = FALSE;
-            //printToConsole(maingui.plotBox2, L"CUDA not available.\r\n");
-        }
-    }
-    if (CUDAavailable) {
-        CUDAavailable = FALSE;
-        __try {
-            HRESULT hr = __HrLoadAllImportsForDll("cudart64_110.dll");
-            if (SUCCEEDED(hr)) {
-                CUDAavailable = TRUE;
-            }
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
-            CUDAavailable = FALSE;
-            printToConsole(maingui.plotBox2, L"CUDA not available because cudart64_110.dll was not found.\r\n\r\n");
-        }
-    }
+   
 
-    if (CUDAavailable) {
+    if (TRUE) {
         //Find, count, and name the GPUs
         int CUDAdevice, i;
 
