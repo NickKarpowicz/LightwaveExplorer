@@ -368,13 +368,21 @@ public:
         sequence.setLabel(0, -1, _T("Sequence:"),11,3);
         filePaths[3].overwritePrint("TestFile");
 
-
+#if defined __APPLE__
+        GtkCssProvider* textProvider = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(textProvider, "label, scale { font-family: Arial; font-size: 13pt; font-weight: bold; }", -1);
+        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        GtkCssProvider* textProvider2 = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(textProvider2, "button, entry, textview { font-family: Arial; font-size: 13pt; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
+        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider2), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+#else
         GtkCssProvider* textProvider = gtk_css_provider_new();
         gtk_css_provider_load_from_data(textProvider, "label, scale { font-family: Arial; font-size: 7.5pt; font-weight: bold; }", -1);
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
         GtkCssProvider* textProvider2 = gtk_css_provider_new();
         gtk_css_provider_load_from_data(textProvider2, "button, entry, textview { font-family: Arial; font-size: 7.5pt; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider2), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+#endif
         //read the crystal database
         crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
         char materialString[128] = { 0 };
@@ -1101,13 +1109,13 @@ static void buttonAddSameCrystal() {
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[34].valueDouble(),
             theGui.textBoxes[35].valueDouble(), theGui.textBoxes[36].valueDouble(),
             theGui.textBoxes[37].valueDouble(), theGui.textBoxes[42].valueDouble(),
-            theGui.textBoxes[42].valueDouble());
+            theGui.textBoxes[43].valueDouble());
     }
     else {
         theGui.sequence.cPrint("nonlinear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\n",
             theGui.pulldowns[4].getValue(), theGui.textBoxes[32].valueDouble(),
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[42].valueDouble(),
-            theGui.textBoxes[42].valueDouble());
+            theGui.textBoxes[43].valueDouble());
     }
 }
 
@@ -1124,6 +1132,7 @@ static void buttonAddRotation() {
 }
 
 static void activate(GtkApplication* app, gpointer user_data) {
+    std::locale::global(std::locale("en_US"));
     theGui.activate(app);
 }
 
