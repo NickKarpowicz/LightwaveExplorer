@@ -36,13 +36,18 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\LightwaveExplorer.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="LightwaveExplorerGTK.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icons\LightwaveExplorerGTK.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="icons\LightwaveExplorerGTK256.ico" />
+    <Image Include="icons\LightwaveExplorerGTK128.ico" />
+    <Image Include="icons\LightwaveExplorerGTK64.ico" />
+    <Image Include="icons\LightwaveExplorerGTK32.ico" />
+    <Image Include="icons\LightwaveExplorerGTK16.ico" />
   </ItemGroup>
 </Project>
