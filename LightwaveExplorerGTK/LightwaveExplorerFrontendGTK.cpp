@@ -1096,7 +1096,6 @@ void createRunFile() {
         gpuType = 2;
         gpuCount = 4;
         break;
-
     }
     saveSlurmScript(activeSetPtr, gpuType, gpuCount);
     isRunning = FALSE;
