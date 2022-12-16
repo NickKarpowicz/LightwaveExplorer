@@ -871,7 +871,7 @@ namespace kernels {
 			(*s).chiLinear2[(*s).Ntime / 2] = deviceComplex(1.0, 0.0);
 			(*s).fieldFactor1[(*s).Ntime / 2] = 0.0;
 			(*s).fieldFactor2[(*s).Ntime / 2] = 0.0;
-			(*s).inverseChiLinear2[(*s).Ntime / 2] = 1.0 / (*s).chiLinear2[i].real();
+			(*s).inverseChiLinear1[(*s).Ntime / 2] = 1.0 / (*s).chiLinear1[i].real();
 			(*s).inverseChiLinear2[(*s).Ntime / 2] = 1.0 / (*s).chiLinear2[i].real();
 		}
 
@@ -952,14 +952,14 @@ namespace kernels {
 
 		if (dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())){
 			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
-			(*s).gridPropagationFactor1Rho1[i] = ii * (1. / (chi11 * 2. * ke.real())) * (*s).h;
+			(*s).gridPropagationFactor1Rho1[i] = pow((*s).chiLinear1[k] + 1.0, 0.25) * ii * (1. / (chi11 * 2. * ke.real())) * (*s).h;
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 				(*s).gridPropagationFactor1Rho1[i] = cuZero;
 			}
 
 			(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
-			(*s).gridPropagationFactor1Rho2[i] = ii * (1. / (chi12 * 2. * ko.real())) * (*s).h;
+			(*s).gridPropagationFactor1Rho2[i] = pow((*s).chiLinear2[k] + 1.0, 0.25) * ii * (1. / (chi12 * 2. * ko.real())) * (*s).h;
 			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 				(*s).gridPropagationFactor1Rho2[i] = cuZero;
