@@ -123,7 +123,7 @@ public:
             "gtk-application-prefer-dark-theme", TRUE,
             NULL);
 
-        window.init(app, _T("Lightwave Explorer"), 1600, 800);
+        window.init(app, _T("Lightwave Explorer"), 1920, 1080);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
             textBoxes[i].init(parentHandle, textCol1a, i, textWidth, 1);
@@ -254,12 +254,12 @@ public:
         }
         pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
-        
+
         checkLibraryAvailability();
 
         int openMPposition = 0;
         char A[128] = { 0 };
-        
+
 
         if (CUDAavailable) {
             pulldowns[7].addElement("CUDA");
@@ -300,10 +300,10 @@ public:
         memset(&A, 0, sizeof(A));
 
         pulldowns[7].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
-        pulldowns[8].init(window.parentHandle(6), 4 + 2*buttonWidth, 0, buttonWidth, 1);
+        pulldowns[8].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);
         textBoxes[52].init(window.parentHandle(6), 4 + 3 * buttonWidth, 0, 1, 1);
 
-        pulldowns[7].setLabel(-2, 0, _T("Config:"),8,2);
+        pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
         sequence.init(parentHandle, buttonCol1, 13, colWidth, 6);
         fitCommand.init(parentHandle, buttonCol1, 21, colWidth, 4);
         miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, buttonCol2 + 0, 12, 2, 1, buttonAddSameCrystal);
@@ -312,7 +312,7 @@ public:
         miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, buttonCol2 + 6, 12, 2, 1, buttonAddPulse);
         buttons[0].init(_T("Run"), parentHandle, buttonCol3, 19, buttonWidth, 1, launchRunThread);
         buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 19, buttonWidth, 1, stopButtonCallback);
-        buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth+1, 24, textWidth, 1, createRunFile);
+        buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1, 24, textWidth, 1, createRunFile);
         buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 20, buttonWidth, 1, launchFitThread);
         buttons[4].init(_T("Load"), parentHandle, buttonCol1, 19, buttonWidth, 1, loadCallback);
         //buttons[5].init(_T("Reload"), parentHandle, buttonCol2, 18, buttonWidth, 1, runButtonClick);
@@ -332,7 +332,7 @@ public:
         plotSlider.setRange(0.0, 10.0);
         plotSlider.setDigits(0);
         plotSlider.setFunction(independentPlotQueue);
-        
+
         console.init(window.parentHandle(1), 0, 0, 1, 1);
 
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
@@ -357,7 +357,7 @@ public:
         textBoxes[38].setLabel(-labelWidth, 0, _T("Max x, dx (\xce\xbcm)"));
         textBoxes[40].setLabel(-labelWidth, 0, _T("Time span, dt (fs)"));
         textBoxes[42].setLabel(-labelWidth, 0, _T("Max z, dz (\xce\xbcm,nm)"));
-        
+
         textBoxes[44].setLabel(-labelWidth, 0, _T("Batch end"));
         textBoxes[46].setLabel(-labelWidth, 0, _T("Batch steps"));
         pulldowns[4].setLabel(-labelWidth, 0, _T("Propagation"));
@@ -365,26 +365,16 @@ public:
         pulldowns[6].setLabel(-labelWidth, 0, _T("Batch mode 2"));
 
         fitCommand.setLabel(0, -1, _T("Fitting:"));
-        sequence.setLabel(0, -1, _T("Sequence:"),11,3);
+        sequence.setLabel(0, -1, _T("Sequence:"), 11, 3);
         filePaths[3].overwritePrint("TestFile");
 
-#if defined __APPLE__
         GtkCssProvider* textProvider = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(textProvider, "label, scale { font-family: Arial; font-size: 13pt; font-weight: bold; }", -1);
+        gtk_css_provider_load_from_data(textProvider,
+            "label, scale { font-family: Arial; font-weight: bold; }\n button, entry, textview { font-family: Arial; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-        GtkCssProvider* textProvider2 = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(textProvider2, "button, entry, textview { font-family: Arial; font-size: 13pt; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
-        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider2), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-#else
-        GtkCssProvider* textProvider = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(textProvider, "label, scale { font-family: Arial; font-size: 7.5pt; font-weight: bold; }", -1);
-        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-        GtkCssProvider* textProvider2 = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(textProvider2, "button, entry, textview { font-family: Arial; font-size: 7.5pt; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
-        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider2), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-#endif
+
         //read the crystal database
-        crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
+        crystalDatabasePtr = new crystalEntry[MAX_LOADSTRING]();
         char materialString[128] = { 0 };
         if (crystalDatabasePtr != NULL) {
             //GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);

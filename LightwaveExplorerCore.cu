@@ -34,7 +34,7 @@ namespace deviceFunctions {
 				+ a[15] * ls * ls * ls;
 			compPart = a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
 				+ a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
-			return deviceLib::sqrt(maxN(realPart, 0.05) + KLORENTZIAN * compPart);
+			return deviceLib::sqrt(maxN(realPart, 0.9) + KLORENTZIAN * compPart);
 		case 1:
 			compPart = a[0] / deviceComplex(a[1] - omega2, a[2] * omega)
 				+ a[3] / deviceComplex(a[4] - omega2, a[5] * omega)
@@ -54,7 +54,7 @@ namespace deviceFunctions {
 				+ a[14] * ls * ls
 				+ a[15] * ls * ls * ls;
 			//"real-valued equation has no business being < 1" - causality
-			return deviceComplex(sqrt(maxN(realPart, 0.05)), 0.0);
+			return deviceComplex(sqrt(maxN(realPart, 0.9)), 0.0);
 		}
 		
 		return deviceComplex(1.0, 0.0);
@@ -923,7 +923,7 @@ namespace kernels {
 		double dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 
 		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
-		//findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 		if (minN(ne.real(), no.real()) < 1.0 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
