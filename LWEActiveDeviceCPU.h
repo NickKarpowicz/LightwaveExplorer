@@ -1,5 +1,6 @@
 #include "LWEActiveDeviceCommon.cpp"
 #include <fftw3_mkl.h>
+#include <atomic>
 #define DeviceToHost 2
 #define HostToDevice 1
 #define DeviceToDevice 3

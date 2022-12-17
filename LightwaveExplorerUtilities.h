@@ -1,6 +1,6 @@
 #pragma once
 #include <complex>
-
+#include<cstring>
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>

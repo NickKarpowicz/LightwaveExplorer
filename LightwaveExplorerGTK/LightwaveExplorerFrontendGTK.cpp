@@ -2,7 +2,7 @@
 #include <thread>
 #include <chrono>
 #include <locale>
-#ifndef __APPLE__
+#ifdef _WIN32
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <nvml.h>
@@ -796,7 +796,7 @@ int freeSemipermanentGrids() {
 }
 
 void checkLibraryAvailability() {   
-#ifdef __APPLE__
+#if defined __APPLE__ || defined __linux__
     CUDAavailable = FALSE;
     SYCLavailable = FALSE;
 #define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
@@ -1131,7 +1131,11 @@ static void buttonAddRotation() {
 }
 
 static void activate(GtkApplication* app, gpointer user_data) {
+#ifdef __linux__
+    std::locale::global(std::locale("en_US.UTF-8"));
+#else
     std::locale::global(std::locale("en_US"));
+#endif
     theGui.activate(app);
 }
 
