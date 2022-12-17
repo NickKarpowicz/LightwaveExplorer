@@ -31,9 +31,7 @@
     <ClInclude Include="LightwaveExplorerFrontendGTK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Resource Files</Filter>
-    </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LightwaveExplorerGTK.rc">
@@ -41,13 +39,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="icons\LightwaveExplorerGTK.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="icons\LightwaveExplorerGTK256.ico" />
-    <Image Include="icons\LightwaveExplorerGTK128.ico" />
-    <Image Include="icons\LightwaveExplorerGTK64.ico" />
-    <Image Include="icons\LightwaveExplorerGTK32.ico" />
-    <Image Include="icons\LightwaveExplorerGTK16.ico" />
+    <Image Include="icon1.ico" />
   </ItemGroup>
 </Project>

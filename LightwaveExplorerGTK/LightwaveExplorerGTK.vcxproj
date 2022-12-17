@@ -135,12 +135,7 @@
     <ResourceCompile Include="LightwaveExplorerGTK.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="icons\LightwaveExplorerGTK.ico" />
-    <Image Include="icons\LightwaveExplorerGTK128.ico" />
-    <Image Include="icons\LightwaveExplorerGTK16.ico" />
-    <Image Include="icons\LightwaveExplorerGTK256.ico" />
-    <Image Include="icons\LightwaveExplorerGTK32.ico" />
-    <Image Include="icons\LightwaveExplorerGTK64.ico" />
+    <Image Include="icon1.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
