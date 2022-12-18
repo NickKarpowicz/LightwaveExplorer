@@ -3,7 +3,10 @@
 #include <complex>
 #include <stdio.h>
 #include "../LightwaveExplorerUtilities.h"
+#undef __noinline__
 #include <gtk/gtk.h>
+
+
 //#ifndef _T()
 #define _T(x) x
 //#endif

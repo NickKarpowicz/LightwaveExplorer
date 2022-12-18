@@ -1,16 +1,25 @@
 CC=g++
-CFLAGS=-g -O3 -fopenmp -std=c++20
 MKLROOT=/opt/intel/oneapi/mkl/latest
 INCLUDES=`pkg-config --cflags gtk4` -I/opt/intel/oneapi/mkl/latest/include -I/opt/intel/oneapi/mkl/latest/include/fftw -I../../dlib
-LDFLAGS=`pkg-config --libs gtk4`  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl
+LDFLAGS=`pkg-config --libs gtk4`  ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -lgomp -lpthread -lm -ldl  -lcufft -lnvidia-ml
 SOURCES=LightwaveExplorerFrontendGTK.cpp ../LightwaveExplorerUtilities.cpp ../LightwaveExplorerCoreCPU.cpp ../DlibLibraryComponents/DlibLibraryComponents.cpp
+OBJECTS=
 EXECUTABLES=LightwaveExplorerGTK
+CUDACOMPILER=/usr/local/cuda-12.0/bin/nvcc
+CUDAFLAGS=-x cu
+CUDAINCLUDES=-I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../../dlib
+CUDAARCH=-gencode=arch=compute_75,code=\"sm_75,compute_75\"
+CUDAHOSTFLAGS=--machine 64 -std=c++17 -use_fast_math -fopenmp -O3
+CUDALDFLAGS=-lcufft -lnvidia-ml
+CUDAOUT= -o LightwaveExplorerGTK
+CUDAFILES=../LightwaveExplorerCore.cu
 
-default: lwe
+default: cuda
 
-lwe:
-	${CC} ${CFLAGS} ${INCLUDES} -o ${EXECUTABLES} ${SOURCES} ${LDFLAGS}
+cuda: 
+	${CUDACOMPILER} ${CUDAARCH} ${CUDAFLAGS} ${CUDAINCLUDES} -D NOCUDAMAIN  -Xcompiler "${CUDAHOSTFLAGS} ${INCLUDES}" ${CUDAOUT} ${CUDAFILES} ${SOURCES} ${CUDALDFLAGS} -Xlinker "${LDFLAGS}"
 
 clean:
 	rm LightwaveExplorerGTK
+
 

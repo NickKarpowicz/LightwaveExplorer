@@ -6,12 +6,13 @@
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
 
-
+#ifdef __APPLE__
 bool isnan(double x) {
 	return std::isnan(x);
 }
+#endif
 
-#ifdef __APPLE__
+#if defined __APPLE__ || defined __linux__
 void atomicAddCPU(double* pulseSum, double pointEnergy) {
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
 	double expected = pulseSumAtomic->load();

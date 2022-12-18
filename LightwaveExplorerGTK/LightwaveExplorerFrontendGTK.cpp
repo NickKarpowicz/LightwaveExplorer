@@ -10,6 +10,9 @@
 #include "../LightwaveExplorerCore.cuh"
 #endif
 #include "../LightwaveExplorerCoreCPU.h"
+#ifdef __linux__
+#include "../LightwaveExplorerCore.cuh"
+#endif
 
 #ifdef _WIN32
 #define preferredStrCpy strncpy_s
@@ -786,7 +789,7 @@ int freeSemipermanentGrids() {
 }
 
 void checkLibraryAvailability() {   
-#if defined __APPLE__ || defined __linux__
+#if defined __APPLE__
     CUDAavailable = FALSE;
     SYCLavailable = FALSE;
 #define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
@@ -795,15 +798,16 @@ void checkLibraryAvailability() {
 #define solveNonlinearWaveEquationSYCL solveNonlinearWaveEquationCPU
 #define runDlibFitting runDlibFittingCPU
 #define runDlibFittingSYCL runDlibFittingCPU
-#else
+#endif
+
+
+
     if (TRUE) {
         //Find, count, and name the GPUs
         int CUDAdevice, i;
-
         cudaGetDeviceCount(&cudaGPUCount);
         cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
         struct cudaDeviceProp activeCUDADeviceProp;
-        wchar_t wcstring[514];
         size_t convertedChars = 0;
         //if (cuErr == cudaSuccess) {
         if(TRUE){
@@ -814,9 +818,7 @@ void checkLibraryAvailability() {
             theGui.console.cPrint("CUDA found %i GPU(s): \r\n", cudaGPUCount);
             for (i = 0; i < cudaGPUCount; ++i) {
                 cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-                memset(wcstring, 0, sizeof(wchar_t));
-                mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
-                theGui.console.cPrint("%ls\r\n", wcstring);
+                theGui.console.cPrint("%s\n", activeCUDADeviceProp.name);
                 theGui.console.cPrint("    Memory: %i MB\r\n    Multiprocessors: %i\r\n",
                     (int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
             }
@@ -832,15 +834,22 @@ void checkLibraryAvailability() {
         CUDAavailable = FALSE;
     }
 
+    SYCLavailable = FALSE;
+#ifndef _WIN32
+#define solveNonlinearWaveEquationSequenceSYCL solveNonlinearWaveEquationSequenceCPU
+#define solveNonlinearWaveEquationSYCL solveNonlinearWaveEquationCPU
+#define runDlibFittingSYCL runDlibFittingCPU
+#endif
     //read SYCL devices
+#ifdef _WIN32
     SYCLavailable = TRUE;
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
     size_t syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
     theGui.console.cPrint("%ls",syclDeviceList);
 #endif
-    
 }
+
 int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     if (Nx * Ny == 0) return 1;
     
