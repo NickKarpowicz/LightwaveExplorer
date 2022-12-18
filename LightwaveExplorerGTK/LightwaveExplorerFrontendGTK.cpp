@@ -798,7 +798,7 @@ void checkLibraryAvailability() {
 #define solveNonlinearWaveEquationSYCL solveNonlinearWaveEquationCPU
 #define runDlibFitting runDlibFittingCPU
 #define runDlibFittingSYCL runDlibFittingCPU
-#endif
+#else
 
 
 
@@ -833,7 +833,7 @@ void checkLibraryAvailability() {
         theGui.console.cPrint("No CUDA-compatible GPU found.\r\n");
         CUDAavailable = FALSE;
     }
-
+#endif
     SYCLavailable = FALSE;
 #ifndef _WIN32
 #define solveNonlinearWaveEquationSequenceSYCL solveNonlinearWaveEquationSequenceCPU
