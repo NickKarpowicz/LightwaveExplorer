@@ -1,11 +1,13 @@
 #pragma once
-#ifdef LIGHTWAVEEXPLORERSYCL_EXPORTS
-#define LIGHTWAVEEXPLORERSYCL_API __declspec(dllexport)
+#if defined LIGHTWAVEEXPLORERSYCL_EXPORTS && defined _WIN32
+#define LIGHTWAVEEXPLORERSYCL_API extern "C" __declspec(dllexport)
+#elif defined _WIN32
+#define LIGHTWAVEEXPLORERSYCL_API extern "C" __declspec(dllimport)
 #else
-#define LIGHTWAVEEXPLORERSYCL_API __declspec(dllimport)
+#define LIGHTWAVEEXPLORERSYCL_API
 #endif
-extern "C" LIGHTWAVEEXPLORERSYCL_API unsigned long	solveNonlinearWaveEquationSYCL(void* lpParam);
-extern "C" LIGHTWAVEEXPLORERSYCL_API unsigned long  solveNonlinearWaveEquationSequenceSYCL(void* lpParam);
-extern "C" LIGHTWAVEEXPLORERSYCL_API int            mainSYCL(int argc, char* filepath);
-extern "C" LIGHTWAVEEXPLORERSYCL_API unsigned long	runDlibFittingSYCL(simulationParameterSet* sCPU);
-extern "C" LIGHTWAVEEXPLORERSYCL_API size_t			readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString);
+LIGHTWAVEEXPLORERSYCL_API unsigned long	solveNonlinearWaveEquationSYCL(void* lpParam);
+LIGHTWAVEEXPLORERSYCL_API unsigned long  solveNonlinearWaveEquationSequenceSYCL(void* lpParam);
+LIGHTWAVEEXPLORERSYCL_API int            mainSYCL(int argc, char* filepath);
+LIGHTWAVEEXPLORERSYCL_API unsigned long	runDlibFittingSYCL(simulationParameterSet* sCPU);
+LIGHTWAVEEXPLORERSYCL_API size_t			readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString);

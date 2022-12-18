@@ -1,11 +1,8 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 #define RUNONSYCL
 
-#include "pch.h"
 #include "LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerSYCL.h"
-#undef max
-#undef min
 #include "LightwaveExplorerCore.cu"
 
 size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) {
@@ -44,6 +41,8 @@ size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) 
     swprintf_s(defaultDeviceString, MAX_LOADSTRING, L"SYCL default: %ls\r\n", deviceCharString);
     return deviceCount;
 }
+
+#ifdef _WIN32
 BOOL DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -59,4 +58,4 @@ BOOL DllMain( HMODULE hModule,
     }
     return TRUE;
 }
-
+#endif
