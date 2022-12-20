@@ -789,7 +789,7 @@ int freeSemipermanentGrids() {
 }
 
 void checkLibraryAvailability() {   
-#if defined __APPLE__
+#if defined __APPLE__ || defined LINUXCPUONLY
     CUDAavailable = FALSE;
     SYCLavailable = FALSE;
 #define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
@@ -799,9 +799,6 @@ void checkLibraryAvailability() {
 #define runDlibFitting runDlibFittingCPU
 #define runDlibFittingSYCL runDlibFittingCPU
 #else
-
-
-
     if (TRUE) {
         //Find, count, and name the GPUs
         int CUDAdevice, i;
