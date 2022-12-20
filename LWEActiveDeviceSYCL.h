@@ -1,6 +1,6 @@
 #include "LWEActiveDeviceCommon.cpp"
 #include <CL/sycl.hpp>
-#include <CL/sycl/atomic.hpp>
+#include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
 #define DeviceToHost 2
 #define HostToDevice 1

@@ -24,6 +24,9 @@
     <ClInclude Include="LightwaveExplorerSYCL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\LWEActiveDeviceSYCL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LightwaveExplorerSYCL.cpp">

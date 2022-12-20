@@ -7,7 +7,7 @@
 #define LIGHTWAVEEXPLORERSYCL_API
 #endif
 LIGHTWAVEEXPLORERSYCL_API unsigned long	solveNonlinearWaveEquationSYCL(void* lpParam);
-LIGHTWAVEEXPLORERSYCL_API unsigned long  solveNonlinearWaveEquationSequenceSYCL(void* lpParam);
-LIGHTWAVEEXPLORERSYCL_API int            mainSYCL(int argc, char* filepath);
+LIGHTWAVEEXPLORERSYCL_API unsigned long solveNonlinearWaveEquationSequenceSYCL(void* lpParam);
+LIGHTWAVEEXPLORERSYCL_API int           mainSYCL(int argc, char* filepath);
 LIGHTWAVEEXPLORERSYCL_API unsigned long	runDlibFittingSYCL(simulationParameterSet* sCPU);
-LIGHTWAVEEXPLORERSYCL_API size_t			readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString);
+LIGHTWAVEEXPLORERSYCL_API size_t		readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString);

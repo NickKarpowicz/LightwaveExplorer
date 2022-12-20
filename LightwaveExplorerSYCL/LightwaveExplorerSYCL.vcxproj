@@ -48,7 +48,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>Intel(R) oneAPI DPC++ Compiler 2022</PlatformToolset>
+    <PlatformToolset>Intel(R) oneAPI DPC++ Compiler 2023</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseInteloneMKL>Parallel</UseInteloneMKL>
@@ -158,6 +158,7 @@
       <OpenMP>None</OpenMP>
       <OpenMPOffloading>None</OpenMPOffloading>
       <FSYCLUnnamedLambda>Yes</FSYCLUnnamedLambda>
+      <DebugInformationFormat>None</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -179,6 +180,7 @@ copy "$(TargetPath)" "$(ProjectDir)..\Executable\bin"
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\LightwaveExplorerUtilities.h" />
+    <ClInclude Include="..\LWEActiveDeviceSYCL.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LightwaveExplorerSYCL.h" />
   </ItemGroup>
