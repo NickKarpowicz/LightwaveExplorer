@@ -10,8 +10,10 @@
 #include "../LightwaveExplorerCore.cuh"
 #endif
 #include "../LightwaveExplorerCoreCPU.h"
+
 #ifdef __linux__
 #include "../LightwaveExplorerCore.cuh"
+#include "LightwaveExplorerDPCPPlib.h"
 #endif
 
 #ifdef _WIN32
@@ -832,13 +834,13 @@ void checkLibraryAvailability() {
     }
 #endif
     SYCLavailable = FALSE;
-#ifndef _WIN32
+#ifdef __APPLE__
 #define solveNonlinearWaveEquationSequenceSYCL solveNonlinearWaveEquationSequenceCPU
 #define solveNonlinearWaveEquationSYCL solveNonlinearWaveEquationCPU
 #define runDlibFittingSYCL runDlibFittingCPU
 #endif
     //read SYCL devices
-#ifdef _WIN32
+#if defined _WIN32 || defined __linux__
     SYCLavailable = TRUE;
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
