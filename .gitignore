@@ -396,3 +396,8 @@ LightwaveExplorerGTK/TestFile_Ext.dat
 .vscode/bak2/c_cpp_properties.json
 .vscode/bak2/tasks.json
 LightwaveExplorerGTK/LightwaveExplorerGTK
+LightwaveExplorerGTK/DlibLibraryComponents.o
+LightwaveExplorerGTK/LightwaveExplorerCore.o
+LightwaveExplorerGTK/LightwaveExplorerCoreCPU.o
+LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.o
+LightwaveExplorerGTK/LightwaveExplorerUtilities.o
