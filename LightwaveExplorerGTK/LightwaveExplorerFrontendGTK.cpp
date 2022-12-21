@@ -70,13 +70,11 @@ public:
     bool isPlotting = FALSE;
     bool isGridAllocated = FALSE;
     bool cancellationCalled = FALSE;
-    
-    int cudaGPUCount = 0;
-    int syclGPUCount = 0;
+
 
     mainGui() : isActivated(0), pathTarget(0), isRunning(0), isPlotting(0), sliderTarget(0),
     isGridAllocated(0), cancellationCalled(0), queueSliderUpdate(0), queueSliderMove(0),
-    cudaGPUCount(0), syclGPUCount(0), saveSVG(0), queueUpdate(0), lastProgress(0){}
+    saveSVG(0), queueUpdate(0), lastProgress(0){}
     ~mainGui() {}
     void requestPlotUpdate() {
         queueUpdate = TRUE;
@@ -116,6 +114,7 @@ public:
         int labelWidth = 6;
         int plotWidth = 12;
         int plotHeight = 6;
+        int pathChars = 40;
         int colWidth = labelWidth + 2 * textWidth;
         int textCol1a = labelWidth;
         int textCol2a = textCol1a + 2 * textWidth + labelWidth;
@@ -147,7 +146,7 @@ public:
         textBoxes[47].init(parentHandle, textCol2b, 11, textWidth, 1);
 
         filePaths[0].init(parentHandle, 0, 17, colWidth, 1);
-        filePaths[0].setMaxCharacters(36);
+        filePaths[0].setMaxCharacters(pathChars);
         pulldowns[0].addElement(_T("Synthetic"));
         pulldowns[0].addElement(_T("FROG"));
         pulldowns[0].addElement(_T("EOS"));
@@ -155,7 +154,7 @@ public:
         filePaths[0].setLabel(0, -1, _T("Data 1:"));
 
         filePaths[1].init(parentHandle, 0, 19, colWidth, 1);
-        filePaths[1].setMaxCharacters(36);
+        filePaths[1].setMaxCharacters(pathChars);
         filePaths[1].setLabel(0, -1, _T("Data 2:"));
         pulldowns[1].addElement(_T("Synthetic"));
         pulldowns[1].addElement(_T("FROG"));
@@ -163,7 +162,7 @@ public:
         pulldowns[1].init(parentHandle, labelWidth, 18, 2 * textWidth, 1);
 
         filePaths[2].init(parentHandle, 0, 21, colWidth, 1);
-        filePaths[2].setMaxCharacters(36);
+        filePaths[2].setMaxCharacters(pathChars);
         filePaths[2].setLabel(0, -1, _T("Fit data:"));
         pulldowns[2].addElement(_T("Maximize x"));
         pulldowns[2].addElement(_T("Maximize y"));
@@ -173,7 +172,7 @@ public:
 
         filePaths[3].init(parentHandle, 0, 23, colWidth, 1);
         filePaths[3].setLabel(0, -1, _T("Output:"));
-        filePaths[3].setMaxCharacters(36);
+        filePaths[3].setMaxCharacters(pathChars);
 
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawTimeImage1);
@@ -833,6 +832,8 @@ void checkLibraryAvailability() {
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
     size_t syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
+    unsigned char* counts = (unsigned char*)&syclDevices;
+    syclGPUCount = (int)counts[1];
     theGui.console.cPrint("%ls",syclDeviceList);
 #endif
 #endif
