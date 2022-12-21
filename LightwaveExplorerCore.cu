@@ -508,8 +508,6 @@ namespace kernels {
 		k = col % (*s).Nspace;
 		l = col / (*s).Nspace;
 
-		deviceComplex ii = deviceComplex(0, 1);
-
 		//magnitude of k vector
 		double ko = TWOPI*j * (*s).fStep/LIGHTC;
 
@@ -645,7 +643,6 @@ namespace kernels {
 		int axesNumber = (*s).axesNumber;
 		int sellmeierType = (*s).sellmeierType;
 		deviceComplex ne, no, n0, n0o;
-		deviceComplex cuZero = deviceComplex(0, 0);
 		h = 1 + i % ((*s).Nfreq - 1);
 		col = i / ((*s).Nfreq - 1);
 		i = h + col * ((*s).Nfreq);
@@ -829,8 +826,6 @@ namespace kernels {
 		long long i = localIndex;
 		int axesNumber = (*s).axesNumber;
 		int sellmeierType = (*s).sellmeierType;
-		deviceComplex cuZero = deviceComplex(0.0, 0.0);
-
 		double crystalTheta = sellmeierCoefficients[66];
 		double crystalPhi = sellmeierCoefficients[67];
 		double fStep = sellmeierCoefficients[71];

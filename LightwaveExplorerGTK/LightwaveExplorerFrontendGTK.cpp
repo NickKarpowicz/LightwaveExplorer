@@ -11,7 +11,13 @@
 #endif
 #include "../LightwaveExplorerCoreCPU.h"
 #ifdef __linux__
+#ifndef LINUXCPUONLY
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <nvml.h>
 #include "../LightwaveExplorerCore.cuh"
+#include "LightwaveExplorerDPCPPlib.h"
+#endif
 #endif
 
 #ifdef _WIN32
@@ -258,7 +264,7 @@ public:
         pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
 
-        checkLibraryAvailability();
+        
 
         int openMPposition = 0;
         char A[128] = { 0 };
@@ -337,7 +343,8 @@ public:
         plotSlider.setFunction(independentPlotQueue);
 
         console.init(window.parentHandle(1), 0, 0, 1, 1);
-
+        checkLibraryAvailability();
+        
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
         textBoxes[1].setLabel(-labelWidth, 0, _T("Frequency (THz)"));
         textBoxes[2].setLabel(-labelWidth, 0, _T("Bandwidth (THz)"));
@@ -805,7 +812,6 @@ void checkLibraryAvailability() {
         cudaGetDeviceCount(&cudaGPUCount);
         cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
         struct cudaDeviceProp activeCUDADeviceProp;
-        size_t convertedChars = 0;
         //if (cuErr == cudaSuccess) {
         if(TRUE){
             if (cudaGPUCount > 0) {
@@ -832,13 +838,11 @@ void checkLibraryAvailability() {
     }
 #endif
     SYCLavailable = FALSE;
-#ifndef _WIN32
+#if defined __APPLE__ || defined LINUXCPUONLY
 #define solveNonlinearWaveEquationSequenceSYCL solveNonlinearWaveEquationSequenceCPU
 #define solveNonlinearWaveEquationSYCL solveNonlinearWaveEquationCPU
 #define runDlibFittingSYCL runDlibFittingCPU
-#endif
-    //read SYCL devices
-#ifdef _WIN32
+#else
     SYCLavailable = TRUE;
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
@@ -1132,6 +1136,7 @@ static void activate(GtkApplication* app, gpointer user_data) {
 #else
     std::locale::global(std::locale("en_US"));
 #endif
+    g_setenv("LD_LIBRARY_PATH","/home/nick/repos/LightwaveExplorer/LightwaveExplorerGTK:/opt/intel/oneapi/tbb/2021.8.0/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/2023.0.0/lib/intel64:/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/lib:/opt/intel/oneapi/debugger/2023.0.0/libipt/intel64/lib:/opt/intel/oneapi/debugger/2023.0.0/dep/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/lib/x64:/opt/intel/oneapi/compiler/2023.0.0/linux/lib/oclfpga/host/linux64/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/compiler/lib/intel64_lin", TRUE);
     theGui.activate(app);
 }
 
@@ -1144,7 +1149,6 @@ int LwePlot2d(plotStruct* inputStruct) {
     cairo_t* cr = (*s).cr;
     cairo_font_extents_t fe;
     cairo_text_extents_t te;
-
     double fontSize = 14.0;
     cairo_set_font_size(cr, fontSize);
     cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -1152,7 +1156,6 @@ int LwePlot2d(plotStruct* inputStruct) {
     double x1, y1, x2, y2;
     double width;
     double height;
-    size_t strLen;
 
     double layoutTop = 0.0;
     double layoutBottom = 0.0;
@@ -1336,7 +1339,7 @@ int LwePlot2d(plotStruct* inputStruct) {
         if (i == 1) layoutTop -= 6.0f;
         layoutBottom = layoutTop + axisSpaceY;
         layoutRight = axisSpaceX;
-        strLen = strlen(messageBuffer);
+
 
         cairoLeftText();
         SVGlefttext();
@@ -1350,7 +1353,7 @@ int LwePlot2d(plotStruct* inputStruct) {
         layoutTop = height;
         layoutBottom = height + axisSpaceY;
         layoutRight = height;
-        strLen = strlen(messageBuffer);
+
         cairoVerticalText();
         if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\" transform=\"translate(%f, %f) rotate(-90)\">\n%s\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), layoutTop + fontSize, -(layoutLeft + layoutRight), height, messageBuffer);
     }
@@ -1361,11 +1364,11 @@ int LwePlot2d(plotStruct* inputStruct) {
         layoutTop = height + 2.8 * fontSize;
         layoutBottom = height + axisSpaceY;
         layoutRight = axisSpaceX + width;
-        strLen = strlen(messageBuffer);
+
         memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
         snprintf(messageBuffer, MAX_LOADSTRING,
             _T("%s"), (*s).xLabel);
-        strLen = strlen(messageBuffer);
+
         cairoCenterText();
         SVGcentertext();
     }
@@ -1379,7 +1382,7 @@ int LwePlot2d(plotStruct* inputStruct) {
         layoutTop = height+3;
         layoutBottom = height + axisSpaceY;
         layoutRight = layoutLeft + axisSpaceX;
-        strLen = strlen(messageBuffer);
+
         cairoCenterText();
         SVGcentertext();
     }
@@ -1534,33 +1537,10 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         svgBuf = new char[1024 * 1024]();
     }
 
-    size_t simIndex = theGui.plotSlider.getIntValue();
-    if (simIndex < 0) {
-        simIndex = 0;
-    }
+    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
-    }
-
-    bool forceX = FALSE;
-    double xMin = theGui.textBoxes[48].valueDouble();
-    double xMax = theGui.textBoxes[49].valueDouble();
-    if (xMin != xMax && xMax > xMin) {
-        forceX = TRUE;
-    }
-    bool forceY = FALSE;
-    double yMin = theGui.textBoxes[50].valueDouble();
-    double yMax = theGui.textBoxes[51].valueDouble();
-    if (yMin != yMax && yMax > yMin) {
-        forceY = TRUE;
-    }
-    bool overlayTotal = FALSE;
-    if (theGui.checkBoxes[0].isChecked()) {
-        overlayTotal = TRUE;
-    }
-    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-    if ((*activeSetPtr).is3D) {
-        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
     }
 
     size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
@@ -1616,33 +1596,10 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         svgBuf = new char[1024 * 1024]();
     }
 
-    size_t simIndex = theGui.plotSlider.getIntValue();
-    if (simIndex < 0) {
-        simIndex = 0;
-    }
+    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
-    }
-
-    bool forceX = FALSE;
-    double xMin = theGui.textBoxes[48].valueDouble();
-    double xMax = theGui.textBoxes[49].valueDouble();
-    if (xMin != xMax && xMax > xMin) {
-        forceX = TRUE;
-    }
-    bool forceY = FALSE;
-    double yMin = theGui.textBoxes[50].valueDouble();
-    double yMax = theGui.textBoxes[51].valueDouble();
-    if (yMin != yMax && yMax > yMin) {
-        forceY = TRUE;
-    }
-    bool overlayTotal = FALSE;
-    if (theGui.checkBoxes[0].isChecked()) {
-        overlayTotal = TRUE;
-    }
-    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-    if ((*activeSetPtr).is3D) {
-        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
     }
 
     size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
@@ -1701,10 +1658,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = TRUE;
     }
-    size_t simIndex = theGui.plotSlider.getIntValue();
-    if (simIndex < 0) {
-        simIndex = 0;
-    }
+    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
     }
@@ -1725,8 +1679,6 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.checkBoxes[0].isChecked()) {
         overlayTotal = TRUE;
     }
-
-    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 
     sPlot.area = area;
     sPlot.cr = cr;
@@ -1794,10 +1746,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = TRUE;
     }
-    size_t simIndex = theGui.plotSlider.getIntValue();
-    if (simIndex < 0) {
-        simIndex = 0;
-    }
+    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
     }
@@ -1933,10 +1882,7 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         return;
     }
     imagePlotStruct sPlot;
-    size_t simIndex = theGui.plotSlider.getIntValue();
-    if (simIndex < 0) {
-        simIndex = 0;
-    }
+    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
     }
@@ -1963,10 +1909,7 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         return;
     }
     imagePlotStruct sPlot;
-    size_t simIndex = theGui.plotSlider.getIntValue();
-    if (simIndex < 0) {
-        simIndex = 0;
-    }
+    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
     }
@@ -1993,10 +1936,7 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         return;
     }
     imagePlotStruct sPlot;
-    size_t simIndex = theGui.plotSlider.getIntValue();
-    if (simIndex < 0) {
-        simIndex = 0;
-    }
+    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
     }
@@ -2004,8 +1944,6 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if ((*activeSetPtr).is3D) {
         logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
     }
-
-    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 
     sPlot.complexData =
         &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2];
@@ -2029,10 +1967,7 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     imagePlotStruct sPlot;
 
-    size_t simIndex = theGui.plotSlider.getIntValue();
-    if (simIndex < 0) {
-        simIndex = 0;
-    }
+    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
         simIndex = 0;
     }
@@ -2041,8 +1976,6 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if ((*activeSetPtr).is3D) {
         logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
     }
-
-    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
 
     sPlot.complexData =
         &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + (*activeSetPtr).NgridC];
@@ -2360,6 +2293,8 @@ void fittingThread(int pulldownSelection) {
     }
     fittingFunction(activeSetPtr);
     (*activeSetPtr).plotSim = 0;
+    (*activeSetPtr).runningOnCPU = forceCPU;
+    (*activeSetPtr).assignedGPU = assignedGPU;
     theGui.requestPlotUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.threadPrint(_T("Finished fitting after %8.4lf s.\n"), 1e-6 *
@@ -2378,10 +2313,12 @@ void fittingThread(int pulldownSelection) {
 }
 
 int main(int argc, char** argv) {
+
     GtkApplication* app;
     int status;
     //g_setenv("GDK_SCALE", "1.5", TRUE);
-    app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_FLAGS_NONE);
+    g_setenv("LD_LIBRARY_PATH","/home/nick/repos/LightwaveExplorer/LightwaveExplorerGTK:/opt/intel/oneapi/tbb/2021.8.0/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/2023.0.0/lib/intel64:/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/lib:/opt/intel/oneapi/debugger/2023.0.0/libipt/intel64/lib:/opt/intel/oneapi/debugger/2023.0.0/dep/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/lib/x64:/opt/intel/oneapi/compiler/2023.0.0/linux/lib/oclfpga/host/linux64/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/compiler/lib/intel64_lin", TRUE);
+    app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_SEND_ENVIRONMENT);
     //g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     status = g_application_run(G_APPLICATION(app), argc, argv);
