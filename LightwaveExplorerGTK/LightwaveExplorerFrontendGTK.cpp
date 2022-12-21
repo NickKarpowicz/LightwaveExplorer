@@ -2,20 +2,16 @@
 #include <thread>
 #include <chrono>
 #include <locale>
-#ifdef _WIN32
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-#include <nvml.h>
-#include "../LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
-#include "../LightwaveExplorerCore.cuh"
-#endif
 #include "../LightwaveExplorerCoreCPU.h"
-#ifdef __linux__
-#ifndef LINUXCPUONLY
+
+#ifndef CPUONLY
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <nvml.h>
 #include "../LightwaveExplorerCore.cuh"
+#ifdef _WIN32
+#include "../LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
+#else
 #include "LightwaveExplorerDPCPPlib.h"
 #endif
 #endif
@@ -25,6 +21,7 @@
 #else
 #define preferredStrCpy strncpy
 #endif
+
 #define LABELWIDTH 6
 #define MAX_LOADSTRING 1024
 #define MAX_SIMULATIONS 4096
@@ -266,6 +263,41 @@ public:
 
         
 
+
+
+        sequence.init(parentHandle, buttonCol1, 13, colWidth, 6);
+        fitCommand.init(parentHandle, buttonCol1, 21, colWidth, 4);
+        miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, buttonCol2 + 0, 12, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, buttonCol2 + 2, 12, 2, 1, buttonAddDefault);
+        miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, buttonCol2 + 4, 12, 2, 1, buttonAddRotation);
+        miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, buttonCol2 + 6, 12, 2, 1, buttonAddPulse);
+        buttons[0].init(_T("Run"), parentHandle, buttonCol3, 19, buttonWidth, 1, launchRunThread);
+        buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 19, buttonWidth, 1, stopButtonCallback);
+        buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1, 24, textWidth, 1, createRunFile);
+        buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 20, buttonWidth, 1, launchFitThread);
+        buttons[4].init(_T("Load"), parentHandle, buttonCol1, 19, buttonWidth, 1, loadCallback);
+        //buttons[5].init(_T("Reload"), parentHandle, buttonCol2, 18, buttonWidth, 1, runButtonClick);
+        buttons[6].init(_T("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
+        buttons[7].init(_T("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
+        buttons[8].init(_T("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
+        buttons[9].init(_T("Path"), parentHandle, textWidth, 22, textWidth, 1, saveFileDialogCallback, (gpointer)3);
+        buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
+        buttons[10].squeeze();
+        buttons[11].init(_T("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
+        buttons[11].squeeze();
+        checkBoxes[0].setFunction(independentPlotQueue);
+        checkBoxes[1].setFunction(independentPlotQueue);
+        buttons[12].init(_T("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
+        buttons[12].squeeze();
+        plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
+        plotSlider.setRange(0.0, 10.0);
+        plotSlider.setDigits(0);
+        plotSlider.setFunction(independentPlotQueue);
+
+        console.init(window.parentHandle(1), 0, 0, 1, 1);
+        checkLibraryAvailability();
+
+
         int openMPposition = 0;
         char A[128] = { 0 };
 
@@ -307,44 +339,11 @@ public:
         pulldowns[7].addElement(A);
         pulldowns[8].addElement(A);
         memset(&A, 0, sizeof(A));
-
         pulldowns[7].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
         pulldowns[8].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);
         textBoxes[52].init(window.parentHandle(6), 4 + 3 * buttonWidth, 0, 1, 1);
 
         pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
-        sequence.init(parentHandle, buttonCol1, 13, colWidth, 6);
-        fitCommand.init(parentHandle, buttonCol1, 21, colWidth, 4);
-        miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, buttonCol2 + 0, 12, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, buttonCol2 + 2, 12, 2, 1, buttonAddDefault);
-        miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, buttonCol2 + 4, 12, 2, 1, buttonAddRotation);
-        miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, buttonCol2 + 6, 12, 2, 1, buttonAddPulse);
-        buttons[0].init(_T("Run"), parentHandle, buttonCol3, 19, buttonWidth, 1, launchRunThread);
-        buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 19, buttonWidth, 1, stopButtonCallback);
-        buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1, 24, textWidth, 1, createRunFile);
-        buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 20, buttonWidth, 1, launchFitThread);
-        buttons[4].init(_T("Load"), parentHandle, buttonCol1, 19, buttonWidth, 1, loadCallback);
-        //buttons[5].init(_T("Reload"), parentHandle, buttonCol2, 18, buttonWidth, 1, runButtonClick);
-        buttons[6].init(_T("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
-        buttons[7].init(_T("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
-        buttons[8].init(_T("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
-        buttons[9].init(_T("Path"), parentHandle, textWidth, 22, textWidth, 1, saveFileDialogCallback, (gpointer)3);
-        buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
-        buttons[10].squeeze();
-        buttons[11].init(_T("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
-        buttons[11].squeeze();
-        checkBoxes[0].setFunction(independentPlotQueue);
-        checkBoxes[1].setFunction(independentPlotQueue);
-        buttons[12].init(_T("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
-        buttons[12].squeeze();
-        plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
-        plotSlider.setRange(0.0, 10.0);
-        plotSlider.setDigits(0);
-        plotSlider.setFunction(independentPlotQueue);
-
-        console.init(window.parentHandle(1), 0, 0, 1, 1);
-        checkLibraryAvailability();
-        
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
         textBoxes[1].setLabel(-labelWidth, 0, _T("Frequency (THz)"));
         textBoxes[2].setLabel(-labelWidth, 0, _T("Bandwidth (THz)"));
@@ -796,7 +795,7 @@ int freeSemipermanentGrids() {
 }
 
 void checkLibraryAvailability() {   
-#if defined __APPLE__ || defined LINUXCPUONLY
+#if defined CPUONLY
     CUDAavailable = FALSE;
     SYCLavailable = FALSE;
 #define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
@@ -806,48 +805,36 @@ void checkLibraryAvailability() {
 #define runDlibFitting runDlibFittingCPU
 #define runDlibFittingSYCL runDlibFittingCPU
 #else
-    if (TRUE) {
-        //Find, count, and name the GPUs
-        int CUDAdevice, i;
-        cudaGetDeviceCount(&cudaGPUCount);
-        cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
-        struct cudaDeviceProp activeCUDADeviceProp;
-        //if (cuErr == cudaSuccess) {
-        if(TRUE){
-            if (cudaGPUCount > 0) {
-                CUDAavailable = TRUE;
-            }
 
-            theGui.console.cPrint("CUDA found %i GPU(s): \r\n", cudaGPUCount);
-            for (i = 0; i < cudaGPUCount; ++i) {
-                cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-                theGui.console.cPrint("%s\n", activeCUDADeviceProp.name);
-                theGui.console.cPrint("    Memory: %i MB\r\n    Multiprocessors: %i\r\n",
-                    (int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
-            }
+#ifndef NOCUDA
+	//Find, count, and name the GPUs
+	int CUDAdevice, i;
+	cudaGetDeviceCount(&cudaGPUCount);
+	cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
+	struct cudaDeviceProp activeCUDADeviceProp;
+	//if (cuErr == cudaSuccess) {
 
-        }
-        else {
-            theGui.console.cPrint("No CUDA-compatible GPU found.\r\n");
-            CUDAavailable = FALSE;
-        }
-    }
-    else {
-        theGui.console.cPrint("No CUDA-compatible GPU found.\r\n");
-        CUDAavailable = FALSE;
-    }
+	if (cudaGPUCount > 0) {
+		CUDAavailable = TRUE;
+	}
+
+	theGui.console.cPrint("CUDA found %i GPU(s): \r\n", cudaGPUCount);
+	for (i = 0; i < cudaGPUCount; ++i) {
+		cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+		theGui.console.cPrint("%s\n", activeCUDADeviceProp.name);
+		theGui.console.cPrint("    Memory: %i MB\r\n    Multiprocessors: %i\r\n",
+			(int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
+	}
 #endif
-    SYCLavailable = FALSE;
-#if defined __APPLE__ || defined LINUXCPUONLY
-#define solveNonlinearWaveEquationSequenceSYCL solveNonlinearWaveEquationSequenceCPU
-#define solveNonlinearWaveEquationSYCL solveNonlinearWaveEquationCPU
-#define runDlibFittingSYCL runDlibFittingCPU
-#else
+
+
+#ifndef NOSYCL
     SYCLavailable = TRUE;
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
     size_t syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
     theGui.console.cPrint("%ls",syclDeviceList);
+#endif
 #endif
 }
 
