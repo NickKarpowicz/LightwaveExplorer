@@ -1,5 +1,5 @@
 #include "LWEActiveDeviceCommon.cpp"
-#include <CL/sycl.hpp>
+#include <sycl.hpp>
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
 #define DeviceToHost 2
@@ -7,7 +7,7 @@
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
 void atomicAddSYCL(double* pulseSum, double pointEnergy) {
-	cl::sycl::atomic_ref<double, cl::sycl::memory_order::relaxed, cl::sycl::memory_scope::device> a(*pulseSum);
+	sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
 	a.fetch_add(pointEnergy);
 }
 
@@ -46,7 +46,7 @@ private:
 		if ((*dParams).isCylindric) delete doublePolfftPlan;
 	}
 public:
-	cl::sycl::queue stream;
+	sycl::queue stream;
 	deviceParameterSet* dParams;
 	deviceParameterSet* dParamsDevice;
 	simulationParameterSet* cParams;
@@ -77,14 +77,14 @@ public:
 
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
-		stream.submit([&](cl::sycl::handler& h) {
+		stream.submit([&](sycl::handler& h) {
 			h.parallel_for(Nblock * Nthread, [=](auto i) {kernel(i, args...); });
 			});
 
 	}
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
-		(*ptr) = cl::sycl::aligned_alloc_device(2 * sizeof(double), N * elementSize, stream.get_device(), stream.get_context());
+		(*ptr) = sycl::aligned_alloc_device(2 * sizeof(double), N * elementSize, stream.get_device(), stream.get_context());
 		stream.memset((*ptr), 0, N * elementSize);
 		return 0;
 	}
@@ -101,7 +101,7 @@ public:
 
 	void deviceFree(void* block) {
 		stream.wait();
-		cl::sycl::free(block, stream);
+		sycl::free(block, stream);
 	}
 
 	//to do
@@ -234,30 +234,25 @@ public:
 		deviceFree((*s).inverseChiLinear1);
 	}
 	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
-
-		cl::sycl::gpu_selector dGPU;
-		cl::sycl::cpu_selector dCPU;
-		cl::sycl::default_selector d;
-		cl::sycl::queue defaultStream(d, { cl::sycl::property::queue::in_order() });
-		cl::sycl::queue cpuStream(dCPU, { cl::sycl::property::queue::in_order() });
-
-		if ((*sCPU).assignedGPU == 1) {
+		if ((*sCPU).assignedGPU) {
 			try {
-				cl::sycl::queue gpuStream(dGPU, { cl::sycl::property::queue::in_order() });
+				sycl::queue gpuStream{ sycl::gpu_selector_v, { sycl::property::queue::in_order() } };
 				stream = gpuStream;
 			}
 			catch (sycl::exception const& e) {
-				stream = cpuStream;
+				sycl::queue defaultStream{ sycl::default_selector_v, sycl::property::queue::in_order() };
+				stream = defaultStream;
 			}
 		}
 		else if ((*sCPU).runningOnCPU) {
+			sycl::queue cpuStream{ sycl::gpu_selector_v, sycl::property::queue::in_order() };
 			stream = cpuStream;
 		}
 		else {
+			sycl::queue defaultStream{ sycl::default_selector_v, sycl::property::queue::in_order() };
 			stream = defaultStream;
 		}
-		stream.is_in_order();
-
+		
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
 		dParams = s;
 		cParams = sCPU;
