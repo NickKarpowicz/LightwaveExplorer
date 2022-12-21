@@ -1119,11 +1119,10 @@ static void buttonAddRotation() {
 
 static void activate(GtkApplication* app, gpointer user_data) {
 #ifdef __linux__
-    std::locale::global(std::locale("en_US.UTF-8"));
+    std::setlocale(LC_NUMERIC, "en_US.UTF-8");
 #else
-    std::locale::global(std::locale("en_US"));
+    std::setlocale(LC_NUMERIC, "en_US");
 #endif
-    g_setenv("LD_LIBRARY_PATH","/home/nick/repos/LightwaveExplorer/LightwaveExplorerGTK:/opt/intel/oneapi/tbb/2021.8.0/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/2023.0.0/lib/intel64:/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/lib:/opt/intel/oneapi/debugger/2023.0.0/libipt/intel64/lib:/opt/intel/oneapi/debugger/2023.0.0/dep/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/lib/x64:/opt/intel/oneapi/compiler/2023.0.0/linux/lib/oclfpga/host/linux64/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/compiler/lib/intel64_lin", TRUE);
     theGui.activate(app);
 }
 
@@ -2300,16 +2299,7 @@ void fittingThread(int pulldownSelection) {
 }
 
 int main(int argc, char** argv) {
-
-    GtkApplication* app;
-    int status;
-    //g_setenv("GDK_SCALE", "1.5", TRUE);
-    g_setenv("LD_LIBRARY_PATH","/home/nick/repos/LightwaveExplorer/LightwaveExplorerGTK:/opt/intel/oneapi/tbb/2021.8.0/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/2023.0.0/lib/intel64:/opt/intel/oneapi/debugger/2023.0.0/gdb/intel64/lib:/opt/intel/oneapi/debugger/2023.0.0/libipt/intel64/lib:/opt/intel/oneapi/debugger/2023.0.0/dep/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/lib/x64:/opt/intel/oneapi/compiler/2023.0.0/linux/lib/oclfpga/host/linux64/lib:/opt/intel/oneapi/compiler/2023.0.0/linux/compiler/lib/intel64_lin", TRUE);
-    app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_SEND_ENVIRONMENT);
-    //g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
+    GtkApplication* app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
-    status = g_application_run(G_APPLICATION(app), argc, argv);
-    g_object_unref(app);
-
-    return status;
+    return g_application_run(G_APPLICATION(app), argc, argv);
 }

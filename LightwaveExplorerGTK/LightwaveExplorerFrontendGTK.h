@@ -6,10 +6,8 @@
 #undef __noinline__
 #include <gtk/gtk.h>
 
-
-//#ifndef _T()
 #define _T(x) x
-//#endif
+
 class LweColor {
 public:
     double r;
