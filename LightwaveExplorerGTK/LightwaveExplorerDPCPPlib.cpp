@@ -1,8 +1,6 @@
 #define RUNONSYCL
+#define isnan(x) std::isnan(x)
 #include "LightwaveExplorerUtilities.h"
-bool isnan(double x) {
-	return std::isnan(x);
-}
 #include "LightwaveExplorerDPCPPlib.h"
 #include "LightwaveExplorerCore.cu"
 #include <stdio.h>

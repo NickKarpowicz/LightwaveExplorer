@@ -276,7 +276,7 @@ int             readCrystalDatabase(crystalEntry* db);
 int             readSequenceString(simulationParameterSet* sCPU);
 int             configureBatchMode(simulationParameterSet* sCPU);
 int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs);
-int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* filePath);
+int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);
 int             loadPulseFiles(simulationParameterSet* sCPU);
 int             skipFileUntilCharacter(FILE* fstream, char target);
 char*           findClosingParenthesis(const char* s);

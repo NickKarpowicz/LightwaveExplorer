@@ -6,6 +6,7 @@
 #define HostToDevice 1
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
+#define isnan(x) std::isnan(x)
 void atomicAddSYCL(double* pulseSum, double pointEnergy) {
 	sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
 	a.fetch_add(pointEnergy);

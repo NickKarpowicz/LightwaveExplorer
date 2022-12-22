@@ -6,10 +6,8 @@
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
 
-#ifdef CPUONLY
-bool isnan(double x) {
-	return std::isnan(x);
-}
+#if defined CPUONLY || NOCUDA
+#define isnan(x) std::isnan(x)
 #endif
 
 #if defined __APPLE__ || defined __linux__

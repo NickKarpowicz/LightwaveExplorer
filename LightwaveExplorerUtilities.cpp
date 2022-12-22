@@ -656,7 +656,7 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
 }
 
 
-int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* filePath) {
+int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath) {
 	FILE* textfile;
 	if (fopen_s(&textfile, filePath, "r")) {
 		return 1;
@@ -1063,7 +1063,11 @@ int readCrystalDatabase(crystalEntry* db) {
 	double* fd;
 	FILE* fp;
 	if (fopen_s(&fp, "CrystalDatabase.txt", "r")) {
+		#ifdef __linux__
+		if(fopen_s(&fp, "/usr/share/LightwaveExplorer/CrystalDatabase.txt", "r")) return -2;
+		#else
 		return -2;
+		#endif
 	}
 	wchar_t lineBuffer[MAX_LOADSTRING] = { 0 };
 

@@ -5,10 +5,12 @@
 #include "../LightwaveExplorerCoreCPU.h"
 
 #ifndef CPUONLY
+#ifndef NOCUDA
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <nvml.h>
 #include "../LightwaveExplorerCore.cuh"
+#endif
 #ifdef _WIN32
 #include "../LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
 #else
@@ -403,8 +405,8 @@ public:
         pulldowns[9].init(parentHandle, 1, 24, 2 * buttonWidth, 1);
         pulldowns[9].squeeze();
         pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
-        char defaultFilename[] = "DefaultValues.ini";
-        readInputParametersFile(activeSetPtr, crystalDatabasePtr, defaultFilename);
+        if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini"));
+        else if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini"));
         setInterfaceValuesToActiveValues();
         g_timeout_add(100, G_SOURCE_FUNC(updateDisplay), NULL);
         window.present();
@@ -821,6 +823,10 @@ void checkLibraryAvailability() {
 		theGui.console.cPrint("    Memory: %i MB\r\n    Multiprocessors: %i\r\n",
 			(int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
 	}
+#else
+#define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
+#define solveNonlinearWaveEquation solveNonlinearWaveEquationCPU
+#define runDlibFitting runDlibFittingCPU
 #endif
 
 
@@ -1132,7 +1138,9 @@ int LwePlot2d(plotStruct* inputStruct) {
 
     cairo_t* cr = (*s).cr;
     cairo_font_extents_t fe;
+    memset(&fe, 0, sizeof(cairo_font_extents_t));
     cairo_text_extents_t te;
+    memset(&te, 0, sizeof(cairo_text_extents_t));
     double fontSize = 14.0;
     cairo_set_font_size(cr, fontSize);
     cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
