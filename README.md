@@ -64,7 +64,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
   That should have done it. If you don't want to install CUDA (i.e. you don't have an NVIDIA board so why bother), you can replace "make" with "make nocuda" and still use SYCL. If you don't want CUDA or SYCL, you can use "make cpuonly".
 
-  This will  the application binary in /usr/bin/LightwaveExplorer and the text files that the program uses in /usr/shared/LightwaveExplorer. If you want them somewhere else, edit the makefile before you run "make install".
+  This will copy the application binary to /usr/bin/LightwaveExplorer and the text files that the program uses in /usr/shared/LightwaveExplorer. If you want them somewhere else, edit the makefile before you run "make install". In the end, you should be able to call it from anywhere just typing LightwaveExplorer.
 
   If anyone knows how to load all of this stuff into a package or Flatpak to obviate the need to download 20 gigabytes of development tools, let me know; Linux isn't really my specialty.
 
