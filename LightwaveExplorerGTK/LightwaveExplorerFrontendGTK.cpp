@@ -1115,9 +1115,9 @@ static void buttonAddRotation() {
 
 static void activate(GtkApplication* app, gpointer user_data) {
 #ifdef __linux__
-    std::setlocale(LC_NUMERIC, "en_US.UTF-8");
+    setlocale(LC_NUMERIC, "en_US.UTF-8");
 #else
-    std::setlocale(LC_NUMERIC, "en_US");
+    setlocale(LC_NUMERIC, "en_US");
 #endif
     theGui.activate(app);
 }
