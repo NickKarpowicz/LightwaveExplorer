@@ -39,8 +39,10 @@ nocuda:
 	${DPCPP} ${DPCPPFLAGS} -D NOCUDA ${DPCPPINCLUDES} ${INCLUDES} ${DPCPPFILESNOCUDA} -o ${DPCPPOUTPUT} ${DPCPPLD}
 
 install:
-	mv ${DPCPPOUTPUT} /usr/bin/${DPCPPOUTPUT}
+	cp ${DPCPPOUTPUT} /usr/bin/${DPCPPOUTPUT}
 	mkdir -p /usr/share/LightwaveExplorer
+	chmod +x ./LWElauncher/LightwaveExplorerLauncher.sh
+	cp LWElauncher/LightwaveExplorerLauncher.sh /usr/bin/LightwaveExplorerLauncher.sh
 	cp CrystalDatabase.txt /usr/share/LightwaveExplorer/CrystalDatabase.txt
 	cp DefaultValues.ini /usr/share/LightwaveExplorer/DefaultValues.ini
 

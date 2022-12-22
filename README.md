@@ -73,6 +73,8 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ```
 to your ~/.bashrc file.
 
+Another option is to call the LightwaveExplorerLauncher.sh script which was also installed. You can create a shortcut to this to give you an icon that you can click on to run the application without having to go to the terminal.
+
   If anyone knows how to load all of this stuff into a package or Flatpak to obviate the need to download 20 gigabytes of development tools, let me know; Linux isn't really my specialty.
 
 ---
