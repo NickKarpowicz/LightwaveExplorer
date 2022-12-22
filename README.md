@@ -34,6 +34,8 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   ### Installation on a Windows PC
   In order to install and run Lightwave Explorer on Windows, just download the file LightwaveExplorerGTK.zip or LightwaveExplorerGTK.7z (the two files have the same contents, I just upload both because not everyone can open 7z) from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
 
+  The Python module for working with the results is also in that folder for convenience; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder. It's also in this repo if you think of any improvements.
+
   You can also download the version using the Win32 interface rather than the newer interface, in case there are some bugs in the latter which I haven't found yet.
   
   To use the SYCL version, you might also need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
