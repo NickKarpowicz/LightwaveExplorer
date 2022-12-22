@@ -261,10 +261,6 @@ public:
         pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
 
-        
-
-
-
         sequence.init(parentHandle, buttonCol1, 13, colWidth, 6);
         fitCommand.init(parentHandle, buttonCol1, 21, colWidth, 4);
         miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, buttonCol2 + 0, 12, 2, 1, buttonAddSameCrystal);
@@ -276,7 +272,6 @@ public:
         buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1, 24, textWidth, 1, createRunFile);
         buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 20, buttonWidth, 1, launchFitThread);
         buttons[4].init(_T("Load"), parentHandle, buttonCol1, 19, buttonWidth, 1, loadCallback);
-        //buttons[5].init(_T("Reload"), parentHandle, buttonCol2, 18, buttonWidth, 1, runButtonClick);
         buttons[6].init(_T("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
         buttons[7].init(_T("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
         buttons[8].init(_T("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
@@ -495,9 +490,9 @@ void setInterfaceValuesToActiveValues(){
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\n');
     }
     stripLineBreaks((*activeSetPtr).field1FilePath);
-    if (!strncmp((*activeSetPtr).field1FilePath, "None",4)) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
-    if (!strcmp((*activeSetPtr).field2FilePath, "None")) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
-    if (!strcmp((*activeSetPtr).fittingPath, "None")) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
+    if (strcmp((*activeSetPtr).field1FilePath, "None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
+    if (strcmp((*activeSetPtr).field2FilePath, "None") != 0) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
+    if (strcmp((*activeSetPtr).fittingPath, "None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
 
     if (!((*activeSetPtr).fittingString[0] == 'N')) {
         insertLineBreaksAfterSemicolons((*activeSetPtr).fittingString, MAX_LOADSTRING);

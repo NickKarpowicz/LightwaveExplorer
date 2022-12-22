@@ -438,13 +438,10 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	char outputpath[MAX_LOADSTRING] = { 0 };
 	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
 
-
-
 	//read fields as binary
 	FILE* ExtOutFile;
 	strcpy_s(outputpath, MAX_LOADSTRING, outputBase);
 	strcat_s(outputpath, MAX_LOADSTRING, "_Ext.dat");
-	//ExtOutFile = fopen(outputpath, "rb");
 	if (fopen_s(&ExtOutFile,outputpath,"rb")) return 1;
 	
 	fread_s((*sCPU).ExtOut, writeSize*sizeof(double), sizeof(double), writeSize, ExtOutFile);

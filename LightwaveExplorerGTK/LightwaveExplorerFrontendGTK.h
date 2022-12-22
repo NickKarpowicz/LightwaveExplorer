@@ -315,7 +315,12 @@ public:
 
     void copyBuffer(char* destination, size_t maxLength) {
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
-        snprintf(destination, maxLength, "%s", gtk_entry_buffer_get_text(buf));
+        if (strlen(gtk_entry_buffer_get_text(buf)) > 0) {
+            snprintf(destination, maxLength, "%s", gtk_entry_buffer_get_text(buf));
+        }
+        else {
+            snprintf(destination, maxLength, "None");
+        }
     }
 
 };
