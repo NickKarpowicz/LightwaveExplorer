@@ -401,3 +401,6 @@ LightwaveExplorerGTK/LightwaveExplorerCore.o
 LightwaveExplorerGTK/LightwaveExplorerCoreCPU.o
 LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.o
 LightwaveExplorerGTK/LightwaveExplorerUtilities.o
+LightwaveExplorerGTK/appimagetool-x86_64.AppImage
+.gitignore
+LightwaveExplorerGTK/AppRun
