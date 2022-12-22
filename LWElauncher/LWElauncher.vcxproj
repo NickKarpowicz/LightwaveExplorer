@@ -21,10 +21,9 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{c62a9002-9eec-475d-bf37-78c42ecb77f4}</ProjectGuid>
-    <RootNamespace>MPQNonlinearPropagation</RootNamespace>
+    <ProjectGuid>{bb99c918-65b7-41a8-9b66-de67dc4cb26a}</ProjectGuid>
+    <RootNamespace>LWElauncher</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>LightwaveExplorer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -45,7 +44,6 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-    <UseInteloneMKL>Sequential</UseInteloneMKL>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -53,14 +51,9 @@
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <UseIntelMKL>Sequential</UseIntelMKL>
-    <UseInteloneMKL>Parallel</UseInteloneMKL>
-    <UseMpiLibrary1A>MSMPI</UseMpiLibrary1A>
-    <UseILP64Interfaces1A>false</UseILP64Interfaces1A>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.0.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -77,18 +70,8 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)\LightwaveExplorerSYCL;$(IncludePath)</IncludePath>
+    <TargetName>LightwaveExplorer</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -100,7 +83,6 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>DlibLibraryComponents.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -117,127 +99,58 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>DlibLibraryComponents.lib;%(AdditionalDependencies);cudart.lib;cudadevrt.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
-      <DebugInformationFormat>None</DebugInformationFormat>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>C:\Users\nickk\OneDrive\source\repos\fftw\lib;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>DlibLibraryComponents.lib;libfftw3-3.lib;cudart_static.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\nickk\OneDrive\source\repos\fftw\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
-    <CudaCompile>
-      <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
-      <CudaRuntime>Static</CudaRuntime>
-      <Include>%(Include)</Include>
-    </CudaCompile>
-    <Manifest>
-      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
-    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\latest\windows\include\sycl;$(ProjectDir)/lib;$(ProjectDir)../dlib;C:\Program Files %28x86%29\Intel\oneAPI\mkl\latest\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <OpenMPSupport>true</OpenMPSupport>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableParallelCodeGeneration>false</EnableParallelCodeGeneration>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <OmitFramePointers>true</OmitFramePointers>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>DlibLibraryComponents.lib;LightwaveExplorerSYCL.lib;%(AdditionalDependencies);cudart.lib;cufft.lib;UxTheme.lib;dwmapi.lib;d2d1.lib;dwrite.lib;ComCtl32.lib;nvml.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)\lib;$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <DelayLoadDLLs>LightwaveExplorerSYCL.dll;nvml.dll;cufft64_11.dll;cudart64_12.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
-    <CudaCompile>
-      <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
-      <CudaRuntime>Shared</CudaRuntime>
-      <Runtime>MD</Runtime>
-      <FastMath>true</FastMath>
-      <Optimization>O2</Optimization>
-      <Include>%(Include)</Include>
-    </CudaCompile>
-    <Manifest>
-      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
-    </Manifest>
-    <CudaLink>
-      <Optimization>O2</Optimization>
-    </CudaLink>
     <PostBuildEvent>
-      <Command>copy "$(TargetPath)" "$(ProjectDir)\Executable\Win32version"
-copy "$(ProjectDir)\CrystalDatabase.txt" "$(ProjectDir)\Executable\Win32version"</Command>
+      <Command>copy "$(TargetPath)" "$(SolutionDir)Executable"
+copy "$(SolutionDir)CrystalDatabase.txt" "$(SolutionDir)Executable"
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
-    <ClInclude Include="LWEActiveDeviceCPU.h" />
-    <ClInclude Include="LWEActiveDeviceCUDA.cuh" />
-    <ClInclude Include="LWEActiveDeviceSYCL.h" />
-    <ClInclude Include="LightwaveExplorerTrilingual.h" />
-    <ClInclude Include="LightwaveExplorerUtilities.h" />
-    <ClInclude Include="LightwaveExplorerCoreCPU.h" />
-    <ClInclude Include="LightwaveExplorerFrontend.h" />
-    <ClInclude Include="LightwaveExplorerCore.cuh" />
+    <ClInclude Include="LWElauncher.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="LightwaveExplorerFrontend.cpp" />
-    <ClCompile Include="LightwaveExplorerCoreCPU.cpp" />
-    <ClCompile Include="LightwaveExplorerUtilities.cpp" />
-    <ClCompile Include="LWEActiveDeviceCommon.cpp" />
+    <ClCompile Include="LWElauncher.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="LightwaveExplorer.ico" />
+    <ResourceCompile Include="LWElauncher.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="LWElauncher.ico" />
     <Image Include="small.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="LightwaveExplorerCore.cu" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="CrystalDatabase.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="cpp.hint" />
-    <None Include="lightwaveExplorer.py" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="LightwaveExplorer.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.0.targets" />
   </ImportGroup>
 </Project>

@@ -22,6 +22,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightwaveExplorerGTK", "Lig
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69} = {FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LWElauncher", "LWElauncher\LWElauncher.vcxproj", "{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -62,6 +64,14 @@ Global
 		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Release|x64.Build.0 = Release|x64
 		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Release|x86.ActiveCfg = Release|x64
 		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Release|x86.Build.0 = Release|x64
+		{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}.Debug|x64.ActiveCfg = Debug|x64
+		{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}.Debug|x64.Build.0 = Debug|x64
+		{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}.Debug|x86.ActiveCfg = Debug|Win32
+		{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}.Debug|x86.Build.0 = Debug|Win32
+		{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}.Release|x64.ActiveCfg = Release|x64
+		{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}.Release|x64.Build.0 = Release|x64
+		{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}.Release|x86.ActiveCfg = Release|Win32
+		{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
