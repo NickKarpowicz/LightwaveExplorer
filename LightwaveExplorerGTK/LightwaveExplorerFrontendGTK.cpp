@@ -70,11 +70,11 @@ public:
     bool isPlotting = FALSE;
     bool isGridAllocated = FALSE;
     bool cancellationCalled = FALSE;
-
+    bool loadedDefaults = FALSE;
 
     mainGui() : isActivated(0), pathTarget(0), isRunning(0), isPlotting(0), sliderTarget(0),
     isGridAllocated(0), cancellationCalled(0), queueSliderUpdate(0), queueSliderMove(0),
-    saveSVG(0), queueUpdate(0), lastProgress(0){}
+    saveSVG(0), queueUpdate(0), lastProgress(0), loadedDefaults(0){}
     ~mainGui() {}
     void requestPlotUpdate() {
         queueUpdate = TRUE;
@@ -499,6 +499,8 @@ void setInterfaceValuesToActiveValues(){
         removeCharacterFromString((*activeSetPtr).fittingString, MAX_LOADSTRING, '\r');
         removeCharacterFromString((*activeSetPtr).fittingString, MAX_LOADSTRING, '\n');
     }
+
+    if(!theGui.loadedDefaults) theGui.filePaths[3].overwritePrint((*activeSetPtr).outputBasePath);
 }
 
 
@@ -1115,9 +1117,9 @@ static void buttonAddRotation() {
 
 static void activate(GtkApplication* app, gpointer user_data) {
 #ifdef __linux__
-    std::setlocale(LC_NUMERIC, "en_US.UTF-8");
+    setlocale(LC_NUMERIC, "en_US.UTF-8");
 #else
-    std::setlocale(LC_NUMERIC, "en_US");
+    setlocale(LC_NUMERIC, "en_US");
 #endif
     theGui.activate(app);
 }

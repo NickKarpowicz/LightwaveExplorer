@@ -173,7 +173,7 @@
       <SpecifyCPUTargetForAOT>Default</SpecifyCPUTargetForAOT>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(TargetPath)" "$(ProjectDir)..\Executable\"
+      <Command>copy "$(TargetPath)" "$(ProjectDir)..\Executable\Win32version"
 copy "$(TargetPath)" "$(ProjectDir)..\Executable\bin"
 </Command>
     </PostBuildEvent>
