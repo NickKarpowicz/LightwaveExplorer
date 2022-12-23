@@ -1062,13 +1062,11 @@ int readCrystalDatabase(crystalEntry* db) {
 	int i = 0;
 	double* fd;
 	FILE* fp;
-	if (fopen_s(&fp, "CrystalDatabase.txt", "r")) {
-		#ifdef __linux__
-		if(fopen_s(&fp, "/usr/share/LightwaveExplorer/CrystalDatabase.txt", "r")) return -2;
-		#else
-		return -2;
-		#endif
-	}
+
+	if(!fopen_s(&fp, "/usr/share/LightwaveExplorer/CrystalDatabase.txt", "r"));
+	else if(!fopen_s(&fp, "CrystalDatabase.txt", "r")) return -2;
+
+
 	wchar_t lineBuffer[MAX_LOADSTRING] = { 0 };
 
 	//read the entries line

@@ -405,8 +405,10 @@ public:
         pulldowns[9].init(parentHandle, 1, 24, 2 * buttonWidth, 1);
         pulldowns[9].squeeze();
         pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
-        if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini"));
-        else if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini"));
+
+        if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini"));
+        else if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini"));
+        
         setInterfaceValuesToActiveValues();
         g_timeout_add(100, G_SOURCE_FUNC(updateDisplay), NULL);
         window.present();
