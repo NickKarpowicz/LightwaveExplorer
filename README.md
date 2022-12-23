@@ -3,7 +3,7 @@
 <p style="text-align: center;">Nick Karpowicz</p>
 <p style="text-align: center;">Max Planck Institute of Quantum optics</p>
 
-<p style="text-align: center;"><img src="/Documentation/Images/LWEicon.png" width="200" height="200"></p>
+<p style="text-align: center;"><img src="/AppImage/ico512.png" width="256" height="256"></p>
 
 <p style="text-align: center;">(icon made by Stable Diffusion)</p>
 
@@ -43,7 +43,31 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ---
 
   ### Installation on Linux
-  The process to get it running on Linux is a bit more involved at the moment, so this is just for the adventurous. 
+
+  The easiest way is to use the AppImage located in the same [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP) as the Windows one. You just have to download the image and mark it as executable (either under the properties in your file explorer or by "chmod +x LightwaveExplorer-x86_64.AppImage").
+
+  When using the AppImage, one thing you might want to do is edit your default values (the numbers in the interface when the app starts) or crystal database. On Windows, these files are located in the same folder as the executable, but in the AppImage, they're "baked in" and the file is read only. However, if you place copies of "CrystalDatabase.txt" and "DefaultValues.ini" (from this repo) into /usr/share/LightwaveExplorer, those will supercede the built-in ones.
+
+---
+  ### How do I know which configuration to run?
+  At the bottom of the window, you'll see two pulldown menus marked "Config" - these let you choose whether the simulation runs in CUDA, SYCL, or OpenMP. It should start set to the fastest option for your system, but if you don't have the right drivers/runtimes, it might step down to something else that is present. OpenMP is typically the slowest, but will run on basically any system.
+
+  - If you have an Intel CPU, chances are it will have an integrated GPU, which can be used by SYCL. In my experience, the ones that show up as "Iris Graphics" are actually much faster than running the code on the actual CPU, while the ones named "HD Graphics" are sometimes slower. Just try them both.
+
+  - The SYCL code compiles itself for your specific hardware the first time it runs. So, the first run will be slower than the rest - don't reject it because it that; subsequent runs will be faster!
+
+  - The second pulldown is for offloading work onto other parts of your system. For example, if you are running a big batch of simulations on a CUDA-capable GPU, you can send some of them to the CPU to work on. This is what the second menu and following number do: chose the offload target, and the number to send to it. You don't have to use this if you don't want to.
+
+  - Basically, the order in which you should choose the backends is: CUDA if you have something which supports it, SYCL otherwise, and OpenMP if those options aren't available.
+
+  ---
+  ### Compilation in Visual Studio
+  LWE was developed in Visual Studio. If you clone this repo, if you have installed the latest [CUDA development kit](https://developer.nvidia.com/cuda-downloads) from NVIDIA, [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler), clone also the dlib repo side-by-side with LWE and it should compile directly.
+
+  ---
+
+### Compiling the GUI app on Linux
+  The process to get it compiled on Linux is a bit more involved at the moment, so this is just for the adventurous. 
 
   First, you'll need to install some stuff.
 
@@ -75,28 +99,9 @@ to your ~/.bashrc file.
 
 Another option is to call the LightwaveExplorerLauncher.sh script which was also installed. You can create a shortcut to this to give you an icon that you can click on to run the application without having to go to the terminal.
 
-  If anyone knows how to load all of this stuff into a package or Flatpak to obviate the need to download 20 gigabytes of development tools, let me know; Linux isn't really my specialty.
+But if you just want to run it, the AppImage is a lot easier (assuming it's not broken, I've only tested it on Mint and Ubuntu...)
 
 ---
-
-  ### How do I know which configuration to run?
-  At the bottom of the window, you'll see two pulldown menus marked "Config" - these let you choose whether the simulation runs in CUDA, SYCL, or OpenMP. It should start set to the fastest option for your system, but if you don't have the right drivers/runtimes, it might step down to something else that is present. OpenMP is typically the slowest, but will run on basically any system.
-
-  - If you have an Intel CPU, chances are it will have an integrated GPU, which can be used by SYCL. In my experience, the ones that show up as "Iris Graphics" are actually much faster than running the code on the actual CPU, while the ones named "HD Graphics" are sometimes slower. Just try them both.
-
-  - The SYCL code compiles itself for your specific hardware the first time it runs. So, the first run will be slower than the rest - don't reject it because it that; subsequent runs will be faster!
-
-  - The second pulldown is for offloading work onto other parts of your system. For example, if you are running a big batch of simulations on a CUDA-capable GPU, you can send some of them to the CPU to work on. This is what the second menu and following number do: chose the offload target, and the number to send to it. You don't have to use this if you don't want to.
-
-  - Basically, the order in which you should choose the backends is: CUDA if you have something which supports it, SYCL otherwise, and OpenMP if those options aren't available.
-
-  ---
-  
-  ### Compilation in Visual Studio
-  LWE was developed in Visual Studio. If you clone this repo, if you have installed the latest CUDA development kit from NVIDIA, oneAPI from Intel (including the Math Kernel Library and the DPC++ compiler), clone also the dlib repo side-by-side with LWE and it should compile directly.
-
-  ---
-
   ### Compilation on clusters
   
   A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, entering the following should work:
