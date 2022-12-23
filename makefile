@@ -1,4 +1,5 @@
 CC=g++
+APPLECC=g++-12
 DPCPP=icpx
 NVCC=/usr/local/cuda-12.0/bin/nvcc
 CUDATARGETS = /usr/local/cuda-12.0/targets/x86_64-linux
@@ -8,6 +9,11 @@ INCLUDES=`pkg-config --cflags gtk4` -I${MKLROOT}/include -I${MKLROOT}/include/ff
 LDFLAGS=`pkg-config --libs gtk4` `pkg-config --libs gtk4` -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl
 SOURCES= LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp DlibLibraryComponents/DlibLibraryComponents.cpp
 OBJECTS=-o LightwaveExplorer
+
+APPLEFLAGS=-std=c++20 -ffast-math -Ofast -fopenmp -D CPUONLY
+APPLEINCLUDES=-I/opt/intel/oneapi/mkl/latest/include -I/opt/intel/oneapi/mkl/latest/include/fftw -I../dlib -I/usr/local/include -I/usr/local/include/c++/12 -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
+APPLELDFLAGS=-L/usr/local/lib ${MKLROOT}/lib/libmkl_intel_lp64.a ${MKLROOT}/lib/libmkl_intel_thread.a ${MKLROOT}/lib/libmkl_core.a -lm -lpthread -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 -lomp
+
 
 CUDAFLAGS= -diag-suppress 1650 -diag-suppress 1217 -x cu -D NOCUDAMAIN
 CUDAINCLUDES=-I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
@@ -32,6 +38,9 @@ cuda:
 cpuonly:
 	${CC} ${CFLAGS} ${INCLUDES} ${OBJECTS} ${SOURCES} ${LDFLAGS}
 
+mac:
+	${APPLECC} ${APPLEFLAGS} ${APPLEINCLUDES} ${OBJECTS} ${SOURCES} ${APPLELDFLAGS}
+
 sycl:
 	${DPCPP} ${DPCPPFLAGS} ${DPCPPINCLUDES} ${INCLUDES} ${DPCPPFILES} -o ${DPCPPOUTPUT} ${DPCPPLD}
 
@@ -50,3 +59,4 @@ clean:
 	rm -f LightwaveExplorer
 	rm -rf TestFile*
 	rm -rf *.o
+
