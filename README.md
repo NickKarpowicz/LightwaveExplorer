@@ -38,7 +38,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
   You can also download the version using the Win32 interface rather than the newer interface, in case there are some bugs in the latter which I haven't found yet.
   
-  To use the SYCL version, you might also need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
+  To use the SYCL version, you might also need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html). However, on my laptop it wasn't needed.
 
 ---
 
