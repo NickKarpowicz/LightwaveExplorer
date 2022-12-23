@@ -1,4 +1,4 @@
-#!/bin/bash -l
+!/bin/bash -l
 cd ..
 make
 cd AppImage
@@ -23,12 +23,18 @@ cp /usr/lib/x86_64-linux-gnu/libcairo-gobject.so.2 LightwaveExplorer.AppDir/usr/
 cp /usr/lib/x86_64-linux-gnu/libcairo.so.2 LightwaveExplorer.AppDir/usr/lib/libcairo.so.2
 cp /usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0 LightwaveExplorer.AppDir/usr/lib/libgobject-2.0.so.0
 cp /usr/lib/x86_64-linux-gnu/libglib-2.0.so.0 LightwaveExplorer.AppDir/usr/lib/libglib-2.0.so.0
-cp -r /home/nick/intel/oneapi/tbb/2021.8.0/lib/intel64/gcc4.8/* LightwaveExplorer.AppDir/usr/lib/
-cp -r /home/nick/intel/oneapi/mkl/2023.0.0/lib/intel64/* LightwaveExplorer.AppDir/usr/lib/
-cp -r /home/nick/intel/oneapi/debugger/2023.0.0/dep/lib/* LightwaveExplorer.AppDir/usr/lib/
+cp /home/nick/intel/oneapi/tbb/2021.8.0/lib/intel64/gcc4.8/*.so* LightwaveExplorer.AppDir/usr/lib/
 cp -r /home/nick/intel/oneapi/compiler/2023.0.0/linux/lib/* LightwaveExplorer.AppDir/usr/lib/
 cp -r /home/nick/intel/oneapi/compiler/2023.0.0/linux/lib/x64/* LightwaveExplorer.AppDir/usr/lib/
-cp -r /home/nick/intel/oneapi/compiler/2023.0.0/linux/compiler/lib/intel64_lin/* LightwaveExplorer.AppDir/usr/lib/
+rm -rf LightwaveExplorer.AppDir/usr/lib/x64
+rm -rf LightwaveExplorer.AppDir/usr/lib/clc
+rm -rf LightwaveExplorer.AppDir/usr/lib/oclfpga
+rm -rf LightwaveExplorer.AppDir/usr/lib/clang
+
+
+rm LightwaveExplorer.AppDir/usr/lib/libOclCpuBackEnd_emu.so.2022.15.12.0
+rm LightwaveExplorer.AppDir/usr/lib/icx-lto.so
+cp -r /home/nick/intel/oneapi/compiler/2023.0.0/linux/compiler/lib/intel64_lin/*.so* LightwaveExplorer.AppDir/usr/lib/
 cp /usr/lib/x86_64-linux-gnu/libm.so.6 LightwaveExplorer.AppDir/usr/lib/libm.so.6
 cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 LightwaveExplorer.AppDir/usr/lib/libstdc++.so.6
 cp /usr/lib/x86_64-linux-gnu/libc.so.6 LightwaveExplorer.AppDir/usr/lib/libc.so.6

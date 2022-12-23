@@ -405,3 +405,4 @@ LightwaveExplorerGTK/appimagetool-x86_64.AppImage
 .gitignore
 LightwaveExplorerGTK/AppRun
 LightwaveExplorer
+AppImage/LightwaveExplorer-x86_64.AppImage
