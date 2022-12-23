@@ -503,6 +503,7 @@ void setInterfaceValuesToActiveValues(){
     }
 
     if(!theGui.loadedDefaults) theGui.filePaths[3].overwritePrint((*activeSetPtr).outputBasePath);
+    theGui.loadedDefaults = TRUE;
 }
 
 
