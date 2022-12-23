@@ -47,7 +47,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
   First, you'll need to install some stuff.
 
-  - [GTK 4](https://www.gtk.org/docs/installations/linux/)
+  - [GTK 4](https://www.gtk.org/docs/installations/linux/) - on my distro, I could just do: sudo apt install libgtk-4-1 libgtk-4-dev
   - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
   - [NVIDIA CUDA (optional)](https://developer.nvidia.com/cuda-downloads)
 
