@@ -49,6 +49,12 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   When using the AppImage, one thing you might want to do is edit your default values (the numbers in the interface when the app starts) or crystal database. On Windows, these files are located in the same folder as the executable, but in the AppImage, they're "baked in" and the file is read only. However, if you place copies of "CrystalDatabase.txt" and "DefaultValues.ini" (from this repo) into /usr/share/LightwaveExplorer, those will supercede the built-in ones.
 
 ---
+
+### Mac version
+
+A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, and it does run and work as expected. However it's currently not a proper Mac app - you have to launch it from the terminal. I'm not sure if I would get arrested for releasing it in that state. If you do want to compile it yourself I can tell you how, it's similar to the Linux instructions below, except you only install MKL from Intel, then gcc and gtk4 via Homebrew, with the make command "make mac".
+
+---
   ### How do I know which configuration to run?
   At the bottom of the window, you'll see two pulldown menus marked "Config" - these let you choose whether the simulation runs in CUDA, SYCL, or OpenMP. It should start set to the fastest option for your system, but if you don't have the right drivers/runtimes, it might step down to something else that is present. OpenMP is typically the slowest, but will run on basically any system.
 
