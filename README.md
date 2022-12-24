@@ -82,6 +82,8 @@ A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, a
   - [NVIDIA CUDA (optional)](https://developer.nvidia.com/cuda-downloads)
 
   You'll also need your basic compilation stuff, which I assume you already installed at some point (e.g. sudo apt install build-essential git g++).
+  
+  Check where oneAPI is; it will either be in /opt as in the code block below, or might be in /home/yourusername.
 
   Once those are installed, cross your fingers and enter this in the terminal with your remaining hand:
 
