@@ -4,7 +4,9 @@
 #include <string.h>
 #include <complex>
 #include "LightwaveExplorerUtilities.h"
-
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 
 
 int readFittingString(simulationParameterSet* sCPU) {
@@ -1062,7 +1064,16 @@ int readCrystalDatabase(crystalEntry* db) {
 	int i = 0;
 	double* fd;
 	FILE* fp;
-
+#ifdef __APPLE__
+	uint32_t bufferSize = 1024;
+	char sysPath[bufferSize] = {0};
+	_NSGetExecutablePath(sysPath, &bufferSize);
+	int plen = strlen(sysPath);
+	sysPath[plen - 17] = 0;
+	strcat(sysPath, "../Resources/CrystalDatabase.txt");
+	fopen_s(&fp, sysPath, "r");
+	if(fp==NULL) return -2;
+#else
 	fopen_s(&fp, "/usr/share/LightwaveExplorer/CrystalDatabase.txt", "r");
 	if (fp == NULL) {
 		fopen_s(&fp, "CrystalDatabase.txt", "r");
@@ -1070,7 +1081,7 @@ int readCrystalDatabase(crystalEntry* db) {
 			return -2;
 		}
 	}
-
+#endif
 	wchar_t lineBuffer[MAX_LOADSTRING] = { 0 };
 
 	//read the entries line

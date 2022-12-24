@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--The executable-->
+  <key>LightwaveExplorer</key>
+  <string>app</string><!--This should be the name of the executable inside your MacOS folder-->
+
+  <!--Company name-->
+  <key>CFBundleIdentifier</key>
+  <string>io.github.nickkarpowicz</string>
+
+  <!--Desired application name-->
+  <key>CFBundleName</key>
+  <string>Lightwave Explorer</string>
+
+  <!--icons file, located in the Resources folder-->
+  <key>CFBundleIconFile</key>
+  <string>AppIcon.icns</string>
+</dict>
+</plist>

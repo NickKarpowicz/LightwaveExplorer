@@ -24,6 +24,10 @@
 #define preferredStrCpy strncpy
 #endif
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 #define LABELWIDTH 6
 #define MAX_LOADSTRING 1024
 #define MAX_SIMULATIONS 4096
@@ -408,7 +412,15 @@ public:
 
         if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini"));
         else if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini"));
-        
+        #ifdef __APPLE__
+            uint32_t bufferSize = 1024;
+            char sysPath[bufferSize] = {0};
+            _NSGetExecutablePath(sysPath, &bufferSize);
+            int plen = strlen(sysPath);
+            sysPath[plen-17] = 0;
+            strcat(sysPath, "../Resources/DefaultValues.ini");
+            readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPath);
+        #endif
         setInterfaceValuesToActiveValues();
         g_timeout_add(100, G_SOURCE_FUNC(updateDisplay), NULL);
         window.present();
