@@ -82,7 +82,7 @@ A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, a
   - [NVIDIA CUDA (optional)](https://developer.nvidia.com/cuda-downloads)
 
   You'll also need your basic compilation stuff, which I assume you already installed at some point (e.g. sudo apt install build-essential git g++).
-  
+
   Check where oneAPI is; it will either be in /opt as in the code block below, or might be in /home/yourusername.
 
   Once those are installed, cross your fingers and enter this in the terminal with your remaining hand:
@@ -126,7 +126,7 @@ chmod +x compileCommandLineLWEfromRepos.sh
  ---
 
   ### Libraries used
- For some of the mathematical operations, I use the following libraries. Thanks to the original authors for making their work available! In order to compile Lightwave Explorer, you'll need them. They are all freely available, but of course have their own licenses .etc.
+Thanks to the original authors for making their work available! In order to compile Lightwave Explorer, you'll need them. They are all freely available, but of course have their own licenses .etc.
   - [NVIDIA CUDA](https://developer.nvidia.com/cuda-toolkit): This provides the basic CUDA runtime, compiler, and cuFFT (which does the Fourier transforms here).
   - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html), specifically the [Math Kernel Library](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html#gs.cw3ci4): This is used for performing fast fourier transforms when running in CPU mode. The DPC++ compiler allows the program to run on both CPUs and a wider range of GPUs, including the integrated ones on Intel chips. I found that on my rather old laptop, SYCL on the GPU is several times faster than running on CPU, so it's useful even for systems without dedicated GPUs.
   - [Dlib](http://dlib.net/): This library is the basis of the optimization routines. I make use of the global optimization functions for the fitting/optimization modes. The library is [available on Github](https://github.com/davisking/dlib), and their excellent documentation and further information is on the [main project website](http://dlib.net/).
