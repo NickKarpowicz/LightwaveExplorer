@@ -1,4 +1,4 @@
-!/bin/bash -l
+#!/bin/bash -l
 cd ..
 make
 cd AppImage
