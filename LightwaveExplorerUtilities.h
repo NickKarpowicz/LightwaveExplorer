@@ -326,7 +326,7 @@ namespace {
     }
 
     int strcat_s(char* a, size_t L, const char* b) {
-        strncat(a, b, L);
+        strcat(a, b);
         return 0;
     }
 

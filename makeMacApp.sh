@@ -1,6 +1,11 @@
 #!/bin/bash -l
 APP=LightwaveExplorer.app
-BIN=../LightwaveExplorer
+BIN=LightwaveExplorer
+
+#compile
+make mac
+
+#set up the directory structure of the .app
 rm -rf $APP
 mkdir $APP
 mkdir $APP/Contents/
@@ -11,12 +16,14 @@ mkdir $APP/Contents/Resources/bin
 mkdir $APP/Contents/Resources/etc
 mkdir $APP/Contents/Resources/share
 
+#copy in the executable, databases and icons
 cp $BIN $APP/Contents/MacOS
-cp ../CrystalDatabase.txt $APP/Contents/Resources
-cp ../DefaultValues.ini $APP/Contents/Resources
-cp AppIcon.icns $APP/Contents/Resources
-cp macplistbase.plist $APP/Contents/info.plist
+cp CrystalDatabase.txt $APP/Contents/Resources
+cp DefaultValues.ini $APP/Contents/Resources
+cp AppImage/AppIcon.icns $APP/Contents/Resources
+cp AppImage/macplistbase.plist $APP/Contents/info.plist
 
+#for a given binary, copy its dynamic link dependencies to the $APP/Contents/Resources/lib folder
 copySharedLibraries(){
     NLIBS=$(otool -L $1 | grep "/usr/local" | wc -l)
     for((i=1; i<=$NLIBS; i++))
@@ -25,8 +32,8 @@ copySharedLibraries(){
         cp -n $CURRENT $APP/Contents/Resources/lib
     done
 }
-#install_name_tool -change "/usr/local/opt/glib/lib/libgobject-2.0.0.dylib" "@executable_path/../Resources/lib/libgobject-2.0.0.dylib" Resources/lib/libatk-1.0.0.dylib
 
+#for a given binary, redirect its search path for its dependencies to the $APP/Contents/Resources/lib folder
 rehomeSharedLibraries(){
     OTOUT=$(otool -L $1)
     NLIBS=$(echo "$OTOUT" | grep "/usr/local" | wc -l)
@@ -35,34 +42,37 @@ rehomeSharedLibraries(){
         CURRENT=$(echo "$OTOUT" | grep "/usr/local" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$i 'FNR==i')
         CURRENTBASE=$(basename $CURRENT)
         install_name_tool -change "$CURRENT" "@executable_path/../Resources/lib/$CURRENTBASE" $1
-        echo "b: $CURRENTBASE $1"
     done
 }
 
+#go through all of the files in the $APP/Contents/Resources/lib folder and copy dependencies there
 copyLibraryDependencies(){
     NLIBSD=$(ls -1a $APP/Contents/Resources/lib | grep "lib" | wc -l | tr -d '[:blank:]')
     echo "$NLIBSD"
     for((j=1; j<=$NLIBSD; j++))
     do
         CURRENTD=$(ls -1a $APP/Contents/Resources/lib | grep "lib" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$j 'FNR==i')
-        copySharedLibraries $APP/Contents/Resources/lib/$CURRENTD
+        copySharedLibraries "$APP/Contents/Resources/lib/$CURRENTD"
     done
     return $NLIBSD
 }
 
+#go through all of the files in the $APP/Contents/Resources/lib folder and redirect dependencies there
 redirectLibraryDependencies(){
     NLIBSR=$(ls -1a $APP/Contents/Resources/lib | grep "lib" | wc -l | tr -d '[:blank:]')
-    echo "$NLIBSR"
     for((k=1; k<=$NLIBSR; k++))
     do
         CURRENTR=$(ls -1a $APP/Contents/Resources/lib | grep "lib" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$k 'FNR==i')
-        rehomeSharedLibraries $APP/Contents/Resources/lib/$CURRENTR
+        rehomeSharedLibraries "$APP/Contents/Resources/lib/$CURRENTR"
     done
 
 }
 
+#first dependency pass - direct dependencies of the binaries
 copySharedLibraries $BIN
 
+#make two passes through the dependencies of the copied libraries, if the list is growing
+#do a while loop until it stops growing
 echo "Checking local dependencies"
 LASTCOPY="$(copyLibraryDependencies)"
 echo "$LASTCOPY libraries"
@@ -76,10 +86,13 @@ do
 done
 echo "I think I have them all."
 
+#correct paths of all the copied files
 echo "Redirecting dependencies to App folder"
+rehomeSharedLibraries "$APP/Contents/MacOS/$BIN"
 redirectLibraryDependencies
 
-
+#remove objects and raw binary
+make clean
 
 
 

@@ -11,9 +11,8 @@ SOURCES= LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorer
 OBJECTS=-o LightwaveExplorer
 
 APPLEFLAGS=-std=c++20 -ffast-math -Ofast -fopenmp -D CPUONLY
-APPLEINCLUDES=-I/opt/intel/oneapi/mkl/latest/include -I/opt/intel/oneapi/mkl/latest/include/fftw -I../dlib -I/usr/local/include -I/usr/local/include/c++/12 -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
-APPLELDFLAGS=-L/usr/local/lib ${MKLROOT}/lib/libmkl_intel_lp64.a ${MKLROOT}/lib/libmkl_intel_thread.a ${MKLROOT}/lib/libmkl_core.a -lm -lpthread -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 -lomp
-
+APPLEINCLUDES=-I../dlib -I/usr/local/include -I/usr/local/include/c++/12 -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
+APPLELDFLAGS=-L/usr/local/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
 
 CUDAFLAGS= -diag-suppress 1650 -diag-suppress 1217 -x cu -D NOCUDAMAIN
 CUDAINCLUDES=-I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
@@ -39,8 +38,11 @@ cpuonly:
 	${CC} ${CFLAGS} ${INCLUDES} ${OBJECTS} ${SOURCES} ${LDFLAGS}
 
 mac:
+	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
+	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
 	${APPLECC} ${APPLEFLAGS} ${APPLEINCLUDES} ${OBJECTS} ${SOURCES} ${APPLELDFLAGS}
-
+	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LightwaveExplorerUtilities.h
+	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LWEActiveDeviceCPU.h 
 sycl:
 	${DPCPP} ${DPCPPFLAGS} ${DPCPPINCLUDES} ${INCLUDES} ${DPCPPFILES} -o ${DPCPPOUTPUT} ${DPCPPLD}
 
