@@ -23,9 +23,9 @@ cp /usr/lib/x86_64-linux-gnu/libcairo-gobject.so.2 LightwaveExplorer.AppDir/usr/
 cp /usr/lib/x86_64-linux-gnu/libcairo.so.2 LightwaveExplorer.AppDir/usr/lib/libcairo.so.2
 cp /usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0 LightwaveExplorer.AppDir/usr/lib/libgobject-2.0.so.0
 cp /usr/lib/x86_64-linux-gnu/libglib-2.0.so.0 LightwaveExplorer.AppDir/usr/lib/libglib-2.0.so.0
-cp /home/nick/intel/oneapi/tbb/2021.8.0/lib/intel64/gcc4.8/*.so* LightwaveExplorer.AppDir/usr/lib/
-cp -r /home/nick/intel/oneapi/compiler/2023.0.0/linux/lib/* LightwaveExplorer.AppDir/usr/lib/
-cp -r /home/nick/intel/oneapi/compiler/2023.0.0/linux/lib/x64/* LightwaveExplorer.AppDir/usr/lib/
+cp $ONEAPIROOT/tbb/2021.8.0/lib/intel64/gcc4.8/*.so* LightwaveExplorer.AppDir/usr/lib/
+cp -r $ONEAPIROOT/compiler/2023.0.0/linux/lib/* LightwaveExplorer.AppDir/usr/lib/
+cp -r ONEAPIROOT/compiler/2023.0.0/linux/lib/x64/* LightwaveExplorer.AppDir/usr/lib/
 rm -rf LightwaveExplorer.AppDir/usr/lib/x64
 rm -rf LightwaveExplorer.AppDir/usr/lib/clc
 rm -rf LightwaveExplorer.AppDir/usr/lib/oclfpga
@@ -55,7 +55,7 @@ chmod +x LightwaveExplorer.AppDir/usr/bin/LaunchLWE.sh
 touch LightwaveExplorer.AppDir/LightwaveExplorer.desktop
 echo "[Desktop Entry]" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
 echo "Name=LightwaveExplorer" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
-echo "Exec=LaunchLWE.sh" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
+echo "Exec=LightwaveExplorer" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
 echo "Icon=LightwaveExplorer" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
 echo "Type=Application" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
 echo "Categories=Utility" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
