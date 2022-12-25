@@ -20,8 +20,8 @@ mkdir $APP/Contents/Resources/share
 cp $BIN $APP/Contents/MacOS
 cp CrystalDatabase.txt $APP/Contents/Resources
 cp DefaultValues.ini $APP/Contents/Resources
-cp AppImage/AppIcon.icns $APP/Contents/Resources
-cp AppImage/macplistbase.plist $APP/Contents/info.plist
+cp MacResources/AppIcon.icns $APP/Contents/Resources
+cp MacResources/macplistbase.plist $APP/Contents/info.plist
 
 #for a given binary, copy its dynamic link dependencies to the $APP/Contents/Resources/lib folder
 copySharedLibraries(){
@@ -65,10 +65,9 @@ redirectLibraryDependencies(){
         CURRENTR=$(ls -1a $APP/Contents/Resources/lib | grep "lib" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$k 'FNR==i')
         rehomeSharedLibraries "$APP/Contents/Resources/lib/$CURRENTR"
     done
-
 }
 
-#first dependency pass - direct dependencies of the binaries
+#first dependency pass, direct dependencies of the executable
 copySharedLibraries $BIN
 
 #make two passes through the dependencies of the copied libraries, if the list is growing
