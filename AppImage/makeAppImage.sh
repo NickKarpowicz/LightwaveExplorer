@@ -1,68 +1,107 @@
 #!/bin/bash -l
+
+#Target AppDir
+APP=AppDir
+
+#Target executable
+BIN=../LightwaveExplorer
+
 cd ..
-make
+make nocuda
 cd AppImage
-rm -rf LightwaveExplorer.AppDir
-mkdir -p LightwaveExplorer.AppDir
-mkdir -p LightwaveExplorer.AppDir/usr
-mkdir -p LightwaveExplorer.AppDir/usr/lib
-mkdir -p LightwaveExplorer.AppDir/usr/bin
-mkdir -p LightwaveExplorer.AppDir/usr/share
-mkdir -p LightwaveExplorer.AppDir/usr/share/glib-2.0
-mkdir -p LightwaveExplorer.AppDir/usr/share/LightwaveExplorer
-cp /usr/local/cuda-12.0/targets/x86_64-linux/lib/libcufft.so.11 LightwaveExplorer.AppDir/usr/lib/libcufft.so.11
-cp /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1 LightwaveExplorer.AppDir/usr/lib/libnvidia-ml.so.1
-cp /usr/local/cuda-12.0/targets/x86_64-linux/lib/libcudart.so.12 LightwaveExplorer.AppDir/usr/lib/libcudart.so.12
-cp /usr/lib/x86_64-linux-gnu/libgomp.so.1 LightwaveExplorer.AppDir/usr/lib/libgomp.so.1
-cp /usr/lib/x86_64-linux-gnu/libgtk-4.so.1 LightwaveExplorer.AppDir/usr/lib/libgtk-4.so.1
-cp /usr/lib/x86_64-linux-gnu/libpangocairo-1.0.so.0 LightwaveExplorer.AppDir/usr/lib/libpangocairo-1.0.so.0
-cp /usr/lib/x86_64-linux-gnu/libpango-1.0.so.0 LightwaveExplorer.AppDir/usr/lib/libpango-1.0.so.0
-cp /usr/lib/x86_64-linux-gnu/libharfbuzz.so.0 LightwaveExplorer.AppDir/usr/lib/libharfbuzz.so.0
-cp /usr/lib/x86_64-linux-gnu/libgdk_pixbuf-2.0.so.0 LightwaveExplorer.AppDir/usr/lib/libgdk_pixbuf-2.0.so.0
-cp /usr/lib/x86_64-linux-gnu/libcairo-gobject.so.2 LightwaveExplorer.AppDir/usr/lib/libcairo-gobject.so.2
-cp /usr/lib/x86_64-linux-gnu/libcairo.so.2 LightwaveExplorer.AppDir/usr/lib/libcairo.so.2
-cp /usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0 LightwaveExplorer.AppDir/usr/lib/libgobject-2.0.so.0
-cp /usr/lib/x86_64-linux-gnu/libglib-2.0.so.0 LightwaveExplorer.AppDir/usr/lib/libglib-2.0.so.0
-cp $ONEAPIROOT/tbb/2021.8.0/lib/intel64/gcc4.8/*.so* LightwaveExplorer.AppDir/usr/lib/
-cp -r $ONEAPIROOT/compiler/2023.0.0/linux/lib/* LightwaveExplorer.AppDir/usr/lib/
-cp -r ONEAPIROOT/compiler/2023.0.0/linux/lib/x64/* LightwaveExplorer.AppDir/usr/lib/
-rm -rf LightwaveExplorer.AppDir/usr/lib/x64
-rm -rf LightwaveExplorer.AppDir/usr/lib/clc
-rm -rf LightwaveExplorer.AppDir/usr/lib/oclfpga
-rm -rf LightwaveExplorer.AppDir/usr/lib/clang
+
+#prepare the AppDir structure
+rm -rf appimage-build
+rm -rf $APP
+mkdir -p $APP
+mkdir -p $APP/usr
+mkdir -p $APP/usr/lib
+mkdir -p $APP/usr/bin
+mkdir -p $APP/usr/share
+mkdir -p $APP/usr/share/glib-2.0
+mkdir -p $APP/usr/share/LightwaveExplorer
+mkdir -p $APP/usr/share/icons
+cp $BIN $APP/usr/bin
+cp ../CrystalDatabase.txt $APP/usr/bin
+cp ../DefaultValues.ini $APP/usr/bin
+cp ico512.png $APP/usr/share/icons/LightwaveExplorer.png
+
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/AppRun-x86_64
+cp AppRun-x86_64 $APP/AppRun
+rm AppRun-x86_64
+cp AppRun.env $APP/AppRun.env
+
+NEWLPATH=":/usr/lib:"
+
+#copy nvidia files manually from the output of tracefile.pl
+USEDFILES=$(cat traceFileOutput.txt | grep -Fv cache | grep -Fv proc | grep -Fv run | grep nvidia)
+NUSEDFILES=$(echo "$USEDFILES" | wc -l)
+for((n=1; n<=NUSEDFILES; n++))
+do
+    CURRENTF=$(echo "$USEDFILES" | awk -v i=$n 'FNR==i')
+    cp -p $CURRENTF "$APP/usr/lib"
+done
+
+#do the same for OneAPI, adding the paths to the library path
+USEDFILES=$(cat traceFileOutput.txt | grep -Fv cache | grep -Fv proc | grep -Fv run | grep oneapi)
+NUSEDFILES=$(echo "$USEDFILES" | wc -l)
+for((n=1; n<=NUSEDFILES; n++))
+do
+    CURRENTF=$(echo "$USEDFILES" | awk -v i=$n 'FNR==i')
+    CURRENTTARGETF=$(echo "$CURRENTF" | sed 's:/home/nick/intel/oneapi:/oneapi:g') 
+    CURRENTTARGETD=$(dirname "$CURRENTTARGETF")
+    mkdir -p "$APP$CURRENTTARGETD"
+    cp -p $CURRENTF "$APP$CURRENTTARGETF"
+    NEWPATH+='$APPBASE'"$CURRENTTARGETD:"
+done
+echo "$NEWPATH"
+
+#remove path duplicates
+ if [ -n "$NEWPATH" ]; then
+  old_PATH=$NEWPATH:; NEWPATH=
+  while [ -n "$old_PATH" ]; do
+    x=${old_PATH%%:*}      
+    case $NEWPATH: in
+      *:"$x":*) ;;          
+      *) NEWPATH=$NEWPATH:$x;;   
+    esac
+    old_PATH=${old_PATH#*:}
+  done
+  NEWPATH=${NEWPATH#:}
+  unset old_PATH x
+fi
+
+#optional launcher file, only used with appimage-builder --generate it so that the environment is set
+#probably not needed anymore
+touch $APP/usr/bin/LaunchLWE.sh
+echo "#!/bin/bash -l" >>  $APP/usr/bin/LaunchLWE.sh
+echo "export OCL_ICD_FILENAMES=libintelocl_emu.so:libalteracl.so:libintelocl.so" >>  $APP/usr/bin/LaunchLWE.sh
+echo 'HERE="$(dirname "$(readlink -f "${0}")")"' >> $APP/usr/bin/LaunchLWE.sh
+echo 'APPBASE="$HERE/../.."' >> $APP/usr/bin/LaunchLWE.sh
+echo "export LD_LIBRARY_PATH=$NEWPATH"'$LD_LIBRARY_PATH' >> $APP/usr/bin/LaunchLWE.sh
+echo 'echo "lp is : $PAFF"' >> $APP/usr/bin/LaunchLWE.sh
+echo "exec LightwaveExplorer" >>  $APP/usr/bin/LaunchLWE.sh
+chmod +x $APP/usr/bin/LaunchLWE.sh
+
+#buid the .desktop file
+touch $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+echo "[Desktop Entry]" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+echo "Name=LightwaveExplorer" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+
+#note: use this instead to trick appimage-builder --generate into doing something useful
+#echo "Exec=LaunchLWE.sh" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+echo "Exec=LightwaveExplorer" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+
+echo "Icon=LightwaveExplorer" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+echo "Type=Application" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+echo "Categories=Utility" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+
+#build the image
+appimage-builder --skip-tests
+cd .. make clean
 
 
-rm LightwaveExplorer.AppDir/usr/lib/libOclCpuBackEnd_emu.so.2022.15.12.0
-rm LightwaveExplorer.AppDir/usr/lib/icx-lto.so
-cp -r /home/nick/intel/oneapi/compiler/2023.0.0/linux/compiler/lib/intel64_lin/*.so* LightwaveExplorer.AppDir/usr/lib/
-cp /usr/lib/x86_64-linux-gnu/libm.so.6 LightwaveExplorer.AppDir/usr/lib/libm.so.6
-cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 LightwaveExplorer.AppDir/usr/lib/libstdc++.so.6
-cp /usr/lib/x86_64-linux-gnu/libc.so.6 LightwaveExplorer.AppDir/usr/lib/libc.so.6
-cp /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 LightwaveExplorer.AppDir/usr/lib/ld-linux-x86-64.so.2
-cp -r /usr/share/glib-2.0 LightwaveExplorer.AppDir/usr/share
-cp ../LightwaveExplorer LightwaveExplorer.AppDir/usr/bin/LightwaveExplorer
-cp ../CrystalDatabase.txt LightwaveExplorer.AppDir/usr/bin/CrystalDatabase.txt
-cp ../DefaultValues.ini LightwaveExplorer.AppDir/usr/bin/DefaultValues.ini
-cp ico512.png LightwaveExplorer.AppDir/LightwaveExplorer.png
-cp AppRun LightwaveExplorer.AppDir/AppRun
-
-touch LightwaveExplorer.AppDir/usr/bin/LaunchLWE.sh
-echo "#!/bin/bash -l" >>  LightwaveExplorer.AppDir/usr/bin/LaunchLWE.sh
-echo "export OCL_ICD_FILENAMES=libintelocl_emu.so:libalteracl.so:libintelocl.so" >>  LightwaveExplorer.AppDir/usr/bin/LaunchLWE.sh
-echo "LightwaveExplorer" >>  LightwaveExplorer.AppDir/usr/bin/LaunchLWE.sh
-chmod +x LightwaveExplorer.AppDir/usr/bin/LaunchLWE.sh
-
-touch LightwaveExplorer.AppDir/LightwaveExplorer.desktop
-echo "[Desktop Entry]" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
-echo "Name=LightwaveExplorer" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
-echo "Exec=LightwaveExplorer" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
-echo "Icon=LightwaveExplorer" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
-echo "Type=Application" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
-echo "Categories=Utility" >> LightwaveExplorer.AppDir/LightwaveExplorer.desktop
 
 
-ARCH=x86_64 ./appimagetool-x86_64.AppImage LightwaveExplorer.AppDir
 
-rm -rf LightwaveExplorer.AppDir/
-cd ..
-make clean
+
