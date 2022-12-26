@@ -849,14 +849,18 @@ void checkLibraryAvailability() {
     SYCLavailable = TRUE;
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
-    size_t syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
+    size_t syclDevices = 0;
+    //syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
     unsigned char* counts = (unsigned char*)&syclDevices;
     syclGPUCount = (int)counts[1];
     if(syclDevices != 0){
+        #ifndef __linux__
         theGui.console.cPrint("%ls",syclDeviceList);
+        #endif
     }
     
 #endif
+
 #endif
 }
 
@@ -2143,6 +2147,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     int assignedGPU = 0;
     bool forceCPU = 0;
     int SYCLitems = 0;
+    theGui.console.threadPrint("selection was %i, cuda is %i\n", pulldownSelection, cudaGPUCount);
     if (syclGPUCount == 0) {
         SYCLitems = (int)SYCLavailable;
     }
@@ -2150,6 +2155,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
         SYCLitems = 3;
     }
     if (pulldownSelection < cudaGPUCount) {
+        theGui.console.threadPrint("I made an attempt to run on CUDA\n");
         sequenceFunction = &solveNonlinearWaveEquationSequence;
         normalFunction = &solveNonlinearWaveEquation;
         assignedGPU = pulldownSelection;

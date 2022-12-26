@@ -55,6 +55,7 @@ int skipFileUntilCharacter(FILE* fstream, char target) {
 int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	size_t i = 0;
 	size_t r = 0;
+	if(cString[0] == 0) return 0;
 	while (i < N - 1) {
 		if (cString[i] == removedChar) {
 			memmove(&cString[i], &cString[i + 1], N - i - r - 1);

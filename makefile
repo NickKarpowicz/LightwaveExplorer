@@ -43,6 +43,7 @@ mac:
 	${APPLECC} ${APPLEFLAGS} ${APPLEINCLUDES} ${OBJECTS} ${SOURCES} ${APPLELDFLAGS}
 	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LWEActiveDeviceCPU.h 
+	
 sycl:
 	${DPCPP} ${DPCPPFLAGS} ${DPCPPINCLUDES} ${INCLUDES} ${DPCPPFILES} -o ${DPCPPOUTPUT} ${DPCPPLD}
 

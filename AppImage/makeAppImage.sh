@@ -7,7 +7,7 @@ APP=AppDir
 BIN=../LightwaveExplorer
 
 cd ..
-make nocuda
+make
 cd AppImage
 
 #prepare the AppDir structure
@@ -24,6 +24,8 @@ mkdir -p $APP/usr/share/icons
 cp $BIN $APP/usr/bin
 cp ../CrystalDatabase.txt $APP/usr/bin
 cp ../DefaultValues.ini $APP/usr/bin
+cp ../CrystalDatabase.txt $APP/
+cp ../DefaultValues.ini $APP/
 cp ico512.png $APP/usr/share/icons/LightwaveExplorer.png
 
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/AppRun-x86_64
@@ -98,7 +100,13 @@ echo "Categories=Utility" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desk
 
 #build the image
 appimage-builder --skip-tests
-cd .. make clean
+
+#clean
+cd .. 
+make clean
+cd AppImage
+rm -rf AppDir
+rm -rf appimage-build
 
 
 
