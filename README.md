@@ -46,13 +46,13 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
   The easiest way is to use the AppImage located in the same [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP) as the Windows one. You just have to download the image and mark it as executable (either under the properties in your file explorer or by "chmod +x LightwaveExplorer-x86_64.AppImage").
 
-  When using the AppImage, one thing you might want to do is edit your default values (the numbers in the interface when the app starts) or crystal database. On Windows, these files are located in the same folder as the executable, but in the AppImage, they're "baked in" and the file is read only. However, if you place copies of "CrystalDatabase.txt" and "DefaultValues.ini" (from this repo) into /usr/share/LightwaveExplorer, those will supercede the built-in ones.
+  The appimage should be in the same directory as the files CrystalDatabase.txt and DefaultValues.ini - you can also put them into /usr/share/LightwaveExplorer - I can make other options possible, not sure where the modern Linux user prefers.
 
 ---
 
 ### Mac version
 
-A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, and it does run and work as expected. However it's currently not a proper Mac app - you have to launch it from the terminal. I'm not sure if I would get arrested for releasing it in that state. If you do want to compile it yourself I can tell you how, it's similar to the Linux instructions below, except you only install MKL from Intel, then gcc and gtk4 via Homebrew, with the make command "make mac".
+A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, and it does run and work as expected. A public release will come soon, but let me know if you want to try it in the meantime.
 
 ---
   ### How do I know which configuration to run?
@@ -96,6 +96,15 @@ A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, a
   sudo make install
   ```
 
+  Or, to generate the AppImage (first putting the appimage-builder program somewhere in your path):
+  ```
+  git clone https://github.com/NickKarpowicz/LightwaveExplorer
+  git clone https://github.com/davisking/dlib
+  cd LightwaveExplorer/AppImage
+  . /opt/intel/oneapi/setvars.sh
+  ./makeAppImage.sh
+  ```
+  
   That should have done it. If you don't want to install CUDA (i.e. you don't have an NVIDIA board so why bother), you can replace "make" with "make nocuda" and still use SYCL. If you don't want CUDA or SYCL, you can use "make cpuonly".
 
   This will copy the application binary to /usr/bin/LightwaveExplorer and the text files that the program uses in /usr/shared/LightwaveExplorer. If you want them somewhere else, edit the makefile before you run "make install". In the end, you should be able to call it from anywhere just typing LightwaveExplorer. Well, almost; you need to add the oneAPI library paths to your environment for it to be able to launch. You can either run the . /opt/intel/oneapi/setvars.sh script beforehand every time, or add
