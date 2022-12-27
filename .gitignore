@@ -409,3 +409,5 @@ LightwaveExplorer
 AppImage/LightwaveExplorer-x86_64.AppImage
 LightwaveExplorerUtilities.h.bak
 LWEActiveDeviceCPU.h.bak
+AppImage/LightwaveExplorer_CPUonly.AppImage
+AppImage/LightwaveExplorer.AppImage

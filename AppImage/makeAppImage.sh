@@ -35,16 +35,7 @@ cp AppRun.env $APP/AppRun.env
 
 NEWLPATH=":/usr/lib:"
 
-#copy nvidia files manually from the output of tracefile.pl
-USEDFILES=$(cat traceFileOutput.txt | grep -Fv cache | grep -Fv proc | grep -Fv run | grep nvidia)
-NUSEDFILES=$(echo "$USEDFILES" | wc -l)
-for((n=1; n<=NUSEDFILES; n++))
-do
-    CURRENTF=$(echo "$USEDFILES" | awk -v i=$n 'FNR==i')
-    cp -p $CURRENTF "$APP/usr/lib"
-done
-
-#do the same for OneAPI, adding the paths to the library path
+#copy files related to OneAPI, adding the paths to the library path
 USEDFILES=$(cat traceFileOutput.txt | grep -Fv cache | grep -Fv proc | grep -Fv run | grep oneapi)
 NUSEDFILES=$(echo "$USEDFILES" | wc -l)
 for((n=1; n<=NUSEDFILES; n++))
@@ -91,7 +82,7 @@ echo "[Desktop Entry]" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
 echo "Name=LightwaveExplorer" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
 
 #note: use this instead to trick appimage-builder --generate into doing something useful
-#echo "Exec=LaunchLWE.sh" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
+echo "Exec=LaunchLWE.sh" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
 echo "Exec=LightwaveExplorer" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop
 
 echo "Icon=LightwaveExplorer" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desktop

@@ -850,15 +850,13 @@ void checkLibraryAvailability() {
     wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
     wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
     size_t syclDevices = 0;
-#ifndef __linux__
+
     syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
-#endif
+
     unsigned char* counts = (unsigned char*)&syclDevices;
     syclGPUCount = (int)counts[1];
     if(syclDevices != 0){
-        #ifndef __linux__
         theGui.console.cPrint("%ls",syclDeviceList);
-        #endif
     }
     
 #endif

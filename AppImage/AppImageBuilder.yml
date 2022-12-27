@@ -181,7 +181,8 @@ AppDir:
     - usr/share/doc/*/TODO.*
   runtime:
     env:
-      OCL_ICD_FILENAMES: libintelocl_emu.so:libalteracl.so:libintelocl.so 
+      OCL_ICD_FILENAMES: libintelocl_emu.so:libalteracl.so:libintelocl.so
+      SYCL_CACHE_PERSISTENT: 1
   test:
     fedora-30:
       image: appimagecrafters/tests-env:fedora-30
