@@ -27,7 +27,7 @@ cp ../DefaultValues.ini $APP/usr/bin
 cp ../CrystalDatabase.txt $APP/
 cp ../DefaultValues.ini $APP/
 cp ico512.png $APP/usr/share/icons/LightwaveExplorer.png
-
+cp -r /usr/share/glib-2.0 $APP/usr/share/
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/AppRun-x86_64
 cp AppRun-x86_64 $APP/AppRun
 rm AppRun-x86_64
