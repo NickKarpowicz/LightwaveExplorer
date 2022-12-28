@@ -110,8 +110,19 @@ The application bundle contains all the required files. If you want to edit the 
   ```
   
   That should have done it. If you don't want to install CUDA (i.e. you don't have an NVIDIA board so why bother), you can replace "make" with "make nocuda" and still use SYCL. 
+
+  This will copy the application binary to /usr/bin/LightwaveExplorer and the text files that the program uses in /usr/shared/LightwaveExplorer. If you want them somewhere else, edit the makefile before you run "make install". In the end, you should be able to call it from anywhere just typing LightwaveExplorer. Well, almost; you need to add the oneAPI library paths to your environment for it to be able to launch. You can either run the . /opt/intel/oneapi/setvars.sh script beforehand every time, or add
+
+```
+export LD_LIBRARY_PATH=/opt/intel/oneapi/tbb/latest/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/latest/lib/intel64/:/opt/intel/oneapi/compiler/latest/linux/lib:/opt/intel/oneapi/compiler/latest/linux/lib/x64:/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin:$LD_LIBRARY_PATH
+```
+to your ~/.bashrc file.
+
+Another option is to call the LightwaveExplorerLauncher.sh script which was also installed. You can create a shortcut to this to give you an icon that you can click on to run the application without having to go to the terminal.
+
+But if you just want to run it, the AppImage is a lot easier (assuming it's not broken, I've only tested it on Mint and Ubuntu...)
   
-  To make the GPL-3 one that makes use of FFTW, you can do the above, making sure that you have installed FFTW3-3. Then the sequence is:
+To make the GPL-3 one that makes use of FFTW, you can do the above, making sure that you have installed FFTW3-3. Then the sequence is:
 
   ```
   git clone https://github.com/NickKarpowicz/LightwaveExplorer
@@ -121,16 +132,8 @@ The application bundle contains all the required files. If you want to edit the 
   sudo make install
   ```
 
-  This will copy the application binary to /usr/bin/LightwaveExplorer and the text files that the program uses in /usr/shared/LightwaveExplorer. If you want them somewhere else, edit the makefile before you run "make install". In the end, you should be able to call it from anywhere just typing LightwaveExplorer. Well, almost; you need to add the oneAPI library paths to your environment for it to be able to launch. You can either run the . /opt/intel/oneapi/setvars.sh script beforehand every time, or add
   
-  ```
- export LD_LIBRARY_PATH=/opt/intel/oneapi/tbb/latest/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/latest/lib/intel64/:/opt/intel/oneapi/compiler/latest/linux/lib:/opt/intel/oneapi/compiler/latest/linux/lib/x64:/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin:$LD_LIBRARY_PATH
-```
-to your ~/.bashrc file.
 
-Another option is to call the LightwaveExplorerLauncher.sh script which was also installed. You can create a shortcut to this to give you an icon that you can click on to run the application without having to go to the terminal.
-
-But if you just want to run it, the AppImage is a lot easier (assuming it's not broken, I've only tested it on Mint and Ubuntu...)
 
 ---
   ### Compilation on clusters
