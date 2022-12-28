@@ -264,10 +264,17 @@ public:
 
         sequence.init(parentHandle, buttonCol1, 13, colWidth, 6);
         fitCommand.init(parentHandle, buttonCol1, 21, colWidth, 4);
+#ifdef __APPLE__
+        miniButtons[0].init(_T("="), parentHandle, buttonCol2 + 0, 12, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init(_T("d"), parentHandle, buttonCol2 + 2, 12, 2, 1, buttonAddDefault);
+        miniButtons[2].init(_T("r"), parentHandle, buttonCol2 + 4, 12, 2, 1, buttonAddRotation);
+        miniButtons[3].init(_T("p"), parentHandle, buttonCol2 + 6, 12, 2, 1, buttonAddPulse);
+#else
         miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, buttonCol2 + 0, 12, 2, 1, buttonAddSameCrystal);
         miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, buttonCol2 + 2, 12, 2, 1, buttonAddDefault);
         miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, buttonCol2 + 4, 12, 2, 1, buttonAddRotation);
         miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, buttonCol2 + 6, 12, 2, 1, buttonAddPulse);
+#endif
         buttons[0].init(_T("Run"), parentHandle, buttonCol3, 19, buttonWidth, 1, launchRunThread);
         buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 19, buttonWidth, 1, stopButtonCallback);
         buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1, 24, textWidth, 1, createRunFile);
@@ -344,7 +351,7 @@ public:
         textBoxes[1].setLabel(-labelWidth, 0, _T("Frequency (THz)"));
         textBoxes[2].setLabel(-labelWidth, 0, _T("Bandwidth (THz)"));
         textBoxes[3].setLabel(-labelWidth, 0, _T("SG order"));
-        textBoxes[4].setLabel(-labelWidth, 0, _T("CEP/pi"));
+        textBoxes[4].setLabel(-labelWidth, 0, _T("CEP/\xcf\x80"));
         textBoxes[5].setLabel(-labelWidth, 0, _T("Delay (fs)"));
         textBoxes[6].setLabel(-labelWidth, 0, _T("GDD (fs\xc2\xb2)"));
         textBoxes[7].setLabel(-labelWidth, 0, _T("TOD (fs\xc2\xb3)"));
@@ -377,10 +384,11 @@ public:
         gtk_css_provider_load_from_data(textProvider,
             "label, scale { font-family: Arial; font-weight: bold; }\n button, entry, textview { font-family: Arial; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-        GtkCssProvider* textProvider2 = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(textProvider2,
+        
+        GtkCssProvider* buttonShrinker = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(buttonShrinker,
             "label, scale, button, entry, textview { min-height: 10px; min-width: 10px; }", -1);
-        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider2), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(buttonShrinker), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         //read the crystal database
         crystalDatabasePtr = new crystalEntry[MAX_LOADSTRING]();
