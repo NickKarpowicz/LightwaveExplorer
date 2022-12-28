@@ -32,7 +32,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ---
 
   ### Installation on a Windows PC
-  In order to install and run Lightwave Explorer on Windows, just download the file LightwaveExplorerGTK.zip or LightwaveExplorerGTK.7z (the two files have the same contents, I just upload both because not everyone can open 7z) from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
+  In order to install and run Lightwave Explorer on Windows, just download the file LightwaveExplorer.zip or LightwaveExplorer.7z (the two files have the same contents, I just upload both because not everyone can open 7z) from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
 
   The Python module for working with the results is also in that folder for convenience; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder. It's also in this repo if you think of any improvements.
 
@@ -48,11 +48,15 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
   The appimage should be in the same directory as the files CrystalDatabase.txt and DefaultValues.ini - you can also put them into /usr/share/LightwaveExplorer - I can make other options possible, not sure where the modern Linux user prefers.
 
+  There is also a subfolder named GPL_3_version_CPUonly. This contains an appimage for a version released under the terms of the GNU Public License v3. This makes use of the FFTW library for performing Fourier transforms, instead of NVIDIA cuFFT or Intel MKL as used in the other version. If you are running it on an AMD CPU, this may give you a significant speedup (or if you perfer to only use GPL software, it's an option).
+
 ---
 
-### Mac version
+### Installation on Mac
 
-A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, and it does run and work as expected. A public release will come soon, but let me know if you want to try it in the meantime.
+A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, and it does run and work as expected. Currently I only have this Intel-compiled version in the [shared volume](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP) because I don't have a recent Mac to compile on. This version also makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
+
+The application bundle contains all the required files. If you want to edit the crystal database or default settings, open the app as a folder (right click or control-click on the app and select "show package contents") - You will find them in the Resources folder.
 
 ---
   ### How do I know which configuration to run?
@@ -105,7 +109,17 @@ A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, a
   ./makeAppImage.sh
   ```
   
-  That should have done it. If you don't want to install CUDA (i.e. you don't have an NVIDIA board so why bother), you can replace "make" with "make nocuda" and still use SYCL. If you don't want CUDA or SYCL, you can use "make cpuonly".
+  That should have done it. If you don't want to install CUDA (i.e. you don't have an NVIDIA board so why bother), you can replace "make" with "make nocuda" and still use SYCL. 
+  
+  To make the GPL-3 one that makes use of FFTW, you can do the above, making sure that you have installed FFTW3-3. Then the sequence is:
+
+  ```
+  git clone https://github.com/NickKarpowicz/LightwaveExplorer
+  git clone https://github.com/davisking/dlib
+  cd LightwaveExplorer
+  make cpuonly
+  sudo make install
+  ```
 
   This will copy the application binary to /usr/bin/LightwaveExplorer and the text files that the program uses in /usr/shared/LightwaveExplorer. If you want them somewhere else, edit the makefile before you run "make install". In the end, you should be able to call it from anywhere just typing LightwaveExplorer. Well, almost; you need to add the oneAPI library paths to your environment for it to be able to launch. You can either run the . /opt/intel/oneapi/setvars.sh script beforehand every time, or add
   
