@@ -129,11 +129,7 @@ public:
         int buttonCol1 = textCol2a - labelWidth;
         int buttonCol2 = buttonCol1 + buttonWidth;
         int buttonCol3 = buttonCol2 + buttonWidth;
-
-        g_object_set(gtk_settings_get_default(),
-            "gtk-application-prefer-dark-theme", TRUE,
-            NULL);
-
+        g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", TRUE, NULL);
         window.init(app, _T("Lightwave Explorer"), 1920, 1080);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
@@ -381,6 +377,10 @@ public:
         gtk_css_provider_load_from_data(textProvider,
             "label, scale { font-family: Arial; font-weight: bold; }\n button, entry, textview { font-family: Arial; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        GtkCssProvider* textProvider2 = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(textProvider2,
+            "label, scale, button, entry, textview { min-height: 10px; min-width: 10px; }", -1);
+        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider2), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         //read the crystal database
         crystalDatabasePtr = new crystalEntry[MAX_LOADSTRING]();
@@ -1144,7 +1144,7 @@ static void buttonAddRotation() {
 }
 
 static void activate(GtkApplication* app, gpointer user_data) {
-#ifdef __linux__
+#if defined __linux__ || defined __APPLE__
     setlocale(LC_NUMERIC, "en_US.UTF-8");
 #else
     setlocale(LC_NUMERIC, "en_US");
