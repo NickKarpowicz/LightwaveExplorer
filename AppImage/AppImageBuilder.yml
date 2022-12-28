@@ -37,7 +37,6 @@ AppDir:
     - fonts-noto-color-emoji
     - fonts-ubuntu
     - gnome-icon-theme
-    - gvfs:amd64
     - hicolor-icon-theme
     - language-pack-gnome-en-base
     - libbz2-1.0:amd64
@@ -163,16 +162,11 @@ AppDir:
     - /lib/x86_64-linux-gnu/libyaml-0.so.2
     - /lib/x86_64-linux-gnu/libzstd.so.1
     - /usr/lib/locale/locale-archive
-    - /usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/printbackends/giomodule.cache
     - /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12
     - /usr/local/cuda/targets/x86_64-linux/lib/libcufft.so.11
     - /usr/share/LightwaveExplorer/CrystalDatabase.txt
     - /usr/share/LightwaveExplorer/DefaultValues.ini
-    - /usr/share/icons/Adwaita/icon-theme.cache
-    - /usr/share/icons/Mint-Y-Legacy-Purple/icon-theme.cache
-    - /usr/share/icons/Mint-Y-Legacy/icon-theme.cache
-    - /usr/share/icons/gnome/icon-theme.cache
-    - /usr/share/icons/hicolor/icon-theme.cache
+
     exclude:
     - usr/share/man
     - usr/share/doc/*/README.*
