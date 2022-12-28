@@ -6,10 +6,14 @@ CUDATARGETS = /usr/local/cuda-12.0/targets/x86_64-linux
 
 CFLAGS=-std=c++20 -use_fast_math -fopenmp --machine 64 -w -O3 -D CPUONLY
 INCLUDES=`pkg-config --cflags gtk4` -I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
+
 LDFLAGS=`pkg-config --libs gtk4` `pkg-config --libs gtk4` -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl
 SOURCES= LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp DlibLibraryComponents/DlibLibraryComponents.cpp
 OBJECTS=-o LightwaveExplorer
 
+#mac and CPU-only builds compile with fftw instead of mkl
+LDFLAGSF=`pkg-config --libs gtk4` `pkg-config --libs gtk4` /usr/lib/x86_64-linux-gnu/libfftw3.a -lgomp -lpthread -lm -ldl
+INCLUDESF=`pkg-config --cflags gtk4` -I../dlib
 APPLEFLAGS=-std=c++20 -ffast-math -Ofast -fopenmp -D CPUONLY
 APPLEINCLUDES=-I../dlib -I/usr/local/include -I/usr/local/include/c++/12 -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
 APPLELDFLAGS=-L/usr/local/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
@@ -34,13 +38,27 @@ default: clean cuda sycl
 cuda: 
 	${NVCC} ${CUDAARCH} ${CUDAFLAGS} ${CUDAINCLUDES} -Xcompiler "${CUDAHOSTFLAGS} ${INCLUDES}" ${CUDAOUT} ${CUDASOURCE} ${SOURCES} -Xlinker "${CUDALDFLAGS}"
 
+
+#Note that the Mac version and cpuonly versions make use of FFTW3 instead of MKL for the Fourier transforms
+#as such they are released under GPL3 - the temporary codebase from which they are compiled is saved in the
+#GPLsource.tar file along with a copy of the GPLv3.
 cpuonly:
-	${CC} ${CFLAGS} ${INCLUDES} ${OBJECTS} ${SOURCES} ${LDFLAGS}
+	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
+	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
+	cp AppImageCPU/COPYING COPYING
+	${CC} ${CFLAGS} ${INCLUDESF} ${OBJECTS} ${SOURCES} ${LDFLAGSF}
+	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
+	rm COPYING
+	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LightwaveExplorerUtilities.h
+	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LWEActiveDeviceCPU.h 
 
 mac:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
+	cp AppImageCPU/COPYING COPYING
 	${APPLECC} ${APPLEFLAGS} ${APPLEINCLUDES} ${OBJECTS} ${SOURCES} ${APPLELDFLAGS}
+	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
+	rm COPYING
 	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LWEActiveDeviceCPU.h 
 	
@@ -62,4 +80,5 @@ clean:
 	rm -f LightwaveExplorer
 	rm -rf TestFile*
 	rm -rf *.o
+	rm -rf GPLsource.tar
 
