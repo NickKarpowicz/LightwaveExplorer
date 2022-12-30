@@ -631,14 +631,13 @@ void readParametersFromInterface() {
     //derived parameters and cleanup:
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
-    (*activeSetPtr).Ntime = (size_t)(MIN_GRIDDIM * ceil((*activeSetPtr).timeSpan / (MIN_GRIDDIM * (*activeSetPtr).tStep)));
-
+    (*activeSetPtr).Ntime = (size_t)(MIN_GRIDDIM * round((*activeSetPtr).timeSpan / (MIN_GRIDDIM * (*activeSetPtr).tStep)));
     if ((*activeSetPtr).symmetryType == 2) {
         (*activeSetPtr).is3D = TRUE;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
         if ((*activeSetPtr).spatialHeight > 0) {
-            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         }
         else {
             (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
@@ -649,7 +648,7 @@ void readParametersFromInterface() {
         (*activeSetPtr).is3D = FALSE;
         (*activeSetPtr).Nspace2 = 1;
         (*activeSetPtr).spatialHeight = 0;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * ceil((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     }
     //printC(L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
