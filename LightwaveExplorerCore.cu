@@ -1023,57 +1023,62 @@ namespace kernels {
 		double Ex = (*s).fftNorm * (*s).gridETime1[i];
 		double Ey = (*s).fftNorm * (*s).gridETime2[i];
 
-		double Ex2 = Ex * Ex;
-		double Ey2 = Ey * Ey;
-		(*s).gridPolarizationTime1[i] = 0.;
-		(*s).gridPolarizationTime2[i] = 0.;
-		//rotate field into crystal frame
-		double E3[3] = { (*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
-			(*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
-			(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey };
+		if ((*s).nonlinearSwitches[0] == 1 || (*s).nonlinearSwitches[1] == 1){
+			
+			double P[3] = {0.0};
 
-		if ((*s).nonlinearSwitches[0] == 1) {
-			double P2[3] = { 0.0 };
-			for (unsigned char a = 0; a < 3; ++a) {
-				P2[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
-				P2[a] += (*s).chi2Tensor[3 + a] * E3[1] * E3[1];
-				P2[a] += (*s).chi2Tensor[6 + a] * E3[2] * E3[2];
-				P2[a] += (*s).chi2Tensor[9 + a] * E3[1] * E3[2];
-				P2[a] += (*s).chi2Tensor[12 + a] * E3[0] * E3[2];
-				P2[a] += (*s).chi2Tensor[15 + a] * E3[0] * E3[1];
+			// rotate field into crystal frame
+			double E3[3] = {(*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
+							(*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
+							(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey};
+
+			if ((*s).nonlinearSwitches[0] == 1){
+				for (unsigned char a = 0; a < 3; ++a){
+					P[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
+					P[a] += (*s).chi2Tensor[3 + a] * E3[1] * E3[1];
+					P[a] += (*s).chi2Tensor[6 + a] * E3[2] * E3[2];
+					P[a] += (*s).chi2Tensor[9 + a] * E3[1] * E3[2];
+					P[a] += (*s).chi2Tensor[12 + a] * E3[0] * E3[2];
+					P[a] += (*s).chi2Tensor[15 + a] * E3[0] * E3[1];
+				}
 			}
-			(*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P2[0] + (*s).rotationBackward[1] * P2[1] + (*s).rotationBackward[2] * P2[2];
-			(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P2[0] + (*s).rotationBackward[4] * P2[1] + (*s).rotationBackward[5] * P2[2];
-		}
 
-		//resolve the full chi3 matrix when (*s).nonlinearSwitches[1]==1
-		if ((*s).nonlinearSwitches[1] == 1) {
-			//loop over tensor element X_abcd
-			//i hope the compiler unrolls this, but no way am I writing that out by hand
-			unsigned char a, b, c, d;
-			double P3[3] = { 0 };
-			for (a = 0; a < 3; ++a) {
-				for (b = 0; b < 3; ++b) {
-					for (c = 0; c < 3; ++c) {
-						for (d = 0; d < 3; ++d) {
-							P3[d] += (*s).chi3Tensor[a + 3 * b + 9 * c + 27 * d] * E3[a] * E3[b] * E3[c];
+			// resolve the full chi3 matrix when (*s).nonlinearSwitches[1]==1
+			if ((*s).nonlinearSwitches[1] == 1){
+				// loop over tensor element X_abcd
+				// i hope the compiler unrolls this, but no way am I writing that out by hand
+				for (unsigned char a = 0; a < 3; ++a){
+					for (unsigned char b = 0; b < 3; ++b){
+						for (unsigned char c = 0; c < 3; ++c){
+							for (unsigned char d = 0; d < 3; ++d){
+								P[d] += (*s).chi3Tensor[a + 3 * b + 9 * c + 27 * d] * E3[a] * E3[b] * E3[c];
+							}
 						}
 					}
 				}
 			}
 
-			//rotate back into simulation frame
-			(*s).gridPolarizationTime1[i] += (*s).rotationBackward[0] * P3[0] + (*s).rotationBackward[1] * P3[1] + (*s).rotationBackward[2] * P3[2];
-			(*s).gridPolarizationTime2[i] += (*s).rotationBackward[3] * P3[0] + (*s).rotationBackward[4] * P3[1] + (*s).rotationBackward[5] * P3[2];
+			(*s).gridPolarizationTime1[i] = (*s).rotationBackward[0] * P[0] + (*s).rotationBackward[1] * P[1] + (*s).rotationBackward[2] * P[2];
+			(*s).gridPolarizationTime2[i] = (*s).rotationBackward[3] * P[0] + (*s).rotationBackward[4] * P[1] + (*s).rotationBackward[5] * P[2];
+
+			//using only one value of chi3, under assumption of centrosymmetry
+			if ((*s).nonlinearSwitches[1] == 2) {
+				double Esquared = (*s).chi3Tensor[0] * (Ex*Ex + Ey*Ey);
+				(*s).gridPolarizationTime1[i] += Ex * Esquared;
+				(*s).gridPolarizationTime2[i] += Ey * Esquared;
+			}
 		}
-		//using only one value of chi3, under assumption of centrosymmetry
-		if ((*s).nonlinearSwitches[1] == 2) {
-			double Esquared = (*s).chi3Tensor[0] * (Ex2 + Ey2);
-			(*s).gridPolarizationTime1[i] += Ex * Esquared;
-			(*s).gridPolarizationTime2[i] += Ey * Esquared;
+		else{
+			if ((*s).nonlinearSwitches[1] == 2) {
+				double Esquared = (*s).chi3Tensor[0] * (Ex*Ex + Ey*Ey);
+				(*s).gridPolarizationTime1[i] = Ex * Esquared;
+				(*s).gridPolarizationTime2[i] = Ey * Esquared;
+			}
+			else{
+				(*s).gridPolarizationTime1[i] = 0.0;
+				(*s).gridPolarizationTime2[i] = 0.0;
+			}
 		}
-		if (isnan((*s).gridPolarizationTime1[i])) (*s).gridPolarizationTime1[i] = 0.0;
-		if (isnan((*s).gridPolarizationTime2[i])) (*s).gridPolarizationTime2[i] = 0.0;
 	};
 
 

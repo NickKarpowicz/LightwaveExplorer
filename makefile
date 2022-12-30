@@ -4,7 +4,7 @@ DPCPP=icpx
 NVCC=/usr/local/cuda-12.0/bin/nvcc
 CUDATARGETS = /usr/local/cuda-12.0/targets/x86_64-linux
 
-CFLAGS=-std=c++20 -use_fast_math -fopenmp --machine 64 -w -O3 -D CPUONLY
+CFLAGS=-std=c++20 -fopenmp --machine 64 -w -Ofast -D CPUONLY
 INCLUDES=`pkg-config --cflags gtk4` -I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
 
 LDFLAGS=`pkg-config --libs gtk4` `pkg-config --libs gtk4` -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl
