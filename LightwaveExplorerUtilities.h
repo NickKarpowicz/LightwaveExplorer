@@ -4,7 +4,7 @@
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
-#include <fftw3_mkl.h>
+#include <fftw3.h>
 #define deviceLib thrust
 #define deviceComplex thrust::complex<double>
 #elif defined RUNONSYCL

@@ -43,6 +43,11 @@ bool SYCLavailable = FALSE;
 int cudaGPUCount = 0;
 int syclGPUCount = 0;
 size_t progressCounter = 0;
+#if defined _WIN32 || defined __linux__
+const int interfaceThreads = maxN(1, std::thread::hardware_concurrency() / 2);
+#else
+const int interfaceThreads = std::thread::hardware_concurrency();
+#endif
 simulationParameterSet* activeSetPtr;       // Main structure containing simulation parameters and pointers
 crystalEntry* crystalDatabasePtr;           // Crystal info database
 void updateDisplay();
@@ -950,7 +955,7 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     }
     unsigned char currentValue;
     if (imin != imax) {
-#pragma omp parallel for private(currentValue)
+#pragma omp parallel for private(currentValue) num_threads(interfaceThreads)
         for (int p = 0; p < Ntot; p++) {
             currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
             pixels[stride * p + 0] = colorMap[currentValue][0];
@@ -1837,7 +1842,7 @@ int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float
     float f;
     int div2 = nax / 2;
     int nx0, ny0;
-#pragma omp parallel for private(nx0, ny0, f)
+#pragma omp parallel for private(nx0, ny0, f) num_threads(interfaceThreads)
     for (int i = 0; i < nbx; ++i) {
         f = i * (nax / (float)nbx);
         nx0 = minN((int)f, nax);
