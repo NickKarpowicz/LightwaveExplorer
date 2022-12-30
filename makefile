@@ -14,7 +14,7 @@ OBJECTS=-o LightwaveExplorer
 #mac and CPU-only builds compile with fftw instead of mkl
 LDFLAGSF=`pkg-config --libs gtk4` `pkg-config --libs gtk4` /usr/lib/x86_64-linux-gnu/libfftw3.a -lgomp -lpthread -lm -ldl
 INCLUDESF=`pkg-config --cflags gtk4` -I../dlib
-APPLEFLAGS=-std=c++20 -ffast-math -Ofast -fopenmp -D CPUONLY
+APPLEFLAGS=-std=c++20 -ffast-math -Ofast -mtune=native -fopenmp -D CPUONLY
 APPLEINCLUDES=-I../dlib -I/usr/local/include -I/usr/local/include/c++/12 -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
 APPLELDFLAGS=-L/usr/local/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
 
