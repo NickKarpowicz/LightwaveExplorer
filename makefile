@@ -49,8 +49,10 @@ cpuonly:
 	${CC} ${CFLAGS} ${INCLUDESF} ${OBJECTS} ${SOURCES} ${LDFLAGSF}
 	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
 	rm COPYING
-	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LightwaveExplorerUtilities.h
-	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LWEActiveDeviceCPU.h 
+	rm LightwaveExplorerUtilities.h
+	rm LWEActiveDeviceCPU.h
+	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
+	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
 
 mac:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
@@ -59,8 +61,10 @@ mac:
 	${APPLECC} ${APPLEFLAGS} ${APPLEINCLUDES} ${OBJECTS} ${SOURCES} ${APPLELDFLAGS}
 	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
 	rm COPYING
-	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LightwaveExplorerUtilities.h
-	sed -i'.bak' 's/fftw3.h/fftw3_mkl.h/g' LWEActiveDeviceCPU.h 
+	rm LightwaveExplorerUtilities.h
+	rm LWEActiveDeviceCPU.h
+	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
+	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
 	
 sycl:
 	${DPCPP} ${DPCPPFLAGS} ${DPCPPINCLUDES} ${INCLUDES} ${DPCPPFILES} -o ${DPCPPOUTPUT} ${DPCPPLD}

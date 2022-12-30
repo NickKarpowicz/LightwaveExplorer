@@ -387,7 +387,7 @@ public:
         
         GtkCssProvider* buttonShrinker = gtk_css_provider_new();
         gtk_css_provider_load_from_data(buttonShrinker,
-            "label, scale, button, entry, textview { min-height: 10px; min-width: 10px; }", -1);
+            "label, scale, range, button, entry, textview { min-height: 10px; min-width: 10px; }", -1);
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(buttonShrinker), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         //read the crystal database
@@ -950,7 +950,7 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     }
     unsigned char currentValue;
     if (imin != imax) {
-#pragma omp parallel for private(currentValue) num_threads(8)
+#pragma omp parallel for private(currentValue)
         for (int p = 0; p < Ntot; p++) {
             currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
             pixels[stride * p + 0] = colorMap[currentValue][0];
@@ -1837,7 +1837,7 @@ int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float
     float f;
     int div2 = nax / 2;
     int nx0, ny0;
-#pragma omp parallel for private(nx0, ny0, f) num_threads(8)
+#pragma omp parallel for private(nx0, ny0, f)
     for (int i = 0; i < nbx; ++i) {
         f = i * (nax / (float)nbx);
         nx0 = minN((int)f, nax);
