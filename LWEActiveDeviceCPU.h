@@ -1,11 +1,16 @@
 #include "LWEActiveDeviceCommon.cpp"
 #include <fftw3_mkl.h>
 #include <atomic>
+#include <thread>
 #define DeviceToHost 2
 #define HostToDevice 1
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
-
+#ifdef _WIN32
+const int deviceThreads = maxN(1, std::thread::hardware_concurrency()/2);
+#else
+const int deviceThreads = std::thread::hardware_concurrency();
+#endif
 #if defined CPUONLY || NOCUDA
 #define isnan(x) std::isnan(x)
 #endif
@@ -91,7 +96,7 @@ public:
 	}
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
-#pragma omp parallel for
+#pragma omp parallel for num_threads(deviceThreads)
 		for (int i = 0; i < (int)Nthread; ++i) {
 			for (unsigned int j = 0u; j < Nblock; ++j) {
 				kernel(j + Nblock * (unsigned int)i, args...);
