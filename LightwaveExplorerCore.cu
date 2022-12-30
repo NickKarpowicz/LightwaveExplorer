@@ -1166,51 +1166,59 @@ namespace kernels {
 		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[i % ((*sP).Nfreq)];
 	};
 
-	//Main kernel for RK4 propagation of the field
-	trilingual rkKernel asKernel(withID deviceParameterSet* sP, uint8_t stepNumber) {
+	trilingual rkKernel0 asKernel(withID deviceParameterSet* sP, uint8_t stepNumber) {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
-
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-		if (h == 1) {
-			(*sP).k1[iC - 1] = deviceComplex(0., 0.);
-			(*sP).gridEFrequency1[iC - 1] = deviceComplex(0., 0.);
-			(*sP).gridEFrequency1Next1[iC - 1] = deviceComplex(0., 0.);
-			(*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
-		}
-		deviceComplex estimate1;
 
-		if ((*sP).isCylindric) {
-			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		}
+		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
+		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 
-		//generate the estimates and do the weighted sum to get the grid at the next step
-		//with weights determined by the step number
-		switch (stepNumber) {
-		case 0:
-			estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
-			(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
-			(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
-			(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
-			break;
-		case 1:
-			estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
-			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
-			(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
-			break;
-		case 2:
-			estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
-			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
-			(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
-			break;
-		case 3:
-			(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
-			(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
-			break;
-		}
+		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
+		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+	};
+
+	trilingual rkKernel1 asKernel(withID deviceParameterSet* sP, uint8_t stepNumber) {
+		size_t iC = localIndex;
+		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+
+		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
+		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
+
+		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+	};
+
+	trilingual rkKernel2 asKernel(withID deviceParameterSet* sP, uint8_t stepNumber) {
+		size_t iC = localIndex;
+		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+
+		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
+		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
+
+		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+	};
+
+	trilingual rkKernel3 asKernel(withID deviceParameterSet* sP, uint8_t stepNumber) {
+		size_t iC = localIndex;
+		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+
+		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
+		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
+
+		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
+		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
 	};
 
 	trilingual beamNormalizeKernel asKernel(withID deviceParameterSet* s, double* rawSum, double* pulse, double pulseEnergy) {
@@ -1791,7 +1799,21 @@ namespace hostFunctions{
 		}
 
 		//advance an RK4 step
-		d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel, sD, stepNumber);
+		//d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel, sD, stepNumber);
+		switch (stepNumber) {
+		case 0:
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel0, sD, stepNumber);
+			break;
+		case 1:
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel1, sD, stepNumber);
+			break;
+		case 2:
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel2, sD, stepNumber);
+			break;
+		case 3:
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel3, sD, stepNumber);
+			break;
+		}
 		return 0;
 	}
 
