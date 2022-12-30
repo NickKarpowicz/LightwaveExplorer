@@ -668,6 +668,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm);
+int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin);
 int LwePlot2d(plotStruct* inputStruct);
 void checkLibraryAvailability();
 void setInterfaceValuesToActiveValues();
