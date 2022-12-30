@@ -951,7 +951,7 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     }
     unsigned char currentValue;
     if (imin != imax) {
-#pragma omp parallel for private(currentValue) num_threads(2)
+#pragma omp parallel for private(currentValue) num_threads(8)
         for (int p = 0; p < Ntot; p++) {
             currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
             pixels[stride * p + 0] = colorMap[currentValue][0];
@@ -1833,18 +1833,36 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 	}
 }
 
+
+int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
+    float f;
+    int div2 = nax / 2;
+    int nx0, ny0;
+#pragma omp parallel for private(nx0, ny0, f) num_threads(8)
+    for (int i = 0; i < nbx; ++i) {
+        f = i * (nax / (float)nbx);
+        nx0 = minN((int)f, nax);
+        nx0 -= div2 * ((nx0 >= div2) - (nx0 < div2));
+        nx0 *= nay;
+        for (int j = 0; j < nby; ++j) {
+            f = (j * (nay / (float)nby));
+            ny0 = minN(nay, (int)f);
+            B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
+        }
+    }
+    return 0;
+}
+
 int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
-    int i, j;
     float A00;
     float f;
-
     int nx0, ny0;
     int Ni, Nj;
-    for (i = 0; i < nbx; ++i) {
+    for (int i = 0; i < nbx; ++i) {
         f = i * (nax / (float)nbx);
         Ni = (int)f;
         nx0 = nay * minN(Ni, nax);
-        for (j = 0; j < nby; ++j) {
+        for (int j = 0; j < nby; ++j) {
             f = (j * (nay / (float)nby));
             Nj = (int)f;
             ny0 = minN(nay, Nj);
@@ -1884,10 +1902,7 @@ void imagePlot(imagePlotStruct* s) {
         linearRemapDoubleToFloat((*s).data, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
         break;
     case 1:
-        std::complex<double> *shiftedFFT = (std::complex<double>*)malloc((*activeSetPtr).Nspace * (*activeSetPtr).Nfreq * sizeof(std::complex<double>));
-        fftshiftD2Z((*s).complexData, shiftedFFT, (*activeSetPtr).Nfreq, (*activeSetPtr).Nspace);
-        linearRemapZToLogFloat(shiftedFFT, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
-        free(shiftedFFT);
+        linearRemapZToLogFloatShift((*s).complexData, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
         break;
     }
     drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, (*s).colorMap);
