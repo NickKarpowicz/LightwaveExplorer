@@ -43,7 +43,7 @@ bool SYCLavailable = FALSE;
 int cudaGPUCount = 0;
 int syclGPUCount = 0;
 size_t progressCounter = 0;
-#ifdef _WIN32
+#if defined _WIN32 || defined __linux__
 const int interfaceThreads = maxN(1, std::thread::hardware_concurrency() / 2);
 #else
 const int interfaceThreads = std::thread::hardware_concurrency();

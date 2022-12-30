@@ -6,7 +6,7 @@
 #define HostToDevice 1
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
-#ifdef _WIN32
+#if defined _WIN32 || __linux__
 const int deviceThreads = maxN(1, std::thread::hardware_concurrency()/2);
 #else
 const int deviceThreads = std::thread::hardware_concurrency();
