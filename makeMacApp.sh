@@ -2,6 +2,11 @@
 APP=LightwaveExplorer.app
 BIN=LightwaveExplorer
 
+#Homebrew libraries location, 
+# on intel it will be /usr/local
+# on Arm64 it will be /opt/homebrew
+LIBS="/usr/local"
+
 #compile
 make mac
 
@@ -25,10 +30,10 @@ cp MacResources/macplistbase.plist $APP/Contents/info.plist
 
 #for a given binary, copy its dynamic link dependencies to the $APP/Contents/Resources/lib folder
 copySharedLibraries(){
-    NLIBS=$(otool -L $1 | grep "/usr/local" | wc -l)
+    NLIBS=$(otool -L $1 | grep "$LIBS" | wc -l)
     for((i=1; i<=$NLIBS; i++))
     do
-        CURRENT=$(otool -L $1 | grep "/usr/local" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$i 'FNR==i')
+        CURRENT=$(otool -L $1 | grep "$LIBS" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$i 'FNR==i')
         cp -n $CURRENT $APP/Contents/Resources/lib
     done
 }
@@ -36,10 +41,10 @@ copySharedLibraries(){
 #for a given binary, redirect its search path for its dependencies to the $APP/Contents/Resources/lib folder
 rehomeSharedLibraries(){
     OTOUT=$(otool -L $1)
-    NLIBS=$(echo "$OTOUT" | grep "/usr/local" | wc -l)
+    NLIBS=$(echo "$OTOUT" | grep "$LIBS" | wc -l)
     for((i=1; i<=$NLIBS; i++))
     do
-        CURRENT=$(echo "$OTOUT" | grep "/usr/local" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$i 'FNR==i')
+        CURRENT=$(echo "$OTOUT" | grep "$LIBS" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$i 'FNR==i')
         CURRENTBASE=$(basename $CURRENT)
         install_name_tool -change "$CURRENT" "@executable_path/../Resources/lib/$CURRENTBASE" $1
     done
