@@ -14,6 +14,10 @@ LIBS="/opt/homebrew"
 if LOCALARCH=="i386"
 then
     LIBS="/usr/local"
+    gmake mac
+else
+    eval $(/opt/homebrew/bin/brew shellenv)
+    gmake macARM
 fi
 #compile
 gmake mac

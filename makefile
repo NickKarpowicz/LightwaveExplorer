@@ -17,6 +17,9 @@ INCLUDESF=`pkg-config --cflags gtk4` -I../dlib
 APPLEFLAGS=-std=c++20 -Ofast -mtune=native -flto -fopenmp -D CPUONLY
 APPLEINCLUDES=-I../dlib -I/usr/local/include -I/usr/local/include/c++/12 -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
 APPLELDFLAGS=-L/usr/local/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
+APPLEINCLUDESARM=-I../dlib -I/opt/homebrew/include -I/opt/homebrew/include/c++/12 -I/opt/homebrew/include/gtk-4.0 -I/opt/homebrew/include/pango-1.0 -I/opt/homebrew/include/glib-2.0 -I/opt/homebrew/include/cairo -I/opt/homebrew/lib/glib-2.0/include -I/opt/homebrew/include/fontconfig -I/opt/homebrew/include/freetype2 -I/opt/homebrew/include/gdk-pixbuf-2.0 -I/opt/homebrew/include/harfbuzz -I/opt/homebrew/include/graphene-1.0 -I/opt/homebrew/lib/graphene-1.0/include
+APPLELDFLAGSARM=-L/opt/homebrew/lib -L/usr/local/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /opt/homebrew/lib/libfftw3.a
+
 
 CUDAFLAGS= -diag-suppress 1650 -diag-suppress 1217 -x cu -D NOCUDAMAIN
 CUDAINCLUDES=-I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
@@ -55,6 +58,18 @@ cpuonly:
 	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
 
 mac:
+	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
+	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
+	cp AppImageCPU/COPYING COPYING
+	${APPLECC} ${APPLEFLAGS} ${APPLEINCLUDESARM} ${OBJECTS} ${SOURCES} ${APPLELDFLAGSARM}
+	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
+	rm COPYING
+	rm LightwaveExplorerUtilities.h
+	rm LWEActiveDeviceCPU.h
+	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
+	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
+
+macARM:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
 	cp AppImageCPU/COPYING COPYING
