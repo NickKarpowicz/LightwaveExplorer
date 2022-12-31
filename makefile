@@ -57,7 +57,7 @@ cpuonly:
 	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
 	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
 
-mac:
+macARM:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
 	cp AppImageCPU/COPYING COPYING
@@ -69,7 +69,7 @@ mac:
 	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
 	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
 
-macARM:
+mac:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
 	cp AppImageCPU/COPYING COPYING
