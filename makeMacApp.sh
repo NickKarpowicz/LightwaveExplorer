@@ -2,13 +2,21 @@
 APP=LightwaveExplorer.app
 BIN=LightwaveExplorer
 
+#brew install make gcc fftw gtk4
+
+#detect local architecture
+LOCALARCH=$(arch)
+
 #Homebrew libraries location, 
 # on intel it will be /usr/local
 # on Arm64 it will be /opt/homebrew
-LIBS="/usr/local"
-
+LIBS="/opt/homebrew"
+if LOCALARCH=="i386"
+then
+    LIBS="/usr/local"
+fi
 #compile
-make mac
+gmake mac
 
 #set up the directory structure of the .app
 rm -rf $APP

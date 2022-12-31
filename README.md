@@ -132,9 +132,26 @@ To make the GPL-3 one that makes use of FFTW, you can do the above, making sure 
   sudo make install
   ```
 
+  ### Compiling on Mac
+
+  The first thing you'll need is [Homebrew](https://brew.sh/), which you install by pasting this into the terminal:
+  ```
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  ```
+  Go through the installation process, and then install FFTW, make, g++, git, and GTK4 with:
+  ```
+  brew install make gcc fftw gtk4 git
+  ```
+  Next, you'll need the Lightwave Explorer and dlib repositories, and once you have those, run the LWE compile script:
+  ```
+  git clone https://github.com/NickKarpowicz/LightwaveExplorer
+  git clone https://github.com/davisking/dlib
+  cd LightwaveExplorer
+  chmod +x makeMacApp.sh
+  ./makeMacApp.sh
+  ```
+  If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer folder.
   
-
-
 ---
   ### Compilation on clusters
   
