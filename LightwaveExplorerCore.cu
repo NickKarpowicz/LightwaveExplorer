@@ -327,6 +327,8 @@ namespace kernels {
 	// to declare a lambda. The widthID definition gives an additional parameter for openMP and
 	// SYCL threads to be passed their ID.
 	// The function's closing } has to be followed by a ; to have valid syntax in SYCL.
+
+	//adjust tensor values based on the input and output frequencies given in the crystal database
 	trilingual millersRuleNormalizationKernel asKernel(withID deviceParameterSet* s, double* sellmeierCoefficients, double* referenceFrequencies) {
 		if (!(*s).isUsingMillersRule) {
 			return;
@@ -355,6 +357,8 @@ namespace kernels {
 		}
 	};
 
+	//calculate the total power spectrum of the beam for the 2D modes. Note that for the cartesian one, it will be treated as
+	//a round beam instead of an infinite plane wave in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
 	trilingual totalSpectrumKernel asKernel(withID deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
 		size_t i = localIndex;
 		size_t j;
@@ -399,6 +403,7 @@ namespace kernels {
 		spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
 	};
 
+	//Calculate the power spectrum after a 3D propagation
 	trilingual totalSpectrum3DKernel asKernel(withID deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
 		size_t i = localIndex;
 		size_t j;
@@ -429,6 +434,7 @@ namespace kernels {
 		Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
 	};
 
+	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/r d/drho)
 	trilingual radialLaplacianKernel asKernel(withID deviceParameterSet* s) {
 		unsigned long long i = localIndex;
 		long long j = i / (*s).Ntime; //spatial coordinate
@@ -537,6 +543,8 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= a;
 	};
 
+
+	//apply a spectral filter to the beam (full details in docs)
 	trilingual filterKernel asKernel(withID deviceParameterSet* s, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
 		long long i = localIndex;
 		long long col, j;
@@ -554,6 +562,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= filterFunction;
 	};
 
+	//Apply a (soft, possibly) aperture
 	trilingual apertureKernel asKernel(withID deviceParameterSet* s, double radius, double activationParameter) {
 		long long i = localIndex;
 		long long j, k, col;
@@ -578,6 +587,7 @@ namespace kernels {
 		(*s).gridETime2[i] *= a;
 	};
 
+	//apply a spatial phase corresponding to a parabolic mirror (on-axis)
 	trilingual parabolicMirrorKernel asKernel(withID deviceParameterSet* s, double focus) {
 		long long i = localIndex;
 		long long j, k, h, col;
@@ -605,6 +615,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
 	};
 
+	//apply a spatial phase corresponding to a spherical mirror (on axis)
 	trilingual sphericalMirrorKernel asKernel(withID deviceParameterSet* s, double ROC) {
 		long long i = localIndex;
 		long long j, k, h, col;
@@ -637,6 +648,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
 	};
 
+	//apply linear propagation through a given medium to the fields
 	trilingual applyLinearPropagationKernel asKernel(withID double* sellmeierCoefficients, double thickness, deviceParameterSet* s) {
 		long long i = localIndex;
 		long long j, h, k, col;
@@ -822,6 +834,7 @@ namespace kernels {
 		}
 	};
 
+	//prepare the chi(1) arrays that will be needed in the simulation
 	trilingual getChiLinearKernel asKernel(withID deviceParameterSet* s, double* sellmeierCoefficients) {
 		long long i = localIndex;
 		int axesNumber = (*s).axesNumber;
@@ -895,6 +908,8 @@ namespace kernels {
 			//normalize chi3 tensor values
 			(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
 	};
+
+
 	//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
 	trilingual prepareCylindricGridsKernel asKernel(withID double* sellmeierCoefficients, deviceParameterSet* s) {
 		long long i = localIndex;
@@ -1032,6 +1047,7 @@ namespace kernels {
 							(*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
 							(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey};
 
+			// second order nonlinearity, element-by-element in the reduced tensor
 			if ((*s).nonlinearSwitches[0] == 1){
 				for (unsigned char a = 0; a < 3; ++a){
 					P[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
@@ -1061,7 +1077,7 @@ namespace kernels {
 			(*s).gridPolarizationTime1[i] = (*s).rotationBackward[0] * P[0] + (*s).rotationBackward[1] * P[1] + (*s).rotationBackward[2] * P[2];
 			(*s).gridPolarizationTime2[i] = (*s).rotationBackward[3] * P[0] + (*s).rotationBackward[4] * P[1] + (*s).rotationBackward[5] * P[2];
 
-			//using only one value of chi3, under assumption of centrosymmetry
+			//using only one value of chi3, under assumption of centrosymmetry when nonlinearSwitches[1]==2
 			if ((*s).nonlinearSwitches[1] == 2) {
 				double Esquared = (*s).chi3Tensor[0] * (Ex*Ex + Ey*Ey);
 				(*s).gridPolarizationTime1[i] += Ex * Esquared;
@@ -1069,12 +1085,15 @@ namespace kernels {
 			}
 		}
 		else{
+			//case of no chi2, and centrosymmetric chi3
 			if ((*s).nonlinearSwitches[1] == 2) {
 				double Esquared = (*s).chi3Tensor[0] * (Ex*Ex + Ey*Ey);
 				(*s).gridPolarizationTime1[i] = Ex * Esquared;
 				(*s).gridPolarizationTime2[i] = Ey * Esquared;
 			}
 			else{
+			//this should never be called: the simulation thinks there's a nonlinearity, but they're all off
+			//zero just in case.
 				(*s).gridPolarizationTime1[i] = 0.0;
 				(*s).gridPolarizationTime2[i] = 0.0;
 			}
@@ -1099,6 +1118,8 @@ namespace kernels {
 		//from the field to the number of free carriers
 		//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
 		//of the plasma current
+	//applied in 3 parts due to the different patterns of calculating ionization rate (A)
+	//and integrating over trajectories (B). Added to RK4 propagation array afterwards.
 	trilingual plasmaCurrentKernel_twoStage_A asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		double Esquared, Ex, Ey, a;
@@ -1166,6 +1187,8 @@ namespace kernels {
 		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[i % ((*sP).Nfreq)];
 	};
 
+	//Slightly different kernels for the four stages of RK4. They used to be one big kernel with a switch case
+	//but this has slightly better utilization.
 	trilingual rkKernel0 asKernel(withID deviceParameterSet* sP, uint8_t stepNumber) {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
@@ -1232,6 +1255,8 @@ namespace kernels {
 		A[i] += B[i];
 	};
 
+	//crease a pulse on the grid for the 2D modes. Note that normalization of the 2D mode assumes radial symmetry (i.e. that it's
+	//a gaussian beam, not an infinite plane wave, which would have zero amplitude for finite energy).
 	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, deviceParameterSet* s,
 		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase, double* sellmeierCoefficients) {
 		long long i = localIndex;
@@ -1291,7 +1316,7 @@ namespace kernels {
 		atomicAddDevice(pulseSum, pointEnergy);
 	};
 
-	//note to self: please make a beamParameters struct
+	//Generate a beam in full 3D mode
 	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* field, pulse* p, double* pulseSum, deviceParameterSet* s,
 		bool hasLoadedField, deviceComplex* loadedField, double* materialPhase, double* sellmeierCoefficients) {
 		long long i = localIndex;
@@ -1736,6 +1761,7 @@ namespace hostFunctions{
 		deviceComplex* Ein2 = sc.gridEFrequency2;
 		deviceComplex* Eout1 = sc.gridEFrequency1Next1;
 		deviceComplex* Eout2 = sc.gridEFrequency1Next2;
+
 		//retrieve/rotate the field from the CPU memory
 		d.deviceMemcpy(Ein1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(deviceComplex), HostToDevice);
 		d.deviceLaunch((unsigned int)(sc.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, rotationAngle);
@@ -1799,7 +1825,6 @@ namespace hostFunctions{
 		}
 
 		//advance an RK4 step
-		//d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel, sD, stepNumber);
 		switch (stepNumber) {
 		case 0:
 			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel0, sD, stepNumber);
@@ -1812,7 +1837,6 @@ namespace hostFunctions{
 			break;
 		case 3:
 			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel3, sD, stepNumber);
-			break;
 		}
 		return 0;
 	}
@@ -1821,6 +1845,9 @@ namespace hostFunctions{
 		return (s[off] == 0 || s[off] == '(') ? 7177 : (funHash(s, off + 1) * 31) ^ s[off];
 	}
 
+	//Dispatcher of the sequence mode. New functions go here, and should have a unique hash (chances of a conflict are small, and 
+	// will produce a compile-time error.
+	// Functions cannot start with a number or the string "None".
 	int interpretCommand(const char* cc, double* iBlock, double* vBlock, simulationParameterSet *s, crystalEntry *db) {
 		if (cc == 0) {
 			return 1;
@@ -2212,6 +2239,7 @@ namespace hostFunctions{
 		return 1;
 	}
 
+	// helper function for fitting mode, runs the simulation and returns difference from the desired outcome.
 	double getResidual(const column_vector& x) {
 
 		double multipliers[36] = { 0,
@@ -2288,6 +2316,8 @@ namespace hostFunctions{
 		return sqrt(result);
 	}
 
+	//the old sequence mode, can be called by the new sequence mode if it encounters
+	// something that looks like an old sequence.
 	unsigned long solveNonlinearWaveEquationSequenceOldX(void* lpParam) {
 		simulationParameterSet sCPUcurrent;
 		simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
@@ -2319,6 +2349,9 @@ namespace hostFunctions{
 }
 using namespace hostFunctions;
 
+//Main (non sequence) solver. New device typeps should have a unique definition of the name
+// e.g. solveNonlinearWaveEquationSYCL so that the correct one may be called. That's why it's
+// a preprocessor definition here.
 unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
 	deviceParameterSet s;
@@ -2367,11 +2400,14 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	return returnval;
 }
 
+
+// Main function for running a sequence
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	simulationParameterSet sCPUcurrent;
 	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
 	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
 
+	//pointers to where the various parameters are in the struct
 	double* targets[36] = { 0,
 		&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
 		&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
@@ -2384,6 +2420,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 		&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
 		&(*sCPU).propagationStep };
 
+	//unit multipliers from interface units to SI base units.
 	double multipliers[36] = { 0,
 	1, 1, 1e12, 1e12,
 	1e12, 1e12, PI, PI,
@@ -2396,12 +2433,14 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	1, 1e12, 1, 1e-6,
 	1e-9 };
 
+	//if it starts with 0, it's an old sequence; send it there
 	if ((*sCPU).sequenceString[0] == '0') {
 		readSequenceString((simulationParameterSet*)lpParam);
 		solveNonlinearWaveEquationSequenceOldX(lpParam);
 		return 0;
 	}
 
+	//main text interpreter
 	char* sequenceString = new char[MAX_LOADSTRING];
 	memcpy(sequenceString, (*sCPU).sequenceString, MAX_LOADSTRING);
 	simulationParameterSet sCPUbackupValues;
@@ -2442,7 +2481,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	return 0;
 }
 
-
+//run in fitting mode
 unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	fittingSet = (simulationParameterSet*)calloc(1, sizeof(simulationParameterSet));
 	if (fittingSet == NULL) return 1;
@@ -2516,6 +2555,9 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	return 0;
 }
 
+//main function - if included in the GUI, this should have a different name
+// than main() - this one applies when running in command line mode (e.g. on
+// the clusters.)
 int mainX(int argc, mainArgumentX){
 	resolveArgv;
 	int i, j;
