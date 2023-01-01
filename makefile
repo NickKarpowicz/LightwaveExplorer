@@ -1,4 +1,5 @@
-ARMHOMEBREW=/Users/nick/arm-target
+ARMHOMEBREW=/opt/homebrew
+ARMHOMEBREWXC=/Users/nick/arm-target
 CC=g++
 APPLECC=/usr/local/opt/llvm/bin/clang++
 ARMCC=${ARMHOMEBREW}/opt/llvm/bin/clang++
@@ -24,6 +25,11 @@ APPLELDFLAGS=-L/usr/local/lib -L/usr/local/opt/llvm/lib -L/usr/local/opt/libomp/
 #homebrew on arm uses a different instaall location
 APPLEINCLUDESARM=-I../dlib -I${ARMHOMEBREW}/opt/llvm/include -I${ARMHOMEBREW}/opt/libomp/include -I${ARMHOMEBREW}/include -I${ARMHOMEBREW}/include/gtk-4.0 -I${ARMHOMEBREW}/include/pango-1.0 -I${ARMHOMEBREW}/include/glib-2.0 -I${ARMHOMEBREW}/include/cairo -I${ARMHOMEBREW}/lib/glib-2.0/include -I${ARMHOMEBREW}/include/fontconfig -I${ARMHOMEBREW}/include/freetype2 -I${ARMHOMEBREW}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREW}/include/harfbuzz -I${ARMHOMEBREW}/include/graphene-1.0 -I${ARMHOMEBREW}/lib/graphene-1.0/include
 APPLELDFLAGSARM=-L${ARMHOMEBREW}/opt/llvm/lib -L${ARMHOMEBREW}/opt/libomp/lib -L${ARMHOMEBREW}/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${ARMHOMEBREW}/lib/libfftw3.a
+
+#homebrew on arm uses a different instaall location
+APPLEINCLUDESARMXC=-I../dlib -I${ARMHOMEBREWXC}/opt/llvm/include -I${ARMHOMEBREWXC}/opt/libomp/include -I${ARMHOMEBREWXC}/include -I${ARMHOMEBREWXC}/include/gtk-4.0 -I${ARMHOMEBREWXC}/include/pango-1.0 -I${ARMHOMEBREWXC}/include/glib-2.0 -I${ARMHOMEBREWXC}/include/cairo -I${ARMHOMEBREWXC}/lib/glib-2.0/include -I${ARMHOMEBREWXC}/include/fontconfig -I${ARMHOMEBREWXC}/include/freetype2 -I${ARMHOMEBREWXC}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREWXC}/include/harfbuzz -I${ARMHOMEBREWXC}/include/graphene-1.0 -I${ARMHOMEBREWXC}/lib/graphene-1.0/include
+APPLELDFLAGSARMXC=-L${ARMHOMEBREWXC}/opt/llvm/lib -L${ARMHOMEBREWXC}/opt/libomp/lib -L${ARMHOMEBREWXC}/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${ARMHOMEBREWXC}/lib/libfftw3.a
+
 
 CUDAFLAGS= -diag-suppress 1650 -diag-suppress 1217 -x cu -D NOCUDAMAIN
 CUDAINCLUDES=-I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
@@ -77,7 +83,7 @@ macARMonIntel:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
 	cp AppImageCPU/COPYING COPYING
-	${APPLECC} -target arm64-apple-macos12 ${APPLEFLAGS} ${APPLEINCLUDESARM} ${OBJECTS} ${SOURCES} ${APPLELDFLAGSARM}
+	${APPLECC} -target arm64-apple-macos12 ${APPLEFLAGS} ${APPLEINCLUDESARMXC} ${OBJECTS} ${SOURCES} ${APPLELDFLAGSARMXC}
 	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
 	rm COPYING
 	rm LightwaveExplorerUtilities.h
