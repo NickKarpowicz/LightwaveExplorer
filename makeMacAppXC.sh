@@ -7,18 +7,11 @@ BIN=LightwaveExplorer
 #detect local architecture
 LOCALARCH=$(arch)
 
-#Homebrew libraries location, 
-# on intel it will be /usr/local
-# on Arm64 it will be /opt/homebrew
-LIBS="/opt/homebrew"
-if LOCALARCH=="i386"
-then
-    LIBS="/usr/local"
-    make mac
-else
-    eval $(/opt/homebrew/bin/brew shellenv)
-    make macARM
-fi
+#Homebrew libraries location, obviously people other than me will have to change this
+LIBS="/Users/nick/arm-target"
+
+#compile
+make macARMonIntel
 
 #set up the directory structure of the .app
 rm -rf $APP

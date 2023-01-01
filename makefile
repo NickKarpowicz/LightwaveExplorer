@@ -1,9 +1,11 @@
+ARMHOMEBREW=/Users/nick/arm-target
 CC=g++
-APPLECC=g++-12
-ARMCC=/opt/homebrew/bin/g++-12
+APPLECC=/usr/local/opt/llvm/bin/clang++
+ARMCC=${ARMHOMEBREW}/opt/llvm/bin/clang++
 DPCPP=icpx
 NVCC=/usr/local/cuda-12.0/bin/nvcc
-CUDATARGETS = /usr/local/cuda-12.0/targets/x86_64-linux
+CUDATARGETS=/usr/local/cuda-12.0/targets/x86_64-linux
+
 
 CFLAGS=-std=c++20 -fopenmp -mtune=native -w -Ofast -D CPUONLY
 INCLUDES=`pkg-config --cflags gtk4` -I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
@@ -15,13 +17,13 @@ OBJECTS=-o LightwaveExplorer
 #mac and CPU-only builds compile with fftw instead of mkl
 LDFLAGSF=`pkg-config --libs gtk4` `pkg-config --libs gtk4` /usr/lib/x86_64-linux-gnu/libfftw3.a -lgomp -lpthread -lm -ldl
 INCLUDESF=`pkg-config --cflags gtk4` -I../dlib
-APPLEFLAGS=-std=c++20 -Ofast -mtune=native -flto -fopenmp -D CPUONLY
-APPLEINCLUDES=-I../dlib -I/usr/local/include -I/usr/local/include/c++/12 -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
-APPLELDFLAGS=-L/usr/local/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
+APPLEFLAGS=-std=c++20 -Ofast -fopenmp -D CPUONLY
+APPLEINCLUDES=-I../dlib -I/usr/local/opt/llvm/include -I/usr/local/opt/libomp/include -I/usr/local/include -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
+APPLELDFLAGS=-L/usr/local/lib -L/usr/local/opt/llvm/lib -L/usr/local/opt/libomp/lib -lomp -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
 
 #homebrew on arm uses a different instaall location
-APPLEINCLUDESARM=-I../dlib -I/opt/homebrew/include -I/opt/homebrew/include/c++/12 -I/opt/homebrew/include/gtk-4.0 -I/opt/homebrew/include/pango-1.0 -I/opt/homebrew/include/glib-2.0 -I/opt/homebrew/include/cairo -I/opt/homebrew/lib/glib-2.0/include -I/opt/homebrew/include/fontconfig -I/opt/homebrew/include/freetype2 -I/opt/homebrew/include/gdk-pixbuf-2.0 -I/opt/homebrew/include/harfbuzz -I/opt/homebrew/include/graphene-1.0 -I/opt/homebrew/lib/graphene-1.0/include
-APPLELDFLAGSARM=-L/opt/homebrew/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /opt/homebrew/lib/libfftw3.a
+APPLEINCLUDESARM=-I../dlib -I${ARMHOMEBREW}/opt/llvm/include -I${ARMHOMEBREW}/opt/libomp/include -I${ARMHOMEBREW}/include -I${ARMHOMEBREW}/include/gtk-4.0 -I${ARMHOMEBREW}/include/pango-1.0 -I${ARMHOMEBREW}/include/glib-2.0 -I${ARMHOMEBREW}/include/cairo -I${ARMHOMEBREW}/lib/glib-2.0/include -I${ARMHOMEBREW}/include/fontconfig -I${ARMHOMEBREW}/include/freetype2 -I${ARMHOMEBREW}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREW}/include/harfbuzz -I${ARMHOMEBREW}/include/graphene-1.0 -I${ARMHOMEBREW}/lib/graphene-1.0/include
+APPLELDFLAGSARM=-L${ARMHOMEBREW}/opt/llvm/lib -L${ARMHOMEBREW}/opt/libomp/lib -L${ARMHOMEBREW}/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${ARMHOMEBREW}/lib/libfftw3.a
 
 CUDAFLAGS= -diag-suppress 1650 -diag-suppress 1217 -x cu -D NOCUDAMAIN
 CUDAINCLUDES=-I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
@@ -64,6 +66,18 @@ macARM:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
 	cp AppImageCPU/COPYING COPYING
 	${ARMCC} ${APPLEFLAGS} ${APPLEINCLUDESARM} ${OBJECTS} ${SOURCES} ${APPLELDFLAGSARM}
+	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
+	rm COPYING
+	rm LightwaveExplorerUtilities.h
+	rm LWEActiveDeviceCPU.h
+	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
+	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
+
+macARMonIntel:
+	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
+	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
+	cp AppImageCPU/COPYING COPYING
+	${APPLECC} -target arm64-apple-macos12 ${APPLEFLAGS} ${APPLEINCLUDESARM} ${OBJECTS} ${SOURCES} ${APPLELDFLAGSARM}
 	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
 	rm COPYING
 	rm LightwaveExplorerUtilities.h

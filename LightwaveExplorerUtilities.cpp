@@ -1067,7 +1067,7 @@ int readCrystalDatabase(crystalEntry* db) {
 	FILE* fp;
 #ifdef __APPLE__
 	uint32_t bufferSize = 1024;
-	char sysPath[bufferSize] = {0};
+	char sysPath[1024] = {0};
 	_NSGetExecutablePath(sysPath, &bufferSize);
 	int plen = strlen(sysPath);
 	sysPath[plen - 17] = 0;
