@@ -18,9 +18,9 @@ OBJECTS=-o LightwaveExplorer
 #mac and CPU-only builds compile with fftw instead of mkl
 LDFLAGSF=`pkg-config --libs gtk4` `pkg-config --libs gtk4` /usr/lib/x86_64-linux-gnu/libfftw3.a -lgomp -lpthread -lm -ldl
 INCLUDESF=`pkg-config --cflags gtk4` -I../dlib
-APPLEFLAGS=-std=c++20 -Ofast -fopenmp -D CPUONLY -Wl,-no_compact_unwind
+APPLEFLAGS=-std=c++20 -Ofast -fopenmp -D CPUONLY -w -Wl,-no_compact_unwind
 APPLEINCLUDES=-I../dlib -I/usr/local/opt/llvm/include -I/usr/local/opt/libomp/include -I/usr/local/include -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
-APPLELDFLAGS=-L/usr/local/lib -L/usr/local/opt/llvm/lib -L/usr/local/opt/libomp/lib -lomp -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
+APPLELDFLAGS=-L/usr/local/lib -L/usr/local/opt/llvm/lib /usr/local/opt/libomp/lib/libomp.a -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
 
 #homebrew on arm uses a different instaall location
 APPLEINCLUDESARM=-I../dlib -I${ARMHOMEBREW}/opt/llvm/include -I${ARMHOMEBREW}/opt/libomp/include -I${ARMHOMEBREW}/include -I${ARMHOMEBREW}/include/gtk-4.0 -I${ARMHOMEBREW}/include/pango-1.0 -I${ARMHOMEBREW}/include/glib-2.0 -I${ARMHOMEBREW}/include/cairo -I${ARMHOMEBREW}/lib/glib-2.0/include -I${ARMHOMEBREW}/include/fontconfig -I${ARMHOMEBREW}/include/freetype2 -I${ARMHOMEBREW}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREW}/include/harfbuzz -I${ARMHOMEBREW}/include/graphene-1.0 -I${ARMHOMEBREW}/lib/graphene-1.0/include
