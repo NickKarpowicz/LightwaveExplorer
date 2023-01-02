@@ -10,15 +10,9 @@ LOCALARCH=$(arch)
 #Homebrew libraries location, 
 # on intel it will be /usr/local
 # on Arm64 it will be /opt/homebrew
-LIBS="/opt/homebrew"
-if LOCALARCH=="i386"
-then
-    LIBS="/usr/local"
-    make mac
-else
-    eval $(/opt/homebrew/bin/brew shellenv)
-    make macARM
-fi
+LIBS="/usr/local"
+
+make mac
 
 #set up the directory structure of the .app
 rm -rf $APP
@@ -38,6 +32,7 @@ cp DefaultValues.ini $APP/Contents/Resources
 cp MacResources/AppIcon.icns $APP/Contents/Resources
 cp MacResources/macplistbase.plist $APP/Contents/info.plist
 
+
 #for a given binary, copy its dynamic link dependencies to the $APP/Contents/Resources/lib folder
 copySharedLibraries(){
     NLIBS=$(otool -L $1 | grep "$LIBS" | wc -l)
@@ -48,10 +43,14 @@ copySharedLibraries(){
     done
 }
 
+
+
 #for a given binary, redirect its search path for its dependencies to the $APP/Contents/Resources/lib folder
 rehomeSharedLibraries(){
     OTOUT=$(otool -L $1)
     NLIBS=$(echo "$OTOUT" | grep "$LIBS" | wc -l)
+    CURRENTBASE=$(basename $1)
+    install_name_tool -id "@executable_path/../Resources/lib/$CURRENTBASE" $1
     for((i=1; i<=$NLIBS; i++))
     do
         CURRENT=$(echo "$OTOUT" | grep "$LIBS" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$i 'FNR==i')
@@ -60,8 +59,10 @@ rehomeSharedLibraries(){
     done
 }
 
+
+
 #go through all of the files in the $APP/Contents/Resources/lib folder and copy dependencies there
-copyLibraryDependencies(){
+copyx86LibraryDependencies(){
     NLIBSD=$(ls -1a $APP/Contents/Resources/lib | grep "lib" | wc -l | tr -d '[:blank:]')
     echo "$NLIBSD"
     for((j=1; j<=$NLIBSD; j++))
@@ -72,8 +73,7 @@ copyLibraryDependencies(){
     return $NLIBSD
 }
 
-#go through all of the files in the $APP/Contents/Resources/lib folder and redirect dependencies there
-redirectLibraryDependencies(){
+redirectx86LibraryDependencies(){
     NLIBSR=$(ls -1a $APP/Contents/Resources/lib | grep "lib" | wc -l | tr -d '[:blank:]')
     for((k=1; k<=$NLIBSR; k++))
     do
@@ -85,28 +85,23 @@ redirectLibraryDependencies(){
 #first dependency pass, direct dependencies of the executable
 copySharedLibraries $BIN
 
-#make two passes through the dependencies of the copied libraries, if the list is growing
-#do a while loop until it stops growing
-echo "Checking local dependencies"
-LASTCOPY="$(copyLibraryDependencies)"
+echo "Checking x86 local dependencies"
+LASTCOPY="$(copyx86LibraryDependencies)"
 echo "$LASTCOPY libraries"
-CURRENTCOPY="$(copyLibraryDependencies)"
+CURRENTCOPY="$(copyx86LibraryDependencies)"
 echo "$CURRENTCOPY libraries"
 while [ $LASTCOPY -lt $CURRENTCOPY ]
 do
     LASTCOPY=$CURRENTCOPY
-    CURRENTCOPY="$(copyLibraryDependencies)"
+    CURRENTCOPY="$(copyx86LibraryDependencies)"
     echo "$CURRENTCOPY libraries"
 done
 echo "I think I have them all."
 
 #correct paths of all the copied files
 echo "Redirecting dependencies to App folder"
-rehomeSharedLibraries "$APP/Contents/MacOS/$BIN"
-redirectLibraryDependencies
-
-#remove objects and raw binary
+rehomeSharedLibraries $BIN
+redirectx86LibraryDependencies
+install_name_tool -rpath /usr/local/Cellar/llvm/15.0.6/lib @executable_path/../Resources/lib $BIN
+cp $BIN $APP/Contents/MacOS/
 make clean
-
-
-
