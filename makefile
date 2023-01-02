@@ -1,12 +1,8 @@
-ARMHOMEBREW=/opt/homebrew
-ARMHOMEBREWXC=/Users/nick/arm-target
 CC=g++
 APPLECC=/usr/local/opt/llvm/bin/clang++
-ARMCC=${ARMHOMEBREW}/opt/llvm/bin/clang++
 DPCPP=icpx
 NVCC=/usr/local/cuda-12.0/bin/nvcc
 CUDATARGETS=/usr/local/cuda-12.0/targets/x86_64-linux
-
 
 CFLAGS=-std=c++20 -fopenmp -mtune=native -w -Ofast -D CPUONLY
 INCLUDES=`pkg-config --cflags gtk4` -I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
@@ -18,19 +14,8 @@ OBJECTS=-o LightwaveExplorer
 #mac and CPU-only builds compile with fftw instead of mkl
 LDFLAGSF=`pkg-config --libs gtk4` `pkg-config --libs gtk4` /usr/lib/x86_64-linux-gnu/libfftw3.a -lgomp -lpthread -lm -ldl
 INCLUDESF=`pkg-config --cflags gtk4` -I../dlib
-APPLEFLAGS=-std=c++20 -Ofast -fopenmp -D CPUONLY -w -Wl,-no_compact_unwind
-APPLEINCLUDES=-I../dlib -I/usr/local/opt/llvm/include -I/usr/local/opt/libomp/include -I/usr/local/include -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
-APPLELDFLAGS=-L/usr/local/lib -L/usr/local/opt/llvm/lib /usr/local/opt/libomp/lib/libomp.a -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
 
-#homebrew on arm uses a different instaall location
-APPLEINCLUDESARM=-I../dlib -I${ARMHOMEBREW}/opt/llvm/include -I${ARMHOMEBREW}/opt/libomp/include -I${ARMHOMEBREW}/include -I${ARMHOMEBREW}/include/gtk-4.0 -I${ARMHOMEBREW}/include/pango-1.0 -I${ARMHOMEBREW}/include/glib-2.0 -I${ARMHOMEBREW}/include/cairo -I${ARMHOMEBREW}/lib/glib-2.0/include -I${ARMHOMEBREW}/include/fontconfig -I${ARMHOMEBREW}/include/freetype2 -I${ARMHOMEBREW}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREW}/include/harfbuzz -I${ARMHOMEBREW}/include/graphene-1.0 -I${ARMHOMEBREW}/lib/graphene-1.0/include
-APPLELDFLAGSARM=-L${ARMHOMEBREW}/opt/llvm/lib -L${ARMHOMEBREW}/opt/libomp/lib -L${ARMHOMEBREW}/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${ARMHOMEBREW}/lib/libfftw3.a
-
-#homebrew on arm uses a different instaall location
-APPLEINCLUDESARMXC=-I../dlib -I${ARMHOMEBREWXC}/opt/llvm/include -I${ARMHOMEBREWXC}/opt/libomp/include -I${ARMHOMEBREWXC}/include -I${ARMHOMEBREWXC}/include/gtk-4.0 -I${ARMHOMEBREWXC}/include/pango-1.0 -I${ARMHOMEBREWXC}/include/glib-2.0 -I${ARMHOMEBREWXC}/include/cairo -I${ARMHOMEBREWXC}/lib/glib-2.0/include -I${ARMHOMEBREWXC}/include/fontconfig -I${ARMHOMEBREWXC}/include/freetype2 -I${ARMHOMEBREWXC}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREWXC}/include/harfbuzz -I${ARMHOMEBREWXC}/include/graphene-1.0 -I${ARMHOMEBREWXC}/lib/graphene-1.0/include
-APPLELDFLAGSARMXC=-L${ARMHOMEBREWXC}/opt/llvm/lib ${ARMHOMEBREWXC}/opt/libomp/lib/libomp.a -L${ARMHOMEBREWXC}/lib -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${ARMHOMEBREWXC}/lib/libfftw3.a
-
-
+#CUDA settings
 CUDAFLAGS= -diag-suppress 1650 -diag-suppress 1217 -x cu -D NOCUDAMAIN
 CUDAINCLUDES=-I${MKLROOT}/include -I${MKLROOT}/include/fftw -I../dlib
 CUDAARCH=-gencode=arch=compute_75,code=\"sm_75,compute_75\"
@@ -39,12 +24,29 @@ CUDALDFLAGS=-L. -lcufft -lnvidia-ml ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a $
 CUDAOUT = -c
 CUDASOURCE=LightwaveExplorerCore.cu
 
+#DPC++/SYCL settings
 DPCPPFLAGS=-Ofast -w -fsycl -fsycl-unnamed-lambda -fsycl-early-optimizations -DMKL_ILP64 -std=c++20
 DPCPPFILES=./LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerUtilities.o DlibLibraryComponents.o LightwaveExplorerCoreCPU.o LightwaveExplorerFrontendGTK.o LightwaveExplorerCore.o
 DPCPPFILESNOCUDA=./LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerUtilities.cpp DlibLibraryComponents/DlibLibraryComponents.cpp LightwaveExplorerCoreCPU.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 DPCPPOUTPUT= LightwaveExplorer
 DPCPPINCLUDES=-I${ONEAPIROOT}/compiler/latest/linux/include -I${ONEAPIROOT}/compiler/latest/linux/include/sycl -I${MKLROOT}/include -I${MKLROOT}/include/fftw -I${ONEAPIROOT}/dpl/latest/linux/include -I../dlib -I./
 DPCPPLD=-L${CUDATARGETS}/lib/ -L${CUDATARGETS}/lib/stubs -lcufft -lnvidia-ml -lcudart -lgomp `pkg-config --libs gtk4` `pkg-config --libs gtk4` ${MKLROOT}/lib/intel64/libmkl_sycl.a -Wl,-export-dynamic -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -L${TBBROOT}/lib/intel64/gcc4.8 -ltbb -lsycl -lOpenCL -lpthread -lm -ldl
+
+#Apple compilaation
+ARMHOMEBREW=/opt/homebrew
+ARMHOMEBREWXC=/Users/nick/arm-target
+ARMCC=${ARMHOMEBREW}/opt/llvm/bin/clang++
+APPLEFLAGS=-std=c++20 -Ofast -fopenmp -D CPUONLY -w -Wl,-no_compact_unwind
+APPLEINCLUDES=-I../dlib -I/usr/local/opt/llvm/include -I/usr/local/opt/libomp/include -I/usr/local/include -I/usr/local/include/gtk-4.0 -I/usr/local/include/pango-1.0 -I/usr/local/include/glib-2.0 -I/usr/local/include/cairo -I/usr/local/lib/glib-2.0/include -I/usr/local/include/fontconfig -I/usr/local/include/freetype2 -I/usr/local/include/gdk-pixbuf-2.0 -I/usr/local/include/harfbuzz -I/usr/local/include/graphene-1.0 -I/usr/local/lib/graphene-1.0/include
+APPLELDFLAGS=-L/usr/local/lib -L/usr/local/opt/llvm/lib /usr/local/opt/libomp/lib/libomp.a -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 /usr/local/lib/libfftw3.a
+
+#homebrew on arm uses a different instaall location
+APPLEINCLUDESARM=-I../dlib -I${ARMHOMEBREW}/opt/llvm/include -I${ARMHOMEBREW}/opt/libomp/include -I${ARMHOMEBREW}/include -I${ARMHOMEBREW}/include/gtk-4.0 -I${ARMHOMEBREW}/include/pango-1.0 -I${ARMHOMEBREW}/include/glib-2.0 -I${ARMHOMEBREW}/include/cairo -I${ARMHOMEBREW}/lib/glib-2.0/include -I${ARMHOMEBREW}/include/fontconfig -I${ARMHOMEBREW}/include/freetype2 -I${ARMHOMEBREW}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREW}/include/harfbuzz -I${ARMHOMEBREW}/include/graphene-1.0 -I${ARMHOMEBREW}/lib/graphene-1.0/include
+APPLELDFLAGSARM=-L${ARMHOMEBREW}/opt/llvm/lib -L${ARMHOMEBREW}/opt/libomp/lib -L${ARMHOMEBREW}/lib -lc++ -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${ARMHOMEBREW}/lib/libfftw3.a
+
+#cross-compile settings for compiling for Arm64 on Intel
+APPLEINCLUDESARMXC=-I../dlib -I${ARMHOMEBREWXC}/opt/llvm/include -I${ARMHOMEBREWXC}/opt/libomp/include -I${ARMHOMEBREWXC}/include -I${ARMHOMEBREWXC}/include/gtk-4.0 -I${ARMHOMEBREWXC}/include/pango-1.0 -I${ARMHOMEBREWXC}/include/glib-2.0 -I${ARMHOMEBREWXC}/include/cairo -I${ARMHOMEBREWXC}/lib/glib-2.0/include -I${ARMHOMEBREWXC}/include/fontconfig -I${ARMHOMEBREWXC}/include/freetype2 -I${ARMHOMEBREWXC}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREWXC}/include/harfbuzz -I${ARMHOMEBREWXC}/include/graphene-1.0 -I${ARMHOMEBREWXC}/lib/graphene-1.0/include
+APPLELDFLAGSARMXC=-L${ARMHOMEBREWXC}/opt/llvm/lib ${ARMHOMEBREWXC}/opt/libomp/lib/libomp.a -L${ARMHOMEBREWXC}/lib -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${ARMHOMEBREWXC}/lib/libfftw3.a
 
 default: clean cuda sycl
 
