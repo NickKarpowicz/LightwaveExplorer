@@ -16,7 +16,7 @@ Lightwave explorer is an open source nonlinear optics simulator, intended to be 
 
 <p style="text-align: center;"><img src="/Documentation/Images/LinuxScreenshot.png"></p>
 
-The simulation was written CUDA in order to run quickly on modern graphics cards. I've subsequently generalized it so that it can be run in two other ways: SYCL on CPUs and Intel GPUs, and using OpenMP to run on CPUs. Accordingly, I hope that the results are fast enough that even complicated system can be simulated within a human attention span.
+The simulation was written CUDA in order to run quickly on modern graphics cards. I've subsequently generalized it so that it can be run in two other ways: SYCL on CPUs and Intel GPUs, and using OpenMP to run on CPUs. Accordingly, I hope that the results are fast enough that even complicated systems can be simulated within a human attention span.
 
 ---
 
@@ -54,9 +54,11 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
 ### Installation on Mac
 
-A Mac version is in the works. I have it compiled on my (very old, Intel) Mac, and it does run and work as expected. Currently I only have this Intel-compiled version in the [shared volume](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP) because I don't have a recent Mac to compile on. This version also makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
+There is an Intel version in the [shared volume](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP). This version also makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
 
 The application bundle contains all the required files. If you want to edit the crystal database or default settings, open the app as a folder (right click or control-click on the app and select "show package contents") - You will find them in the Resources folder.
+
+A native version for the new Arm-based Macs is technically possible (and has been compiled) but you can't use it because Apple protects you from developers like me who refuse to pay them $100/year.
 
 ---
   ### How do I know which configuration to run?
@@ -99,15 +101,6 @@ The application bundle contains all the required files. If you want to edit the 
   make
   sudo make install
   ```
-
-  Or, to generate the AppImage (first putting the appimage-builder program somewhere in your path):
-  ```
-  git clone https://github.com/NickKarpowicz/LightwaveExplorer
-  git clone https://github.com/davisking/dlib
-  cd LightwaveExplorer/AppImage
-  . /opt/intel/oneapi/setvars.sh
-  ./makeAppImage.sh
-  ```
   
   That should have done it. If you don't want to install CUDA (i.e. you don't have an NVIDIA board so why bother), you can replace "make" with "make nocuda" and still use SYCL. 
 
@@ -116,21 +109,21 @@ The application bundle contains all the required files. If you want to edit the 
 ```
 export LD_LIBRARY_PATH=/opt/intel/oneapi/tbb/latest/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/latest/lib/intel64/:/opt/intel/oneapi/compiler/latest/linux/lib:/opt/intel/oneapi/compiler/latest/linux/lib/x64:/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin:$LD_LIBRARY_PATH
 ```
-to your ~/.bashrc file.
-
-Another option is to call the LightwaveExplorerLauncher.sh script which was also installed. You can create a shortcut to this to give you an icon that you can click on to run the application without having to go to the terminal.
+to your ~/.bashrc file. Another option is to call the LightwaveExplorerLauncher.sh script which was also installed. You can create a shortcut to this to give you an icon that you can click on to run the application without having to go to the terminal.
 
 But if you just want to run it, the AppImage is a lot easier (assuming it's not broken, I've only tested it on Mint and Ubuntu...)
-  
-To make the GPL-3 one that makes use of FFTW, you can do the above, making sure that you have installed FFTW3-3. Then the sequence is:
 
+To generate the AppImage (first putting the appimage-builder program somewhere in your path):
   ```
   git clone https://github.com/NickKarpowicz/LightwaveExplorer
   git clone https://github.com/davisking/dlib
-  cd LightwaveExplorer
-  make cpuonly
-  sudo make install
+  cd LightwaveExplorer/AppImage
+  . /opt/intel/oneapi/setvars.sh
+  ./makeAppImage.sh
   ```
+
+To make the GPL-3 one that makes use of FFTW, you can do the above, making sure that you have installed FFTW3-3. Then use either of the above techniques, but replace "make" with "make cpuonly".
+
 
   ### Compiling on Mac
 
@@ -138,9 +131,9 @@ To make the GPL-3 one that makes use of FFTW, you can do the above, making sure 
   ```
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   ```
-  Go through the installation process, and then install FFTW, make, g++, git, and GTK4 with:
+  Go through the installation process, and then install FFTW, make, llvm, OpenMP, git, and GTK4 with:
   ```
-  brew install make gcc fftw gtk4 git
+  brew install make llvm libomp fftw gtk4 git
   ```
   Next, you'll need the Lightwave Explorer and dlib repositories, and once you have those, run the LWE compile script:
   ```
@@ -150,7 +143,7 @@ To make the GPL-3 one that makes use of FFTW, you can do the above, making sure 
   chmod +x makeMacApp.sh
   ./makeMacApp.sh
   ```
-  If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer folder.
+  If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer folder. The script makeMacAppXC.sh will allow you to make a cross-compiled, universal binary, which nobody other than you can run, unless you are a paying Apple developer.
   
 ---
   ### Compilation on clusters
@@ -178,6 +171,9 @@ Thanks to the original authors for making their work available! In order to comp
   ---
 
   ### Programming note
-  Although CUDA was the initial platform and what I use (and test) most extensively, I've added two additional languages for those who don't have an Nvidia graphics card. One is in c++, with multithreading done with OpenMP. The other (just added) language is SYCL. This also allows the simulation to run on the CPU and should allow it to run on Intel's graphics cards, although I have not tested this yet. The same language should be able to run on AMD cards, but their support is not there yet. The code is written in a "trilingual" way - a single core code file is compiled (after some includes and preprocessor definitions) by the three different compilers, Nvidia nvcc, Microsoft Visual Studio, and Intel dpc++. 
-  
+
+  The code is written in a "trilingual" way - a single core code file is compiled (after some includes and preprocessor definitions) by the three different compilers, Nvidia nvcc, a c++ compiler (either Microsoft's, g++, or clang++ have all worked), and Intel dpc++. 
+
+  Although CUDA was the initial platform and what I use (and test) most extensively, I've added two additional languages for those who don't have an Nvidia graphics card. One is in c++, with multithreading done with OpenMP. The other (just added) language is SYCL. This also allows the simulation to run on the CPU and should allow it to run on Intel's graphics cards, as well as the integrated graphics of many Intel CPUs. The same language should be able to run on AMD cards, but support for the DPC++ toolchain with the HipSYCL backend is quite new, and I don't have an AMD card to test it on. 
+    
   Because of this, the different architectures are using the same algorithm, aside from small differences in their floating point math and intrinsic functions. So when I make changes or additions, there will never be any platform gaining over the other (again, reproducibility by anyone is part of the goals here).
