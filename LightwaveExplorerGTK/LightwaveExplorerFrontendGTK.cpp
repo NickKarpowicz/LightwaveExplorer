@@ -415,7 +415,7 @@ public:
         pulldowns[9].addElement(_T("Cobra 1x R5000"));
         pulldowns[9].addElement(_T("Cobra 2x R5000"));
         pulldowns[9].addElement(_T("Cobra 1x V100"));
-        pulldowns[9].addElement(_T("Cobra 1x V100"));
+        pulldowns[9].addElement(_T("Cobra 2x V100"));
         pulldowns[9].addElement(_T("Raven 1x A100"));
         pulldowns[9].addElement(_T("Raven 2x A100"));
         pulldowns[9].addElement(_T("Raven 4x A100"));
@@ -585,7 +585,7 @@ void readParametersFromInterface() {
     (*activeSetPtr).symmetryType = theGui.pulldowns[4].getValue();
     (*activeSetPtr).batchIndex = theGui.pulldowns[5].getValue();
     (*activeSetPtr).batchIndex2 = theGui.pulldowns[6].getValue();
-
+    (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
     theGui.textBoxes[52].valueToPointer(&(*activeSetPtr).NsimsCPU);
 
     char noneString[] = "None";
@@ -1069,7 +1069,7 @@ void createRunFile() {
     isGridAllocated = TRUE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
-    readSequenceString(activeSetPtr);
+    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
     configureBatchMode(activeSetPtr);
 
     free((*activeSetPtr).statusFlags);
@@ -1093,31 +1093,31 @@ void createRunFile() {
     int gpuType = 0;
     int gpuCount = 1;
     switch ((*activeSetPtr).runType) {
-    case 1:
+    case 0:
         gpuType = 0;
         gpuCount = 1;
         break;
-    case 2:
+    case 1:
         gpuType = 0;
         gpuCount = 2;
+        break;
+    case 2:
+        gpuType = 1;
+        gpuCount = 1;
         break;
     case 3:
         gpuType = 1;
-        gpuCount = 1;
+        gpuCount = 2;
         break;
     case 4:
-        gpuType = 1;
-        gpuCount = 2;
+        gpuType = 2;
+        gpuCount = 1;
         break;
     case 5:
         gpuType = 2;
-        gpuCount = 1;
-        break;
-    case 6:
-        gpuType = 2;
         gpuCount = 2;
         break;
-    case 7:
+    case 6:
         gpuType = 2;
         gpuCount = 4;
         break;
