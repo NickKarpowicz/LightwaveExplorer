@@ -486,6 +486,10 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 		fileName = strchr(fileName, '\\');
 		fileName++;
 	}
+	while (strchr(fileName, '/') != NULL) {
+		fileName = strchr(fileName, '/');
+		fileName++;
+	}
 
 	strcpy_s(outputpath, MAX_LOADSTRING, (*sCPU).outputBasePath);
 	strcat_s(outputpath, MAX_LOADSTRING, ".slurmScript");
@@ -594,6 +598,10 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 		char* fileName = (*sCPU).outputBasePath;
 		while (strchr(fileName, '\\') != NULL) {
 			fileName = strchr(fileName, '\\');
+			fileName++;
+		}
+		while (strchr(fileName, '/') != NULL) {
+			fileName = strchr(fileName, '/');
 			fileName++;
 		}
 		mbstowcs_s(&convertedCount, wideStringConversionBuffer, fileName, MAX_LOADSTRING);

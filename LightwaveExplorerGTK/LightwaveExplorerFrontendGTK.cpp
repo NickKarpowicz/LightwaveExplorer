@@ -1081,6 +1081,10 @@ void createRunFile() {
         fileName = strchr(fileName, '\\');
         fileName++;
     }
+    while (strchr(fileName, '/') != NULL) {
+        fileName = strchr(fileName, '/');
+        fileName++;
+    }
 
     theGui.console.threadPrint(
         "Run %s on cluster with:\r\nsbatch %s.slurmScript\r\n",
