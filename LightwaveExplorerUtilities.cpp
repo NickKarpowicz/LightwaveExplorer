@@ -1069,100 +1069,6 @@ int readSequenceString(simulationParameterSet* sCPU) {
 	return 0;
 }
 
-
-//int readCrystalDatabase(crystalEntry* db) {
-//	int i = 0;
-//	double* fd;
-//	FILE* fp;
-//#ifdef __APPLE__
-//	uint32_t bufferSize = 1024;
-//	char sysPath[1024] = {0};
-//	_NSGetExecutablePath(sysPath, &bufferSize);
-//	int plen = strlen(sysPath);
-//	sysPath[plen - 17] = 0;
-//	strcat(sysPath, "../Resources/CrystalDatabase.txt");
-//	fopen_s(&fp, sysPath, "r");
-//	if(fp==NULL) return -2;
-//#else
-//	fopen_s(&fp, "/usr/share/LightwaveExplorer/CrystalDatabase.txt", "r");
-//	if (fp == NULL) {
-//		fopen_s(&fp, "CrystalDatabase.txt", "r");
-//		if (fp == NULL) {
-//			return -2;
-//		}
-//	}
-//#endif
-//	char lineBuffer[MAX_LOADSTRING] = { 0 };
-//
-//	//read the entries line
-//	int readErrors = 0;
-//
-//	while (readErrors == 0 && !feof(fp) && i < MAX_LOADSTRING) {
-//		readErrors += 0 != fscanf_s(fp, "Name:\n");
-//		fgets(db[i].crystalNameW, 256, fp);
-//		readErrors += 1 != fscanf_s(fp, "Type:\n%d\n", &db[i].axisType);
-//		readErrors += 1 != fscanf_s(fp, "Sellmeier equation:\n%d\n", &db[i].sellmeierType);
-//		fd = &db[i].sellmeierCoefficients[0];
-//		readErrors += 22 != fscanf_s(fp, "1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
-//			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-//		fd = &db[i].sellmeierCoefficients[22];
-//		if (db[i].sellmeierType == 0 && db[i].sellmeierCoefficients[16] == 0.0 && db[i].sellmeierCoefficients[19] == 0.0) {
-//			db[i].sellmeierType = 100; //use a different equation, 2, for eqn 0 with no imaginary components.
-//		}
-//		readErrors += 22 != fscanf_s(fp, "2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
-//			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-//		fd = &db[i].sellmeierCoefficients[44];
-//		readErrors += 22 != fscanf_s(fp, "3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
-//			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-//		readErrors += 0 != fscanf_s(fp, "Sellmeier reference:\n");
-//		fgets(db[i].sellmeierReference, 512, fp);
-//		readErrors += 1 != fscanf_s(fp, "chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
-//		fd = &db[i].d[0];
-//		readErrors += 18 != fscanf_s(fp, "d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n",
-//			&fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15],
-//			&fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16],
-//			&fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
-//		readErrors += 0 != fwscanf_s(fp, L"d reference:\n");
-//		fgets(db[i].dReference, 512, fp);
-//		readErrors += 1 != fwscanf_s(fp, L"chi3 type:\n%d\nchi3:\n", &db[i].nonlinearSwitches[1]);
-//		//handle chi3 in a flexible way to avoid making the user write 81 zeroes when not needed
-//		fd = &db[i].chi3[0];
-//		memset(fd, 0, 81 * sizeof(double));
-//		if (db[i].nonlinearSwitches[1] != 1 && db[i].nonlinearSwitches[1] != 2) {
-//			fgets(lineBuffer, MAX_LOADSTRING, fp);
-//			fgets(lineBuffer, MAX_LOADSTRING, fp);
-//			fgets(lineBuffer, MAX_LOADSTRING, fp);
-//		}
-//		else if (db[i].nonlinearSwitches[1] == 1) {
-//			for (int j = 0; j < 3; j++) {
-//				for (int k = 0; k < 27; k++) {
-//					readErrors += 1 != fscanf_s(fp, "%lf", &fd[j + 3 * k]);
-//				}
-//				readErrors += fscanf_s(fp, "\n");
-//			}
-//		}
-//		else if (db[i].nonlinearSwitches[1] == 2) {
-//			readErrors += 1 != fscanf_s(fp, "%lf", &fd[0]);
-//			fgets(lineBuffer, MAX_LOADSTRING, fp);
-//			fgets(lineBuffer, MAX_LOADSTRING, fp);
-//			fgets(lineBuffer, MAX_LOADSTRING, fp);
-//		}
-//		readErrors += 0 != fscanf_s(fp, "chi3 reference:\n");
-//		fgets(db[i].chi3Reference, 512, fp);
-//		readErrors += 0 != fscanf_s(fp, "Spectral file:\n");
-//		fgets(db[i].spectralFile, 512, fp);
-//		fd = db[i].nonlinearReferenceFrequencies;
-//		readErrors += 0 != fscanf_s(fp, "Nonlinear reference frequencies:\n");
-//		readErrors += 7 != fscanf_s(fp, "%lf %lf %lf %lf %lf %lf %lf\n",
-//			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6]);
-//		readErrors += 0 != fscanf_s(fp, "~~~crystal end~~~\n");
-//		if (readErrors == 0) i++;
-//	}
-//	db[0].numberOfEntries = i;
-//	fclose(fp);
-//	return i;
-//}
-
 int readCrystalDatabase(crystalEntry* db) {
 	int i = 0;
 	std::ifstream fs("CrystalDatabase.txt");
@@ -1225,12 +1131,12 @@ int readCrystalDatabase(crystalEntry* db) {
 		std::getline(fs, line); //chi3:
 		memset(db[i].chi3, 0, 81 * sizeof(double));
 		switch (db[i].nonlinearSwitches[1]) {
-		case 0:
+		case 0: //no chi3, skip all three lines
 			std::getline(fs, line);
 			std::getline(fs, line);
 			std::getline(fs, line);
 			break;
-		case 1:
+		case 1: //read full chi3
 			for (int k = 0; k < 27; ++k) {
 				fs >> db[i].chi3[k];
 			}
@@ -1247,7 +1153,7 @@ int readCrystalDatabase(crystalEntry* db) {
 			std::getline(fs, line);
 			break;
 
-		case 2:
+		case 2: //assume centrosymmetric, just read chi3_1111, then skip
 			fs >> db[i].chi3[0];
 			std::getline(fs, line);
 			std::getline(fs, line);
@@ -1273,72 +1179,7 @@ int readCrystalDatabase(crystalEntry* db) {
 	}
 	db->numberOfEntries = i;
 	return i;
-	/*
-	while (readErrors == 0 && !feof(fp) && i < MAX_LOADSTRING) {
-		readErrors += 0 != fwscanf_s(fp, L"Name:\n");
-		fgetws(db[i].crystalNameW, 256, fp);
-		readErrors += 1 != fwscanf_s(fp, L"Type:\n%d\n", &db[i].axisType);
-		readErrors += 1 != fwscanf_s(fp, L"Sellmeier equation:\n%d\n", &db[i].sellmeierType);
-		fd = &db[i].sellmeierCoefficients[0];
-		readErrors += 22 != fwscanf_s(fp, L"1st axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
-			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-		fd = &db[i].sellmeierCoefficients[22];
-		if (db[i].sellmeierType == 0 && db[i].sellmeierCoefficients[16] == 0.0 && db[i].sellmeierCoefficients[19] == 0.0) {
-			db[i].sellmeierType = 100; //use a different equation, 2, for eqn 0 with no imaginary components.
-		}
-		readErrors += 22 != fwscanf_s(fp, L"2nd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
-			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-		fd = &db[i].sellmeierCoefficients[44];
-		readErrors += 22 != fwscanf_s(fp, L"3rd axis coefficients:\n%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
-			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6], &fd[7], &fd[8], &fd[9], &fd[10], &fd[11], &fd[12], &fd[13], &fd[14], &fd[15], &fd[16], &fd[17], &fd[18], &fd[19], &fd[20], &fd[21]);
-		readErrors += 0 != fwscanf_s(fp, L"Sellmeier reference:\n");
-		fgetws(db[i].sellmeierReference, 512, fp);
-		readErrors += 1 != fwscanf_s(fp, L"chi2 type:\n%d\n", &db[i].nonlinearSwitches[0]);
-		fd = &db[i].d[0];
-		readErrors += 18 != fwscanf_s(fp, L"d:\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n%lf %lf %lf %lf %lf %lf\n",
-			&fd[0], &fd[3], &fd[6], &fd[9], &fd[12], &fd[15],
-			&fd[1], &fd[4], &fd[7], &fd[10], &fd[13], &fd[16],
-			&fd[2], &fd[5], &fd[8], &fd[11], &fd[14], &fd[17]);
-		readErrors += 0 != fwscanf_s(fp, L"d reference:\n");
-		fgetws(db[i].dReference, 512, fp);
-		readErrors += 1 != fwscanf_s(fp, L"chi3 type:\n%d\nchi3:\n", &db[i].nonlinearSwitches[1]);
-		//handle chi3 in a flexible way to avoid making the user write 81 zeroes when not needed
-		fd = &db[i].chi3[0];
-		memset(fd, 0, 81 * sizeof(double));
-		if (db[i].nonlinearSwitches[1] != 1 && db[i].nonlinearSwitches[1] != 2) {
-			fgetws(lineBuffer, MAX_LOADSTRING, fp);
-			fgetws(lineBuffer, MAX_LOADSTRING, fp);
-			fgetws(lineBuffer, MAX_LOADSTRING, fp);
-		}
-		else if (db[i].nonlinearSwitches[1] == 1) {
-			for (int j = 0; j < 3; j++) {
-				for (int k = 0; k < 27; k++) {
-					readErrors += 1 != fwscanf_s(fp, L"%lf", &fd[j + 3 * k]);
-				}
-				readErrors += fwscanf_s(fp, L"\n");
-			}
-		}
-		else if (db[i].nonlinearSwitches[1] == 2) {
-			readErrors += 1 != fwscanf_s(fp, L"%lf", &fd[0]);
-			fgetws(lineBuffer, MAX_LOADSTRING, fp);
-			fgetws(lineBuffer, MAX_LOADSTRING, fp);
-			fgetws(lineBuffer, MAX_LOADSTRING, fp);
-		}
-		readErrors += 0 != fwscanf_s(fp, L"chi3 reference:\n");
-		fgetws(db[i].chi3Reference, 512, fp);
-		readErrors += 0 != fwscanf_s(fp, L"Spectral file:\n");
-		fgetws(db[i].spectralFile, 512, fp);
-		fd = db[i].nonlinearReferenceFrequencies;
-		readErrors += 0 != fwscanf_s(fp, L"Nonlinear reference frequencies:\n");
-		readErrors += 7 != fwscanf_s(fp, L"%lf %lf %lf %lf %lf %lf %lf\n",
-			&fd[0], &fd[1], &fd[2], &fd[3], &fd[4], &fd[5], &fd[6]);
-		readErrors += 0 != fwscanf_s(fp, L"~~~crystal end~~~\n");
-		if (readErrors == 0) i++;
-	}
-	db[0].numberOfEntries = i;
-	fclose(fp);
-	return i;
-	*/
+	
 }
 
 int allocateGrids(simulationParameterSet* sCPU) {
