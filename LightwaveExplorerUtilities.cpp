@@ -681,14 +681,6 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 		}
 		return 0;
 	};
-	//read parameters using fscanf:
-	//recipe for programming: copy/paste the block of fprintf statements in the saveDataSet() function,
-	//then find/replace:
-	// fprintf->fscanf
-	// (*CPU). -> &(*CPU).
-	// %e -> %lf
-	// &(*sCPU).sequenceString -> (*sCPU).sequenceString
-	// &(*sCPU).outputBasePath -> (*sCPU).outputBasePath
 
 	moveToColon();
 	fs >> (*sCPU).pulse1.energy;
@@ -807,39 +799,41 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	fs >> (*sCPU).batchDestination2;
 	moveToColon();
 	fs >> (*sCPU).Nsims2;
-	moveToColon();
 
+	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
 	line.copy((*sCPU).sequenceString, MAX_LOADSTRING);
+	
 	moveToColon();
-
 	std::getline(fs, line);
 	line.erase(line.begin());
 	line.copy((*sCPU).fittingString, MAX_LOADSTRING);
+	
 	moveToColon();
 	fs >> (*sCPU).fittingMode;
-	moveToColon();
 
+	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
 	line.copy((*sCPU).outputBasePath, MAX_LOADSTRING);
+
 	moveToColon();
 	fs >> (*sCPU).pulse1FileType;
 	moveToColon();
 	fs >> (*sCPU).pulse2FileType;
-	moveToColon();
 
+	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
 	line.copy((*sCPU).field1FilePath, MAX_LOADSTRING);
-	moveToColon();
 
+	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
 	line.copy((*sCPU).field2FilePath, MAX_LOADSTRING);
-	moveToColon();
 
+	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
 	line.copy((*sCPU).fittingPath, MAX_LOADSTRING);
