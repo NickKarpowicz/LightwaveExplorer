@@ -550,7 +550,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	
 	std::ofstream fs(outputPath);
 	if (fs.fail()) return -1;
-	fs.precision(14);
+	fs.precision(15);
 	fs << "Pulse energy 1 (J): " << (*sCPU).pulse1.energy << '\x0A';
 	fs << "Pulse energy 2 (J): " << (*sCPU).pulse2.energy << '\x0A';
 	fs << "Frequency 1 (Hz): " << (*sCPU).pulse1.frequency << '\x0A';
@@ -636,97 +636,6 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	return 0;
 }
 
-/*
-int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
-	int j, k;
-	FILE* textfile;
-	char outputpath[MAX_LOADSTRING] = { 0 };
-	strcpy_s(outputpath, MAX_LOADSTRING, (*sCPU).outputBasePath);
-	if ((*sCPU).runType > 0) {
-		strcat_s(outputpath, MAX_LOADSTRING, ".input");
-	}
-	else {
-		strcat_s(outputpath, MAX_LOADSTRING, ".txt");
-	}
-
-	if(fopen_s(&textfile, outputpath, "w")) return 1;
-	fprintf(textfile, "Pulse energy 1 (J): %14.14e\nPulse energy 2 (J): %14.14e\nFrequency 1 (Hz): %14.14e\n",
-		(*sCPU).pulse1.energy, (*sCPU).pulse2.energy, (*sCPU).pulse1.frequency);
-	fprintf(textfile, "Frequency 2 (Hz): %14.14e\nBandwidth 1 (Hz): %14.14e\nBandwidth 2 (Hz): %14.14e\n",
-		(*sCPU).pulse2.frequency, (*sCPU).pulse1.bandwidth, (*sCPU).pulse2.bandwidth);
-	fprintf(textfile, "SG order 1: %i\nSG order 2: %i\nCEP 1 (rad): %14.14e\nCEP 2 (rad): %14.14e\nDelay 1 (s): %14.14e\nDelay 2 (s): %14.14e\nGDD 1 (s^-2): %14.14e\nGDD 2 (s^-2): %14.14e\nTOD 1 (s^-3): %14.14e\nTOD 2 (s^-3): %14.14e\n",
-		(*sCPU).pulse1.sgOrder, (*sCPU).pulse2.sgOrder, (*sCPU).pulse1.cep, (*sCPU).pulse2.cep, (*sCPU).pulse1.delay, (*sCPU).pulse2.delay, (*sCPU).pulse1.gdd, (*sCPU).pulse2.gdd, (*sCPU).pulse1.tod, (*sCPU).pulse2.tod);
-	fprintf(textfile, "Phase material 1 index: %i\nPhase material 2 index: %i\nPhase material thickness 1 (mcr.): %14.14e\nPhase material thickness 2 (mcr.): %14.14e\n",
-		(*sCPU).pulse1.phaseMaterial, (*sCPU).pulse2.phaseMaterial, (*sCPU).pulse1.phaseMaterialThickness, (*sCPU).pulse2.phaseMaterialThickness);
-	fprintf(textfile, "Beam mode placeholder: 0\n");
-	fprintf(textfile, "Beamwaist 1 (m): %14.14e\nBeamwaist 2 (m): %14.14e\nx offset 1 (m): %14.14e\nx offset 2 (m): %14.14e\n",
-		(*sCPU).pulse1.beamwaist, (*sCPU).pulse2.beamwaist, (*sCPU).pulse1.x0, (*sCPU).pulse2.x0);
-	fprintf(textfile, "y offset 1 (m): %14.14e\ny offset 2 (m): %14.14e\n",
-		(*sCPU).pulse1.y0, (*sCPU).pulse2.y0);
-	fprintf(textfile, "z offset 1 (m): %14.14e\nz offset 2 (m): %14.14e\n",
-		(*sCPU).pulse1.z0, (*sCPU).pulse2.z0);
-	fprintf(textfile, "NC angle 1 (rad): %14.14e\nNC angle 2 (rad): %14.14e\n",
-		(*sCPU).pulse1.beamAngle, (*sCPU).pulse2.beamAngle);
-	fprintf(textfile, "NC angle phi 1 (rad): %14.14e\nNC angle phi 2 (rad): %14.14e\n",
-		(*sCPU).pulse1.beamAnglePhi, (*sCPU).pulse2.beamAnglePhi);
-	fprintf(textfile, "Polarization 1 (rad): %14.14e\nPolarization 2 (rad): %14.14e\nCircularity 1: %14.14e\nCircularity 2: %14.14e\n",
-		(*sCPU).pulse1.polarizationAngle, (*sCPU).pulse2.polarizationAngle, (*sCPU).pulse1.circularity, (*sCPU).pulse2.circularity);
-	fprintf(textfile, "Material index: %i\nAlternate material index: %i\n",
-		(*sCPU).materialIndex, (*sCPU).materialIndexAlternate);
-	fprintf(textfile, "Crystal theta (rad): %14.14e\nCrystal phi (rad): %14.14e\nGrid width (m): %14.14e\nGrid height (m): %14.14e\ndx (m): %14.14e\nTime span (s): %14.14e\ndt (s): %14.14e\nThickness (m): %14.14e\ndz (m): %14.14e\n",
-		(*sCPU).crystalTheta, (*sCPU).crystalPhi, (*sCPU).spatialWidth, (*sCPU).spatialHeight, (*sCPU).rStep, (*sCPU).timeSpan, (*sCPU).tStep, (*sCPU).crystalThickness, (*sCPU).propagationStep);
-	fprintf(textfile, "Nonlinear absorption parameter: %14.14e\nBand gap (eV): %14.14e\nEffective mass (relative): %14.14e\nDrude gamma (Hz): %14.14e\n",
-		(*sCPU).nonlinearAbsorptionStrength, (*sCPU).bandGapElectronVolts, (*sCPU).effectiveMass, (*sCPU).drudeGamma);
-	fprintf(textfile, "Propagation mode: %i\n",
-		(*sCPU).symmetryType);
-	fprintf(textfile, "Batch mode: %i\nBatch destination: %14.14e\nBatch steps: %lli\n",
-		(*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
-	fprintf(textfile, "Batch mode 2: %i\nBatch destination 2: %14.14e\nBatch steps 2: %lli\n",
-		(*sCPU).batchIndex2, (*sCPU).batchDestination2, (*sCPU).Nsims2);
-
-
-	fprintf(textfile, "Sequence: %s\n", (*sCPU).sequenceString);
-
-	fprintf(textfile, "Fitting: %s\n", (*sCPU).fittingString);
-	fprintf(textfile, "Fitting mode: %i\n", (*sCPU).fittingMode);
-	
-
-	if ((*sCPU).runType > 0) {
-		char* fileName = (*sCPU).outputBasePath;
-		while (strchr(fileName, '\\') != NULL) {
-			fileName = strchr(fileName, '\\');
-			fileName++;
-		}
-		while (strchr(fileName, '/') != NULL) {
-			fileName = strchr(fileName, '/');
-			fileName++;
-		}
-
-		fprintf(textfile, "Output base path: %s\n", fileName);
-	}
-	else {
-		fprintf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
-	}
-
-	fprintf(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n", (*sCPU).pulse1FileType, (*sCPU).pulse2FileType);
-	fprintf(textfile, "Field 1 file path: %s\n", (*sCPU).field1FilePath);
-	fprintf(textfile, "Field 2 file path: %s\n", (*sCPU).field2FilePath);
-	fprintf(textfile, "Fitting reference file path: %s\n", (*sCPU).fittingPath);
-
-	fprintf(textfile, "Material name: %s\nSellmeier reference: %s\nChi2 reference: %s\nChi3 reference: %s\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
-	fprintf(textfile, "Sellmeier coefficients: \n");
-	for (j = 0; j < 3; j++) {
-		for (k = 0; k < 22; k++) {
-			fprintf(textfile, "%14.14e ", crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients[j * 22 + k]);
-		}
-		fprintf(textfile, "\n");
-	}
-	fprintf(textfile, "Code version: 0.5 September 16, 2022\n");
-
-	fclose(textfile);
-	return 0;
-}
-*/
 
 int loadPulseFiles(simulationParameterSet* sCPU) {
 
@@ -760,10 +669,18 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
 
 
 int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath) {
-	FILE* textfile;
-	if (fopen_s(&textfile, filePath, "r")) {
-		return 1;
-	}
+	std::ifstream fs(filePath);
+	std::string line;
+
+	if (fs.fail()) return 1;
+
+	auto moveToColon = [&]() {
+		char x = 0;
+		while (x != ':') {
+			fs >> x;
+		}
+		return 0;
+	};
 	//read parameters using fscanf:
 	//recipe for programming: copy/paste the block of fprintf statements in the saveDataSet() function,
 	//then find/replace:
@@ -772,139 +689,160 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	// %e -> %lf
 	// &(*sCPU).sequenceString -> (*sCPU).sequenceString
 	// &(*sCPU).outputBasePath -> (*sCPU).outputBasePath
-	int readValueCount = 0;
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.energy);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.energy);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.frequency);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.frequency);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.bandwidth);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.bandwidth);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).pulse1.sgOrder);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).pulse2.sgOrder);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.cep);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.cep);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.delay);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.delay);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.gdd);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.gdd);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.tod);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.tod);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%d", &(*sCPU).pulse1.phaseMaterial);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%d", &(*sCPU).pulse2.phaseMaterial);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.phaseMaterialThickness);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.phaseMaterialThickness);
-	skipFileUntilCharacter(textfile, ':');
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.beamwaist);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.beamwaist);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.x0);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.x0);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.y0);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.y0);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.z0);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.z0);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.beamAngle);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.beamAngle);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.beamAnglePhi);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.beamAnglePhi);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.polarizationAngle);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.polarizationAngle);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse1.circularity);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).pulse2.circularity);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).materialIndex);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).materialIndexAlternate);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).crystalTheta);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).crystalPhi);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).spatialWidth);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).spatialHeight);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).rStep);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).timeSpan);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).tStep);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).crystalThickness);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).propagationStep);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).nonlinearAbsorptionStrength);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).bandGapElectronVolts);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).effectiveMass);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).drudeGamma);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).symmetryType);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).batchIndex);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).batchDestination);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%zu", &(*sCPU).Nsims);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%i", &(*sCPU).batchIndex2);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%lf", &(*sCPU).batchDestination2);
-	skipFileUntilCharacter(textfile, ':');
-	readValueCount += fscanf_s(textfile, "%zu", &(*sCPU).Nsims2);
-	readValueCount += fscanf_s(textfile, "\nSequence: ");
-	fgets((*sCPU).sequenceString, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf_s(textfile, "Fitting: ");
-	fgets((*sCPU).fittingString, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf_s(textfile, "Fitting mode : %i\n", &(*sCPU).fittingMode);
-	readValueCount += fscanf_s(textfile, "Output base path: ");
-	fgets((*sCPU).outputBasePath, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf_s(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n",
-		&(*sCPU).pulse1FileType, &(*sCPU).pulse2FileType);
-	readValueCount += fscanf_s(textfile, "Field 1 file path: ");
-	fgets((*sCPU).field1FilePath, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf_s(textfile, "Field 2 file path: ");
-	fgets((*sCPU).field2FilePath, MAX_LOADSTRING, textfile);
-	readValueCount += fscanf_s(textfile, "Fitting reference file path: ");
-	fgets((*sCPU).fittingPath, MAX_LOADSTRING, textfile);
+
+	moveToColon();
+	fs >> (*sCPU).pulse1.energy;
+	moveToColon();
+	fs >> (*sCPU).pulse2.energy;
+	moveToColon();
+	fs >> (*sCPU).pulse1.frequency;
+	moveToColon();
+	fs >> (*sCPU).pulse2.frequency;
+	moveToColon();
+	fs >> (*sCPU).pulse1.bandwidth;
+	moveToColon();
+	fs >> (*sCPU).pulse2.bandwidth;
+	moveToColon();
+	fs >> (*sCPU).pulse1.sgOrder;
+	moveToColon();
+	fs >> (*sCPU).pulse2.sgOrder;
+	moveToColon();
+	fs >> (*sCPU).pulse1.cep;
+	moveToColon();
+	fs >> (*sCPU).pulse2.cep;
+	moveToColon();
+	fs >> (*sCPU).pulse1.delay;
+	moveToColon();
+	fs >> (*sCPU).pulse2.delay;
+	moveToColon();
+	fs >> (*sCPU).pulse1.gdd;
+	moveToColon();
+	fs >> (*sCPU).pulse2.gdd;
+	moveToColon();
+	fs >> (*sCPU).pulse1.tod;
+	moveToColon();
+	fs >> (*sCPU).pulse2.tod;
+	moveToColon();
+	fs >> (*sCPU).pulse1.phaseMaterial;
+	moveToColon();
+	fs >> (*sCPU).pulse2.phaseMaterial;
+	moveToColon();
+	fs >> (*sCPU).pulse1.phaseMaterialThickness;
+	moveToColon();
+	fs >> (*sCPU).pulse2.phaseMaterialThickness;
+	moveToColon();
+	moveToColon();
+	fs >> (*sCPU).pulse1.beamwaist;
+	moveToColon();
+	fs >> (*sCPU).pulse2.beamwaist;
+	moveToColon();
+	fs >> (*sCPU).pulse1.x0;
+	moveToColon();
+	fs >> (*sCPU).pulse2.x0;
+	moveToColon();
+	fs >> (*sCPU).pulse1.y0;
+	moveToColon();
+	fs >> (*sCPU).pulse2.y0;
+	moveToColon();
+	fs >> (*sCPU).pulse1.z0;
+	moveToColon();
+	fs >> (*sCPU).pulse2.z0;
+	moveToColon();
+	fs >> (*sCPU).pulse1.beamAngle;
+	moveToColon();
+	fs >> (*sCPU).pulse2.beamAngle;
+	moveToColon();
+	fs >> (*sCPU).pulse1.beamAnglePhi;
+	moveToColon();
+	fs >> (*sCPU).pulse2.beamAnglePhi;
+	moveToColon();
+	fs >> (*sCPU).pulse1.polarizationAngle;
+	moveToColon();
+	fs >> (*sCPU).pulse2.polarizationAngle;
+	moveToColon();
+	fs >> (*sCPU).pulse1.circularity;
+	moveToColon();
+	fs >> (*sCPU).pulse2.circularity;
+	moveToColon();
+	fs >> (*sCPU).materialIndex;
+	moveToColon();
+	fs >> (*sCPU).materialIndexAlternate;
+	moveToColon();
+	fs >> (*sCPU).crystalTheta;
+	moveToColon();
+	fs >> (*sCPU).crystalPhi;
+	moveToColon();
+	fs >> (*sCPU).spatialWidth;
+	moveToColon();
+	fs >> (*sCPU).spatialHeight;
+	moveToColon();
+	fs >> (*sCPU).rStep;
+	moveToColon();
+	fs >> (*sCPU).timeSpan;
+	moveToColon();
+	fs >> (*sCPU).tStep;
+	moveToColon();
+	fs >> (*sCPU).crystalThickness;
+	moveToColon();
+	fs >> (*sCPU).propagationStep;
+	moveToColon();
+	fs >> (*sCPU).nonlinearAbsorptionStrength;
+	moveToColon();
+	fs >> (*sCPU).bandGapElectronVolts;
+	moveToColon();
+	fs >> (*sCPU).effectiveMass;
+	moveToColon();
+	fs >> (*sCPU).drudeGamma;
+	moveToColon();
+	fs >> (*sCPU).symmetryType;
+	moveToColon();
+	fs >> (*sCPU).batchIndex;
+	moveToColon();
+	fs >> (*sCPU).batchDestination;
+	moveToColon();
+	fs >> (*sCPU).Nsims;
+	moveToColon();
+	fs >> (*sCPU).batchIndex2;
+	moveToColon();
+	fs >> (*sCPU).batchDestination2;
+	moveToColon();
+	fs >> (*sCPU).Nsims2;
+	moveToColon();
+
+	std::getline(fs, line);
+	line.erase(line.begin());
+	line.copy((*sCPU).sequenceString, MAX_LOADSTRING);
+	moveToColon();
+
+	std::getline(fs, line);
+	line.erase(line.begin());
+	line.copy((*sCPU).fittingString, MAX_LOADSTRING);
+	moveToColon();
+	fs >> (*sCPU).fittingMode;
+	moveToColon();
+
+	std::getline(fs, line);
+	line.erase(line.begin());
+	line.copy((*sCPU).outputBasePath, MAX_LOADSTRING);
+	moveToColon();
+	fs >> (*sCPU).pulse1FileType;
+	moveToColon();
+	fs >> (*sCPU).pulse2FileType;
+	moveToColon();
+
+	std::getline(fs, line);
+	line.erase(line.begin());
+	line.copy((*sCPU).field1FilePath, MAX_LOADSTRING);
+	moveToColon();
+
+	std::getline(fs, line);
+	line.erase(line.begin());
+	line.copy((*sCPU).field2FilePath, MAX_LOADSTRING);
+	moveToColon();
+
+	std::getline(fs, line);
+	line.erase(line.begin());
+	line.copy((*sCPU).fittingPath, MAX_LOADSTRING);
 
 	removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\r');
 	removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\n');
@@ -966,8 +904,8 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	(*sCPU).sellmeierType = crystalDatabasePtr[(*sCPU).materialIndex].sellmeierType;
 	(*sCPU).axesNumber = crystalDatabasePtr[(*sCPU).materialIndex].axisType;
 
-	fclose(textfile);
-	return readValueCount;
+	if (fs.good())return 61;
+	else return -1;
 }
 
 int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs) {
