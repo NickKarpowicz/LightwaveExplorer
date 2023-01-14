@@ -5,9 +5,8 @@
 #include "LightwaveExplorerSYCL.h"
 #include "LightwaveExplorerCore.cu"
 
-size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) {
-    wchar_t deviceCharString[MAX_LOADSTRING] = { 0 };
-    size_t convertedChars;
+size_t readSYCLDevices(char* deviceListString, char* defaultDeviceString) {
+    char deviceCharString[MAX_LOADSTRING] = { 0 };
     size_t offset = 0;
     unsigned char cpuCount = 0;
     unsigned char gpuCount = 0;
@@ -17,17 +16,15 @@ size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) 
             //useful to target and not emulators)
             if (d.is_cpu()) {
                 cpuCount++;
-                mbstowcs_s(&convertedChars, deviceCharString, d.get_info<cl::sycl::info::device::name>().c_str(), MAX_LOADSTRING);
-                offset = wcsnlen_s(deviceListString, MAX_LOADSTRING);
-                swprintf_s(&deviceListString[offset], MAX_LOADSTRING, L"SYCL found a CPU: %ls\r\n", deviceCharString);
-                memset(deviceCharString, 0, MAX_LOADSTRING * sizeof(wchar_t));
+                offset = strnlen_s(deviceListString, MAX_LOADSTRING);
+                sprintf_s(&deviceListString[offset], MAX_LOADSTRING, "SYCL found a CPU: %s\r\n", d.get_info<cl::sycl::info::device::name>().c_str());
+                memset(deviceCharString, 0, MAX_LOADSTRING * sizeof(char));
             }
             if (d.is_gpu()) {
                 gpuCount++;
-                mbstowcs_s(&convertedChars, deviceCharString, d.get_info<cl::sycl::info::device::name>().c_str(), MAX_LOADSTRING);
-                offset = wcsnlen_s(deviceListString, MAX_LOADSTRING);
-                swprintf_s(&deviceListString[offset], MAX_LOADSTRING, L"SYCL found a GPU: %ls\r\n", deviceCharString);
-                memset(deviceCharString, 0, MAX_LOADSTRING * sizeof(wchar_t));
+                offset = strnlen_s(deviceListString, MAX_LOADSTRING);
+                sprintf_s(&deviceListString[offset], MAX_LOADSTRING, "SYCL found a GPU: %s\r\n", d.get_info<cl::sycl::info::device::name>().c_str());
+                memset(deviceCharString, 0, MAX_LOADSTRING * sizeof(char));
             }
         }
     }
@@ -37,8 +34,7 @@ size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) 
     deviceArray[1] = gpuCount;
     cl::sycl::default_selector ddefault;
     cl::sycl::queue q(ddefault);
-    mbstowcs_s(&convertedChars, deviceCharString, q.get_device().get_info<cl::sycl::info::device::name>().c_str(), MAX_LOADSTRING);
-    swprintf_s(defaultDeviceString, MAX_LOADSTRING, L"SYCL default: %ls\r\n", deviceCharString);
+    sprintf_s(defaultDeviceString, MAX_LOADSTRING, "SYCL default: %s\r\n", q.get_device().get_info<cl::sycl::info::device::name>().c_str());
     return deviceCount;
 }
 

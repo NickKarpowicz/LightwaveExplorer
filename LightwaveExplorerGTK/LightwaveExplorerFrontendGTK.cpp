@@ -403,9 +403,9 @@ public:
             readCrystalDatabase(crystalDatabasePtr);
             console.cPrint("Material database has %i entries:\n", (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-                console.cPrint("%2.2i: %ls", i, crystalDatabasePtr[i].crystalNameW);
+                console.cPrint("%2.2i: %s\n", i, crystalDatabasePtr[i].crystalNameW);
                 memset(materialString, 0, 128 * sizeof(char));
-                snprintf(materialString, 128, "%2.2i: %ls", i, crystalDatabasePtr[i].crystalNameW);
+                snprintf(materialString, 128, "%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
                 pulldowns[3].addElement(materialString);
             }
         }
@@ -859,8 +859,8 @@ void checkLibraryAvailability() {
 
 #ifndef NOSYCL
     SYCLavailable = TRUE;
-    wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
-    wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
+    char syclDeviceList[MAX_LOADSTRING] = { 0 };
+    char syclDefault[MAX_LOADSTRING] = { 0 };
     size_t syclDevices = 0;
 
     syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
@@ -868,7 +868,7 @@ void checkLibraryAvailability() {
     unsigned char* counts = (unsigned char*)&syclDevices;
     syclGPUCount = (int)counts[1];
     if(syclDevices != 0){
-        theGui.console.cPrint("%ls",syclDeviceList);
+        theGui.console.cPrint("%s",syclDeviceList);
     }
     
 #endif

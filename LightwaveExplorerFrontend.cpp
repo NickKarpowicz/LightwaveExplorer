@@ -76,7 +76,7 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 void checkLibraryAvailability() {
-    printToConsole(maingui.plotBox2, L"\r\n");
+    printToConsole(maingui.plotBox2, "\r\n");
    
 
     if (TRUE) {
@@ -93,30 +93,30 @@ void checkLibraryAvailability() {
                 CUDAavailable = TRUE;
             }
 
-            printToConsole(maingui.plotBox2, L"CUDA found %i GPU(s): \r\n", cudaGPUCount);
+            printToConsole(maingui.plotBox2, "CUDA found %i GPU(s): \r\n", cudaGPUCount);
             for (i = 0; i < cudaGPUCount; ++i) {
                 cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
                 memset(wcstring, 0, sizeof(wchar_t));
                 mbstowcs_s(&convertedChars, wcstring, 256, activeCUDADeviceProp.name, _TRUNCATE);
-                printToConsole(maingui.plotBox2, L"%ls\r\n", wcstring);
-                printToConsole(maingui.plotBox2, L"    Memory: %i MB\r\n    Multiprocessors: %i\r\n",
+                printToConsole(maingui.plotBox2, "%ls\r\n", wcstring);
+                printToConsole(maingui.plotBox2, "    Memory: %i MB\r\n    Multiprocessors: %i\r\n",
                     (int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
             }
 
         }
         else {
-            printToConsole(maingui.plotBox2, L"No CUDA-compatible GPU found.\r\n");
+            printToConsole(maingui.plotBox2, "No CUDA-compatible GPU found.\r\n");
             CUDAavailable = FALSE;
         }
     }
     else {
-        printToConsole(maingui.plotBox2, L"No CUDA-compatible GPU found.\r\n");
+        printToConsole(maingui.plotBox2, "No CUDA-compatible GPU found.\r\n");
         CUDAavailable = FALSE;
     }
 
     //read SYCL devices
-    wchar_t syclDeviceList[MAX_LOADSTRING] = { 0 };
-    wchar_t syclDefault[MAX_LOADSTRING] = { 0 };
+    char syclDeviceList[MAX_LOADSTRING] = { 0 };
+    char syclDefault[MAX_LOADSTRING] = { 0 };
     __try {
         HRESULT hr = __HrLoadAllImportsForDll("LightwaveExplorerSYCL.dll");
         if (SUCCEEDED(hr)) {
@@ -127,11 +127,11 @@ void checkLibraryAvailability() {
         SYCLavailable = FALSE;
         DWORD SYCLfile = GetFileAttributes(L"LightwaveExplorerSYCL.dll");
         if (SYCLfile != 0xFFFFFFFF) {
-            printToConsole(maingui.plotBox2, L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
-            printToConsole(maingui.plotBox2, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
+            printToConsole(maingui.plotBox2, "Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printToConsole(maingui.plotBox2, "https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
         }
         else {
-            printToConsole(maingui.plotBox2, L"No SYCL file...\r\n");
+            printToConsole(maingui.plotBox2, "No SYCL file...\r\n");
         }
     }
 
@@ -142,12 +142,12 @@ void checkLibraryAvailability() {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             SYCLavailable = FALSE;
-            printToConsole(maingui.plotBox2, L"Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
-            printToConsole(maingui.plotBox2, L"https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
+            printToConsole(maingui.plotBox2, "Couldn't run SYCL... \r\nHave you installed the DPC++ runtime from Intel?\r\n");
+            printToConsole(maingui.plotBox2, "https://www.intel.com/content/www/us/en/developer/articles/tool/compilers-redistributable-libraries-by-version.html\r\n");
         }
         unsigned char* deviceCounts = (unsigned char*)&syclDevices;
         if (deviceCounts[0] == 0u) {
-            printToConsole(maingui.plotBox2, L"Something is wrong - SYCL doesn't think you have a CPU.\r\n");
+            printToConsole(maingui.plotBox2, "Something is wrong - SYCL doesn't think you have a CPU.\r\n");
             SYCLavailable = FALSE;
         }
         else {
@@ -172,7 +172,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     memset(activeSetPtr, 0, sizeof(simulationParameterSet));
     readParametersFromInterface();
     if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
-        printC(L"Too many simulations in batch mode. Must be under %i total.\r\n", MAX_SIMULATIONS);
+        printC("Too many simulations in batch mode. Must be under %i total.\r\n", MAX_SIMULATIONS);
     }
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
@@ -235,10 +235,10 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
 
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    printC(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                    printC("Not enough free GPU memory, sorry.\r\n", activeSetPtr[j].memoryError);
                 }
                 else {
-                    printC(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    printC("Warning: device memory error (%i).\r\n", activeSetPtr[j].memoryError);
                 } 
             }
             if (error) break;
@@ -253,10 +253,10 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
             error = normalFunction(&activeSetPtr[j]); 
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    printC(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                    printC("Not enough free GPU memory, sorry.\r\n", activeSetPtr[j].memoryError);
                 }
                 else {
-                    printC(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    printC("Warning: device memory error (%i).\r\n", activeSetPtr[j].memoryError);
                 }
             }
 
@@ -264,7 +264,7 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
         }
 
         if (cancellationCalled) {
-            printC(_T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
+            printC("Warning: series cancelled, stopping after %i simulations.\r\n", j + 1);
             break;
         }
 
@@ -282,10 +282,10 @@ DWORD WINAPI mainSimThread(LPVOID lpParam) {
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error==13) {
         printC(
-            L"NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
+            "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
     }
     else {
-        printC(_T("Finished after %8.4lf s. \r\n"), 1e-6 *
+        printC("Finished after %8.4lf s. \r\n", 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
@@ -325,7 +325,7 @@ DWORD WINAPI createRunFile(LPVOID lpParam) {
     
     mbstowcs(wideBuffer, fileName, strlen(fileName)+1);
     printC(
-        L"Run %ls on cluster with:\r\nsbatch %ls.slurmScript\r\n",
+        "Run %ls on cluster with:\r\nsbatch %ls.slurmScript\r\n",
         wideBuffer, wideBuffer);
     
     //create command line settings file
@@ -642,14 +642,14 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
     maingui.plotBox8 = CreateWindow(WC_STATIC, NULL, 
         WS_CHILD | WS_VISIBLE | WS_EX_CONTROLPARENT, 
         xOffsetRow3, 3 * vs, 50, 50, maingui.mainWindow, NULL, hInstance, NULL);
-    printToConsole(maingui.plotBox1, L"2D space-time slice view (y-polarization)\r\nOnce a simulation is run, this panel will show a slice through the center of the field E(x,y,t) at E(0,y,t)\r\nTo run a simulation with the demo settings, simply press the \"Run\" button.");
-    printToConsole(maingui.plotBox2, L"2D space-time slice view (x-polarization)\r\nSame as the panel above, but shows the other polarization. There's some extra space here, so here's some diagnostic info about your hardware...");
-    printToConsole(maingui.plotBox3, L"Waveform view (y-polarization)\r\nShows the on-axis electric field E(x=0,y=0,t)");
-    printToConsole(maingui.plotBox4, L"Waveform view (x-polarization)\r\nThe slider control below lets you flip quickly through simulations in a batch\r\nThe Plot button will redraw the images\r\nThe SVG button will save the four bottom plots as SVG files.");
-    printToConsole(maingui.plotBox5, L"2D momentum-frequency slice view (y-polarization)\r\nShows the field in the Fourier domain, on a logarithmic scale. Low frequencies are to the left, higher ones to the right. Vertically, the top of the plot shows high spatial frequencies (pointing up), the center is along the propagation axis, and the bottom is high spatial frequencies, pointing down. The field should not touch the edges of this grid. If it touches it vertically, you need a smaller value of dx.\r\n");
-    printToConsole(maingui.plotBox6, L"2D momentum-frequency slice view (x-polarization)\r\n");
-    printToConsole(maingui.plotBox7, L"Spatially-integrated spectrum (y-polarization)\r\nShows the total energy spectrum of the grid at the end of the simulation.\r\n");
-    printToConsole(maingui.plotBox8, L"Spatially-integrated spectrum (x-polarization)\r\nLimits can be set with the boxes below.\r\nThe \"Total\" checkbox will overlay the integrated spectrum of all polarizations.\r\nThe \"Log\" checkbox switches between log and linear scaling.\r\n");
+    printToConsole(maingui.plotBox1, "2D space-time slice view (y-polarization)\r\nOnce a simulation is run, this panel will show a slice through the center of the field E(x,y,t) at E(0,y,t)\r\nTo run a simulation with the demo settings, simply press the \"Run\" button.");
+    printToConsole(maingui.plotBox2, "2D space-time slice view (x-polarization)\r\nSame as the panel above, but shows the other polarization. There's some extra space here, so here's some diagnostic info about your hardware...");
+    printToConsole(maingui.plotBox3, "Waveform view (y-polarization)\r\nShows the on-axis electric field E(x=0,y=0,t)");
+    printToConsole(maingui.plotBox4, "Waveform view (x-polarization)\r\nThe slider control below lets you flip quickly through simulations in a batch\r\nThe Plot button will redraw the images\r\nThe SVG button will save the four bottom plots as SVG files.");
+    printToConsole(maingui.plotBox5, "2D momentum-frequency slice view (y-polarization)\r\nShows the field in the Fourier domain, on a logarithmic scale. Low frequencies are to the left, higher ones to the right. Vertically, the top of the plot shows high spatial frequencies (pointing up), the center is along the propagation axis, and the bottom is high spatial frequencies, pointing down. The field should not touch the edges of this grid. If it touches it vertically, you need a smaller value of dx.\r\n");
+    printToConsole(maingui.plotBox6, "2D momentum-frequency slice view (x-polarization)\r\n");
+    printToConsole(maingui.plotBox7, "Spatially-integrated spectrum (y-polarization)\r\nShows the total energy spectrum of the grid at the end of the simulation.\r\n");
+    printToConsole(maingui.plotBox8, "Spatially-integrated spectrum (x-polarization)\r\nLimits can be set with the boxes below.\r\nThe \"Total\" checkbox will overlay the integrated spectrum of all polarizations.\r\nThe \"Log\" checkbox switches between log and linear scaling.\r\n");
     maingui.tbPlot1XMin = CreateWindow(WC_EDIT, TEXT(""),
         WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | WS_EX_CONTROLPARENT,
         xOffsetRow1b, 15 * vs, halfBox, 20, maingui.mainWindow, NULL, hInstance, NULL);
@@ -1041,15 +1041,15 @@ bool InitInstance(HINSTANCE hInstance, int nCmdShow)
 
     //read the crystal database
     crystalDatabasePtr = (crystalEntry*)calloc(MAX_LOADSTRING, sizeof(crystalEntry));
-    TCHAR materialString[128] = { 0 };
+    wchar_t materialString[128] = { 0 };
     if (crystalDatabasePtr != NULL) {
         GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
         readCrystalDatabase(crystalDatabasePtr);
-        printC(_T("Material database has %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+        printC("Material database has %i entries:\r\n", (*crystalDatabasePtr).numberOfEntries);
         for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-            printC(_T("%2.2i: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
-            memset(materialString, 0, 128 * sizeof(TCHAR));
-            swprintf_s(materialString, 128, L"%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
+            printC("%2.2i: %s\r\n", i, crystalDatabasePtr[i].crystalNameW);
+            memset(materialString, 0, 128 * sizeof(wchar_t));
+            swprintf_s(materialString, 128, L"%2.2i: %hs", i, crystalDatabasePtr[i].crystalNameW);
             SendMessage(maingui.pdMaterialIndex, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)materialString);
         }
     }
@@ -1135,9 +1135,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SetCurrentDirectory(programDirectory);
             memset(crystalDatabasePtr, 0, 512 * sizeof(crystalEntry));
             readCrystalDatabase(crystalDatabasePtr);
-            printC(_T("Read %i entries:\r\n"), (*crystalDatabasePtr).numberOfEntries);
+            printC("Read %i entries:\r\n", (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-                printC(_T("Material %i name: %s\r\n"), i, crystalDatabasePtr[i].crystalNameW);
+                printC("Material %i name: %s\r\n", i, crystalDatabasePtr[i].crystalNameW);
             }
             break;
         case ID_BTNSVG:
@@ -1170,7 +1170,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
             }
             else {
-                printC(L"Read failure.\r\n");
+                printC("Read failure.\r\n");
             }
             break;
         case ID_BTNADDCRYSTAL:
@@ -1178,7 +1178,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SetWindowText(maingui.tbSequence, L"");
             }
             if(getDoubleFromHWND(maingui.tbNonlinearAbsortion) != 0.0){
-                printToConsole(maingui.tbSequence, L"plasma(%i,%2.1lf,%2.1lf,%2.1e,%2.1lf,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
+                printToConsole(maingui.tbSequence, "plasma(%i,%2.1lf,%2.1lf,%2.1e,%2.1lf,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
                     (int)SendMessage(maingui.pdMaterialIndex, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0), getDoubleFromHWND(maingui.tbCrystalTheta),
                     getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbNonlinearAbsortion),
                     getDoubleFromHWND(maingui.tbBandGap), getDoubleFromHWND(maingui.tbDrudeGamma),
@@ -1186,7 +1186,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     getDoubleFromHWND(maingui.tbXstep));
             }
             else {
-                printToConsole(maingui.tbSequence, L"nonlinear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
+                printToConsole(maingui.tbSequence, "nonlinear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
                     (int)SendMessage(maingui.pdMaterialIndex, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0), getDoubleFromHWND(maingui.tbCrystalTheta),
                     getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbCrystalThickness),
                     getDoubleFromHWND(maingui.tbXstep));
@@ -1197,7 +1197,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (GetWindowTextLength(maingui.tbSequence) < 3) {
 				SetWindowText(maingui.tbSequence, L"");
 			}
-			printToConsole(maingui.tbSequence, L"linear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
+			printToConsole(maingui.tbSequence, "linear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\r\n",
 				(int)SendMessage(maingui.pdMaterialIndex, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0), getDoubleFromHWND(maingui.tbCrystalTheta),
 				getDoubleFromHWND(maingui.tbCrystalPhi), getDoubleFromHWND(maingui.tbCrystalThickness),
 				getDoubleFromHWND(maingui.tbXstep));
@@ -1206,37 +1206,37 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"plasma(d,d,d,d,d,d,d,d,d)\r\n");
+            printToConsole(maingui.tbSequence, "plasma(d,d,d,d,d,d,d,d,d)\r\n");
             break;
         case ID_BTNADDPULSE:
             if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"addPulse(energy, frequency, bandwidth, sgOrder, cep, delay, gdd, tod, phaseMaterial, phaseThickness, beamwaist, x0, z0, beamAngle, beamAngleY, polarization, circularity, materialIndex, theta, phi)\r\n");
+            printToConsole(maingui.tbSequence, "addPulse(energy, frequency, bandwidth, sgOrder, cep, delay, gdd, tod, phaseMaterial, phaseThickness, beamwaist, x0, z0, beamAngle, beamAngleY, polarization, circularity, materialIndex, theta, phi)\r\n");
             break;
         case ID_BTNADDAPERTURE:
             if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"aperture(diameter, activationParameter)\r\n");
+            printToConsole(maingui.tbSequence, "aperture(diameter, activationParameter)\r\n");
             break;
         case ID_BTNADDFARFIELD:
             if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"farFieldAperture(openingAngle, activationParameter, xAngle, yAngle)\r\n");
+            printToConsole(maingui.tbSequence, "farFieldAperture(openingAngle, activationParameter, xAngle, yAngle)\r\n");
             break;
         case ID_BTNADDROTATION:
             if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"rotate(90)\r\n");
+            printToConsole(maingui.tbSequence, "rotate(90)\r\n");
             break;
         case ID_BTNADDPARABOLA:
             if (GetWindowTextLength(maingui.tbSequence) < 3) {
                 SetWindowText(maingui.tbSequence, L"");
             }
-            printToConsole(maingui.tbSequence, L"parabolicMirror(focalLength)\r\n");
+            printToConsole(maingui.tbSequence, "parabolicMirror(focalLength)\r\n");
             break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
@@ -1693,15 +1693,15 @@ std::complex<double> getDoubleDoublesfromHWND(HWND inputA)
 }
 
 //Add a text string contained in messageBuffer to the text box inputA
-int appendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
+int appendTextToWindow(HWND inputA, char* messageString, int buffersize) {
     int len = (int)GetWindowTextLength(inputA);
-    wchar_t* newbuffer = (wchar_t*)calloc(2 * ((size_t)(len) + buffersize), sizeof(wchar_t));
+    char* newbuffer = (char*)calloc(2 * ((size_t)(len) + buffersize), sizeof(char));
     if (newbuffer != NULL) {
         if (len > 0) {
-            len = GetWindowText(inputA, newbuffer, len + 1);
+            len = GetWindowTextA(inputA, newbuffer, len + 1);
         }
-        memcpy(newbuffer + len, messageString, buffersize * sizeof(wchar_t));
-        SetWindowText(inputA, newbuffer);
+        memcpy(newbuffer + len, messageString, buffersize * sizeof(char));
+        SetWindowTextA(inputA, newbuffer);
         SendMessage(inputA, EM_LINESCROLL, 0, 99999);
         free(newbuffer);
     }
@@ -1710,22 +1710,22 @@ int appendTextToWindow(HWND inputA, wchar_t* messageString, int buffersize) {
 
 //template function that works as a wrapper for swprintf_s, for writing to a text control working as a console
 //don't give it a format string approaching the size of MAX_LOADSTRING, but come on, that's over a thousand characters
-template<typename... Args> void printToConsole(HWND console, const wchar_t* format, Args... args) {
-    wchar_t newBuffer[MAX_LOADSTRING] = { 0 };
-    swprintf_s(newBuffer, MAX_LOADSTRING, format, args...);
+template<typename... Args> void printToConsole(HWND console, const char* format, Args... args) {
+    char newBuffer[MAX_LOADSTRING] = { 0 };
+    sprintf_s(newBuffer, MAX_LOADSTRING, format, args...);
     appendTextToWindow(console, newBuffer, MAX_LOADSTRING);
 }
 
-template<typename... Args> void printC(const wchar_t* format, Args... args) {
-    wchar_t newBuffer[MAX_LOADSTRING] = { 0 };
-    swprintf_s(newBuffer, MAX_LOADSTRING, format, args...);
+template<typename... Args> void printC(const char* format, Args... args) {
+    char newBuffer[MAX_LOADSTRING] = { 0 };
+    sprintf_s(newBuffer, MAX_LOADSTRING, format, args...);
     appendTextToWindow(maingui.textboxSims, newBuffer, MAX_LOADSTRING);
 }
 
 int setWindowTextToInt(HWND win, int in) {
-    wchar_t textBuffer[128];
-    swprintf_s(textBuffer, 128, L"%i", in);
-    SetWindowTextW(win, textBuffer);
+    char textBuffer[128];
+    sprintf_s(textBuffer, 128, "%i", in);
+    SetWindowTextA(win, textBuffer);
     return 0;
 }
 
@@ -2075,7 +2075,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
             return TRUE;
         }
         else {
-            printC(L"Read %i\r\n", readParameters);
+            printC("Read %i\r\n", readParameters);
         }
     }
     return FALSE;
@@ -2089,7 +2089,7 @@ int openDialogBoxAndLoad(HWND hWnd) {
 //  cn = 4: vaporwave (symmetric amplitude)
 int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 height, INT64 width, float* data, int cm) {
     if (Nx * Ny == 0) {
-        printC(L"what are you doing");
+        printC("what are you doing");
     }
     // creating input
     unsigned char* pixels = (unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
@@ -2199,7 +2199,7 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
 
     HDC hdc = GetWindowDC(plotBox);
     if (hdc == NULL) {
-        printToConsole(maingui.textboxSims,L"no context\r\n");
+        printToConsole(maingui.textboxSims,"no context\r\n");
         return 1;
     }
     HBITMAP hbmp;
@@ -2209,14 +2209,14 @@ int drawArrayAsBitmap(HWND plotBox, INT64 Nx, INT64 Ny, INT64 x, INT64 y, INT64 
     ZeroMemory(&bm, sizeof(BITMAP));
     HDC hdcMem = CreateCompatibleDC(hdc);
     if (hdcMem == NULL) {
-        printC(L"no cdc\r\n");
+        printC("no cdc\r\n");
         return 1;
     }
     SelectObject(hdcMem, hbmp);
     GetObject(hbmp, sizeof(bm), &bm);
     //StretchBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
     if (0 == BitBlt(hdc, (int)x, (int)y, (int)width, (int)height, hdcMem, 0, 0, SRCCOPY)) {
-        printC(L"draw fail\r\n");
+        printC("draw fail\r\n");
     }
     free(pixels);
     DeleteDC(hdcMem);
@@ -2469,7 +2469,7 @@ DWORD WINAPI drawSimPlots(LPVOID lpParam) {
         delete[] svgFilename;
     }
     if (WAIT_TIMEOUT == WaitForMultipleObjects(4, plotThreads, TRUE, 1000)) {
-        printToConsole(maingui.textboxSims,L"Warning, an image thread timed out!\r\n");
+        printToConsole(maingui.textboxSims,"Warning, an image thread timed out!\r\n");
     }
     for (unsigned int i = 0; i < 4; ++i) {
         if (plotThreads[i] != 0)CloseHandle(plotThreads[i]);
@@ -2907,7 +2907,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     (*activeSetPtr).progressCounter = &progressCounter;
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
-            printC(L"Could not read reference file!\r\n");
+            printC("Could not read reference file!\r\n");
             free((*activeSetPtr).statusFlags);
             free((*activeSetPtr).deffTensor);
             free((*activeSetPtr).loadedField1);
@@ -2916,7 +2916,7 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
         }
     }
 
-    printC(L"Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
+    printC("Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n", 
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
 
     int pulldownSelection = (int)SendMessage(maingui.pdPrimaryQueue, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
@@ -2949,13 +2949,13 @@ DWORD WINAPI fittingThread(LPVOID lpParam) {
     (*activeSetPtr).plotSim = 0;
     drawSimPlots(activeSetPtr);
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    printC(_T("Finished fitting after %8.4lf s. \r\n"), 1e-6 *
+    printC("Finished fitting after %8.4lf s. \r\n", 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
     setInterfaceValuesToActiveValues();
-    printC(L"Fitting result:\r\n (index, value)\r\n");
+    printC("Fitting result:\r\n (index, value)\r\n");
     for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
-        printC(L"%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
+        printC("%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
     }
     free((*activeSetPtr).statusFlags);
     free((*activeSetPtr).deffTensor);
@@ -3186,7 +3186,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     //launch on SYCL, but if the primary queue matches, default to openMP
     else if (pulldownSelection == cudaGPUCount && SYCLitems > 0) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            printC(L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            printC("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -3197,7 +3197,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     }
     else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            printC(L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            printC("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -3209,7 +3209,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     }
     else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            printC(L"Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            printC("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -3243,7 +3243,7 @@ DWORD WINAPI secondaryQueue(LPVOID lpParam) {
     }
 
     if (error) {
-        printC(L"Encountered error %i in secondary queue.\r\n", error);
+        printC("Encountered error %i in secondary queue.\r\n", error);
         return 1;
     }
 

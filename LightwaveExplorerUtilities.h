@@ -38,18 +38,18 @@
 #define minN(a,b)            (((a) < (b)) ? (a) : (b))
 
 typedef struct crystalEntry {
-    wchar_t crystalNameW[256] = { 0 };
+    char crystalNameW[256] = { 0 };
     int axisType = 0;
     int sellmeierType = 0;
     int nonlinearSwitches[4] = { 0 };
     double sellmeierCoefficients[66] = { 0 };
-    wchar_t sellmeierReference[512] = { 0 };
+    char sellmeierReference[512] = { 0 };
     double d[18] = { 0 };
-    wchar_t dReference[512] = { 0 };
+    char dReference[512] = { 0 };
     double chi3[81] = { 0 };
-    wchar_t chi3Reference[512] = { 0 };
+    char chi3Reference[512] = { 0 };
     double absorptionParameters[6] = { 0 };
-    wchar_t spectralFile[512] = { 0 };
+    char spectralFile[512] = { 0 };
     double spectralData[2048] = { 0 };
     double nonlinearReferenceFrequencies[7] = { 0 };
     int numberOfEntries = 0;
