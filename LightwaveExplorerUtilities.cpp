@@ -539,11 +539,107 @@ void unixNewLine(FILE* iostream) {
 	fwrite(&LF, sizeof(char), 1, iostream);
 }
 
+int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
+	std::string outputPath((*sCPU).outputBasePath);
+	if ((*sCPU).runType > 0) {
+		outputPath.append(".input");
+	}
+	else {
+		outputPath.append(".txt");
+	}
+	
+	std::ofstream fs(outputPath);
+	if (fs.fail()) return -1;
+	fs.precision(14);
+	fs << "Pulse energy 1 (J): " << (*sCPU).pulse1.energy << '\x0A';
+	fs << "Pulse energy 2 (J): " << (*sCPU).pulse2.energy << '\x0A';
+	fs << "Frequency 1 (Hz): " << (*sCPU).pulse1.frequency << '\x0A';
+	fs << "Frequency 2 (Hz): " << (*sCPU).pulse2.frequency << '\x0A';
+	fs << "Bandwidth 1 (Hz): " << (*sCPU).pulse1.bandwidth << '\x0A';
+	fs << "Bandwidth 2 (Hz): " << (*sCPU).pulse2.bandwidth << '\x0A';
+	fs << "SG order 1: " << (*sCPU).pulse1.sgOrder << '\x0A';
+	fs << "SG order 2: " << (*sCPU).pulse2.sgOrder << '\x0A';
+	fs << "CEP 1 (rad): " << (*sCPU).pulse1.cep << '\x0A';
+	fs << "CEP 2 (rad): " << (*sCPU).pulse2.cep << '\x0A';
+	fs << "Delay 1 (s): " << (*sCPU).pulse1.delay << '\x0A';
+	fs << "Delay 2 (s): " << (*sCPU).pulse2.delay << '\x0A';
+	fs << "GDD 1 (s^-2): " << (*sCPU).pulse1.gdd << '\x0A';
+	fs << "GDD 2 (s^-2): " << (*sCPU).pulse2.gdd << '\x0A';
+	fs << "TOD 1 (s^-3): " << (*sCPU).pulse1.tod << '\x0A';
+	fs << "TOD 2 (s^-3): " << (*sCPU).pulse2.tod << '\x0A';
+	fs << "Phase material 1 index: " << (*sCPU).pulse1.phaseMaterial << '\x0A';
+	fs << "Phase material 2 index: " << (*sCPU).pulse2.phaseMaterial << '\x0A';
+	fs << "Phase material thickness 1 (mcr.): " << (*sCPU).pulse1.phaseMaterialThickness << '\x0A';
+	fs << "Phase material thickness 2 (mcr.): " << (*sCPU).pulse2.phaseMaterialThickness << '\x0A';
+	fs << "Beam mode placeholder: " << 0 << '\x0A';
+	fs << "Beamwaist 1 (m): " << (*sCPU).pulse1.beamwaist << '\x0A';
+	fs << "Beamwaist 2 (m): " << (*sCPU).pulse2.beamwaist << '\x0A';
+	fs << "x offset 1 (m): " << (*sCPU).pulse1.x0 << '\x0A';
+	fs << "x offset 2 (m): " << (*sCPU).pulse2.x0 << '\x0A';
+	fs << "y offset 1 (m): " << (*sCPU).pulse1.y0 << '\x0A';
+	fs << "y offset 2 (m): " << (*sCPU).pulse2.y0 << '\x0A';
+	fs << "z offset 1 (m): " << (*sCPU).pulse1.z0 << '\x0A';
+	fs << "z offset 2 (m): " << (*sCPU).pulse2.z0 << '\x0A';
+	fs << "NC angle 1 (rad): " << (*sCPU).pulse1.beamAngle << '\x0A';
+	fs << "NC angle 2 (rad): " << (*sCPU).pulse2.beamAngle << '\x0A';
+	fs << "NC angle phi 1 (rad): " << (*sCPU).pulse1.beamAnglePhi << '\x0A';
+	fs << "NC angle phi 2 (rad): " << (*sCPU).pulse2.beamAnglePhi << '\x0A';
+	fs << "Polarization 1 (rad): " << (*sCPU).pulse1.polarizationAngle << '\x0A';
+	fs << "Polarization 2 (rad): " << (*sCPU).pulse2.polarizationAngle << '\x0A';
+	fs << "Circularity 1: " << (*sCPU).pulse1.circularity << '\x0A';
+	fs << "Circularity 2: " << (*sCPU).pulse2.circularity << '\x0A';
+	fs << "Material index: " << (*sCPU).materialIndex << '\x0A';
+	fs << "Alternate material index: " << (*sCPU).materialIndexAlternate << '\x0A';
+	fs << "Crystal theta (rad): " << (*sCPU).crystalTheta << '\x0A';
+	fs << "Crystal phi (rad): " << (*sCPU).crystalPhi << '\x0A';
+	fs << "Grid width (m): " << (*sCPU).spatialWidth << '\x0A';
+	fs << "Grid height (m): " << (*sCPU).spatialHeight << '\x0A';
+	fs << "dx (m): " << (*sCPU).rStep << '\x0A';
+	fs << "Time span (s): " << (*sCPU).timeSpan << '\x0A';
+	fs << "dt (s): " << (*sCPU).tStep << '\x0A';
+	fs << "Thickness (m): " << (*sCPU).crystalThickness << '\x0A';
+	fs << "dz (m): " << (*sCPU).propagationStep << '\x0A';
+	fs << "Nonlinear absorption parameter: " << (*sCPU).nonlinearAbsorptionStrength << '\x0A';
+	fs << "Band gap (eV): " << (*sCPU).bandGapElectronVolts << '\x0A';
+	fs << "Effective mass (relative): " << (*sCPU).effectiveMass << '\x0A';
+	fs << "Drude gamma (Hz): " << (*sCPU).drudeGamma << '\x0A';
+	fs << "Propagation mode: " << (*sCPU).symmetryType << '\x0A';
+	fs << "Batch mode: " << (*sCPU).batchIndex << '\x0A';
+	fs << "Batch destination: " << (*sCPU).batchDestination << '\x0A';
+	fs << "Batch steps: " << (*sCPU).Nsims << '\x0A';
+	fs << "Batch mode 2: " << (*sCPU).batchIndex2 << '\x0A';
+	fs << "Batch destination 2: " << (*sCPU).batchDestination2 << '\x0A';
+	fs << "Batch steps 2: " << (*sCPU).Nsims2 << '\x0A';
+	fs << "Sequence: " << (*sCPU).sequenceString << '\x0A';
+	fs << "Fitting: " << (*sCPU).fittingString << '\x0A';
+	fs << "Fitting mode: " << (*sCPU).fittingMode << '\x0A';
+	fs << "Output base path: " << (*sCPU).outputBasePath << '\x0A';
+	fs << "Field 1 from file type: " << (*sCPU).pulse1FileType << '\x0A';
+	fs << "Field 2 from file type: " << (*sCPU).pulse2FileType << '\x0A';
+	fs << "Field 1 file path: " << (*sCPU).field1FilePath << '\x0A';
+	fs << "Field 2 file path: " << (*sCPU).field2FilePath << '\x0A';
+	fs << "Fitting reference file path: " << (*sCPU).fittingPath << '\x0A';
+	fs << "Material name: " << crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW << '\x0A';
+	fs << "Sellmeier reference: " << crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference << '\x0A';
+	fs << "Chi2 reference: " << crystalDatabasePtr[(*sCPU).materialIndex].dReference << '\x0A';
+	fs << "Chi3 reference: " << crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference << '\x0A';
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 22; ++j) {
+			fs << crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients[i * 22 + j];
+			if (j < 21) fs << ',';
+		}
+		fs << '\x0A';
+	}
+	fs << "Code version: 0.6 January 14, 2023";
+	fs << '\x0A';
 
+	return 0;
+}
+
+/*
 int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
 	int j, k;
 	FILE* textfile;
-	wchar_t wideStringConversionBuffer[MAX_LOADSTRING] = { 0 };
 	char outputpath[MAX_LOADSTRING] = { 0 };
 	strcpy_s(outputpath, MAX_LOADSTRING, (*sCPU).outputBasePath);
 	if ((*sCPU).runType > 0) {
@@ -554,45 +650,45 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	}
 
 	if(fopen_s(&textfile, outputpath, "w")) return 1;
-	fwprintf(textfile, L"Pulse energy 1 (J): %14.14e\nPulse energy 2 (J): %14.14e\nFrequency 1 (Hz): %14.14e\n",
+	fprintf(textfile, "Pulse energy 1 (J): %14.14e\nPulse energy 2 (J): %14.14e\nFrequency 1 (Hz): %14.14e\n",
 		(*sCPU).pulse1.energy, (*sCPU).pulse2.energy, (*sCPU).pulse1.frequency);
-	fwprintf(textfile, L"Frequency 2 (Hz): %14.14e\nBandwidth 1 (Hz): %14.14e\nBandwidth 2 (Hz): %14.14e\n",
+	fprintf(textfile, "Frequency 2 (Hz): %14.14e\nBandwidth 1 (Hz): %14.14e\nBandwidth 2 (Hz): %14.14e\n",
 		(*sCPU).pulse2.frequency, (*sCPU).pulse1.bandwidth, (*sCPU).pulse2.bandwidth);
-	fwprintf(textfile, L"SG order 1: %i\nSG order 2: %i\nCEP 1 (rad): %14.14e\nCEP 2 (rad): %14.14e\nDelay 1 (s): %14.14e\nDelay 2 (s): %14.14e\nGDD 1 (s^-2): %14.14e\nGDD 2 (s^-2): %14.14e\nTOD 1 (s^-3): %14.14e\nTOD 2 (s^-3): %14.14e\n",
+	fprintf(textfile, "SG order 1: %i\nSG order 2: %i\nCEP 1 (rad): %14.14e\nCEP 2 (rad): %14.14e\nDelay 1 (s): %14.14e\nDelay 2 (s): %14.14e\nGDD 1 (s^-2): %14.14e\nGDD 2 (s^-2): %14.14e\nTOD 1 (s^-3): %14.14e\nTOD 2 (s^-3): %14.14e\n",
 		(*sCPU).pulse1.sgOrder, (*sCPU).pulse2.sgOrder, (*sCPU).pulse1.cep, (*sCPU).pulse2.cep, (*sCPU).pulse1.delay, (*sCPU).pulse2.delay, (*sCPU).pulse1.gdd, (*sCPU).pulse2.gdd, (*sCPU).pulse1.tod, (*sCPU).pulse2.tod);
-	fwprintf(textfile, L"Phase material 1 index: %i\nPhase material 2 index: %i\nPhase material thickness 1 (mcr.): %14.14e\nPhase material thickness 2 (mcr.): %14.14e\n",
+	fprintf(textfile, "Phase material 1 index: %i\nPhase material 2 index: %i\nPhase material thickness 1 (mcr.): %14.14e\nPhase material thickness 2 (mcr.): %14.14e\n",
 		(*sCPU).pulse1.phaseMaterial, (*sCPU).pulse2.phaseMaterial, (*sCPU).pulse1.phaseMaterialThickness, (*sCPU).pulse2.phaseMaterialThickness);
-	fwprintf(textfile, L"Beam mode placeholder: 0\n");
-	fwprintf(textfile, L"Beamwaist 1 (m): %14.14e\nBeamwaist 2 (m): %14.14e\nx offset 1 (m): %14.14e\nx offset 2 (m): %14.14e\n",
+	fprintf(textfile, "Beam mode placeholder: 0\n");
+	fprintf(textfile, "Beamwaist 1 (m): %14.14e\nBeamwaist 2 (m): %14.14e\nx offset 1 (m): %14.14e\nx offset 2 (m): %14.14e\n",
 		(*sCPU).pulse1.beamwaist, (*sCPU).pulse2.beamwaist, (*sCPU).pulse1.x0, (*sCPU).pulse2.x0);
-	fwprintf(textfile, L"y offset 1 (m): %14.14e\ny offset 2 (m): %14.14e\n",
+	fprintf(textfile, "y offset 1 (m): %14.14e\ny offset 2 (m): %14.14e\n",
 		(*sCPU).pulse1.y0, (*sCPU).pulse2.y0);
-	fwprintf(textfile, L"z offset 1 (m): %14.14e\nz offset 2 (m): %14.14e\n",
+	fprintf(textfile, "z offset 1 (m): %14.14e\nz offset 2 (m): %14.14e\n",
 		(*sCPU).pulse1.z0, (*sCPU).pulse2.z0);
-	fwprintf(textfile, L"NC angle 1 (rad): %14.14e\nNC angle 2 (rad): %14.14e\n",
+	fprintf(textfile, "NC angle 1 (rad): %14.14e\nNC angle 2 (rad): %14.14e\n",
 		(*sCPU).pulse1.beamAngle, (*sCPU).pulse2.beamAngle);
-	fwprintf(textfile, L"NC angle phi 1 (rad): %14.14e\nNC angle phi 2 (rad): %14.14e\n",
+	fprintf(textfile, "NC angle phi 1 (rad): %14.14e\nNC angle phi 2 (rad): %14.14e\n",
 		(*sCPU).pulse1.beamAnglePhi, (*sCPU).pulse2.beamAnglePhi);
-	fwprintf(textfile, L"Polarization 1 (rad): %14.14e\nPolarization 2 (rad): %14.14e\nCircularity 1: %14.14e\nCircularity 2: %14.14e\n",
+	fprintf(textfile, "Polarization 1 (rad): %14.14e\nPolarization 2 (rad): %14.14e\nCircularity 1: %14.14e\nCircularity 2: %14.14e\n",
 		(*sCPU).pulse1.polarizationAngle, (*sCPU).pulse2.polarizationAngle, (*sCPU).pulse1.circularity, (*sCPU).pulse2.circularity);
-	fwprintf(textfile, L"Material index: %i\nAlternate material index: %i\n",
+	fprintf(textfile, "Material index: %i\nAlternate material index: %i\n",
 		(*sCPU).materialIndex, (*sCPU).materialIndexAlternate);
-	fwprintf(textfile, L"Crystal theta (rad): %14.14e\nCrystal phi (rad): %14.14e\nGrid width (m): %14.14e\nGrid height (m): %14.14e\ndx (m): %14.14e\nTime span (s): %14.14e\ndt (s): %14.14e\nThickness (m): %14.14e\ndz (m): %14.14e\n",
+	fprintf(textfile, "Crystal theta (rad): %14.14e\nCrystal phi (rad): %14.14e\nGrid width (m): %14.14e\nGrid height (m): %14.14e\ndx (m): %14.14e\nTime span (s): %14.14e\ndt (s): %14.14e\nThickness (m): %14.14e\ndz (m): %14.14e\n",
 		(*sCPU).crystalTheta, (*sCPU).crystalPhi, (*sCPU).spatialWidth, (*sCPU).spatialHeight, (*sCPU).rStep, (*sCPU).timeSpan, (*sCPU).tStep, (*sCPU).crystalThickness, (*sCPU).propagationStep);
-	fwprintf(textfile, L"Nonlinear absorption parameter: %14.14e\nBand gap (eV): %14.14e\nEffective mass (relative): %14.14e\nDrude gamma (Hz): %14.14e\n",
+	fprintf(textfile, "Nonlinear absorption parameter: %14.14e\nBand gap (eV): %14.14e\nEffective mass (relative): %14.14e\nDrude gamma (Hz): %14.14e\n",
 		(*sCPU).nonlinearAbsorptionStrength, (*sCPU).bandGapElectronVolts, (*sCPU).effectiveMass, (*sCPU).drudeGamma);
-	fwprintf(textfile, L"Propagation mode: %i\n",
+	fprintf(textfile, "Propagation mode: %i\n",
 		(*sCPU).symmetryType);
-	fwprintf(textfile, L"Batch mode: %i\nBatch destination: %14.14e\nBatch steps: %lli\n",
+	fprintf(textfile, "Batch mode: %i\nBatch destination: %14.14e\nBatch steps: %lli\n",
 		(*sCPU).batchIndex, (*sCPU).batchDestination, (*sCPU).Nsims);
-	fwprintf(textfile, L"Batch mode 2: %i\nBatch destination 2: %14.14e\nBatch steps 2: %lli\n",
+	fprintf(textfile, "Batch mode 2: %i\nBatch destination 2: %14.14e\nBatch steps 2: %lli\n",
 		(*sCPU).batchIndex2, (*sCPU).batchDestination2, (*sCPU).Nsims2);
-	size_t convertedCount;
-	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).sequenceString, MAX_LOADSTRING);
-	fwprintf(textfile, L"Sequence: %ls\n", wideStringConversionBuffer);
-	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).fittingString, MAX_LOADSTRING);
-	fwprintf(textfile, L"Fitting: %ls\n", wideStringConversionBuffer);
-	fwprintf(textfile, L"Fitting mode: %i\n", (*sCPU).fittingMode);
+
+
+	fprintf(textfile, "Sequence: %s\n", (*sCPU).sequenceString);
+
+	fprintf(textfile, "Fitting: %s\n", (*sCPU).fittingString);
+	fprintf(textfile, "Fitting mode: %i\n", (*sCPU).fittingMode);
 	
 
 	if ((*sCPU).runType > 0) {
@@ -605,37 +701,32 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 			fileName = strchr(fileName, '/');
 			fileName++;
 		}
-		mbstowcs_s(&convertedCount, wideStringConversionBuffer, fileName, MAX_LOADSTRING);
-		wideStringConversionBuffer[strlen(fileName)] = L'\0';
-		fwprintf(textfile, L"Output base path: %ls\n", wideStringConversionBuffer);
+
+		fprintf(textfile, "Output base path: %s\n", fileName);
 	}
 	else {
-		mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).outputBasePath, MAX_LOADSTRING);
-		fwprintf(textfile, L"Output base path: %ls\n", wideStringConversionBuffer);
+		fprintf(textfile, "Output base path: %s\n", (*sCPU).outputBasePath);
 	}
 
-	fwprintf(textfile, L"Field 1 from file type: %i\nField 2 from file type: %i\n", (*sCPU).pulse1FileType, (*sCPU).pulse2FileType);
-	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).field1FilePath, MAX_LOADSTRING);
-	fwprintf(textfile, L"Field 1 file path: %ls\n", wideStringConversionBuffer);
-	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).field2FilePath, MAX_LOADSTRING);
-	fwprintf(textfile, L"Field 2 file path: %ls\n", wideStringConversionBuffer);
-	mbstowcs_s(&convertedCount, wideStringConversionBuffer, (*sCPU).fittingPath, MAX_LOADSTRING);
-	fwprintf(textfile, L"Fitting reference file path: %ls\n", wideStringConversionBuffer);
+	fprintf(textfile, "Field 1 from file type: %i\nField 2 from file type: %i\n", (*sCPU).pulse1FileType, (*sCPU).pulse2FileType);
+	fprintf(textfile, "Field 1 file path: %s\n", (*sCPU).field1FilePath);
+	fprintf(textfile, "Field 2 file path: %s\n", (*sCPU).field2FilePath);
+	fprintf(textfile, "Fitting reference file path: %s\n", (*sCPU).fittingPath);
 
-	fwprintf(textfile, L"Material name: %ls\nSellmeier reference: %ls\nChi2 reference: %ls\nChi3 reference: %ls\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
-	fwprintf(textfile, L"Sellmeier coefficients: \n");
+	fprintf(textfile, "Material name: %s\nSellmeier reference: %s\nChi2 reference: %s\nChi3 reference: %s\n", crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW, crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference, crystalDatabasePtr[(*sCPU).materialIndex].dReference, crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference);
+	fprintf(textfile, "Sellmeier coefficients: \n");
 	for (j = 0; j < 3; j++) {
 		for (k = 0; k < 22; k++) {
-			fwprintf(textfile, L"%14.14e ", crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients[j * 22 + k]);
+			fprintf(textfile, "%14.14e ", crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients[j * 22 + k]);
 		}
-		fwprintf(textfile, L"\n");
+		fprintf(textfile, "\n");
 	}
-	fwprintf(textfile, L"Code version: 0.5 September 16, 2022\n");
+	fprintf(textfile, "Code version: 0.5 September 16, 2022\n");
 
 	fclose(textfile);
 	return 0;
 }
-
+*/
 
 int loadPulseFiles(simulationParameterSet* sCPU) {
 
@@ -1234,7 +1325,9 @@ double cModulusSquared(std::complex<double>complexNumber) {
 
 
 int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel) {
-	FILE* fp;
+	std::string line;
+	std::ifstream fs(frogFilePath);
+	if (fs.fail()) return -1;
 	int maxFileSize = 16384;
 	double wavelength, R, phi, complexX, complexY, f, f0, f1;
 	double fmax = 0.0;
@@ -1243,16 +1336,19 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 	double df = 0;
 	double fmin = 0;
 	int currentRow = 0;
-	std::complex<double>* E = (std::complex<double>*)calloc(maxFileSize, sizeof(std::complex<double>));
+	std::complex<double>* E = new std::complex<double>[maxFileSize]();
 	if (E == NULL) {
 		return -2;
 	}
-	//read the data
-	if (fopen_s(&fp, frogFilePath, "r")) {
-		free(E);
-		return -1;
-	}
-	while (fscanf_s(fp, "%lf %lf %lf %lf %lf", &wavelength, &R, &phi, &complexX, &complexY) == 5 && currentRow < maxFileSize) {
+
+	while (fs.good() && currentRow < maxFileSize) {
+		fs >> wavelength;
+		fs >> R;
+		fs >> phi;
+		fs >> complexX;
+		fs >> complexY;
+		std::getline(fs, line);
+
 		//get the complex field from the data
 		E[currentRow].real(complexX);
 		E[currentRow].imag(complexY);
@@ -1268,11 +1364,10 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 
 		currentRow++;
 	}
-	fclose(fp);
 
 	//return an error if nothing was loaded
 	if (currentRow == 0) {
-		free(E);
+		delete[] E;
 		return -1;
 	}
 
@@ -1299,6 +1394,6 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 		}
 	}
 
-	free(E);
+	delete[] E;
 	return currentRow;
 }

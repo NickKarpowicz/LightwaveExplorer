@@ -461,7 +461,7 @@ void setInterfaceValuesToActiveValues(){
         theGui.textBoxes[i++].setToDouble(1e-12 * (*t).frequency);
         theGui.textBoxes[i++].setToDouble(1e-12 * (*t).bandwidth);
         theGui.textBoxes[i++].setToDouble((*t).sgOrder);
-        theGui.textBoxes[i++].setToDouble(PI * (*t).cep);
+        theGui.textBoxes[i++].setToDouble((*t).cep/PI);
         theGui.textBoxes[i++].setToDouble(1e15 * (*t).delay);
         theGui.textBoxes[i++].setToDouble(1e30 * (*t).gdd);
         theGui.textBoxes[i++].setToDouble(1e45 * (*t).tod);
@@ -542,7 +542,7 @@ void readParametersFromInterface() {
         theGui.textBoxes[i++].valueToPointer(1e12, &(*t).frequency);
         theGui.textBoxes[i++].valueToPointer(1e12, &(*t).bandwidth);
         theGui.textBoxes[i++].valueToPointer(&(*t).sgOrder);
-        theGui.textBoxes[i++].valueToPointer(1.0/PI, &(*t).cep);
+        theGui.textBoxes[i++].valueToPointer(PI, &(*t).cep);
         theGui.textBoxes[i++].valueToPointer(1e-15, &(*t).delay);
         theGui.textBoxes[i++].valueToPointer(1e-30, &(*t).gdd);
         theGui.textBoxes[i++].valueToPointer(1e-45, &(*t).tod);
