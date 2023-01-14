@@ -1071,9 +1071,25 @@ int readSequenceString(simulationParameterSet* sCPU) {
 
 int readCrystalDatabase(crystalEntry* db) {
 	int i = 0;
+#ifdef __APPLE__
+	uint32_t bufferSize = 1024;
+	char sysPath[1024] = { 0 };
+	_NSGetExecutablePath(sysPath, &bufferSize);
+	int plen = strlen(sysPath);
+	sysPath[plen - 17] = 0;
+	strcat(sysPath, "../Resources/CrystalDatabase.txt");
+	std::ifstream fs(sysPath);
+#elif defined __linux__
+	std::ifstream fs("/usr/share/LightwaveExplorer/CrystalDatabase.txt");
+	if (!fs.isopen()) {
+		fs.open("CrystalDatabase.txt");
+	}
+#else
 	std::ifstream fs("CrystalDatabase.txt");
+#endif
+
 	std::string line;
-	if (!fs.is_open())return 1;
+	if (!fs.is_open())return 0;
 	while (!fs.eof() && fs.good() && i < MAX_LOADSTRING) {
 		std::getline(fs, line);//Name:
 
