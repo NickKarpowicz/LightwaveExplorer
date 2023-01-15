@@ -588,20 +588,21 @@ void readParametersFromInterface() {
     (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
     theGui.textBoxes[52].valueToPointer(&(*activeSetPtr).NsimsCPU);
 
-    char noneString[] = "None";
+    //char noneString[] = "None";
+    std::string noneString("None\0");
     memset((*activeSetPtr).sequenceString, 0, MAX_LOADSTRING);
     theGui.sequence.copyBuffer((*activeSetPtr).sequenceString, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING) == 0) {
-        preferredStrCpy((*activeSetPtr).sequenceString, noneString,5);
+        noneString.copy((*activeSetPtr).sequenceString, MAX_LOADSTRING);
     }
     else {
-        stripWhiteSpace((*activeSetPtr).sequenceString);
+        if((*activeSetPtr).sequenceString[0] != '0')stripWhiteSpace((*activeSetPtr).sequenceString);
     }
     
     memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
     theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).fittingString, MAX_LOADSTRING) == 0) {
-        preferredStrCpy((*activeSetPtr).fittingString, noneString, 5);
+        noneString.copy((*activeSetPtr).fittingString, MAX_LOADSTRING);
     }
     else {
         stripLineBreaks((*activeSetPtr).fittingString);
@@ -610,26 +611,26 @@ void readParametersFromInterface() {
     memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING);
     theGui.filePaths[0].copyBuffer((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING) == 0) {
-        preferredStrCpy((*activeSetPtr).sequenceString, noneString, 5);
+        noneString.copy((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     }
     stripLineBreaks((*activeSetPtr).field1FilePath);
     memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING);
     theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING) == 0) {
-        preferredStrCpy((*activeSetPtr).sequenceString, noneString, 5);
+        noneString.copy((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     }
     stripLineBreaks((*activeSetPtr).field2FilePath);
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING);
     theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).outputBasePath, MAX_LOADSTRING) == 0) {
-        preferredStrCpy((*activeSetPtr).sequenceString, noneString, 5);
+        noneString.copy((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     }
     stripLineBreaks((*activeSetPtr).outputBasePath);
     
     memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING);
     theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath, MAX_LOADSTRING);
     if (strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING) == 0) {
-        preferredStrCpy((*activeSetPtr).sequenceString, noneString, 5);
+        noneString.copy((*activeSetPtr).fittingPath, MAX_LOADSTRING);
     }
     stripLineBreaks((*activeSetPtr).fittingPath);
 
@@ -2159,7 +2160,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     loadPulseFiles(activeSetPtr);
 
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
-
+    
     configureBatchMode(activeSetPtr);
     int error = 0;
     //run the simulations

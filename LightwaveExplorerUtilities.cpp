@@ -216,13 +216,11 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 			if (pString[loc] == 'v') {
 				++loc;
 				ind = nextInt(ss,loc);
-				//sscanf_s(&pString[loc], "%d", &ind);
 				loc += 2;
 				if (ind < 100) result = vBlock[ind];
 			}
 			else if (pString[loc] == 'i') {
 				++loc;
-				//sscanf_s(&pString[loc], "%d", &ind);
 				ind = nextInt(ss, loc);
 				loc += 2;
 				if (ind < 100) result = iBlock[ind];
@@ -238,7 +236,6 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 				loc++;
 			}
 			else {
-				//sscanf_s(&pString[loc], "%lf", &result);
 				result = nextDouble(ss, loc);
 				while (!(ss.at(loc) == '*'
 					|| ss.at(loc) == '-'
@@ -260,7 +257,6 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 		else {
 			if (ss.at(loc) == 'v') {
 				++loc;
-				//sscanf_s(&pString[loc], "%d", &ind);
 				ind = nextInt(ss, loc);
 				loc += 2;
 				if (ind < 100)readout = vBlock[ind];
@@ -269,7 +265,6 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 			}
 			else if (ss.at(loc) == 'i') {
 				++loc;
-				//sscanf_s(&pString[loc], "%d", &ind);
 				ind = nextInt(ss, loc);
 				loc += 2;
 				if (ind < 100) readout = iBlock[ind];
@@ -277,7 +272,6 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 				previousCharWasOp = 0;
 			}
 			else {
-				//sscanf_s(&pString[loc], "%lf", &readout);
 				readout = nextDouble(ss, loc);
 				applyOp(lastOp, &result, &readout);
 				previousCharWasOp = 0;
@@ -1062,44 +1056,22 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 	return 0;
 }
 
-
+//deprecated sequence mode.
 int readSequenceString(simulationParameterSet* sCPU) {
-	//read the sequence string (if there is one), convert it into an array if it exists
-	char sequenceString[MAX_LOADSTRING];
-	strcpy_s(sequenceString, MAX_LOADSTRING, (*sCPU).sequenceString);
-	char* nextToken = NULL;
-	char* tokToken = strtok_s(sequenceString, ";", &nextToken);
-	int sequenceCount = sscanf_s(sequenceString, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-		&(*sCPU).sequenceArray[0], &(*sCPU).sequenceArray[1], &(*sCPU).sequenceArray[2],
-		&(*sCPU).sequenceArray[3], &(*sCPU).sequenceArray[4], &(*sCPU).sequenceArray[5],
-		&(*sCPU).sequenceArray[6], &(*sCPU).sequenceArray[7], &(*sCPU).sequenceArray[8],
-		&(*sCPU).sequenceArray[9], &(*sCPU).sequenceArray[10]);
-
-	tokToken = strtok_s(NULL, ";", &nextToken);
-	int lastread = sequenceCount;
-	while (tokToken != NULL && lastread == 11) {
-		lastread = sscanf_s(tokToken, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-			&(*sCPU).sequenceArray[sequenceCount], &(*sCPU).sequenceArray[sequenceCount + 1],
-			&(*sCPU).sequenceArray[sequenceCount + 2], &(*sCPU).sequenceArray[sequenceCount + 3],
-			&(*sCPU).sequenceArray[sequenceCount + 4], &(*sCPU).sequenceArray[sequenceCount + 5],
-			&(*sCPU).sequenceArray[sequenceCount + 6], &(*sCPU).sequenceArray[sequenceCount + 7],
-			&(*sCPU).sequenceArray[sequenceCount + 8], &(*sCPU).sequenceArray[sequenceCount + 9],
-			&(*sCPU).sequenceArray[sequenceCount + 10]);
-		if (lastread > 0) {
-			sequenceCount += lastread;
-		}
-		tokToken = strtok_s(NULL, ";", &nextToken);
+	std::stringstream ss((*sCPU).sequenceString, MAX_LOADSTRING-1);
+	int i = 0;
+	while (ss.good()) {
+		ss >> (*sCPU).sequenceArray[i];
+		if (ss.good()) ++i;
 	}
-	(*sCPU).Nsequence = sequenceCount / 11;
+	(*sCPU).Nsequence = i / 11;
 	(*sCPU).isInSequence = ((*sCPU).Nsequence > 0);
-
 	if (!(*sCPU).isInSequence) {
-		char nopeString[] = "None.";
-		strcpy_s((*sCPU).sequenceString, MAX_LOADSTRING, nopeString);
+		std::string noneString("None.\0");
+		noneString.copy((*sCPU).sequenceString, MAX_LOADSTRING - 1);
 	}
 	return 0;
 }
-
 
 int readCrystalDatabase(crystalEntry* db) {
 	int i = 0;
