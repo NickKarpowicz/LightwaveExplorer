@@ -1164,15 +1164,24 @@ namespace kernels {
 	};
 
 	trilingual updateKwithPolarizationKernel asKernel(withID deviceParameterSet* sP) {
-		long long i = localIndex;
-		long long h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-		long long j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		size_t i = localIndex;
+		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		h += j * (*sP).Nfreq;
+
+		(*sP).k1[h] += (*sP).gridPolarizationFactor1[h] * (*sP).workspace1[h];
+		(*sP).k2[h] += (*sP).gridPolarizationFactor2[h] * (*sP).workspace2P[h];
+	};
+
+	trilingual updateKwithPolarizationKernelCylindric asKernel(withID deviceParameterSet* sP) {
+		size_t i = localIndex;
+		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
 		i = h + j * ((*sP).Nfreq);
-		h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
+		h += (j + ((j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 
 		(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
 		(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
-
 	};
 
 	trilingual updateKwithPlasmaKernel asKernel(withID deviceParameterSet* sP) {
@@ -1797,11 +1806,12 @@ namespace hostFunctions{
 				if ((*sH).isCylindric) {
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam, sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
+					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernelCylindric, sD);
 				}
 				else {
 					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
+					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernel, sD);
 				}
-				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernel, sD);
 			}
 
 			//Plasma/multiphoton absorption
@@ -2588,7 +2598,7 @@ int mainX(int argc, mainArgumentX){
 	}
 	printf("Read %i crystal database entries:\n", (*crystalDatabasePtr).numberOfEntries);
 	for (j = 0; j < (*crystalDatabasePtr).numberOfEntries; ++j) {
-		printf("Material %i name: %ls", j, crystalDatabasePtr[j].crystalNameW);
+		printf("Material %i name: %s", j, crystalDatabasePtr[j].crystalNameW);
 	}
 
 	// read from settings file
