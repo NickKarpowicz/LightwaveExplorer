@@ -188,50 +188,68 @@ void applyOp(char op, double* result, double* readout) {
 }
 
 double parameterStringToDouble(const char* pString, double* iBlock, double* vBlock) {
+	std::string ss(pString,255);
+
+	auto nextInt = [&](std::string iStr, int location) {
+		std::stringstream s(iStr.substr(location));
+		int a;
+		s >> a;
+		return a;
+	};
+
+	auto nextDouble = [&](std::string iStr, int location) {
+		std::stringstream s(iStr.substr(location));
+		double a;
+		s >> a;
+		return a;
+	};
+
 	int loc = 0;
 	double result = 0.0;
 	double readout = 0.0;
 	int ind = 0;
 	bool previousCharWasOp = 0;
 	char lastOp = 0;
-	while (loc < 255) {
+	while (loc<ss.length()) {
 		if (pString[loc] == 0) return result;
-
 		if (!previousCharWasOp) {
 			if (pString[loc] == 'v') {
 				++loc;
-				sscanf_s(&pString[loc], "%d", &ind);
+				ind = nextInt(ss,loc);
+				//sscanf_s(&pString[loc], "%d", &ind);
 				loc += 2;
 				if (ind < 100) result = vBlock[ind];
 			}
 			else if (pString[loc] == 'i') {
 				++loc;
-				sscanf_s(&pString[loc], "%d", &ind);
+				//sscanf_s(&pString[loc], "%d", &ind);
+				ind = nextInt(ss, loc);
 				loc += 2;
 				if (ind < 100) result = iBlock[ind];
 			}
 
-			else if (pString[loc] == '*'
-				|| pString[loc] == '-'
-				|| pString[loc] == '+'
-				|| pString[loc] == '/'
-				|| pString[loc] == '^') {
+			else if (ss.at(loc) == '*'
+				|| ss.at(loc) == '-'
+				|| ss.at(loc) == '+'
+				|| ss.at(loc) == '/'
+				|| ss.at(loc) == '^') {
 				previousCharWasOp = 1;
-				lastOp = pString[loc];
+				lastOp = ss.at(loc);
 				loc++;
 			}
 			else {
-				sscanf_s(&pString[loc], "%lf", &result);
-				while (!(pString[loc] == '*'
-					|| pString[loc] == '-'
-					|| pString[loc] == '+'
-					|| pString[loc] == '/'
-					|| pString[loc] == '^')) {
-					if (pString[loc] == 0) {
+				//sscanf_s(&pString[loc], "%lf", &result);
+				result = nextDouble(ss, loc);
+				while (!(ss.at(loc) == '*'
+					|| ss.at(loc) == '-'
+					|| ss.at(loc) == '+'
+					|| ss.at(loc) == '/'
+					|| ss.at(loc) == '^')) {
+					if (ss.at(loc) == 0) {
 						return result;
 					}
-					if (pString[loc] == 'e') {
-						if (pString[loc + 1] == '-' || pString[loc + 1] == '+') loc += 3;
+					if (ss.at(loc) == 'e') {
+						if (ss.at(loc+1) == '-' || ss.at(loc+1) == '+') loc += 3;
 					}
 					else {
 						loc++;
@@ -240,32 +258,35 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 			}
 		}
 		else {
-			if (pString[loc] == 'v') {
+			if (ss.at(loc) == 'v') {
 				++loc;
-				sscanf_s(&pString[loc], "%d", &ind);
+				//sscanf_s(&pString[loc], "%d", &ind);
+				ind = nextInt(ss, loc);
 				loc += 2;
 				if (ind < 100)readout = vBlock[ind];
 				applyOp(lastOp, &result, &readout);
 				previousCharWasOp = 0;
 			}
-			else if (pString[loc] == 'i') {
+			else if (ss.at(loc) == 'i') {
 				++loc;
-				sscanf_s(&pString[loc], "%d", &ind);
+				//sscanf_s(&pString[loc], "%d", &ind);
+				ind = nextInt(ss, loc);
 				loc += 2;
 				if (ind < 100) readout = iBlock[ind];
 				applyOp(lastOp, &result, &readout);
 				previousCharWasOp = 0;
 			}
 			else {
-				sscanf_s(&pString[loc], "%lf", &readout);
+				//sscanf_s(&pString[loc], "%lf", &readout);
+				readout = nextDouble(ss, loc);
 				applyOp(lastOp, &result, &readout);
 				previousCharWasOp = 0;
-				while (!(pString[loc] == '*'
-					|| pString[loc] == '-'
-					|| pString[loc] == '+'
-					|| pString[loc] == '/'
-					|| pString[loc] == '^')) {
-					if (pString[loc] == 0) {
+				while (!(ss.at(loc) == '*'
+					|| ss.at(loc) == '-'
+					|| ss.at(loc) == '+'
+					|| ss.at(loc) == '/'
+					|| ss.at(loc) == '^')) {
+					if (loc >= ss.length()-1) {
 						return result;
 					}
 					else {
@@ -371,24 +392,24 @@ int fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long 
 
 int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 	
-	FILE* fp;// = fopen(spectrumPath, "r");
-	if (fopen_s(&fp, spectrumPath, "r")) {
-		printf("Could not read reference file\r\n");
+	std::ifstream fs(spectrumPath);
+	if (fs.fail()) {
 		return 1;
 	}
 	size_t maxFileSize = 16384;
 	size_t currentRow = 0;
 	double c = 1e9 * LIGHTC;
-	double* loadedWavelengths = (double*)calloc(8192*3, sizeof(double));
-	double* loadedFrequencies = loadedWavelengths + 8192;
-	double* loadedIntensities = loadedWavelengths + 16384;;
+	double* loadedWavelengths = new double[maxFileSize]();
+	double* loadedFrequencies = new double[maxFileSize]();
+	double* loadedIntensities = new double[maxFileSize]();
 	if (loadedWavelengths == NULL) {
 		return 1;
 	}
 	double maxWavelength = 0;
 	double minWavelength = 0;
 
-	while (fscanf_s(fp, "%lf %lf", &loadedWavelengths[currentRow], &loadedIntensities[currentRow]) == 2 && currentRow < maxFileSize) {
+	while (fs.good() && currentRow < maxFileSize) {
+		fs >> loadedWavelengths[currentRow] >> loadedIntensities[currentRow];
 		if (currentRow == 0) {
 			maxWavelength = loadedWavelengths[currentRow];
 			minWavelength = loadedWavelengths[currentRow];
@@ -409,7 +430,7 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 	double minFrequency = c / maxWavelength;
 	double currentFrequency = 0;
 	double df;
-	//memset((*sCPU).fittingArray, 0, (*sCPU).Nfreq * sizeof(double));
+
 	for (i = 1; i < (*sCPU).Nfreq; i++) {
 		currentFrequency = i * (*sCPU).fStep;
 		if ((currentFrequency > minFrequency) && (currentFrequency < maxFrequency)) {
@@ -424,8 +445,10 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 					+ loadedIntensities[j] * (currentFrequency - loadedFrequencies[j - 1])) / df; //linear interpolation
 		}
 	}
-	fclose(fp);
-	free(loadedWavelengths);
+
+	delete[] loadedWavelengths;
+	delete[] loadedIntensities;
+	delete[] loadedFrequencies;
 
 	return 0;
 }
@@ -1141,7 +1164,7 @@ int readCrystalDatabase(crystalEntry* db) {
 
 		std::getline(fs, line); //d:
 		for (int k = 0; k < 18; ++k) {
-			fs >> db[i].d[k % 6 + k/6]; //column-order!
+			fs >> db[i].d[3 * (k % 6) + (k / 6)]; //column-order!
 		}
 		std::getline(fs, line);
 
