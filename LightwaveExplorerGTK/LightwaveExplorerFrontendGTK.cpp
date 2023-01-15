@@ -1065,17 +1065,6 @@ void createRunFile() {
         freeSemipermanentGrids();
     }
 
-    allocateGrids(activeSetPtr);
-    isGridAllocated = TRUE;
-    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
-    loadPulseFiles(activeSetPtr);
-    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
-    configureBatchMode(activeSetPtr);
-
-    free((*activeSetPtr).statusFlags);
-    free((*activeSetPtr).deffTensor);
-    free((*activeSetPtr).loadedField1);
-    free((*activeSetPtr).loadedField2);
     char* fileName = (*activeSetPtr).outputBasePath;
     while (strchr(fileName, '\\') != NULL) {
         fileName = strchr(fileName, '\\');
@@ -1085,13 +1074,6 @@ void createRunFile() {
         fileName = strchr(fileName, '/');
         fileName++;
     }
-
-    theGui.console.threadPrint(
-        "Run %s on cluster with:\r\nsbatch %s.slurmScript\r\n",
-        fileName, fileName);
-
-    //create command line settings file
-    saveSettingsFile(activeSetPtr, crystalDatabasePtr);
 
     //create SLURM script
     int gpuType = 0;
@@ -1127,7 +1109,17 @@ void createRunFile() {
         break;
     }
     saveSlurmScript(activeSetPtr, gpuType, gpuCount);
+
+
+    //create command line settings file
+    (*activeSetPtr).runType = 1;
+    saveSettingsFile(activeSetPtr, crystalDatabasePtr);
+
+    theGui.console.threadPrint(
+        "Run %s on cluster with:\r\nsbatch %s.slurmScript\r\n",
+        fileName, fileName);
     isRunning = FALSE;
+    isGridAllocated = FALSE;
 }
 
 static void buttonAddSameCrystal() {
