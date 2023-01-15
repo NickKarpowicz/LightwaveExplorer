@@ -905,81 +905,18 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 }
 
 int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs) {
-
 	saveSettingsFile(sCPU, crystalDatabasePtr);
-	char outputpath[MAX_LOADSTRING] = { 0 };
-	double matlabpadding[1024] = { 0 };
 
-	char* outputbaseVar = strrchr(outputbase, '\\');
-	if (!outputbaseVar) {
-		outputbaseVar = outputbase;
-	}
-	else {
-		outputbaseVar++;
-	}
+	std::string Epath((*sCPU).outputBasePath);
+	Epath.append("_Ext.dat");
+	std::ofstream Efile(Epath, std::ios::binary);
+	if (Efile.is_open()) Efile.write(reinterpret_cast<char*>((*sCPU).ExtOut), 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2) * sizeof(double));
+
+	std::string Spath((*sCPU).outputBasePath);
+	Spath.append("_spectrum.dat");
+	std::ofstream Sfile(Spath, std::ios::binary);
+	if (Sfile.is_open()) Sfile.write(reinterpret_cast<char*>((*sCPU).totalSpectrum), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq * sizeof(double));
 	
-	//write field as binary
-	FILE* ExtOutFile;
-	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
-	strcpy_s(outputpath, MAX_LOADSTRING, outputbase);
-	strcat_s(outputpath, MAX_LOADSTRING, "_Ext.dat");
-	if (fopen_s(&ExtOutFile, outputpath, "wb")) return 1;
-	fwrite((*sCPU).ExtOut, sizeof(double), writeSize, ExtOutFile);
-	fwrite(matlabpadding, sizeof(double), 1024, ExtOutFile);
-	fclose(ExtOutFile);
-
-	//Save the spectrum
-	FILE* totalSpectrumFile;
-	strcpy_s(outputpath, MAX_LOADSTRING, outputbase);
-	strcat_s(outputpath, MAX_LOADSTRING, "_spectrum.dat");
-	if(fopen_s(&totalSpectrumFile, outputpath, "wb")) return 1;
-	fwrite((*sCPU).totalSpectrum, sizeof(double), 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2, totalSpectrumFile);
-	fwrite(matlabpadding, sizeof(double), 1024, totalSpectrumFile);
-	fclose(totalSpectrumFile);
-
-	FILE* matlabfile;
-	strcpy_s(outputpath, MAX_LOADSTRING, outputbase);
-	strcat_s(outputpath, MAX_LOADSTRING, ".m");
-	if(fopen_s(&matlabfile, outputpath, "w")) return 1;
-
-	if (saveInputs) {
-		fprintf(matlabfile, "fid = fopen('%s_ExtIn.dat','rb'); \n", outputbaseVar);
-		fprintf(matlabfile, "%s_ExtIn = fread(fid, %zu, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
-		fprintf(matlabfile, "%s_ExtIn = reshape(%s_ExtIn,[%zu %zu %zu]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
-		fprintf(matlabfile, "fclose(fid); \n");
-	}
-
-	fprintf(matlabfile, "fid = fopen('%s_Ext.dat','rb'); \n", outputbaseVar);
-	fprintf(matlabfile, "%s_Ext = fread(fid, %zu, 'double'); \n", outputbaseVar, 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
-	fprintf(matlabfile, "%s_Ext = reshape(%s_Ext,[%zu %zu %zu]); \n", outputbaseVar, outputbaseVar, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
-	fprintf(matlabfile, "fclose(fid); \n");
-	fprintf(matlabfile, "fid = fopen('%s_spectrum.dat','rb'); \n", outputbaseVar);
-	fprintf(matlabfile, "%s_spectrum = fread(fid, %zu, 'double'); \n", outputbaseVar, 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2);
-	fprintf(matlabfile, "%s_spectrum = reshape(%s_spectrum,[%zu %d %zu]); \n", outputbaseVar, outputbaseVar, (*sCPU).Nfreq, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
-	fprintf(matlabfile, "fclose(fid); \n");
-	fprintf(matlabfile, "dt = %e;\ndz = %e;\ndx = %e;\ndf = %e;\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep, (*sCPU).fStep);
-	fclose(matlabfile);
-
-	//write a python script for loading the output fields in a proper shape
-	char scriptfilename[MAX_LOADSTRING];
-	strcpy_s(scriptfilename, MAX_LOADSTRING, outputbase);
-	strcat_s(scriptfilename, MAX_LOADSTRING, ".py");
-	FILE* scriptfile;
-	if(fopen_s(&scriptfile, scriptfilename, "w")) return 1;
-	fprintf(scriptfile, "#!/usr/bin/python\nimport numpy as np\n");
-	fprintf(scriptfile, "dt = %e\ndz = %e\ndx = %e\ndf = %e\n", (*sCPU).tStep, (*sCPU).propagationStep, (*sCPU).rStep, (*sCPU).fStep);
-	if (saveInputs) {
-		fprintf(scriptfile, "%s_ExtIn = np.reshape(np.fromfile(\"", outputbaseVar);
-		fprintf(scriptfile, "%s_ExtIn.dat", outputbaseVar);
-		fprintf(scriptfile, "\",dtype=np.double)[0:%zu],(%zu,%zu,%zu),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
-	}
-	fprintf(scriptfile, "%s_Ext = np.reshape(np.fromfile(\"", outputbaseVar);
-	fprintf(scriptfile, "%s_Ext.dat", outputbaseVar);
-	fprintf(scriptfile, "\",dtype=np.double)[0:%zu],(%zu,%zu,%zu),order='F')\n", 2 * (*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Ntime, (*sCPU).Nspace, 2 * (*sCPU).Nsims * (*sCPU).Nsims2);
-	fprintf(scriptfile, "%s_spectrum = np.reshape(np.fromfile(\"", outputbaseVar);
-	fprintf(scriptfile, "%s_spectrum.dat", outputbaseVar);
-	fprintf(scriptfile, "\",dtype=np.double)[0:%zu],(%zu,%i,%zu),order='F')\n", 3 * (*sCPU).Nfreq * (*sCPU).Nsims * (*sCPU).Nsims2, (*sCPU).Nfreq, 3, (*sCPU).Nsims * (*sCPU).Nsims2);
-	fclose(scriptfile);
 	return 0;
 }
 
