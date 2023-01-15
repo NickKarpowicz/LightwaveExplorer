@@ -423,24 +423,21 @@ public:
         pulldowns[9].squeeze();
         pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
 
-        #ifdef __linux__
-        if(1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini")){
-            readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
-        }
-        #endif
-
-        #ifdef __WIN32__
-        readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
-        #endif
-        #ifdef __APPLE__
-            uint32_t bufferSize = 1024;
-            char sysPath[1024] = {0};
-            _NSGetExecutablePath(sysPath, &bufferSize);
-            int plen = strlen(sysPath);
-            sysPath[plen-17] = 0;
-            strcat(sysPath, "../Resources/DefaultValues.ini");
-            readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPath);
-        #endif
+#ifdef __linux__
+		if (1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
+			readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
+		}
+#elif defined __APPLE__
+		uint32_t bufferSize = 1024;
+		char sysPath[1024] = { 0 };
+		_NSGetExecutablePath(sysPath, &bufferSize);
+		int plen = strlen(sysPath);
+		sysPath[plen - 17] = 0;
+		strcat(sysPath, "../Resources/DefaultValues.ini");
+		readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPath);
+#else
+		readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
+#endif
         setInterfaceValuesToActiveValues();
         g_timeout_add(100, G_SOURCE_FUNC(updateDisplay), NULL);
         window.present();
