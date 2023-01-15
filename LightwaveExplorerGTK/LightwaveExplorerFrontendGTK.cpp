@@ -423,8 +423,15 @@ public:
         pulldowns[9].squeeze();
         pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
 
-        if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini"));
-        else if(!readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini"));
+        #ifdef __linux__
+        if(1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini")){
+            readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
+        }
+        #endif
+
+        #ifdef __WIN32__
+        readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
+        #endif
         #ifdef __APPLE__
             uint32_t bufferSize = 1024;
             char sysPath[1024] = {0};

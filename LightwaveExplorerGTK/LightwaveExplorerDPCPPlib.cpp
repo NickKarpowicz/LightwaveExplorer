@@ -5,7 +5,7 @@
 #include "LightwaveExplorerCore.cu"
 #include <stdio.h>
 
-extern "C" size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDeviceString) {
+extern "C" size_t readSYCLDevices(char* deviceListString, char* defaultDeviceString) {
     size_t convertedChars;
     size_t offset = 0;
     unsigned char cpuCount = 0;
@@ -21,15 +21,15 @@ extern "C" size_t readSYCLDevices(wchar_t* deviceListString, wchar_t* defaultDev
             if (d.is_cpu()) {
                 cpuCount++;
 
-                offset = wcsnlen(deviceListString, MAX_LOADSTRING);
-                swprintf(&deviceListString[offset], MAX_LOADSTRING, L"SYCL found a CPU: %s\r\n", d.get_info<sycl::info::device::name>().c_str());
+                offset = strnlen(deviceListString, MAX_LOADSTRING);
+                sprintf(&deviceListString[offset], "SYCL found a CPU: %s\r\n", d.get_info<sycl::info::device::name>().c_str());
 
             }
             if (d.is_gpu()) {
                 gpuCount++;
 
-                offset = wcsnlen(deviceListString, MAX_LOADSTRING);
-                swprintf(&deviceListString[offset], MAX_LOADSTRING, L"SYCL found a GPU: %s\r\n", d.get_info<sycl::info::device::name>().c_str());
+                offset = strnlen(deviceListString, MAX_LOADSTRING);
+                sprintf(&deviceListString[offset], "SYCL found a GPU: %s\r\n", d.get_info<sycl::info::device::name>().c_str());
 
             }
         }

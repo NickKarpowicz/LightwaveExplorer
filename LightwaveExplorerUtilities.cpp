@@ -995,7 +995,7 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 
 //deprecated sequence mode.
 int readSequenceString(simulationParameterSet* sCPU) {
-	std::stringstream ss((*sCPU).sequenceString, MAX_LOADSTRING-1);
+	std::stringstream ss((*sCPU).sequenceString);
 	int i = 0;
 	while (ss.good()) {
 		ss >> (*sCPU).sequenceArray[i];
@@ -1022,7 +1022,7 @@ int readCrystalDatabase(crystalEntry* db) {
 	std::ifstream fs(sysPath);
 #elif defined __linux__
 	std::ifstream fs("/usr/share/LightwaveExplorer/CrystalDatabase.txt");
-	if (!fs.isopen()) {
+	if (!fs.is_open()) {
 		fs.open("CrystalDatabase.txt");
 	}
 #else
