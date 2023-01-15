@@ -9,39 +9,33 @@
 #include <mach-o/dyld.h>
 #endif
 
-
 int readFittingString(simulationParameterSet* sCPU) {
-	//read the fitting string (if there is one), convert it into an array if it exists
-	char fittingString[MAX_LOADSTRING];
-	double ROIbegin;
-	double ROIend;
-	strcpy_s(fittingString, MAX_LOADSTRING, (*sCPU).fittingString);
-	char* nextToken = NULL;
-	char* tokToken = strtok_s(fittingString, ";", &nextToken);
-	bool paramsRead = (3 == sscanf_s(fittingString, "%lf %lf %d",
-		&ROIbegin, &ROIend, &(*sCPU).fittingMaxIterations));
+	std::stringstream ss((*sCPU).fittingString);
+	double ROIbegin, ROIend;
+	int maxIterations = 0;
+	int fittingCount = 0;
+	ss >> ROIbegin >> ROIend >> maxIterations;
+	ss.ignore(MAX_LOADSTRING, ';');
+
 	(*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
 	(*sCPU).fittingROIstop = (size_t)minN(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
 	(*sCPU).fittingROIsize = minN(maxN(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
-	int fittingCount = 0;
-	tokToken = strtok_s(NULL, ";", &nextToken);
-	int lastread = 3;
-	while (tokToken != NULL && lastread == 3) {
-		lastread = sscanf_s(tokToken, "%lf %lf %lf",
-			&(*sCPU).fittingArray[fittingCount], &(*sCPU).fittingArray[fittingCount + 1],
-			&(*sCPU).fittingArray[fittingCount + 2]);
-		if (lastread > 0) {
-			fittingCount += lastread;
-		}
-		tokToken = strtok_s(NULL, ";", &nextToken);
+	(*sCPU).fittingMaxIterations = maxIterations;
+
+	while (ss.good()) {
+		ss >> (*sCPU).fittingArray[fittingCount] >> (*sCPU).fittingArray[fittingCount + 1] >> (*sCPU).fittingArray[fittingCount + 2];
+		if (ss.good()) fittingCount += 3;
+		ss.ignore(MAX_LOADSTRING, ';');
 	}
+
 	(*sCPU).Nfitting = fittingCount / 3;
-	(*sCPU).isInFittingMode = (((*sCPU).Nfitting) > 0 && paramsRead);
+	(*sCPU).isInFittingMode = (((*sCPU).Nfitting > 0) && (maxIterations > 0));
 
 	if (!(*sCPU).isInFittingMode) {
-		char nopeString[] = "None.";
-		strcpy_s((*sCPU).fittingString, MAX_LOADSTRING, nopeString);
+		std::string noneString("None.\0");
+		noneString.copy((*sCPU).fittingString, MAX_LOADSTRING);
 	}
+
 	return 0;
 }
 
@@ -1083,6 +1077,7 @@ int readSequenceString(simulationParameterSet* sCPU) {
 	return 0;
 }
 
+
 int readCrystalDatabase(crystalEntry* db) {
 	int i = 0;
 #ifdef __APPLE__
@@ -1146,7 +1141,7 @@ int readCrystalDatabase(crystalEntry* db) {
 
 		std::getline(fs, line); //d:
 		for (int k = 0; k < 18; ++k) {
-			fs >> db[i].d[k];
+			fs >> db[i].d[k % 6 + k/6]; //column-order!
 		}
 		std::getline(fs, line);
 
@@ -1167,18 +1162,8 @@ int readCrystalDatabase(crystalEntry* db) {
 			std::getline(fs, line);
 			break;
 		case 1: //read full chi3
-			for (int k = 0; k < 27; ++k) {
-				fs >> db[i].chi3[k];
-			}
-			std::getline(fs, line);
-
-			for (int k = 0; k < 27; ++k) {
-				fs >> db[i].chi3[k+27];
-			}
-			std::getline(fs, line);
-			
-			for (int k = 0; k < 27; ++k) {
-				fs >> db[i].chi3[k+2*27];
+			for (int k = 0; k < 81; ++k) {
+				fs >> db[i].chi3[k]; //row-order!
 			}
 			std::getline(fs, line);
 			break;

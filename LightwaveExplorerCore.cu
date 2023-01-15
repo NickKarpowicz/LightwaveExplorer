@@ -1048,6 +1048,7 @@ namespace kernels {
 							(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey};
 
 			// second order nonlinearity, element-by-element in the reduced tensor
+			//note that for historical reasons, chi2 is column-order and chi3 is row-order...
 			if ((*s).nonlinearSwitches[0] == 1){
 				for (unsigned char a = 0; a < 3; ++a){
 					P[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];

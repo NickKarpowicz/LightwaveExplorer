@@ -2300,8 +2300,8 @@ void fittingThread(int pulldownSelection) {
         }
     }
 
-    theGui.console.threadPrint("Fitting %i values in mode %i.\r\nRegion of interest contains %lli elements\r\n",
-        (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingROIsize);
+    theGui.console.threadPrint("Fitting %i values in mode %i over %i iterations.\r\nRegion of interest contains %lli elements\r\n",
+        (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingMaxIterations, (*activeSetPtr).fittingROIsize);
 
     int assignedGPU = 0;
     bool forceCPU = 0;
