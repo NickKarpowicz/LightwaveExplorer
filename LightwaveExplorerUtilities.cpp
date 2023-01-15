@@ -465,56 +465,53 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 	return 0;
 }
 
+std::string getBasename(char* fullPath) {
+	std::string pathString(fullPath);
+	std::size_t positionOfName = pathString.find_last_of("/\\");
+	if (positionOfName == std::string::npos) return pathString;
+	return pathString.substr(positionOfName + 1);
+}
+
 int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
-	FILE* textfile;
-	char outputpath[MAX_LOADSTRING] = { 0 };
+	std::string outputFile((*sCPU).outputBasePath);
+	outputFile.append(".slurmScript");
+	std::ofstream fs(outputFile);
+	if (fs.fail()) return 1;
 
-	char* fileName = (*sCPU).outputBasePath;
-	while (strchr(fileName, '\\') != NULL) {
-		fileName = strchr(fileName, '\\');
-		fileName++;
-	}
-	while (strchr(fileName, '/') != NULL) {
-		fileName = strchr(fileName, '/');
-		fileName++;
-	}
+	std::string baseName = getBasename((*sCPU).outputBasePath);
 
-	strcpy_s(outputpath, MAX_LOADSTRING, (*sCPU).outputBasePath);
-	strcat_s(outputpath, MAX_LOADSTRING, ".slurmScript");
-	if (fopen_s(&textfile, outputpath, "wb")) return 1;
-	fprintf(textfile, "#!/bin/bash -l"); unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH -o ./tjob.out.%%j"); unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH -e ./tjob.err.%%j"); unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH -D ./"); unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH -J lightwave");  unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH --constraint=\"gpu\""); unixNewLine(textfile);
+	fs << "#!/bin/bash -l" << '\x0A';
+	fs << "#SBATCH -o ./tjob.out.%%j" << '\x0A';
+	fs << "#SBATCH -e ./tjob.err.%%j" << '\x0A';
+	fs << "#SBATCH -D ./" << '\x0A';
+	fs << "#SBATCH -J lightwave" << '\x0A';
+	fs << "#SBATCH --constraint=\"gpu\"" << '\x0A';
 	if (gpuType == 0) {
-		fprintf(textfile, "#SBATCH --gres=gpu:rtx5000:%i", minN(gpuCount, 2)); unixNewLine(textfile);
+		fs << "#SBATCH --gres=gpu:rtx5000:" << minN(gpuCount, 2) << '\x0A';
 	}
 	if (gpuType == 1) {
-		fprintf(textfile, "#SBATCH --gres=gpu:v100:%i", minN(gpuCount, 2)); unixNewLine(textfile);
+		fs << "#SBATCH --gres=gpu:v100:" << minN(gpuCount, 2) << '\x0A';
 	}
 	if (gpuType == 2) {
-		fprintf(textfile, "#SBATCH --gres=gpu:a100:%i", minN(gpuCount, 4)); unixNewLine(textfile);
-		fprintf(textfile, "#SBATCH --cpus-per-task=%i", 2 * minN(gpuCount, 4)); unixNewLine(textfile);
+		fs << "#SBATCH --gres=gpu:a100" << minN(gpuCount, 4) << '\x0A';
+		fs << "#SBATCH --cpus-per-task=" << 2 * minN(gpuCount, 4) << '\x0A';
 	}
-	fprintf(textfile, "#SBATCH --mem=%zuM", 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN(1, (*sCPU).Nsims)) / 1048576);
-	unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH --nodes=1"); unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH --ntasks-per-node=1"); unixNewLine(textfile);
-	fprintf(textfile, "#SBATCH --time=03:00:00"); unixNewLine(textfile);
-	fprintf(textfile, "module purge"); unixNewLine(textfile);
-	fprintf(textfile, "module load cuda/11.6"); unixNewLine(textfile);
-	fprintf(textfile, "module load mkl/2022.1"); unixNewLine(textfile);
-	fprintf(textfile, "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH"); unixNewLine(textfile);
+	fs << "#SBATCH --mem=" << 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN(1, (*sCPU).Nsims)) / 1048576 << "M\x0A";
+	fs << "#SBATCH --nodes=1" << '\x0A';
+	fs << "#SBATCH --ntasks-per-node=1" << '\x0A';
+	fs << "#SBATCH --time=04:00:00" << '\x0A';
+	fs << "module purge" << '\x0A';
+	fs << "module load cuda/11.6" << '\x0A';
+	fs << "module load mkl/2022.1" << '\x0A';
+	fs << "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH" << '\x0A';
 	if (gpuType == 0 || gpuType == 1) {
-		fprintf(textfile, "srun ./lwe %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
+		fs << "srun ./lwe " << baseName << ".input > " << baseName << ".out\x0A";
 	}
 	if (gpuType == 2) {
-		fprintf(textfile, "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}"); unixNewLine(textfile);
-		fprintf(textfile, "srun ./lwe %s.input > %s.out", fileName, fileName); unixNewLine(textfile);
+		fs << "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}" << '\x0A';
+		fs << "srun ./lwe " << baseName << ".input > " << baseName << ".out\x0A";
 	}
-	fclose(textfile);
+
 	return 0;
 }
 
@@ -534,10 +531,12 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	else {
 		outputPath.append(".txt");
 	}
-	
 	std::ofstream fs(outputPath);
 	if (fs.fail()) return -1;
+
+	std::string baseName = getBasename((*sCPU).outputBasePath);
 	fs.precision(15);
+
 	fs << "Pulse energy 1 (J): " << (*sCPU).pulse1.energy << '\x0A';
 	fs << "Pulse energy 2 (J): " << (*sCPU).pulse2.energy << '\x0A';
 	fs << "Frequency 1 (Hz): " << (*sCPU).pulse1.frequency << '\x0A';
@@ -600,7 +599,12 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	fs << "Sequence: " << (*sCPU).sequenceString << '\x0A';
 	fs << "Fitting: " << (*sCPU).fittingString << '\x0A';
 	fs << "Fitting mode: " << (*sCPU).fittingMode << '\x0A';
-	fs << "Output base path: " << (*sCPU).outputBasePath << '\x0A';
+	if ((*sCPU).runType > 0) { //don't include full path if making a cluster script
+		fs << "Output base path: " << baseName << '\x0A';
+	}
+	else {
+		fs << "Output base path: " << (*sCPU).outputBasePath << '\x0A';
+	}
 	fs << "Field 1 from file type: " << (*sCPU).pulse1FileType << '\x0A';
 	fs << "Field 2 from file type: " << (*sCPU).pulse2FileType << '\x0A';
 	fs << "Field 1 file path: " << (*sCPU).field1FilePath << '\x0A';
