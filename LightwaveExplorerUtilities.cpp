@@ -436,30 +436,18 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 	return 0;
 }
 
-
-
 int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
-	char outputpath[MAX_LOADSTRING] = { 0 };
-	size_t writeSize = 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2);
+	std::string Epath((*sCPU).outputBasePath);
+	Epath.append("_Ext.dat");
+	std::ifstream Efile(Epath, std::ios::binary);
+	if (Efile.is_open()) Efile.read(reinterpret_cast<char*>((*sCPU).ExtOut), 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2) * sizeof(double));
 
-	//read fields as binary
-	FILE* ExtOutFile;
-	strcpy_s(outputpath, MAX_LOADSTRING, outputBase);
-	strcat_s(outputpath, MAX_LOADSTRING, "_Ext.dat");
-	if (fopen_s(&ExtOutFile,outputpath,"rb")) return 1;
-	
-	fread_s((*sCPU).ExtOut, writeSize*sizeof(double), sizeof(double), writeSize, ExtOutFile);
-	fclose(ExtOutFile);
-
-	FILE* spectrumFile;
-	strcpy_s(outputpath, MAX_LOADSTRING, outputBase);
-	strcat_s(outputpath, MAX_LOADSTRING, "_spectrum.dat");
-	if (fopen_s(&spectrumFile, outputpath, "rb")) return 1;
-	fread_s((*sCPU).totalSpectrum, (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq * sizeof(double), sizeof(double), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq, spectrumFile);
-	fclose(spectrumFile);
+	std::string Spath((*sCPU).outputBasePath);
+	Spath.append("_spectrum.dat");
+	std::ifstream Sfile(Spath, std::ios::binary);
+	if (Sfile.is_open()) Sfile.read(reinterpret_cast<char*>((*sCPU).totalSpectrum), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq * sizeof(double));
 
 	fftw_plan fftwPlanD2Z;
-
 	if ((*sCPU).is3D) {
 		const int fftwSizes[] = { (int)(*sCPU).Nspace2, (int)(*sCPU).Nspace, (int)(*sCPU).Ntime };
 		fftwPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, (*sCPU).ExtOut, NULL, 1, (int)(*sCPU).Ngrid, (fftw_complex*)(*sCPU).EkwOut, NULL, 1, (int)(*sCPU).NgridC, FFTW_MEASURE);
@@ -476,7 +464,6 @@ int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
 
 	return 0;
 }
-
 
 int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	FILE* textfile;
