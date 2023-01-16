@@ -72,7 +72,7 @@ namespace {
 
 		double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
 		for (size_t i = 0; i < 6; ++i) {
-			firstDerivativeOperation[i] *= (-2.0 / ((*s).Ngrid * (*s).dx));
+			firstDerivativeOperation[i] *= (-2.0 / ((*s).dx));
 		}
 
 		//set nonlinearSwitches[3] to the number of photons needed to overcome bandgap

@@ -478,7 +478,7 @@ namespace kernels {
 	// in such a way as to avoid aliasing, which inside the simulation is most
 	// likely the appear (and cause instability) in the nonlinear terms.
 	trilingual expandCylindricalBeam asKernel(withID deviceParameterSet* s, double* polarization1, double* polarization2) {
-		long long i = (long long)localIndex;
+		long long i = localIndex;
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long k = i % (*s).Ntime; //temporal coordinate
 
@@ -962,14 +962,14 @@ namespace kernels {
 
 		if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())) && (*s).fieldFactor1[k] > 0.0 && (*s).fieldFactor2[k] > 0.0) {
 			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
-			(*s).gridPropagationFactor1Rho1[i] = ii * (1. / ((*s).fieldFactor1[k] * 2. * ke.real())) * (*s).h;
+			(*s).gridPropagationFactor1Rho1[i] = deviceComplex(0.0, (*s).h / ((*s).fieldFactor1[k] * 2. * ke.real()));
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 				(*s).gridPropagationFactor1Rho1[i] = cuZero;
 			}
 
 			(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
-			(*s).gridPropagationFactor1Rho2[i] = ii * (1. / ((*s).fieldFactor2[k] * 2. * ko.real())) * (*s).h;
+			(*s).gridPropagationFactor1Rho2[i] = deviceComplex(0.0, (*s).h / ((*s).fieldFactor2[k] * 2. * ko.real()));
 			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 				(*s).gridPropagationFactor1Rho2[i] = cuZero;
@@ -1035,8 +1035,8 @@ namespace kernels {
 	//in the time domain
 	trilingual nonlinearPolarizationKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
-		double Ex = (*s).fftNorm * (*s).gridETime1[i];
-		double Ey = (*s).fftNorm * (*s).gridETime2[i];
+		double Ex = (*s).gridETime1[i];
+		double Ey = (*s).gridETime2[i];
 
 		if ((*s).nonlinearSwitches[0] == 1 || (*s).nonlinearSwitches[1] == 1){
 			
@@ -1123,24 +1123,22 @@ namespace kernels {
 	//and integrating over trajectories (B). Added to RK4 propagation array afterwards.
 	trilingual plasmaCurrentKernel_twoStage_A asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
-		double Esquared, Ex, Ey, a;
+		double Esquared, a;
 		unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
-		Ex = (*s).gridETime1[i] * (*s).fftNorm;
-		Ey = (*s).gridETime2[i] * (*s).fftNorm;
 
 		//save values in workspaces, casting to double
 		double* dN = (double*)(*s).workspace1;
 		double* dN2 = dN + (*s).Ngrid;
 		double* Jx = (*s).gridPolarizationTime1;
 		double* Jy = (*s).gridPolarizationTime2;
-		Esquared = Ex * Ex + Ey * Ey;
+		Esquared = (*s).gridETime1[i] * (*s).gridETime1[i] + (*s).gridETime2[i] * (*s).gridETime2[i];
 		a = (*s).plasmaParameters[0] * Esquared;
 		for (unsigned char p = 0; p < pMax; ++p) {
 			a *= Esquared;
 		}
-		Jx[i] = a * Ex;
-		Jy[i] = a * Ey;
-		dN[i] = (*s).plasmaParameters[2] * (Jx[i] * Ex + Jy[i] * Ey);
+		Jx[i] = a * (*s).gridETime1[i];
+		Jy[i] = a * (*s).gridETime2[i];
+		dN[i] = (*s).plasmaParameters[2] * (Jx[i] * (*s).gridETime1[i] + Jy[i] * (*s).gridETime2[i]);
 		dN2[i] = dN[i];
 	};
 
@@ -1150,16 +1148,13 @@ namespace kernels {
 		double N = 0;
 		double integralx = 0;
 		double* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-		double Ex, a;
 		double* dN = j + (double*)(*s).workspace1;
 		double* E = &(*s).gridETime1[j];
 		double* P = &(*s).gridPolarizationTime1[j];
 		for (unsigned int k = 0; k < (*s).Ntime; ++k) {
-			Ex = E[k] * (*s).fftNorm;
 			N += dN[k];
-			a = N * (*s).expGammaT[k];
-			integralx += a * Ex;
-			P[k] = P[k] + expMinusGammaT[k] * integralx;
+			integralx += N * (*s).expGammaT[k] * E[k];
+			P[k] += expMinusGammaT[k] * integralx;
 		}
 	};
 
@@ -1168,7 +1163,6 @@ namespace kernels {
 		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
 		h += j * (*sP).Nfreq;
-
 		(*sP).k1[h] += (*sP).gridPolarizationFactor1[h] * (*sP).workspace1[h];
 		(*sP).k2[h] += (*sP).gridPolarizationFactor2[h] * (*sP).workspace2P[h];
 	};
@@ -1179,20 +1173,27 @@ namespace kernels {
 		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
 		i = h + j * ((*sP).Nfreq);
 		h += (j + ((j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
-
 		(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
 		(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
 	};
 
 	trilingual updateKwithPlasmaKernel asKernel(withID deviceParameterSet* sP) {
-		long long i = localIndex;
-		long long h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-		long long j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		size_t i = localIndex;
+		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		deviceComplex jfac = deviceComplex(0.0, -1.0 / (h * (*sP).fStep));
+		h += j * (*sP).Nfreq;
+		(*sP).k1[h] += jfac * (*sP).gridPolarizationFactor1[h] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[h % ((*sP).Nfreq)];
+		(*sP).k2[h] += jfac * (*sP).gridPolarizationFactor2[h] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[h % ((*sP).Nfreq)];
+	};
+
+	trilingual updateKwithPlasmaKernelCylindric asKernel(withID deviceParameterSet* sP) {
+		size_t i = localIndex;
+		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
 		i = h + j * ((*sP).Nfreq);
-
-		deviceComplex jfac = deviceComplex(0, -1.0 / (h * (*sP).fStep));
-		h += (j + ((*sP).isCylindric * (j > ((long long)(*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
-
+		deviceComplex jfac = deviceComplex(0.0, -1.0 / (h * (*sP).fStep));
+		h += (j + ( (j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 		(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[i % ((*sP).Nfreq)];
 		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[i % ((*sP).Nfreq)];
 	};
@@ -1209,7 +1210,7 @@ namespace kernels {
 
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
-		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
 	};
 
@@ -1223,7 +1224,7 @@ namespace kernels {
 
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
 	};
 
@@ -1237,7 +1238,7 @@ namespace kernels {
 
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * estimate1;
+		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
 	};
 
@@ -1250,7 +1251,7 @@ namespace kernels {
 		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
+		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
 	};
 
@@ -1401,6 +1402,12 @@ namespace kernels {
 		A[i] = val * A[i];
 	};
 
+	trilingual multiplyByConstantKernelDZ asKernel(withID deviceComplex* A, double val) {
+		size_t i = localIndex;
+		A[i] = val * A[i];
+
+	};
+
 	trilingual multiplicationKernelCompactVector asKernel(withID deviceComplex* A, deviceComplex* B, deviceComplex* C, deviceParameterSet* s) {
 		long long i = localIndex;
 		long long h = i % (*s).Nfreq; //temporal coordinate
@@ -1532,6 +1539,7 @@ namespace hostFunctions{
 
 		//set the propagation grids how they should be at the beginning of the next step
 		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompactDoubleVector, (*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
+		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelDZ, (*sc).workspace1, (*sc).fftNorm);
 		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 
 		return 0;
@@ -1821,11 +1829,12 @@ namespace hostFunctions{
 				if ((*sH).isCylindric) {
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam, sD, (*sH).gridPolarizationTime1, (*sH).gridPolarizationTime2);
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
+					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernelCylindric, sD);
 				}
 				else {
 					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
+					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel, sD);
 				}
-				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel, sD);
 			}
 
 			//Radial Laplacian
