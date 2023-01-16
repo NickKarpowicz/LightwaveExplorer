@@ -48,7 +48,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
   The appimage should be in the same directory as the files CrystalDatabase.txt and DefaultValues.ini - you can also put them into /usr/share/LightwaveExplorer - I can make other options possible, not sure where the modern Linux user prefers.
 
-  There is also a subfolder named GPL_3_version_CPUonly. This contains an appimage for a version released under the terms of the GNU Public License v3. This makes use of the FFTW library for performing Fourier transforms, instead of NVIDIA cuFFT or Intel MKL as used in the other version. If you are running it on an AMD CPU, this may give you a significant speedup (or if you perfer to only use GPL software, it's an option).
+  There is also a subfolder named CPU_only. This contains an appimage for a version released under the terms of the GNU Public License v3. This makes use of the FFTW library for performing Fourier transforms, instead of NVIDIA cuFFT or Intel MKL as used in the other version. If you are running it on an AMD CPU, this may give you a significant speedup (or if you perfer to only use GPL software, it's an option).
 
 ---
 
@@ -62,7 +62,7 @@ A native version for the new Arm-based Macs is technically possible (and has bee
 
 ---
   ### How do I know which configuration to run?
-  At the bottom of the window, you'll see two pulldown menus marked "Config" - these let you choose whether the simulation runs in CUDA, SYCL, or OpenMP. It should start set to the fastest option for your system, but if you don't have the right drivers/runtimes, it might step down to something else that is present. OpenMP is typically the slowest, but will run on basically any system.
+  At the bottom of the window, you'll see two pulldown menus marked "Config" - these let you choose whether the simulation runs in CUDA, SYCL, or OpenMP. It should start set to the fastest option for your system, but if you don't have the right drivers/runtimes, it might step down to something else that is present. OpenMP is typically the slowest (except on Linux), but will run on basically any system.
 
   - If you have an Intel CPU, chances are it will have an integrated GPU, which can be used by SYCL. In my experience, the ones that show up as "Iris Graphics" are actually much faster than running the code on the actual CPU, while the ones named "HD Graphics" are sometimes slower. Just try them both.
 
@@ -70,7 +70,7 @@ A native version for the new Arm-based Macs is technically possible (and has bee
 
   - The second pulldown is for offloading work onto other parts of your system. For example, if you are running a big batch of simulations on a CUDA-capable GPU, you can send some of them to the CPU to work on. This is what the second menu and following number do: chose the offload target, and the number to send to it. You don't have to use this if you don't want to.
 
-  - Basically, the order in which you should choose the backends is: CUDA if you have something which supports it, SYCL otherwise, and OpenMP if those options aren't available.
+  - Basically, the order in which you should choose the backends is: CUDA if you have something which supports it, SYCL otherwise, and OpenMP if those options aren't available or you're using Linux and not running on a GPU.
 
   ---
   ### Compilation in Visual Studio
@@ -151,9 +151,7 @@ To make the GPL-3 one that makes use of FFTW, you can do the above, making sure 
   A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, entering the following should work:
   ```
 wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/compileCommandLineLWEfromRepos.sh
-
 chmod +x compileCommandLineLWEfromRepos.sh
-
 ./compileCommandLineLWEfromRepos.sh 
  ```
  
