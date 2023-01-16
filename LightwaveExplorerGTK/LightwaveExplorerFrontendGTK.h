@@ -1,7 +1,7 @@
 #pragma once
 #include <sstream>
 #include <complex>
-#include <stdio.h>
+#include <format>
 #include "../LightwaveExplorerUtilities.h"
 #undef __noinline__
 #include <gtk/gtk.h>
@@ -255,70 +255,28 @@ public:
     void setMaxCharacters(int charLimit) {
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), charLimit);
     }
-    int setToDouble(double in) {
-        char textBuffer[128] = { 0 };
-        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
-        int digits;
-        gtk_entry_buffer_set_text(buf, textBuffer, -1);
-        if (in == 0) {
-            std::snprintf(textBuffer, 127, _T("0"));
-            gtk_entry_buffer_set_text(buf, textBuffer, -1);
-            return 0;
-        }
-        if (abs(in) < 1e-3) {
-            digits = getNumberOfDecimalsToDisplay(in, TRUE);
-            switch (digits) {
-            case 0:
-                std::snprintf(textBuffer, 127, _T("%4.0e"), in); break;
-            case 1:
-                std::snprintf(textBuffer, 127, _T("%4.1e"), in); break;
-            case 2:
-                std::snprintf(textBuffer, 127, _T("%4.2e"), in); break;
-            case 3:
-                std::snprintf(textBuffer, 127, _T("%4.3e"), in); break;
-            case 4:
-                std::snprintf(textBuffer, 127, _T("%4.4e"), in); break;
-            default:
-                std::snprintf(textBuffer, 127, _T("%e"), in);
-            }
-            gtk_entry_buffer_set_text(buf, textBuffer, -1);
-            return 0;
-        }
 
-        digits = getNumberOfDecimalsToDisplay(in, FALSE);
-        if (digits == 0) {
-            std::snprintf(textBuffer, 127, _T("%i"), (int)round(in));
-        }
-        else if (digits == 1) {
-            std::snprintf(textBuffer, 127, _T("%2.1lf"), in);
-        }
-        else if (digits == 2) {
-            std::snprintf(textBuffer, 127, _T("%3.2lf"), in);
-        }
-        else if (digits == 3) {
-            std::snprintf(textBuffer, 127, _T("%4.3lf"), in);
-        }
-        else {
-            std::snprintf(textBuffer, 127, _T("%5.4lf"), in);
-        }
-        gtk_entry_buffer_set_text(buf, textBuffer, -1);
-        return 0;
+    void setToDouble(double in) {
+        std::string s = std::format(std::string_view("{:g}"), in);
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
-
-    template<typename... Args> void overwritePrint(const char* format, Args... args) {
-        char textBuffer[MAX_LOADSTRING];
+    template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
+        std::string s = std::vformat(format, std::make_format_args(args...));
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
-        std::snprintf(textBuffer, MAX_LOADSTRING, format, args...);
-        gtk_entry_buffer_set_text(buf, textBuffer, -1);
+        gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
 
     void copyBuffer(char* destination, size_t maxLength) {
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
-        if (strlen(gtk_entry_buffer_get_text(buf)) > 0) {
-            std::snprintf(destination, maxLength, "%s", gtk_entry_buffer_get_text(buf));
+        std::string s(gtk_entry_buffer_get_text(buf));
+        if (s.length() > 0) {
+            s.append("\0");
+            s.copy(destination, maxLength);
         }
         else {
-            std::snprintf(destination, maxLength, "None");
+            s.assign("None\0");
+            s.copy(destination, maxLength);
         }
     }
 
@@ -328,14 +286,12 @@ class LweConsole : public LweGuiElement {
     GtkWidget* consoleText;
     bool hasNewText;
 public:
-    char* textBuffer;
+    std::string textBuffer;
     LweConsole() :
         consoleText(0), hasNewText(0) {
-        textBuffer = new char[65356]();
         _grid = NULL;
     }
     ~LweConsole() {
-        delete[] textBuffer;
     }
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         consoleText = gtk_text_view_new();
@@ -356,34 +312,39 @@ public:
         gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(elementHandle), consoleText);
         setPosition(grid, x, y, width, height);
     }
-    template<typename... Args> void cPrint(const char* format, Args... args) {
+
+    template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
+        std::string s = std::vformat(format, std::make_format_args(args...));
+        textBuffer.append(s);
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        std::snprintf(&textBuffer[strnlen(textBuffer, 65536)], 65536, format, args...);
-        textBuffer[65535] = 0;
-        gtk_text_buffer_set_text(buf, textBuffer, -1);
+        gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
         GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
         gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
     }
-    template<typename... Args> void threadPrint(const char* format, Args... args) {
-        std::snprintf(&textBuffer[strnlen(textBuffer, 65536)], 65536, format, args...);
-        textBuffer[65535] = 0;
+
+    template<typename... Args> void tPrint(std::string_view format, Args&&... args) {
+        std::string s = std::vformat(format, std::make_format_args(args...));
+        textBuffer.append(s);
         hasNewText = TRUE;
     }
+
     void updateFromBuffer() {
         if (hasNewText) {
             hasNewText = FALSE;
             GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-            gtk_text_buffer_set_text(buf, textBuffer, -1);
+            gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
             GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
             gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
         }
 
     }
-    template<typename... Args> void overwritePrint(const char* format, Args... args) {
+
+
+    template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
+        std::string s = std::vformat(format, std::make_format_args(args...));
+        textBuffer.assign(s);
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        memset(textBuffer, 0, 65536);
-        std::snprintf(textBuffer, 65536, format, args...);
-        gtk_text_buffer_set_text(buf, textBuffer, -1);
+        gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
         GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
         gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
     }
@@ -395,7 +356,8 @@ public:
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
         char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, FALSE);
-        std::snprintf(destination, maxLength, "%s", realBuf);
+        std::string s(realBuf);
+        s.copy(destination, maxLength);
     }
 };
 
@@ -467,16 +429,10 @@ public:
     }
     void addElement(const char* newelement) {
         if (Nelements == 99) return;
+        std::string s(newelement);
+        s.append("\0");
         strArray[Nelements] = &strings[Nelements * strLength];
-        size_t N = strnlen_s(newelement, 127);
-        memcpy(strArray[Nelements], newelement, N);
-        stripLineBreaks(strArray[Nelements]);
-        ++Nelements;
-    }
-    void addElementW(const wchar_t* newelement) {
-        if (Nelements == 99) return;
-        strArray[Nelements] = &strings[Nelements * strLength];
-        std::snprintf(strArray[Nelements], 127, "%ls", newelement);
+        s.copy(strArray[Nelements], 127);
         stripLineBreaks(strArray[Nelements]);
         ++Nelements;
     }

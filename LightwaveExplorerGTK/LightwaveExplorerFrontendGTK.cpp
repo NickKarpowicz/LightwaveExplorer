@@ -401,9 +401,9 @@ public:
         if (crystalDatabasePtr != NULL) {
             //GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
             readCrystalDatabase(crystalDatabasePtr);
-            console.cPrint("Material database has %i entries:\n", (*crystalDatabasePtr).numberOfEntries);
+            console.cPrint("Material database has {} entries:\n", (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-                console.cPrint("%2.2i: %s\n", i, crystalDatabasePtr[i].crystalNameW);
+                console.cPrint("{:2} : {} \n", i, crystalDatabasePtr[i].crystalNameW);
                 memset(materialString, 0, 128 * sizeof(char));
                 snprintf(materialString, 128, "%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
                 pulldowns[3].addElement(materialString);
@@ -422,6 +422,7 @@ public:
         pulldowns[9].init(parentHandle, 1, 24, 2 * buttonWidth, 1);
         pulldowns[9].squeeze();
         pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
+        
 
 #ifdef __linux__
 		if (1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
@@ -515,16 +516,16 @@ void setInterfaceValuesToActiveValues(){
     theGui.pulldowns[5].setValue((*activeSetPtr).batchIndex);
     theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
 
-    if (strlen((*activeSetPtr).sequenceString) > 6) {
+    if (std::string((*activeSetPtr).sequenceString).length() > 6) {
         formatSequence((*activeSetPtr).sequenceString, MAX_LOADSTRING);
         theGui.sequence.overwritePrint((*activeSetPtr).sequenceString);
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\r');
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\n');
     }
     stripLineBreaks((*activeSetPtr).field1FilePath);
-    if (strcmp((*activeSetPtr).field1FilePath, "None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
-    if (strcmp((*activeSetPtr).field2FilePath, "None") != 0) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
-    if (strcmp((*activeSetPtr).fittingPath, "None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
+    if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
+    if (std::string((*activeSetPtr).field2FilePath).compare("None") != 0) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
+    if (std::string((*activeSetPtr).fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
 
     if (!((*activeSetPtr).fittingString[0] == 'N')) {
         insertLineBreaksAfterSemicolons((*activeSetPtr).fittingString, MAX_LOADSTRING);
@@ -594,9 +595,11 @@ void readParametersFromInterface() {
 
     //char noneString[] = "None";
     std::string noneString("None\0");
+    std::string s;
     memset((*activeSetPtr).sequenceString, 0, MAX_LOADSTRING);
     theGui.sequence.copyBuffer((*activeSetPtr).sequenceString, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).sequenceString, MAX_LOADSTRING) == 0) {
+    s.assign((*activeSetPtr).sequenceString);
+    if (s.length() == 0) {
         noneString.copy((*activeSetPtr).sequenceString, MAX_LOADSTRING);
     }
     else {
@@ -847,12 +850,11 @@ void checkLibraryAvailability() {
 	if (cudaGPUCount > 0) {
 		CUDAavailable = TRUE;
 	}
-
-	theGui.console.cPrint("CUDA found %i GPU(s): \r\n", cudaGPUCount);
+	theGui.console.cPrint("CUDA found {} GPU(s): \n", cudaGPUCount);
 	for (i = 0; i < cudaGPUCount; ++i) {
 		cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-		theGui.console.cPrint("%s\n", activeCUDADeviceProp.name);
-		theGui.console.cPrint("    Memory: %i MB\r\n    Multiprocessors: %i\r\n",
+		theGui.console.cPrint("{}\n", activeCUDADeviceProp.name);
+		theGui.console.cPrint("    Memory: {} MB\n    Multiprocessors: {}\n",
 			(int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
 	}
 #else
@@ -873,7 +875,7 @@ void checkLibraryAvailability() {
     unsigned char* counts = (unsigned char*)&syclDevices;
     syclGPUCount = (int)counts[1];
     if(syclDevices != 0){
-        theGui.console.cPrint("%s",syclDeviceList);
+        theGui.console.cPrint("{}",syclDeviceList);
     }
     
 #endif
@@ -903,13 +905,13 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     float oneOver255 = 1.0f / 255;
     unsigned char colorMap[256][3];
 
-    for (int j = 0; j < 256; ++j) {
+    for (unsigned short int j = 0; j < 256; ++j) {
         switch (cm) {
         case 0:
 
-            colorMap[j][0] = j;
-            colorMap[j][1] = j;
-            colorMap[j][2] = j;
+            colorMap[j][0] = (unsigned char)j;
+            colorMap[j][1] = (unsigned char)j;
+            colorMap[j][2] = (unsigned char)j;
             break;
         case 1:
             nval = j * oneOver255;
@@ -984,7 +986,7 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
         char* path = g_file_get_path(file);
-        theGui.filePaths[theGui.pathTarget].overwritePrint("%s", path);
+        theGui.filePaths[theGui.pathTarget].overwritePrint("{}", path);
     }
     g_object_unref(dialog);
 }
@@ -1004,12 +1006,12 @@ void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
 }
 
 void changeToBaseNamePath(char* str, size_t maxSize) {
-    size_t end = strnlen(str, maxSize);
-    for (size_t i = end - 1; i > 0; --i) {
-        if (str[i] == '.' || str[i] == 0) {
-            str[i] = 0;
-            break;
-        }
+    std::string s(str, maxSize);
+    size_t extension = s.find_last_of(".");
+    if (extension != std::string::npos) {
+        std::string baseName = s.substr(0, extension);
+        baseName.append("\0");
+        baseName.copy(str, maxSize);
     }
 }
 
@@ -1017,20 +1019,19 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
     if (response == GTK_RESPONSE_ACCEPT) {
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
-        char* path = g_file_get_path(file);
+        std::string path(g_file_get_path(file));
         if (isGridAllocated) {
             freeSemipermanentGrids();
             isGridAllocated = FALSE;
         }
         
-        int readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, path);
+        int readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, path.c_str());
         allocateGrids(activeSetPtr);
         isGridAllocated = TRUE;
         if (readParameters == 61) {
-            char basePath[MAX_LOADSTRING] = { 0 };
-            preferredStrCpy(basePath, path, MAX_LOADSTRING);
-            changeToBaseNamePath(basePath, MAX_LOADSTRING);
-            loadSavedFields(activeSetPtr, basePath);
+            size_t extensionLoc = path.find_last_of(".");
+            const std::string basePath = path.substr(0, extensionLoc);
+            loadSavedFields(activeSetPtr, basePath.c_str());
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();
             theGui.requestPlotUpdate();
@@ -1120,8 +1121,8 @@ void createRunFile() {
     (*activeSetPtr).runType = 1;
     saveSettingsFile(activeSetPtr, crystalDatabasePtr);
 
-    theGui.console.threadPrint(
-        "Run %s on cluster with:\r\nsbatch %s.slurmScript\r\n",
+    theGui.console.tPrint(
+        "Run {} on cluster with:\r\nsbatch {}.slurmScript\r\n",
         fileName, fileName);
     isRunning = FALSE;
     isGridAllocated = FALSE;
@@ -1129,7 +1130,7 @@ void createRunFile() {
 
 static void buttonAddSameCrystal() {
     if (theGui.textBoxes[34].valueDouble() != 0.0) {
-        theGui.sequence.cPrint("plasma(%i,%2.1lf,%2.1lf,%2.1e,%2.1lf,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\n",
+        theGui.sequence.cPrint("plasma({},{},{},{},{},{},{},{},{})\n",
             theGui.pulldowns[4].getValue(), theGui.textBoxes[32].valueDouble(),
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[34].valueDouble(),
             theGui.textBoxes[35].valueDouble(), theGui.textBoxes[36].valueDouble(),
@@ -1137,7 +1138,7 @@ static void buttonAddSameCrystal() {
             theGui.textBoxes[43].valueDouble());
     }
     else {
-        theGui.sequence.cPrint("nonlinear(%i,%2.1lf,%2.1lf,%2.1lf,%2.1lf)\n",
+        theGui.sequence.cPrint("nonlinear({},{},{},{},{})\n",
             theGui.pulldowns[4].getValue(), theGui.textBoxes[32].valueDouble(),
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[42].valueDouble(),
             theGui.textBoxes[43].valueDouble());
@@ -1879,13 +1880,13 @@ int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, 
 }
 
 int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby) {
-    int i, j;
     int nx0, ny0;
     int Ni, Nj;
-    for (i = 0; i < nbx; ++i) {
+#pragma omp parallel for private(nx0, ny0, Ni, Nj) num_threads(interfaceThreads)
+    for (int i = 0; i < nbx; ++i) {
         Ni = (int)(i * (nax / (float)nbx));
         nx0 = nay * minN(Ni, nax);
-        for (j = 0; j < nby; ++j) {
+        for (int j = 0; j < nby; ++j) {
             Nj = (int)((j * (nay / (float)nby)));
             ny0 = minN(nay, Nj);
             B[i * nby + j] = (float)A[ny0 + nx0];
@@ -2077,7 +2078,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     //launch on SYCL, but if the primary queue matches, default to openMP
     else if (pulldownSelection == cudaGPUCount && SYCLitems > 0) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.threadPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -2088,7 +2089,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     }
     else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.threadPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -2100,7 +2101,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     }
     else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.threadPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -2134,7 +2135,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     }
 
     if (error) {
-        theGui.console.threadPrint("Encountered error %i in secondary queue.\r\n", error);
+        theGui.console.tPrint("Encountered error {} in secondary queue.\r\n", error);
         return;
     }
 
@@ -2153,7 +2154,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     memset(activeSetPtr, 0, sizeof(simulationParameterSet));
     readParametersFromInterface();
     if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
-        theGui.console.threadPrint("Too many simulations in batch mode. Must be under %i total.\r\n", MAX_SIMULATIONS);
+        theGui.console.tPrint("Too many simulations in batch mode. Must be under {} total.\r\n", MAX_SIMULATIONS);
     }
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
@@ -2220,10 +2221,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
 
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    theGui.console.threadPrint(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("Not enough free GPU memory, sorry.\n"), activeSetPtr[j].memoryError);
                 }
                 else {
-                    theGui.console.threadPrint(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("Warning: device memory error ({}).\n"), activeSetPtr[j].memoryError);
                 }
             }
             if (error) break;
@@ -2234,17 +2235,17 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             error = normalFunction(&activeSetPtr[j]);
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    theGui.console.threadPrint(_T("Not enough free GPU memory, sorry.\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("Not enough free GPU memory, sorry.\n"), activeSetPtr[j].memoryError);
                 }
                 else {
-                    theGui.console.threadPrint(_T("Warning: device memory error (%i).\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("Warning: device memory error ({}).\r\n"), activeSetPtr[j].memoryError);
                 }
             }
             if (error) break;
         }
 
         if (cancellationCalled) {
-            theGui.console.threadPrint(_T("Warning: series cancelled, stopping after %i simulations.\r\n"), j + 1);
+            theGui.console.tPrint(_T("Warning: series cancelled, stopping after {} simulations.\r\n"), j + 1);
             break;
         }
         theGui.requestSliderMove(j);
@@ -2254,13 +2255,14 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     if (secondQueueThread.joinable()) secondQueueThread.join();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error == 13) {
-        theGui.console.threadPrint(
+        theGui.console.tPrint(
             "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
     }
     else {
-        theGui.console.threadPrint(_T("Finished after %8.4lf s. \r\n"), 1e-6 *
+        theGui.console.tPrint(_T("Finished after {:8.4} s. \r\n"), 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
+
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
     deallocateGrids(activeSetPtr, FALSE);
     isRunning = FALSE;
@@ -2285,7 +2287,7 @@ void fittingThread(int pulldownSelection) {
     configureBatchMode(activeSetPtr);
     readFittingString(activeSetPtr);
     if ((*activeSetPtr).Nfitting == 0) {
-        theGui.console.threadPrint("Couldn't interpret fitting command.\n");
+        theGui.console.tPrint("Couldn't interpret fitting command.\n");
         free((*activeSetPtr).statusFlags);
         free((*activeSetPtr).deffTensor);
         free((*activeSetPtr).loadedField1);
@@ -2296,7 +2298,7 @@ void fittingThread(int pulldownSelection) {
     (*activeSetPtr).progressCounter = &progressCounter;
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
-            theGui.console.threadPrint("Could not read reference file!\n");
+            theGui.console.tPrint("Could not read reference file!\n");
             free((*activeSetPtr).statusFlags);
             free((*activeSetPtr).deffTensor);
             free((*activeSetPtr).loadedField1);
@@ -2305,7 +2307,7 @@ void fittingThread(int pulldownSelection) {
         }
     }
 
-    theGui.console.threadPrint("Fitting %i values in mode %i over %i iterations.\r\nRegion of interest contains %lli elements\r\n",
+    theGui.console.tPrint("Fitting {} values in mode {} over {} iterations.\nRegion of interest contains {} elements\n",
         (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingMaxIterations, (*activeSetPtr).fittingROIsize);
 
     int assignedGPU = 0;
@@ -2339,13 +2341,13 @@ void fittingThread(int pulldownSelection) {
     (*activeSetPtr).assignedGPU = assignedGPU;
     theGui.requestPlotUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    theGui.console.threadPrint(_T("Finished fitting after %8.4lf s.\n"), 1e-6 *
+    theGui.console.tPrint(_T("Finished fitting after {:8.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
     setInterfaceValuesToActiveValues();
-    theGui.console.threadPrint("Fitting result:\r\n (index, value)\r\n");
+    theGui.console.tPrint("Fitting result:\n (index, value)\n");
     for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
-        theGui.console.threadPrint("%i,  %lf\r\n", i, (*activeSetPtr).fittingResult[i]);
+        theGui.console.tPrint("{},  {}\n", i, (*activeSetPtr).fittingResult[i]);
     }
     free((*activeSetPtr).statusFlags);
     free((*activeSetPtr).deffTensor);

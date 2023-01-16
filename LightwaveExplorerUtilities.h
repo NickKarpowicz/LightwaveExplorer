@@ -258,7 +258,7 @@ typedef struct deviceParameterSet {
     int Nblock = 0;
 } deviceParameterSet;
 
-int             loadSavedFields(simulationParameterSet* sCPU, char* outputBase);
+int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);

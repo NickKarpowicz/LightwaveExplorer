@@ -447,7 +447,7 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 	return 0;
 }
 
-int loadSavedFields(simulationParameterSet* sCPU, char* outputBase) {
+int loadSavedFields(simulationParameterSet* sCPU, const char* outputBase) {
 	std::string Epath((*sCPU).outputBasePath);
 	Epath.append("_Ext.dat");
 	std::ifstream Efile(Epath, std::ios::binary);
