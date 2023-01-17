@@ -102,6 +102,6 @@ echo "I think I have them all."
 echo "Redirecting dependencies to App folder"
 rehomeSharedLibraries $BIN
 redirectx86LibraryDependencies
-install_name_tool -rpath /usr/local/Cellar/llvm/15.0.6/lib @executable_path/../Resources/lib $BIN
+install_name_tool -rpath /usr/local/Cellar/llvm/15.0.7_1/lib @executable_path/../Resources/lib $BIN
 cp $BIN $APP/Contents/MacOS/
 make clean

@@ -1016,10 +1016,13 @@ int readCrystalDatabase(crystalEntry* db) {
 	uint32_t bufferSize = 1024;
 	char sysPath[1024] = { 0 };
 	_NSGetExecutablePath(sysPath, &bufferSize);
-	int plen = strlen(sysPath);
-	sysPath[plen - 17] = 0;
-	strcat(sysPath, "../Resources/CrystalDatabase.txt");
-	std::ifstream fs(sysPath);
+	std::string macPath(sysPath);
+	size_t posPath=macPath.find_last_of("/");
+	std::string databasePath = macPath.substr(0,posPath).append("/../Resources/CrystalDatabase.txt");
+	std::ifstream fs(databasePath);
+	if (!fs.is_open()) {
+		fs.open("CrystalDatabase.txt");
+	}
 #elif defined __linux__
 	std::ifstream fs("/usr/share/LightwaveExplorer/CrystalDatabase.txt");
 	if (!fs.is_open()) {

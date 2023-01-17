@@ -435,7 +435,9 @@ public:
 		int plen = strlen(sysPath);
 		sysPath[plen - 17] = 0;
 		strcat(sysPath, "../Resources/DefaultValues.ini");
-		readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPath);
+		if(1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPath)){
+            readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
+        }
 #else
 		readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
 #endif
