@@ -1125,7 +1125,7 @@ void createRunFile() {
 static void buttonAddSameCrystal() {
     if (theGui.textBoxes[34].valueDouble() != 0.0) {
         theGui.sequence.cPrint("plasma({},{},{},{},{},{},{},{},{})\n",
-            theGui.pulldowns[4].getValue(), theGui.textBoxes[32].valueDouble(),
+            theGui.pulldowns[3].getValue(), theGui.textBoxes[32].valueDouble(),
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[34].valueDouble(),
             theGui.textBoxes[35].valueDouble(), theGui.textBoxes[36].valueDouble(),
             theGui.textBoxes[37].valueDouble(), theGui.textBoxes[42].valueDouble(),
@@ -1133,7 +1133,7 @@ static void buttonAddSameCrystal() {
     }
     else {
         theGui.sequence.cPrint("nonlinear({},{},{},{},{})\n",
-            theGui.pulldowns[4].getValue(), theGui.textBoxes[32].valueDouble(),
+            theGui.pulldowns[3].getValue(), theGui.textBoxes[32].valueDouble(),
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[42].valueDouble(),
             theGui.textBoxes[43].valueDouble());
     }
@@ -1144,7 +1144,27 @@ static void buttonAddDefault() {
 }
 
 static void buttonAddPulse() {
-    theGui.sequence.cPrint("addPulse(energy, frequency, bandwidth, sgOrder, cep, delay, gdd, tod, phaseMaterial, phaseThickness, beamwaist, x0, z0, beamAngle, beamAngleY, polarization, circularity, materialIndex, theta, phi)\n");
+    theGui.sequence.cPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})\n",
+        theGui.textBoxes[0].valueDouble(),
+        theGui.textBoxes[1].valueDouble(),
+        theGui.textBoxes[2].valueDouble(),
+        theGui.textBoxes[3].valueDouble(),
+        theGui.textBoxes[4].valueDouble(),
+        theGui.textBoxes[5].valueDouble(),
+        theGui.textBoxes[6].valueDouble(),
+        theGui.textBoxes[7].valueDouble(),
+        theGui.textBoxes[8].valueDouble(),
+        theGui.textBoxes[9].valueDouble(),
+        theGui.textBoxes[10].valueDouble(),
+        theGui.textBoxes[11].valueDouble(),
+        theGui.textBoxes[12].valueDouble(),
+        theGui.textBoxes[13].valueDouble(),
+        0.0,
+        theGui.textBoxes[14].valueDouble(),
+        theGui.textBoxes[15].valueDouble(),
+        theGui.pulldowns[3].getValue(),
+        theGui.textBoxes[32].valueDouble(),
+        theGui.textBoxes[33].valueDouble());
 }
 
 static void buttonAddRotation() {
