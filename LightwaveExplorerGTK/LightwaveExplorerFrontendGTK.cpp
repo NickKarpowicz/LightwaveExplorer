@@ -495,7 +495,7 @@ void setInterfaceValuesToActiveValues(){
         theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).spatialWidth);
     }
     else {
-        theGui.textBoxes[i++].overwritePrint("%i;%i", (int)(1e6 * (*activeSetPtr).spatialWidth), (int)(1e6 * (*activeSetPtr).spatialHeight));
+        theGui.textBoxes[i++].overwritePrint("{};{}", (int)(1e6 * (*activeSetPtr).spatialWidth), (int)(1e6 * (*activeSetPtr).spatialHeight));
     }
     theGui.textBoxes[i++].setToDouble(1e6*(*activeSetPtr).rStep);
     theGui.textBoxes[i++].setToDouble(1e15 * (*activeSetPtr).timeSpan);
@@ -658,7 +658,7 @@ void readParametersFromInterface() {
         (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     }
-    //printC(L"(x,y) = %lli, %lli\r\n", (*activeSetPtr).Nspace, (*activeSetPtr).Nspace2);
+
     (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
     (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
