@@ -392,13 +392,11 @@ public:
         crystalDatabasePtr = new crystalEntry[MAX_LOADSTRING]();
         std::string materialString;
         if (crystalDatabasePtr != NULL) {
-            //GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
             readCrystalDatabase(crystalDatabasePtr);
             console.cPrint("Material database has {} entries:\n", (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
                 console.cPrint("{} : {} \n", i, std::string(crystalDatabasePtr[i].crystalNameW));
                 materialString = std::format("{:2}: {}", i, std::string(crystalDatabasePtr[i].crystalNameW));
-                //snprintf(materialString, 128, "%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
                 pulldowns[3].addElement(materialString.c_str());
             }
         }
