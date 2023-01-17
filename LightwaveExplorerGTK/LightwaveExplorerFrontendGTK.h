@@ -314,10 +314,18 @@ public:
     }
 
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
+        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        GtkTextIter start;
+        GtkTextIter stop;
+        gtk_text_buffer_get_start_iter(buf, &start);
+        gtk_text_buffer_get_end_iter(buf, &stop);
+        textBuffer.assign(gtk_text_buffer_get_text(buf, &start, &stop, FALSE));
+        
         std::string s = std::vformat(format, std::make_format_args(args...));
         textBuffer.append(s);
-        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+
         gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
+        
         GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
         gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
     }
