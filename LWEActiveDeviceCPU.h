@@ -1,5 +1,5 @@
 #include "LWEActiveDeviceCommon.cpp"
-#include <fftw3.h>
+#include <fftw3_mkl.h>
 #include <atomic>
 #include <thread>
 #define DeviceToHost 2
@@ -10,11 +10,6 @@
 const int deviceThreads = maxN(1, std::thread::hardware_concurrency()/2);
 #else
 const int deviceThreads = std::thread::hardware_concurrency();
-#endif
-#if defined CPUONLY || NOCUDA
-#ifndef __APPLE__
-#define isnan(x) std::isnan(x)
-#endif
 #endif
 
 #if defined __APPLE__ || defined __linux__
