@@ -465,7 +465,7 @@ class LweWindow {
 public:
     LweWindow() :window(0), grid(0), bigGrid(0), consoleGrid(0), plotGrid(0),
         plotControlsGrid(0), plotControlsSubgrid1(0), plotControlsSubgrid2(0),
-        consoleControlsGrid(0) {}
+        consoleControlsGrid(0), consoleControlsSubgrid1(0), consoleControlsSubgrid2(0) {}
     ~LweWindow() {};
     void init(GtkApplication* appHandle, const char* windowName, int width, int height) {
         window = gtk_application_window_new(appHandle);
