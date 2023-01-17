@@ -347,6 +347,14 @@ public:
 
     }
 
+    void directOverwritePrint(const char* sIn) {
+        std::string s(sIn);
+        textBuffer.assign(s);
+        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
+        GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
+        gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+    }
 
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
         std::string s = std::vformat(format, std::make_format_args(args...));

@@ -512,7 +512,7 @@ void setInterfaceValuesToActiveValues(){
 
     if (std::string((*activeSetPtr).sequenceString).length() > 6) {
         formatSequence((*activeSetPtr).sequenceString, MAX_LOADSTRING);
-        theGui.sequence.overwritePrint((*activeSetPtr).sequenceString);
+        theGui.sequence.directOverwritePrint((*activeSetPtr).sequenceString);
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\r');
         removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\n');
     }
