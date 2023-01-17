@@ -307,46 +307,39 @@ public:
 
 
         int openMPposition = 0;
-        char A[128] = { 0 };
+        std::string A;
 
 
         if (CUDAavailable) {
             pulldowns[7].addElement("CUDA");
             pulldowns[8].addElement("CUDA");
             openMPposition++;
-            memset(&A, 0, sizeof(A));
+            
             for (int i = 1; i < cudaGPUCount; ++i) {
-                snprintf(A, 128, "CUDA %i", i);
-                pulldowns[7].addElement(A);
-                pulldowns[8].addElement(A);
-                memset(&A, 0, sizeof(A));
+                A = std::format("CUDA {}", i);
+                pulldowns[7].addElement(A.c_str());
+                pulldowns[8].addElement(A.c_str());
                 openMPposition++;
             }
         }
         if (SYCLavailable) {
-            snprintf(A, 128, "SYCL");
-            pulldowns[7].addElement(A);
-            pulldowns[8].addElement(A);
-            memset(&A, 0, sizeof(A));
+            A.assign("SYCL");
+            pulldowns[7].addElement(A.c_str());
+            pulldowns[8].addElement(A.c_str());
             openMPposition++;
             if (syclGPUCount > 0) {
-                snprintf(A, 128, "SYCL cpu");
-                pulldowns[7].addElement(A);
-                pulldowns[8].addElement(A);
-                memset(&A, 0, sizeof(A));
+
+                pulldowns[7].addElement("SYCL cpu");
+                pulldowns[8].addElement("SYCL cpu");
                 openMPposition++;
-                snprintf(A, 128, "SYCL gpu");
-                pulldowns[7].addElement(A);
-                pulldowns[8].addElement(A);
-                memset(&A, 0, sizeof(A));
+                pulldowns[7].addElement("SYCL gpu");
+                pulldowns[8].addElement("SYCL gpu");
                 openMPposition++;
             }
         }
+        pulldowns[7].addElement("OpenMP");
+        pulldowns[8].addElement("OpenMP");
 
-        snprintf(A, 128, "OpenMP");
-        pulldowns[7].addElement(A);
-        pulldowns[8].addElement(A);
-        memset(&A, 0, sizeof(A));
         pulldowns[7].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
         pulldowns[8].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);
         textBoxes[52].init(window.parentHandle(6), 4 + 3 * buttonWidth, 0, 1, 1);
@@ -397,16 +390,16 @@ public:
 
         //read the crystal database
         crystalDatabasePtr = new crystalEntry[MAX_LOADSTRING]();
-        char materialString[128] = { 0 };
+        std::string materialString;
         if (crystalDatabasePtr != NULL) {
             //GetCurrentDirectory(MAX_LOADSTRING - 1, programDirectory);
             readCrystalDatabase(crystalDatabasePtr);
             console.cPrint("Material database has {} entries:\n", (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
                 console.cPrint("{} : {} \n", i, std::string(crystalDatabasePtr[i].crystalNameW));
-                memset(materialString, 0, 128 * sizeof(char));
-                snprintf(materialString, 128, "%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
-                pulldowns[3].addElement(materialString);
+                materialString = std::format("{:2}: {}", i, std::string(crystalDatabasePtr[i].crystalNameW));
+                //snprintf(materialString, 128, "%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
+                pulldowns[3].addElement(materialString.c_str());
             }
         }
         pulldowns[3].init(parentHandle, textCol2a, 0, 2 * textWidth, 1);
@@ -2261,7 +2254,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
     }
     else {
-        theGui.console.tPrint(_T("Finished after {:8.4} s. \r\n"), 1e-6 *
+        theGui.console.tPrint(_T("Finished after {:.4} s. \r\n"), 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
 
