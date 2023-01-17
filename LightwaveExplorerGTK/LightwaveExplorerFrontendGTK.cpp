@@ -403,7 +403,7 @@ public:
             readCrystalDatabase(crystalDatabasePtr);
             console.cPrint("Material database has {} entries:\n", (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-                console.cPrint("{:2} : {} \n", i, crystalDatabasePtr[i].crystalNameW);
+                console.cPrint("{} : {} \n", i, std::string(crystalDatabasePtr[i].crystalNameW));
                 memset(materialString, 0, 128 * sizeof(char));
                 snprintf(materialString, 128, "%2.2i: %s", i, crystalDatabasePtr[i].crystalNameW);
                 pulldowns[3].addElement(materialString);
