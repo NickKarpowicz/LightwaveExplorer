@@ -2,6 +2,7 @@
 #include <thread>
 #include <chrono>
 #include <locale>
+#include <fstream>
 #include "../LightwaveExplorerCoreCPU.h"
 
 #ifndef CPUONLY
@@ -1164,7 +1165,7 @@ int LwePlot2d(plotStruct* inputStruct) {
     if ((*s).Npts == 0) return 1;
     size_t iMin = 0;
     size_t iMax = (*s).Npts;
-
+    std::string svgString;
     cairo_t* cr = (*s).cr;
     cairo_font_extents_t fe;
     memset(&fe, 0, sizeof(cairo_font_extents_t));
@@ -1249,7 +1250,7 @@ int LwePlot2d(plotStruct* inputStruct) {
 
     //Tickmark labels
     int NyTicks = 3;
-    char messageBuffer[4096] = { 0 };
+    std::string messageBuffer;
     double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
     double xTicks1[3] = { minX + 0.25 * (maxX - minX), minX + 0.5 * (maxX - minX), minX + 0.75 * (maxX - minX) };
     height = (double)(*s).height;
@@ -1260,11 +1261,11 @@ int LwePlot2d(plotStruct* inputStruct) {
         return (int)(15 * x);
     };
     if ((*s).makeSVG) {
-        snprintf((*s).svgString, (*s).svgBuffer, "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
-        snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<svg width=\"%f\" height=\"%f\" viewBox=\"0 0 %f %f\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
-            width, height, width, height);
-        snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<rect fill=\"#%X%X%X\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"%f\" height=\"%f\"/>\n",
-            SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height);
+        svgString.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
+        svgString.append(std::format("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+            width, height, width, height));
+        svgString.append(std::format("<rect fill=\"#{:x}{:x}{:x}\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
+            SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
     }
     LweColor black(0, 0, 0, 0);
     cairo_rectangle(cr, 0, 0, width, height);
@@ -1282,27 +1283,27 @@ int LwePlot2d(plotStruct* inputStruct) {
     currentColor = (*s).textColor;
     //lambdas for writing components of SVG file
     auto SVGstdline = [&]() {
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke=\"#%X%X%X\" stroke-width=\"%f\"/>\n", x1, y1, x2, y2, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth);
+        if ((*s).makeSVG)svgString.append(std::format("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", x1, y1, x2, y2, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
     };
 
     auto SVGstdcircle = [&]() {
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" stroke=\"none\" fill=\"#%X%X%X\" />\n", x1, y1, radius, currentColor.rHex(), currentColor.gHex(), currentColor.bHex());
+        if ((*s).makeSVG)svgString.append(std::format("<circle cx=\"{}\" cy=\"{}\" r=\"{}\" stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n", x1, y1, radius, currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
     };
 
     auto SVGstartgroup = [&]() {
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<g>\n");
+        if ((*s).makeSVG)svgString.append("<g>\n");
     };
 
     auto SVGendgroup = [&]() {
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "</g>\n");
+        if ((*s).makeSVG)svgString.append("</g>\n");
     };
 
     auto SVGcentertext = [&]() {
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\">\n%s\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), 0.5 * (layoutBottom + layoutTop - te.height), messageBuffer);
+        if ((*s).makeSVG)svgString.append(std::format("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\">\n{}\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), 0.5 * (layoutBottom + layoutTop - te.height), messageBuffer));
     };
 
     auto SVGlefttext = [&]() {
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\">\n%s\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, messageBuffer);
+        if ((*s).makeSVG)svgString.append(std::format("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\">\n{}\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, std::string(messageBuffer)));
     };
 
 
@@ -1320,40 +1321,45 @@ int LwePlot2d(plotStruct* inputStruct) {
     };
     auto cairoLeftText = [&]() {
         currentColor.setCairo(cr);
-        cairo_text_extents(cr, messageBuffer, &te);
+        cairo_text_extents(cr, messageBuffer.c_str(), &te);
         cairo_move_to(cr, layoutLeft, 0.5 * (layoutBottom + layoutTop - te.height));
-        cairo_show_text(cr, messageBuffer);
+        cairo_show_text(cr, messageBuffer.c_str());
+    };
+    auto cairoRightText = [&]() {
+        currentColor.setCairo(cr);
+        cairo_text_extents(cr, messageBuffer.c_str(), &te);
+        cairo_move_to(cr, layoutRight-te.width-3, 0.5 * (layoutBottom + layoutTop - te.height));
+        cairo_show_text(cr, messageBuffer.c_str());
     };
     auto cairoCenterText = [&]() {
         currentColor.setCairo(cr);
-        cairo_text_extents(cr, messageBuffer, &te);
+        cairo_text_extents(cr, messageBuffer.c_str(), &te);
         cairo_move_to(cr, 0.5 * (layoutLeft + layoutRight - te.width), 0.5 * (layoutBottom + layoutTop - te.height));
-        cairo_show_text(cr, messageBuffer);
+        cairo_show_text(cr, messageBuffer.c_str());
     };
 
     auto cairoVerticalText = [&]() {
         currentColor.setCairo(cr);
-        cairo_text_extents(cr, messageBuffer, &te);
+        cairo_text_extents(cr, messageBuffer.c_str(), &te);
         cairo_move_to(cr, 0.0, height);
         cairo_rotate(cr, -3.1415926535897931 / 2);
         cairo_rel_move_to(cr, 0.5 * (layoutLeft + layoutRight - te.width), fontSize);
-        cairo_show_text(cr, messageBuffer);
+        cairo_show_text(cr, messageBuffer.c_str());
         cairo_rotate(cr, 3.1415926535897931 / 2);
     };
 
     currentColor = (*s).textColor;
     //y-tick text labels
     for (int i = 0; i < NyTicks; ++i) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
         if (abs(yTicks1[i] / (*s).unitY) > 10.0 || abs(yTicks1[i] / (*s).unitY) < 0.01) {
-            snprintf(messageBuffer, MAX_LOADSTRING,
-                _T("%1.1e "), yTicks1[i] / (*s).unitY);
+            messageBuffer = std::format("{:.1e}", yTicks1[i] / (*s).unitY);
         }
         else {
-            snprintf(messageBuffer, MAX_LOADSTRING,
-                _T("%1.4f "), yTicks1[i] / (*s).unitY);
+            messageBuffer = std::format("{:4.4f}", yTicks1[i] / (*s).unitY);
 
         }
+        
+
         layoutLeft = axisLabelSpaceX;
         layoutTop = (double)(i * (0.5 * (height)));
         if (i == 2) layoutTop -= 8.0f;
@@ -1362,21 +1368,19 @@ int LwePlot2d(plotStruct* inputStruct) {
         layoutRight = axisSpaceX;
 
 
-        cairoLeftText();
+        cairoRightText();
         SVGlefttext();
     }
     //y-axis name
     if ((*s).yLabel != NULL) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        snprintf(messageBuffer, MAX_LOADSTRING,
-            _T("%s"), (*s).yLabel);
+        messageBuffer = std::string((*s).yLabel);
         layoutLeft = 0;
         layoutTop = height;
         layoutBottom = height + axisSpaceY;
         layoutRight = height;
 
         cairoVerticalText();
-        if ((*s).makeSVG)snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "<text font-family=\"Arial\" font-size=\"%f\" fill=\"#%X%X%X\" x=\"%f\" y=\"%f\" text-anchor=\"middle\" transform=\"translate(%f, %f) rotate(-90)\">\n%s\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), layoutTop + fontSize, -(layoutLeft + layoutRight), height, messageBuffer);
+        if ((*s).makeSVG)svgString.append(std::format("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), layoutTop + fontSize, -(layoutLeft + layoutRight), height, messageBuffer));
     }
 
     //x-axis name
@@ -1385,20 +1389,14 @@ int LwePlot2d(plotStruct* inputStruct) {
         layoutTop = height + 2.8 * fontSize;
         layoutBottom = height + axisSpaceY;
         layoutRight = axisSpaceX + width;
-
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        snprintf(messageBuffer, MAX_LOADSTRING,
-            _T("%s"), (*s).xLabel);
-
+        messageBuffer.assign((*s).xLabel);
         cairoCenterText();
         SVGcentertext();
     }
 
     //x-axis tick labels
     for (int i = 0; i < 3; ++i) {
-        memset(messageBuffer, 0, MAX_LOADSTRING * sizeof(wchar_t));
-        snprintf(messageBuffer, MAX_LOADSTRING,
-            _T("%i"), (int)round(xTicks1[i]));
+        messageBuffer.assign(std::format("{}", (int)round(xTicks1[i])));
         layoutLeft = (double)(axisSpaceX + 0.25 * width * ((size_t)(i)+1) - axisSpaceX / 2);
         layoutTop = height+3;
         layoutBottom = height + axisSpaceY;
@@ -1501,9 +1499,11 @@ int LwePlot2d(plotStruct* inputStruct) {
         currentColor = (*s).color2;
         plotLine((*s).data4);
     }
+
     delete[] xValues;
     if ((*s).makeSVG) {
-        snprintf((*s).svgString + strlen((*s).svgString), (*s).svgBuffer, "</svg>");
+        svgString.append("</svg>");
+        (*s).SVG.assign(svgString);
     }
     return 0;
 }
@@ -1547,15 +1547,10 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         return;
     }
     plotStruct sPlot;
-    char* svgBuf = NULL;
-    char* svgFilename = NULL;
-    FILE* svgFile;
 
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
         theGui.saveSVG--;
-        svgFilename = new char[MAX_LOADSTRING]();
-        svgBuf = new char[1024 * 1024]();
     }
 
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
@@ -1580,19 +1575,16 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
     sPlot.makeSVG = saveSVG; // theGui.saveSVG;
-    sPlot.svgString = svgBuf;
-    sPlot.svgBuffer = 1024 * 1024;
 
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        memset(svgFilename, 0, MAX_LOADSTRING);
+        char* svgFilename = new char[MAX_LOADSTRING]();
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
-        strcat_s(svgFilename, MAX_LOADSTRING, "_Ey.svg");
-        if (fopen_s(&svgFile, svgFilename, "w")) return;
-        fprintf(svgFile, "%s", svgBuf);
-        fclose(svgFile);
-        delete[] svgBuf;
+        std::string svgPath(svgFilename);
+        svgPath.append("_Ey.svg");
+        std::ofstream fs(svgPath);
+        fs.write(sPlot.SVG.c_str(),sPlot.SVG.size());
         delete[] svgFilename;
     }
 }
@@ -1606,15 +1598,10 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         return;
     }
     plotStruct sPlot;
-    char* svgBuf = NULL;
-    char* svgFilename = NULL;
-    FILE* svgFile;
 
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
         theGui.saveSVG--;
-        svgFilename = new char[MAX_LOADSTRING]();
-        svgBuf = new char[1024 * 1024]();
     }
 
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
@@ -1639,19 +1626,17 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.yLabel = "Ex (GV/m)";
     sPlot.unitY = 1e9;
     sPlot.makeSVG = saveSVG;
-    sPlot.svgString = svgBuf;
-    sPlot.svgBuffer = 1024 * 1024;
+
 
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        memset(svgFilename, 0, MAX_LOADSTRING);
+        char* svgFilename = new char[MAX_LOADSTRING]();
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
-        strcat_s(svgFilename, MAX_LOADSTRING, "_Ex.svg");
-        if (fopen_s(&svgFile, svgFilename, "w")) return;
-        fprintf(svgFile, "%s", svgBuf);
-        fclose(svgFile);
-        delete[] svgBuf;
+        std::string svgPath(svgFilename);
+        svgPath.append("_Ex.svg");
+        std::ofstream fs(svgPath);
+        fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
         delete[] svgFilename;
     }
 }
@@ -1665,15 +1650,9 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         return;
     }
     plotStruct sPlot;
-    char* svgBuf = NULL;
-    char* svgFilename = NULL;
-    FILE* svgFile;
-
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
         theGui.saveSVG--;
-        svgFilename = new char[MAX_LOADSTRING]();
-        svgBuf = new char[1024 * 1024]();
     }
     bool logPlot = FALSE;
     if (theGui.checkBoxes[1].isChecked()) {
@@ -1728,19 +1707,16 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
     sPlot.makeSVG = saveSVG;
-    sPlot.svgString = svgBuf;
-    sPlot.svgBuffer = 1024 * 1024;
 
     LwePlot2d(&sPlot);
 
-    if (theGui.saveSVG) {
-        memset(svgFilename, 0, MAX_LOADSTRING);
+    if (saveSVG) {
+        char* svgFilename = new char[MAX_LOADSTRING]();
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
-        strcat_s(svgFilename, MAX_LOADSTRING, "_Sy.svg");
-        if (fopen_s(&svgFile, svgFilename, "w")) return;
-        fprintf(svgFile, "%s", svgBuf);
-        fclose(svgFile);
-        delete[] svgBuf;
+        std::string svgPath(svgFilename);
+        svgPath.append("Sy.svg");
+        std::ofstream fs(svgPath);
+        fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
         delete[] svgFilename;
     }
 }
@@ -1754,14 +1730,10 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         return;
     }
     plotStruct sPlot;
-    char* svgBuf = NULL;
-    char* svgFilename = NULL;
-    FILE* svgFile;
+
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
         theGui.saveSVG--;
-        svgFilename = new char[MAX_LOADSTRING]();
-        svgBuf = new char[1024 * 1024]();
     }
     bool logPlot = FALSE;
     if (theGui.checkBoxes[1].isChecked()) {
@@ -1815,21 +1787,19 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
     sPlot.makeSVG = saveSVG;
-    sPlot.svgString = svgBuf;
-    sPlot.svgBuffer = 1024 * 1024;
+
 
     LwePlot2d(&sPlot);
 
-	if (saveSVG) {
-		memset(svgFilename, 0, MAX_LOADSTRING);
-		theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
-		strcat_s(svgFilename, MAX_LOADSTRING, "_Sx.svg");
-		if (fopen_s(&svgFile, svgFilename, "w")) return;
-		fprintf(svgFile, "%s", svgBuf);
-		fclose(svgFile);
-		delete[] svgBuf;
-		delete[] svgFilename;
-	}
+    if (saveSVG) {
+        char* svgFilename = new char[MAX_LOADSTRING]();
+        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        std::string svgPath(svgFilename);
+        svgPath.append("_Sx.svg");
+        std::ofstream fs(svgPath);
+        fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
+        delete[] svgFilename;
+    }
 }
 
 

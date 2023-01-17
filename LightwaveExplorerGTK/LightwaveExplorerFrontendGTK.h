@@ -67,9 +67,9 @@ typedef struct plotStruct {
     LweColor color2 = LweColor(1, 1, 1, 1);
     LweColor color3 = LweColor(1, 1, 1, 1);
     LweColor color4 = LweColor(1, 1, 1, 1);
-    char* svgString = NULL;
+    std::string SVG;
     bool makeSVG = FALSE;
-    int svgBuffer = 0;
+
 } plotStruct;
 
 typedef struct imagePlotStruct {
