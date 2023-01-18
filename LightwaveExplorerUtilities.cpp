@@ -448,12 +448,12 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 }
 
 int loadSavedFields(simulationParameterSet* sCPU, const char* outputBase) {
-	std::string Epath((*sCPU).outputBasePath);
+	std::string Epath(outputBase);
 	Epath.append("_Ext.dat");
 	std::ifstream Efile(Epath, std::ios::binary);
 	if (Efile.is_open()) Efile.read(reinterpret_cast<char*>((*sCPU).ExtOut), 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2) * sizeof(double));
 
-	std::string Spath((*sCPU).outputBasePath);
+	std::string Spath(outputBase);
 	Spath.append("_spectrum.dat");
 	std::ifstream Sfile(Spath, std::ios::binary);
 	if (Sfile.is_open()) Sfile.read(reinterpret_cast<char*>((*sCPU).totalSpectrum), (*sCPU).Nsims * (*sCPU).Nsims2 * 3 * (*sCPU).Nfreq * sizeof(double));
