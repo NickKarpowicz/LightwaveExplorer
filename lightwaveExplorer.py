@@ -246,11 +246,12 @@ def load(filePath: str, loadFieldArray=True):
         i+=1
         s.Nsims2 = int(readLine(lines[i]))
         i+=1
-    s.Ntime = int(np.round(s.timeSpan/s.tStep))
+    MIN_GRIDDIM=8
+    s.Ntime = int(MIN_GRIDDIM * np.round(s.timeSpan / (MIN_GRIDDIM * s.tStep)))
     s.Nfreq = int(s.Ntime/2 + 1)
-    s.Nspace = int(np.round(s.spatialWidth/s.rStep))
+    s.Nspace = int(MIN_GRIDDIM * np.round(s.spatialWidth / (MIN_GRIDDIM * s.rStep)))
     if s.symmetryType == 2:
-        s.Nspace2 = int(np.round(s.spatialHeight/s.rStep))
+        s.Nspace2 = int(MIN_GRIDDIM * np.round(s.spatialHeight / (MIN_GRIDDIM * s.rStep)))
     else:
         s.Nspace2 = 1
     s.Ngrid = int(s.Ntime*s.Nspace*s.Nspace2)
