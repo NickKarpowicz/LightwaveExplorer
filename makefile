@@ -38,7 +38,7 @@ DPCPPLD=-L${CUDATARGETS}/lib/ -L${CUDATARGETS}/lib/stubs -lcufft -lnvidia-ml -lc
 ARMHOMEBREW=/opt/homebrew
 ARMHOMEBREWXC=/Users/nick/arm-target
 ARMCC=${ARMHOMEBREW}/opt/llvm/bin/clang++
-APPLEFLAGS=-std=c++20 -fexperimental-library -O3 -fopenmp -D CPUONLY -w -Wl,--no_compact_unwind
+APPLEFLAGS=-std=c++20 -fexperimental-library -O3 -fopenmp -D CPUONLY -w -Wl,-no_compact_unwind
 APPLEINCLUDES=-I../dlib -I${HBPATH}/opt/llvm/include -I${HBPATH}/opt/libomp/include -I${HBPATH}/include -I${HBPATH}/include/gtk-4.0 -I${HBPATH}/include/pango-1.0 -I${HBPATH}/include/glib-2.0 -I${HBPATH}/include/cairo -I${HBPATH}/lib/glib-2.0/include -I${HBPATH}/include/fontconfig -I${HBPATH}/include/freetype2 -I${HBPATH}/include/gdk-pixbuf-2.0 -I${HBPATH}/include/harfbuzz -I${HBPATH}/include/graphene-1.0 -I${HBPATH}/lib/graphene-1.0/include
 APPLELDFLAGS=-L${HBPATH}/lib -L${HBPATH}/opt/llvm/lib/c++ -L${HBPATH}/opt/llvm/lib ${HBPATH}/opt/libomp/lib/libomp.a -lc++ -lc++abi -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${HBPATH}/lib/libfftw3.a
 
