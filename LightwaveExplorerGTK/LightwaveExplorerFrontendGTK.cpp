@@ -422,14 +422,15 @@ public:
 		}
 #elif defined __APPLE__
 		uint32_t bufferSize = 1024;
-		char sysPath[1024] = { 0 };
-		_NSGetExecutablePath(sysPath, &bufferSize);
-		int plen = strlen(sysPath);
-		sysPath[plen - 17] = 0;
-		strcat(sysPath, "../Resources/DefaultValues.ini");
-		if(1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPath)){
+		char sysPathBuffer[1024] = { 0 };
+		_NSGetExecutablePath(sysPathBuffer, &bufferSize);
+        std::string sysPathFull(sysPathBuffer);
+        std::string sysPathIni = sysPathFull.substr(0,sysPathFull.find_last_of("/"));
+        sysPathIni.append("/../Resources/DefaultValues.ini");
+		if(1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPathIni.c_str())){
             readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
         }
+
 #else
 		readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
 #endif
@@ -1049,10 +1050,11 @@ void svgCallback() {
 
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     theGui.pathTarget = (size_t)pathTarget;
+#ifdef __APPLE__
+    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
+#else
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_SAVE, "Ok", "Cancel");
-    GtkFileChooser* chooser = GTK_FILE_CHOOSER(fileC);
-    gtk_file_chooser_set_file(chooser, NULL, NULL);
-
+#endif
     g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
 }
@@ -2339,7 +2341,7 @@ void fittingThread(int pulldownSelection) {
     isRunning = FALSE;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv){
     GtkApplication* app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);
