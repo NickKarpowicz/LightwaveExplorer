@@ -486,7 +486,7 @@ std::string getBasename(char* fullPath) {
 int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	std::string outputFile((*sCPU).outputBasePath);
 	outputFile.append(".slurmScript");
-	std::ofstream fs(outputFile);
+	std::ofstream fs(outputFile, std::ios::binary);
 	if (fs.fail()) return 1;
 
 	std::string baseName = getBasename((*sCPU).outputBasePath);
@@ -504,7 +504,7 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 		fs << "#SBATCH --gres=gpu:v100:" << minN(gpuCount, 2) << '\x0A';
 	}
 	if (gpuType == 2) {
-		fs << "#SBATCH --gres=gpu:a100" << minN(gpuCount, 4) << '\x0A';
+		fs << "#SBATCH --gres=gpu:a100:" << minN(gpuCount, 4) << '\x0A';
 		fs << "#SBATCH --cpus-per-task=" << 2 * minN(gpuCount, 4) << '\x0A';
 	}
 	fs << "#SBATCH --mem=" << 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN(1, (*sCPU).Nsims)) / 1048576 << "M\x0A";
@@ -542,7 +542,7 @@ int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabase
 	else {
 		outputPath.append(".txt");
 	}
-	std::ofstream fs(outputPath);
+	std::ofstream fs(outputPath, std::ios::binary);
 	if (fs.fail()) return -1;
 
 	std::string baseName = getBasename((*sCPU).outputBasePath);
