@@ -34,20 +34,9 @@ DPCPPINCLUDES=-I${ONEAPIROOT}/compiler/latest/linux/include -I${ONEAPIROOT}/comp
 DPCPPLD=-L${CUDATARGETS}/lib/ -L${CUDATARGETS}/lib/stubs -lcufft -lnvidia-ml -lcudart /usr/local/lib/libfmt.a -lgomp `pkg-config --libs gtk4` `pkg-config --libs gtk4` ${MKLROOT}/lib/intel64/libmkl_sycl.a -Wl,-export-dynamic -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -L${TBBROOT}/lib/intel64/gcc4.8 -ltbb -lsycl -lOpenCL -lpthread -lm -ldl
 
 #Apple compilation
-
-ARMHOMEBREW=/opt/homebrew
-ARMHOMEBREWXC=/Users/nick/arm-target
 APPLEFLAGS=-std=c++20 -O3 -fopenmp -D CPUONLY -w
 APPLEINCLUDES=-I../dlib -I${HBPATH}/include/fmt -I${HBPATH}/opt/libomp/include -I${HBPATH}/include -I${HBPATH}/include/gtk-4.0 -I${HBPATH}/include/pango-1.0 -I${HBPATH}/include/glib-2.0 -I${HBPATH}/include/cairo -I${HBPATH}/lib/glib-2.0/include -I${HBPATH}/include/fontconfig -I${HBPATH}/include/freetype2 -I${HBPATH}/include/gdk-pixbuf-2.0 -I${HBPATH}/include/harfbuzz -I${HBPATH}/include/graphene-1.0 -I${HBPATH}/lib/graphene-1.0/include
 APPLELDFLAGS=-L${HBPATH}/lib ${HBPATH}/opt/libomp/lib/libomp.a ${HBPATH}/lib/libfmt.a -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${HBPATH}/lib/libfftw3.a
-
-LINUXCLANGFLAGS=-std=c++20 -fexperimental-library -stdlib=libc++ -O3 -fopenmp -D CPUONLY -w
-LINUXCLANGINCLUDES=-I../dlib -I${HBPATH}/opt/llvm/include -I${HBPATH}/opt/libomp/include -I${HBPATH}/include -I${HBPATH}/include/gtk-4.0 -I${HBPATH}/include/pango-1.0 -I${HBPATH}/include/glib-2.0 -I${HBPATH}/include/cairo -I${HBPATH}/lib/glib-2.0/include -I${HBPATH}/include/fontconfig -I${HBPATH}/include/freetype2 -I${HBPATH}/include/gdk-pixbuf-2.0 -I${HBPATH}/include/harfbuzz -I${HBPATH}/include/graphene-1.0 -I${HBPATH}/lib/graphene-1.0/include
-LINUXCLANGLDFLAGS=-L${HBPATH}/lib -L${HBPATH}/opt/llvm/lib/c++ -L${HBPATH}/opt/llvm/lib ${HBPATH}/opt/libomp/lib/libomp.a -lc++ -lc++abi -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${HBPATH}/lib/libfftw3.a
-
-#cross-compile settings for compiling for Arm64 on Intel
-APPLEINCLUDESARMXC=-I../dlib -I${ARMHOMEBREWXC}/opt/llvm/include -I${ARMHOMEBREWXC}/opt/libomp/include -I${ARMHOMEBREWXC}/include -I${ARMHOMEBREWXC}/include/gtk-4.0 -I${ARMHOMEBREWXC}/include/pango-1.0 -I${ARMHOMEBREWXC}/include/glib-2.0 -I${ARMHOMEBREWXC}/include/cairo -I${ARMHOMEBREWXC}/lib/glib-2.0/include -I${ARMHOMEBREWXC}/include/fontconfig -I${ARMHOMEBREWXC}/include/freetype2 -I${ARMHOMEBREWXC}/include/gdk-pixbuf-2.0 -I${ARMHOMEBREWXC}/include/harfbuzz -I${ARMHOMEBREWXC}/include/graphene-1.0 -I${ARMHOMEBREWXC}/lib/graphene-1.0/include
-APPLELDFLAGSARMXC=-L${ARMHOMEBREWXC}/opt/llvm/lib ${ARMHOMEBREWXC}/opt/libomp/lib/libomp.a -L${ARMHOMEBREWXC}/lib -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${ARMHOMEBREWXC}/lib/libfftw3.a
 
 default: clean cuda sycl
 
@@ -81,20 +70,6 @@ cpuonly:
 	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
 
-macARMonIntel:
-	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
-	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
-	cp AppImageCPU/COPYING COPYING
-	${APPLECC} -target arm64-apple-macos12 ${APPLEFLAGS} ${APPLEINCLUDESARMXC} -o LightwaveExplorer_Arm64 ${SOURCES} ${APPLELDFLAGSARMXC}
-	${APPLECC} ${APPLEFLAGS} ${APPLEINCLUDES} -o LightwaveExplorer_x86 ${SOURCES} ${APPLELDFLAGS}
-	lipo -create -output LightwaveExplorer LightwaveExplorer_x86 LightwaveExplorer_Arm64
-	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
-	rm COPYING
-	rm LightwaveExplorerUtilities.h
-	rm LWEActiveDeviceCPU.h
-	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
-	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
-
 mac:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
@@ -123,18 +98,6 @@ cleanmacfail:
 	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
 	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
-
-linuxclangfftw:
-	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
-	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
-	cp AppImageCPU/COPYING COPYING
-	${APPLECC} ${LINUXCLANGFLAGS} ${LINUXCLANGINCLUDES} ${OBJECTS} ${SOURCES} ${LINUXCLANGLDFLAGS}
-	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
-	rm COPYING
-	rm LightwaveExplorerGTK/LightwaveExplorerUtilities.h
-	rm LightwaveExplorerGTK/LWEActiveDeviceCPU.h
-	mv LightwaveExplorerGTK/LightwaveExplorerUtilities.h.bak LightwaveExplorerGTK/LightwaveExplorerUtilities.h
-	mv LightwaveExplorerGTK/LWEActiveDeviceCPU.h.bak LightwaveExplorerGTK/LWEActiveDeviceCPU.h
 
 sycl:
 	${DPCPP} ${DPCPPFLAGS} ${DPCPPINCLUDES} ${INCLUDES} ${DPCPPFILES} -o ${DPCPPOUTPUT} ${DPCPPLD}
