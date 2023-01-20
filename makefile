@@ -13,7 +13,7 @@ SOURCES= LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorer
 OBJECTS=-o LightwaveExplorer
 
 #mac and CPU-only builds compile with fftw instead of mkl
-LDFLAGSF=`pkg-config --libs gtk4` `pkg-config --libs gtk4` /usr/lib/x86_64-linux-gnu/libfftw3.a -lgomp -lpthread -lm -ldl
+LDFLAGSF=`pkg-config --libs gtk4` `pkg-config --libs gtk4` /usr/lib/x86_64-linux-gnu/libfftw3.a /usr/local/lib/libfmt.a -lgomp -lpthread -lm -ldl
 INCLUDESF=`pkg-config --cflags gtk4` -I../dlib
 
 #CUDA settings
@@ -31,7 +31,7 @@ DPCPPFILES=./LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplore
 DPCPPFILESNOCUDA=./LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerUtilities.cpp DlibLibraryComponents/DlibLibraryComponents.cpp LightwaveExplorerCoreCPU.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 DPCPPOUTPUT= LightwaveExplorer
 DPCPPINCLUDES=-I${ONEAPIROOT}/compiler/latest/linux/include -I${ONEAPIROOT}/compiler/latest/linux/include/sycl -I${MKLROOT}/include -I${MKLROOT}/include/fftw -I${ONEAPIROOT}/dpl/latest/linux/include -I../dlib -I./
-DPCPPLD=-L${CUDATARGETS}/lib/ -L${CUDATARGETS}/lib/stubs -lcufft -lnvidia-ml -lcudart -lgomp `pkg-config --libs gtk4` `pkg-config --libs gtk4` ${MKLROOT}/lib/intel64/libmkl_sycl.a -Wl,-export-dynamic -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -L${TBBROOT}/lib/intel64/gcc4.8 -ltbb -lsycl -lOpenCL -lpthread -lm -ldl
+DPCPPLD=-L${CUDATARGETS}/lib/ -L${CUDATARGETS}/lib/stubs -lcufft -lnvidia-ml -lcudart /usr/local/lib/libfmt.a -lgomp `pkg-config --libs gtk4` `pkg-config --libs gtk4` ${MKLROOT}/lib/intel64/libmkl_sycl.a -Wl,-export-dynamic -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -L${TBBROOT}/lib/intel64/gcc4.8 -ltbb -lsycl -lOpenCL -lpthread -lm -ldl
 
 #Apple compilation
 
@@ -52,8 +52,13 @@ APPLELDFLAGSARMXC=-L${ARMHOMEBREWXC}/opt/llvm/lib ${ARMHOMEBREWXC}/opt/libomp/li
 default: clean cuda sycl
 
 cuda: 
+	sed -i'.bak' 's#<format>#<fmt/format.h>#g ; s#std::format#fmt::format#g ; s#std::vformat#fmt::vformat#g ; s#std::make_format_args#fmt::make_format_args#g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
+	sed -i'.bak' 's#<format>#<fmt/format.h>#g ; s#std::format#fmt::format#g ; s#std::vformat#fmt::vformat#g ; s#std::make_format_args#fmt::make_format_args#g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 	${NVCC} ${CUDAARCH} ${CUDAFLAGS} ${CUDAINCLUDES} -Xcompiler "${CUDAHOSTFLAGS} ${INCLUDES}" ${CUDAOUT} ${CUDASOURCE} ${SOURCES} -Xlinker "${CUDALDFLAGS}"
-
+	rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
+	rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
+	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
+	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
 
 #Note that the Mac version and cpuonly versions make use of FFTW3 instead of MKL for the Fourier transforms
 #as such they are released under GPL3 - the temporary codebase from which they are compiled is saved in the
@@ -61,14 +66,20 @@ cuda:
 cpuonly:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
+	sed -i'.bak' 's#<format>#<fmt/format.h>#g ; s#std::format#fmt::format#g ; s#std::vformat#fmt::vformat#g ; s#std::make_format_args#fmt::make_format_args#g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
+	sed -i'.bak' 's#<format>#<fmt/format.h>#g ; s#std::format#fmt::format#g ; s#std::vformat#fmt::vformat#g ; s#std::make_format_args#fmt::make_format_args#g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 	cp AppImageCPU/COPYING COPYING
 	${CC} ${CFLAGS} ${INCLUDESF} ${OBJECTS} ${SOURCES} ${LDFLAGSF}
 	tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
 	rm COPYING
 	rm LightwaveExplorerUtilities.h
 	rm LWEActiveDeviceCPU.h
+	rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
+	rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
 	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
+	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
+	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
 
 macARMonIntel:
 	sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h

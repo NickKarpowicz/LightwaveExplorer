@@ -12,6 +12,9 @@ const int deviceThreads = maxN(1, std::thread::hardware_concurrency()/2);
 const int deviceThreads = std::thread::hardware_concurrency();
 #endif
 
+#ifdef __linux__
+#define isnan std::isnan
+#endif
 #if defined __APPLE__ || defined __linux__
 void atomicAddCPU(double* pulseSum, double pointEnergy) {
 	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
