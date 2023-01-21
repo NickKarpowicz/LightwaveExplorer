@@ -34,7 +34,7 @@ DPCPPINCLUDES=-I${ONEAPIROOT}/compiler/latest/linux/include -I${ONEAPIROOT}/comp
 DPCPPLD=-L${CUDATARGETS}/lib/ -L${CUDATARGETS}/lib/stubs -lcufft -lnvidia-ml -lcudart /usr/local/lib/libfmt.a -lgomp `pkg-config --libs gtk4` `pkg-config --libs gtk4` ${MKLROOT}/lib/intel64/libmkl_sycl.a -Wl,-export-dynamic -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -L${TBBROOT}/lib/intel64/gcc4.8 -ltbb -lsycl -lOpenCL -lpthread -lm -ldl
 
 #Apple compilation
-APPLEFLAGS=-std=c++20 -O3 -fopenmp -D CPUONLY -w
+APPLEFLAGS=-std=c++20 -O3 -fopenmp -D CPUONLY -w -framework Cocoa
 APPLESOURCES= LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp DlibLibraryComponents/DlibLibraryComponents.cpp
 APPLEINCLUDES=-I../dlib -I${HBPATH}/include/fmt -I${HBPATH}/opt/libomp/include -I${HBPATH}/include -I${HBPATH}/include/gtk-4.0 -I${HBPATH}/include/pango-1.0 -I${HBPATH}/include/glib-2.0 -I${HBPATH}/include/cairo -I${HBPATH}/lib/glib-2.0/include -I${HBPATH}/include/fontconfig -I${HBPATH}/include/freetype2 -I${HBPATH}/include/gdk-pixbuf-2.0 -I${HBPATH}/include/harfbuzz -I${HBPATH}/include/graphene-1.0 -I${HBPATH}/lib/graphene-1.0/include
 APPLELDFLAGS=-L${HBPATH}/lib ${HBPATH}/opt/libomp/lib/libomp.a ${HBPATH}/lib/libfmt.a -lpthread -lm -ldl -lgtk-4 -lgio-2.0 -lpangoft2-1.0 -lgdk_pixbuf-2.0 -lcairo -lpango-1.0 -lfreetype -lfontconfig -lgobject-2.0 -lglib-2.0 -lgthread-2.0 ${HBPATH}/lib/libfftw3.a
@@ -85,6 +85,7 @@ mac:
 	rm LWEActiveDeviceCPU.h
 	rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
 	rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
+	rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
 	mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
 	mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
 	mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
