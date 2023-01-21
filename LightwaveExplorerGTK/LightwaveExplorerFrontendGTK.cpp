@@ -1045,16 +1045,14 @@ void svgCallback() {
 
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     theGui.pathTarget = (size_t)pathTarget;
+    //get around bug in GTK4 by opening dialog box directly in cocoa on mac
 #ifdef __APPLE__
-    //GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
     NSString *filePath;
     NSSavePanel *savePanel = [NSSavePanel savePanel];
-
     if ([savePanel runModal] == NSModalResponseOK) {
         filePath = [savePanel URL].path;
+        theGui.filePaths[theGui.pathTarget].overwritePrint("{}", [filePath UTF8String]);
     }
-    std::string cppFilePath = [filePath UTF8String];
-    theGui.filePaths[theGui.pathTarget].overwritePrint("{}", cppFilePath);
     return;
 #else
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_SAVE, "Ok", "Cancel");
