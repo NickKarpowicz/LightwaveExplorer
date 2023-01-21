@@ -1054,13 +1054,14 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
         filePath = [savePanel URL].path;
     }
     std::string cppFilePath = [filePath UTF8String];
-    theGui.filePaths[pathTarget].overwritePrint("{}", cppFilePath);
+    theGui.filePaths[theGui.pathTarget].overwritePrint("{}", cppFilePath);
     return;
 #else
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_SAVE, "Ok", "Cancel");
-#endif
     g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
+#endif
+
 }
 
 void createRunFile() {

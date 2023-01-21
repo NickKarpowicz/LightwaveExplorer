@@ -25,7 +25,6 @@ execute_process(COMMAND sed -i.bak "s/fftw3_mkl.h/fftw3.h/g" ../LightwaveExplore
 execute_process(COMMAND sed -i.bak "s/fftw3_mkl.h/fftw3.h/g" ../LWEActiveDeviceCPU.h)
 execute_process(COMMAND sed -i.bak "s&<format>&<fmt/format.h>&g ; s&std::format&fmt::format&g ; s&std::vformat&fmt::vformat&g ; s&std::make_format_args&fmt::make_format_args&g" ../LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h)
 execute_process(COMMAND sed -i.bak "s&<format>&<fmt/format.h>&g ; s&std::format&fmt::format&g ; s&std::vformat&fmt::vformat&g ; s&std::make_format_args&fmt::make_format_args&g" ../LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp)
-cp ../LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp ../LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
 add_executable(LightwaveExplorer MACOSX_BUNDLE LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp DlibLibraryComponents/DlibLibraryComponents.cpp)
 set_target_properties(LightwaveExplorer  PROPERTIES
     BUNDLE True
