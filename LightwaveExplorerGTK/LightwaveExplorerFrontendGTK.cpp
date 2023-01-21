@@ -19,14 +19,9 @@
 #endif
 #endif
 
-#ifdef _WIN32
-#define preferredStrCpy strncpy_s
-#else
-#define preferredStrCpy strncpy
-#endif
-
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
+#import<Cocoa/Cocoa.h>
 #endif
 
 #define LABELWIDTH 6
@@ -1051,7 +1046,16 @@ void svgCallback() {
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     theGui.pathTarget = (size_t)pathTarget;
 #ifdef __APPLE__
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
+    //GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
+    NSString *filePath;
+    NSSavePanel *savePanel = [NSSavePanel savePanel];
+
+    if ([savePanel runModal] == NSModalResponseOK) {
+        filePath = [savePanel URL].path;
+    }
+    std::string cppFilePath = [filePath UTF8String];
+    theGui.filePaths[pathTarget].overwritePrint("{}", cppFilePath);
+    return;
 #else
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_SAVE, "Ok", "Cancel");
 #endif
