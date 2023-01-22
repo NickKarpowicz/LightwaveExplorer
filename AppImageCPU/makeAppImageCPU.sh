@@ -4,10 +4,10 @@
 APP=AppDir
 
 #Target executable
-BIN=../LightwaveExplorer
+BIN=../build/LightwaveExplorer
 
 cd ..
-make cpuonly
+./buildLinuxCPU.sh
 cd AppImageCPU
 
 #prepare the AppDir structure
@@ -49,7 +49,7 @@ appimage-builder --skip-tests
 #clean
 cd .. 
 cp GPLsource.tar AppImageCPU/
-make clean
+rm -rf build
 cd AppImageCPU
 rm -rf AppDir
 rm -rf appimage-build

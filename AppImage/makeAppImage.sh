@@ -4,10 +4,10 @@
 APP=AppDir
 
 #Target executable
-BIN=../LightwaveExplorer
+BIN=../build/LightwaveExplorer
 
 cd ..
-make
+./buildLinux.sh
 cd AppImage
 
 #prepare the AppDir structure
@@ -94,7 +94,7 @@ appimage-builder --skip-tests
 
 #clean
 cd .. 
-make clean
+rm -rf build
 cd AppImage
 rm -rf AppDir
 rm -rf appimage-build
