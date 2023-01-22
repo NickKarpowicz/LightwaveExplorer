@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.16)
+project(LightwaveExplorer)
+
+set(CMAKE_CXX_COMPILER "icpx")
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK4 REQUIRED gtk4)
+pkg_check_modules(FFTW REQUIRED fftw3)
+
+include_directories(${FFTW_INCLUDE_DIRS})
+link_directories(${FFTW_LIBRARY_DIRS})
+find_package(IntelDPCPP)
+include_directories(${GTK4_INCLUDE_DIRS})
+link_directories(${GTK4_LIBRARY_DIRS})
+find_package(fmt)
+include_directories(../dlib ../LightwaveExplorer /home/nick/intel/oneapi/mkl/latest/include/fftw)
+add_compile_options(-std=c++20 -O3 -fopenmp -fsycl -D NOCUDA -w)
+add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp DlibLibraryComponents/DlibLibraryComponents.cpp)
+target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES} ${FFTW_LIBRARIES})
+target_link_libraries(LightwaveExplorer fmt::fmt)
+target_link_libraries(LightwaveExplorer
+    ${MKLROOT}/lib/intel64/libmkl_sycl.a 
+    -Wl,--start-group 
+    ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a 
+    ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a 
+    ${MKLROOT}/lib/intel64/libmkl_core.a 
+    -Wl,--end-group
+    -liomp5
+    -ltbb
+    -lsycl
+    -lOpenCL
+)
