@@ -141,13 +141,12 @@ To make the GPL-3 one that makes use of FFTW, you can do the above, making sure 
 ---
   ### Compilation on clusters
   
-  A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, entering the following should work:
+  A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, the following command should work:
   ```
-wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/compileCommandLineLWEfromRepos.sh
-chmod +x compileCommandLineLWEfromRepos.sh
-./compileCommandLineLWEfromRepos.sh 
+curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/compileCommandLineLWEfromRepos.sh | tcsh -s
  ```
- 
+ On other clusters you might have to instead dowload the script (e.g. with wget) and change it to suit that system before you run it.
+
  If you have the GUI version installed locally, you can set up your calculation and then generate a SLURM script to run on the cluster (it will tell you what to do).
 
  ---
