@@ -132,15 +132,11 @@ To make the GPL-3 one that makes use of FFTW, you can do the above, making sure 
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   ```
 
-  Next, you'll need the Lightwave Explorer and dlib repositories, and once you have those, run the LWE compile script:
+  Next, run the LWE compile script:
   ```
-  git clone https://github.com/NickKarpowicz/LightwaveExplorer
-  git clone https://github.com/davisking/dlib
-  cd LightwaveExplorer
-  chmod +x makeMacApp.sh
-  ./makeMacApp.sh
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/MacResources/compileMacFromRepos.sh)"
   ```
-  If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer folder. I think if you are on a M1 or M2 based mac, your computer won't allow you to run the resulting executable unless you pay Apple, but I don't have one to try it out.
+  If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer/build folder. I think if you are on a M1 or M2 based mac, your computer won't allow you to run the resulting executable unless you pay Apple, but I don't have one to try it out.
   
 ---
   ### Compilation on clusters
