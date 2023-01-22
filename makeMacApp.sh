@@ -1,23 +1,25 @@
 #!/bin/bash -l
-APP=build/LightwaveExplorer.app
 BIN=LightwaveExplorer
-BINPATH=${APP}/Contents/MacOS/LightwaveExplorer
+APP=build/${BIN}.app
+BINPATH=${APP}/Contents/MacOS/${BIN}
 
-brew install make llvm fftw gtk4 fmt
-
-#detect the local cpu type
+#install the required packages from homebrew
+brew install cmake make llvm fftw gtk4 fmt pkgconfig libomp
 
 #Homebrew libraries location
 LIBS="$(brew --prefix)"
 
-#find-and-replace to use fftw, replace things that don't work on mac
+#find-and-replace to use fftw, replace std::format .etc with fmt::format since clang doesn't have it yet
 sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
 sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
 sed -i'.bak' 's!<format>!<fmt/format.h>!g ; s/std::format/fmt::format/g ; s/std::vformat/fmt::vformat/g ; s/std::make_format_args/fmt::make_format_args/g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
 sed -i'.bak' 's!<format>!<fmt/format.h>!g ; s/std::format/fmt::format/g ; s/std::vformat/fmt::vformat/g ; s/std::make_format_args/fmt::make_format_args/g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
-cp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
+
+#use .mm extension for the interface to use objective-c++; allows direct calls to Cocoa for file dialogs
+mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
 
 #build executable
+rm -rf build
 mkdir build
 cd build
 cmake ..
@@ -31,15 +33,13 @@ rm COPYING
 rm LightwaveExplorerUtilities.h
 rm LWEActiveDeviceCPU.h
 rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
-rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
 mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
 mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
 mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
 
-
-#set up the directory structure of the .app
+#complete the directory structure of the .app
 mkdir $APP/Contents/Resources/
 mkdir $APP/Contents/Resources/lib
 mkdir $APP/Contents/Resources/bin
@@ -89,6 +89,7 @@ copyLibraryDependencies(){
     return $NLIBSD
 }
 
+#apply rehomeSharedLibraries to everything in the bundle's /lib
 redirectLibraryDependencies(){
     NLIBSR=$(ls -1a $APP/Contents/Resources/lib | grep "lib" | wc -l | tr -d '[:blank:]')
     for((k=1; k<=$NLIBSR; k++))
@@ -98,6 +99,7 @@ redirectLibraryDependencies(){
     done
 }
 
+#if the binary has fixed library paths, send them to the bundle /lib
 fixBinPaths(){
     OTOUT=$(otool -l $BINPATH | grep path | grep -v @exec | awk '{print $2}')
     NLIBS=$(echo "$OTOUT" | wc -l)
@@ -110,7 +112,8 @@ fixBinPaths(){
 
 #first dependency pass, direct dependencies of the executable
 copySharedLibraries $BINPATH
-#apply repeatedly until the number of libraries converges
+
+#apply to the copied libraries repeatedly until the number of libraries converges
 echo "Checking  local dependencies"
 LASTCOPY="$(copyLibraryDependencies)"
 echo "$LASTCOPY libraries"
@@ -125,7 +128,7 @@ done
 echo "I think I have them all."
 
 #correct paths of all the files
-echo "Redirecting dependencies to App folder"
+echo "Redirecting dependencies to .app bundle"
 rehomeSharedLibraries $BINPATH
 echo "Fixing intra-library dependencies"
 redirectLibraryDependencies
