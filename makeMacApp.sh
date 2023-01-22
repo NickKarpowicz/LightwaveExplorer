@@ -1,6 +1,7 @@
 #!/bin/bash -l
-APP=LightwaveExplorer.app
+APP=build/LightwaveExplorer.app
 BIN=LightwaveExplorer
+BINPATH=${APP}/Contents/MacOS/LightwaveExplorer
 
 brew install make llvm fftw gtk4 fmt
 
@@ -9,14 +10,36 @@ brew install make llvm fftw gtk4 fmt
 #Homebrew libraries location
 LIBS="$(brew --prefix)"
 
+#find-and-replace to use fftw, replace things that don't work on mac
+sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LightwaveExplorerUtilities.h
+sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h 
+sed -i'.bak' 's!<format>!<fmt/format.h>!g ; s/std::format/fmt::format/g ; s/std::vformat/fmt::vformat/g ; s/std::make_format_args/fmt::make_format_args/g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
+sed -i'.bak' 's!<format>!<fmt/format.h>!g ; s/std::format/fmt::format/g ; s/std::vformat/fmt::vformat/g ; s/std::make_format_args/fmt::make_format_args/g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
+cp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
+
 #build executable
-make mac
+mkdir build
+cd build
+cmake ..
+make
+cd ..
+
+#restore the original source and clean up
+cp AppImageCPU/COPYING COPYING
+tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
+rm COPYING
+rm LightwaveExplorerUtilities.h
+rm LWEActiveDeviceCPU.h
+rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
+rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
+rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
+mv LightwaveExplorerUtilities.h.bak LightwaveExplorerUtilities.h
+mv LWEActiveDeviceCPU.h.bak LWEActiveDeviceCPU.h
+mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
+mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h.bak LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
+
 
 #set up the directory structure of the .app
-rm -rf $APP
-mkdir $APP
-mkdir $APP/Contents/
-mkdir $APP/Contents/MacOS/
 mkdir $APP/Contents/Resources/
 mkdir $APP/Contents/Resources/lib
 mkdir $APP/Contents/Resources/bin
@@ -27,7 +50,6 @@ mkdir $APP/Contents/Resources/share
 cp CrystalDatabase.txt $APP/Contents/Resources
 cp DefaultValues.ini $APP/Contents/Resources
 cp MacResources/AppIcon.icns $APP/Contents/Resources
-cp MacResources/macplistbase.plist $APP/Contents/info.plist
 
 #Functions:
 
@@ -76,8 +98,18 @@ redirectLibraryDependencies(){
     done
 }
 
+fixBinPaths(){
+    OTOUT=$(otool -l $BINPATH | grep path | grep -v @exec | awk '{print $2}')
+    NLIBS=$(echo "$OTOUT" | wc -l)
+    for((i=1; i<=$NLIBS; i++))
+    do
+        CURRENT=$(echo "$OTOUT" | awk -v i=$i 'FNR==i')
+        install_name_tool -rpath "$CURRENT" "@executable_path/../Resources/lib" $BINPATH
+    done
+}
+
 #first dependency pass, direct dependencies of the executable
-copySharedLibraries $BIN
+copySharedLibraries $BINPATH
 #apply repeatedly until the number of libraries converges
 echo "Checking  local dependencies"
 LASTCOPY="$(copyLibraryDependencies)"
@@ -94,10 +126,8 @@ echo "I think I have them all."
 
 #correct paths of all the files
 echo "Redirecting dependencies to App folder"
-rehomeSharedLibraries $BIN
+rehomeSharedLibraries $BINPATH
+echo "Fixing intra-library dependencies"
 redirectLibraryDependencies
-OLDRPATH="$(otool -l $BIN | grep path | grep -v @exec | awk '{print $2}')"
-install_name_tool -rpath "$OLDRPATH" @executable_path/../Resources/lib $BIN
-cp $BIN $APP/Contents/MacOS/
-
-make clean
+echo "Fixing rpath"
+fixBinPaths
