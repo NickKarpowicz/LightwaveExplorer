@@ -9,7 +9,7 @@ mv CMakeListsLinux.txt CMakeLists.txt
 rm -rf build
 mkdir build
 cd build
-cmake -DCMAKE_CXX_COMPILER=icpx -DMKLROOT=/home/nick/intel/oneapi/mkl/2023.0.0 ..
+cmake -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.0/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=75 -DMKLROOT=/home/nick/intel/oneapi/mkl/2023.0.0 ..
 make
 cd ..
 mv CMakeLists.txt CMakeListsLinux.txt
