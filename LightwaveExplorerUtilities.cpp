@@ -492,8 +492,8 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	std::string baseName = getBasename((*sCPU).outputBasePath);
 
 	fs << "#!/bin/bash -l" << '\x0A';
-	fs << "#SBATCH -o ./tjob.out.%%j" << '\x0A';
-	fs << "#SBATCH -e ./tjob.err.%%j" << '\x0A';
+	fs << "#SBATCH -o ./tjob.out.%j" << '\x0A';
+	fs << "#SBATCH -e ./tjob.err.%j" << '\x0A';
 	fs << "#SBATCH -D ./" << '\x0A';
 	fs << "#SBATCH -J lightwave" << '\x0A';
 	fs << "#SBATCH --constraint=\"gpu\"" << '\x0A';

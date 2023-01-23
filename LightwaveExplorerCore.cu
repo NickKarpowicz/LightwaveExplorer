@@ -2607,7 +2607,7 @@ int mainX(int argc, mainArgumentX){
 	}
 	printf("Read %i crystal database entries:\n", (*crystalDatabasePtr).numberOfEntries);
 	for (j = 0; j < (*crystalDatabasePtr).numberOfEntries; ++j) {
-		printf("Material %i name: %s", j, crystalDatabasePtr[j].crystalNameW);
+		printf("Material %i name: %s\n", j, crystalDatabasePtr[j].crystalNameW);
 	}
 
 	// read from settings file

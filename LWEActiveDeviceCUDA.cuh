@@ -104,6 +104,7 @@ public:
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
+		cudaSetDevice((*sCPU).assignedGPU);
 		cudaStreamCreate(&stream);
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
 		memoryStatus = allocateSet(sCPU, s);
