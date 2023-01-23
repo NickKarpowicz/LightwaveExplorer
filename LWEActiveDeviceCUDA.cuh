@@ -39,8 +39,8 @@ int hardwareCheckCUDA(int* CUDAdeviceCount) {
 		for (int i = 0; i < *CUDAdeviceCount; ++i) {
 			cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
 			printf("%s\r\n", activeCUDADeviceProp.name);
-			printf(" Memory: %lli MB; Multiprocessors: %i\n",
-				activeCUDADeviceProp.totalGlobalMem / (1024 * 1024), activeCUDADeviceProp.multiProcessorCount);
+			printf(" Memory: %i MB; Multiprocessors: %i\n",
+				(int)(activeCUDADeviceProp.totalGlobalMem / (1024 * 1024)), activeCUDADeviceProp.multiProcessorCount);
 		}
 	}
 	else {

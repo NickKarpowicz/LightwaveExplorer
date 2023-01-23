@@ -38,6 +38,7 @@ include/
 
 # Execucable folder
 Executable/
+build/
 AppImage/AppDir/
 AppImage/appimage-build/
 AppImageCPU/AppDir/
