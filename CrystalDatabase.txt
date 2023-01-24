@@ -419,7 +419,7 @@ Nonlinear reference frequencies:
 0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
-LiNbO3, 5 percent MgO doped
+LiNbO3, 5% MgO
 Type:
 1
 Sellmeier equation:
