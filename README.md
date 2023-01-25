@@ -134,7 +134,7 @@ To make the GPL-3 one that makes use of FFTW, you can do the above, making sure 
 
   Next, run the LWE compile script:
   ```
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/MacResources/compileMacFromRepos.sh)"
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/compileMacFromRepos.sh)"
   ```
   If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer/build folder. I think if you are on a M1 or M2 based mac, your computer won't allow you to run the resulting executable unless you pay Apple, but I don't have one to try it out.
   
@@ -143,7 +143,7 @@ To make the GPL-3 one that makes use of FFTW, you can do the above, making sure 
   
   A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, the following command should work:
   ```
-curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/compileCommandLineLWEfromRepos.sh | tcsh -s
+curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResouces/compileCommandLineLWEfromRepos.sh | tcsh -s
  ```
  On other clusters you might have to instead dowload the script (e.g. with wget) and change it to suit that system before you run it.
 

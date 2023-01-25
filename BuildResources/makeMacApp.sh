@@ -25,6 +25,7 @@ mkdir build
 cd build
 cmake ..
 make
+rm -f ../CMakeLists.txt
 cd ..
 
 #restore the original source and clean up
