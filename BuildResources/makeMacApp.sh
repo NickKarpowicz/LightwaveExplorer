@@ -19,6 +19,7 @@ sed -i'.bak' 's!<format>!<fmt/format.h>!g ; s/std::format/fmt::format/g ; s/std:
 mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
 
 #build executable
+cp BuildResources/CMakeListsMac.txt CMakeLists.txt
 rm -rf build
 mkdir build
 cd build
@@ -27,8 +28,8 @@ make
 cd ..
 
 #restore the original source and clean up
-cp AppImageCPU/COPYING COPYING
-tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
+cp BuildResources/AppImage/AppImageCPU/COPYING COPYING
+tar cf GPLsource.tar COPYING *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* BuildResources/macplistbase.plist BuildResources/CMakeListsMac.txt BuildResources/AppIcon.icns
 rm COPYING
 rm LightwaveExplorerUtilities.h
 rm LWEActiveDeviceCPU.h
@@ -49,7 +50,7 @@ mkdir $APP/Contents/Resources/share
 #copy in the databases and icons
 cp CrystalDatabase.txt $APP/Contents/Resources
 cp DefaultValues.ini $APP/Contents/Resources
-cp MacResources/AppIcon.icns $APP/Contents/Resources
+cp BuildResources/AppIcon.icns $APP/Contents/Resources
 
 #Functions:
 
