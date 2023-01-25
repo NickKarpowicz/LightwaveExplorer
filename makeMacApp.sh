@@ -4,7 +4,7 @@ APP=build/${BIN}.app
 BINPATH=${APP}/Contents/MacOS/${BIN}
 
 #install the required packages from homebrew
-brew install cmake make llvm fftw gtk4 fmt pkgconfig libomp
+brew install --quiet cmake make llvm fftw gtk4 fmt pkgconfig libomp
 
 #Homebrew libraries location
 LIBS="$(brew --prefix)"
