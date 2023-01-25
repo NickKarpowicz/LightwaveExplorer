@@ -3,7 +3,7 @@
 <p style="text-align: center;">Nick Karpowicz</p>
 <p style="text-align: center;">Max Planck Institute of Quantum optics</p>
 
-<p style="text-align: center;"><img src="/AppImage/ico512.png" width="256" height="256"></p>
+<p style="text-align: center;"><img src="BuildResources/AppImage/ico512.png" width="256" height="256"></p>
 
 <p style="text-align: center;">(icon made by Stable Diffusion)</p>
 
