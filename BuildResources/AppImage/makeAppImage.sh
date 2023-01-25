@@ -4,11 +4,12 @@
 APP=AppDir
 
 #Target executable
-BIN=../build/LightwaveExplorer
+BIN=../../build/LightwaveExplorer
 
 cd ..
-./buildLinux.sh
-cd AppImage
+cd ..
+./BuildResources/buildLinux.sh
+cd BuildResources/AppImage
 
 #prepare the AppDir structure
 rm -rf appimage-build
@@ -93,9 +94,10 @@ echo "Categories=Utility" >> $APP/io.github.nickkarpowicz.LightwaveExplorer.desk
 appimage-builder --skip-tests
 
 #clean
-cd .. 
+cd ..
+cd ..
 rm -rf build
-cd AppImage
+cd BuildResources/AppImage
 rm -rf AppDir
 rm -rf appimage-build
 

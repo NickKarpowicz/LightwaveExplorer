@@ -4,11 +4,13 @@
 APP=AppDir
 
 #Target executable
-BIN=../build/LightwaveExplorer
+BIN=../../../build/LightwaveExplorer
 
 cd ..
-./buildLinuxCPU.sh
-cd AppImageCPU
+cd ..
+cd ..
+./BuildResources/buildLinuxCPU.sh
+cd BuildResources/AppImage/AppImageCPU
 
 #prepare the AppDir structure
 rm -rf appimage-build
@@ -48,9 +50,11 @@ appimage-builder --skip-tests
 
 #clean
 cd .. 
-cp GPLsource.tar AppImageCPU/
+cd ..
+cd ..
+cp GPLsource.tar BuildResources/AppImage/AppImageCPU/
 rm -rf build
-cd AppImageCPU
+cd BuildResources/AppImage/AppImageCPU
 rm -rf AppDir
 rm -rf appimage-build
 

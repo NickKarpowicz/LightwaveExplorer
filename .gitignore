@@ -419,3 +419,5 @@ AppImage/LightwaveExplorer.AppImage
 AppImageCPU/GPLsource.tar
 GPLsource.tar
 LightwaveExplorer.app.zip
+BuildResources/AppImage/AppImageCPU/LightwaveExplorer-latest-x86_64.AppImage
+BuildResources/AppImage/LightwaveExplorer-latest-x86_64.AppImage
