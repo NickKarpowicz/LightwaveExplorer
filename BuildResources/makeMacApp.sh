@@ -20,9 +20,11 @@ cmake ..
 make
 cd ..
 
+mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
+
 #restore the original source and clean up
 cp BuildResources/AppImage/AppImageCPU/COPYING COPYING
-tar cf GPLsource.tar COPYING *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* BuildResources/macplistbase.plist BuildResources/CMakeListsMac.txt BuildResources/AppIcon.icns
+tar cf GPLsource.tar COPYING *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* BuildResources/macplistbase.plist CMakeLists.txt BuildResources/AppIcon.icns
 rm COPYING
 
 #complete the directory structure of the .app
