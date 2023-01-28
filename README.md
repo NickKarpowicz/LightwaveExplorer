@@ -109,9 +109,11 @@ A native version for the new Arm-based Macs is technically possible (and has bee
   cmake -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.0/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
   make
   ```
-  You should now have an executable file named LightwaveExplorer in the build folder.
+  (Note: I have the full path to the nvcc compiler there because my distro only has ancient versions of CUDA in apt, so I installed it manually. You'll have to change it to wherever CUDA is installed on your system, or if you can use the version of nvcc on your path (lucky you), just to "nvcc".)
+  
+  If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder.
 
-  You can build the GPL v3.0 version, which only runs on CPU and requires the FFTW library to be installed (e.g. sudo apt get fftw3). This version does _not_ require CUDA or OneAPI to be installed, because it doesn't include them. To do this, enter:
+  You can alternatively build the GPL v3.0 version, which only runs on CPU and requires the FFTW library to be installed (e.g. sudo apt get fftw3). This version does _not_ require CUDA or OneAPI to be installed, because it doesn't include them. To do this, enter:
 
   ```
   git clone https://github.com/NickKarpowicz/LightwaveExplorer
