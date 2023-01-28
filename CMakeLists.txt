@@ -1,0 +1,127 @@
+if(UNIX AND NOT APPLE)
+    if(DEFINED ONEAPI_ROOT)
+        set(CMAKE_CXX_COMPILER "icpx")
+        cmake_minimum_required(VERSION 3.23.0)
+        set(SYCL_INCLUDE_DIR "${ONEAPI_ROOT}/compiler/latest/linux/include/sycl")
+        set(SYCL_LIBRARY_DIR "${ONEAPI_ROOT}/compiler/latest/linux/lib")
+        set(CMAKE_CUDA_COMPILER "/usr/local/cuda-12.0/bin/nvcc")
+        set(CMAKE_CUDA_ARCHITECTURES 75)
+        set(MKLROOT "${ONEAPI_ROOT}/mkl/latest")
+        
+        project(LightwaveExplorer LANGUAGES CXX CUDA)
+        include_directories(../dlib ../LightwaveExplorer ${MKLROOT}/include/fftw)
+        find_package(CUDA REQUIRED)
+        find_package(CUDAToolkit)
+
+        set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode=arch=compute_75,code=\"sm_75,compute_75\" -O3 -ccbin g++ -D NOCUDAMAIN)
+        cuda_compile(LightwaveExplorerCudaObjects LightwaveExplorerCore.cu)
+        include_directories(${CUDA_INCLUDE_DIRS})
+        link_directories(${CUDA_LIBRARY_DIRS})
+        link_directories(${CUDATookit_LIBRARY_DIRS})
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(GTK4 gtk4)
+
+        find_package(IntelDPCPP)
+        pkg_check_modules(LIOMP5 openmp)
+        link_directories(${LIOMP5_LIBRARY_DIRS})
+        pkg_check_modules(TBB tbb)
+        link_directories(${TBB_LIBRARY_DIRS})
+        link_directories(${SYCL_LIBRARY_DIR})
+        include_directories(${GTK4_INCLUDE_DIRS})
+        link_directories(${GTK4_LIBRARY_DIRS})
+        find_package(fmt)
+
+        add_compile_options(-std=c++20 -O3 -fopenmp -fsycl -w)
+        add_executable(LightwaveExplorer ${LightwaveExplorerCudaObjects} LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp DlibLibraryComponents/DlibLibraryComponents.cpp)
+        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES} ${CUDA_LIBRARIES} ${CUDAToolkit_LIBRARIES})
+        target_link_libraries(LightwaveExplorer fmt::fmt)
+        target_link_libraries(LightwaveExplorer -lcufft -lnvidia-ml)
+        target_link_libraries(LightwaveExplorer
+            ${MKLROOT}/lib/intel64/libmkl_sycl.a 
+            -Wl,--start-group 
+            ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a 
+            ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a 
+            ${MKLROOT}/lib/intel64/libmkl_core.a 
+            -Wl,--end-group
+            -lsycl
+            -lOpenCL
+        )
+        target_link_libraries(LightwaveExplorer ${LIOMP5_LIBRARIES})
+        target_link_libraries(LightwaveExplorer ${TBB_LIBRARIES})
+
+
+        install(TARGETS LightwaveExplorer)
+    else()
+        cmake_minimum_required(VERSION 3.16)
+        project(LightwaveExplorer)
+
+        set(CMAKE_CXX_COMPILER "g++")
+
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(GTK4 REQUIRED gtk4)
+        pkg_check_modules(FFTW fftw3)
+
+        include_directories(${FFTW_INCLUDE_DIRS})
+        link_directories(${FFTW_LIBRARY_DIRS})
+
+        include_directories(${GTK4_INCLUDE_DIRS})
+        link_directories(${GTK4_LIBRARY_DIRS})
+        find_package(fmt)
+        find_package(OpenMP)
+        execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
+        include_directories(../dlib)
+        add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -w)
+        add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp DlibLibraryComponents/DlibLibraryComponents.cpp)
+        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer OpenMP::OpenMP_CXX)
+        target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
+        target_link_libraries(LightwaveExplorer fmt::fmt)
+
+        install(TARGETS LightwaveExplorer)
+    endif()
+endif()
+
+if(APPLE)
+    cmake_minimum_required(VERSION 3.16)
+    project(LightwaveExplorer)
+    execute_process(COMMAND brew --prefix OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE BREW_PREFIX)
+    list(APPEND CMAKE_MODULE_PATH "${BREW_PREFIX}/share/cmake/Modules")
+    execute_process(COMMAND brew --prefix llvm OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE LLVM_PREFIX)
+    set(CMAKE_CXX_COMPILER "${LLVM_PREFIX}/bin/clang++")
+    set(CMAKE_C_COMPILER "${LLVM_PREFIX}/bin/clang")
+
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK4 REQUIRED gtk4)
+    pkg_check_modules(FFTW REQUIRED fftw3)
+    pkg_check_modules(FMT REQUIRED fmt)
+
+    include_directories(${FFTW_INCLUDE_DIRS})
+    link_directories(${FFTW_LIBRARY_DIRS})
+
+    include_directories(${GTK4_INCLUDE_DIRS})
+    link_directories(${GTK4_LIBRARY_DIRS})
+    include_directories(${FMT_INCLUDE_DIRS})
+    link_directories(${FMT_LIBRARY_DIRS})
+
+    if(APPLE)
+        find_library(OpenMP_LIBRARY NAMES libomp.a HINTS ${BREW_PREFIX}/opt/libomp/lib/)
+    else()
+        find_package(OpenMP)
+    endif()
+
+    include_directories(../dlib)
+    add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -w)
+    add_executable(LightwaveExplorer MACOSX_BUNDLE LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp DlibLibraryComponents/DlibLibraryComponents.cpp)
+    set_target_properties(LightwaveExplorer  PROPERTIES
+        BUNDLE True
+        MACOSX_BUNDLE_BUNDLE_NAME LightwaveExplorer
+        MACOSX_BUNDLE_VERSION "0.1"
+        MACOSX_BUNDLE_VERSION_STRING "0.1"
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/BuildResources/macplistbase.plist
+        MACOSX_BUNDLE_ICON_FILE ${CMAKE_SOURCE_DIR}/BuildResources/AppIcon.icns
+    )
+    target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES} ${FFTW_LIBRARIES} ${FMT_LIBRARIES})
+    if(APPLE)
+        target_link_libraries(LightwaveExplorer ${OpenMP_LIBRARY} "-framework Cocoa")
+    endif()
+endif()

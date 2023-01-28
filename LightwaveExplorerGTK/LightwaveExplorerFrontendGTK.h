@@ -1,12 +1,23 @@
 #pragma once
 #include <sstream>
 #include <complex>
-#include <format>
 #include "../LightwaveExplorerUtilities.h"
 #undef __noinline__
 #include <gtk/gtk.h>
 
 #define _T(x) x
+
+#if defined __linux__ || defined __APPLE__
+#include<fmt/format.h>
+#define Sformat fmt::format
+#define Svformat fmt::vformat
+#define Smake_format_args fmt::make_format_args
+#else
+#include <format>
+#define Sformat std::format
+#define Svformat std::vformat
+#define Smake_format_args std::make_format_args
+#endif
 
 class LweColor {
 public:
@@ -257,12 +268,12 @@ public:
     }
 
     void setToDouble(double in) {
-        std::string s = std::format(std::string_view("{:g}"), in);
+        std::string s = Sformat(std::string_view("{:g}"), in);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
-        std::string s = std::vformat(format, std::make_format_args(args...));
+        std::string s = Svformat(format, Smake_format_args(args...));
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
@@ -321,7 +332,7 @@ public:
         gtk_text_buffer_get_end_iter(buf, &stop);
         textBuffer.assign(gtk_text_buffer_get_text(buf, &start, &stop, FALSE));
         
-        std::string s = std::vformat(format, std::make_format_args(args...));
+        std::string s = Svformat(format, Smake_format_args(args...));
         textBuffer.append(s);
 
         gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
@@ -331,7 +342,7 @@ public:
     }
 
     template<typename... Args> void tPrint(std::string_view format, Args&&... args) {
-        std::string s = std::vformat(format, std::make_format_args(args...));
+        std::string s = Svformat(format, Smake_format_args(args...));
         textBuffer.append(s);
         hasNewText = TRUE;
     }
@@ -357,7 +368,7 @@ public:
     }
 
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
-        std::string s = std::vformat(format, std::make_format_args(args...));
+        std::string s = Svformat(format, Smake_format_args(args...));
         textBuffer.assign(s);
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());

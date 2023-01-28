@@ -1,5 +1,9 @@
 #include "LWEActiveDeviceCommon.cpp"
+#ifdef CPUONLY
+#include <fftw3.h>
+#else
 #include <fftw3_mkl.h>
+#endif
 #include <atomic>
 #include <thread>
 #define DeviceToHost 2

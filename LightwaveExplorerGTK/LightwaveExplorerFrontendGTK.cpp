@@ -312,7 +312,7 @@ public:
             openMPposition++;
             
             for (int i = 1; i < cudaGPUCount; ++i) {
-                A = std::format("CUDA {}", i);
+                A = Sformat("CUDA {}", i);
                 pulldowns[7].addElement(A.c_str());
                 pulldowns[8].addElement(A.c_str());
                 openMPposition++;
@@ -392,7 +392,7 @@ public:
             console.cPrint("Material database has {} entries:\n", (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
                 console.cPrint("{} : {} \n", i, std::string(crystalDatabasePtr[i].crystalNameW));
-                materialString = std::format("{:2}: {}", i, std::string(crystalDatabasePtr[i].crystalNameW));
+                materialString = Sformat("{:2}: {}", i, std::string(crystalDatabasePtr[i].crystalNameW));
                 pulldowns[3].addElement(materialString.c_str());
             }
         }
@@ -1287,9 +1287,9 @@ int LwePlot2d(plotStruct* inputStruct) {
     };
     if ((*s).makeSVG) {
         svgString.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
-        svgString.append(std::format("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+        svgString.append(Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
             width, height, width, height));
-        svgString.append(std::format("<rect fill=\"#{:x}{:x}{:x}\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
+        svgString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
             SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
     }
     LweColor black(0, 0, 0, 0);
@@ -1308,11 +1308,11 @@ int LwePlot2d(plotStruct* inputStruct) {
     currentColor = (*s).textColor;
     //lambdas for writing components of SVG file
     auto SVGstdline = [&]() {
-        if ((*s).makeSVG)svgString.append(std::format("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", x1, y1, x2, y2, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
+        if ((*s).makeSVG)svgString.append(Sformat("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", x1, y1, x2, y2, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
     };
 
     auto SVGstdcircle = [&]() {
-        if ((*s).makeSVG)svgString.append(std::format("<circle cx=\"{}\" cy=\"{}\" r=\"{}\" stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n", x1, y1, radius, currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
+        if ((*s).makeSVG)svgString.append(Sformat("<circle cx=\"{}\" cy=\"{}\" r=\"{}\" stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n", x1, y1, radius, currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
     };
 
     auto SVGstartgroup = [&]() {
@@ -1324,11 +1324,11 @@ int LwePlot2d(plotStruct* inputStruct) {
     };
 
     auto SVGcentertext = [&]() {
-        if ((*s).makeSVG)svgString.append(std::format("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\">\n{}\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), 0.5 * (layoutBottom + layoutTop - te.height), messageBuffer));
+        if ((*s).makeSVG)svgString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\">\n{}\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), 0.5 * (layoutBottom + layoutTop - te.height), messageBuffer));
     };
 
     auto SVGlefttext = [&]() {
-        if ((*s).makeSVG)svgString.append(std::format("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\">\n{}\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, std::string(messageBuffer)));
+        if ((*s).makeSVG)svgString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\">\n{}\n</text>\n", fontSize-1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, std::string(messageBuffer)));
     };
 
 
@@ -1377,10 +1377,10 @@ int LwePlot2d(plotStruct* inputStruct) {
     //y-tick text labels
     for (int i = 0; i < NyTicks; ++i) {
         if (abs(yTicks1[i] / (*s).unitY) > 10.0 || abs(yTicks1[i] / (*s).unitY) < 0.01) {
-            messageBuffer = std::format("{:.1e}", yTicks1[i] / (*s).unitY);
+            messageBuffer = Sformat("{:.1e}", yTicks1[i] / (*s).unitY);
         }
         else {
-            messageBuffer = std::format("{:4.4f}", yTicks1[i] / (*s).unitY);
+            messageBuffer = Sformat("{:4.4f}", yTicks1[i] / (*s).unitY);
 
         }
         
@@ -1405,7 +1405,7 @@ int LwePlot2d(plotStruct* inputStruct) {
         layoutRight = height;
 
         cairoVerticalText();
-        if ((*s).makeSVG)svgString.append(std::format("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), layoutTop + fontSize, -(layoutLeft + layoutRight), height, messageBuffer));
+        if ((*s).makeSVG)svgString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), layoutTop + fontSize, -(layoutLeft + layoutRight), height, messageBuffer));
     }
 
     //x-axis name
@@ -1421,7 +1421,7 @@ int LwePlot2d(plotStruct* inputStruct) {
 
     //x-axis tick labels
     for (int i = 0; i < 3; ++i) {
-        messageBuffer.assign(std::format("{}", (int)round(xTicks1[i])));
+        messageBuffer.assign(Sformat("{}", (int)round(xTicks1[i])));
         layoutLeft = (double)(axisSpaceX + 0.25 * width * ((size_t)(i)+1) - axisSpaceX / 2);
         layoutTop = height+3;
         layoutBottom = height + axisSpaceY;

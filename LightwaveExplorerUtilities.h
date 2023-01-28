@@ -13,6 +13,10 @@
 #define deviceComplex oneapi::dpl::complex<double>
 #define deviceLib oneapi::dpl
 #include <CL/sycl.hpp>
+#elif defined CPUONLY
+#include <fftw3.h>
+#define deviceComplex std::complex<double>
+#define deviceLib std
 #else
 #include <fftw3_mkl.h>
 #define deviceComplex std::complex<double>

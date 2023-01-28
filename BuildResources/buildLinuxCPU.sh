@@ -6,20 +6,22 @@ sed -i'.bak' 's/fftw3_mkl.h/fftw3.h/g' LWEActiveDeviceCPU.h
 sed -i'.bak' 's!<format>!<fmt/format.h>!g ; s/std::format/fmt::format/g ; s/std::vformat/fmt::vformat/g ; s/std::make_format_args/fmt::make_format_args/g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
 sed -i'.bak' 's!<format>!<fmt/format.h>!g ; s/std::format/fmt::format/g ; s/std::vformat/fmt::vformat/g ; s/std::make_format_args/fmt::make_format_args/g' LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 
-cp BuildResources/CMakeListsLinuxCPU.txt CMakeLists.txt
 #build executable
 rm -rf build
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_INSTALL_PREFIX=AppDir/usr ..
 make
 cd ..
-rm CMakeLists.txt
+
 
 #restore the original source and clean up
-cp AppImageCPU/COPYING COPYING
-tar cf GPLsource.tar COPYING makefile *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* MacResources/*
+cp BuildResources/AppImage/AppImageCPU/COPYING COPYING
+tar cf GPLsource.tar COPYING CMakeLists.txt *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/*
+mv GPLsource.tar build/
 rm COPYING
+
+
 rm LightwaveExplorerUtilities.h
 rm LWEActiveDeviceCPU.h
 rm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.h
