@@ -48,7 +48,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
   The appimage should be in the same directory as the files CrystalDatabase.txt and DefaultValues.ini - you can also put them into /usr/share/LightwaveExplorer - I can make other options possible, not sure where the modern Linux user prefers.
 
-  There is also a subfolder named CPU_only. This contains an appimage for a version released under the terms of the GNU Public License v3. This makes use of the FFTW library for performing Fourier transforms, instead of NVIDIA cuFFT or Intel MKL as used in the other version. If you are running it on an AMD CPU, this may give you a significant speedup (or if you perfer to only use GPL software, it's an option).
+  There is also a subfolder named CPUonly. This contains an appimage for a version released under the terms of the GNU Public License v3. This makes use of the FFTW library for performing Fourier transforms, instead of NVIDIA cuFFT or Intel MKL as used in the other version. If you are running it on an AMD CPU, this may give you a significant speedup (or if you perfer to only use GPL software, it's an option).
 
 ---
 
@@ -79,51 +79,50 @@ A native version for the new Arm-based Macs is technically possible (and has bee
   ---
 
 ### Compiling the GUI app on Linux
-  The process to get it compiled on Linux is a bit more involved at the moment, so this is just for the adventurous. 
 
   First, you'll need to install some stuff.
 
   - [GTK 4](https://www.gtk.org/docs/installations/linux/) - on my distro, I could just do: sudo apt install libgtk-4-1 libgtk-4-dev
-  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
-  - [NVIDIA CUDA (optional)](https://developer.nvidia.com/cuda-downloads)
+  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) if building the full version (not required for GPL 3.0 version)
+  - [NVIDIA CUDA](https://developer.nvidia.com/cuda-downloads) if building the full version (not required for GPL 3.0 version)
+  - [fmt](https://github.com/fmtlib/fmt) - I had to build this from source on linux since the one installed from repos wasn't compiled with fPIC. When compiling from the repo, use "cmake -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE ..." instead of "cmake ..". You only need this because g++ and clang++ don't have std::format yet (although they will soon-ish).
 
   You'll also need your basic compilation stuff, which I assume you already installed at some point (e.g. sudo apt install build-essential git g++).
 
-  Check where oneAPI is; it will either be in /opt as in the code block below, or might be in /home/yourusername.
+  Now that you have everything, in order to build the full version, first you have to set the OneAPI environment variables, typically with:
+  ```
+  . ~/intel/oneapi/setvars.sh
+  ```
+  or
+  ```
+  . /opt/intel/oneapi/setvars.sh
+  ```
+  depending on where it was installed on your system.
 
-  Once those are installed, cross your fingers and enter this in the terminal with your remaining hand:
+  Then, build the executable with:
+  ```
+  git clone https://github.com/NickKarpowicz/LightwaveExplorer
+  git clone https://github.com/davisking/dlib
+  cd LightwaveExplorer
+  mkdir build
+  cd build
+  cmake -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.0/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
+  make
+  ```
+  You should now have an executable file named LightwaveExplorer in the build folder.
+
+  You can build the GPL v3.0 version, which only runs on CPU and requires the FFTW library to be installed (e.g. sudo apt get fftw3). This version does _not_ require CUDA or OneAPI to be installed, because it doesn't include them. To do this, enter:
 
   ```
   git clone https://github.com/NickKarpowicz/LightwaveExplorer
   git clone https://github.com/davisking/dlib
   cd LightwaveExplorer
-  . /opt/intel/oneapi/setvars.sh
+  mkdir build
+  cd build
+  cmake ..
   make
-  sudo make install
   ```
-  
-  That should have done it. If you don't want to install CUDA (i.e. you don't have an NVIDIA board so why bother), you can replace "make" with "make nocuda" and still use SYCL. 
-
-  This will copy the application binary to /usr/bin/LightwaveExplorer and the text files that the program uses in /usr/shared/LightwaveExplorer. If you want them somewhere else, edit the makefile before you run "make install". In the end, you should be able to call it from anywhere just typing LightwaveExplorer. Well, almost; you need to add the oneAPI library paths to your environment for it to be able to launch. You can either run the . /opt/intel/oneapi/setvars.sh script beforehand every time, or add
-
-```
-export LD_LIBRARY_PATH=/opt/intel/oneapi/tbb/latest/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/latest/lib/intel64/:/opt/intel/oneapi/compiler/latest/linux/lib:/opt/intel/oneapi/compiler/latest/linux/lib/x64:/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin:$LD_LIBRARY_PATH
-```
-to your ~/.bashrc file. Another option is to call the LightwaveExplorerLauncher.sh script which was also installed. You can create a shortcut to this to give you an icon that you can click on to run the application without having to go to the terminal.
-
-But if you just want to run it, the AppImage is a lot easier (assuming it's not broken, I've only tested it on Mint and Ubuntu...)
-
-To generate the AppImage (first putting the appimage-builder program somewhere in your path):
-  ```
-  git clone https://github.com/NickKarpowicz/LightwaveExplorer
-  git clone https://github.com/davisking/dlib
-  cd LightwaveExplorer/AppImage
-  . /opt/intel/oneapi/setvars.sh
-  ./makeAppImage.sh
-  ```
-
-To make the GPL-3 one that makes use of FFTW, you can do the above, making sure that you have installed FFTW3-3. Then use either of the above techniques, but replace "make" with "make cpuonly".
-
+  This will also make a binary named LightwaveExplorer in the build folder.
 
   ### Compiling on Mac
 
