@@ -122,6 +122,13 @@
     <ClCompile Include="LightwaveExplorerFrontendGTK.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\LightwaveExplorerCore.cuh" />
+    <ClInclude Include="..\LightwaveExplorerCoreCPU.h" />
+    <ClInclude Include="..\LightwaveExplorerTrilingual.h" />
+    <ClInclude Include="..\LightwaveExplorerUtilities.h" />
+    <ClInclude Include="..\LWEActiveDeviceCPU.h" />
+    <ClInclude Include="..\LWEActiveDeviceCUDA.cuh" />
+    <ClInclude Include="..\LWEActiveDeviceSYCL.h" />
     <ClInclude Include="LightwaveExplorerFrontendGTK.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

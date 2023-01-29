@@ -32,6 +32,27 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="..\LightwaveExplorerCore.cuh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightwaveExplorerCoreCPU.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightwaveExplorerTrilingual.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightwaveExplorerUtilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LWEActiveDeviceCPU.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LWEActiveDeviceCUDA.cuh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LWEActiveDeviceSYCL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LightwaveExplorerGTK.rc">
