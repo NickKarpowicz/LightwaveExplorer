@@ -4,7 +4,7 @@
 #include <locale>
 #include <fstream>
 #include "../LightwaveExplorerCoreCPU.h"
-
+#include "../LightwaveExplorerCoreCounter.h"
 #ifndef CPUONLY
 #ifndef NOCUDA
 #include <cuda_runtime.h>
@@ -39,6 +39,7 @@ bool SYCLavailable = FALSE;
 int cudaGPUCount = 0;
 int syclGPUCount = 0;
 size_t progressCounter = 0;
+size_t totalSteps = 0;
 #if defined _WIN32 || defined __linux__
 const int interfaceThreads = maxN(1, std::thread::hardware_concurrency() / 2);
 #else
@@ -1543,9 +1544,7 @@ void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
 
     size_t lengthEstimate = 0;
     if (!(*activeSetPtr).isInFittingMode) {
-        for (int i = 0; i < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; ++i) {
-            lengthEstimate += activeSetPtr[i].Npropagation;
-        }
+        lengthEstimate = totalSteps;
     }
     else {
         lengthEstimate = (*activeSetPtr).fittingMaxIterations;
@@ -2155,10 +2154,27 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
     
     configureBatchMode(activeSetPtr);
+
+    simulationParameterSet* testSet = new simulationParameterSet[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2]();
+    memcpy(testSet, activeSetPtr, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 * sizeof(simulationParameterSet));
+    totalSteps = 0;
+    for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
+        if ((*activeSetPtr).isInSequence) {
+            testSet[j].progressCounter = &totalSteps;
+            solveNonlinearWaveEquationSequenceCounter(&testSet[j]);
+        }
+        else {
+            testSet[j].progressCounter = &totalSteps;
+            solveNonlinearWaveEquationCounter(&testSet[j]);
+        }
+    }
+    theGui.console.tPrint("I counted {} steps!\n", totalSteps);
+    
+    delete[] testSet;
     int error = 0;
     //run the simulations
     isRunning = TRUE;
-    progressCounter = 50;
+    progressCounter = 0;
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
@@ -2236,6 +2252,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             theGui.console.tPrint(_T("Warning: series cancelled, stopping after {} simulations.\r\n"), j + 1);
             break;
         }
+        theGui.console.tPrint("PC: {}\n", progressCounter);
         theGui.requestSliderMove(j);
         independentPlotQueue();
     }

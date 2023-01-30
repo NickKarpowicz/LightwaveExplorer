@@ -10,6 +10,9 @@
     <ClCompile Include="..\LightwaveExplorerUtilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\LightwaveExplorerCoreCounter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
@@ -51,6 +54,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\LWEActiveDeviceSYCL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LWEAciveDeviceCounter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightwaveExplorerCoreCounter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

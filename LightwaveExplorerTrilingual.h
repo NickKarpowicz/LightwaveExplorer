@@ -42,6 +42,25 @@
 #define runDlibFittingX runDlibFittingSYCL
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCL
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
+#elif defined RUNSTEPCOUNTER
+#include "LWEAciveDeviceCounter.h"
+#define trilingual void 
+#define withID size_t trilingualLaunchID, 
+#define asKernel
+#define deviceFunction 
+#define localIndex trilingualLaunchID
+#define withStream 
+#define activeDevice deviceCounter
+#define atomicAddDevice atomicAddCounter
+#define hardwareCheck hardwareCheckCounter
+#define deviceFunctions deviceFunctionsCounter
+#define hostFunctions hostFunctionsCounter
+#define mainX mainCounter
+#define mainArgumentX char* filepath
+#define resolveArgv
+#define runDlibFittingX runDlibFittingCounter
+#define solveNonlinearWaveEquationX solveNonlinearWaveEquationCounter
+#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
 #else
 #include "LWEActiveDeviceCPU.h"
 #define trilingual void 

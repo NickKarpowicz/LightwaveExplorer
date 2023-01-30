@@ -2395,7 +2395,8 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 		runRK4Step(d, 3);
 
 		//periodically check if the simulation diverged or was cancelled
-		if ((*sCPU).statusFlags[0] == 2 || ((i % 10 == 0) && d.isTheCanaryPixelNaN(canaryPointer))) break;
+		if ((*sCPU).statusFlags[0] == 2) break;
+		if(i % 10 == 0) if(d.isTheCanaryPixelNaN(canaryPointer)) break;
 
 		//copy the field arrays from the GPU to CPU memory if requested by the UI
 		if ((*sCPU).statusFlags[0] == 3) {
