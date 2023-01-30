@@ -2168,7 +2168,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             solveNonlinearWaveEquationCounter(&testSet[j]);
         }
     }
-    theGui.console.tPrint("I counted {} steps!\n", totalSteps);
     
     delete[] testSet;
     int error = 0;
@@ -2252,7 +2251,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             theGui.console.tPrint(_T("Warning: series cancelled, stopping after {} simulations.\r\n"), j + 1);
             break;
         }
-        theGui.console.tPrint("PC: {}\n", progressCounter);
         theGui.requestSliderMove(j);
         independentPlotQueue();
     }
