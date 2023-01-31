@@ -599,7 +599,8 @@ void readParametersFromInterface() {
     
     memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
     theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).fittingString, MAX_LOADSTRING) == 0) {
+    s.assign((*activeSetPtr).fittingString);
+    if (s.length() == 0) {
         noneString.copy((*activeSetPtr).fittingString, MAX_LOADSTRING);
     }
     else {
@@ -608,26 +609,30 @@ void readParametersFromInterface() {
     
     memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING);
     theGui.filePaths[0].copyBuffer((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).field1FilePath, MAX_LOADSTRING) == 0) {
+    s.assign((*activeSetPtr).field1FilePath);
+    if (s.length() == 0) {
         noneString.copy((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     }
     stripLineBreaks((*activeSetPtr).field1FilePath);
     memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING);
     theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).field2FilePath, MAX_LOADSTRING) == 0) {
+    s.assign((*activeSetPtr).field2FilePath);
+    if (s.length() == 0) {
         noneString.copy((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     }
     stripLineBreaks((*activeSetPtr).field2FilePath);
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING);
     theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).outputBasePath, MAX_LOADSTRING) == 0) {
+    s.assign((*activeSetPtr).outputBasePath);
+    if (s.length() == 0) {
         noneString.copy((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     }
     stripLineBreaks((*activeSetPtr).outputBasePath);
     
     memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING);
     theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath, MAX_LOADSTRING);
-    if (strnlen_s((*activeSetPtr).fittingPath, MAX_LOADSTRING) == 0) {
+    s.assign((*activeSetPtr).fittingPath);
+    if (s.length() == 0) {
         noneString.copy((*activeSetPtr).fittingPath, MAX_LOADSTRING);
     }
     stripLineBreaks((*activeSetPtr).fittingPath);
