@@ -1,5 +1,4 @@
 #pragma once
-#include "LWEActiveDeviceCommon.cpp"
 
 #define DeviceToHost 2
 #define HostToDevice 1
@@ -14,6 +13,26 @@ int hardwareCheckCounter(int* CUDAdeviceCount) {
 void atomicAddCounter(double* pulseSum, double pointEnergy) {
 }
 
+namespace {
+
+	void initializeDeviceParameters(simulationParameterSet* sCPU, deviceParameterSet* s) {
+		(*s).Ntime = (*sCPU).Ntime;
+		(*s).Nspace = (*sCPU).Nspace;
+		(*s).Nspace2 = (*sCPU).Nspace2;
+		(*s).is3D = (*sCPU).is3D;
+		(*s).Nfreq = ((*s).Ntime / 2 + 1);
+		(*s).Ngrid = (*s).Ntime * (*s).Nspace * (*s).Nspace2;
+		(*s).NgridC = (*s).Nfreq * (*s).Nspace * (*s).Nspace2; //size of the positive frequency side of the grid
+		(*s).fftNorm = 1.0 / (*s).Ngrid;
+		(*s).dt = (*sCPU).tStep;
+		(*s).dx = (*sCPU).rStep;
+		(*s).dk1 = TWOPI / ((*sCPU).Nspace * (*sCPU).rStep);
+		(*s).dk2 = TWOPI / ((*sCPU).Nspace2 * (*sCPU).rStep);
+		(*s).fStep = (*sCPU).fStep;
+		(*s).Nsteps = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
+		(*s).h = (*sCPU).crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
+	}
+}
 class deviceCounter {
 private:
 	bool configuredFFT = FALSE;
@@ -51,7 +70,6 @@ public:
 		cParams = sCPU;
 		dParamsDevice = &dParamslocal;
 		initializeDeviceParameters(sCPU, s);
-
 	}
 
 	~deviceCounter() {

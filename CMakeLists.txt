@@ -92,7 +92,7 @@ if(APPLE)
     link_directories(${FMT_LIBRARY_DIRS})
     find_library(OpenMP_LIBRARY NAMES libomp.a HINTS ${BREW_PREFIX}/opt/libomp/lib/)
     include_directories(../dlib)
-    add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -w)
+    add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -Wall)
     add_executable(LightwaveExplorer MACOSX_BUNDLE LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerUtilities.cpp LightwaveExplorerCoreCPU.cpp LightwaveExplorerCoreCounter.cpp DlibLibraryComponents/DlibLibraryComponents.cpp)
     set_target_properties(LightwaveExplorer  PROPERTIES
         BUNDLE True

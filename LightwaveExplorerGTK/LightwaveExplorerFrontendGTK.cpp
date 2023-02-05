@@ -307,33 +307,26 @@ public:
 
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         checkLibraryAvailability();
-        int openMPposition = 0;
         std::string A;
         if (CUDAavailable) {
             pulldowns[7].addElement("CUDA");
             pulldowns[8].addElement("CUDA");
-            openMPposition++;
-            
             for (int i = 1; i < cudaGPUCount; ++i) {
                 A = Sformat("CUDA {}", i);
                 pulldowns[7].addElement(A.c_str());
                 pulldowns[8].addElement(A.c_str());
-                openMPposition++;
             }
         }
         if (SYCLavailable) {
             A.assign("SYCL");
             pulldowns[7].addElement(A.c_str());
             pulldowns[8].addElement(A.c_str());
-            openMPposition++;
             if (syclGPUCount > 0) {
 
                 pulldowns[7].addElement("SYCL cpu");
                 pulldowns[8].addElement("SYCL cpu");
-                openMPposition++;
                 pulldowns[7].addElement("SYCL gpu");
                 pulldowns[8].addElement("SYCL gpu");
-                openMPposition++;
             }
         }
         pulldowns[7].addElement("OpenMP");
@@ -2361,7 +2354,7 @@ void fittingThread(int pulldownSelection) {
 }
 
 int main(int argc, char **argv){
-    GtkApplication* app = gtk_application_new("nickkarpowicz.lighwave", G_APPLICATION_FLAGS_NONE);
+    GtkApplication* app = gtk_application_new("nickkarpowicz.lighwave", (GApplicationFlags)0);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);
 }

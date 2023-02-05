@@ -2311,15 +2311,11 @@ namespace hostFunctions{
 		double a;
 		double maxSim = 0.0;
 		double maxRef = 0.0;
-		double sumSim = 0.0;
-		double sumRef = 0.0;
 		double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart];
 		double* refSpec = &(*fittingSet).fittingReference[(*fittingSet).fittingROIstart];
 		for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
 			maxSim = maxN(maxSim, simSpec[i]);
 			maxRef = maxN(maxRef, refSpec[i]);
-			sumSim += simSpec[i];
-			sumRef += refSpec[i];
 		}
 
 		if (maxSim == 0) {
