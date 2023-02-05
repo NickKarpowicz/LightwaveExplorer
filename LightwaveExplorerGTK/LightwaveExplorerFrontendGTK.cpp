@@ -50,13 +50,11 @@ crystalEntry* crystalDatabasePtr;           // Crystal info database
 void updateDisplay();
 
 class mainGui {
-    bool isActivated;
     bool queueUpdate;
     bool queueSliderUpdate;
     bool queueSliderMove;
     int sliderTarget;
     std::thread threadPoolSim[3];
-    size_t lastProgress;
 public:
     LweTextBox textBoxes[54];
     LweButton buttons[16];
@@ -80,9 +78,17 @@ public:
     bool cancellationCalled = FALSE;
     bool loadedDefaults = FALSE;
 
-    mainGui() : isActivated(0), pathTarget(0), isRunning(0), isPlotting(0), sliderTarget(0),
-    isGridAllocated(0), cancellationCalled(0), queueSliderUpdate(0), queueSliderMove(0),
-    saveSVG(0), queueUpdate(0), lastProgress(0), loadedDefaults(0){}
+    mainGui() : queueUpdate(0),
+    queueSliderUpdate(0), 
+    queueSliderMove(0),
+    sliderTarget(0),
+    pathTarget(0), 
+    saveSVG(0),
+    isRunning(0), 
+    isPlotting(0), 
+    isGridAllocated(0), 
+    cancellationCalled(0),
+    loadedDefaults(0){}
     ~mainGui() {}
     void requestPlotUpdate() {
         queueUpdate = TRUE;
@@ -301,12 +307,8 @@ public:
 
         console.init(window.parentHandle(1), 0, 0, 1, 1);
         checkLibraryAvailability();
-
-
         int openMPposition = 0;
         std::string A;
-
-
         if (CUDAavailable) {
             pulldowns[7].addElement("CUDA");
             pulldowns[8].addElement("CUDA");
@@ -1349,12 +1351,6 @@ int LwePlot2d(plotStruct* inputStruct) {
         currentColor.setCairo(cr);
         cairo_arc(cr, x1, y1, radius, 0, 6.2831853071795862);
         cairo_fill(cr);
-    };
-    auto cairoLeftText = [&]() {
-        currentColor.setCairo(cr);
-        cairo_text_extents(cr, messageBuffer.c_str(), &te);
-        cairo_move_to(cr, layoutLeft, 0.5 * (layoutBottom + layoutTop - te.height));
-        cairo_show_text(cr, messageBuffer.c_str());
     };
     auto cairoRightText = [&]() {
         currentColor.setCairo(cr);

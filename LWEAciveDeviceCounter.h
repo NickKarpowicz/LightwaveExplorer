@@ -18,7 +18,6 @@ class deviceCounter {
 private:
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;
-	double canaryPixel = 0.0;
 	deviceParameterSet dParamslocal;
 	void fftDestroy() {
 	}
@@ -62,7 +61,7 @@ public:
 	}
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
-		return NULL;
+		return 0;
 	}
 
 	void deviceMemset(void* ptr, int value, size_t count) {

@@ -106,7 +106,7 @@ public:
     int _height;
     bool isAttached;
     GtkWidget* _grid;
-    LweGuiElement() :_x(0), _y(0), _width(0), _height(0), isAttached(FALSE), elementHandle(0), _grid(0), label(0) {
+    LweGuiElement() : label(0), elementHandle(0), _x(0), _y(0), _width(0), _height(0), isAttached(FALSE), _grid(0) {
     }
     ~LweGuiElement() {}
     void setPosition(GtkWidget* grid, int x, int y, int width, int height) {
@@ -446,7 +446,7 @@ class LwePulldown : public LweGuiElement {
     int Nelements;
     int strLength;
 public:
-    LwePulldown() :strLength(128), Nelements(0) {
+    LwePulldown() : Nelements(0), strLength(128) {
         strArray = new char* [100]();
         strings = new char[strLength * 100]();
     }
@@ -491,8 +491,12 @@ class LweWindow {
     GtkWidget* plotControlsSubgrid2;
 public:
     LweWindow() :window(0), grid(0), bigGrid(0), consoleGrid(0), plotGrid(0),
-        plotControlsGrid(0), plotControlsSubgrid1(0), plotControlsSubgrid2(0),
-        consoleControlsGrid(0), consoleControlsSubgrid1(0), consoleControlsSubgrid2(0) {}
+        plotControlsGrid(0),
+        consoleControlsGrid(0), 
+        consoleControlsSubgrid1(0), 
+        consoleControlsSubgrid2(0), 
+        plotControlsSubgrid1(0), 
+        plotControlsSubgrid2(0) {}
     ~LweWindow() {};
     void init(GtkApplication* appHandle, const char* windowName, int width, int height) {
         window = gtk_application_window_new(appHandle);

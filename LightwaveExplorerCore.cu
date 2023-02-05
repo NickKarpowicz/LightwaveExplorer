@@ -185,7 +185,7 @@ namespace deviceFunctions {
 		//alpha is deviation from crystal Theta (x2 polarizations)
 		//beta is deviation from crystal Phi
 		//
-		deviceComplex n[4][2] = { deviceComplex(0.0, 0.0) };
+		deviceComplex n[4][2] = { {deviceComplex(0.0, 0.0)} };
 		deviceComplex nW = deviceComplex(0.0, 0.0);
 		sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		if ((*s).axesNumber == 0) {
@@ -194,7 +194,7 @@ namespace deviceFunctions {
 			return;
 		}
 
-		double gradient[2][2] = { 0.0 };
+		double gradient[2][2] = { {0.0} };
 		double alpha[2] = { asin(kx1 / n[0][0].real()),asin(kx1 / n[0][1].real()) };
 		double beta[2] = { asin(ky1 / n[0][0].real()),asin(ky1 / n[0][1].real()) };
 
@@ -207,7 +207,7 @@ namespace deviceFunctions {
 		// converges to double precision limit in two iterations for BBO
 		// converges in 32 iterations in BiBO
 
-		double errArray[4][2] = { 0.0 };
+		double errArray[4][2] = { {0.0} };
 		if ((*s).axesNumber == 1) {
 			maxiter = 64;
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
@@ -1873,7 +1873,7 @@ namespace hostFunctions{
 			return 1;
 		}
 		int error = 0;
-		char parameterBlock[22][256] = { 0 };
+		char parameterBlock[22][256] = { {0} };
 
 		switch (funHash(cc)) {
 		case funHash("rotate"):
@@ -2309,10 +2309,10 @@ namespace hostFunctions{
 
 		//mode 3: match total spectrum to reference given in ascii file
 		double a;
-		double maxSim = 0;
-		double maxRef = 0;
-		double sumSim = 0;
-		double sumRef = 0;
+		double maxSim = 0.0;
+		double maxRef = 0.0;
+		double sumSim = 0.0;
+		double sumRef = 0.0;
 		double* simSpec = &(*fittingSet).totalSpectrum[2 * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart];
 		double* refSpec = &(*fittingSet).fittingReference[(*fittingSet).fittingROIstart];
 		for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
