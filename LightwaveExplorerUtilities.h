@@ -279,7 +279,7 @@ int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDis
 int             readCrystalDatabase(crystalEntry* db);
 int             readSequenceString(simulationParameterSet* sCPU);
 int             configureBatchMode(simulationParameterSet* sCPU);
-int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs);
+int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr);
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);
 int             loadPulseFiles(simulationParameterSet* sCPU);
 int             skipFileUntilCharacter(FILE* fstream, char target);

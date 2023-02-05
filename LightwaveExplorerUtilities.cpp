@@ -904,7 +904,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	else return -1;
 }
 
-int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, char* outputbase, bool saveInputs) {
+int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
 	saveSettingsFile(sCPU, crystalDatabasePtr);
 
 	std::string Epath((*sCPU).outputBasePath);

@@ -2260,7 +2260,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
 
-    saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
+    saveDataSet(activeSetPtr, crystalDatabasePtr);
     deallocateGrids(activeSetPtr, FALSE);
     isRunning = FALSE;
 }
@@ -2340,7 +2340,7 @@ void fittingThread(int pulldownSelection) {
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.tPrint(_T("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-    saveDataSet(activeSetPtr, crystalDatabasePtr, (*activeSetPtr).outputBasePath, FALSE);
+    saveDataSet(activeSetPtr, crystalDatabasePtr);
     setInterfaceValuesToActiveValues();
     theGui.console.tPrint("Fitting result:\n (index, value)\n");
     for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {

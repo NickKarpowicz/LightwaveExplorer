@@ -2637,7 +2637,7 @@ int mainX(int argc, mainArgumentX){
 		auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
 		printf("Finished after %8.4lf s. \n",
 			1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-		saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
+		saveDataSet(sCPU, crystalDatabasePtr);
 
 		printf("Optimization result:\n (index, value)\n");
 		for (int i = 0; i < (*sCPU).Nfitting; ++i) {
@@ -2682,7 +2682,7 @@ int mainX(int argc, mainArgumentX){
 	printf("Finished after %8.4lf s. \n",
 		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
 
-	saveDataSet(sCPU, crystalDatabasePtr, (*sCPU).outputBasePath, FALSE);
+	saveDataSet(sCPU, crystalDatabasePtr);
 	delete[] threadBlock;
 	deallocateGrids(sCPU, TRUE);
 	delete[] sCPU;
