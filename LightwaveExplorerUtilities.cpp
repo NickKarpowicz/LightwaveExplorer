@@ -143,6 +143,26 @@ char* findClosingAngleBracket(const char* s) {
 	}
 }
 
+int copyParamsIntoStringsV(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask){
+	std::string ccSegment = cc.substr(cc.find_first_of('(')+1, std::string::npos);
+
+	std::stringstream ss(ccSegment);
+	std::string line;
+	int i = 0;
+	while(i<n && ss.good()){
+		std::getline(ss, line, ',');
+		if(line.at(0)=='d'){
+			defaultMask[i] = TRUE;
+		}
+		else{
+			parameters[i] = parameterStringToDouble(line.c_str(),iBlock,vBlock);
+		}
+		i++;
+	}
+
+	return 0;
+}
+
 int copyParamsIntoStrings(char parameterBlock[22][256], const char* cc, int n) {
 	int loc = 0;
 	//scan to opening parenthesis
@@ -534,7 +554,8 @@ void unixNewLine(FILE* iostream) {
 	fwrite(&LF, sizeof(char), 1, iostream);
 }
 
-int saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
+int saveSettingsFile(simulationParameterSet* sCPU) {
+	crystalEntry *crystalDatabasePtr = (*sCPU).crystalDatabase;
 	std::string outputPath((*sCPU).outputBasePath);
 	if ((*sCPU).runType > 0) {
 		outputPath.append(".input");
@@ -678,7 +699,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 
 	auto moveToColon = [&]() {
 		char x = 0;
-		while (x != ':') {
+		while (x != ':' && fs.good()) {
 			fs >> x;
 		}
 		return 0;
@@ -892,6 +913,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	(*sCPU).field2IsAllocated = FALSE;
 
 	//crystal from database (database must be loaded!)
+	(*sCPU).crystalDatabase = crystalDatabasePtr;
 	(*sCPU).chi2Tensor = crystalDatabasePtr[(*sCPU).materialIndex].d;
 	(*sCPU).chi3Tensor = crystalDatabasePtr[(*sCPU).materialIndex].chi3;
 	(*sCPU).nonlinearSwitches = crystalDatabasePtr[(*sCPU).materialIndex].nonlinearSwitches;
@@ -904,8 +926,8 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	else return -1;
 }
 
-int saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr) {
-	saveSettingsFile(sCPU, crystalDatabasePtr);
+int saveDataSet(simulationParameterSet* sCPU) {
+	saveSettingsFile(sCPU);
 
 	std::string Epath((*sCPU).outputBasePath);
 	Epath.append("_Ext.dat");

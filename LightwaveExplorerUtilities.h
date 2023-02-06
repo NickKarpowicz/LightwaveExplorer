@@ -269,7 +269,7 @@ int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, lo
 int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int             loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU);
 int             readFittingString(simulationParameterSet* sCPU);
-int             saveSettingsFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr);
+int             saveSettingsFile(simulationParameterSet* sCPU);
 void            unixNewLine(FILE* iostream);
 int             saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
@@ -279,7 +279,7 @@ int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDis
 int             readCrystalDatabase(crystalEntry* db);
 int             readSequenceString(simulationParameterSet* sCPU);
 int             configureBatchMode(simulationParameterSet* sCPU);
-int             saveDataSet(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr);
+int             saveDataSet(simulationParameterSet* sCPU);
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);
 int             loadPulseFiles(simulationParameterSet* sCPU);
 int             skipFileUntilCharacter(FILE* fstream, char target);
@@ -291,3 +291,4 @@ void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(const char* pString, double* iBlock, double* vBlock);
 void            stripWhiteSpace(char* sequenceString);
 void            stripLineBreaks(char* sequenceString);
+int copyParamsIntoStringsV(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);

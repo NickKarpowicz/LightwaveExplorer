@@ -1865,39 +1865,39 @@ namespace hostFunctions{
 		return (s[off] == 0 || s[off] == '(') ? 7177 : (funHash(s, off + 1) * 31) ^ s[off];
 	}
 
+	constexpr unsigned int stringHash(std::string& s, int off = 0){
+		return (s.length() == off || s.at(off) == '(') ? 7177 : (stringHash(s,off+1) * 31) ^ s.at(off);
+	}
 	//Dispatcher of the sequence mode. New functions go here, and should have a unique hash (chances of a conflict are small, and 
 	// will produce a compile-time error.
 	// Functions cannot start with a number or the string "None".
-	int interpretCommand(const char* cc, double* iBlock, double* vBlock, simulationParameterSet *s, crystalEntry *db) {
-		if (cc == 0) {
-			return 1;
-		}
+	int interpretCommand(std::string cc, double* iBlock, double* vBlock, simulationParameterSet *s, crystalEntry *db) {
 		int error = 0;
-		char parameterBlock[22][256] = { {0} };
+		double parameters[32] = {0.0};
+		bool defaultMask[32] = {0};
 
-		switch (funHash(cc)) {
+		switch (stringHash(cc)) {
 		case funHash("rotate"):
-			copyParamsIntoStrings(parameterBlock, cc, 1);
-			rotateField(s, DEG2RAD * parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock));
+			copyParamsIntoStringsV(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			rotateField(s, DEG2RAD * parameters[0]);
 			break;
 		case funHash("set"):
-			copyParamsIntoStrings(parameterBlock, cc, 2);
-			vBlock[(int)parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock)] = parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
+			copyParamsIntoStringsV(cc, 2, iBlock, vBlock, parameters, defaultMask);
+			vBlock[(int)parameters[0]] = parameters[1];
 			break;
 		case funHash("plasmaReinject"):
 			(*s).isReinjecting = TRUE;
 		case funHash("plasma"):
-			copyParamsIntoStrings(parameterBlock, cc, 9);
-			if (parameterBlock[0][0] != 'd')(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock);
-			if (parameterBlock[1][0] != 'd')(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
-			if (parameterBlock[2][0] != 'd')(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock);
-			if (parameterBlock[3][0] != 'd')(*s).nonlinearAbsorptionStrength = parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock);
-			if (parameterBlock[4][0] != 'd')(*s).bandGapElectronVolts = parameterStringToDouble(&parameterBlock[4][0], iBlock, vBlock);
-			if (parameterBlock[5][0] != 'd')(*s).drudeGamma = parameterStringToDouble(&parameterBlock[5][0], iBlock, vBlock);
-			if (parameterBlock[6][0] != 'd')(*s).effectiveMass = parameterStringToDouble(&parameterBlock[6][0], iBlock, vBlock);
-			if (parameterBlock[7][0] != 'd')(*s).crystalThickness = 1e-6 * parameterStringToDouble(&parameterBlock[7][0], iBlock, vBlock);
-			if (parameterBlock[8][0] != 'd')(*s).propagationStep = 1e-9 * parameterStringToDouble(&parameterBlock[8][0], iBlock, vBlock);
-
+			copyParamsIntoStringsV(cc, 9, iBlock, vBlock, parameters, defaultMask);
+			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
+			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
+			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
+			if (!defaultMask[3])(*s).nonlinearAbsorptionStrength = parameters[3];
+			if (!defaultMask[4])(*s).bandGapElectronVolts = parameters[4];
+			if (!defaultMask[5])(*s).drudeGamma = parameters[5];
+			if (!defaultMask[6])(*s).effectiveMass = parameters[6];
+			if (!defaultMask[7])(*s).crystalThickness = 1e-6 * parameters[7];
+			if (!defaultMask[8])(*s).propagationStep = 1e-9 * parameters[8];
 			(*s).chi2Tensor = db[(*s).materialIndex].d;
 			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
 			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
@@ -1911,12 +1911,12 @@ namespace hostFunctions{
 			(*s).isFollowerInSequence = TRUE;
 			break;
 		case funHash("nonlinear"):
-			copyParamsIntoStrings(parameterBlock, cc, 5);
-			if (parameterBlock[0][0] != 'd')(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock);
-			if (parameterBlock[1][0] != 'd')(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
-			if (parameterBlock[2][0] != 'd')(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock);
-			if (parameterBlock[3][0] != 'd')(*s).crystalThickness = 1e-6 * parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock);
-			if (parameterBlock[4][0] != 'd')(*s).propagationStep = 1e-9 * parameterStringToDouble(&parameterBlock[4][0], iBlock, vBlock);
+			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
+			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
+			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
+			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
+			if (!defaultMask[3])(*s).crystalThickness = 1e-6 * parameters[3];
+			if (!defaultMask[4])(*s).propagationStep = 1e-9 * parameters[4];
 
 			(*s).nonlinearAbsorptionStrength = 0.0;
 			(*s).chi2Tensor = db[(*s).materialIndex].d;
@@ -1954,14 +1954,13 @@ namespace hostFunctions{
 			break;
 
 		case funHash("linear"):
-			copyParamsIntoStrings(parameterBlock, cc, 5);
+			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if ((*s).isCylindric) {
-				if (parameterBlock[0][0] != 'd')(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock);
-				if (parameterBlock[1][0] != 'd')(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
-				if (parameterBlock[2][0] != 'd')(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock);
-				if (parameterBlock[3][0] != 'd')(*s).crystalThickness = 1e-6 * parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock);
-				if (parameterBlock[4][0] != 'd')(*s).propagationStep = 1e-9 * parameterStringToDouble(&parameterBlock[4][0], iBlock, vBlock);
-
+				if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
+				if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
+				if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
+				if (!defaultMask[3])(*s).crystalThickness = 1e-6 * parameters[3];
+				if (!defaultMask[4])(*s).propagationStep = 1e-9 * parameters[4];
 				(*s).nonlinearAbsorptionStrength = 0.0;
 				(*s).chi2Tensor = db[(*s).materialIndex].d;
 				(*s).chi3Tensor = db[(*s).materialIndex].chi3;
@@ -1975,58 +1974,58 @@ namespace hostFunctions{
 				(*s).isFollowerInSequence = TRUE;
 			}
 			else {
-				if (parameterBlock[0][0] != 'd')(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock);
-				if (parameterBlock[1][0] != 'd')(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
-				if (parameterBlock[2][0] != 'd')(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock);
-				if (parameterBlock[3][0] != 'd')(*s).crystalThickness = 1e-6 * parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock);
+				if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
+				if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
+				if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
+				if (!defaultMask[3])(*s).crystalThickness = 1e-6 * parameters[3];
 
 				applyLinearPropagation(s, (*s).materialIndex, (*s).crystalThickness);
 			}
 
 			break;
 		case funHash("fresnelLoss"):
-			copyParamsIntoStrings(parameterBlock, cc, 5);
-			if (parameterBlock[0][0] != 'd')(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock);
-			if (parameterBlock[1][0] != 'd')(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
-			if (parameterBlock[2][0] != 'd')(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock);
+			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
+			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
+			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
+			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
 			applyFresnelLoss(s,
-				(int)parameterStringToDouble(&parameterBlock[4][0], iBlock, vBlock),
-				(int)parameterStringToDouble(&parameterBlock[5][0], iBlock, vBlock));
+				(int)parameters[4],
+				(int)parameters[5]);
 			break;
 		case funHash("sphericalMirror"):
-			copyParamsIntoStrings(parameterBlock, cc, 1);
-			applySphericalMirror(s, parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock));
+			copyParamsIntoStringsV(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			applySphericalMirror(s, parameters[0]);
 			break;
 		case funHash("parabolicMirror"):
-			copyParamsIntoStrings(parameterBlock, cc, 1);
-			applyParabolicMirror(s, parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock));
+			copyParamsIntoStringsV(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			applyParabolicMirror(s, parameters[0]);
 			break;
 		case funHash("aperture"):
-			copyParamsIntoStrings(parameterBlock, cc, 2);
+			copyParamsIntoStringsV(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			applyAperature(s,
-				parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock),
-				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock));
+				parameters[0],
+				parameters[1]);
 			break;
 		case funHash("farFieldAperture"):
-			copyParamsIntoStrings(parameterBlock, cc, 4);
+			copyParamsIntoStringsV(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			applyAperatureFarField(s,
-				parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock),
-				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock),
-				parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock),
-				parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock));
+				parameters[0],
+				parameters[1],
+				parameters[2],
+				parameters[3]);
 			break;
 		case funHash("filter"):
-			copyParamsIntoStrings(parameterBlock, cc, 5);
+			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			applyFilter(s,
-				parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock),
-				parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock),
-				parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock),
-				parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock),
-				parameterStringToDouble(&parameterBlock[4][0], iBlock, vBlock));
+				parameters[0],
+				parameters[1],
+				parameters[2],
+				parameters[3],
+				parameters[4]);
 			break;
 		case funHash("addPulse"):
 		{
-			copyParamsIntoStrings(parameterBlock, cc, 20);
+			copyParamsIntoStringsV(cc, 20, iBlock, vBlock, parameters, defaultMask);
 			deviceParameterSet sc;
 			activeDevice d;
 			d.dParams = &sc;
@@ -2038,26 +2037,26 @@ namespace hostFunctions{
 
 			pulse p;
 			memcpy(&p, &(s->pulse1), sizeof(pulse));
-			p.energy = parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock);
-			p.frequency = 1e12 * parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
-			p.bandwidth = 1e12 * parameterStringToDouble(&parameterBlock[2][0], iBlock, vBlock);
-			p.sgOrder = (int)parameterStringToDouble(&parameterBlock[3][0], iBlock, vBlock);
-			p.cep = parameterStringToDouble(&parameterBlock[4][0], iBlock, vBlock) / PI;
-			p.delay = 1e-15 * parameterStringToDouble(&parameterBlock[5][0], iBlock, vBlock);
-			p.gdd = 1e-30 * parameterStringToDouble(&parameterBlock[6][0], iBlock, vBlock);
-			p.tod = 1e-45 * parameterStringToDouble(&parameterBlock[7][0], iBlock, vBlock);
-			p.phaseMaterial = (int)parameterStringToDouble(&parameterBlock[8][0], iBlock, vBlock);
-			p.phaseMaterialThickness = 1e-6 * parameterStringToDouble(&parameterBlock[9][0], iBlock, vBlock);
-			p.beamwaist = 1e-6 * parameterStringToDouble(&parameterBlock[10][0], iBlock, vBlock);
-			p.x0 = 1e-6 * parameterStringToDouble(&parameterBlock[11][0], iBlock, vBlock);
-			p.z0 = 1e-6 * parameterStringToDouble(&parameterBlock[12][0], iBlock, vBlock);
-			p.beamAngle = DEG2RAD * parameterStringToDouble(&parameterBlock[13][0], iBlock, vBlock);
-			p.beamAnglePhi = DEG2RAD * parameterStringToDouble(&parameterBlock[14][0], iBlock, vBlock);
-			p.polarizationAngle = DEG2RAD * parameterStringToDouble(&parameterBlock[15][0], iBlock, vBlock);
-			p.circularity = parameterStringToDouble(&parameterBlock[16][0], iBlock, vBlock);
-			(*s).materialIndex = (int)parameterStringToDouble(&parameterBlock[17][0], iBlock, vBlock);
-			(*s).crystalTheta = DEG2RAD * parameterStringToDouble(&parameterBlock[18][0], iBlock, vBlock);
-			(*s).crystalPhi = DEG2RAD * parameterStringToDouble(&parameterBlock[19][0], iBlock, vBlock);
+			p.energy = parameters[0];
+			p.frequency = 1e12 * parameters[1];
+			p.bandwidth = 1e12 * parameters[2];
+			p.sgOrder = (int)parameters[3];
+			p.cep = parameters[4] / PI;
+			p.delay = 1e-15 * parameters[5];
+			p.gdd = 1e-30 * parameters[6];
+			p.tod = 1e-45 * parameters[7];
+			p.phaseMaterial = (int)parameters[8];
+			p.phaseMaterialThickness = 1e-6 * parameters[9];
+			p.beamwaist = 1e-6 * parameters[10];
+			p.x0 = 1e-6 * parameters[11];
+			p.z0 = 1e-6 *parameters[12];
+			p.beamAngle = DEG2RAD * parameters[13];
+			p.beamAnglePhi = DEG2RAD * parameters[14];
+			p.polarizationAngle = DEG2RAD * parameters[15];
+			p.circularity = parameters[16];
+			(*s).materialIndex = (int)parameters[17];
+			(*s).crystalTheta = DEG2RAD * parameters[18];
+			(*s).crystalPhi = DEG2RAD * parameters[19];
 
 			addPulseToFieldArrays(d, p, FALSE, NULL);
 			d.deviceMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * sc.NgridC * sizeof(deviceComplex), DeviceToHost);
@@ -2068,34 +2067,22 @@ namespace hostFunctions{
 		}
 			break;
 		case funHash("for"):
-			copyParamsIntoStrings(parameterBlock, cc, 2);
-			int counter = (int)parameterStringToDouble(&parameterBlock[0][0], iBlock, vBlock);
-			int targetVar = (int)parameterStringToDouble(&parameterBlock[1][0], iBlock, vBlock);
-			char* currentString = findClosingParenthesis(cc);
+			copyParamsIntoStringsV(cc, 2, iBlock, vBlock, parameters, defaultMask);
+			int counter = (int)parameters[0];
+			int targetVar = (int)parameters[1];
+			std::string currentString = cc.substr(cc.find_first_of('{')+1,std::string::npos);
 
-			++currentString;
-
-			if (*currentString == '{') {
-				++currentString;
-			}
-			else {
-				return 1;
-			}
-
-			char* forStartString = currentString;
+			std::string forStartString = currentString;
 			for (int i = 0; i < counter; i++) {
-				while (*currentString != '}') {
+				while (currentString.at(0) != '}') {
 					interpretCommand(currentString, iBlock, vBlock, s, db);
-					currentString = findClosingParenthesis(currentString);
-					++currentString;
+					currentString = currentString.substr(currentString.find_first_of(')')+1,std::string::npos);
 				}
 				++vBlock[targetVar];
 				currentString = forStartString;
 			}
 			break;
-		
 		}
-
 		return error;
 	}
 
@@ -2484,7 +2471,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 			++currentString;
 		}
 
-		interpretCommand(currentString, iBlock, vBlock, sCPU, (*sCPU).crystalDatabase);
+		interpretCommand(std::string(currentString), iBlock, vBlock, sCPU, (*sCPU).crystalDatabase);
 		currentString = findClosingParenthesis(currentString);
 		if (currentString == NULL) {
 			break;
@@ -2637,7 +2624,7 @@ int mainX(int argc, mainArgumentX){
 		auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
 		printf("Finished after %8.4lf s. \n",
 			1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-		saveDataSet(sCPU, crystalDatabasePtr);
+		saveDataSet(sCPU);
 
 		printf("Optimization result:\n (index, value)\n");
 		for (int i = 0; i < (*sCPU).Nfitting; ++i) {
@@ -2682,7 +2669,7 @@ int mainX(int argc, mainArgumentX){
 	printf("Finished after %8.4lf s. \n",
 		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
 
-	saveDataSet(sCPU, crystalDatabasePtr);
+	saveDataSet(sCPU);
 	delete[] threadBlock;
 	deallocateGrids(sCPU, TRUE);
 	delete[] sCPU;

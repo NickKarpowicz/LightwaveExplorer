@@ -683,6 +683,7 @@ void readParametersFromInterface() {
     (*activeSetPtr).field2IsAllocated = FALSE;
 
     //crystal from database (database must be loaded!)
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     (*activeSetPtr).chi2Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].d;
     (*activeSetPtr).chi3Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].chi3;
     (*activeSetPtr).nonlinearSwitches = crystalDatabasePtr[(*activeSetPtr).materialIndex].nonlinearSwitches;
@@ -1119,7 +1120,7 @@ void createRunFile() {
 
     //create command line settings file
     (*activeSetPtr).runType = 1;
-    saveSettingsFile(activeSetPtr, crystalDatabasePtr);
+    saveSettingsFile(activeSetPtr);
 
     theGui.console.tPrint(
         "Run {} on cluster with:\r\nsbatch {}.slurmScript\r\n",
@@ -2260,7 +2261,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
 
-    saveDataSet(activeSetPtr, crystalDatabasePtr);
+    saveDataSet(activeSetPtr);
     deallocateGrids(activeSetPtr, FALSE);
     isRunning = FALSE;
 }
@@ -2340,7 +2341,7 @@ void fittingThread(int pulldownSelection) {
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.tPrint(_T("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-    saveDataSet(activeSetPtr, crystalDatabasePtr);
+    saveDataSet(activeSetPtr);
     setInterfaceValuesToActiveValues();
     theGui.console.tPrint("Fitting result:\n (index, value)\n");
     for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
