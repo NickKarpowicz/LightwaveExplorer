@@ -1865,7 +1865,7 @@ namespace hostFunctions{
 		return (s[off] == 0 || s[off] == '(') ? 7177 : (funHash(s, off + 1) * 31) ^ s[off];
 	}
 
-	constexpr unsigned int stringHash(std::string& s, int off = 0){
+	unsigned int stringHash(std::string& s, int off = 0){
 		return (s.length() == off || s.at(off) == '(') ? 7177 : (stringHash(s,off+1) * 31) ^ s.at(off);
 	}
 	//Dispatcher of the sequence mode. New functions go here, and should have a unique hash (chances of a conflict are small, and 
