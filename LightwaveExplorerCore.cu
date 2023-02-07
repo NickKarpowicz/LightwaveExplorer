@@ -2014,6 +2014,18 @@ namespace hostFunctions{
 				parameters[2],
 				parameters[3]);
 			break;
+		case funHash("energy"):
+			{
+			copyParamsIntoStringsV(cc, 2, iBlock, vBlock, parameters, defaultMask);
+			int targetVar = (int)parameters[0];
+			int spectrumType = (int)parameters[1];
+			double energy = 0.0;
+			for(int i = 0; i < (*s).Nfreq; i++){
+				energy += (*s).totalSpectrum[i + (*s).Nfreq * spectrumType];
+			}
+			vBlock[targetVar] = energy;
+			}
+			break;
 		case funHash("filter"):
 			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			applyFilter(s,

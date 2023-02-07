@@ -230,7 +230,7 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 	int ind = 0;
 	bool previousCharWasOp = 0;
 	char lastOp = 0;
-	while (loc <= (ss.length()) && ss.at(loc)!=')') {
+	while (loc < (ss.length()) && ss.at(loc)!=')') {
 		if (!previousCharWasOp) {
 			if (ss.at(loc) == 'v') {
 				++loc;
