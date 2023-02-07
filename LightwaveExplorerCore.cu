@@ -2445,39 +2445,42 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	}
 
 	//main text interpreter
-	char* sequenceString = new char[MAX_LOADSTRING];
-	memcpy(sequenceString, (*sCPU).sequenceString, MAX_LOADSTRING);
 	simulationParameterSet sCPUbackupValues;
 	simulationParameterSet* sCPUbackup = &sCPUbackupValues;
 	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
 
-	double iBlock[100] = { 0 };
+	double iBlock[100] = { 0.0 };
 
 	for (int k = 1; k < 36; k++) {
 		iBlock[k] = *(targets[k])/multipliers[k];
 	}
 
-	double vBlock[100] = { 0 };
-	char* currentString = sequenceString;
+	double vBlock[100] = { 0.0 };
+	std::string currentString((*sCPU).sequenceString);
 
+	//shortest command is either for() or init(), if there's only 4 characters left, it can only
+	//be whitespace or other trailing symbols
+	size_t minLength = 5;
 	for (;;) {
-		//skip curly braces
-		if (currentString[0] == '{') {
-			currentString = findClosingCurlyBracket(currentString);
-			++currentString;
+		//skip curly braces (for loops should have been handled by interpretCommand() already)
+		if (currentString.at(0) == '{') {
+			currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
+			if(currentString.length()<minLength) break; 
+			currentString = currentString.substr(1,std::string::npos);
 		}
-		if (currentString[0] == '<') {
-			currentString = findClosingAngleBracket(currentString);
-			++currentString;
-		}
-
-		interpretCommand(std::string(currentString), iBlock, vBlock, sCPU, (*sCPU).crystalDatabase);
-		currentString = findClosingParenthesis(currentString);
-		if (currentString == NULL) {
-			break;
+		//skip angle brackets (comments)
+		if (currentString.at(0) == '<') {
+			currentString = currentString.substr(currentString.find_first_of('>'),std::string::npos);
+			if(currentString.length()<minLength) break; 
+			currentString = currentString.substr(1,std::string::npos);
 		}
 
-		++currentString;
+		interpretCommand(currentString, iBlock, vBlock, sCPU, (*sCPU).crystalDatabase);
+		currentString = currentString.substr(currentString.find_first_of(')'),std::string::npos);
+
+		if(currentString.length()<minLength) break; 
+
+		currentString = currentString.substr(1,std::string::npos);
 		
 		(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
