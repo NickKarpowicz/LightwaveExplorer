@@ -147,7 +147,7 @@ A native version for the new Arm-based Macs is technically possible (and has bee
   
   A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, the following command should work:
   ```
-curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResouces/compileCommandLineLWEfromRepos.sh | tcsh -s
+curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/compileCommandLineLWEfromRepos.sh | tcsh -s
  ```
  On other clusters you might have to instead dowload the script (e.g. with wget) and change it to suit that system before you run it.
 
