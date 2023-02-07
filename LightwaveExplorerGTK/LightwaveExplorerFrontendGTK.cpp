@@ -2163,7 +2163,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             solveNonlinearWaveEquationCounter(&testSet[j]);
         }
     }
-    
+    theGui.console.tPrint("Got through counting.\n");
     delete[] testSet;
     int error = 0;
     //run the simulations

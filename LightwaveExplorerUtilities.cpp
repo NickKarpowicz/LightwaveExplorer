@@ -208,7 +208,7 @@ void applyOp(char op, double* result, double* readout) {
 }
 
 double parameterStringToDouble(const char* pString, double* iBlock, double* vBlock) {
-	std::string ss(pString,255);
+	std::string ss(pString);
 
 	auto nextInt = [&](std::string iStr, int location) {
 		std::stringstream s(iStr.substr(location));
@@ -230,16 +230,15 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 	int ind = 0;
 	bool previousCharWasOp = 0;
 	char lastOp = 0;
-	while (loc<ss.length()) {
-		if (pString[loc] == 0) return result;
+	while (loc< (ss.length()-1)) {
 		if (!previousCharWasOp) {
-			if (pString[loc] == 'v') {
+			if (ss.at(loc) == 'v') {
 				++loc;
 				ind = nextInt(ss,loc);
 				loc += 2;
 				if (ind < 100) result = vBlock[ind];
 			}
-			else if (pString[loc] == 'i') {
+			else if (ss.at(loc) == 'i') {
 				++loc;
 				ind = nextInt(ss, loc);
 				loc += 2;
