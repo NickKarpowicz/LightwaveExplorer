@@ -265,7 +265,7 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 						return result;
 					}
 					if (ss.at(loc) == 'e') {
-						if (ss.at(loc+1) == '-' || ss.at(loc+1) == '+') loc += 3;
+						if (ss.at(loc+1) == '-' || ss.at(loc+1) == '+') loc += 2;
 					}
 					else {
 						loc++;
@@ -301,6 +301,9 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 					|| ss.at(loc) == '^')) {
 					if (loc >= (ss.length()-1) || ss.at(loc)==')') {
 						return result;
+					}
+					if (ss.at(loc) == 'e') {
+						if (ss.at(loc+1) == '-' || ss.at(loc+1) == '+') loc += 2;
 					}
 					else {
 						loc++;
