@@ -291,4 +291,4 @@ void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(const char* pString, double* iBlock, double* vBlock);
 void            stripWhiteSpace(char* sequenceString);
 void            stripLineBreaks(char* sequenceString);
-int copyParamsIntoStringsV(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);
+int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);

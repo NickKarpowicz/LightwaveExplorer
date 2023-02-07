@@ -143,7 +143,7 @@ char* findClosingAngleBracket(const char* s) {
 	}
 }
 
-int copyParamsIntoStringsV(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask){
+int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask){
 	std::string ccSegment = cc.substr(cc.find_first_of('(')+1, std::string::npos);
 
 	std::stringstream ss(ccSegment);

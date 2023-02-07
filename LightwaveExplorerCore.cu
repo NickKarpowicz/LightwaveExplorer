@@ -1878,17 +1878,17 @@ namespace hostFunctions{
 
 		switch (stringHash(cc)) {
 		case funHash("rotate"):
-			copyParamsIntoStringsV(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			rotateField(s, DEG2RAD * parameters[0]);
 			break;
 		case funHash("set"):
-			copyParamsIntoStringsV(cc, 2, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			vBlock[(int)parameters[0]] = parameters[1];
 			break;
 		case funHash("plasmaReinject"):
 			(*s).isReinjecting = TRUE;
 		case funHash("plasma"):
-			copyParamsIntoStringsV(cc, 9, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 9, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
 			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
@@ -1911,7 +1911,7 @@ namespace hostFunctions{
 			(*s).isFollowerInSequence = TRUE;
 			break;
 		case funHash("nonlinear"):
-			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
 			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
@@ -1954,7 +1954,7 @@ namespace hostFunctions{
 			break;
 
 		case funHash("linear"):
-			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if ((*s).isCylindric) {
 				if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
 				if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
@@ -1984,7 +1984,7 @@ namespace hostFunctions{
 
 			break;
 		case funHash("fresnelLoss"):
-			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
 			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
@@ -1993,21 +1993,21 @@ namespace hostFunctions{
 				(int)parameters[5]);
 			break;
 		case funHash("sphericalMirror"):
-			copyParamsIntoStringsV(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			applySphericalMirror(s, parameters[0]);
 			break;
 		case funHash("parabolicMirror"):
-			copyParamsIntoStringsV(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			applyParabolicMirror(s, parameters[0]);
 			break;
 		case funHash("aperture"):
-			copyParamsIntoStringsV(cc, 2, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			applyAperature(s,
 				parameters[0],
 				parameters[1]);
 			break;
 		case funHash("farFieldAperture"):
-			copyParamsIntoStringsV(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			applyAperatureFarField(s,
 				parameters[0],
 				parameters[1],
@@ -2016,7 +2016,7 @@ namespace hostFunctions{
 			break;
 		case funHash("energy"):
 			{
-			copyParamsIntoStringsV(cc, 2, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			int targetVar = (int)parameters[0];
 			int spectrumType = (int)parameters[1];
 			double energy = 0.0;
@@ -2027,7 +2027,7 @@ namespace hostFunctions{
 			}
 			break;
 		case funHash("filter"):
-			copyParamsIntoStringsV(cc, 5, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			applyFilter(s,
 				parameters[0],
 				parameters[1],
@@ -2037,7 +2037,7 @@ namespace hostFunctions{
 			break;
 		case funHash("addPulse"):
 		{
-			copyParamsIntoStringsV(cc, 20, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 20, iBlock, vBlock, parameters, defaultMask);
 			deviceParameterSet sc;
 			activeDevice d;
 			d.dParams = &sc;
@@ -2079,7 +2079,7 @@ namespace hostFunctions{
 		}
 			break;
 		case funHash("for"):
-			copyParamsIntoStringsV(cc, 2, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			int counter = (int)parameters[0];
 			int targetVar = (int)parameters[1];
 			std::string currentString = cc.substr(cc.find_first_of('{')+1,std::string::npos);
