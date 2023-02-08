@@ -503,10 +503,10 @@ void setInterfaceValuesToActiveValues(){
     theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
 
     if (std::string((*activeSetPtr).sequenceString).length() > 6) {
-        formatSequence((*activeSetPtr).sequenceString, MAX_LOADSTRING);
+        formatSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
         theGui.sequence.directOverwritePrint((*activeSetPtr).sequenceString);
-        removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\r');
-        removeCharacterFromString((*activeSetPtr).sequenceString, MAX_LOADSTRING, '\n');
+        removeCharacterFromString((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING, '\r');
+        removeCharacterFromString((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING, '\n');
     }
     stripLineBreaks((*activeSetPtr).field1FilePath);
     if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
@@ -582,11 +582,11 @@ void readParametersFromInterface() {
     //char noneString[] = "None";
     std::string noneString("None\0");
     std::string s;
-    memset((*activeSetPtr).sequenceString, 0, MAX_LOADSTRING);
-    theGui.sequence.copyBuffer((*activeSetPtr).sequenceString, MAX_LOADSTRING);
+    memset((*activeSetPtr).sequenceString, 0, 2*MAX_LOADSTRING);
+    theGui.sequence.copyBuffer((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
     s.assign((*activeSetPtr).sequenceString);
     if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).sequenceString, MAX_LOADSTRING);
+        noneString.copy((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
     }
     else {
         if((*activeSetPtr).sequenceString[0] != '0')stripWhiteSpace((*activeSetPtr).sequenceString);

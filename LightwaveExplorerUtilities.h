@@ -161,7 +161,7 @@ typedef struct simulationParameterSet {
     bool isFollowerInSequence = 0;
     bool isReinjecting = 0;
     bool forceLinear = 0;
-    char sequenceString[MAX_LOADSTRING] = { 0 };
+    char sequenceString[2*MAX_LOADSTRING] = { 0 };
     double sequenceArray[MAX_LOADSTRING] = { 0 };
     int Nsequence = 0;
 

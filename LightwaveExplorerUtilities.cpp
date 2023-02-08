@@ -828,7 +828,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).sequenceString, MAX_LOADSTRING);
+	line.copy((*sCPU).sequenceString, 2*MAX_LOADSTRING);
 	
 	moveToColon();
 	std::getline(fs, line);
@@ -871,8 +871,8 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	removeCharacterFromString((*sCPU).fittingPath, MAX_LOADSTRING, '\n');
 	removeCharacterFromString((*sCPU).fittingString, MAX_LOADSTRING, '\r');
 	removeCharacterFromString((*sCPU).fittingString, MAX_LOADSTRING, '\n');
-	removeCharacterFromString((*sCPU).sequenceString, MAX_LOADSTRING, '\r');
-	removeCharacterFromString((*sCPU).sequenceString, MAX_LOADSTRING, '\n');
+	removeCharacterFromString((*sCPU).sequenceString, 2*MAX_LOADSTRING, '\r');
+	removeCharacterFromString((*sCPU).sequenceString, 2*MAX_LOADSTRING, '\n');
 	removeCharacterFromString((*sCPU).outputBasePath, MAX_LOADSTRING, '\r');
 	removeCharacterFromString((*sCPU).outputBasePath, MAX_LOADSTRING, '\n');
 
@@ -1029,7 +1029,7 @@ int readSequenceString(simulationParameterSet* sCPU) {
 	(*sCPU).isInSequence = ((*sCPU).Nsequence > 0);
 	if (!(*sCPU).isInSequence) {
 		std::string noneString("None.\0");
-		noneString.copy((*sCPU).sequenceString, MAX_LOADSTRING - 1);
+		noneString.copy((*sCPU).sequenceString, 2*MAX_LOADSTRING - 1);
 	}
 	return 0;
 }
