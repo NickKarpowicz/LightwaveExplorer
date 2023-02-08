@@ -195,6 +195,43 @@ public:
 		deviceFree((*s).fieldFactor1);
 		deviceFree((*s).inverseChiLinear1);
 	}
+	void reset(simulationParameterSet* sCPU, deviceParameterSet* s) {
+		initializeDeviceParameters(sCPU, s);
+		fillRotationMatricies(sCPU, s);
+		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		for (size_t i = 0; i < (*s).Ntime; ++i) {
+			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
+			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
+		}
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		delete[] expGammaTCPU;
+		finishConfiguration(sCPU, s);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
+		size_t beamExpansionFactor = 1;
+		if ((*s).isCylindric) {
+			beamExpansionFactor = 2;
+		}
+		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(double));
+		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(double));
+		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(std::complex<double>));
+		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
+		deviceMemset((*s).gridPropagationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
+		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
+		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
+		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
+
+		//cylindric sym grids
+		if ((*s).isCylindric) {
+			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(std::complex<double>));
+			deviceMemset((*s).gridRadialLaplacian1, 0, 4 * (*s).Ngrid * sizeof(std::complex<double>));
+		}
+
+		//smaller helper grids
+		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(double));
+		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(std::complex<double>));
+		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(double));
+		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(double));
+	}
 	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		dParams = s;
 		cParams = sCPU;

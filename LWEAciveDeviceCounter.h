@@ -103,6 +103,9 @@ public:
 	}
 	void deallocateSet(deviceParameterSet* s) {
 	}
+	void reset(simulationParameterSet* sCPU, deviceParameterSet* s) {
+		initializeDeviceParameters(sCPU, s);
+	}
 	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		return 0;
 	}

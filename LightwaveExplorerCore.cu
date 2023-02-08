@@ -1588,10 +1588,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyFilter(simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
-		deviceParameterSet s;
-		activeDevice d;
-		d.allocateSet(sCPU, &s);
+	int applyFilter(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
@@ -1607,16 +1604,11 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
 		getTotalSpectrum(d);
-		d.deallocateSet(&s);
 
 		return 0;
 	}
 
-	int applyAperatureFarField(simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
-		deviceParameterSet s;
-		activeDevice d;
-		d.allocateSet(sCPU, &s);
-
+	int applyAperatureFarField(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double diameter, double activationParameter, double xOffset, double yOffset) {
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		deviceParameterSet* sDevice = d.dParamsDevice;
@@ -1632,17 +1624,12 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
 		getTotalSpectrum(d);
-		d.deallocateSet(&s);
 
 		return 0;
 	}
 
 
-	int applyAperature(simulationParameterSet* sCPU, double diameter, double activationParameter) {
-		deviceParameterSet s;
-		activeDevice d;
-		d.allocateSet(sCPU, &s);
-
+	int applyAperature(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s,double diameter, double activationParameter) {
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 
 		deviceParameterSet* sDevice = d.dParamsDevice;
@@ -1652,15 +1639,10 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 		getTotalSpectrum(d);
-		d.deallocateSet(&s);
-
 		return 0;
 	}
 
-	int applySphericalMirror(simulationParameterSet* sCPU, double ROC) {
-		deviceParameterSet s;
-		activeDevice d;
-		d.allocateSet(sCPU, &s);
+	int applySphericalMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double ROC) {
 
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
@@ -1674,14 +1656,10 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 		getTotalSpectrum(d);
-		d.deallocateSet(&s);
 		return 0;
 	}
 
-	int applyParabolicMirror(simulationParameterSet* sCPU, double focus) {
-		deviceParameterSet s;
-		activeDevice d;
-		d.allocateSet(sCPU, &s);
+	int applyParabolicMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double focus) {
 		deviceParameterSet* sDevice = d.dParamsDevice;
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
@@ -1693,14 +1671,10 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
 		getTotalSpectrum(d);
-		d.deallocateSet(&s);
 		return 0;
 	}
 
-	int applyLinearPropagation(simulationParameterSet* sCPU, int materialIndex, double thickness) {
-		deviceParameterSet s;
-		activeDevice d;
-		d.allocateSet(sCPU, &s);
+	int applyLinearPropagation(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, int materialIndex, double thickness) {
 
 		d.deviceMemcpy(s.gridEFrequency1, (*sCPU).EkwOut, s.NgridC * 2 * sizeof(deviceComplex), HostToDevice);
 
@@ -1727,8 +1701,6 @@ namespace hostFunctions{
 		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
 
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
-
-		d.deallocateSet(&s);
 
 		return 0;
 	}
@@ -1861,6 +1833,51 @@ namespace hostFunctions{
 		return 0;
 	}
 
+
+
+	unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s) {
+		//prepare the propagation arrays
+		preparePropagationGrids(d);
+		prepareElectricFieldArrays(d);
+		d.deviceMemcpy(d.dParamsDevice, &s, sizeof(deviceParameterSet), HostToDevice);
+		double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
+
+		//Core propagation loop
+		for (size_t i = 0; i < s.Nsteps; ++i) {
+
+			//RK4
+			runRK4Step(d, 0);
+			runRK4Step(d, 1);
+			runRK4Step(d, 2);
+			runRK4Step(d, 3);
+
+			//periodically check if the simulation diverged or was cancelled
+			if ((*sCPU).statusFlags[0] == 2) break;
+			if (i % 10 == 0) if (d.isTheCanaryPixelNaN(canaryPointer)) break;
+
+			//copy the field arrays from the GPU to CPU memory if requested by the UI
+			if ((*sCPU).statusFlags[0] == 3) {
+				d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+				d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).NgridC * sizeof(deviceComplex), DeviceToHost);
+				(*sCPU).statusFlags[0] = 0;
+			}
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+		}
+		if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
+
+		//take final spectra and transfer the results to the CPU
+		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
+		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		getTotalSpectrum(d);
+
+		int returnval = 13 * d.isTheCanaryPixelNaN(canaryPointer);
+
+		(*sCPU).statusFlags[0] = 1;
+		return returnval;
+	}
+
 	constexpr unsigned int funHash(const char* s, int off = 0) {
 		return (s[off] == 0 || s[off] == '(') ? 7177 : (funHash(s, off + 1) * 31) ^ s[off];
 	}
@@ -1871,7 +1888,8 @@ namespace hostFunctions{
 	//Dispatcher of the sequence mode. New functions go here, and should have a unique hash (chances of a conflict are small, and 
 	// will produce a compile-time error.
 	// Functions cannot start with a number or the string "None".
-	int interpretCommand(std::string cc, double* iBlock, double* vBlock, simulationParameterSet *s, crystalEntry *db) {
+	int interpretCommand(std::string cc, double* iBlock, double* vBlock, activeDevice& d, simulationParameterSet *sCPU, deviceParameterSet& s) {
+		crystalEntry* db = (*sCPU).crystalDatabase;
 		int error = 0;
 		double parameters[32] = {0.0};
 		bool defaultMask[32] = {0};
@@ -1879,136 +1897,145 @@ namespace hostFunctions{
 		switch (stringHash(cc)) {
 		case funHash("rotate"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
-			rotateField(s, DEG2RAD * parameters[0]);
+			rotateField(sCPU, DEG2RAD * parameters[0]);
 			break;
 		case funHash("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			vBlock[(int)parameters[0]] = parameters[1];
 			break;
 		case funHash("plasmaReinject"):
-			(*s).isReinjecting = TRUE;
+			(*sCPU).isReinjecting = TRUE;
 		case funHash("plasma"):
 			interpretParameters(cc, 9, iBlock, vBlock, parameters, defaultMask);
-			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
-			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
-			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
-			if (!defaultMask[3])(*s).nonlinearAbsorptionStrength = parameters[3];
-			if (!defaultMask[4])(*s).bandGapElectronVolts = parameters[4];
-			if (!defaultMask[5])(*s).drudeGamma = parameters[5];
-			if (!defaultMask[6])(*s).effectiveMass = parameters[6];
-			if (!defaultMask[7])(*s).crystalThickness = 1e-6 * parameters[7];
-			if (!defaultMask[8])(*s).propagationStep = 1e-9 * parameters[8];
-			(*s).chi2Tensor = db[(*s).materialIndex].d;
-			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-			(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-			(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
+			if (!defaultMask[1])(*sCPU).crystalTheta = DEG2RAD * parameters[1];
+			if (!defaultMask[2])(*sCPU).crystalPhi = DEG2RAD * parameters[2];
+			if (!defaultMask[3])(*sCPU).nonlinearAbsorptionStrength = parameters[3];
+			if (!defaultMask[4])(*sCPU).bandGapElectronVolts = parameters[4];
+			if (!defaultMask[5])(*sCPU).drudeGamma = parameters[5];
+			if (!defaultMask[6])(*sCPU).effectiveMass = parameters[6];
+			if (!defaultMask[7])(*sCPU).crystalThickness = 1e-6 * parameters[7];
+			if (!defaultMask[8])(*sCPU).propagationStep = 1e-9 * parameters[8];
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
 
-			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-			(*s).axesNumber = db[(*s).materialIndex].axisType;
+			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
+			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 
-			error = solveNonlinearWaveEquationX(s);
-			(*s).isFollowerInSequence = TRUE;
+			error = solveNonlinearWaveEquationX(sCPU);
+			(*sCPU).isFollowerInSequence = TRUE;
 			break;
 		case funHash("nonlinear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
-			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
-			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
-			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
-			if (!defaultMask[3])(*s).crystalThickness = 1e-6 * parameters[3];
-			if (!defaultMask[4])(*s).propagationStep = 1e-9 * parameters[4];
+			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
+			if (!defaultMask[1])(*sCPU).crystalTheta = DEG2RAD * parameters[1];
+			if (!defaultMask[2])(*sCPU).crystalPhi = DEG2RAD * parameters[2];
+			if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
+			if (!defaultMask[4])(*sCPU).propagationStep = 1e-9 * parameters[4];
 
-			(*s).nonlinearAbsorptionStrength = 0.0;
-			(*s).chi2Tensor = db[(*s).materialIndex].d;
-			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-			(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-			(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+			(*sCPU).nonlinearAbsorptionStrength = 0.0;
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
 
-			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-			(*s).axesNumber = db[(*s).materialIndex].axisType;
-			error = solveNonlinearWaveEquationX(s);
-			(*s).isFollowerInSequence = TRUE;
+			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
+			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
+			d.reset(sCPU, &s);
+			error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
+			(*sCPU).isFollowerInSequence = TRUE;
 			break;
 		case funHash("default"):
-			error = solveNonlinearWaveEquationX(s);
+			d.reset(sCPU, &s);
+			error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 			break;
 		case funHash("init"):
-			(*s).materialIndex = 0;
-			(*s).crystalTheta = 0.0;
-			(*s).crystalPhi = 0.0;
-			(*s).crystalThickness = 0;
-			(*s).propagationStep = 1e-9;
+			(*sCPU).materialIndex = 0;
+			(*sCPU).crystalTheta = 0.0;
+			(*sCPU).crystalPhi = 0.0;
+			(*sCPU).crystalThickness = 0;
+			(*sCPU).propagationStep = 1e-9;
 
-			(*s).nonlinearAbsorptionStrength = 0.0;
-			(*s).chi2Tensor = db[(*s).materialIndex].d;
-			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-			(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-			(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+			(*sCPU).nonlinearAbsorptionStrength = 0.0;
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
 
-			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-			(*s).axesNumber = db[(*s).materialIndex].axisType;
-			error = solveNonlinearWaveEquationX(s);
-			(*s).isFollowerInSequence = TRUE;
+			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
+			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
+			d.reset(sCPU, &s);
+			error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
+			(*sCPU).isFollowerInSequence = TRUE;
 			break;
 
 		case funHash("linear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
-			if ((*s).isCylindric) {
-				if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
-				if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
-				if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
-				if (!defaultMask[3])(*s).crystalThickness = 1e-6 * parameters[3];
-				if (!defaultMask[4])(*s).propagationStep = 1e-9 * parameters[4];
-				(*s).nonlinearAbsorptionStrength = 0.0;
-				(*s).chi2Tensor = db[(*s).materialIndex].d;
-				(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-				(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-				(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-				(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
-				(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-				(*s).axesNumber = db[(*s).materialIndex].axisType;
-				(*s).forceLinear = TRUE;
-				solveNonlinearWaveEquationX(s);
-				(*s).isFollowerInSequence = TRUE;
+			if ((*sCPU).isCylindric) {
+				if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
+				if (!defaultMask[1])(*sCPU).crystalTheta = DEG2RAD * parameters[1];
+				if (!defaultMask[2])(*sCPU).crystalPhi = DEG2RAD * parameters[2];
+				if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
+				if (!defaultMask[4])(*sCPU).propagationStep = 1e-9 * parameters[4];
+				(*sCPU).nonlinearAbsorptionStrength = 0.0;
+				(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
+				(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
+				(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
+				(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
+				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+				(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
+				(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
+				(*sCPU).forceLinear = TRUE;
+				d.reset(sCPU, &s);
+				error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
+				(*sCPU).isFollowerInSequence = TRUE;
 			}
 			else {
-				if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
-				if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
-				if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
-				if (!defaultMask[3])(*s).crystalThickness = 1e-6 * parameters[3];
+				if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
+				if (!defaultMask[1])(*sCPU).crystalTheta = DEG2RAD * parameters[1];
+				if (!defaultMask[2])(*sCPU).crystalPhi = DEG2RAD * parameters[2];
+				if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
 
-				applyLinearPropagation(s, (*s).materialIndex, (*s).crystalThickness);
+				applyLinearPropagation(d, sCPU, s, (*sCPU).materialIndex, (*sCPU).crystalThickness);
 			}
 
 			break;
 		case funHash("fresnelLoss"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
-			if (!defaultMask[0])(*s).materialIndex = (int)parameters[0];
-			if (!defaultMask[1])(*s).crystalTheta = DEG2RAD * parameters[1];
-			if (!defaultMask[2])(*s).crystalPhi = DEG2RAD * parameters[2];
-			applyFresnelLoss(s,
+			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
+			if (!defaultMask[1])(*sCPU).crystalTheta = DEG2RAD * parameters[1];
+			if (!defaultMask[2])(*sCPU).crystalPhi = DEG2RAD * parameters[2];
+			d.reset(sCPU, &s);
+			applyFresnelLoss(sCPU,
 				(int)parameters[4],
 				(int)parameters[5]);
 			break;
 		case funHash("sphericalMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
-			applySphericalMirror(s, parameters[0]);
+			d.reset(sCPU, &s);
+			applySphericalMirror(d, sCPU, s, parameters[0]);
 			break;
 		case funHash("parabolicMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
-			applyParabolicMirror(s, parameters[0]);
+			d.reset(sCPU, &s);
+			applyParabolicMirror(d, sCPU, s, parameters[0]);
 			break;
 		case funHash("aperture"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
-			applyAperature(s,
+			d.reset(sCPU, &s);
+			applyAperature(d, sCPU, s,
 				parameters[0],
 				parameters[1]);
 			break;
 		case funHash("farFieldAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
-			applyAperatureFarField(s,
+			d.reset(sCPU, &s);
+			applyAperatureFarField(d, sCPU, s,
 				parameters[0],
 				parameters[1],
 				parameters[2],
@@ -2020,15 +2047,16 @@ namespace hostFunctions{
 			int targetVar = (int)parameters[0];
 			int spectrumType = (int)parameters[1];
 			double energy = 0.0;
-			for(int i = 0; i < (*s).Nfreq; i++){
-				energy += (*s).totalSpectrum[i + (*s).Nfreq * spectrumType];
+			for(int i = 0; i < (*sCPU).Nfreq; i++){
+				energy += (*sCPU).totalSpectrum[i + (*sCPU).Nfreq * spectrumType];
 			}
 			vBlock[targetVar] = energy;
 			}
 			break;
 		case funHash("filter"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
-			applyFilter(s,
+			d.reset(sCPU, &s);
+			applyFilter(d, sCPU, s,
 				parameters[0],
 				parameters[1],
 				parameters[2],
@@ -2038,17 +2066,16 @@ namespace hostFunctions{
 		case funHash("addPulse"):
 		{
 			interpretParameters(cc, 20, iBlock, vBlock, parameters, defaultMask);
-			deviceParameterSet sc;
 			activeDevice d;
-			d.dParams = &sc;
-			d.cParams = s;
-			d.allocateSet(s, &sc);
+			d.dParams = &s;
+			d.cParams = sCPU;
+			d.reset(sCPU, &s);
 
-			d.deviceMemcpy(sc.gridETime1, (*s).ExtOut, 2 * sc.Ngrid * sizeof(double), HostToDevice);
-			d.deviceMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2 * sc.NgridC * sizeof(deviceComplex), HostToDevice);
+			d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
+			d.deviceMemcpy(s.gridEFrequency1, (*sCPU).EkwOut, 2 * s.NgridC * sizeof(deviceComplex), HostToDevice);
 
 			pulse p;
-			memcpy(&p, &(s->pulse1), sizeof(pulse));
+			memcpy(&p, &(sCPU->pulse1), sizeof(pulse));
 			p.energy = parameters[0];
 			p.frequency = 1e12 * parameters[1];
 			p.bandwidth = 1e12 * parameters[2];
@@ -2066,16 +2093,15 @@ namespace hostFunctions{
 			p.beamAnglePhi = DEG2RAD * parameters[14];
 			p.polarizationAngle = DEG2RAD * parameters[15];
 			p.circularity = parameters[16];
-			(*s).materialIndex = (int)parameters[17];
-			(*s).crystalTheta = DEG2RAD * parameters[18];
-			(*s).crystalPhi = DEG2RAD * parameters[19];
+			(*sCPU).materialIndex = (int)parameters[17];
+			(*sCPU).crystalTheta = DEG2RAD * parameters[18];
+			(*sCPU).crystalPhi = DEG2RAD * parameters[19];
 
 			addPulseToFieldArrays(d, p, FALSE, NULL);
-			d.deviceMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * sc.NgridC * sizeof(deviceComplex), DeviceToHost);
-			d.deviceMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), DeviceToHost);
+			d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+			d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
 			getTotalSpectrum(d);
-			d.deallocateSet(&sc);
 		}
 			break;
 		case funHash("for"):
@@ -2087,7 +2113,7 @@ namespace hostFunctions{
 			std::string forStartString = currentString;
 			for (int i = 0; i < counter; i++) {
 				while (currentString.at(0) != '}') {
-					interpretCommand(currentString, iBlock, vBlock, s, db);
+					interpretCommand(currentString, iBlock, vBlock, d, sCPU, s);
 					currentString = currentString.substr(currentString.find_first_of(')')+1,std::string::npos);
 				}
 				++vBlock[targetVar];
@@ -2102,158 +2128,158 @@ namespace hostFunctions{
 	int resolveSequence(int currentIndex, simulationParameterSet * s, crystalEntry * db) {
 
 
-		double* offsetArray = &(*s).sequenceArray[11 * currentIndex];
-		int error = 0;
-		//sequence format
-		//0: step type
-		int stepType = (int)offsetArray[0];
-		int materialIndex = 0;
-		double thickness = 0;
-		// 
-		// if stepType == 0, normal propagation
-		//1: material index
-		//2: theta,
-		//3: phi, 
-		//4: NL absorption
-		//5: Band gap
-		//6: Drude relaxation
-		//7: Effective mass
-		//8: Crystal thickness
-		//9: Propagation step size
-		//10: rotation angle
-		//
-		// if stepType == 1, linear propagation
-		// same parameters as 0, but only 1,2,3,8, and 10 matter
-		//
-		// if stepType == 2, fresnel loss
-		// 1: incidence material index
-		// 2: transmission material index
-		// other parameters don't matter
-		// 
-		// if stepType == 3, spherical mirror
-		// 1: ROC (m)
-		//
-		// if stepType == 4, parabolic mirror
-		// 1: focus (m)
-		// 
-		// if stepType == 5, aperture
-		// 1: diameter (m)
-		// 2: activation parameter p (function is 1 - 1/(1 + exp(-p*(r-radius)))
-		//
-		// if stepType == 6, loop back to start (handled by solveNonlinearWaveEquationSequence())
-		// 1: counter (counts down to zero)
-		//
-		// if stepType == 7, reinjection, same as 0, but input fields are added to current fields.
+		//double* offsetArray = &(*s).sequenceArray[11 * currentIndex];
+		//int error = 0;
+		////sequence format
+		////0: step type
+		//int stepType = (int)offsetArray[0];
+		//int materialIndex = 0;
+		//double thickness = 0;
+		//// 
+		//// if stepType == 0, normal propagation
+		////1: material index
+		////2: theta,
+		////3: phi, 
+		////4: NL absorption
+		////5: Band gap
+		////6: Drude relaxation
+		////7: Effective mass
+		////8: Crystal thickness
+		////9: Propagation step size
+		////10: rotation angle
+		////
+		//// if stepType == 1, linear propagation
+		//// same parameters as 0, but only 1,2,3,8, and 10 matter
+		////
+		//// if stepType == 2, fresnel loss
+		//// 1: incidence material index
+		//// 2: transmission material index
+		//// other parameters don't matter
+		//// 
+		//// if stepType == 3, spherical mirror
+		//// 1: ROC (m)
+		////
+		//// if stepType == 4, parabolic mirror
+		//// 1: focus (m)
+		//// 
+		//// if stepType == 5, aperture
+		//// 1: diameter (m)
+		//// 2: activation parameter p (function is 1 - 1/(1 + exp(-p*(r-radius)))
+		////
+		//// if stepType == 6, loop back to start (handled by solveNonlinearWaveEquationSequence())
+		//// 1: counter (counts down to zero)
+		////
+		//// if stepType == 7, reinjection, same as 0, but input fields are added to current fields.
 
-		switch (stepType) {
-		case 7:
-			(*s).isReinjecting = TRUE;
-		case 0:
-			if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-			if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-			if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-			if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
-			if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
-			if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
-			if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
-			if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
-			if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
-			if ((int)offsetArray[8] != -1) (*s).Npropagation
-				= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
-			if (currentIndex > 0) {
-				(*s).isFollowerInSequence = TRUE;
-			}
-			(*s).chi2Tensor = db[(*s).materialIndex].d;
-			(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-			(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-			(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-			(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+		//switch (stepType) {
+		//case 7:
+		//	(*s).isReinjecting = TRUE;
+		//case 0:
+		//	if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+		//	if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+		//	if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+		//	if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
+		//	if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
+		//	if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
+		//	if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
+		//	if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
+		//	if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
+		//	if ((int)offsetArray[8] != -1) (*s).Npropagation
+		//		= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
+		//	if (currentIndex > 0) {
+		//		(*s).isFollowerInSequence = TRUE;
+		//	}
+		//	(*s).chi2Tensor = db[(*s).materialIndex].d;
+		//	(*s).chi3Tensor = db[(*s).materialIndex].chi3;
+		//	(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
+		//	(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
+		//	(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
 
-			(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-			(*s).axesNumber = db[(*s).materialIndex].axisType;
+		//	(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
+		//	(*s).axesNumber = db[(*s).materialIndex].axisType;
 
-			error = solveNonlinearWaveEquationX(s);
+		//	error = solveNonlinearWaveEquationX(s);
 
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
+		//	if (offsetArray[10] != 0.0) {
+		//		rotateField(s, DEG2RAD * offsetArray[10]);
+		//	}
 
-			if ((*s).memoryError > 0) {
-				printf("Warning: device memory error (%i).\n", (*s).memoryError);
-			}
-			return error;
+		//	if ((*s).memoryError > 0) {
+		//		printf("Warning: device memory error (%i).\n", (*s).memoryError);
+		//	}
+		//	return error;
 
-		case 1:
-			if ((*s).isCylindric) {
-				if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-				if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-				if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-				if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
-				if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
-				if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
-				if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
-				if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
-				if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
-				if ((int)offsetArray[8] != -1) (*s).Npropagation
-					= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
-				if (currentIndex > 0) {
-					(*s).isFollowerInSequence = TRUE;
-				}
-				(*s).chi2Tensor = db[(*s).materialIndex].d;
-				(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-				(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-				(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-				(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
-				(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-				(*s).axesNumber = db[(*s).materialIndex].axisType;
-				(*s).forceLinear = TRUE;
-				solveNonlinearWaveEquationX(s);
-			}
-			else {
-				if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-				if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-				if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-				thickness = 1.0e-6 * offsetArray[8];
-				if (offsetArray[8] == -1) {
-					thickness = (*s).crystalThickness;
-				}
-				materialIndex = (int)offsetArray[1];
-				if (offsetArray[1] == -1) {
-					materialIndex = (*s).materialIndex;
-				}
-				applyLinearPropagation(s, materialIndex, thickness);
-			}
+		//case 1:
+		//	if ((*s).isCylindric) {
+		//		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+		//		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+		//		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+		//		if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
+		//		if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
+		//		if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
+		//		if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
+		//		if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
+		//		if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
+		//		if ((int)offsetArray[8] != -1) (*s).Npropagation
+		//			= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
+		//		if (currentIndex > 0) {
+		//			(*s).isFollowerInSequence = TRUE;
+		//		}
+		//		(*s).chi2Tensor = db[(*s).materialIndex].d;
+		//		(*s).chi3Tensor = db[(*s).materialIndex].chi3;
+		//		(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
+		//		(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
+		//		(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
+		//		(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
+		//		(*s).axesNumber = db[(*s).materialIndex].axisType;
+		//		(*s).forceLinear = TRUE;
+		//		solveNonlinearWaveEquationX(s);
+		//	}
+		//	else {
+		//		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+		//		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+		//		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+		//		thickness = 1.0e-6 * offsetArray[8];
+		//		if (offsetArray[8] == -1) {
+		//			thickness = (*s).crystalThickness;
+		//		}
+		//		materialIndex = (int)offsetArray[1];
+		//		if (offsetArray[1] == -1) {
+		//			materialIndex = (*s).materialIndex;
+		//		}
+		//		applyLinearPropagation(s, materialIndex, thickness);
+		//	}
 
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-			return 0;
+		//	if (offsetArray[10] != 0.0) {
+		//		rotateField(s, DEG2RAD * offsetArray[10]);
+		//	}
+		//	return 0;
 
-		case 2:
-			if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-			if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-			if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-			applyFresnelLoss(s, (int)offsetArray[4], (int)offsetArray[5]);
-			return 0;
-		case 3:
-			applySphericalMirror(s, offsetArray[8]);
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-			return 0;
-		case 4:
-			applyParabolicMirror(s, offsetArray[8]);
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-			return 0;
-		case 5:
-			applyAperature(s, offsetArray[1], offsetArray[2]);
-			if (offsetArray[10] != 0.0) {
-				rotateField(s, DEG2RAD * offsetArray[10]);
-			}
-			return 0;
-		}
+		//case 2:
+		//	if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
+		//	if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
+		//	if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
+		//	applyFresnelLoss(s, (int)offsetArray[4], (int)offsetArray[5]);
+		//	return 0;
+		//case 3:
+		//	applySphericalMirror(s, offsetArray[8]);
+		//	if (offsetArray[10] != 0.0) {
+		//		rotateField(s, DEG2RAD * offsetArray[10]);
+		//	}
+		//	return 0;
+		//case 4:
+		//	applyParabolicMirror(s, offsetArray[8]);
+		//	if (offsetArray[10] != 0.0) {
+		//		rotateField(s, DEG2RAD * offsetArray[10]);
+		//	}
+		//	return 0;
+		//case 5:
+		//	applyAperature(s, offsetArray[1], offsetArray[2]);
+		//	if (offsetArray[10] != 0.0) {
+		//		rotateField(s, DEG2RAD * offsetArray[10]);
+		//	}
+		//	return 0;
+		//}
 
 		return 1;
 	}
@@ -2361,6 +2387,8 @@ namespace hostFunctions{
 		if ((*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 		return error;
 	}
+
+	
 }
 using namespace hostFunctions;
 
@@ -2373,47 +2401,9 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	memset(&s, 0, sizeof(deviceParameterSet));
 	activeDevice d(sCPU, &s);
 	if (d.memoryStatus) return 1;
-
-	//prepare the propagation arrays
-	preparePropagationGrids(d);
-	prepareElectricFieldArrays(d);
-	d.deviceMemcpy(d.dParamsDevice, &s, sizeof(deviceParameterSet), HostToDevice);
-	double* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
-
-	//Core propagation loop
-	for (size_t i = 0; i < s.Nsteps; ++i) {
-
-		//RK4
-		runRK4Step(d, 0);
-		runRK4Step(d, 1);
-		runRK4Step(d, 2);
-		runRK4Step(d, 3);
-
-		//periodically check if the simulation diverged or was cancelled
-		if ((*sCPU).statusFlags[0] == 2) break;
-		if(i % 10 == 0) if(d.isTheCanaryPixelNaN(canaryPointer)) break;
-
-		//copy the field arrays from the GPU to CPU memory if requested by the UI
-		if ((*sCPU).statusFlags[0] == 3) {
-			d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
-			d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * (*sCPU).NgridC * sizeof(deviceComplex), DeviceToHost);
-			(*sCPU).statusFlags[0] = 0;
-		}
-		if(!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
-	}
-	if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
-
-	//take final spectra and transfer the results to the CPU
-	d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
-	d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
-	d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
-	d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
-	getTotalSpectrum(d);
-
-	int returnval = 13 * d.isTheCanaryPixelNaN(canaryPointer);
+	unsigned long returnValue = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 	d.deallocateSet(&s);
-	(*sCPU).statusFlags[0] = 1;
-	return returnval;
+	return returnValue;
 }
 
 
@@ -2422,6 +2412,9 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	simulationParameterSet sCPUcurrent;
 	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
 	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
+	deviceParameterSet s;
+	memset(&s, 0, sizeof(deviceParameterSet));
+	activeDevice d(sCPU, &s);
 
 	//pointers to where the various parameters are in the struct
 	double* targets[36] = { 0,
@@ -2451,8 +2444,8 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 
 	//if it starts with 0, it's an old sequence; send it there
 	if ((*sCPU).sequenceString[0] == '0') {
-		readSequenceString((simulationParameterSet*)lpParam);
-		solveNonlinearWaveEquationSequenceOldX(lpParam);
+		//readSequenceString((simulationParameterSet*)lpParam);
+		//solveNonlinearWaveEquationSequenceOldX(lpParam);
 		return 0;
 	}
 
@@ -2487,7 +2480,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 			currentString = currentString.substr(1,std::string::npos);
 		}
 
-		interpretCommand(currentString, iBlock, vBlock, sCPU, (*sCPU).crystalDatabase);
+		interpretCommand(currentString, iBlock, vBlock, d, sCPU, s);
 		currentString = currentString.substr(currentString.find_first_of(')'),std::string::npos);
 
 		if(currentString.length()<minLength) break; 
@@ -2497,6 +2490,8 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 		(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
 		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 	}
+
+	d.deallocateSet(&s);
 	return 0;
 }
 
