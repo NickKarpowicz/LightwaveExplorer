@@ -230,16 +230,6 @@ public:
 	void reset(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		initializeDeviceParameters(sCPU, s);
 		fillRotationMatricies(sCPU, s);
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
-		for (size_t i = 0; i < (*s).Ntime; ++i) {
-			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
-			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
-		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
-		delete[] expGammaTCPU;
-		finishConfiguration(sCPU, s);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
-
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
@@ -264,6 +254,17 @@ public:
 		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(std::complex<double>));
 		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(double));
 		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(double));
+
+		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		for (size_t i = 0; i < (*s).Ntime; ++i) {
+			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
+			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
+		}
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		delete[] expGammaTCPU;
+
+		finishConfiguration(sCPU, s);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
 		dParams = s;

@@ -1545,10 +1545,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyFresnelLoss(simulationParameterSet* s, int materialIndex1, int materialIndex2) {
-		activeDevice d;
-		deviceParameterSet sc;
-		d.allocateSet(s, &sc);
+	int applyFresnelLoss(activeDevice& d, simulationParameterSet* s, deviceParameterSet& sc, int materialIndex1, int materialIndex2) {
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
@@ -1584,7 +1581,7 @@ namespace hostFunctions{
 
 		d.deviceFree(sellmeierCoefficients1);
 		d.deviceFree(sellmeierCoefficients2);
-		d.deallocateSet(&sc);
+
 		return 0;
 	}
 
@@ -1924,7 +1921,7 @@ namespace hostFunctions{
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
-
+			d.reset(sCPU, &s);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 			(*sCPU).isFollowerInSequence = TRUE;
 			break;
@@ -2011,7 +2008,7 @@ namespace hostFunctions{
 			if (!defaultMask[1])(*sCPU).crystalTheta = DEG2RAD * parameters[1];
 			if (!defaultMask[2])(*sCPU).crystalPhi = DEG2RAD * parameters[2];
 			d.reset(sCPU, &s);
-			applyFresnelLoss(sCPU,
+			applyFresnelLoss(d, sCPU, s,
 				(int)parameters[4],
 				(int)parameters[5]);
 			break;
