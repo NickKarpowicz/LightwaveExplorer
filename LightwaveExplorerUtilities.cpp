@@ -202,7 +202,12 @@ void applyOp(char op, double* result, double* readout) {
 		*result += *readout;
 		return;
 	case '^':
-		*result = pow(*result, *readout);
+		if (*readout < 1.0 && *result < 0.0) {
+			*result = 0.0;
+		}
+		else {
+			*result = pow(*result, *readout);
+		}
 		return;
 	}
 }
@@ -947,12 +952,12 @@ int saveDataSet(simulationParameterSet* sCPU) {
 
 int configureBatchMode(simulationParameterSet* sCPU) {
 	size_t i, j, currentRow;
-	if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims == 1 || (*sCPU).batchIndex > 35 || (*sCPU).batchIndex2 > 35) {
+	if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims == 1 || (*sCPU).batchIndex > 37 || (*sCPU).batchIndex2 > 37) {
 		return 0;
 	}
 
 	//pointers to values that can be scanned in batch mode
-	double* targets[36] = { 0,
+	double* targets[38] = { 0,
 		&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
 		&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
 		&(*sCPU).pulse1.delay, &(*sCPU).pulse2.delay, &(*sCPU).pulse1.gdd, &(*sCPU).pulse2.gdd,
@@ -962,11 +967,11 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 		&(*sCPU).pulse1.beamAngle, &(*sCPU).pulse2.beamAngle, &(*sCPU).pulse1.polarizationAngle, &(*sCPU).pulse2.polarizationAngle,
 		&(*sCPU).pulse1.circularity, &(*sCPU).pulse2.circularity, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
 		&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
-		&(*sCPU).propagationStep };
+		&(*sCPU).propagationStep, &(*sCPU).i37, &(*sCPU).i37};
 
 	//multipliers to the Batch end value from the interface
 	// (e.g. frequency in THz requires 1e12 multiplier)
-	double multipliers[36] = { 0,
+	double multipliers[38] = { 0,
 		1, 1, 1e12, 1e12,
 		1e12, 1e12, PI, PI,
 		1e-15, 1e-15, 1e-30, 1e-30,
@@ -976,12 +981,12 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 		DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
 		1, 1, DEG2RAD, DEG2RAD,
 		1, 1e12, 1, 1e-6,
-		1e-9 };
+		1e-9, 1.0, 1.0 };
 
 	//Configure the struct array if in a batch
 	for (i = 0; i < (*sCPU).Nsims2; i++) {
 		currentRow = i * (*sCPU).Nsims;
-
+		
 		if (currentRow > 0) {
 			memcpy(&sCPU[currentRow], sCPU, sizeof(simulationParameterSet));
 		}
@@ -992,6 +997,7 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 		}
 
 		for (j = 0; j < (*sCPU).Nsims; j++) {
+
 			if (j > 0) {
 				memcpy(&sCPU[j + currentRow], &sCPU[currentRow], sizeof(simulationParameterSet));
 			}
@@ -999,7 +1005,8 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 			if ((*sCPU).deffTensor != NULL) {
 				sCPU[j + currentRow].deffTensor = &(*sCPU).deffTensor[9 * (j + currentRow)];;
 			}
-
+			sCPU[j + currentRow].batchLoc1 = j;
+			sCPU[j + currentRow].batchLoc2 = i;
 			sCPU[j + currentRow].ExtOut = &(*sCPU).ExtOut[(j + currentRow) * (*sCPU).Ngrid * 2];
 			sCPU[j + currentRow].EkwOut = &(*sCPU).EkwOut[(j + currentRow) * (*sCPU).NgridC * 2];
 			sCPU[j + currentRow].totalSpectrum = &(*sCPU).totalSpectrum[(j + currentRow) * (*sCPU).Nfreq * 3];

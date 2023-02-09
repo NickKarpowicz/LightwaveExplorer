@@ -164,6 +164,9 @@ typedef struct simulationParameterSet {
     char sequenceString[2*MAX_LOADSTRING] = { 0 };
     double sequenceArray[MAX_LOADSTRING] = { 0 };
     int Nsequence = 0;
+    double i37 = 0.0;
+    size_t batchLoc1 = 0;
+    size_t batchLoc2 = 0;
 
     //fitting
     bool isInFittingMode;

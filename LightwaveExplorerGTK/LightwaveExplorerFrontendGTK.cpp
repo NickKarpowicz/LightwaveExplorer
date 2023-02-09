@@ -224,7 +224,7 @@ public:
         pulldowns[4].addElement(_T("3D"));
         pulldowns[4].init(parentHandle, textCol2a, 7, 2 * textWidth, 1);
 
-        char batchModeNames[36][64] = {
+        char batchModeNames[38][64] = {
         "none",
         "01: Energy 1",
         "02: Energy 2",
@@ -261,9 +261,11 @@ public:
         "33: Eff. mass",
         "34: Thickness",
         "35: dz",
+        "36: Manual",
+        "37: i37"
         };
 
-        for (int i = 0; i < 36; ++i) {
+        for (int i = 0; i < 38; ++i) {
             pulldowns[5].addElement(batchModeNames[i]);
             pulldowns[6].addElement(batchModeNames[i]);
         }
@@ -2215,7 +2217,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
         activeSetPtr[j].assignedGPU = assignedGPU;
         if ((*activeSetPtr).isInSequence) {
             error = sequenceFunction(&activeSetPtr[j]);
-
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
                     theGui.console.tPrint(_T("Not enough free GPU memory, sorry.\n"), activeSetPtr[j].memoryError);

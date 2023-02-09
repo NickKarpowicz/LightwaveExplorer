@@ -646,6 +646,10 @@ namespace kernels {
 
 		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
+		if (isnan((*s).gridEFrequency1[i].real()) || isnan((*s).gridEFrequency2[i].real()) || isnan((*s).gridEFrequency1[i].imag()) || isnan((*s).gridEFrequency2[i].imag())) {
+			(*s).gridEFrequency1[i] = deviceComplex(0.0, 0.0);
+			(*s).gridEFrequency2[i] = deviceComplex(0.0, 0.0);
+		}
 	};
 
 	//apply linear propagation through a given medium to the fields
@@ -682,11 +686,15 @@ namespace kernels {
 		deviceComplex ke = ne * omega / LIGHTC;
 		deviceComplex ko = no * omega / LIGHTC;
 		double k0 = (n0 * omega / LIGHTC).real();
-		double kze = (deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2)).real();
-		double kzo = (deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2)).real();
+		double kze = ke.real() * ke.real() - dk1 * dk1 - dk2 * dk2;
+		double kzo = ko.real() * ko.real() - dk1 * dk1 - dk2 * dk2;
+			//double kze = (deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2)).real();
+			//double kzo = (deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2)).real();
 
-		deviceComplex ts = deviceLib::exp(ii * (k0 - kze) * thickness);
-		deviceComplex tp = deviceLib::exp(ii * (k0 - kzo) * thickness);
+		deviceComplex ts = deviceComplex(0.0, 0.0);//deviceLib::exp(ii * (k0 - kze) * thickness);
+		deviceComplex tp = deviceComplex(0.0, 0.0);// deviceLib::exp(ii * (k0 - kzo) * thickness);
+		if(kze>=0.0) ts = deviceLib::exp(ii * (k0 - sqrt(kze)) * thickness);
+		if(kzo>=0.0) tp = deviceLib::exp(ii * (k0 - sqrt(kzo)) * thickness);
 		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
 		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0, 0);
 		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
@@ -1950,6 +1958,17 @@ namespace hostFunctions{
 			d.reset(sCPU, &s);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 			break;
+		case funHash("save"):
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			{
+				size_t saveLoc = (size_t)parameters[0];
+				if (saveLoc < (*sCPU).Nsims && saveLoc != 0) {
+					memcpy(&(*sCPU).ExtOut[saveLoc * (*sCPU).Ngrid * 2], (*sCPU).ExtOut, 2 * (*sCPU).Ngrid * sizeof(double));
+					memcpy(&(*sCPU).EkwOut[saveLoc * (*sCPU).NgridC * 2], (*sCPU).EkwOut, 2 * (*sCPU).NgridC * sizeof(std::complex<double>));
+					memcpy(&(*sCPU).totalSpectrum[saveLoc * 3 * (*sCPU).Nfreq], (*sCPU).totalSpectrum, 3 * (*sCPU).Nfreq * sizeof(double));
+				}
+			}
+			break;
 		case funHash("init"):
 			(*sCPU).materialIndex = 0;
 			(*sCPU).crystalTheta = 0.0;
@@ -2408,13 +2427,16 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	simulationParameterSet sCPUcurrent;
 	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
+
+	
 	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
+	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
 	deviceParameterSet s;
 	memset(&s, 0, sizeof(deviceParameterSet));
 	activeDevice d(sCPU, &s);
 
 	//pointers to where the various parameters are in the struct
-	double* targets[36] = { 0,
+	double* targets[38] = { 0,
 		&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
 		&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
 		&(*sCPU).pulse1.delay, &(*sCPU).pulse2.delay, &(*sCPU).pulse1.gdd, &(*sCPU).pulse2.gdd,
@@ -2424,10 +2446,10 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 		&(*sCPU).pulse1.beamAngle, &(*sCPU).pulse2.beamAngle, &(*sCPU).pulse1.polarizationAngle, &(*sCPU).pulse2.polarizationAngle,
 		&(*sCPU).pulse1.circularity, &(*sCPU).pulse2.circularity, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
 		&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
-		&(*sCPU).propagationStep };
+		&(*sCPU).propagationStep, &(*sCPU).i37, &(*sCPU).i37};
 
 	//unit multipliers from interface units to SI base units.
-	double multipliers[36] = { 0,
+	double multipliers[38] = { 0,
 	1, 1, 1e12, 1e12,
 	1e12, 1e12, PI, PI,
 	1e-15, 1e-15, 1e-30, 1e-30,
@@ -2437,7 +2459,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
 	1, 1, DEG2RAD, DEG2RAD,
 	1, 1e12, 1, 1e-6,
-	1e-9 };
+	1e-9, 1, 1 };
 
 	//if it starts with 0, it's an old sequence; send it there
 	if ((*sCPU).sequenceString[0] == '0') {
@@ -2453,7 +2475,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 
 	double iBlock[100] = { 0.0 };
 
-	for (int k = 1; k < 36; k++) {
+	for (int k = 1; k < 38; k++) {
 		iBlock[k] = *(targets[k])/multipliers[k];
 	}
 
