@@ -1925,7 +1925,7 @@ namespace hostFunctions{
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 
-			error = solveNonlinearWaveEquationX(sCPU);
+			error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 			(*sCPU).isFollowerInSequence = TRUE;
 			break;
 		case funHash("nonlinear"):
