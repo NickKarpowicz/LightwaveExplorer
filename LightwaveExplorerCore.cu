@@ -2131,19 +2131,20 @@ namespace hostFunctions{
 			vBlock[targetVar] = 0.0;
 			for (int i = 0; i < counter; i++) {
 				while (currentString.length() > 0 && currentString.at(0) != '}'){
-					if (currentString.length() > 0 && currentString.at(0) == '<'){
+					if (currentString.at(0) == '<'){
 						currentString = currentString.substr(currentString.find_first_of('>'), std::string::npos);
 						if(currentString.length()>0) currentString = currentString.substr(1, std::string::npos);
 					}
-					if (currentString.length() > 0 && currentString.at(0) == '{'){
+					if (currentString.at(0) == '{') {
+						currentString = currentString.substr(1,std::string::npos);
 						while(currentString.find_first_of('{') != std::string::npos 
-						&& currentString.find_first_of('{') < currentString.find_first_of('}')){
+							&& currentString.find_first_of('{') < currentString.find_first_of('}')){
 							currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
-							if(currentString.length()>0) currentString = currentString.substr(1, std::string::npos);
+							currentString = currentString.substr(1, std::string::npos);
 						}
-
-						currentString = currentString.substr(currentString.find_first_of('}'), std::string::npos);
-						currentString = currentString.substr(1, std::string::npos);
+						currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
+						if(currentString.length()<5) break; 
+						currentString = currentString.substr(1,std::string::npos);
 					}
 					interpretCommand(currentString, iBlock, vBlock, d, sCPU, s);
 					currentString = currentString.substr(currentString.find_first_of(')') + 1, std::string::npos);
@@ -2501,13 +2502,14 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	//shortest command is either for() or init(), if there's only 4 characters left, it can only
 	//be whitespace or other trailing symbols
 	size_t minLength = 5;
-	for (;;) {
+	while (currentString.length() > minLength) {
 		//skip curly braces (for loops should have been handled by interpretCommand() already)
 		if (currentString.at(0) == '{') {
+			currentString = currentString.substr(1,std::string::npos);
 			while(currentString.find_first_of('{') != std::string::npos 
 				&& currentString.find_first_of('{') < currentString.find_first_of('}')){
 				currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
-				if(currentString.length()>0) currentString = currentString.substr(1, std::string::npos);
+				currentString = currentString.substr(1, std::string::npos);
 			}
 			currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
 			if(currentString.length()<minLength) break; 
