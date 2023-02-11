@@ -360,6 +360,7 @@ public:
 
     void directOverwritePrint(const char* sIn) {
         std::string s(sIn);
+        textBuffer.clear();
         textBuffer.assign(s);
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());

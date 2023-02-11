@@ -833,11 +833,13 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
+	memset((*sCPU).sequenceString, 0, 2 * MAX_LOADSTRING);
 	line.copy((*sCPU).sequenceString, 2*MAX_LOADSTRING);
 	
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
+	memset((*sCPU).fittingString, 0, MAX_LOADSTRING);
 	line.copy((*sCPU).fittingString, MAX_LOADSTRING);
 	
 	moveToColon();

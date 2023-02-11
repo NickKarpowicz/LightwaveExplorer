@@ -1266,9 +1266,11 @@ int LwePlot2d(plotStruct* inputStruct) {
     }
     if ((*s).forceYmin) {
         minY = (double)(*s).forcedYmin;
+        if ((*s).logScale) minY += log10((*s).unitY);
     }
     if ((*s).forceYmax) {
         maxY = (double)(*s).forcedYmax;
+        if ((*s).logScale) maxY += log10((*s).unitY);
     }
     if ((*s).forceXmin) {
         minX = (double)(*s).forcedXmin;
@@ -1373,15 +1375,15 @@ int LwePlot2d(plotStruct* inputStruct) {
 
     currentColor = (*s).textColor;
     //y-tick text labels
-    for (int i = 0; i < NyTicks; ++i) {
-        if (abs(yTicks1[i] / (*s).unitY) > 10.0 || abs(yTicks1[i] / (*s).unitY) < 0.01) {
-            messageBuffer = Sformat("{:.1e}", yTicks1[i] / (*s).unitY);
-        }
-        else {
-            messageBuffer = Sformat("{:4.4f}", yTicks1[i] / (*s).unitY);
-
-        }
-        
+	for (int i = 0; i < NyTicks; ++i) {
+		double ytVal = yTicks1[i] / (*s).unitY;
+        if ((*s).logScale) ytVal = yTicks1[i] - log10((*s).unitY);
+		if (abs(ytVal) > 10.0 || abs(ytVal) < 0.01) {
+			messageBuffer = Sformat("{:.1e}", ytVal);
+		}
+		else {
+			messageBuffer = Sformat("{:4.4f}", ytVal);
+		}
 
         layoutLeft = axisLabelSpaceX;
         layoutTop = (double)(i * (0.5 * (height)));
@@ -2160,6 +2162,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         if ((*activeSetPtr).isInSequence) {
             testSet[j].progressCounter = &totalSteps;
+            testSet[j].runType = -1;
             solveNonlinearWaveEquationSequenceCounter(&testSet[j]);
         }
         else {

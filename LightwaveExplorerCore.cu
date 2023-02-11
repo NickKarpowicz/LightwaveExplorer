@@ -1195,6 +1195,13 @@ namespace kernels {
 		(*sP).k2[h] += jfac * (*sP).gridPolarizationFactor2[h] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[h % ((*sP).Nfreq)];
 	};
 
+	trilingual updateKwithRadialLaplacianKernel asKernel(withID deviceParameterSet* sP) {
+		size_t iC = localIndex;
+		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
+	};
+
 	trilingual updateKwithPlasmaKernelCylindric asKernel(withID deviceParameterSet* sP) {
 		size_t i = localIndex;
 		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
@@ -1213,9 +1220,6 @@ namespace kernels {
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
 
-		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
-		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
@@ -1226,9 +1230,6 @@ namespace kernels {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-
-		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
-		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
@@ -1241,9 +1242,6 @@ namespace kernels {
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
 
-		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
-		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
@@ -1254,9 +1252,6 @@ namespace kernels {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-
-		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0., 0.);
-		if ((*sP).isCylindric) (*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
@@ -1819,7 +1814,10 @@ namespace hostFunctions{
 			if ((*sH).isCylindric) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, radialLaplacianKernel, sD);
 				d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2Z);
+				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, updateKwithRadialLaplacianKernel, sD);
 			}
+
+			d.deviceMemset((*sH).workspace1, 0, (*sH).NgridC * 2 * sizeof(deviceComplex));
 		}
 
 		//advance an RK4 step
@@ -1963,7 +1961,7 @@ namespace hostFunctions{
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			{
 				size_t saveLoc = (size_t)parameters[0];
-				if (saveLoc < (*sCPU).Nsims && saveLoc != 0) {
+				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != -1) {
 					memcpy(&(*sCPU).ExtOut[saveLoc * (*sCPU).Ngrid * 2], (*sCPU).ExtOut, 2 * (*sCPU).Ngrid * sizeof(double));
 					memcpy(&(*sCPU).EkwOut[saveLoc * (*sCPU).NgridC * 2], (*sCPU).EkwOut, 2 * (*sCPU).NgridC * sizeof(std::complex<double>));
 					memcpy(&(*sCPU).totalSpectrum[saveLoc * 3 * (*sCPU).Nfreq], (*sCPU).totalSpectrum, 3 * (*sCPU).Nfreq * sizeof(double));
@@ -2060,6 +2058,7 @@ namespace hostFunctions{
 			break;
 		case funHash("energy"):
 			{
+			if ((*sCPU).runType == -1) break;
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			int targetVar = (int)parameters[0];
 			int spectrumType = (int)parameters[1];
@@ -2083,6 +2082,7 @@ namespace hostFunctions{
 			break;
 		case funHash("addPulse"):
 		{
+			if ((*sCPU).runType == -1) break;
 			interpretParameters(cc, 20, iBlock, vBlock, parameters, defaultMask);
 			activeDevice d;
 			d.dParams = &s;
