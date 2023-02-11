@@ -359,7 +359,7 @@ namespace kernels {
 
 	//calculate the total power spectrum of the beam for the 2D modes. Note that for the cartesian one, it will be treated as
 	//a round beam instead of an infinite plane wave in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
-	trilingual totalSpectrumKernel asKernel(withID deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
+	trilingual totalSpectrumKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		size_t j;
 		double beamCenter1 = 0.;
@@ -369,12 +369,12 @@ namespace kernels {
 		double a, x;
 
 		//find beam centers
-		for (j = 0; j < Nspace; ++j) {
-			x = gridStep * j;
-			a = cuCModSquared(fieldGrid1[i + j * Ntime]);
+		for (j = 0; j < (*s).Nspace; ++j) {
+			x = (*s).dx * j;
+			a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 			beamTotal1 += a;
 			beamCenter1 += x * a;
-			a = cuCModSquared(fieldGrid2[i + j * Ntime]);
+			a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			beamTotal2 += a;
 			beamCenter2 += x * a;
 		}
@@ -389,22 +389,22 @@ namespace kernels {
 		//the center
 		beamTotal1 = 0.;
 		beamTotal2 = 0.;
-		for (j = 0; j < Nspace; ++j) {
-			x = gridStep * j;
-			beamTotal1 += PI * abs(x - beamCenter1) * cuCModSquared(fieldGrid1[i + j * Ntime]);
-			beamTotal2 += PI * abs(x - beamCenter2) * cuCModSquared(fieldGrid2[i + j * Ntime]);
+		for (j = 0; j < (*s).Nspace; ++j) {
+			x = (*s).dx * j;
+			beamTotal1 += abs(x - beamCenter1) * cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+			beamTotal2 += abs(x - beamCenter2) * cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 		}
-		beamTotal1 *= gridStep / Ntime;
-		beamTotal2 *= gridStep / Ntime;
+		beamTotal1 *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt * (*s).dt;
+		beamTotal2 *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt * (*s).dt;
 
 		//put the values into the output spectrum
-		spectrum[i] = beamTotal1;
-		spectrum[i + Ntime] = beamTotal2;
-		spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
+		(*s).gridPolarizationTime1[i] = beamTotal1;
+		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
 	//Calculate the power spectrum after a 3D propagation
-	trilingual totalSpectrum3DKernel asKernel(withID deviceComplex* fieldGrid1, deviceComplex* fieldGrid2, double gridStep, size_t Ntime, size_t Nspace, double* spectrum) {
+	trilingual totalSpectrum3DKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		size_t j;
 
@@ -413,17 +413,17 @@ namespace kernels {
 		//Integrate total beam power
 		beamTotal1 = 0.;
 		beamTotal2 = 0.;
-		for (j = 0; j < Nspace; ++j) {
-			beamTotal1 += cuCModSquared(fieldGrid1[i + j * Ntime]);
-			beamTotal2 += cuCModSquared(fieldGrid2[i + j * Ntime]);
+		for (j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
+			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 		}
-		beamTotal1 *= gridStep * gridStep / Ntime;
-		beamTotal2 *= gridStep * gridStep / Ntime;
+		beamTotal1 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
+		beamTotal2 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
 
 		//put the values into the output spectrum
-		spectrum[i] = beamTotal1;
-		spectrum[i + Ntime] = beamTotal2;
-		spectrum[i + 2 * Ntime] = beamTotal1 + beamTotal2;
+		(*s).gridPolarizationTime1[i] = beamTotal1;
+		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
 	//rotate the field around the propagation axis (basis change)
@@ -1444,13 +1444,14 @@ namespace hostFunctions{
 	int getTotalSpectrum(activeDevice& d) {
 		simulationParameterSet* sCPU = d.cParams;
 		deviceParameterSet* sc = d.dParams;
+
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
 		d.fft((*sc).gridETime1, (*sc).workspace1, deviceFFTD2Z1D);
 		if ((*sc).is3D) {
-			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel, (*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace * (*sCPU).Nspace2, (*sc).gridPolarizationTime1);
+			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel, d.dParamsDevice);
 		}
 		else {
-			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, (*sc).workspace1, (*sc).workspace2, (*sCPU).rStep, (*sCPU).Ntime / 2 + 1, (*sCPU).Nspace, (*sc).gridPolarizationTime1);
+			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
 		}
 		d.deviceMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), DeviceToHost);
 		return 0;
@@ -2066,6 +2067,7 @@ namespace hostFunctions{
 			for(int i = 0; i < (*sCPU).Nfreq; i++){
 				energy += (*sCPU).totalSpectrum[i + (*sCPU).Nfreq * spectrumType];
 			}
+			energy *= (*sCPU).fStep;
 			vBlock[targetVar] = energy;
 			}
 			break;
