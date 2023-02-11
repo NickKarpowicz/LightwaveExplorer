@@ -2125,12 +2125,26 @@ namespace hostFunctions{
 			int counter = (int)parameters[0];
 			int targetVar = (int)parameters[1];
 			std::string currentString = cc.substr(cc.find_first_of('{')+1,std::string::npos);
-
 			std::string forStartString = currentString;
+			vBlock[targetVar] = 0.0;
 			for (int i = 0; i < counter; i++) {
-				while (currentString.at(0) != '}') {
+				while (currentString.length() > 0 && currentString.at(0) != '}'){
+					if (currentString.length() > 0 && currentString.at(0) == '<'){
+						currentString = currentString.substr(currentString.find_first_of('>'), std::string::npos);
+						if(currentString.length()>0) currentString = currentString.substr(1, std::string::npos);
+					}
+					if (currentString.length() > 0 && currentString.at(0) == '{'){
+						while(currentString.find_first_of('{') != std::string::npos 
+						&& currentString.find_first_of('{') < currentString.find_first_of('}')){
+							currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
+							if(currentString.length()>0) currentString = currentString.substr(1, std::string::npos);
+						}
+
+						currentString = currentString.substr(currentString.find_first_of('}'), std::string::npos);
+						currentString = currentString.substr(1, std::string::npos);
+					}
 					interpretCommand(currentString, iBlock, vBlock, d, sCPU, s);
-					currentString = currentString.substr(currentString.find_first_of(')')+1,std::string::npos);
+					currentString = currentString.substr(currentString.find_first_of(')') + 1, std::string::npos);
 				}
 				++vBlock[targetVar];
 				currentString = forStartString;
@@ -2488,6 +2502,11 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	for (;;) {
 		//skip curly braces (for loops should have been handled by interpretCommand() already)
 		if (currentString.at(0) == '{') {
+			while(currentString.find_first_of('{') != std::string::npos 
+				&& currentString.find_first_of('{') < currentString.find_first_of('}')){
+				currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
+				if(currentString.length()>0) currentString = currentString.substr(1, std::string::npos);
+			}
 			currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
 			if(currentString.length()<minLength) break; 
 			currentString = currentString.substr(1,std::string::npos);
