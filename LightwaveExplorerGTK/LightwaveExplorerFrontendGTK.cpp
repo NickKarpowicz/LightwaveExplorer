@@ -1221,7 +1221,7 @@ int LwePlot2d(plotStruct* inputStruct) {
     double axisLabelSpaceX = 21.0;
 
     //get limits and make the plotting arrays
-    double maxY = 0.0;
+    double maxY = -1.0e300;
     double minY = 0.0;
     double maxX = 0.0;
     double minX = 0.0;
