@@ -1717,7 +1717,8 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.color = LweColor(0.5, 0, 1, 1);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Sy (J/Hz)";
+    sPlot.yLabel = "Sy (J/THz)";
+    sPlot.unitY = 1.0e-12;
     sPlot.forceXmax = forceX;
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
@@ -1797,7 +1798,8 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.color = LweColor(1, 0, 0.5, 0.0);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Sx (J/Hz)";
+    sPlot.yLabel = "Sx (J/THz)";
+    sPlot.unitY = 1.0e-12;
     sPlot.forceXmax = forceX;
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
