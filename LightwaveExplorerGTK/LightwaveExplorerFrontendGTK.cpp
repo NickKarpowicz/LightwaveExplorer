@@ -186,26 +186,28 @@ public:
 
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawTimeImage1);
-
+        drawBoxes[0].setTooltip("Image of the electric field grid: presents a slice of Ey(x,y=0,t), there the horizontal axis is time, and the vertical axis is position");
         drawBoxes[1].init(window.parentHandle(2), 0, plotHeight, plotWidth, plotHeight);
         drawBoxes[1].setDrawingFunction(drawTimeImage2);
-
+        drawBoxes[1].setTooltip("Image of the electric field grid: presents a slice of Ex(x,y=0,t), there the horizontal axis is time, and the vertical axis is position");
         drawBoxes[2].init(window.parentHandle(2), 0, 2 * plotHeight, plotWidth, plotHeight);
         drawBoxes[2].setDrawingFunction(drawField1Plot);
-
+        drawBoxes[2].setTooltip("Plot of the on-axis electric field in the y polarization");
         drawBoxes[3].init(window.parentHandle(2), 0, 3 * plotHeight, plotWidth, plotHeight);
         drawBoxes[3].setDrawingFunction(drawField2Plot);
-
+        drawBoxes[3].setTooltip("Plot of the on-axis electric field in the x polarization");
         drawBoxes[4].init(window.parentHandle(2), plotWidth, 0, plotWidth, plotHeight);
         drawBoxes[4].setDrawingFunction(drawFourierImage1);
-
+        drawBoxes[4].setTooltip("Plot of the electric field grid in momentum-frequency space: Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, and horizontal axis is frequency f.");
         drawBoxes[5].init(window.parentHandle(2), plotWidth, plotHeight, plotWidth, plotHeight);
         drawBoxes[5].setDrawingFunction(drawFourierImage2);
-
+        drawBoxes[5].setTooltip("Plot of the electric field grid in momentum-frequency space: Ex(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, and horizontal axis is frequency f.");
         drawBoxes[6].init(window.parentHandle(2), plotWidth, 2 * plotHeight, plotWidth, plotHeight);
         drawBoxes[6].setDrawingFunction(drawSpectrum1Plot);
+        drawBoxes[6].setTooltip("Plot of the energy spectrum of the result, y-polarization.");
         drawBoxes[7].init(window.parentHandle(2), plotWidth, 3 * plotHeight, plotWidth, plotHeight);
         drawBoxes[7].setDrawingFunction(drawSpectrum2Plot);
+        drawBoxes[7].setTooltip("Plot of the energy spectrum of the result, x-polarization.");
         progressBarBox.init(window.parentHandle(5), 0, 0, 1, 1);
         progressBarBox.noVerticalExpantion();
         progressBarBox.setDrawingFunction(drawProgress);
@@ -216,7 +218,9 @@ public:
         textBoxes[51].init(window.parentHandle(4), 10, 0, 2, 1);
 
         checkBoxes[0].init(_T("Total"), window.parentHandle(4), 12, 0, 1, 1);
+        checkBoxes[0].setTooltip("Overlay a plot of the integrated energy spectrum over the two polarization-resolved spectra");
         checkBoxes[1].init(_T("Log"), window.parentHandle(4), 13, 0, 1, 1);
+        checkBoxes[1].setTooltip("Plot spectra on a log10 scale");
 
 
         pulldowns[4].addElement(_T("2D Cartesian"));
@@ -271,7 +275,8 @@ public:
         }
         pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
-
+        pulldowns[5].setTooltip("Primary batch mode selector: the selected value from the interface will be scanned in a series of simulations, starting from the value entered on the interface, and ending with the batch target set below. The number of simulations is set by the batch steps parameter.");
+        pulldowns[6].setTooltip("Secondary batch mode selector - allows a 2D parameter scan. Works in the same way as the primary batch, but uses the values in the right-hand column.");
 
         int mbRow = 22;
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
@@ -286,22 +291,34 @@ public:
         miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, textWidth + 4, mbRow, 2, 1, buttonAddRotation);
         miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, textWidth + 6, mbRow, 2, 1, buttonAddPulse);
 #endif
+        miniButtons[0].setTooltip("Make a copy of the crystal currently entered in the interface");
+        miniButtons[1].setTooltip("Insert a crystal that will change with the values set on the interface, or modified during a batch calculation");
+        miniButtons[2].setTooltip("Rotate the polarization by a specified angle in degrees");
+        miniButtons[3].setTooltip("Add a new pulse to the grid; values will be set to duplicate pulse 1 as entered above");
         buttons[0].init(_T("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
+        buttons[0].setTooltip("Run the simulation as currently entered on the interface. If a sequence is entered in the sequence box below, that will execute, otherwise, a simulation on the input parameters above and to the left in a single medium will be performed.");
         buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
+        buttons[1].setTooltip("Tell a currently-running simulation to stop. It might not stop right away; it will only happen once it reaches a break point");
         buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1+buttonCol1, 17, textWidth, 1, createRunFile);
+        buttons[2].setTooltip("Generate an input file and SLURM script for running the simulation as entered on the selected cluster");
         buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
+        buttons[3].setTooltip("Run the fitting routine with the above parameters. The mode is set in the pulldown next to the (optional) fitting input data file path.");
         buttons[4].init(_T("Load"), parentHandle, buttonCol1, 15, buttonWidth, 1, loadCallback);
+        buttons[4].setTooltip("Load the results of a previous simulation run. You should select the associated .txt file. The parameters will be loaded into the interface, and the data (if it exists) will be plotted.");
         buttons[6].init(_T("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
         buttons[7].init(_T("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
         buttons[8].init(_T("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
         buttons[9].init(_T("Base"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
         buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
+        buttons[10].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[10].squeeze();
         buttons[11].init(_T("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
+        buttons[11].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[11].squeeze();
         checkBoxes[0].setFunction(independentPlotQueue);
         checkBoxes[1].setFunction(independentPlotQueue);
         buttons[12].init(_T("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
+        buttons[12].setTooltip("Generate SVG files of the four line plots, with filenames based on the base path set above");
         buttons[12].squeeze();
         plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
         plotSlider.setRange(0.0, 10.0);
@@ -341,6 +358,9 @@ public:
         pulldowns[7].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
         pulldowns[8].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);
         textBoxes[52].init(window.parentHandle(6), 4 + 3 * buttonWidth, 0, 1, 1);
+        pulldowns[7].setTooltip("Select the primary method of calculation. The algorithm is the same, but you can run it either on a GPU or CPU depending on your machine");
+        pulldowns[8].setTooltip("Select a secondary mode of calculation for offloading jobs from a batch. For example, if the pulldown to the left is set to CUDA and this one is OpenMP, and the number to the right is 2, 2 of the simulations from the batch will be performed on the CPU");
+
 
         pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
@@ -411,6 +431,7 @@ public:
         pulldowns[9].addElement(_T("Raven 4x A100"));
         pulldowns[9].init(parentHandle, 1+buttonCol1, 17, 2 * buttonWidth, 1);
         pulldowns[9].squeeze();
+        pulldowns[9].setTooltip("Select the cluster and GPU configuration for generating a SLURM script");
         //pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
         
 

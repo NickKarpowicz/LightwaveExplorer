@@ -136,6 +136,9 @@ public:
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_END);
     }
+    void setTooltip(const char* tooltipText) {
+        gtk_widget_set_tooltip_text(elementHandle, tooltipText);
+    }
 };
 
 class LweTextBox : public LweGuiElement {

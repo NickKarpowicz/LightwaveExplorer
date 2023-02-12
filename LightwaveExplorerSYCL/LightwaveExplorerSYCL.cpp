@@ -17,13 +17,13 @@ size_t readSYCLDevices(char* deviceListString, char* defaultDeviceString) {
             if (d.is_cpu()) {
                 cpuCount++;
                 offset = strnlen_s(deviceListString, MAX_LOADSTRING);
-                sprintf_s(&deviceListString[offset], MAX_LOADSTRING, "SYCL found a CPU: %s\r\n", d.get_info<cl::sycl::info::device::name>().c_str());
+                sprintf_s(&deviceListString[offset], MAX_LOADSTRING, "SYCL found a CPU:\n    %s\n", d.get_info<cl::sycl::info::device::name>().c_str());
                 memset(deviceCharString, 0, MAX_LOADSTRING * sizeof(char));
             }
             if (d.is_gpu()) {
                 gpuCount++;
                 offset = strnlen_s(deviceListString, MAX_LOADSTRING);
-                sprintf_s(&deviceListString[offset], MAX_LOADSTRING, "SYCL found a GPU: %s\r\n", d.get_info<cl::sycl::info::device::name>().c_str());
+                sprintf_s(&deviceListString[offset], MAX_LOADSTRING, "SYCL found a GPU:\n    %s\n", d.get_info<cl::sycl::info::device::name>().c_str());
                 memset(deviceCharString, 0, MAX_LOADSTRING * sizeof(char));
             }
         }
