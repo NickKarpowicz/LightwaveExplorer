@@ -1265,7 +1265,7 @@ namespace kernels {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-
+		if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
@@ -1276,7 +1276,7 @@ namespace kernels {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
@@ -1287,7 +1287,7 @@ namespace kernels {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
@@ -1298,7 +1298,7 @@ namespace kernels {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
 		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
@@ -1876,8 +1876,6 @@ namespace hostFunctions{
 				d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2Z);
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, updateKwithRadialLaplacianKernel, sD);
 			}
-
-			d.deviceMemset((*sH).workspace1, 0, (*sH).NgridC * 2 * sizeof(deviceComplex));
 		}
 
 		//advance an RK4 step
