@@ -1744,29 +1744,25 @@ namespace hostFunctions{
 	//Allocates memory and copies from CPU, then copies back to CPU and deallocates
 	// - inefficient but the general principle is that only the CPU memory is preserved
 	// after simulations finish... and this only runs at the end of the simulation
-	int rotateField(simulationParameterSet* s, double rotationAngle) {
-		deviceParameterSet sc;
-		activeDevice d;
-		d.allocateSet(s, &sc);
-		deviceComplex* Ein1 = sc.gridEFrequency1;
-		deviceComplex* Ein2 = sc.gridEFrequency2;
-		deviceComplex* Eout1 = sc.gridEFrequency1Next1;
-		deviceComplex* Eout2 = sc.gridEFrequency1Next2;
+	int rotateField(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double rotationAngle) {
+
+		deviceComplex* Ein1 = s.gridEFrequency1;
+		deviceComplex* Ein2 = s.gridEFrequency2;
+		deviceComplex* Eout1 = s.gridEFrequency1Next1;
+		deviceComplex* Eout2 = s.gridEFrequency1Next2;
 
 		//retrieve/rotate the field from the CPU memory
-		d.deviceMemcpy(Ein1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(deviceComplex), HostToDevice);
-		d.deviceLaunch((unsigned int)(sc.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, rotationAngle);
-		d.deviceMemcpy((*s).EkwOut, Eout1, 2 * (*s).NgridC * sizeof(deviceComplex), DeviceToHost);
+		d.deviceMemcpy(Ein1, (*sCPU).EkwOut, 2 * (*sCPU).NgridC * sizeof(deviceComplex), HostToDevice);
+		d.deviceLaunch((unsigned int)(s.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, rotationAngle);
+		d.deviceMemcpy((*sCPU).EkwOut, Eout1, 2 * (*sCPU).NgridC * sizeof(deviceComplex), DeviceToHost);
 
 		//transform back to time
-		d.fft(Eout1, sc.gridETime1, deviceFFTZ2D);
-		d.deviceLaunch(2 * sc.Nblock, sc.Nthread, multiplyByConstantKernelD, sc.gridETime1, 1.0 / sc.Ngrid);
-		d.deviceMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), DeviceToHost);
+		d.fft(Eout1, s.gridETime1, deviceFFTZ2D);
+		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
 		//update spectrum
 		getTotalSpectrum(d);
-
-		d.deallocateSet(&sc);
 		return 0;
 	}
 
@@ -1901,7 +1897,8 @@ namespace hostFunctions{
 		switch (stringHash(cc)) {
 		case funHash("rotate"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
-			rotateField(sCPU, DEG2RAD * parameters[0]);
+			d.reset(sCPU, &s);
+			rotateField(d, sCPU, s, DEG2RAD * parameters[0]);
 			break;
 		case funHash("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
