@@ -562,7 +562,12 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= filterFunction;
 	};
 
-	//apply a spectral filter to the beam (full details in docs)
+	//apply a lorentzian gain or loss in a certain cross-section of the beam.
+	// amplitude - strength of the copy of the pulse applied
+	// f0 - resonance frequency of the Lorentzian (THz)
+	// gamma - linewidth (radHz)
+	// radius - radius of the spot (m)
+	// order - supergaussian order of the spot shape
 	trilingual lorentzianSpotKernel asKernel(withID deviceParameterSet* s, double amplitude, double f0, double gamma, double radius, double order) {
 		long long i = localIndex;
 		long long j, h, k, col;
