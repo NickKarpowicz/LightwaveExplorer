@@ -562,6 +562,47 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= filterFunction;
 	};
 
+	//apply a spectral filter to the beam (full details in docs)
+	trilingual lorentzianSpotKernel asKernel(withID deviceParameterSet* s, double amplitude, double f0, double gamma, double radius, double order) {
+		long long i = localIndex;
+		long long j, h, k, col;
+
+		col = i / ((*s).Nfreq - 1);
+		j = col % (*s).Nspace;
+		k = col / (*s).Nspace;
+		double r, f, x, y;
+		if ((*s).is3D) {
+			h = 1 + i % ((*s).Nfreq - 1);
+			col = i / ((*s).Nfreq - 1);
+			i = h + col * ((*s).Nfreq);
+			j = col % (*s).Nspace;
+			k = col / (*s).Nspace;
+			f = h * (*s).fStep;
+
+			x = ((*s).dx * (j - (*s).Nspace / 2.0));
+			y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+			r = sqrt(x * x + y * y);
+		}
+		else {
+			h = 1 + i % ((*s).Nfreq - 1);
+			j = i / ((*s).Nfreq - 1);
+			i = h + j * ((*s).Nfreq);
+			f = h * (*s).fStep;
+			r = abs((*s).dx * ((double)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
+		}
+
+		double w0 = TWOPI * f0;
+		double w = TWOPI * f;
+		deviceComplex lorentzian = gamma * w0 * amplitude / (w0 * w0 - w * w + deviceComplex(0.0, gamma * w));
+		double spotFactor = r / radius;
+		for (int p = 1; p < (int)order; p++) {
+			spotFactor *= spotFactor;
+		}
+		deviceComplex filterFunction = deviceComplex(0.0, exp(-spotFactor)) * lorentzian;
+		(*s).gridEFrequency1[i] += filterFunction * (*s).gridEFrequency1[i];
+		(*s).gridEFrequency2[i] += filterFunction * (*s).gridEFrequency2[i];
+	};
+
 	//Apply a (soft, possibly) aperture
 	trilingual apertureKernel asKernel(withID deviceParameterSet* s, double radius, double activationParameter) {
 		long long i = localIndex;
@@ -1609,6 +1650,24 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	int applyLorenzian(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double amplitude, double f0, double gamma, double radius, double order) {
+
+		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z1D);
+		deviceParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, lorentzianSpotKernel, sDevice, amplitude, 1.0e12 * f0, 1.0e12 * gamma, radius, order);
+		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D1D);
+		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ntime);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
+		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+
+		getTotalSpectrum(d);
+
+		return 0;
+	}
+
 	int applyAperatureFarField(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double diameter, double activationParameter, double xOffset, double yOffset) {
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
@@ -2076,6 +2135,11 @@ namespace hostFunctions{
 				parameters[2],
 				parameters[3],
 				parameters[4]);
+			break;
+		case funHash("lorentzian"):
+			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
+			d.reset(sCPU, &s);
+			applyLorenzian(d, sCPU, s, parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
 			break;
 		case funHash("addPulse"):
 		{
