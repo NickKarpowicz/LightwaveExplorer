@@ -281,10 +281,16 @@ public:
         int mbRow = 22;
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
 #ifdef __APPLE__
-        miniButtons[0].init(_T("="), parentHandle, textWidth + 0, mbRow, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(_T("d"), parentHandle, textWidth + 2, mbRow, 2, 1, buttonAddDefault);
-        miniButtons[2].init(_T("r"), parentHandle, textWidth + 4, mbRow, 2, 1, buttonAddRotation);
-        miniButtons[3].init(_T("p"), parentHandle, textWidth + 6, mbRow, 2, 1, buttonAddPulse);
+        miniButtons[0].init(_T("="), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init(_T("d"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
+        miniButtons[2].init(_T("r"), parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
+        miniButtons[3].init(_T("p"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
+        miniButtons[4].init("(", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
+        miniButtons[5].init("f", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
+        miniButtons[6].init("l", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
+        miniButtons[7].init("a", parentHandle, textWidth + 15, mbRow, 2, 1, buttonAddAperture);
+        miniButtons[8].init("ff", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
+        miniButtons[9].init("f", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
 #else
         miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
         miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
