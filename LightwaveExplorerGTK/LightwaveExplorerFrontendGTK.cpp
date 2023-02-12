@@ -180,8 +180,8 @@ public:
         pulldowns[2].addElement(_T("Fit spectrum"));
         pulldowns[2].init(parentHandle, labelWidth, 20, 2 * textWidth, 1);
 
-        filePaths[3].init(parentHandle, 0, 23, colWidth, 1);
-        filePaths[3].setLabel(0, -1, _T("Output:"));
+        filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
+        //filePaths[3].setLabel(0, -1, _T("Output:"));
         filePaths[3].setMaxCharacters(pathChars);
 
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
@@ -272,28 +272,29 @@ public:
         pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
 
-        sequence.init(parentHandle, buttonCol1, 13, colWidth, 6);
-        fitCommand.init(parentHandle, buttonCol1, 21, colWidth, 4);
+
+        int mbRow = 22;
+        textBoxes[31].setLabel(-9 ,7,"Sequence:");
 #ifdef __APPLE__
-        miniButtons[0].init(_T("="), parentHandle, buttonCol2 + 0, 12, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(_T("d"), parentHandle, buttonCol2 + 2, 12, 2, 1, buttonAddDefault);
-        miniButtons[2].init(_T("r"), parentHandle, buttonCol2 + 4, 12, 2, 1, buttonAddRotation);
-        miniButtons[3].init(_T("p"), parentHandle, buttonCol2 + 6, 12, 2, 1, buttonAddPulse);
+        miniButtons[0].init(_T("="), parentHandle, textWidth + 0, mbRow, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init(_T("d"), parentHandle, textWidth + 2, mbRow, 2, 1, buttonAddDefault);
+        miniButtons[2].init(_T("r"), parentHandle, textWidth + 4, mbRow, 2, 1, buttonAddRotation);
+        miniButtons[3].init(_T("p"), parentHandle, textWidth + 6, mbRow, 2, 1, buttonAddPulse);
 #else
-        miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, buttonCol2 + 0, 12, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, buttonCol2 + 2, 12, 2, 1, buttonAddDefault);
-        miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, buttonCol2 + 4, 12, 2, 1, buttonAddRotation);
-        miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, buttonCol2 + 6, 12, 2, 1, buttonAddPulse);
+        miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, textWidth + 0, mbRow, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, textWidth + 2, mbRow, 2, 1, buttonAddDefault);
+        miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, textWidth + 4, mbRow, 2, 1, buttonAddRotation);
+        miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, textWidth + 6, mbRow, 2, 1, buttonAddPulse);
 #endif
-        buttons[0].init(_T("Run"), parentHandle, buttonCol3, 19, buttonWidth, 1, launchRunThread);
-        buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 19, buttonWidth, 1, stopButtonCallback);
-        buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1, 24, textWidth, 1, createRunFile);
-        buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 20, buttonWidth, 1, launchFitThread);
-        buttons[4].init(_T("Load"), parentHandle, buttonCol1, 19, buttonWidth, 1, loadCallback);
+        buttons[0].init(_T("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
+        buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
+        buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1+buttonCol1, 17, textWidth, 1, createRunFile);
+        buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
+        buttons[4].init(_T("Load"), parentHandle, buttonCol1, 15, buttonWidth, 1, loadCallback);
         buttons[6].init(_T("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
         buttons[7].init(_T("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
         buttons[8].init(_T("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
-        buttons[9].init(_T("Path"), parentHandle, textWidth, 22, textWidth, 1, saveFileDialogCallback, (gpointer)3);
+        buttons[9].init(_T("Base"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
         buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
         buttons[10].squeeze();
         buttons[11].init(_T("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
@@ -307,7 +308,10 @@ public:
         plotSlider.setDigits(0);
         plotSlider.setFunction(independentPlotQueue);
 
-        console.init(window.parentHandle(1), 0, 0, 1, 1);
+        sequence.init(window.parentHandle(1), 0, 0, 1, 1);
+        fitCommand.init(parentHandle, buttonCol1, 13, colWidth, 2);
+        console.init(parentHandle, buttonCol1, 18, colWidth, 4);
+
         checkLibraryAvailability();
         std::string A;
         if (CUDAavailable) {
@@ -361,7 +365,7 @@ public:
         textBoxes[38].setLabel(-labelWidth, 0, _T("Max x, dx (\xce\xbcm)"));
         textBoxes[40].setLabel(-labelWidth, 0, _T("Time span, dt (fs)"));
         textBoxes[42].setLabel(-labelWidth, 0, _T("Max z, dz (\xce\xbcm,nm)"));
-
+        
         textBoxes[44].setLabel(-labelWidth, 0, _T("Batch end"));
         textBoxes[46].setLabel(-labelWidth, 0, _T("Batch steps"));
         pulldowns[4].setLabel(-labelWidth, 0, _T("Propagation"));
@@ -369,7 +373,8 @@ public:
         pulldowns[6].setLabel(-labelWidth, 0, _T("Batch mode 2"));
 
         fitCommand.setLabel(0, -1, _T("Fitting:"));
-        sequence.setLabel(0, -1, _T("Sequence:"), 11, 3);
+        
+        //sequence.setLabel(0, -1, _T("Sequence:"), 11, 3);
         filePaths[3].overwritePrint("TestFile");
 
         GtkCssProvider* textProvider = gtk_css_provider_new();
@@ -404,9 +409,9 @@ public:
         pulldowns[9].addElement(_T("Raven 1x A100"));
         pulldowns[9].addElement(_T("Raven 2x A100"));
         pulldowns[9].addElement(_T("Raven 4x A100"));
-        pulldowns[9].init(parentHandle, 1, 24, 2 * buttonWidth, 1);
+        pulldowns[9].init(parentHandle, 1+buttonCol1, 17, 2 * buttonWidth, 1);
         pulldowns[9].squeeze();
-        pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
+        //pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
         
 
 #ifdef __linux__
