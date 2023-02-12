@@ -308,7 +308,8 @@ public:
         buttons[6].init(_T("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
         buttons[7].init(_T("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
         buttons[8].init(_T("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
-        buttons[9].init(_T("Base"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
+        buttons[9].init(_T("Path"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
+        buttons[9].setTooltip("Sets the base path for the output files");
         buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
         buttons[10].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[10].squeeze();
@@ -1005,8 +1006,14 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
     if (response == GTK_RESPONSE_ACCEPT) {
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
-        char* path = g_file_get_path(file);
-        theGui.filePaths[theGui.pathTarget].overwritePrint("{}", path);
+        std::string s(g_file_get_path(file));
+        if (s.substr(s.length() - 4, std::string::npos) == std::string(".txt")) {
+            theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s.substr(0,s.length()-4));
+        }
+        else {
+            theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s);
+        }
+        
     }
     g_object_unref(dialog);
 }
