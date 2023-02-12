@@ -58,7 +58,7 @@ class mainGui {
 public:
     LweTextBox textBoxes[54];
     LweButton buttons[16];
-    LweButton miniButtons[8];
+    LweButton miniButtons[12];
     LweConsole console;
     LweConsole sequence;
     LweConsole fitCommand;
@@ -286,15 +286,28 @@ public:
         miniButtons[2].init(_T("r"), parentHandle, textWidth + 4, mbRow, 2, 1, buttonAddRotation);
         miniButtons[3].init(_T("p"), parentHandle, textWidth + 6, mbRow, 2, 1, buttonAddPulse);
 #else
-        miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, textWidth + 0, mbRow, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, textWidth + 2, mbRow, 2, 1, buttonAddDefault);
-        miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, textWidth + 4, mbRow, 2, 1, buttonAddRotation);
-        miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, textWidth + 6, mbRow, 2, 1, buttonAddPulse);
+        miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
+        miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
+        miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
+        miniButtons[4].init("\xf0\x9f\x94\x8e", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
+        miniButtons[5].init("\xf0\x9f\x98\x8e", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
+        miniButtons[6].init("\xf0\x9f\x90\xb1\xe2\x80\x8d\xf0\x9f\x91\xa4", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
+        miniButtons[7].init("\xf0\x9f\x91\x8c", parentHandle, textWidth + 15, mbRow, 2, 1, buttonAddAperture);
+        miniButtons[8].init("\xe2\x9b\xb3", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
+        miniButtons[9].init("\xf0\x9f\x94\x81", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
+
 #endif
         miniButtons[0].setTooltip("Make a copy of the crystal currently entered in the interface");
         miniButtons[1].setTooltip("Insert a crystal that will change with the values set on the interface, or modified during a batch calculation");
         miniButtons[2].setTooltip("Rotate the polarization by a specified angle in degrees");
         miniButtons[3].setTooltip("Add a new pulse to the grid; values will be set to duplicate pulse 1 as entered above");
+        miniButtons[4].setTooltip("Add a spherical mirror to the beam path, with radius of curvature in meters");
+        miniButtons[5].setTooltip("Add a spectral filter to the beam path. Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   in-band amplitude\n   out-of-band amplitude\n");
+        miniButtons[6].setTooltip("Add a linear propagation through the crystal entered on the interface");
+        miniButtons[7].setTooltip("Add an aperture to the beam. Parameters:\n   diameter (m)\n   activation parameter\n");
+        miniButtons[8].setTooltip("Filter the beam with a far-field aperture. Parameters:\n   opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ");
+        miniButtons[9].setTooltip("Add an empty for loop. Parameters:\n   Number of times to execute\n   Variable number in which to put the counter");
         buttons[0].init(_T("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
         buttons[0].setTooltip("Run the simulation as currently entered on the interface. If a sequence is entered in the sequence box below, that will execute, otherwise, a simulation on the input parameters above and to the left in a single medium will be performed.");
         buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
@@ -1185,6 +1198,32 @@ static void buttonAddDefault() {
     theGui.sequence.cPrint("plasma(d,d,d,d,d,d,d,d,d)\n");
 }
 
+static void buttonAddMirror() {
+    theGui.sequence.cPrint("sphericalMirror(-1.0)\n");
+}
+
+static void buttonAddFilter() {
+    theGui.sequence.cPrint("filter(130, 20, 4, 1, 0)\n");
+}
+
+static void buttonAddLinear() {
+    theGui.sequence.cPrint("linear({},{},{},{},{})\n",
+        theGui.pulldowns[3].getValue(), theGui.textBoxes[32].valueDouble(),
+        theGui.textBoxes[33].valueDouble(), theGui.textBoxes[42].valueDouble(),
+        theGui.textBoxes[43].valueDouble());
+}
+
+static void buttonAddAperture() {
+    theGui.sequence.cPrint("aperture(0.001, 2)\n");
+}
+
+static void buttonAddFarFieldAperture() {
+    theGui.sequence.cPrint("farFieldAperture(2.0,4000,0,0)\n");
+}
+
+static void buttonAddForLoop() {
+    theGui.sequence.cPrint("for(10,1){{\n\n}}\n");
+}
 static void buttonAddPulse() {
     theGui.sequence.cPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})\n",
         theGui.textBoxes[0].valueDouble(),

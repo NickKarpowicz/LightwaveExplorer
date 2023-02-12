@@ -680,3 +680,10 @@ static void buttonAddSameCrystal();
 static void buttonAddDefault();
 static void buttonAddRotation();
 static void buttonAddPulse();
+static void buttonAddMirror();
+static void buttonAddFilter();
+static void buttonAddLinear();
+static void buttonAddAperture();
+static void buttonAddFarFieldAperture();
+static void buttonAddForLoop();
+
