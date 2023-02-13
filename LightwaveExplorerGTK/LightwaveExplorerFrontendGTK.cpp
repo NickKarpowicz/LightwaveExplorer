@@ -298,7 +298,7 @@ public:
         miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
         miniButtons[4].init("\xf0\x9f\x94\x8e", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
         miniButtons[5].init("\xf0\x9f\x98\x8e", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
-        miniButtons[6].init("\xf0\x9f\x90\xb1\xe2\x80\x8d\xf0\x9f\x91\xa4", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
+        miniButtons[6].init("\xf0\x9f\x93\x8f", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
         miniButtons[7].init("\xf0\x9f\x91\x8c", parentHandle, textWidth + 15, mbRow, 2, 1, buttonAddAperture);
         miniButtons[8].init("\xe2\x9b\xb3", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
         miniButtons[9].init("\xf0\x9f\x94\x81", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
