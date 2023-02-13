@@ -8,17 +8,7 @@
 namespace deviceFunctions {
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
-	// The grid is offset from the origin; rather than ...-2 -1 0 1 2... etc, which would
-	// contain redundant information (the symmetry means that -1 and -1 are equivalent)
-	// the grid is at the points -1.75 -0.75 0.25 1.25 2.25, etc.
-	// the grid spacing is the same, but now the two sides of the origin contain different
-	// information. This has effectively doubled the resolution of the nonlinear
-	// polarization. 
-	// We make use of this by expanding into the full-resolution beam on the grid
-	// -2.25 -1.75 -1.25 -0.75 -0.25 0.25 0.75 1.25 1.75 2.25...
-	// after FFT, we can discard the high frequencies. Thus we have downsampled
-	// in such a way as to avoid aliasing, which inside the simulation is most
-	// likely the appear (and cause instability) in the nonlinear terms.
+	// see the expandCylindricalBeam() kernel for more details
 	deviceFunction void expandCylindricalBeamDevice(deviceParameterSet* s, long long i, double* expandedBeam1, double* sourceBeam1, double* sourceBeam2) {
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long k = i % (*s).Ntime; //temporal coordinate
@@ -31,26 +21,6 @@ namespace deviceFunctions {
 		expandedBeam1[pos2] = sourceBeam1[i];
 		expandedBeam2[pos1] = sourceBeam2[i];
 		expandedBeam2[pos2] = sourceBeam2[i];
-	}
-	deviceFunction void expandCylindricalBeamDeviceSingle(deviceParameterSet* s, long long i, double* expandedBeam, double* sourceBeam) {
-		long long j, k;
-		
-		if (i > (*s).Ngrid) {
-			j = (i-(*s).Ngrid) / (*s).Ntime; //spatial coordinate
-			k = (i-(*s).Ngrid) % (*s).Ntime; //temporal coordinate
-			expandedBeam += 2 * (*s).Ngrid;
-		}
-		else {
-			j = i / (*s).Ntime; //spatial coordinate
-			k = i % (*s).Ntime; //temporal coordinate
-		}
-		
-		//positions on the expanded grid corresponding the the current index
-		long long pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
-		long long pos2 = (2 * j + 1) * (*s).Ntime + k;
-
-		expandedBeam[pos1] = sourceBeam[i];
-		expandedBeam[pos2] = sourceBeam[i];
 	}
 
 	//Inner function for the Sellmeier equation to provide the refractive indicies
@@ -1241,7 +1211,7 @@ namespace kernels {
 			N += dN[k];
 			integral1 += N * (*s).expGammaT[k] * E1[k];
 			P1[k] += expMinusGammaT[k] * integral1;
-			expandCylindricalBeamDeviceSingle(s, j + k, (*s).gridRadialLaplacian1, (*s).gridPolarizationTime1);
+			//expandCylindricalBeamDeviceSingle(s, j + k, (*s).gridRadialLaplacian1, (*s).gridPolarizationTime1);
 		}
 	};
 
@@ -1507,6 +1477,39 @@ namespace kernels {
 	trilingual multiplicationKernelCompact asKernel(withID deviceComplex* A, deviceComplex* B, deviceComplex* C) {
 		long long i = localIndex;
 		C[i] = A[i] * B[i];
+	};
+
+	//Expand the information contained in the radially-symmetric beam in the offset grid
+	// representation.
+	// The grid is offset from the origin; rather than ...-2 -1 0 1 2... etc, which would
+	// contain redundant information (the symmetry means that -1 and -1 are equivalent)
+	// the grid is at the points -1.75 -0.75 0.25 1.25 2.25, etc.
+	// the grid spacing is the same, but now the two sides of the origin contain different
+	// information. This has effectively doubled the resolution of the nonlinear
+	// polarization. 
+	// We make use of this by expanding into the full-resolution beam on the grid
+	// -2.25 -1.75 -1.25 -0.75 -0.25 0.25 0.75 1.25 1.75 2.25...
+	// after FFT, we can discard the high frequencies. Thus we have downsampled
+	// in such a way as to avoid aliasing, which inside the simulation is most
+	// likely the appear (and cause instability) in the nonlinear terms.
+	trilingual expandCylindricalBeam asKernel(withID deviceParameterSet* s) {
+		long long i = localIndex;
+		long long j = i / (*s).Ntime; //spatial coordinate
+		long long k = i % (*s).Ntime; //temporal coordinate
+
+		//positions on the expanded grid corresponding the the current index
+		long long pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
+		long long pos2 = (2 * j + 1) * (*s).Ntime + k;
+
+		//reuse memory allocated for the radial Laplacian, casting complex double
+		//to a 2x larger double real grid
+		double* expandedBeam1 = (double*)(*s).gridRadialLaplacian1;
+		double* expandedBeam2 = expandedBeam1 + 2 * (*s).Ngrid;
+
+		expandedBeam1[pos1] = (*s).gridPolarizationTime1[i];
+		expandedBeam1[pos2] = (*s).gridPolarizationTime1[i];
+		expandedBeam2[pos1] = (*s).gridPolarizationTime2[i];
+		expandedBeam2[pos2] = (*s).gridPolarizationTime2[i];
 	};
 }
 using namespace kernels;
@@ -1890,14 +1893,13 @@ namespace hostFunctions{
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
-				
+				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
 				if ((*sH).isCylindric) {
-					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B_Cylindric, sD);
+					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam, sD);
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernelCylindric, sD);
 				}
 				else {
-					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
 					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel, sD);
 				}
