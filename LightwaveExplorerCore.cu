@@ -1137,7 +1137,7 @@ namespace kernels {
 				(*s).gridPolarizationTime2[i] = 0.0;
 			}
 		}
-		if ((*s).isCylindric)expandCylindricalBeamDevice(s, i, (*s).gridRadialLaplacian1, (*s).gridPolarizationTime1, (*s).gridPolarizationTime2);
+		if ((*s).isCylindric)expandCylindricalBeamDevice(s, i, (*s).gridRadialLaplacian1 + (*s).Ngrid * 4 * (*s).hasPlasma, (*s).gridPolarizationTime1, (*s).gridPolarizationTime2);
 	};
 
 
@@ -1260,6 +1260,10 @@ namespace kernels {
 		h += (j + ( (j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 		(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[i % ((*sP).Nfreq)];
 		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[i % ((*sP).Nfreq)];
+
+		h += 4 * (*sP).NgridC;
+		(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
+		(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
 	};
 
 	//Slightly different kernels for the four stages of RK4. They used to be one big kernel with a switch case
@@ -1880,11 +1884,11 @@ namespace hostFunctions{
 			//Nonlinear polarization
 			if ((*sH).isNonLinear) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel, sD);
-				if ((*sH).isCylindric) {
+				if ((*sH).isCylindric && !(*sH).hasPlasma) {
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernelCylindric, sD);
 				}
-				else {
+				else if (!(*sH).isCylindric) {
 					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernel, sD);
 				}
@@ -1933,6 +1937,11 @@ namespace hostFunctions{
 
 
 	unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s) {
+
+		if (d.hasPlasma != s.hasPlasma) {
+			d.deallocateSet(&s);
+			d.allocateSet(sCPU, &s);
+		}
 		//prepare the propagation arrays
 		preparePropagationGrids(d);
 		prepareElectricFieldArrays(d);

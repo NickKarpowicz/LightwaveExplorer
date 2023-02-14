@@ -92,6 +92,7 @@ public:
 	deviceParameterSet* dParamsDevice;
 	simulationParameterSet* cParams;
 	int memoryStatus;
+	bool hasPlasma;
 	deviceCUDA() {
 		memoryStatus = -1;
 		configuredFFT = 0;
@@ -150,6 +151,7 @@ public:
 			fftDestroy();
 		}
 		isCylindric = 0;
+		hasPlasma = (*s).hasPlasma;
 		size_t workSize;
 		cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
 		cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
@@ -180,8 +182,8 @@ public:
 				isCylindric = 1;
 				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
 				cufftCreate(&doublePolfftPlan);
-				cufftGetSizeMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-				cufftMakePlanMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+				cufftGetSizeMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2 + 2 * (*s).hasPlasma, &workSize);
+				cufftMakePlanMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2 + 2 * (*s).hasPlasma, &workSize);
 				cufftSetStream(doublePolfftPlan, stream);
 			}
 		}
@@ -233,6 +235,7 @@ public:
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
+			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
 		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(double));
 		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(double));
@@ -246,7 +249,7 @@ public:
 		//cylindric sym grids
 		if ((*s).isCylindric) {
 			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(std::complex<double>));
-			deviceMemset((*s).gridRadialLaplacian1, 0, 4 * (*s).Ngrid * sizeof(std::complex<double>));
+			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(std::complex<double>));
 		}
 
 		//smaller helper grids
@@ -283,6 +286,7 @@ public:
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
+			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
 
 		fillRotationMatricies(sCPU, s);
@@ -304,7 +308,7 @@ public:
 		//cylindric sym grids
 		if ((*s).isCylindric) {
 			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(std::complex<double>));
-			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 4 * (*s).Ngrid, sizeof(std::complex<double>));
+			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(std::complex<double>));
 		}
 
 		//smaller helper grids

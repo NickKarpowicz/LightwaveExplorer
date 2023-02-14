@@ -44,6 +44,7 @@ private:
 public:
 	int stream;
 	int memoryStatus;
+	bool hasPlasma;
 	deviceParameterSet* dParams;
 	simulationParameterSet* cParams;
 	deviceParameterSet* dParamsDevice;
@@ -99,6 +100,7 @@ public:
 	}
 
 	void fftInitialize(deviceParameterSet* s) {
+		hasPlasma = (*s).hasPlasma;
 		configuredFFT = 1;
 	}
 	void deallocateSet(deviceParameterSet* s) {

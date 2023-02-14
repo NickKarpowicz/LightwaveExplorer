@@ -46,6 +46,20 @@ namespace {
 		(*s).forceLinear = (*sCPU).forceLinear;
 		(*s).isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;
 		(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
+
+		if ((*sCPU).nonlinearAbsorptionStrength > 0.) {
+			(*s).hasPlasma = TRUE;
+			(*s).isNonLinear = TRUE;
+		}
+		else {
+			(*s).hasPlasma = FALSE;
+		}
+
+		if ((*s).forceLinear) {
+			(*s).hasPlasma = FALSE;
+			(*s).isNonLinear = FALSE;
+		}
+
 	}
 
 	void finishConfiguration(simulationParameterSet* sCPU, deviceParameterSet* s) {
@@ -79,18 +93,7 @@ namespace {
 		(*sCPU).nonlinearSwitches[3] = (int)ceil((*sCPU).bandGapElectronVolts * 241.79893e12 / (*sCPU).pulse1.frequency) - 2;
 		double plasmaParametersCPU[6] = { 0 };
 
-		if ((*sCPU).nonlinearAbsorptionStrength > 0.) {
-			(*s).hasPlasma = TRUE;
-			(*s).isNonLinear = TRUE;
-		}
-		else {
-			(*s).hasPlasma = FALSE;
-		}
 
-		if ((*s).forceLinear) {
-			(*s).hasPlasma = FALSE;
-			(*s).isNonLinear = FALSE;
-		}
 		plasmaParametersCPU[0] = (*sCPU).nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
 		plasmaParametersCPU[1] = (*sCPU).drudeGamma; //gamma
 		if ((*sCPU).nonlinearAbsorptionStrength > 0.) {

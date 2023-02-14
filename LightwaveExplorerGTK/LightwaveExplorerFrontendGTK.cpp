@@ -740,6 +740,8 @@ void readParametersFromInterface() {
     (*activeSetPtr).sellmeierType = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierType;
     (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
     (*activeSetPtr).progressCounter = &progressCounter;
+
+
 }
 
 
