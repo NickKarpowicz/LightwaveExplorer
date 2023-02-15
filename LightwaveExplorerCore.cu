@@ -1270,8 +1270,9 @@ namespace kernels {
 	//but this has slightly better utilization.
 	trilingual rkKernel0 asKernel(withID deviceParameterSet* sP) {
 		size_t iC = localIndex;
-		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
-		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 		if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
@@ -1281,8 +1282,9 @@ namespace kernels {
 
 	trilingual rkKernel1 asKernel(withID deviceParameterSet* sP) {
 		size_t iC = localIndex;
-		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
-		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
@@ -1292,8 +1294,9 @@ namespace kernels {
 
 	trilingual rkKernel2 asKernel(withID deviceParameterSet* sP) {
 		size_t iC = localIndex;
-		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
-		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
@@ -1303,8 +1306,58 @@ namespace kernels {
 
 	trilingual rkKernel3 asKernel(withID deviceParameterSet* sP) {
 		size_t iC = localIndex;
+		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
+		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
+		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
+	};
+
+	//Kernels for symmetry around z axis use a different form, adding the radial Laplacian
+	//instead of the nonlinear polarization
+	trilingual rkKernel0Cylindric asKernel(withID deviceParameterSet* sP) {
+		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
+		if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
+		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
+		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+	};
+
+	trilingual rkKernel1Cylindric asKernel(withID deviceParameterSet* sP) {
+		size_t iC = localIndex;
+		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
+		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+	};
+
+	trilingual rkKernel2Cylindric asKernel(withID deviceParameterSet* sP) {
+		size_t iC = localIndex;
+		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
+		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+	};
+
+	trilingual rkKernel3Cylindric asKernel(withID deviceParameterSet* sP) {
+		size_t iC = localIndex;
+		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
+		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
@@ -1350,8 +1403,6 @@ namespace kernels {
 		}
 		deviceComplex ne, no;
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
-
-
 		double ko = TWOPI * no.real() * f / LIGHTC;
 		double zR = PI * (*p).beamwaist * (*p).beamwaist * ne.real() * f / LIGHTC;
 		if (f == 0) {
@@ -1875,50 +1926,58 @@ namespace hostFunctions{
 	int runRK4Step(activeDevice& d, uint8_t stepNumber) {
 		deviceParameterSet* sH = d.dParams; 
 		deviceParameterSet* sD = d.dParamsDevice;
-		//operations involving FFT
-		
-		if ((*sH).isNonLinear || (*sH).isCylindric) {
-			//perform inverse FFT to get time-space electric field
+
+		// Beam with symmetry around z axis:
+		// Nonlinear polarization and plasma use expanded grid
+		// Radial laplacian uses standard grid
+		// two possible FFT shapes (radial Laplacian always performed)
+		if((*sH).isCylindric){
+			//ifft to timw domain 
 			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFTZ2D);
 
-			//Nonlinear polarization
-			if ((*sH).isNonLinear) {
+			//Nonlinear polarization and plasma current are fft-ed in a batch
+			//from separate (de-interlaced) time-domain grids.
+			//assumption: if no plasma without other nonlinearities
+			if((*sH).isNonLinear){
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel, sD);
-				if ((*sH).isCylindric && !(*sH).hasPlasma) {
-					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
-					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernelCylindric, sD);
-				}
-				else if (!(*sH).isCylindric) {
-					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
-					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernel, sD);
-				}
-			}
-
-			//Plasma/multiphoton absorption
-			if ((*sH).hasPlasma) {
-				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
-				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
-				if ((*sH).isCylindric) {
+				if((*sH).hasPlasma){
+					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
+					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam, sD);
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernelCylindric, sD);
 				}
-				else {
-					d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
-					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel, sD);
+				else{
+					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2ZPolarization);
+					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPolarizationKernelCylindric, sD);
 				}
 			}
-
-			//Radial Laplacian
-			if ((*sH).isCylindric) {
-				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, radialLaplacianKernel, sD);
-				d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2Z);
-				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, updateKwithRadialLaplacianKernel, sD);
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, radialLaplacianKernel, sD);
+			d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFTD2Z);
+		}
+		// 2D and 3D cartesian
+		// Only one type of FFT
+		// currently nonlinear polarization and plasma ffts are not batched, could give
+		// minor speed boost by combining them, but requires additional memory, so
+		// nonlinear polarization and plasma are fft-ed separately to accommodate larger
+		// systems.
+		else if ((*sH).isNonLinear) {
+			//perform inverse FFT to get time-space electric field
+			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFTZ2D);
+			//Plasma/multiphoton absorption
+			if ((*sH).hasPlasma) {
+				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
+				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
+				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
+				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel, sD);
 			}
+			//Nonlinear polarization
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel, sD);
+			d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFTD2Z);
 		}
 
 		//advance an RK4 step
-		switch (stepNumber) {
+		switch (stepNumber + 4*(*sH).isCylindric) {
 		case 0:
 			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel0, sD);
 			break;
@@ -1930,6 +1989,19 @@ namespace hostFunctions{
 			break;
 		case 3:
 			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel3, sD);
+			break;
+		case 4:
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel0Cylindric, sD);
+			break;
+		case 5:
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel1Cylindric, sD);
+			break;
+		case 6:
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel2Cylindric, sD);
+			break;
+		case 7:
+			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel3Cylindric, sD);
+			break;
 		}
 		return 0;
 	}
