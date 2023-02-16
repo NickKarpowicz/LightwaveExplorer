@@ -1932,12 +1932,12 @@ namespace hostFunctions{
 		// Radial laplacian uses standard grid
 		// two possible FFT shapes (radial Laplacian always performed)
 		if((*sH).isCylindric){
-			//ifft to timw domain 
+			//ifft to time domain 
 			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFTZ2D);
 
 			//Nonlinear polarization and plasma current are fft-ed in a batch
 			//from separate (de-interlaced) time-domain grids.
-			//assumption: if no plasma without other nonlinearities
+			//assumption: no plasma without other nonlinearities
 			if((*sH).isNonLinear){
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel, sD);
 				if((*sH).hasPlasma){
@@ -2010,7 +2010,7 @@ namespace hostFunctions{
 
 	unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s) {
 
-		if (d.hasPlasma != s.hasPlasma) {
+		if ((d.hasPlasma != s.hasPlasma) && s.isCylindric) {
 			d.deallocateSet(&s);
 			d.allocateSet(sCPU, &s);
 		}
