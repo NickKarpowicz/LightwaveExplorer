@@ -780,12 +780,12 @@ namespace kernels {
 		
 		if (dk*dk < minN(ke.real() * ke.real() + ke.imag()*ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag()) 
 			&& k < ((long long)(*s).Nfreq - 1)) {
-			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5 * ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor1[i]).real())) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5*ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor2[i]).real())) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 			}
@@ -850,12 +850,12 @@ namespace kernels {
 		}
 
 		if (maxN(abs(dk1), abs(dk2)) < deviceLib::abs(ke) && j < ((long long)(*s).Nfreq - 1)) {
-			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ke.real())) * (*s).h;
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5 * ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ke.real())) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = ii * (ko - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ko.real())) * (*s).h;
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5 * ii * (ko - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ko.real())) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 			}
@@ -999,14 +999,14 @@ namespace kernels {
 		}
 
 		if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())) && (*s).fieldFactor1[k] > 0.0 && (*s).fieldFactor2[k] > 0.0) {
-			(*s).gridPropagationFactor1[i] = ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h;
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5 * ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h);
 			(*s).gridPropagationFactor1Rho1[i] = deviceComplex(0.0, (*s).h / ((*s).fieldFactor1[k] * 2. * ke.real()));
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 				(*s).gridPropagationFactor1Rho1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h;
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5 * ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h);
 			(*s).gridPropagationFactor1Rho2[i] = deviceComplex(0.0, (*s).h / ((*s).fieldFactor2[k] * 2. * ko.real()));
 			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
@@ -1275,9 +1275,9 @@ namespace kernels {
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 		if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
-		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
+		(*sP).workspace1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
 	};
 
 	trilingual rkKernel1 asKernel(withID deviceParameterSet* sP) {
@@ -1287,9 +1287,9 @@ namespace kernels {
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * THIRD * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
 	};
 
 	trilingual rkKernel2 asKernel(withID deviceParameterSet* sP) {
@@ -1299,9 +1299,9 @@ namespace kernels {
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * THIRD * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
 	};
 
 	trilingual rkKernel3 asKernel(withID deviceParameterSet* sP) {
@@ -1309,10 +1309,10 @@ namespace kernels {
 		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
+		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0, 0.0);
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
+		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
 	};
 
 	//Kernels for symmetry around z axis use a different form, adding the radial Laplacian
@@ -1324,9 +1324,9 @@ namespace kernels {
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 		if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC];
-		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
+		(*sP).workspace1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
 	};
 
 	trilingual rkKernel1Cylindric asKernel(withID deviceParameterSet* sP) {
@@ -1336,9 +1336,9 @@ namespace kernels {
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + 0.5 * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * THIRD * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
 	};
 
 	trilingual rkKernel2Cylindric asKernel(withID deviceParameterSet* sP) {
@@ -1348,9 +1348,9 @@ namespace kernels {
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		deviceComplex estimate1 = (*sP).gridEFrequency1[iC] + (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + THIRD * (*sP).k1[iC];
-		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * estimate1;
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * THIRD * (*sP).k1[iC];
+		(*sP).workspace1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).fftNorm * (*sP).fieldFactor1[h] * estimate1;
+		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
 	};
 
 	trilingual rkKernel3Cylindric asKernel(withID deviceParameterSet* sP) {
@@ -1361,7 +1361,7 @@ namespace kernels {
 		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * (*sP).fieldFactor1[h] * (*sP).gridEFrequency1[iC];
-		(*sP).k1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC];
+		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
 	};
 
 	trilingual beamNormalizeKernel asKernel(withID deviceParameterSet* s, double* rawSum, double* pulse, double pulseEnergy) {
@@ -1681,7 +1681,7 @@ namespace hostFunctions{
 		//set the propagation grids how they should be at the beginning of the next step
 		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompactDoubleVector, (*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
 		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelDZ, (*sc).workspace1, (*sc).fftNorm);
-		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
+		//d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 
 		return 0;
 	}
