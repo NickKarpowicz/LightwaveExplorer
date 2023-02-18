@@ -60,7 +60,7 @@ namespace deviceFunctions {
 				+ a[12] / deviceComplex(a[13] - omega2, a[14] * omega)
 				+ a[15] / deviceComplex(a[16] - omega2, a[17] * omega)
 				+ a[18] / deviceComplex(a[19] - omega2, a[20] * omega);
-			return deviceLib::sqrt(KLORENTZIAN * compPart);
+			return deviceLib::sqrt(1.0 + KLORENTZIAN * compPart);
 		case 100:
 			realPart = a[0]
 				+ (a[1] + a[2] * ls) / (ls + a[3])
@@ -780,12 +780,14 @@ namespace kernels {
 		
 		if (dk*dk < minN(ke.real() * ke.real() + ke.imag()*ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag()) 
 			&& k < ((long long)(*s).Nfreq - 1)) {
-			(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5 * ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h);
+			//(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5 * ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h);
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(-0.5 * ii * (deviceLib::sqrt(ke * ke - dk * dk) + k0) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor1[i]).real())) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5*ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h);
+			//(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5*ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h);
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(-0.5 * ii * (deviceLib::sqrt(ko * ko - dk * dk) + k0) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor2[i]).real())) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 			}
@@ -850,12 +852,12 @@ namespace kernels {
 		}
 
 		if (maxN(abs(dk1), abs(dk2)) < deviceLib::abs(ke) && j < ((long long)(*s).Nfreq - 1)) {
-			(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5 * ii * (ke - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ke.real())) * (*s).h);
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(-0.5 * ii * (deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2) + k0) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5 * ii * (ko - k0 - (dk1 * dk1 + dk2 * dk2) / (2. * ko.real())) * (*s).h);
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(-0.5 * ii * (deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2) + k0) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 			}
@@ -973,7 +975,7 @@ namespace kernels {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (minN(ne.real(), no.real()) < 1.0 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
+		if (minN(ne.real(), no.real()) < 0.5 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -1000,15 +1002,15 @@ namespace kernels {
 
 		if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())) && (*s).fieldFactor1[k] > 0.0 && (*s).fieldFactor2[k] > 0.0) {
 			(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5 * ii * (ke - k0 - dk * dk / (2. * ke.real())) * (*s).h);
-			(*s).gridPropagationFactor1Rho1[i] = deviceComplex(0.0, (*s).h / ((*s).fieldFactor1[k] * 2. * ke.real()));
-			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
+			(*s).gridPropagationFactor1Rho1[i] = ii * (*s).h / ((*s).fieldFactor1[k] * 2. * ke);
+			if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho1[i]+(*s).gridPropagationFactor1[i])))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 				(*s).gridPropagationFactor1Rho1[i] = cuZero;
 			}
 
 			(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5 * ii * (ko - k0 - dk * dk / (2. * ko.real())) * (*s).h);
-			(*s).gridPropagationFactor1Rho2[i] = deviceComplex(0.0, (*s).h / ((*s).fieldFactor2[k] * 2. * ko.real()));
-			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
+			(*s).gridPropagationFactor1Rho2[i] = ii * (*s).h / ((*s).fieldFactor2[k] * 2. * ko);
+			if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho2[i]+(*s).gridPropagationFactor2[i])))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 				(*s).gridPropagationFactor1Rho2[i] = cuZero;
 			}
