@@ -469,7 +469,6 @@ public:
 		if(1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPathIni.c_str())){
             readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
         }
-
 #else
 		readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
 #endif

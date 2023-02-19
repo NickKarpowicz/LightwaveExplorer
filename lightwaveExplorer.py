@@ -1,6 +1,7 @@
 import numpy as np
 import re
 import os
+from scipy.optimize import least_squares
 
 class lightwaveExplorerResult:
     def __init__(self):
@@ -81,6 +82,7 @@ class lightwaveExplorerResult:
         self.spectrum_x = 0
         self.spectrum_y = 0
         self.frequencyVector = 0
+        self.frequencyVectorSpectrum = 0
         self.timeVector = 0
         self.spaceVector = 0
 
@@ -111,6 +113,7 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         n = n + k * a[16] / ((a[17] - w ** 2) +  (a[18] * w) * 1j)
         n += k * a[19] / ((a[20] - w ** 2) +  (a[21] * w) * 1j)
     elif equationType == 1:
+        n = 1.0
         n = k * a[0] / ((a[1] - w ** 2) +  (a[2] * w) * 1j)
         n += k * a[3] / ((a[4] - w ** 2) +  (a[5] * w) * 1j)
         n += k * a[6] / ((a[7] - w ** 2) +  (a[8] * w) * 1j)
@@ -249,6 +252,7 @@ def load(filePath: str, loadFieldArray=True):
     MIN_GRIDDIM=8
     s.Ntime = int(MIN_GRIDDIM * np.round(s.timeSpan / (MIN_GRIDDIM * s.tStep)))
     s.Nfreq = int(s.Ntime/2 + 1)
+    s.fStep = 1.0/(s.Ntime * s.tStep)
     s.Nspace = int(MIN_GRIDDIM * np.round(s.spatialWidth / (MIN_GRIDDIM * s.rStep)))
     if s.symmetryType == 2:
         s.Nspace2 = int(MIN_GRIDDIM * np.round(s.spatialHeight / (MIN_GRIDDIM * s.rStep)))
@@ -376,6 +380,10 @@ def load(filePath: str, loadFieldArray=True):
     elif s.batchIndex == 35:
         s.batchStart = s.propagationStep
         s.batchDestination *= 1e-9
+    elif s.batchIndex == 36:
+        s.batchStart = 0
+    elif s.batchIndex == 37:
+        s.batchStart = 0
         
     #that was fun, wasn't it? I think we all just had a good time. In c++ I just added an offset to a pointer. Now make the scale vector.
     s.batchVector = np.linspace(s.batchStart,s.batchDestination,s.Nsims)
@@ -482,7 +490,10 @@ def load(filePath: str, loadFieldArray=True):
     elif s.batchIndex2 == 35:
         s.batchStart2 = s.propagationStep
         s.batchDestination2 *= 1e-9
-        
+    elif s.batchIndex2 == 36:
+        s.batchStart = 0
+    elif s.batchIndex2 == 37:
+        s.batchStart = 0
     #that was fun, wasn't it? I think we all just had a good time. In c++ I just added an offset to a pointer. Now make the scale vector.
     s.batchVector2 = np.linspace(s.batchStart2,s.batchDestination2,s.Nsims2)
 
@@ -538,4 +549,23 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
         EOSsignal = np.array([np.sum((totalResponse*(np.squeeze(s.spectrum_x[i,:,:]-s.spectrum_y[i,:,:]))), axis=1) for i in range(s.Nsims2)])
     else:
         EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
-    return EOSsignal;
+    return EOSsignal
+
+def nFit(wavelengthMicrons, aStart, eqnType: int, nTarget, NumberOfResonances: int, fitImaginary: bool):
+    def fun_nforx(x):
+        x1 = np.zeros(21)
+        for i in range(0,21):
+            if i < 3*NumberOfResonances:
+                x1[i] = x[i]
+        return sellmeier(wavelengthMicrons, x1, eqnType)
+    def fun_residual(x):
+        nx = fun_nforx(x)
+        if fitImaginary:
+            returnVals = np.append(np.real(nTarget - nx), np.imag(nTarget - nx))
+        else:
+            returnVals = np.real(nTarget - nx)
+        return returnVals
+
+    res = least_squares(fun_residual, aStart[0:(3*NumberOfResonances)],gtol=None, xtol=None, ftol = 1e-12, max_nfev=4096)
+    print(res)
+    return res.x, fun_nforx(res.x)
