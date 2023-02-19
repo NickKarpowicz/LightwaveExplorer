@@ -1027,7 +1027,7 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
         std::string s(g_file_get_path(file));
-        if (s.substr(s.length() - 4, std::string::npos) == std::string(".txt")) {
+        if (s.substr(s.length() - 4, std::string::npos) == std::string(".txt") && theGui.pathTarget == 3) {
             theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s.substr(0,s.length()-4));
         }
         else {
@@ -1082,7 +1082,6 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();
             theGui.requestPlotUpdate();
-
         }
     }
     g_object_unref(dialog);

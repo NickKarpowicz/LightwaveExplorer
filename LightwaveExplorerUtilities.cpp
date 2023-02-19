@@ -478,7 +478,10 @@ int loadSavedFields(simulationParameterSet* sCPU, const char* outputBase) {
 	std::string Epath(outputBase);
 	Epath.append("_Ext.dat");
 	std::ifstream Efile(Epath, std::ios::binary);
-	if (Efile.is_open()) Efile.read(reinterpret_cast<char*>((*sCPU).ExtOut), 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2) * sizeof(double));
+	if (Efile.is_open()) {
+		Efile.read(reinterpret_cast<char*>((*sCPU).ExtOut), 2 * ((*sCPU).Ngrid * (*sCPU).Nsims * (*sCPU).Nsims2) * sizeof(double));
+	}
+	else return 1;
 
 	std::string Spath(outputBase);
 	Spath.append("_spectrum.dat");
@@ -1166,14 +1169,14 @@ int readCrystalDatabase(crystalEntry* db) {
 }
 
 int allocateGrids(simulationParameterSet* sCPU) {
-	(*sCPU).loadedField1 = new std::complex<double>[(*sCPU).Ntime];
-	(*sCPU).loadedField2 = new std::complex<double>[(*sCPU).Ntime];
-	(*sCPU).ExtOut = new double[(*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2];
-	(*sCPU).EkwOut = new std::complex<double>[(*sCPU).NgridC * 2 * (*sCPU).Nsims * (*sCPU).Nsims2];
-	(*sCPU).deffTensor = new double[9 * (*sCPU).Nsims * (*sCPU).Nsims2];
-	(*sCPU).totalSpectrum = new double[(*sCPU).Nsims * (*sCPU).Nsims2 * (*sCPU).Nfreq * 3];
-	(*sCPU).statusFlags = new int[(*sCPU).Nsims * (*sCPU).Nsims2];
-	(*sCPU).fittingReference = new double[(*sCPU).Nfreq];
+	(*sCPU).loadedField1 = new std::complex<double>[(*sCPU).Ntime]();
+	(*sCPU).loadedField2 = new std::complex<double>[(*sCPU).Ntime]();
+	(*sCPU).ExtOut = new double[(*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2]();
+	(*sCPU).EkwOut = new std::complex<double>[(*sCPU).NgridC * 2 * (*sCPU).Nsims * (*sCPU).Nsims2]();
+	(*sCPU).deffTensor = new double[9 * (*sCPU).Nsims * (*sCPU).Nsims2]();
+	(*sCPU).totalSpectrum = new double[(*sCPU).Nsims * (*sCPU).Nsims2 * (*sCPU).Nfreq * 3]();
+	(*sCPU).statusFlags = new int[(*sCPU).Nsims * (*sCPU).Nsims2]();
+	(*sCPU).fittingReference = new double[(*sCPU).Nfreq]();
 	return 0;
 }
 
