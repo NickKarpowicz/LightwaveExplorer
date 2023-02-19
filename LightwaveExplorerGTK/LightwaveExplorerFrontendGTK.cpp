@@ -53,6 +53,7 @@ class mainGui {
     bool queueUpdate;
     bool queueSliderUpdate;
     bool queueSliderMove;
+    bool queueInterfaceValuesUpdate;
     int sliderTarget;
     std::thread threadPoolSim[3];
 public:
@@ -102,6 +103,10 @@ public:
         }
 
         progressBarBox.queueDraw();
+        if (queueInterfaceValuesUpdate){
+            setInterfaceValuesToActiveValues();
+            queueInterfaceValuesUpdate = FALSE;
+        }
     }
     void requestSliderUpdate() {
         queueSliderUpdate = TRUE;
@@ -110,6 +115,11 @@ public:
         queueSliderMove = TRUE;
         sliderTarget = target;
     }
+    void requestInterfaceValuesUpdate(){
+        queueInterfaceValuesUpdate = TRUE;
+    }
+
+
     void updateSlider() {
         if (queueSliderUpdate) {
             plotSlider.setRange(0, (double)(((*activeSetPtr).Nsims * maxN(1,(*activeSetPtr).Nsims2) - 1)));
@@ -2436,15 +2446,13 @@ void fittingThread(int pulldownSelection) {
     theGui.console.tPrint(_T("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     saveDataSet(activeSetPtr);
-    setInterfaceValuesToActiveValues();
+    
     theGui.console.tPrint("Fitting result:\n (index, value)\n");
     for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
         theGui.console.tPrint("{},  {}\n", i, (*activeSetPtr).fittingResult[i]);
     }
-    free((*activeSetPtr).statusFlags);
-    free((*activeSetPtr).deffTensor);
-    free((*activeSetPtr).loadedField1);
-    free((*activeSetPtr).loadedField2);
+
+    deallocateGrids(activeSetPtr, FALSE);
     isRunning = FALSE;
 }
 
