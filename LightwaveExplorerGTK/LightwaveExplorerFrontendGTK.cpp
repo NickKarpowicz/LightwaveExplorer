@@ -1343,12 +1343,12 @@ int LwePlot2d(plotStruct* inputStruct) {
         maxY = 1;
     }
     if ((*s).forceYmin) {
-        minY = (double)(*s).forcedYmin;
-        if ((*s).logScale) minY += log10((*s).unitY);
+        minY = (double)(*s).forcedYmin * (*s).unitY;
+        if ((*s).logScale) minY = log10(minY);
     }
     if ((*s).forceYmax) {
-        maxY = (double)(*s).forcedYmax;
-        if ((*s).logScale) maxY += log10((*s).unitY);
+        maxY = (double)(*s).forcedYmax * (*s).unitY;
+        if ((*s).logScale) maxY = log10(maxY);
     }
     if ((*s).forceXmin) {
         minX = (double)(*s).forcedXmin;
@@ -1455,7 +1455,18 @@ int LwePlot2d(plotStruct* inputStruct) {
     //y-tick text labels
 	for (int i = 0; i < NyTicks; ++i) {
 		double ytVal = yTicks1[i] / (*s).unitY;
-        if ((*s).logScale) ytVal = yTicks1[i] - log10((*s).unitY);
+        if ((*s).logScale) {
+            switch (i) {
+            case 0:
+                ytVal = pow(10.0, maxY) / (*s).unitY;
+                break;
+            case 1:
+                ytVal = pow(10.0, minY + 0.5 * (maxY - minY))/(*s).unitY;
+                break;
+            case 2:
+                ytVal = pow(10.0, minY) / (*s).unitY;
+            }
+        }
 		if (abs(ytVal) > 10.0 || abs(ytVal) < 0.01) {
 			messageBuffer = Sformat("{:.1e}", ytVal);
 		}
