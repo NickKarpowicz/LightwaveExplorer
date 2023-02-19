@@ -2496,6 +2496,90 @@ namespace hostFunctions{
 		return 1;
 	}
 
+	void solveSequenceWithDevice(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s) {
+
+		//pointers to where the various parameters are in the struct
+		double* targets[38] = { 0,
+			&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
+			&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
+			&(*sCPU).pulse1.delay, &(*sCPU).pulse2.delay, &(*sCPU).pulse1.gdd, &(*sCPU).pulse2.gdd,
+			&(*sCPU).pulse1.tod, &(*sCPU).pulse2.tod, &(*sCPU).pulse1.phaseMaterialThickness, &(*sCPU).pulse2.phaseMaterialThickness,
+			&(*sCPU).pulse1.beamwaist, &(*sCPU).pulse2.beamwaist,
+			&(*sCPU).pulse1.x0, &(*sCPU).pulse2.x0, &(*sCPU).pulse1.z0, &(*sCPU).pulse2.z0,
+			&(*sCPU).pulse1.beamAngle, &(*sCPU).pulse2.beamAngle, &(*sCPU).pulse1.polarizationAngle, &(*sCPU).pulse2.polarizationAngle,
+			&(*sCPU).pulse1.circularity, &(*sCPU).pulse2.circularity, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
+			&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
+			&(*sCPU).propagationStep, &(*sCPU).i37, &(*sCPU).i37 };
+
+		//unit multipliers from interface units to SI base units.
+		double multipliers[38] = { 0,
+		1, 1, 1e12, 1e12,
+		1e12, 1e12, PI, PI,
+		1e-15, 1e-15, 1e-30, 1e-30,
+		1e-45, 1e-45, 1e-6, 1e-6,
+		1e-6, 1e-6,
+		1e-6, 1e-6, 1e-6, 1e-6,
+		DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
+		1, 1, DEG2RAD, DEG2RAD,
+		1, 1e12, 1, 1e-6,
+		1e-9, 1, 1 };
+
+		//if it starts with 0, it's an old sequence; send it there
+		if ((*sCPU).sequenceString[0] == '0') {
+			//readSequenceString((simulationParameterSet*)lpParam);
+			//solveNonlinearWaveEquationSequenceOldX(lpParam);
+			return;
+		}
+
+		//main text interpreter
+		simulationParameterSet sCPUbackupValues;
+		simulationParameterSet* sCPUbackup = &sCPUbackupValues;
+		memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
+
+		double iBlock[100] = { 0.0 };
+
+		for (int k = 1; k < 38; k++) {
+			iBlock[k] = *(targets[k]) / multipliers[k];
+		}
+
+		double vBlock[100] = { 0.0 };
+		std::string currentString((*sCPU).sequenceString);
+
+		//shortest command is either for() or init(), if there's only 4 characters left, it can only
+		//be whitespace or other trailing symbols
+		size_t minLength = 5;
+		while (currentString.length() > minLength) {
+			//skip curly braces (for loops should have been handled by interpretCommand() already)
+			if (currentString.at(0) == '{') {
+				currentString = currentString.substr(1, std::string::npos);
+				while (currentString.find_first_of('{') != std::string::npos
+					&& currentString.find_first_of('{') < currentString.find_first_of('}')) {
+					currentString = currentString.substr(currentString.find_first_of('}'), std::string::npos);
+					currentString = currentString.substr(1, std::string::npos);
+				}
+				currentString = currentString.substr(currentString.find_first_of('}'), std::string::npos);
+				if (currentString.length() < minLength) break;
+				currentString = currentString.substr(1, std::string::npos);
+			}
+			//skip angle brackets (comments)
+			if (currentString.at(0) == '<') {
+				currentString = currentString.substr(currentString.find_first_of('>'), std::string::npos);
+				if (currentString.length() < minLength) break;
+				currentString = currentString.substr(1, std::string::npos);
+			}
+
+			interpretCommand(currentString, iBlock, vBlock, d, sCPU, s);
+			currentString = currentString.substr(currentString.find_first_of(')'), std::string::npos);
+
+			if (currentString.length() < minLength) break;
+
+			currentString = currentString.substr(1, std::string::npos);
+
+			(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
+			memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
+		}
+	}
+
 	// helper function for fitting mode, runs the simulation and returns difference from the desired outcome.
 	double getResidual(const column_vector& x) {
 
@@ -2528,15 +2612,15 @@ namespace hostFunctions{
 			*targets[(int)(*fittingSet).fittingArray[3 * i]] = multipliers[(int)(*fittingSet).fittingArray[3 * i]] * x(i);
 		}
 
+		activeDevice& d = *dFit;
+		deviceParameterSet& s = *d.dParams;
+		d.cParams = fittingSet;
+		d.reset(fittingSet, &s);
 
 		if ((*fittingSet).isInSequence) {
-			solveNonlinearWaveEquationSequenceX(fittingSet);
+			solveSequenceWithDevice(d, fittingSet, s);
 		}
 		else {
-			activeDevice& d = *dFit;
-			deviceParameterSet& s = *d.dParams;
-			d.cParams = fittingSet;
-			d.reset(fittingSet, &s);
 			solveNonlinearWaveEquationWithDevice(d, fittingSet, s);
 		}
 
@@ -2635,86 +2719,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	memset(&s, 0, sizeof(deviceParameterSet));
 	activeDevice d(sCPU, &s);
 
-	//pointers to where the various parameters are in the struct
-	double* targets[38] = { 0,
-		&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
-		&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
-		&(*sCPU).pulse1.delay, &(*sCPU).pulse2.delay, &(*sCPU).pulse1.gdd, &(*sCPU).pulse2.gdd,
-		&(*sCPU).pulse1.tod, &(*sCPU).pulse2.tod, &(*sCPU).pulse1.phaseMaterialThickness, &(*sCPU).pulse2.phaseMaterialThickness,
-		&(*sCPU).pulse1.beamwaist, &(*sCPU).pulse2.beamwaist,
-		&(*sCPU).pulse1.x0, &(*sCPU).pulse2.x0, &(*sCPU).pulse1.z0, &(*sCPU).pulse2.z0,
-		&(*sCPU).pulse1.beamAngle, &(*sCPU).pulse2.beamAngle, &(*sCPU).pulse1.polarizationAngle, &(*sCPU).pulse2.polarizationAngle,
-		&(*sCPU).pulse1.circularity, &(*sCPU).pulse2.circularity, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
-		&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
-		&(*sCPU).propagationStep, &(*sCPU).i37, &(*sCPU).i37};
-
-	//unit multipliers from interface units to SI base units.
-	double multipliers[38] = { 0,
-	1, 1, 1e12, 1e12,
-	1e12, 1e12, PI, PI,
-	1e-15, 1e-15, 1e-30, 1e-30,
-	1e-45, 1e-45, 1e-6, 1e-6,
-	1e-6, 1e-6,
-	1e-6, 1e-6, 1e-6, 1e-6,
-	DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
-	1, 1, DEG2RAD, DEG2RAD,
-	1, 1e12, 1, 1e-6,
-	1e-9, 1, 1 };
-
-	//if it starts with 0, it's an old sequence; send it there
-	if ((*sCPU).sequenceString[0] == '0') {
-		//readSequenceString((simulationParameterSet*)lpParam);
-		//solveNonlinearWaveEquationSequenceOldX(lpParam);
-		return 0;
-	}
-
-	//main text interpreter
-	simulationParameterSet sCPUbackupValues;
-	simulationParameterSet* sCPUbackup = &sCPUbackupValues;
-	memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
-
-	double iBlock[100] = { 0.0 };
-
-	for (int k = 1; k < 38; k++) {
-		iBlock[k] = *(targets[k])/multipliers[k];
-	}
-
-	double vBlock[100] = { 0.0 };
-	std::string currentString((*sCPU).sequenceString);
-
-	//shortest command is either for() or init(), if there's only 4 characters left, it can only
-	//be whitespace or other trailing symbols
-	size_t minLength = 5;
-	while (currentString.length() > minLength) {
-		//skip curly braces (for loops should have been handled by interpretCommand() already)
-		if (currentString.at(0) == '{') {
-			currentString = currentString.substr(1,std::string::npos);
-			while(currentString.find_first_of('{') != std::string::npos 
-				&& currentString.find_first_of('{') < currentString.find_first_of('}')){
-				currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
-				currentString = currentString.substr(1, std::string::npos);
-			}
-			currentString = currentString.substr(currentString.find_first_of('}'),std::string::npos);
-			if(currentString.length()<minLength) break; 
-			currentString = currentString.substr(1,std::string::npos);
-		}
-		//skip angle brackets (comments)
-		if (currentString.at(0) == '<') {
-			currentString = currentString.substr(currentString.find_first_of('>'),std::string::npos);
-			if(currentString.length()<minLength) break; 
-			currentString = currentString.substr(1,std::string::npos);
-		}
-
-		interpretCommand(currentString, iBlock, vBlock, d, sCPU, s);
-		currentString = currentString.substr(currentString.find_first_of(')'),std::string::npos);
-
-		if(currentString.length()<minLength) break; 
-
-		currentString = currentString.substr(1,std::string::npos);
-		
-		(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
-		memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
-	}
+	solveSequenceWithDevice(d, sCPU, s);
 
 	d.deallocateSet(&s);
 	return 0;
@@ -2782,13 +2787,13 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	size_t fitCounter = 0;
 	size_t* originalCounter = (*sCPU).progressCounter;
 	(*sCPU).progressCounter = &fitCounter;
-
+	d.cParams = sCPU;
+	d.reset(sCPU, &s);
 	if ((*sCPU).isInSequence) {
-		solveNonlinearWaveEquationSequenceX(sCPU);
+		solveSequenceWithDevice(d, sCPU, s);
 	}
 	else {
-		d.cParams = sCPU;
-		d.reset(sCPU, &s);
+
 		solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 	}
 
