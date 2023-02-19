@@ -1010,8 +1010,6 @@ namespace kernels {
 			(*s).gridPropagationFactor1Rho1[i] = cuZero;
 			(*s).gridPropagationFactor1Rho2[i] = cuZero;
 		}
-		if (deviceLib::abs((*s).gridPropagationFactor1[i]) > 1.0) (*s).gridPropagationFactor1[i] = deviceComplex(0, 0);
-		if (deviceLib::abs((*s).gridPropagationFactor2[i]) > 1.0) (*s).gridPropagationFactor2[i] = deviceComplex(0, 0);
 	};
 
 
