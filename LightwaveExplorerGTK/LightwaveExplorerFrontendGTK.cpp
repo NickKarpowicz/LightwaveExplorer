@@ -442,9 +442,9 @@ public:
         std::string materialString;
         if (crystalDatabasePtr != NULL) {
             readCrystalDatabase(crystalDatabasePtr);
-            console.cPrint("Material database has {} entries:\n", (*crystalDatabasePtr).numberOfEntries);
+            //console.cPrint("Material database has {} entries:\n", (*crystalDatabasePtr).numberOfEntries);
             for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-                console.cPrint("{} : {} \n", i, std::string(crystalDatabasePtr[i].crystalNameW));
+                //console.cPrint("{} : {} \n", i, std::string(crystalDatabasePtr[i].crystalNameW));
                 materialString = Sformat("{:2}: {}", i, std::string(crystalDatabasePtr[i].crystalNameW));
                 pulldowns[3].addElement(materialString.c_str());
             }
@@ -2445,12 +2445,13 @@ void fittingThread(int pulldownSelection) {
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.tPrint(_T("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-    saveDataSet(activeSetPtr);
-    
     theGui.console.tPrint("Fitting result:\n (index, value)\n");
     for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
         theGui.console.tPrint("{},  {}\n", i, (*activeSetPtr).fittingResult[i]);
     }
+    saveDataSet(activeSetPtr);
+    
+
 
     deallocateGrids(activeSetPtr, FALSE);
     isRunning = FALSE;

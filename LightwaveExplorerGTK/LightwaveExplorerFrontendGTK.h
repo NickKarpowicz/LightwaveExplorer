@@ -296,6 +296,12 @@ public:
 
 };
 
+gboolean scrollTextViewToEndHandler(gpointer data) {
+    GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(data));
+    gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+    return FALSE;
+}
+
 class LweConsole : public LweGuiElement {
     GtkWidget* consoleText;
     bool hasNewText;
@@ -340,8 +346,7 @@ public:
 
         gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
         
-        GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
-        gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+        scrollToEnd();
     }
 
     template<typename... Args> void tPrint(std::string_view format, Args&&... args) {
@@ -349,15 +354,17 @@ public:
         textBuffer.append(s);
         hasNewText = TRUE;
     }
-
+    void scrollToEnd() {
+        g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, scrollTextViewToEndHandler, elementHandle, NULL);
+    }
     void updateFromBuffer() {
         if (hasNewText) {
             hasNewText = FALSE;
             GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
             gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
-            GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
-            gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+            scrollToEnd();
         }
+        
 
     }
 
@@ -367,8 +374,7 @@ public:
         textBuffer.assign(s);
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
-        GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
-        gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+        scrollToEnd();
     }
 
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
@@ -376,8 +382,7 @@ public:
         textBuffer.assign(s);
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
-        GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(elementHandle));
-        gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
+        scrollToEnd();
     }
 
     void copyBuffer(char* destination, size_t maxLength) {
