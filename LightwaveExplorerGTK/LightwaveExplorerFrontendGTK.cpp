@@ -196,28 +196,28 @@ public:
 
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawTimeImage1);
-        drawBoxes[0].setTooltip("Image of the electric field grid: presents a slice of Ey(x,y=0,t), there the horizontal axis is time, and the vertical axis is position");
+        drawBoxes[0].setTooltip("Image of the electric field grid: presents a slice of Ex(x,y=0,t), there the horizontal axis is time, and the vertical axis is position");
         drawBoxes[1].init(window.parentHandle(2), 0, plotHeight, plotWidth, plotHeight);
         drawBoxes[1].setDrawingFunction(drawTimeImage2);
-        drawBoxes[1].setTooltip("Image of the electric field grid: presents a slice of Ex(x,y=0,t), there the horizontal axis is time, and the vertical axis is position");
+        drawBoxes[1].setTooltip("Image of the electric field grid: presents a slice of Ey(x,y=0,t), there the horizontal axis is time, and the vertical axis is position");
         drawBoxes[2].init(window.parentHandle(2), 0, 2 * plotHeight, plotWidth, plotHeight);
         drawBoxes[2].setDrawingFunction(drawField1Plot);
-        drawBoxes[2].setTooltip("Plot of the on-axis electric field in the y polarization");
+        drawBoxes[2].setTooltip("Plot of the on-axis electric field in the x polarization");
         drawBoxes[3].init(window.parentHandle(2), 0, 3 * plotHeight, plotWidth, plotHeight);
         drawBoxes[3].setDrawingFunction(drawField2Plot);
-        drawBoxes[3].setTooltip("Plot of the on-axis electric field in the x polarization");
+        drawBoxes[3].setTooltip("Plot of the on-axis electric field in the y polarization");
         drawBoxes[4].init(window.parentHandle(2), plotWidth, 0, plotWidth, plotHeight);
         drawBoxes[4].setDrawingFunction(drawFourierImage1);
-        drawBoxes[4].setTooltip("Plot of the electric field grid in momentum-frequency space: Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, and horizontal axis is frequency f.");
+        drawBoxes[4].setTooltip("Plot of the electric field grid in momentum-frequency space: Ex(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, and horizontal axis is frequency f.");
         drawBoxes[5].init(window.parentHandle(2), plotWidth, plotHeight, plotWidth, plotHeight);
         drawBoxes[5].setDrawingFunction(drawFourierImage2);
-        drawBoxes[5].setTooltip("Plot of the electric field grid in momentum-frequency space: Ex(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, and horizontal axis is frequency f.");
+        drawBoxes[5].setTooltip("Plot of the electric field grid in momentum-frequency space: Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, and horizontal axis is frequency f.");
         drawBoxes[6].init(window.parentHandle(2), plotWidth, 2 * plotHeight, plotWidth, plotHeight);
         drawBoxes[6].setDrawingFunction(drawSpectrum1Plot);
-        drawBoxes[6].setTooltip("Plot of the energy spectrum of the result, y-polarization.");
+        drawBoxes[6].setTooltip("Plot of the energy spectrum of the result, x-polarization.");
         drawBoxes[7].init(window.parentHandle(2), plotWidth, 3 * plotHeight, plotWidth, plotHeight);
         drawBoxes[7].setDrawingFunction(drawSpectrum2Plot);
-        drawBoxes[7].setTooltip("Plot of the energy spectrum of the result, x-polarization.");
+        drawBoxes[7].setTooltip("Plot of the energy spectrum of the result, y-polarization.");
         progressBarBox.init(window.parentHandle(5), 0, 0, 1, 1);
         progressBarBox.noVerticalExpantion();
         progressBarBox.setDrawingFunction(drawProgress);
@@ -309,7 +309,7 @@ public:
         miniButtons[4].init("\xf0\x9f\x94\x8e", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
         miniButtons[5].init("\xf0\x9f\x98\x8e", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
         miniButtons[6].init("\xf0\x9f\x93\x8f", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
-        miniButtons[7].init("\xf0\x9f\x91\x8c", parentHandle, textWidth + 15, mbRow, 2, 1, buttonAddAperture);
+        miniButtons[7].init("\xf0\x9f\x8e\xaf", parentHandle, textWidth + 15, mbRow, 2, 1, buttonAddAperture);
         miniButtons[8].init("\xe2\x9b\xb3", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
         miniButtons[9].init("\xf0\x9f\x94\x81", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
 
@@ -1694,7 +1694,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.color = LweColor(0, 1, 1, 1);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
-    sPlot.yLabel = "Ey (GV/m)";
+    sPlot.yLabel = "Ex (GV/m)";
     sPlot.unitY = 1e9;
     sPlot.makeSVG = saveSVG; // theGui.saveSVG;
 
@@ -1745,7 +1745,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.color = LweColor(1, 0, 1, 1);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
-    sPlot.yLabel = "Ex (GV/m)";
+    sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
     sPlot.makeSVG = saveSVG;
 
@@ -1756,7 +1756,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         char* svgFilename = new char[MAX_LOADSTRING]();
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
         std::string svgPath(svgFilename);
-        svgPath.append("_Ex.svg");
+        svgPath.append("_Ey.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
         delete[] svgFilename;
@@ -1818,7 +1818,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.color = LweColor(0.5, 0, 1, 1);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Sy (J/THz)";
+    sPlot.yLabel = "Sx (J/THz)";
     sPlot.unitY = 1.0e-12;
     sPlot.forceXmax = forceX;
     sPlot.forceXmin = forceX;
@@ -1837,7 +1837,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         char* svgFilename = new char[MAX_LOADSTRING]();
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
         std::string svgPath(svgFilename);
-        svgPath.append("Sy.svg");
+        svgPath.append("Sx.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
         delete[] svgFilename;
@@ -1899,7 +1899,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.color = LweColor(1, 0, 0.5, 0.0);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Sx (J/THz)";
+    sPlot.yLabel = "Sy (J/THz)";
     sPlot.unitY = 1.0e-12;
     sPlot.forceXmax = forceX;
     sPlot.forceXmin = forceX;
@@ -1919,7 +1919,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         char* svgFilename = new char[MAX_LOADSTRING]();
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
         std::string svgPath(svgFilename);
-        svgPath.append("_Sx.svg");
+        svgPath.append("_Sy.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
         delete[] svgFilename;
