@@ -274,7 +274,7 @@ int             loadReferenceSpectrum(char* spectrumPath, simulationParameterSet
 int             readFittingString(simulationParameterSet* sCPU);
 int             saveSettingsFile(simulationParameterSet* sCPU);
 void            unixNewLine(FILE* iostream);
-int             saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount);
+double          saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, size_t totalSteps);
 int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);

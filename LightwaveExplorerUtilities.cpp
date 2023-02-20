@@ -513,11 +513,27 @@ std::string getBasename(char* fullPath) {
 	return pathString.substr(positionOfName + 1);
 }
 
-int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
+double saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, size_t totalSteps) {
 	std::string outputFile((*sCPU).outputBasePath);
 	outputFile.append(".slurmScript");
 	std::ofstream fs(outputFile, std::ios::binary);
 	if (fs.fail()) return 1;
+
+	//Estimate the time required on the cluster, proportional to number of grid points x steps
+	double timeEstimate = (double)(totalSteps * (*sCPU).Nspace * (*sCPU).Ntime) * ceil(((float)(*sCPU).Nsims)/gpuCount);
+	if ((*sCPU).symmetryType == 2) {
+		timeEstimate *= (*sCPU).Nspace2;
+		timeEstimate *= 1.2e-09;
+	}
+	else if ((*sCPU).symmetryType == 1) {
+		timeEstimate *= 4.7e-9;
+	}
+	else {
+		timeEstimate *= 4.6e-9;
+	}
+	if ((*sCPU).nonlinearAbsorptionStrength != 0.0) timeEstimate *= 2.1;
+	timeEstimate /= 3600.0;
+	if (gpuType != 2) timeEstimate *= 8;
 
 	std::string baseName = getBasename((*sCPU).outputBasePath);
 
@@ -540,7 +556,7 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 	fs << "#SBATCH --mem=" << 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN(1, (*sCPU).Nsims)) / 1048576 << "M\x0A";
 	fs << "#SBATCH --nodes=1" << '\x0A';
 	fs << "#SBATCH --ntasks-per-node=1" << '\x0A';
-	fs << "#SBATCH --time=04:00:00" << '\x0A';
+	fs << "#SBATCH --time=" << (int)ceil(1.5 * timeEstimate) << ":00:00" << '\x0A';
 	fs << "module purge" << '\x0A';
 	fs << "module load cuda/11.6" << '\x0A';
 	fs << "module load mkl/2022.1" << '\x0A';
@@ -553,7 +569,7 @@ int saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount) {
 		fs << "srun ./lwe " << baseName << ".input > " << baseName << ".out\x0A";
 	}
 
-	return 0;
+	return timeEstimate;
 }
 
 //print a linefeed without a carriage return so that linux systems don't complain

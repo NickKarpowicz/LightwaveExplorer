@@ -82,6 +82,7 @@ public:
     mainGui() : queueUpdate(0),
     queueSliderUpdate(0), 
     queueSliderMove(0),
+    queueInterfaceValuesUpdate(0),
     sliderTarget(0),
     pathTarget(0), 
     saveSVG(0),
@@ -1130,11 +1131,40 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
 
 void createRunFile() {
 
-    readParametersFromInterface();
-
     if (isGridAllocated) {
         freeSemipermanentGrids();
+        isGridAllocated = FALSE;
     }
+    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+    readParametersFromInterface();
+    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
+        theGui.console.tPrint("Too many simulations in batch mode. Must be under {} total.\r\n", MAX_SIMULATIONS);
+    }
+    (*activeSetPtr).runType = 0;
+    allocateGrids(activeSetPtr);
+    isGridAllocated = TRUE;
+    (*activeSetPtr).isFollowerInSequence = FALSE;
+    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+
+    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
+
+    configureBatchMode(activeSetPtr);
+
+    simulationParameterSet* testSet = new simulationParameterSet[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2]();
+    memcpy(testSet, activeSetPtr, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 * sizeof(simulationParameterSet));
+    totalSteps = 0;
+    for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
+        if ((*activeSetPtr).isInSequence) {
+            testSet[j].progressCounter = &totalSteps;
+            testSet[j].runType = -1;
+            solveNonlinearWaveEquationSequenceCounter(&testSet[j]);
+        }
+        else {
+            testSet[j].progressCounter = &totalSteps;
+            solveNonlinearWaveEquationCounter(&testSet[j]);
+        }
+    }
+    delete[] testSet;
 
     char* fileName = (*activeSetPtr).outputBasePath;
     while (strchr(fileName, '\\') != NULL) {
@@ -1147,6 +1177,7 @@ void createRunFile() {
     }
 
     //create SLURM script
+    (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
     int gpuType = 0;
     int gpuCount = 1;
     switch ((*activeSetPtr).runType) {
@@ -1179,7 +1210,7 @@ void createRunFile() {
         gpuCount = 4;
         break;
     }
-    saveSlurmScript(activeSetPtr, gpuType, gpuCount);
+    double timeEstimate = saveSlurmScript(activeSetPtr, gpuType, gpuCount, totalSteps);
 
 
     //create command line settings file
@@ -1187,8 +1218,9 @@ void createRunFile() {
     saveSettingsFile(activeSetPtr);
 
     theGui.console.tPrint(
-        "Run {} on cluster with:\r\nsbatch {}.slurmScript\r\n",
+        "Run {} on cluster with:\nsbatch {}.slurmScript\n",
         fileName, fileName);
+    theGui.console.tPrint("Estimated time to complete: {:.2} hours\n", timeEstimate, (double)totalSteps * (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2, (*activeSetPtr).runType);
     isRunning = FALSE;
     isGridAllocated = FALSE;
 }

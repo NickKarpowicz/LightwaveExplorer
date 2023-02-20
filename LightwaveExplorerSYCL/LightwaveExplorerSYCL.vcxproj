@@ -173,8 +173,7 @@
       <SpecifyCPUTargetForAOT>Default</SpecifyCPUTargetForAOT>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(TargetPath)" "$(ProjectDir)..\Executable\Win32version"
-copy "$(TargetPath)" "$(ProjectDir)..\Executable\bin"
+      <Command>copy "$(TargetPath)" "$(ProjectDir)..\LightwaveExplorerWin64\bin"
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>

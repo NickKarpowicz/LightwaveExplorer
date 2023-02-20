@@ -129,8 +129,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(TargetPath)" "$(SolutionDir)Executable"
-copy "$(SolutionDir)CrystalDatabase.txt" "$(SolutionDir)Executable"
+      <Command>copy "$(TargetPath)" "$(SolutionDir)LightwaveExplorerWin64"
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
