@@ -2,7 +2,7 @@ import numpy as np
 import re
 import os
 from scipy.optimize import least_squares
-
+from scipy.special import dawsn
 class lightwaveExplorerResult:
     def __init__(self):
         self.rStep = 0
@@ -103,11 +103,14 @@ def fwhm(x: np.ndarray, y: np.ndarray, height: float = 0.5) -> float:
 def norma(v: np.ndarray):
     return v/v.max()
 
+def printSellmeier(a):
+    print(a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13],a[14],a[15],a[17],a[19],a[20],sep=" ")
+
 def sellmeier(wavelengthMicrons, a, equationType: int):
     w = 2 * np.pi * 2.99792458e8 / (1e-6*wavelengthMicrons)
     ls = wavelengthMicrons**2
     k = 3182.607353999257
-    def absorptionBand(w,w0,width,height):
+    def rectangularBand(w,w0,width,height):
         if width != 0:
             scaledAxis = (w-w0)/width
         else:
@@ -117,6 +120,13 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         realPart = np.zeros(w.size) + 1.0
         realPart[scaledAxis!=0.5] = -height * np.log(np.abs((scaledAxis+0.5)/(scaledAxis-0.5)))/np.pi
         return realPart + 1j*imagPart
+    def gaussianBand(w,w0,width,height):
+        if width == 0.0:
+            return 0 + 1j*0
+        scaledF = (w-w0)/(np.sqrt(2.0) * width)
+        realPart = -dawsn(scaledF)/np.sqrt(np.pi)
+        imagPart = np.exp(-scaledF*scaledF)
+        return height * (realPart - 1j * imagPart)
 
     if equationType == 0:
         n = (a[0] + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6]) + (a[7] + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12]) + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls) 
@@ -133,9 +143,9 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         n += k * a[15] / ((a[16] - w ** 2) +  (a[17] * w) * 1j)
         n += k * a[18] / ((a[19] - w ** 2) +  (a[20] * w) * 1j)
     elif equationType == 2:
-        n = 1.0
+        n = a[0]
         for i in range(0,7):
-            n += absorptionBand(w,a[1 + i*3],a[2 + i*3],a[i*3])
+            n += gaussianBand(w,a[i*3+1],a[2 + i*3],a[3+i*3])
 
     return np.sqrt(n)
 

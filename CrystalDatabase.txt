@@ -523,3 +523,38 @@ None
 Nonlinear reference frequencies:
 282e12 282e12 563e12 285e12 285e12 285e12 285e12
 ~~~crystal end~~~
+Name:
+Gauss TiO2 test
+Type:
+0
+Sellmeier equation:
+2
+1st axis coefficients:
+4.5 6283185307179586.0 125663706143591.72 150.0 188495559215387.6 12566370614359.172 20.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+2nd axis coefficients:
+4.5 6283185307179586.0 125663706143591.72 150.0 188495559215387.6 12566370614359.172 20.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+3rd axis coefficients:
+4.5 6283185307179586.0 125663706143591.72 150.0 188495559215387.6 12566370614359.172 20.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+Sellmeier reference:
+Philipp's fitting
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+None
+chi3 type:
+2
+chi3:
+2.65e-20 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Single isotropic value, based on experiments by Philipp
+Spectral file:
+None
+Nonlinear reference frequencies:
+2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14
+~~~crystal end~~~
