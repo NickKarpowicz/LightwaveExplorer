@@ -1371,7 +1371,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         char* svgFilename = new char[MAX_LOADSTRING]();
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
         std::string svgPath(svgFilename);
-        svgPath.append("_Ey.svg");
+        svgPath.append("_Ex.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(),sPlot.SVG.size());
         delete[] svgFilename;
@@ -1504,7 +1504,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         char* svgFilename = new char[MAX_LOADSTRING]();
         theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
         std::string svgPath(svgFilename);
-        svgPath.append("Sx.svg");
+        svgPath.append("_Sx.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
         delete[] svgFilename;
