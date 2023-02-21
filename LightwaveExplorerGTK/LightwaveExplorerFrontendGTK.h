@@ -653,6 +653,361 @@ public:
     }
 };
 
+int LwePlot2d(plotStruct* inputStruct) {
+    plotStruct* s = (plotStruct*)inputStruct;
+    if ((*s).Npts == 0) return 1;
+    size_t iMin = 0;
+    size_t iMax = (*s).Npts;
+    std::string svgString;
+    cairo_t* cr = (*s).cr;
+    cairo_font_extents_t fe;
+    memset(&fe, 0, sizeof(cairo_font_extents_t));
+    cairo_text_extents_t te;
+    memset(&te, 0, sizeof(cairo_text_extents_t));
+    double fontSize = 14.0;
+    cairo_set_font_size(cr, fontSize);
+    cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_font_extents(cr, &fe);
+    double x1, y1, x2, y2;
+    double width;
+    double height;
+
+    double layoutTop = 0.0;
+    double layoutBottom = 0.0;
+    double layoutLeft = 0.0;
+    double layoutRight = 0.0;
+
+    //Fixed parameters affecting aesthetics
+    double radius = 2;
+    double lineWidth = 1.5;
+    double axisSpaceX = 75.0;
+    double axisSpaceY = 35.0;
+    double axisLabelSpaceX = 21.0;
+
+    //get limits and make the plotting arrays
+    double maxY = -1.0e300;
+    double minY = 0.0;
+    double maxX = 0.0;
+    double minX = 0.0;
+    double currentY;
+    double currentX;
+    double* xValues = new double[(*s).Npts + 2]();
+    for (int i = 0; i < (*s).Npts; ++i) {
+        if ((*s).hasDataX) currentX = (double)(*s).dataX[i];
+        else { currentX = (double)(i * (*s).dx + (*s).x0); }
+        if (i == 0) {
+            minX = currentX;
+            maxX = currentX;
+        }
+        xValues[i] = currentX;
+        if ((*s).forceXmin && (currentX < (*s).forcedXmin)) {
+            iMin = i + 1;
+        }
+        if ((*s).forceXmax && (currentX > (*s).forcedXmax)) {
+            iMax = i;
+            break;
+        }
+        maxX = maxN(currentX, maxX);
+        minX = minN(currentX, minX);
+    }
+
+    for (size_t i = iMin; i < iMax; ++i) {
+        if ((*s).logScale) { currentY = (double)log10((*s).data[i]); }
+        else { currentY = (double)(*s).data[i]; }
+        maxY = maxN(currentY, maxY);
+        minY = minN(currentY, minY);
+        if ((*s).ExtraLines > 0) {
+            if ((*s).logScale) { currentY = (double)log10((*s).data2[i]); }
+            else { currentY = (double)(*s).data2[i]; }
+            maxY = maxN(currentY, maxY);
+            minY = minN(currentY, minY);
+        }
+    }
+
+    if (minY == maxY) {
+        minY = -1;
+        maxY = 1;
+    }
+    if ((*s).forceYmin) {
+        minY = (double)(*s).forcedYmin * (*s).unitY;
+        if ((*s).logScale) minY = log10(minY);
+    }
+    if ((*s).forceYmax) {
+        maxY = (double)(*s).forcedYmax * (*s).unitY;
+        if ((*s).logScale) maxY = log10(maxY);
+    }
+    if ((*s).forceXmin) {
+        minX = (double)(*s).forcedXmin;
+    }
+    if ((*s).forceXmax) {
+        maxX = (double)(*s).forcedXmax;
+    }
+
+    //Tickmark labels
+    int NyTicks = 3;
+    std::string messageBuffer;
+    double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
+    double xTicks1[3] = { minX + 0.25 * (maxX - minX), minX + 0.5 * (maxX - minX), minX + 0.75 * (maxX - minX) };
+    height = (double)(*s).height;
+    width = (double)(*s).width;
+
+    //Start SVG file if building one
+    auto SVGh = [&](double x) {
+        return (int)(15 * x);
+    };
+    if ((*s).makeSVG) {
+        svgString.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
+        svgString.append(Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+            width, height, width, height));
+        svgString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
+            SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
+    }
+    LweColor black(0, 0, 0, 0);
+    cairo_rectangle(cr, 0, 0, width, height);
+    black.setCairo(cr);
+    cairo_fill(cr);
+    width -= axisSpaceX;
+    height -= axisSpaceY;
+    double scaleX = width / ((double)(maxX - minX));
+    double scaleY = height / ((double)(maxY - minY));
+    LweColor currentColor = (*s).textColor;
+
+
+    //make the paintbrush
+    //hr = pRenderTarget->CreateSolidColorBrush((*s).textColor, &pBrush);
+    currentColor = (*s).textColor;
+    //lambdas for writing components of SVG file
+    auto SVGstdline = [&]() {
+        if ((*s).makeSVG)svgString.append(Sformat("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", x1, y1, x2, y2, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
+    };
+
+    auto SVGstdcircle = [&]() {
+        if ((*s).makeSVG)svgString.append(Sformat("<circle cx=\"{}\" cy=\"{}\" r=\"{}\" stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n", x1, y1, radius, currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
+    };
+
+    auto SVGstartgroup = [&]() {
+        if ((*s).makeSVG)svgString.append("<g>\n");
+    };
+
+    auto SVGendgroup = [&]() {
+        if ((*s).makeSVG)svgString.append("</g>\n");
+    };
+
+    auto SVGcentertext = [&]() {
+        if ((*s).makeSVG)svgString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\">\n{}\n</text>\n", fontSize - 1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), 0.5 * (layoutBottom + layoutTop - te.height), messageBuffer));
+    };
+
+    auto SVGlefttext = [&]() {
+        if ((*s).makeSVG)svgString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\">\n{}\n</text>\n", fontSize - 1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, std::string(messageBuffer)));
+    };
+
+
+    cairo_set_line_width(cr, lineWidth);
+    auto cairoLine = [&]() {
+        currentColor.setCairo(cr);
+        cairo_move_to(cr, x1, y1);
+        cairo_line_to(cr, x2, y2);
+        cairo_stroke(cr);
+    };
+    auto cairoCircle = [&]() {
+        currentColor.setCairo(cr);
+        cairo_arc(cr, x1, y1, radius, 0, 6.2831853071795862);
+        cairo_fill(cr);
+    };
+    auto cairoRightText = [&]() {
+        currentColor.setCairo(cr);
+        cairo_text_extents(cr, messageBuffer.c_str(), &te);
+        cairo_move_to(cr, layoutRight - te.width - 3, 0.5 * (layoutBottom + layoutTop - te.height));
+        cairo_show_text(cr, messageBuffer.c_str());
+    };
+    auto cairoCenterText = [&]() {
+        currentColor.setCairo(cr);
+        cairo_text_extents(cr, messageBuffer.c_str(), &te);
+        cairo_move_to(cr, 0.5 * (layoutLeft + layoutRight - te.width), 0.5 * (layoutBottom + layoutTop - te.height));
+        cairo_show_text(cr, messageBuffer.c_str());
+    };
+
+    auto cairoVerticalText = [&]() {
+        currentColor.setCairo(cr);
+        cairo_text_extents(cr, messageBuffer.c_str(), &te);
+        cairo_move_to(cr, 0.0, height);
+        cairo_rotate(cr, -3.1415926535897931 / 2);
+        cairo_rel_move_to(cr, 0.5 * (layoutLeft + layoutRight - te.width), fontSize);
+        cairo_show_text(cr, messageBuffer.c_str());
+        cairo_rotate(cr, 3.1415926535897931 / 2);
+    };
+
+    currentColor = (*s).textColor;
+    //y-tick text labels
+    for (int i = 0; i < NyTicks; ++i) {
+        double ytVal = yTicks1[i] / (*s).unitY;
+        if ((*s).logScale) {
+            switch (i) {
+            case 0:
+                ytVal = pow(10.0, maxY) / (*s).unitY;
+                break;
+            case 1:
+                ytVal = pow(10.0, minY + 0.5 * (maxY - minY)) / (*s).unitY;
+                break;
+            case 2:
+                ytVal = pow(10.0, minY) / (*s).unitY;
+            }
+        }
+        if (abs(ytVal) > 10.0 || abs(ytVal) < 0.01) {
+            messageBuffer = Sformat("{:.1e}", ytVal);
+        }
+        else {
+            messageBuffer = Sformat("{:4.4f}", ytVal);
+        }
+
+        layoutLeft = axisLabelSpaceX;
+        layoutTop = (double)(i * (0.5 * (height)));
+        if (i == 2) layoutTop -= 8.0f;
+        if (i == 1) layoutTop -= 6.0f;
+        layoutBottom = layoutTop + axisSpaceY;
+        layoutRight = axisSpaceX;
+
+
+        cairoRightText();
+        SVGlefttext();
+    }
+    //y-axis name
+    if ((*s).yLabel != NULL) {
+        messageBuffer = std::string((*s).yLabel);
+        layoutLeft = 0;
+        layoutTop = height;
+        layoutBottom = height + axisSpaceY;
+        layoutRight = height;
+
+        cairoVerticalText();
+        if ((*s).makeSVG)svgString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), layoutTop + fontSize, -(layoutLeft + layoutRight), height, messageBuffer));
+    }
+
+    //x-axis name
+    if ((*s).xLabel != NULL) {
+        layoutLeft = axisSpaceX;
+        layoutTop = height + 2.8 * fontSize;
+        layoutBottom = height + axisSpaceY;
+        layoutRight = axisSpaceX + width;
+        messageBuffer.assign((*s).xLabel);
+        cairoCenterText();
+        SVGcentertext();
+    }
+
+    //x-axis tick labels
+    for (int i = 0; i < 3; ++i) {
+        messageBuffer.assign(Sformat("{}", (int)round(xTicks1[i])));
+        layoutLeft = (double)(axisSpaceX + 0.25 * width * ((size_t)(i)+1) - axisSpaceX / 2);
+        layoutTop = height + 3;
+        layoutBottom = height + axisSpaceY;
+        layoutRight = layoutLeft + axisSpaceX;
+
+        cairoCenterText();
+        SVGcentertext();
+    }
+
+    //Draw axes and tickmarks
+    SVGstartgroup();
+    currentColor = (*s).axisColor;
+    x1 = axisSpaceX;
+    y1 = height;
+    x2 = scaleX * (maxX - minX) + axisSpaceX;
+    y2 = height;
+    cairoLine();
+    SVGstdline();
+    x1 = axisSpaceX;
+    y1 = height;
+    x2 = x1;
+    y2 = 0.0;
+    cairoLine();
+    SVGstdline();
+    for (int i = 0; i < 2; ++i) {
+        y1 = (double)(height - scaleY * (yTicks1[i] - minY));
+        y2 = y1;
+        x1 = axisSpaceX;
+        x2 = x1 + 10;
+        cairoLine();
+        SVGstdline();
+    }
+    for (int i = 0; i < 3; ++i) {
+        y1 = height;
+        y2 = y1 - 10;
+        x1 = (double)(axisSpaceX + scaleX * (xTicks1[i] - minX));
+        x2 = x1;
+        cairoLine();
+        SVGstdline();
+    }
+    SVGendgroup();
+
+    //Lambda for plotting a single line
+    //note: SVG could be more compact (and maybe faster to load?) using a big polyline call rather
+    //than individual lines like it is now.
+    auto plotLine = [&](double* y) {
+        SVGstartgroup();
+        for (size_t i = iMin; i < iMax - 1; ++i) {
+            x1 = scaleX * (xValues[i] - minX);
+            x2 = scaleX * (xValues[i + 1] - minX);
+            if ((*s).logScale) {
+                y1 = height - scaleY * ((double)log10(y[i]) - (double)minY);
+                y2 = height - scaleY * ((double)log10(y[i + 1]) - (double)minY);
+            }
+            else {
+                y1 = height - scaleY * ((double)y[i] - (double)minY);
+                y2 = height - scaleY * ((double)y[i + 1] - (double)minY);
+            }
+            x1 += axisSpaceX;
+            x2 += axisSpaceX;
+
+            if (y1 <= height) {
+                if (y2 <= height) {
+                    cairoLine();
+                    SVGstdline();
+                }
+                else {
+                    x2 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
+                    y2 = height;
+                    cairoLine();
+                    SVGstdline();
+                }
+                cairoCircle();
+                SVGstdcircle();
+            }
+            else if (y2 <= height) {
+                x1 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
+                y1 = height;
+                cairoLine();
+                SVGstdline();
+            }
+        }
+        SVGendgroup();
+    };
+
+    //Plot the main line
+    currentColor = (*s).color;
+    plotLine((*s).data);
+
+    //Optional overlay curves
+    if ((*s).ExtraLines > 0) {
+        currentColor = (*s).color2;
+        plotLine((*s).data2);
+    }
+    if ((*s).ExtraLines > 1) {
+        currentColor = (*s).color3;
+        plotLine((*s).data3);
+    }
+    if ((*s).ExtraLines > 2) {
+        currentColor = (*s).color2;
+        plotLine((*s).data4);
+    }
+
+    delete[] xValues;
+    if ((*s).makeSVG) {
+        svgString.append("</svg>");
+        (*s).SVG.assign(svgString);
+    }
+    return 0;
+}
+
 void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
