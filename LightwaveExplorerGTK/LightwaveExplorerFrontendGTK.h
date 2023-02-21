@@ -781,6 +781,18 @@ int LwePlot2d(plotStruct* inputStruct) {
         if ((*s).makeSVG)svgString.append(Sformat("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", x1, y1, x2, y2, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
     };
 
+    auto SVGstartPolyLine = [&]() {
+        svgString.append(Sformat("<polyline points=\""));
+    };
+
+    auto SVGendPolyLine = [&]() {
+        svgString.append(Sformat("\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
+    };
+
+    auto SVGaddXYtoPolyLine = [&](double& a, double& b) {
+        svgString.append(Sformat("{},{} ", a, b));
+    };
+
     auto SVGstdcircle = [&]() {
         if ((*s).makeSVG)svgString.append(Sformat("<circle cx=\"{}\" cy=\"{}\" r=\"{}\" stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n", x1, y1, radius, currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
     };
@@ -939,44 +951,135 @@ int LwePlot2d(plotStruct* inputStruct) {
     }
     SVGendgroup();
 
-    //Lambda for plotting a single line
-    //note: SVG could be more compact (and maybe faster to load?) using a big polyline call rather
-    //than individual lines like it is now.
-    auto plotLine = [&](double* y) {
-        SVGstartgroup();
+    //Lambdas for plotting a line
+    //currently dots are always there but has been refactored to make it easier to turn the off if I want.
+    auto plotCairoDots = [&](double* y) {
+        currentColor.setCairo(cr);
         for (size_t i = iMin; i < iMax - 1; ++i) {
-            x1 = scaleX * (xValues[i] - minX);
-            x2 = scaleX * (xValues[i + 1] - minX);
+            x1 = scaleX * (xValues[i] - minX) + axisSpaceX;
             if ((*s).logScale) {
                 y1 = height - scaleY * ((double)log10(y[i]) - (double)minY);
-                y2 = height - scaleY * ((double)log10(y[i + 1]) - (double)minY);
             }
             else {
                 y1 = height - scaleY * ((double)y[i] - (double)minY);
-                y2 = height - scaleY * ((double)y[i + 1] - (double)minY);
             }
-            x1 += axisSpaceX;
+            if (y1 <= height) {
+                cairo_arc(cr, x1, y1, radius, 0, 6.2831853071795862);
+                cairo_fill(cr);
+            }
+        }
+    };
+
+    auto plotCairoPolyline = [&](double* y) {
+        currentColor.setCairo(cr);
+        x2 = scaleX * (xValues[iMin] - minX) + axisSpaceX;
+        if ((*s).logScale) {
+            y2 = height - scaleY * (log10(y[iMin]) - minY);
+        }
+        else {
+            y2 = height - scaleY * (y[iMin] - minY);
+        }
+
+        for (size_t i = iMin+1; i < iMax; ++i) {
+            x1 = x2;
+            x2 = scaleX * (xValues[i] - minX);
+            y1 = y2;
+            if ((*s).logScale) {
+                y2 = height - scaleY * (log10(y[i]) - minY);
+            }
+            else {
+                y2 = height - scaleY * (y[i] - minY);
+            }
             x2 += axisSpaceX;
 
             if (y1 <= height) {
                 if (y2 <= height) {
-                    cairoLine();
-                    SVGstdline();
+                    cairo_move_to(cr, x1, y1);
+                    cairo_line_to(cr, x2, y2);
                 }
                 else {
                     x2 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
                     y2 = height;
-                    cairoLine();
-                    SVGstdline();
+                    cairo_move_to(cr, x1, y1);
+                    cairo_line_to(cr, x2, y2);
                 }
-                cairoCircle();
-                SVGstdcircle();
             }
             else if (y2 <= height) {
                 x1 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
                 y1 = height;
-                cairoLine();
-                SVGstdline();
+                cairo_move_to(cr, x1, y1);
+                cairo_line_to(cr, x2, y2);
+            }
+        }
+        cairo_stroke(cr);
+    };
+
+    auto plotSVGPolyline = [&](double* y) {
+        bool lineOn = FALSE;
+        x2 = scaleX * (xValues[iMin] - minX) + axisSpaceX;
+        if ((*s).logScale) {
+            y2 = height - scaleY * (log10(y[iMin]) - minY);
+        }
+        else {
+            y2 = height - scaleY * (y[iMin] - minY);
+        }
+        if (y2 <= height) {
+            SVGstartPolyLine();
+            SVGaddXYtoPolyLine(x2, y2);
+            lineOn = TRUE;
+        }
+        for (size_t i = iMin + 1; i < iMax; ++i) {
+            x1 = x2;
+            x2 = scaleX * (xValues[i] - minX);
+            y1 = y2;
+            if ((*s).logScale) {
+                y2 = height - scaleY * (log10(y[i]) - minY);
+            }
+            else {
+                y2 = height - scaleY * (y[i] - minY);
+            }
+            x2 += axisSpaceX;
+
+            if (y1 <= height) {
+                if (y2 <= height) {
+                    if (!lineOn) {
+                        SVGstartPolyLine();
+                    }
+                    SVGaddXYtoPolyLine(x2, y2);
+                }
+                else {
+                    x2 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
+                    y2 = height;
+                    SVGaddXYtoPolyLine(x2, y2);
+                    SVGendPolyLine();
+                }
+            }
+            else if (y2 <= height) {
+                x1 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
+                y1 = height;
+                if (!lineOn) {
+                    SVGstartPolyLine();
+                }
+                SVGaddXYtoPolyLine(x2, y2);
+            }
+        }
+        if (lineOn) {
+            SVGendPolyLine();
+        }
+    };
+
+    auto plotSVGDots = [&](double* y) {
+        SVGstartgroup();
+        for (size_t i = iMin; i < iMax - 1; ++i) {
+            x1 = scaleX * (xValues[i] - minX) + axisSpaceX;
+            if ((*s).logScale) {
+                y1 = height - scaleY * ((double)log10(y[i]) - (double)minY);
+            }
+            else {
+                y1 = height - scaleY * ((double)y[i] - (double)minY);
+            }
+            if (y1 <= height) {
+                SVGstdcircle();
             }
         }
         SVGendgroup();
@@ -984,20 +1087,39 @@ int LwePlot2d(plotStruct* inputStruct) {
 
     //Plot the main line
     currentColor = (*s).color;
-    plotLine((*s).data);
-
+    plotCairoPolyline((*s).data);
+    plotCairoDots((*s).data);
+    if ((*s).makeSVG) {
+        plotSVGPolyline((*s).data);
+        plotSVGDots((*s).data);
+    }
     //Optional overlay curves
     if ((*s).ExtraLines > 0) {
         currentColor = (*s).color2;
-        plotLine((*s).data2);
+        plotCairoPolyline((*s).data2);
+        plotCairoDots((*s).data2);
+        if ((*s).makeSVG) {
+            plotSVGPolyline((*s).data2);
+            plotSVGDots((*s).data2);
+        }
     }
     if ((*s).ExtraLines > 1) {
         currentColor = (*s).color3;
-        plotLine((*s).data3);
+        plotCairoPolyline((*s).data3);
+        plotCairoDots((*s).data3);
+        if ((*s).makeSVG) {
+            plotSVGPolyline((*s).data3);
+            plotSVGDots((*s).data3);
+        }
     }
     if ((*s).ExtraLines > 2) {
-        currentColor = (*s).color2;
-        plotLine((*s).data4);
+        currentColor = (*s).color4;
+        plotCairoPolyline((*s).data4);
+        plotCairoDots((*s).data4);
+        if ((*s).makeSVG) {
+            plotSVGPolyline((*s).data4);
+            plotSVGDots((*s).data4);
+        }
     }
 
     delete[] xValues;
