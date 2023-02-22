@@ -582,6 +582,30 @@ def getSellmeierFromRII(url):
     else:
         print("Sorry, this formula hasn't been implemented yet.")
     return retrievedCoeffs
+
+def getTabulatedDataFromRII(url):
+    RIIobj = getRII_object(url)
+    types = np.array([x["type"] for x in RIIobj["DATA"]])
+    if 'tabulated nk' in types:
+        firstTrue = ((types=='tabulated nk').cumsum().cumsum()==1).argmax()
+        nkData = np.array([np.array(i.split(' ')).astype(float) for i in str(RIIobj["DATA"][firstTrue]["data"]).strip().split('\n')])
+    elif 'tabulated k' in types:
+        firstTrue = ((types=='tabulated k').cumsum().cumsum()==1).argmax()
+        kData = np.array([np.array(i.split(' ')).astype(float) for i in str(RIIobj["DATA"][firstTrue]["data"]).strip().split('\n')])
+        nkData = np.zeros((kData[:,0].size, 3))
+        nkData[:,0] = kData[:,0]
+        nkData[:,2] = kData[:,1]
+        sellCoeffs = getSellmeierFromRII(url)
+        nkData[:,1] = np.real(sellmeier(nkData[:,0],sellCoeffs,0))
+    elif 'tabulated n' in types:
+        firstTrue = ((types=='tabulated n').cumsum().cumsum()==1).argmax()
+        nData = np.array([np.array(i.split(' ')).astype(float) for i in str(RIIobj["DATA"][firstTrue]["data"]).strip().split('\n')])
+        nkData = np.zeros((kData[:,0].size, 3))
+        nkData[:,0] = nData[:,0]
+        nkData[:,1] = nData[:,1]
+        
+    return nkData
+        
 #Takes a result of a calculation and extracts the electro-optic sampling signal
 #The simulation must be done in a way that includes mixing of the signal and local oscillator
 #either by fully simulating the waveplate, or by rotating the system of coordinates in
@@ -629,8 +653,7 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
         EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
     return EOSsignal
 
-def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnType: int, nTarget):
-    fitImaginary = False
+def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnType: int, nTarget, fitImaginary: bool):
     def expandCoeffs(x):
         x1 = np.zeros(22)
         for i in range(0,np.size(startingCoefficients)):
