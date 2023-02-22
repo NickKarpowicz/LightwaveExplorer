@@ -578,13 +578,15 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
         EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
     return EOSsignal
 
-def nFit(wavelengthMicrons, aStart, eqnType: int, nTarget):
+def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnType: int, nTarget):
     fitImaginary = False
+    def expandCoeffs(x):
+        x1 = np.zeros(22)
+        for i in range(0,np.size(startingCoefficients)):
+            x1[activeElements[i]] = x[activeElements[i]]
+        return x1
     def fun_nforx(x):
-        x1 = np.zeros(21)
-        for i in range(0,np.size(aStart)):
-            x1[i] = x[i]
-        return sellmeier(wavelengthMicrons, x1, eqnType)
+        return sellmeier(wavelengthMicrons, expandCoeffs(x), eqnType)
     def fun_residual(x):
         nx = fun_nforx(x)
         if fitImaginary:
@@ -593,6 +595,7 @@ def nFit(wavelengthMicrons, aStart, eqnType: int, nTarget):
             returnVals = np.real(nTarget - nx)
         return returnVals
 
-    res = least_squares(fun_residual, aStart, gtol=None, xtol=None, ftol = 1e-12, max_nfev=65536)
-    print(res)
-    return res.x, fun_nforx(res.x)
+    res = least_squares(fun_residual, startingCoefficients, gtol=None, xtol=None, ftol = 1e-12, max_nfev=16384)
+    print("Resulting coefficients:")
+    printSellmeier(expandCoeffs(res.x))
+    return expandCoeffs(res.x), fun_nforx(res.x)
