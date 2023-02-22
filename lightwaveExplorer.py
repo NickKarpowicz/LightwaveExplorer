@@ -3,6 +3,9 @@ import re
 import os
 from scipy.optimize import least_squares
 from scipy.special import dawsn
+import yaml
+import urllib.request
+
 class lightwaveExplorerResult:
     def __init__(self):
         self.rStep = 0
@@ -531,6 +534,54 @@ def load(filePath: str, loadFieldArray=True):
     s.spaceVector = s.rStep * (np.arange(0,s.Nspace) - s.Nspace/2) + 0.25 * s.rStep
     return s
 
+def getRII_object(url):
+    riiurl = urllib.request.urlopen(url)
+    return  yaml.safe_load(riiurl)
+
+def getSellmeierFromRII(url):
+    RIIobj = getRII_object(url)
+    types = np.array([x["type"] for x in RIIobj["DATA"]])
+    retrievedCoeffs = np.zeros(22)
+
+    if 'formula 1' in types:
+        firstTrue = ((types=='formula 2').cumsum().cumsum()==1).argmax()
+        RIIcoeffs = np.fromstring(RIIobj["DATA"][firstTrue]["coefficients"], dtype=float, sep=' ')
+        Nresonances = int(np.floor((RIIcoeffs.size-1)/2))
+        retrievedCoeffs[0] = RIIcoeffs[0] + 1
+        for i in range(0,min(7,Nresonances)):
+            retrievedCoeffs[i*3 + 2] = RIIcoeffs[1 + 2*i]
+            retrievedCoeffs[i*3 + 3] = -(RIIcoeffs[2 + 2*i]**2)
+    elif 'formula 2' in types:
+        firstTrue = ((types=='formula 2').cumsum().cumsum()==1).argmax()
+        RIIcoeffs = np.fromstring(RIIobj["DATA"][firstTrue]["coefficients"], dtype=float, sep=' ')
+        Nresonances = int(np.floor((RIIcoeffs.size-1)/2))
+        retrievedCoeffs[0] = RIIcoeffs[0] + 1
+        for i in range(0,min(7,Nresonances)):
+            retrievedCoeffs[i*3 + 2] = RIIcoeffs[1 + 2*i]
+            retrievedCoeffs[i*3 + 3] = -RIIcoeffs[2 + 2*i]
+    elif 'formula 4' in types:
+        firstTrue = ((types=='formula 4').cumsum().cumsum()==1).argmax()
+        RIIcoeffs = np.fromstring(RIIobj["DATA"][firstTrue]["coefficients"], dtype=float, sep=' ')
+        Nresonances = int(np.floor((RIIcoeffs.size-1)/4))
+        retrievedCoeffs[0] = RIIcoeffs[0]
+        for i in range(0,min(Nresonances,2)):
+            if RIIcoeffs[2 + 4*i] == 0:
+                retrievedCoeffs[i*3 + 1] = RIIcoeffs[1 + 4*i]
+            else:
+                retrievedCoeffs[i*3 + 2] = RIIcoeffs[1 + 4*i]
+            retrievedCoeffs[i*3 + 3] = -(RIIcoeffs[3 + 4*i]**RIIcoeffs[4+4*i])
+        if RIIcoeffs.size > 5:
+            Npoly = int(np.floor(int(RIIcoeffs.size - 5)/2))
+            for i in range(0,Npoly):
+                if RIIcoeffs[5 + 2*i + 1] == 2.0:
+                    retrievedCoeffs[13] = RIIcoeffs[5 + 2*i]
+                if RIIcoeffs[5 + 2*i + 1] == 4.0:
+                    retrievedCoeffs[14] = RIIcoeffs[5 + 2*i]
+                if RIIcoeffs[5 + 2*i + 1] == 6.0:
+                    retrievedCoeffs[15] = RIIcoeffs[5 + 2*i]
+    else:
+        print("Sorry, this formula hasn't been implemented yet.")
+    return retrievedCoeffs
 #Takes a result of a calculation and extracts the electro-optic sampling signal
 #The simulation must be done in a way that includes mixing of the signal and local oscillator
 #either by fully simulating the waveplate, or by rotating the system of coordinates in
