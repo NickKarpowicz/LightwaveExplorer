@@ -1980,8 +1980,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
         &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 
         secondPulldownSelection, pulldownSelection);
 
-
-
     for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); ++j) {
 
         activeSetPtr[j].runningOnCPU = forceCPU;
@@ -2012,7 +2010,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             }
             if (error) break;
         }
-
         if (cancellationCalled) {
             theGui.console.tPrint(_T("Warning: series cancelled, stopping after {} simulations.\r\n"), j + 1);
             break;
@@ -2117,9 +2114,6 @@ void fittingThread(int pulldownSelection) {
         theGui.console.tPrint("{},  {}\n", i, (*activeSetPtr).fittingResult[i]);
     }
     saveDataSet(activeSetPtr);
-    
-
-
     deallocateGrids(activeSetPtr, FALSE);
     isRunning = FALSE;
 }

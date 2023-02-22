@@ -110,6 +110,7 @@ def printSellmeier(sc):
     s = np.array2string(sc, formatter={'float_kind': '{0:.6g}'.format}).replace('\n','').replace('[','').replace(']','')
     print(s)
 
+
 def sellmeier(wavelengthMicrons, a, equationType: int):
     w = 2 * np.pi * 2.99792458e8 / (1e-6*wavelengthMicrons)
     ls = wavelengthMicrons**2
@@ -130,7 +131,7 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         scaledF = (w-w0)/(np.sqrt(2.0) * width)
         realPart = -dawsn(scaledF)/np.sqrt(np.pi)
         imagPart = np.exp(-scaledF*scaledF)
-        return height * (realPart - 1j * imagPart)
+        return np.abs(height) * (realPart - 1j * imagPart)
 
     if equationType == 0:
         n = (a[0] + (a[1] + a[2] * ls) / (ls + a[3]) + (a[4] + a[5] * ls) / (ls + a[6]) + (a[7] + a[8] * ls) / (ls + a[9]) + (a[10] + a[11] * ls) / (ls + a[12]) + a[13] * ls + a[14] * ls * ls + a[15] * ls * ls * ls) 
@@ -148,7 +149,7 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         n += k * a[18] / ((a[19] - w ** 2) +  (a[20] * w) * 1j)
     elif equationType == 2:
         n = a[0]
-        for i in range(0,6):
+        for i in range(0,7):
             n += gaussianBand(w,a[i*3+1],a[2 + i*3],a[3+i*3])
 
     return np.sqrt(n)
@@ -603,7 +604,7 @@ def getTabulatedDataFromRII(url):
         nkData = np.zeros((kData[:,0].size, 3))
         nkData[:,0] = nData[:,0]
         nkData[:,1] = nData[:,1]
-        
+
     return nkData
         
 #Takes a result of a calculation and extracts the electro-optic sampling signal
@@ -653,23 +654,25 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
         EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
     return EOSsignal
 
-def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnType: int, nTarget, fitImaginary: bool):
+def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnType: int, nTarget, imaginaryWeight):
+    fitImaginary = imaginaryWeight != 0
     def expandCoeffs(x):
         x1 = np.zeros(22)
-        for i in range(0,np.size(startingCoefficients)):
+        for i in activeElements:
             x1[activeElements[i]] = x[activeElements[i]]
         return x1
     def fun_nforx(x):
         return sellmeier(wavelengthMicrons, expandCoeffs(x), eqnType)
+
     def fun_residual(x):
         nx = fun_nforx(x)
         if fitImaginary:
-            returnVals = np.append(np.real(nTarget - nx), np.imag(nTarget - nx))
+            returnVals = np.append(np.real(nTarget - nx), np.real(imaginaryWeight*(np.sqrt(-(np.imag(nTarget))) - np.sqrt(-(np.imag(nx))))))
         else:
             returnVals = np.real(nTarget - nx)
         return returnVals
 
-    res = least_squares(fun_residual, startingCoefficients, gtol=None, xtol=None, ftol = 1e-12, max_nfev=16384)
+    res = least_squares(fun_residual, startingCoefficients[activeElements], gtol=None, xtol=None, ftol = 1e-12, max_nfev=16384)
     print("Resulting coefficients:")
     printSellmeier(expandCoeffs(res.x))
     return expandCoeffs(res.x), fun_nforx(res.x)

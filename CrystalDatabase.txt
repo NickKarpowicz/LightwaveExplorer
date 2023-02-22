@@ -558,3 +558,38 @@ None
 Nonlinear reference frequencies:
 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14
 ~~~crystal end~~~
+Name:
+BBO (Gauss)
+Type:
+1
+Sellmeier equation:
+2
+1st axis coefficients:
+2.3268 3.00508e+16 4.12976e+14 17.5723 1.38727e+16 1.90615e+15 5.07093 3.77083e+14 1.871e+13 3.80891 5.47185e+14 2.94394e+13 0.0226563 5.38049e+14 1.49729e+14 2.71973e-05 8.04979e+14 2.5e+13 6e-05 7.10812e+14 2.5e+13 9e-05
+2nd axis coefficients:
+2.04577 3.0063e+16 3.92534e+14 23.3815 1.39265e+16 1.86708e+15 3.25443 4.35583e+14 1.7311e+13 -0.198325 5.0865e+14 5.71099e+13 0.00534724 5.24713e+14 1.13801e+14 5.38887e-06 8.04979e+14 2.5e+13 5e-05 7.10812e+14 2.5e+13 7.1e-05
+3rd axis coefficients:
+2.04577 3.0063e+16 3.92534e+14 23.3815 1.39265e+16 1.86708e+15 3.25443 4.35583e+14 1.7311e+13 -0.198325 5.0865e+14 5.71099e+13 0.00534724 5.24713e+14 1.13801e+14 5.38887e-06 8.04979e+14 2.5e+13 5e-05 7.10812e+14 2.5e+13 7.1e-05
+Sellmeier reference:
+G. Tamosauskas, G. Beresnevicius, D. Gadonas, A. Dubietis, Opt. Mater. Express 8, 1410-1418 (2018) via refractiveindex.info, fit to Gaussian bands
+chi2 type:
+1
+d:
+0 0 0 0 0.03 2.2
+2.2 -2.2 0 -0.08 0 0
+0.04 0.04 0.04 0 0 0
+d reference:
+I. Shoji, et al., J. Opt. Soc. Am. B 16, 620-624 (1999). Relative sign based on Bache et al.
+chi3 type:
+2
+chi3:
+5e-22
+0
+0
+chi3 reference:
+M. Bache, et al. Optical Materials Express 3, 357-392 (2013).
+Spectral file:
+None
+Nonlinear reference frequencies:
+282e12 282e12 564e12 375e12 375e12 375e12 375e12
+~~~crystal end~~~

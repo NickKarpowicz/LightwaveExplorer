@@ -104,7 +104,8 @@ namespace deviceFunctions {
 				}
 
 			}
-			return deviceLib::sqrt(compPart);
+			//always select branch with imaginary part < 0
+			return deviceComplex((deviceLib::sqrt(compPart)).real(), -abs((deviceLib::sqrt(compPart)).imag()));
 		}
 		case 100:
 			realPart = a[0]
