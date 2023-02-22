@@ -103,8 +103,9 @@ def fwhm(x: np.ndarray, y: np.ndarray, height: float = 0.5) -> float:
 def norma(v: np.ndarray):
     return v/v.max()
 
-def printSellmeier(a):
-    print(a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],a[8],a[9],a[10],a[11],a[12],a[13],a[14],a[15],a[17],a[19],a[20],sep=" ")
+def printSellmeier(sc):
+    s = np.array2string(sc, formatter={'float_kind': '{0:.6g}'.format}).replace('\n','').replace('[','').replace(']','')
+    print(s)
 
 def sellmeier(wavelengthMicrons, a, equationType: int):
     w = 2 * np.pi * 2.99792458e8 / (1e-6*wavelengthMicrons)
@@ -144,7 +145,7 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         n += k * a[18] / ((a[19] - w ** 2) +  (a[20] * w) * 1j)
     elif equationType == 2:
         n = a[0]
-        for i in range(0,7):
+        for i in range(0,6):
             n += gaussianBand(w,a[i*3+1],a[2 + i*3],a[3+i*3])
 
     return np.sqrt(n)
@@ -577,12 +578,12 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
         EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
     return EOSsignal
 
-def nFit(wavelengthMicrons, aStart, eqnType: int, nTarget, NumberOfResonances: int, fitImaginary: bool):
+def nFit(wavelengthMicrons, aStart, eqnType: int, nTarget):
+    fitImaginary = False
     def fun_nforx(x):
         x1 = np.zeros(21)
-        for i in range(0,21):
-            if i < 3*NumberOfResonances:
-                x1[i] = x[i]
+        for i in range(0,np.size(aStart)):
+            x1[i] = x[i]
         return sellmeier(wavelengthMicrons, x1, eqnType)
     def fun_residual(x):
         nx = fun_nforx(x)
@@ -592,6 +593,6 @@ def nFit(wavelengthMicrons, aStart, eqnType: int, nTarget, NumberOfResonances: i
             returnVals = np.real(nTarget - nx)
         return returnVals
 
-    res = least_squares(fun_residual, aStart[0:(3*NumberOfResonances)],gtol=None, xtol=None, ftol = 1e-12, max_nfev=4096)
+    res = least_squares(fun_residual, aStart, gtol=None, xtol=None, ftol = 1e-12, max_nfev=65536)
     print(res)
     return res.x, fun_nforx(res.x)

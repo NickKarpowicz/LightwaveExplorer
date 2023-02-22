@@ -49,7 +49,7 @@ namespace deviceFunctions {
 				d += exp(-(xp - i * h) * (xp - i * h)) / (i + n0);
 			}
 		}
-		return d / sqrt(PI);
+		return INVSQRTPI * d;
 	}
 
 	//Inner function for the Sellmeier equation to provide the refractive indicies
@@ -100,7 +100,7 @@ namespace deviceFunctions {
 			for (int i = 0; i < 7; ++i) {
 				if (a[3 * i + 1] != 0.0){
 					scaledF = (omega - a[1 + 3 * i]) / (sqrt(2.0) * a[2 + 3 * i]);
-					compPart += a[3 + 3 * i] * deviceComplex(-1.1283791670955126 * deviceDawson(scaledF), -exp(-scaledF * scaledF));
+					compPart += a[3 + 3 * i] * deviceComplex(-INVSQRTPI * deviceDawson(scaledF), -exp(-scaledF * scaledF));
 				}
 
 			}
