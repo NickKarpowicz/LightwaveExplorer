@@ -667,9 +667,9 @@ def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnTyp
     def fun_residual(x):
         nx = fun_nforx(x)
         if fitImaginary:
-            returnVals = np.append(np.real(nTarget - nx), np.real(imaginaryWeight*(np.sqrt(-(np.imag(nTarget))) - np.sqrt(-(np.imag(nx))))))
+            returnVals = np.append(np.real(nTarget - nx)/wavelengthMicrons, np.real(imaginaryWeight*(np.sqrt(-(np.imag(nTarget))) - np.sqrt(-(np.imag(nx)))))/wavelengthMicrons)
         else:
-            returnVals = np.real(nTarget - nx)
+            returnVals = np.real(nTarget - nx)/wavelengthMicrons
         return returnVals
 
     res = least_squares(fun_residual, startingCoefficients[activeElements], gtol=None, xtol=None, ftol = 1e-12, max_nfev=16384)
