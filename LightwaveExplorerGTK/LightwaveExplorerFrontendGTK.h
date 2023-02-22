@@ -821,11 +821,6 @@ int LwePlot2d(plotStruct* inputStruct) {
         cairo_line_to(cr, x2, y2);
         cairo_stroke(cr);
     };
-    auto cairoCircle = [&]() {
-        currentColor.setCairo(cr);
-        cairo_arc(cr, x1, y1, radius, 0, 6.2831853071795862);
-        cairo_fill(cr);
-    };
     auto cairoRightText = [&]() {
         currentColor.setCairo(cr);
         cairo_text_extents(cr, messageBuffer.c_str(), &te);
