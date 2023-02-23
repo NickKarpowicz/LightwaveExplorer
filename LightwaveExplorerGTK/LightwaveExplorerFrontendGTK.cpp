@@ -1266,6 +1266,7 @@ static void buttonAddPulse() {
         theGui.textBoxes[9].valueDouble(),
         theGui.textBoxes[10].valueDouble(),
         theGui.textBoxes[11].valueDouble(),
+        0.0,
         theGui.textBoxes[12].valueDouble(),
         theGui.textBoxes[13].valueDouble(),
         0.0,
@@ -1354,7 +1355,6 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.yLabel = "Ex (GV/m)";
     sPlot.unitY = 1e9;
     sPlot.makeSVG = saveSVG; // theGui.saveSVG;
-
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
@@ -1927,6 +1927,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
         }
     }
     delete[] testSet;
+    (*activeSetPtr).runType = 0;
     int error = 0;
     //run the simulations
     isRunning = TRUE;

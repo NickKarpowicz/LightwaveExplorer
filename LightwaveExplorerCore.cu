@@ -2128,6 +2128,7 @@ namespace hostFunctions{
 		case funHash("plasmaReinject"):
 			(*sCPU).isReinjecting = TRUE;
 		case funHash("plasma"):
+		{
 			interpretParameters(cc, 9, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*sCPU).crystalTheta = DEG2RAD * parameters[1];
@@ -2149,6 +2150,7 @@ namespace hostFunctions{
 			d.reset(sCPU, &s);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 			(*sCPU).isFollowerInSequence = TRUE;
+		}
 			break;
 		case funHash("nonlinear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
@@ -2304,14 +2306,10 @@ namespace hostFunctions{
 			applyLorenzian(d, sCPU, s, parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
 			break;
 		case funHash("addPulse"):
-		{
 			if ((*sCPU).runType == -1) break;
-			interpretParameters(cc, 20, iBlock, vBlock, parameters, defaultMask);
-			activeDevice d;
-			d.dParams = &s;
-			d.cParams = sCPU;
+		{
+			interpretParameters(cc, 21, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU, &s);
-
 			d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 			d.deviceMemcpy(s.gridEFrequency1, (*sCPU).EkwOut, 2 * s.NgridC * sizeof(deviceComplex), HostToDevice);
 
@@ -2321,7 +2319,7 @@ namespace hostFunctions{
 			p.frequency = 1e12 * parameters[1];
 			p.bandwidth = 1e12 * parameters[2];
 			p.sgOrder = (int)parameters[3];
-			p.cep = parameters[4] / PI;
+			p.cep = parameters[4] * PI;
 			p.delay = 1e-15 * parameters[5];
 			p.gdd = 1e-30 * parameters[6];
 			p.tod = 1e-45 * parameters[7];
@@ -2329,14 +2327,15 @@ namespace hostFunctions{
 			p.phaseMaterialThickness = 1e-6 * parameters[9];
 			p.beamwaist = 1e-6 * parameters[10];
 			p.x0 = 1e-6 * parameters[11];
-			p.z0 = 1e-6 *parameters[12];
-			p.beamAngle = DEG2RAD * parameters[13];
-			p.beamAnglePhi = DEG2RAD * parameters[14];
-			p.polarizationAngle = DEG2RAD * parameters[15];
-			p.circularity = parameters[16];
-			(*sCPU).materialIndex = (int)parameters[17];
-			(*sCPU).crystalTheta = DEG2RAD * parameters[18];
-			(*sCPU).crystalPhi = DEG2RAD * parameters[19];
+			p.y0 = 1e-6 * parameters[12];
+			p.z0 = 1e-6 *parameters[13];
+			p.beamAngle = DEG2RAD * parameters[14];
+			p.beamAnglePhi = DEG2RAD * parameters[15];
+			p.polarizationAngle = DEG2RAD * parameters[16];
+			p.circularity = parameters[17];
+			(*sCPU).materialIndex = (int)parameters[18];
+			(*sCPU).crystalTheta = DEG2RAD * parameters[19];
+			(*sCPU).crystalPhi = DEG2RAD * parameters[20];
 
 			addPulseToFieldArrays(d, p, FALSE, NULL);
 			d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
