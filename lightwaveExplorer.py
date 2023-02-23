@@ -126,7 +126,7 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         realPart[scaledAxis!=0.5] = -height * np.log(np.abs((scaledAxis+0.5)/(scaledAxis-0.5)))/np.pi
         return realPart + 1j*imagPart
     def gaussianBand(w,w0,width,height):
-        if width == 0.0:
+        if width == 0.0 or height == 0:
             return 0 + 1j*0
         scaledF = (w-w0)/(np.sqrt(2.0) * width)
         realPart = -dawsn(scaledF)/np.sqrt(np.pi)
@@ -657,7 +657,7 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
 def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnType: int, nTarget, imaginaryWeight):
     fitImaginary = imaginaryWeight != 0
     def expandCoeffs(x):
-        x1 = np.zeros(22)
+        x1 = np.array(startingCoefficients)
         for i in activeElements:
             x1[activeElements[i]] = x[activeElements[i]]
         return x1
@@ -667,9 +667,9 @@ def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnTyp
     def fun_residual(x):
         nx = fun_nforx(x)
         if fitImaginary:
-            returnVals = np.append(np.real(nTarget - nx)/wavelengthMicrons, np.real(imaginaryWeight*(np.sqrt(-(np.imag(nTarget))) - np.sqrt(-(np.imag(nx)))))/wavelengthMicrons)
+            returnVals = 1e3*np.append(np.real(nTarget - nx), np.real(imaginaryWeight*(np.sqrt(-(np.imag(nTarget))) - np.sqrt(-(np.imag(nx))))))
         else:
-            returnVals = np.real(nTarget - nx)/wavelengthMicrons
+            returnVals = 1e3*np.real(nTarget - nx)
         return returnVals
 
     res = least_squares(fun_residual, startingCoefficients[activeElements], gtol=None, xtol=None, ftol = 1e-12, max_nfev=16384)

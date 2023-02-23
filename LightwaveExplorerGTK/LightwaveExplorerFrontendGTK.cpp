@@ -495,7 +495,6 @@ char programDirectory[MAX_LOADSTRING];     // Program working directory (useful 
 ///////////////////.
 //Definitions over
 ///////////////////.
-
 void updateDisplay() {
     theGui.console.updateFromBuffer();
     theGui.updateSlider();
@@ -582,7 +581,6 @@ void setInterfaceValuesToActiveValues(){
     theGui.loadedDefaults = TRUE;
 }
 
-
 void readParametersFromInterface() {
     int i = 0;
     pulse* t = &(*activeSetPtr).pulse1;
@@ -617,7 +615,6 @@ void readParametersFromInterface() {
     theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).bandGapElectronVolts);
     theGui.textBoxes[i++].valueToPointer(1e12, &(*activeSetPtr).drudeGamma);
     theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).effectiveMass);
-
 
     theGui.textBoxes[i++].valueToTwoPointers(1e-6, &(*activeSetPtr).spatialWidth, &(*activeSetPtr).spatialHeight);
 
@@ -750,10 +747,7 @@ void readParametersFromInterface() {
     (*activeSetPtr).sellmeierType = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierType;
     (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
     (*activeSetPtr).progressCounter = &progressCounter;
-
-
 }
-
 
 int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
     size_t i = 0;
@@ -929,9 +923,7 @@ void checkLibraryAvailability() {
     if(syclDevices != 0){
         theGui.console.cPrint("{}",syclDeviceList);
     }
-    
 #endif
-
 #endif
 }
 
@@ -1022,7 +1014,6 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
             pixels[stride * p + 2] = colorMap[currentValue][2];
         }
     }
-
     int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
     cairo_surface_t* cSurface = cairo_image_surface_create_for_data(pixels, CAIRO_FORMAT_RGB24, Nx, Ny, caiStride);
     cairo_set_source_surface(cr, cSurface, 0, 0);
@@ -1165,7 +1156,6 @@ void createRunFile() {
         }
     }
     delete[] testSet;
-
 
     //create SLURM script
     (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
