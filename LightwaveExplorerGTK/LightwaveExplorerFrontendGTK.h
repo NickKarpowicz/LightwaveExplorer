@@ -977,7 +977,7 @@ int LwePlot2d(plotStruct* inputStruct) {
 
         for (size_t i = iMin+1; i < iMax; ++i) {
             x1 = x2;
-            x2 = scaleX * (xValues[i] - minX);
+            x2 = scaleX * (xValues[i] - minX) + axisSpaceX;
             y1 = y2;
             if ((*s).logScale) {
                 y2 = height - scaleY * (log10(y[i]) - minY);
@@ -985,7 +985,6 @@ int LwePlot2d(plotStruct* inputStruct) {
             else {
                 y2 = height - scaleY * (y[i] - minY);
             }
-            x2 += axisSpaceX;
 
             if (y1 <= height) {
                 if (y2 <= height) {
@@ -993,16 +992,12 @@ int LwePlot2d(plotStruct* inputStruct) {
                     cairo_line_to(cr, x2, y2);
                 }
                 else {
-                    x2 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
-                    y2 = height;
                     cairo_move_to(cr, x1, y1);
-                    cairo_line_to(cr, x2, y2);
+                    cairo_line_to(cr, x1 + (height - y1) / ((y2 - y1) / (x2 - x1)), height);
                 }
             }
             else if (y2 <= height) {
-                x1 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
-                y1 = height;
-                cairo_move_to(cr, x1, y1);
+                cairo_move_to(cr, x1 + (height - y1) / ((y2 - y1) / (x2 - x1)), height);
                 cairo_line_to(cr, x2, y2);
             }
         }
@@ -1039,23 +1034,29 @@ int LwePlot2d(plotStruct* inputStruct) {
                 if (y2 <= height) {
                     if (!lineOn) {
                         SVGstartPolyLine();
+                        lineOn = TRUE;
                     }
                     SVGaddXYtoPolyLine(x2, y2);
                 }
                 else {
-                    x2 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
-                    y2 = height;
-                    SVGaddXYtoPolyLine(x2, y2);
+                    x1 += (height - y1) / ((y2 - y1) / (x2 - x1));
+                    SVGaddXYtoPolyLine(x1, height);
                     SVGendPolyLine();
+                    lineOn = FALSE;
                 }
             }
             else if (y2 <= height) {
-                x1 = x1 + (height - y1) / ((y2 - y1) / (x2 - x1));
-                y1 = height;
                 if (!lineOn) {
+                    x1 += (height - y1) / ((y2 - y1) / (x2 - x1));
                     SVGstartPolyLine();
+                    SVGaddXYtoPolyLine(x1, height);
+                    lineOn = TRUE;
                 }
                 SVGaddXYtoPolyLine(x2, y2);
+            }
+            else if(lineOn){
+                SVGendPolyLine();
+                lineOn = FALSE;
             }
         }
         if (lineOn) {
