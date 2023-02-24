@@ -1143,8 +1143,9 @@ int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float
 int LwePlot2d(plotStruct* inputStruct);
 void checkLibraryAvailability();
 void setInterfaceValuesToActiveValues();
-int formatSequence(char* cString, size_t N);
-int insertLineBreaksAfterSemicolons(char* cString, size_t N);
+int insertAfterCharacter(std::string& s, char target, std::string appended);
+int insertAfterCharacterExcept(std::string& s, char target, std::string appended, std::string exclude);
+int formatSequence(std::string& s);
 int freeSemipermanentGrids();
 void mainSimThread(int pulldownSelection, int pulldownSelection2);
 void launchRunThread();

@@ -124,7 +124,6 @@ typedef struct simulationParameterSet {
     double neref = 0;
     double noref = 0;
     int* nonlinearSwitches = 0;
-    double pulse1measEnergy = 0;
     bool isCylindric = 0;
     bool is3D = 0;
     int symmetryType = 0;
@@ -163,8 +162,6 @@ typedef struct simulationParameterSet {
     bool isReinjecting = 0;
     bool forceLinear = 0;
     char sequenceString[2*MAX_LOADSTRING] = { 0 };
-    double sequenceArray[MAX_LOADSTRING] = { 0 };
-    int Nsequence = 0;
     double i37 = 0.0;
     size_t batchLoc1 = 0;
     size_t batchLoc2 = 0;
@@ -281,7 +278,6 @@ double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);
 int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems);
 int             readCrystalDatabase(crystalEntry* db);
-int             readSequenceString(simulationParameterSet* sCPU);
 int             configureBatchMode(simulationParameterSet* sCPU);
 int             saveDataSet(simulationParameterSet* sCPU);
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);

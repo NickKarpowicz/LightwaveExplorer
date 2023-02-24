@@ -1045,23 +1045,6 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 	return 0;
 }
 
-//deprecated sequence mode.
-int readSequenceString(simulationParameterSet* sCPU) {
-	std::stringstream ss((*sCPU).sequenceString);
-	int i = 0;
-	while (ss.good()) {
-		ss >> (*sCPU).sequenceArray[i];
-		if (ss.good()) ++i;
-	}
-	(*sCPU).Nsequence = i / 11;
-	(*sCPU).isInSequence = ((*sCPU).Nsequence > 0);
-	if (!(*sCPU).isInSequence) {
-		std::string noneString("None.\0");
-		noneString.copy((*sCPU).sequenceString, 2*MAX_LOADSTRING - 1);
-	}
-	return 0;
-}
-
 int readCrystalDatabase(crystalEntry* db) {
 	int i = 0;
 #ifdef __APPLE__

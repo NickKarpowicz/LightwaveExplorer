@@ -560,10 +560,9 @@ void setInterfaceValuesToActiveValues(){
     theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
 
     if (std::string((*activeSetPtr).sequenceString).length() > 6) {
-        formatSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
-        theGui.sequence.directOverwritePrint((*activeSetPtr).sequenceString);
-        removeCharacterFromString((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING, '\r');
-        removeCharacterFromString((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING, '\n');
+        std::string formattedSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
+        formatSequence(formattedSequence);
+        theGui.sequence.directOverwritePrint(formattedSequence.c_str());
     }
     stripLineBreaks((*activeSetPtr).field1FilePath);
     if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
@@ -571,10 +570,9 @@ void setInterfaceValuesToActiveValues(){
     if (std::string((*activeSetPtr).fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
 
     if (!((*activeSetPtr).fittingString[0] == 'N')) {
-        insertLineBreaksAfterSemicolons((*activeSetPtr).fittingString, MAX_LOADSTRING);
-        theGui.fitCommand.overwritePrint((*activeSetPtr).fittingString);
-        removeCharacterFromString((*activeSetPtr).fittingString, MAX_LOADSTRING, '\r');
-        removeCharacterFromString((*activeSetPtr).fittingString, MAX_LOADSTRING, '\n');
+        std::string formattedFit((*activeSetPtr).fittingString,MAX_LOADSTRING);
+        insertAfterCharacter(formattedFit,';',std::string("\n"));
+        theGui.fitCommand.overwritePrint(formattedFit.c_str());
     }
 
     if(!theGui.loadedDefaults) theGui.filePaths[3].overwritePrint((*activeSetPtr).outputBasePath);
@@ -749,119 +747,61 @@ void readParametersFromInterface() {
     (*activeSetPtr).progressCounter = &progressCounter;
 }
 
-int insertLineBreaksAfterSemicolons(char* cString, size_t N) {
-    size_t i = 0;
-    while (i < N - 1) {
-        if (cString[i] == ';') {
-            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
-                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
-            }
-            else if (cString[i + 1] != ' ') {
-                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
-            }
-            else if (cString[i + 1] == ' ') {
-                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
-            }
-            cString[i + 1] = '\r';
-            cString[i + 2] = '\n';
-            i += 2;
+int insertAfterCharacter(std::string& s, char target, std::string appended){
+    for(int i = 0; i < s.length(); ++i){
+        if(s[i] == target){
+            s.insert(i+1,appended);
+            i += appended.length();
         }
-        i++;
     }
     return 0;
 }
 
-int indentForDepth(char* cString, size_t N) {
-    size_t i = 0;
-    int depth = 0;
-    while (i < N - 1) {
-        if (cString[i] == '{') depth++;
-        if (cString[i + 1] == '}') depth--;
-
-        if (cString[i] == ';' || ((cString[i] == ')' && cString[i + 1] != ';')) || cString[i] == '{') {
-            for (int k = 0; k < 2 * depth; k++) {
-                if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
-                    memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+int insertAfterCharacterExcept(std::string& s, char target, std::string appended, std::string exclude){
+    bool match = FALSE;
+    for(int i = 0; i < s.length()-1; ++i){
+        if(s[i] == target){
+            match = FALSE;
+            for(int j = 0; j<exclude.length(); j++){
+                if(s[i+1] == exclude[j]){
+                    match = TRUE;
                 }
-                else if (cString[i + 1] != ' ') {
-                    memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
-                }
-                else if (cString[i + 1] == ' ') {
-                    memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
-                }
-                cString[i + 1] = ' ';
-                cString[i + 2] = ' ';
-                i += 2;
+            }
+            if(match){
+                ++i;
+            }
+            else{
+                s.insert(i+1,appended);
+                i += appended.length();
             }
         }
-        i++;
     }
     return 0;
 }
 
-int insertLineBreaksAfterClosingParenthesis(char* cString, size_t N) {
-    size_t i = 0;
-    while (i < N - 1) {
-        if (cString[i] == ')' && cString[i + 1] != ';' && cString[i + 1] != '{') {
-            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
-                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
+int indentForDepth(std::string& s){
+    size_t depth = 0;
+    std::string indent("   ");
+    for(int i = 0; i<s.length()-1; ++i){
+        if(s[i]=='{') ++depth;
+        if(s[i]=='}' && depth != 0) --depth;
+        if(s[i]=='\n' && s[i+1] != '}'){
+            for(int j = 0; j<depth; j++){
+                s.insert(i+1,indent);
+                i += indent.length();
             }
-            else if (cString[i + 1] != ' ') {
-                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
-            }
-            else if (cString[i + 1] == ' ') {
-                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
-            }
-            cString[i + 1] = '\r';
-            cString[i + 2] = '\n';
-            i += 2;
         }
-        i++;
     }
     return 0;
 }
 
-int insertLineBreaksAfterClosingAngle(char* cString, size_t N) {
-    size_t i = 0;
-    while (i < N - 1) {
-        if (cString[i] == '>') {
-            memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
-            cString[i + 1] = '\r';
-            cString[i + 2] = '\n';
-            i += 2;
-        }
-        i++;
-    }
-    return 0;
-}
-
-int insertLineBreaksAfterCurlyBraces(char* cString, size_t N) {
-    size_t i = 0;
-    while (i < N - 1) {
-        if (cString[i] == '{' || cString[i] == '}') {
-            if (cString[i + 1] != ' ' && cString[i + 2] != ' ') {
-                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
-            }
-            else if (cString[i + 1] != ' ') {
-                memmove(&cString[i + 3], &cString[i + 1], N - i - 3);
-            }
-            else if (cString[i + 1] == ' ') {
-                memmove(&cString[i + 3], &cString[i + 2], N - i - 2);
-            }
-            cString[i + 1] = '\r';
-            cString[i + 2] = '\n';
-            i += 2;
-        }
-        i++;
-    }
-    return 0;
-}
-int formatSequence(char* cString, size_t N) {
-    indentForDepth(cString, N);
-    insertLineBreaksAfterClosingAngle(cString, N);
-    insertLineBreaksAfterClosingParenthesis(cString, N);
-    insertLineBreaksAfterSemicolons(cString, N);
-    insertLineBreaksAfterCurlyBraces(cString, N);
+int formatSequence(std::string& s){
+    insertAfterCharacter(s, '>', std::string("\n"));
+    insertAfterCharacterExcept(s, ')', std::string("\n"), std::string("{;"));
+    insertAfterCharacter(s, ';', std::string("\n"));
+    insertAfterCharacter(s, '{', std::string("\n"));
+    insertAfterCharacter(s, '}', std::string("\n"));
+    indentForDepth(s);
     return 0;
 }
 
@@ -2040,7 +1980,6 @@ void fittingThread(int pulldownSelection) {
     (*activeSetPtr).isFollowerInSequence = FALSE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
-    readSequenceString(activeSetPtr);
     configureBatchMode(activeSetPtr);
     readFittingString(activeSetPtr);
     if ((*activeSetPtr).Nfitting == 0) {

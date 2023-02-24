@@ -2567,10 +2567,8 @@ namespace hostFunctions{
 		1, 1e12, 1, 1e-6,
 		1e-9, 1, 1 };
 
-		//if it starts with 0, it's an old sequence; send it there
+		//if it starts with 0, it's an old sequence; quit
 		if ((*sCPU).sequenceString[0] == '0') {
-			//readSequenceString((simulationParameterSet*)lpParam);
-			//solveNonlinearWaveEquationSequenceOldX(lpParam);
 			return;
 		}
 
@@ -2699,38 +2697,6 @@ namespace hostFunctions{
 		}
 		return sqrt(result);
 	}
-
-	//the old sequence mode, can be called by the new sequence mode if it encounters
-	// something that looks like an old sequence.
-	unsigned long solveNonlinearWaveEquationSequenceOldX(void* lpParam) {
-		simulationParameterSet sCPUcurrent;
-		simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
-		memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
-		simulationParameterSet sCPUbackupValues;
-		simulationParameterSet* sCPUbackup = &sCPUbackupValues;
-		memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
-		int k;
-		int error = 0;
-		for (k = 0; k < (*sCPU).Nsequence; ++k) {
-			if ((int)round((*sCPU).sequenceArray[k * 11]) == 6) {
-				if (((int)round((*sCPU).sequenceArray[k * 11 + 1])) > 0) {
-					(*sCPUbackup).sequenceArray[k * 11 + 1] -= 1.0;
-					(*sCPUbackup).isFollowerInSequence = TRUE;
-					k = (int)round((*sCPU).sequenceArray[k * 11 + 2]);
-					error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
-				}
-			}
-			else {
-				error = resolveSequence(k, sCPU, (*sCPU).crystalDatabase);
-			}
-
-			if (error) break;
-			memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
-		}
-		if ((*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
-		return error;
-	}
-
 	
 }
 using namespace hostFunctions;
