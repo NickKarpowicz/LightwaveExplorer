@@ -2585,7 +2585,6 @@ namespace hostFunctions{
 
 		double vBlock[100] = { 0.0 };
 		std::string currentString((*sCPU).sequenceString);
-
 		//shortest command is either for() or init(), if there's only 4 characters left, it can only
 		//be whitespace or other trailing symbols
 		size_t minLength = 5;

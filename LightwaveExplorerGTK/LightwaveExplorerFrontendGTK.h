@@ -395,6 +395,14 @@ public:
         std::string s(realBuf);
         s.copy(destination, maxLength);
     }
+
+    void clear() {
+        char emptyBuffer[2] = { 0 };
+        textBuffer.erase(0);
+        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        gtk_text_buffer_set_text(buf, emptyBuffer, 1);
+        scrollToEnd();
+    }
 };
 
 class LweButton : public LweGuiElement {

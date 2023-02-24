@@ -10,6 +10,10 @@
 #endif
 
 int readFittingString(simulationParameterSet* sCPU) {
+	std::string sIn((*sCPU).fittingString);
+	std::erase(sIn, '\r');
+	std::erase(sIn, '\n');
+	std::erase(sIn, '\t');
 	std::stringstream ss((*sCPU).fittingString);
 	double ROIbegin, ROIend;
 	int maxIterations = 0;
@@ -67,6 +71,8 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	return 0;
 }
 
+
+
 int removeCharacterFromStringSkippingAngleBrackets(char* cString, size_t N, char removedChar) {
 	size_t i = 0;
 	size_t r = 0;
@@ -89,18 +95,45 @@ int removeCharacterFromStringSkippingAngleBrackets(char* cString, size_t N, char
 	return 0;
 }
 
+int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, char startChar, char endChar) {
+	bool removing = TRUE;
+	for (size_t i = 0; i < s.length(); ++i) {
+		if (s[i] == removedChar && removing) {
+			s.erase(i,1);
+			--i;
+		}
+		if (s[i] == startChar) removing = FALSE;
+		if (s[i] == endChar) removing = TRUE;
+	}
+	return 0;
+}
+
+//void stripWhiteSpace(char* sequenceString) {
+//	removeCharacterFromStringSkippingAngleBrackets(sequenceString, strlen(sequenceString), ' ');
+//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
+//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\t');
+//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');
+//}
 void stripWhiteSpace(char* sequenceString) {
-	removeCharacterFromStringSkippingAngleBrackets(sequenceString, strlen(sequenceString), ' ');
-	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
-	removeCharacterFromString(sequenceString, strlen(sequenceString), '\t');
-	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');
+	std::string s(sequenceString);
+	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
+	//std::erase(s, ' ');
+	std::erase(s, '\r');
+	std::erase(s, '\n');
+	std::erase(s, '\t');
+	memset(sequenceString, 0, 2 * MAX_LOADSTRING);
+	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
 }
-
+//void stripLineBreaks(char* sequenceString) {
+//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
+//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');
+//}
 void stripLineBreaks(char* sequenceString) {
-	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
-	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');
+	std::string s(sequenceString);
+	std::erase(s, '\r');
+	std::erase(s, '\n');
+	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
 }
-
 char* findClosingParenthesis(const char* s) {
 	char* b = (char*)s;
 	for (;;) {

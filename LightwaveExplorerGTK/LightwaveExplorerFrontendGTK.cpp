@@ -632,7 +632,6 @@ void readParametersFromInterface() {
     (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
     theGui.textBoxes[52].valueToPointer(&(*activeSetPtr).NsimsCPU);
 
-    //char noneString[] = "None";
     std::string noneString("None\0");
     std::string s;
     memset((*activeSetPtr).sequenceString, 0, 2*MAX_LOADSTRING);
@@ -642,7 +641,7 @@ void readParametersFromInterface() {
         noneString.copy((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
     }
     else {
-        if((*activeSetPtr).sequenceString[0] != '0')stripWhiteSpace((*activeSetPtr).sequenceString);
+        stripWhiteSpace((*activeSetPtr).sequenceString);
     }
     
     memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
@@ -748,7 +747,7 @@ void readParametersFromInterface() {
 }
 
 int insertAfterCharacter(std::string& s, char target, std::string appended){
-    for(int i = 0; i < s.length(); ++i){
+    for(size_t i = 0; i < s.length(); ++i){
         if(s[i] == target){
             s.insert(i+1,appended);
             i += appended.length();
@@ -759,7 +758,7 @@ int insertAfterCharacter(std::string& s, char target, std::string appended){
 
 int insertAfterCharacterExcept(std::string& s, char target, std::string appended, std::string exclude){
     bool match = FALSE;
-    for(int i = 0; i < s.length()-1; ++i){
+    for(size_t i = 0; i < s.length()-1; ++i){
         if(s[i] == target){
             match = FALSE;
             for(int j = 0; j<exclude.length(); j++){
@@ -782,11 +781,11 @@ int insertAfterCharacterExcept(std::string& s, char target, std::string appended
 int indentForDepth(std::string& s){
     size_t depth = 0;
     std::string indent("   ");
-    for(int i = 0; i<s.length()-1; ++i){
+    for(size_t i = 0; i<s.length()-1; ++i){
         if(s[i]=='{') ++depth;
         if(s[i]=='}' && depth != 0) --depth;
         if(s[i]=='\n' && s[i+1] != '}'){
-            for(int j = 0; j<depth; j++){
+            for(size_t j = 0; j<depth; j++){
                 s.insert(i+1,indent);
                 i += indent.length();
             }
@@ -1013,7 +1012,8 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
             freeSemipermanentGrids();
             isGridAllocated = FALSE;
         }
-        
+        theGui.sequence.clear();
+        theGui.fitCommand.clear();
         int readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, path.c_str());
         allocateGrids(activeSetPtr);
         isGridAllocated = TRUE;
