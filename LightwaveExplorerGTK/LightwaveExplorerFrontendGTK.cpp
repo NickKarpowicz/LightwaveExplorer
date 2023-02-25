@@ -1974,7 +1974,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
         theGui.console.tPrint(
             "<span color=\"#FF88FF\">NaN detected in grid!\nTry using a larger spatial/temporal step\nor smaller propagation step.\nSimulation was cancelled.\n</span>");
     }
-    if (error == 15) {
+    else if (error == 15) {
         theGui.console.tPrint(
             "<span color=\"#FF88FF\">Sorry, that sequence mode has been \nreplaced by the new one. Look in the \ndocumentation for more info. It is a lot \neasier to use now, and hopefully \nit won't take long to set it up. \nSorry about that!\n</span>");
     }
@@ -1984,7 +1984,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     }
     else {
         theGui.console.tPrint(
-            "<span color=\"#FF88FF\">Unhandled error! Please let me know what you were doing when this happened: nicholas.karpowicz@mpq.mpg.de</span>");
+            "<span color=\"#FF88FF\">Unhandled error! \nPlease let me know what you \nwere doing when this happened: \nnicholas.karpowicz@mpq.mpg.de</span>");
     }
 
     saveDataSet(activeSetPtr);
