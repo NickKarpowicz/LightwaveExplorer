@@ -562,7 +562,7 @@ void setInterfaceValuesToActiveValues(){
     if (std::string((*activeSetPtr).sequenceString).length() > 6) {
         std::string formattedSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
         formatSequence(formattedSequence);
-        theGui.sequence.directOverwritePrint(formattedSequence.c_str());
+        theGui.sequence.directOverwritePrintSequencce(formattedSequence.c_str());
     }
     stripLineBreaks((*activeSetPtr).field1FilePath);
     if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
@@ -1956,7 +1956,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
     }
     else {
-        theGui.console.tPrint(_T("Finished after {:.4} s. \r\n"), 1e-6 *
+        theGui.console.tPrint("<span color=\"cyan\">Finished after {:.4} s. </span>\n", 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
 

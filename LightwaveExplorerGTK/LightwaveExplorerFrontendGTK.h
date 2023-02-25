@@ -302,6 +302,55 @@ gboolean scrollTextViewToEndHandler(gpointer data) {
     return FALSE;
 }
 
+void formatSequenceForDisplay(std::string& s){
+    for(size_t i = 0; i<s.length(); ++i){
+        //find angle brackets signifying comments and escape
+        //with &lt; or &gt; so they're not interpreted as
+        //pango markup
+        if(s[i]=='<'){
+            s.erase(i,1);
+            s.insert(i,"<span color=\"#006600FF\">&lt;");
+            i += 28;
+        }
+        if(s[i]=='>'){
+            s.erase(i,1);
+            s.insert(i,"&gt;</span>");
+            i+=10;
+        }
+
+        //color function names and arguments
+        if(s[i]=='('){
+            //name
+            s.insert(i,"</span>");
+            for(int j = i; j>=0; --j){
+                if(s[j]==' ' || s[j] == '\n' || j == 0){
+                    s.insert(j,"<span color=\"#00FFFFFF\">");
+                    break;
+                }
+            }
+            i += 32;
+            //argument
+            for(size_t j = i; j<s.length(); j++){
+                if(s[j]==' ') ++j;
+                if(s[j]=='d'){
+                    s.erase(j);
+                    s.insert(j,"<span color=\"#FF00FFFF\">d</span>");
+                    j += 32;
+                }
+                if(s[j]=='v'){
+                    s.insert(j,"<span color=\"#FF00FFFF\">");
+                    j += 27;
+                    s.insert(j,"</span>");
+                    j += 7;
+                }
+                if(s[j]==')'){
+                    i = j;
+                    break;
+                }
+            }
+        }
+    }
+}
 class LweConsole : public LweGuiElement {
     GtkWidget* consoleText;
     bool hasNewText;
@@ -344,7 +393,9 @@ public:
         std::string s = Svformat(format, Smake_format_args(args...));
         textBuffer.append(s);
 
-        gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
+        gtk_text_buffer_delete(buf, &start, &stop);
+        gtk_text_buffer_insert_markup(buf, &start, textBuffer.c_str(), -1);
+        //gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
         
         scrollToEnd();
     }
@@ -361,7 +412,13 @@ public:
         if (hasNewText) {
             hasNewText = FALSE;
             GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-            gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
+            GtkTextIter start;
+            GtkTextIter end;
+            gtk_text_buffer_get_start_iter(buf, &start);
+            gtk_text_buffer_get_end_iter(buf, &end);
+            gtk_text_buffer_delete(buf, &start, &end);
+            gtk_text_buffer_insert_markup(buf, &start, textBuffer.c_str(), -1);
+            //gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
             scrollToEnd();
         }
     }
@@ -372,6 +429,21 @@ public:
         textBuffer.assign(s);
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
+        scrollToEnd();
+    }
+
+    void directOverwritePrintSequencce(const char* sIn) {
+        std::string s(sIn);
+        textBuffer.clear();
+        formatSequenceForDisplay(s);
+        textBuffer.assign(s);
+        GtkTextIter start;
+        GtkTextIter end;
+        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        gtk_text_buffer_get_start_iter(buf, &start);
+        gtk_text_buffer_get_end_iter(buf, &end);
+        gtk_text_buffer_delete(buf, &start, &end);
+        gtk_text_buffer_insert_markup(buf, &start, textBuffer.c_str(), -1);
         scrollToEnd();
     }
 
