@@ -402,11 +402,11 @@ public:
         gtk_widget_set_hexpand(consoleText, TRUE);
         setPosition(grid, x, y, width, height);
         buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        GtkTextTag* functionTag = gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
-        GtkTextTag* commentTag = gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
-        GtkTextTag* variableTag = gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
-        GtkTextTag* deferredTag = gtk_text_buffer_create_tag(buf, "deferred", "foreground", "#FF8800FF", NULL);
-        GtkTextTag* interfaceTag = gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
+        gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
+        gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
+        gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
+        gtk_text_buffer_create_tag(buf, "deferred", "foreground", "#FF8800FF", NULL);
+        gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
     }
     void init(GtkWidget* grid, int x, int y, int width, int height, int minWidth, int minHeight) {
         consoleText = gtk_text_view_new();
@@ -416,11 +416,11 @@ public:
         gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(elementHandle), consoleText);
         setPosition(grid, x, y, width, height);
         buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        GtkTextTag* functionTag = gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
-        GtkTextTag* commentTag = gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
-        GtkTextTag* variableTag = gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
-        GtkTextTag* deferredTag = gtk_text_buffer_create_tag(buf, "deferred", "foreground", "#FF8800FF", NULL);
-        GtkTextTag* interfaceTag = gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
+        gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
+        gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
+        gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
+        gtk_text_buffer_create_tag(buf, "deferred", "foreground", "#FF8800FF", NULL);
+        gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
     }
 
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
@@ -592,7 +592,6 @@ public:
 };
 
 class LweWindow {
-    GtkWidget* window;
     GtkWidget* grid;
     GtkWidget* bigGrid;
     GtkWidget* consoleGrid;
@@ -604,13 +603,15 @@ class LweWindow {
     GtkWidget* plotControlsSubgrid1;
     GtkWidget* plotControlsSubgrid2;
 public:
-    LweWindow() :window(0), grid(0), bigGrid(0), consoleGrid(0), plotGrid(0),
+    GtkWidget* window;
+    LweWindow() :grid(0), bigGrid(0), consoleGrid(0), plotGrid(0),
         plotControlsGrid(0),
         consoleControlsGrid(0), 
         consoleControlsSubgrid1(0), 
         consoleControlsSubgrid2(0), 
         plotControlsSubgrid1(0), 
-        plotControlsSubgrid2(0) {}
+        plotControlsSubgrid2(0),
+        window(0) {}
     ~LweWindow() {};
     void init(GtkApplication* appHandle, const char* windowName, int width, int height) {
         window = gtk_application_window_new(appHandle);

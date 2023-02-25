@@ -48,7 +48,7 @@ const int interfaceThreads = std::thread::hardware_concurrency();
 simulationParameterSet* activeSetPtr;       // Main structure containing simulation parameters and pointers
 crystalEntry* crystalDatabasePtr;           // Crystal info database
 bool updateDisplay();
-
+void destroyMainWindowCallback();
 class mainGui {
     bool queueUpdate;
     bool queueSliderUpdate;
@@ -78,7 +78,7 @@ public:
     bool isGridAllocated = FALSE;
     bool cancellationCalled = FALSE;
     bool loadedDefaults = FALSE;
-
+    unsigned int timeoutID;
     mainGui() : queueUpdate(0),
     queueSliderUpdate(0), 
     queueSliderMove(0),
@@ -90,7 +90,8 @@ public:
     isPlotting(0), 
     isGridAllocated(0), 
     cancellationCalled(0),
-    loadedDefaults(0){}
+    loadedDefaults(0),
+    timeoutID(0){}
     ~mainGui() {}
     void requestPlotUpdate() {
         queueUpdate = TRUE;
@@ -484,7 +485,8 @@ public:
 		readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
 #endif
         setInterfaceValuesToActiveValues();
-        g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
+        timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
+        g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
         window.present();
     }
 };
@@ -501,6 +503,10 @@ bool updateDisplay() {
     theGui.applyUpdate();
     theGui.sequence.paintSequenceText();
     return TRUE;
+}
+
+void destroyMainWindowCallback(){
+    g_source_remove(theGui.timeoutID);
 }
 
 void setInterfaceValuesToActiveValues(){
@@ -1231,11 +1237,6 @@ static void buttonAddPulse() {
 
 static void buttonAddRotation() {
     theGui.sequence.cPrint("rotate(90)\n");
-    theGui.sequence.paintSequenceText();
-}
-
-
-static void sequencePaintHandler() {
     theGui.sequence.paintSequenceText();
 }
 
