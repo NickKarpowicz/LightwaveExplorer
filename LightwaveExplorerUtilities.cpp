@@ -73,27 +73,6 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 
 
 
-int removeCharacterFromStringSkippingAngleBrackets(char* cString, size_t N, char removedChar) {
-	size_t i = 0;
-	size_t r = 0;
-	while (i < N - 1) {
-		if (cString[i] == removedChar) {
-			memmove(&cString[i], &cString[i + 1], N - i - r - 1);
-			cString[N - r - 1] = 0;
-			r++;
-		}
-		else if (cString[i] == '<') {
-			i += findClosingAngleBracket(&cString[i]) - &cString[i];
-		}
-		else {
-			i++;
-		}
-	}
-	if (cString[N - 1] == removedChar) {
-		cString[N - 1] = '\0';
-	}
-	return 0;
-}
 
 int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, char startChar, char endChar) {
 	bool removing = TRUE;
@@ -108,73 +87,24 @@ int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, cha
 	return 0;
 }
 
-//void stripWhiteSpace(char* sequenceString) {
-//	removeCharacterFromStringSkippingAngleBrackets(sequenceString, strlen(sequenceString), ' ');
-//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
-//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\t');
-//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');
-//}
+
 void stripWhiteSpace(char* sequenceString) {
 	std::string s(sequenceString);
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
-	//std::erase(s, ' ');
 	std::erase(s, '\r');
 	std::erase(s, '\n');
 	std::erase(s, '\t');
 	memset(sequenceString, 0, 2 * MAX_LOADSTRING);
 	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
 }
-//void stripLineBreaks(char* sequenceString) {
-//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\n');
-//	removeCharacterFromString(sequenceString, strlen(sequenceString), '\r');
-//}
+
 void stripLineBreaks(char* sequenceString) {
 	std::string s(sequenceString);
 	std::erase(s, '\r');
 	std::erase(s, '\n');
 	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
 }
-char* findClosingParenthesis(const char* s) {
-	char* b = (char*)s;
-	for (;;) {
-		if (b[0] == 0) return NULL;
-		if (b[0] == ')') {
-			if (b[1] == ';') return b + 1;
-			return b;
-		}
-		else {
-			b++;
-		}
-	}
-}
 
-char* findClosingCurlyBracket(const char* s) {
-	char* b = (char*)s;
-	for (;;) {
-		if (b[0] == 0) return NULL;
-		if (b[0] == '}') {
-			if (b[1] == ';') return b + 1;
-			return b;
-		}
-		else {
-			b++;
-		}
-	}
-}
-
-char* findClosingAngleBracket(const char* s) {
-	char* b = (char*)s;
-	for (;;) {
-		if (b[0] == 0) return NULL;
-		if (b[0] == '>') {
-			if (b[1] == ';') return b + 1;
-			return b;
-		}
-		else {
-			b++;
-		}
-	}
-}
 
 int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask){
 	std::string ccSegment = cc.substr(cc.find_first_of('(')+1, std::string::npos);
@@ -268,41 +198,41 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 	int ind = 0;
 	bool previousCharWasOp = 0;
 	char lastOp = 0;
-	while (loc < (ss.length()) && ss.at(loc)!=')') {
+	while (loc < (ss.length()) && ss[loc]!=')') {
 		if (!previousCharWasOp) {
-			if (ss.at(loc) == 'v') {
+			if (ss[loc] == 'v') {
 				++loc;
 				ind = nextInt(ss,loc);
 				loc += 2;
 				if (ind < 100) result = vBlock[ind];
 			}
-			else if (ss.at(loc) == 'i') {
+			else if (ss[loc] == 'i') {
 				++loc;
 				ind = nextInt(ss, loc);
 				loc += 2;
 				if (ind < 100) result = iBlock[ind];
 			}
 
-			else if (ss.at(loc) == '*'
-				|| ss.at(loc) == '-'
-				|| ss.at(loc) == '+'
-				|| ss.at(loc) == '/'
-				|| ss.at(loc) == '^') {
+			else if (ss[loc] == '*'
+				|| ss[loc] == '-'
+				|| ss[loc] == '+'
+				|| ss[loc] == '/'
+				|| ss[loc] == '^') {
 				previousCharWasOp = 1;
-				lastOp = ss.at(loc);
+				lastOp = ss[loc];
 				loc++;
 			}
 			else {
 				result = nextDouble(ss, loc);
-				while (!(ss.at(loc) == '*'
-					|| ss.at(loc) == '-'
-					|| ss.at(loc) == '+'
-					|| ss.at(loc) == '/'
-					|| ss.at(loc) == '^')) {
-					if (loc >= (ss.length()-1) || ss.at(loc)==')') {
+				while (!(ss[loc] == '*'
+					|| ss[loc] == '-'
+					|| ss[loc] == '+'
+					|| ss[loc] == '/'
+					|| ss[loc] == '^')) {
+					if (loc >= (ss.length()-1) || ss[loc]==')') {
 						return result;
 					}
-					if (ss.at(loc) == 'e') {
+					if (ss[loc] == 'e') {
 						if (ss.at(loc+1) == '-' || ss.at(loc+1) == '+') loc += 2;
 					}
 					else {
@@ -312,7 +242,7 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 			}
 		}
 		else {
-			if (ss.at(loc) == 'v') {
+			if (ss[loc] == 'v') {
 				++loc;
 				ind = nextInt(ss, loc);
 				loc += 2;
@@ -320,7 +250,7 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 				applyOp(lastOp, &result, &readout);
 				previousCharWasOp = 0;
 			}
-			else if (ss.at(loc) == 'i') {
+			else if (ss[loc] == 'i') {
 				++loc;
 				ind = nextInt(ss, loc);
 				loc += 2;
@@ -332,15 +262,15 @@ double parameterStringToDouble(const char* pString, double* iBlock, double* vBlo
 				readout = nextDouble(ss, loc);
 				applyOp(lastOp, &result, &readout);
 				previousCharWasOp = 0;
-				while (!(ss.at(loc) == '*'
-					|| ss.at(loc) == '-'
-					|| ss.at(loc) == '+'
-					|| ss.at(loc) == '/'
-					|| ss.at(loc) == '^')) {
-					if (loc >= (ss.length()-1) || ss.at(loc)==')') {
+				while (!(ss[loc] == '*'
+					|| ss[loc] == '-'
+					|| ss[loc] == '+'
+					|| ss[loc] == '/'
+					|| ss[loc] == '^')) {
+					if (loc >= (ss.length()-1) || ss[loc]==')') {
 						return result;
 					}
-					if (ss.at(loc) == 'e') {
+					if (ss[loc] == 'e') {
 						if (ss.at(loc+1) == '-' || ss.at(loc+1) == '+') loc += 2;
 					}
 					else {
@@ -443,9 +373,7 @@ int fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long 
 	return 0;
 }
 
-
 int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
-	
 	std::ifstream fs(spectrumPath);
 	if (fs.fail()) {
 		return 1;

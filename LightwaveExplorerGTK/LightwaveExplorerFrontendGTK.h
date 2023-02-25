@@ -364,8 +364,6 @@ public:
             gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
             scrollToEnd();
         }
-        
-
     }
 
     void directOverwritePrint(const char* sIn) {
