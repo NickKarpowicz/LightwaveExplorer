@@ -302,63 +302,92 @@ gboolean scrollTextViewToEndHandler(gpointer data) {
     return FALSE;
 }
 
-void formatSequenceForDisplay(std::string& s){
-    for(size_t i = 0; i<s.length(); ++i){
+void formatSequenceEscapeAngleBrackets(std::string& s) {
+    for (size_t i = 0; i < s.length(); ++i) {
         //find angle brackets signifying comments and escape
         //with &lt; or &gt; so they're not interpreted as
         //pango markup
-        if(s[i]=='<'){
-            s.erase(i,1);
-            s.insert(i,"<span color=\"#006600FF\">&lt;");
-            i += 28;
+        if (s[i] == '<') {
+            s.erase(i, 1);
+            s.insert(i, "&lt;");
+            i += 3;
         }
-        if(s[i]=='>'){
-            s.erase(i,1);
-            s.insert(i,"&gt;</span>");
-            i+=10;
+        if (s[i] == '>') {
+            s.erase(i, 1);
+            s.insert(i, "&gt;");
+            i += 3;
+        }
+    }
+}
+
+gboolean formatSequenceBuffer(gpointer data) {
+    GtkTextBuffer* buf = GTK_TEXT_BUFFER(data);
+    GtkTextIter start;
+    GtkTextIter stop;
+    GtkTextIter current;
+    GtkTextIter currentTarget;
+    gtk_text_buffer_get_start_iter(buf, &start);
+    gtk_text_buffer_get_end_iter(buf, &stop);
+    gtk_text_buffer_remove_all_tags(buf, &start, &stop);
+    std::string s(gtk_text_buffer_get_text(buf, &start, &stop, FALSE));
+    size_t b = 0;
+
+    auto applyTag = [&](const char* tag, size_t a, size_t b) {
+        current = start;
+        currentTarget = start;
+        gtk_text_iter_forward_chars(&current, (int)a);
+        gtk_text_iter_forward_chars(&currentTarget, (int)b);
+        gtk_text_buffer_apply_tag_by_name(buf, tag, &current, &currentTarget);
+    };
+
+    for (size_t i = 0; i < s.length(); ++i) {
+        if (s[i] == '<') {
+            b = s.find(">", i);
+            if (b == std::string::npos)break;
+            applyTag("comment", i, b+1);
+            i = b+1;
         }
 
         //color function names and arguments
-        if(s[i]=='('){
-            //name
-            s.insert(i,"</span>");
-            for(int j = i; j>=0; --j){
-                if(s[j]==' ' || s[j] == '\n' || j == 0){
-                    s.insert(j,"<span color=\"#00FFFFFF\">");
+        if (s[i] == '(') {
+            for (size_t j = i; j > 0; --j) {
+                if (j-1 == 0 || s[j-1] == ' ' || s[j-1] == '\n') {
+                    applyTag("function", j-1, i);
                     break;
                 }
             }
-            i += 32;
             //argument
-            for(size_t j = i; j<s.length(); j++){
-                if(s[j]==' ') ++j;
-                if(s[j]=='d'){
-                    s.erase(j);
-                    s.insert(j,"<span color=\"#FF00FFFF\">d</span>");
-                    j += 32;
+            for (; i < s.length(); ++i) {
+                if (s[i] == ' ') ++i;
+                if (s[i] == 'd') {
+                    applyTag("deferred", i, i + 1);
                 }
-                if(s[j]=='v'){
-                    s.insert(j,"<span color=\"#FF00FFFF\">");
-                    j += 27;
-                    s.insert(j,"</span>");
-                    j += 7;
+                if (s[i] == 'v') {
+                    applyTag("variable", i, i + 3);
                 }
-                if(s[j]==')'){
-                    i = j;
+                if (s[i] == 'i') {
+                    applyTag("interface", i, i + 3);
+                }
+                if (s[i] == ')') {
                     break;
                 }
             }
         }
     }
+    return FALSE;
 }
+
 class LweConsole : public LweGuiElement {
     GtkWidget* consoleText;
     bool hasNewText;
+    int previousBufferSize;
+    GtkTextBuffer* buf;
 public:
     std::string textBuffer;
     LweConsole() :
-        consoleText(0), hasNewText(0) {
+        consoleText(0), hasNewText(0), previousBufferSize(0) {
         _grid = NULL;
+        buf = NULL;
     }
     ~LweConsole() {
     }
@@ -372,6 +401,12 @@ public:
         gtk_widget_set_hexpand(elementHandle, TRUE);
         gtk_widget_set_hexpand(consoleText, TRUE);
         setPosition(grid, x, y, width, height);
+        buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        GtkTextTag* functionTag = gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
+        GtkTextTag* commentTag = gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
+        GtkTextTag* variableTag = gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
+        GtkTextTag* deferredTag = gtk_text_buffer_create_tag(buf, "deferred", "foreground", "#FF8800FF", NULL);
+        GtkTextTag* interfaceTag = gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
     }
     void init(GtkWidget* grid, int x, int y, int width, int height, int minWidth, int minHeight) {
         consoleText = gtk_text_view_new();
@@ -380,23 +415,21 @@ public:
         gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(elementHandle), minWidth);
         gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(elementHandle), consoleText);
         setPosition(grid, x, y, width, height);
+        buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+        GtkTextTag* functionTag = gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
+        GtkTextTag* commentTag = gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
+        GtkTextTag* variableTag = gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
+        GtkTextTag* deferredTag = gtk_text_buffer_create_tag(buf, "deferred", "foreground", "#FF8800FF", NULL);
+        GtkTextTag* interfaceTag = gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
     }
 
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
-        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
-        textBuffer.assign(gtk_text_buffer_get_text(buf, &start, &stop, FALSE));
-        
         std::string s = Svformat(format, Smake_format_args(args...));
-        textBuffer.append(s);
-
-        gtk_text_buffer_delete(buf, &start, &stop);
-        gtk_text_buffer_insert_markup(buf, &start, textBuffer.c_str(), -1);
-        //gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
-        
+        gtk_text_buffer_insert_markup(buf, &stop, s.c_str(), -1);
         scrollToEnd();
     }
 
@@ -411,52 +444,46 @@ public:
     void updateFromBuffer() {
         if (hasNewText) {
             hasNewText = FALSE;
-            GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-            GtkTextIter start;
+            //GtkTextIter start;
             GtkTextIter end;
-            gtk_text_buffer_get_start_iter(buf, &start);
+            //gtk_text_buffer_get_start_iter(buf, &start);
             gtk_text_buffer_get_end_iter(buf, &end);
-            gtk_text_buffer_delete(buf, &start, &end);
-            gtk_text_buffer_insert_markup(buf, &start, textBuffer.c_str(), -1);
-            //gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
+            //gtk_text_buffer_delete(buf, &start, &end);
+            gtk_text_buffer_insert_markup(buf, &end, textBuffer.c_str(), -1);
+            textBuffer.clear();
             scrollToEnd();
         }
     }
 
     void directOverwritePrint(const char* sIn) {
-        std::string s(sIn);
+        gtk_text_buffer_set_text(buf, sIn, -1);
         textBuffer.clear();
-        textBuffer.assign(s);
-        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
         scrollToEnd();
     }
 
     void directOverwritePrintSequencce(const char* sIn) {
-        std::string s(sIn);
+        gtk_text_buffer_set_text(buf, sIn, -1);
+        g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, formatSequenceBuffer, buf, NULL);
         textBuffer.clear();
-        formatSequenceForDisplay(s);
-        textBuffer.assign(s);
-        GtkTextIter start;
-        GtkTextIter end;
-        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        gtk_text_buffer_get_start_iter(buf, &start);
-        gtk_text_buffer_get_end_iter(buf, &end);
-        gtk_text_buffer_delete(buf, &start, &end);
-        gtk_text_buffer_insert_markup(buf, &start, textBuffer.c_str(), -1);
         scrollToEnd();
+    }
+
+    void paintSequenceText() {
+        if (previousBufferSize != gtk_text_buffer_get_char_count(buf)) {
+            previousBufferSize = gtk_text_buffer_get_char_count(buf);
+            g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, formatSequenceBuffer, buf, NULL);
+        }
+        
     }
 
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
-        textBuffer.assign(s);
-        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        gtk_text_buffer_set_text(buf, textBuffer.c_str(), (int)textBuffer.length());
+        gtk_text_buffer_set_text(buf, s.c_str(), (int)s.length());
+        textBuffer.clear();
         scrollToEnd();
     }
 
     void copyBuffer(char* destination, size_t maxLength) {
-        GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
@@ -468,7 +495,7 @@ public:
 
     void clear() {
         char emptyBuffer[2] = { 0 };
-        textBuffer.erase(0);
+        textBuffer.clear();
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         gtk_text_buffer_set_text(buf, emptyBuffer, 1);
         scrollToEnd();

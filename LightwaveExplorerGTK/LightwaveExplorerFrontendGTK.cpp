@@ -47,7 +47,7 @@ const int interfaceThreads = std::thread::hardware_concurrency();
 #endif
 simulationParameterSet* activeSetPtr;       // Main structure containing simulation parameters and pointers
 crystalEntry* crystalDatabasePtr;           // Crystal info database
-void updateDisplay();
+bool updateDisplay();
 
 class mainGui {
     bool queueUpdate;
@@ -484,7 +484,7 @@ public:
 		readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
 #endif
         setInterfaceValuesToActiveValues();
-        g_timeout_add(100, G_SOURCE_FUNC(updateDisplay), NULL);
+        g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
         window.present();
     }
 };
@@ -495,10 +495,12 @@ char programDirectory[MAX_LOADSTRING];     // Program working directory (useful 
 ///////////////////.
 //Definitions over
 ///////////////////.
-void updateDisplay() {
+bool updateDisplay() {
     theGui.console.updateFromBuffer();
     theGui.updateSlider();
     theGui.applyUpdate();
+    theGui.sequence.paintSequenceText();
+    return TRUE;
 }
 
 void setInterfaceValuesToActiveValues(){
@@ -1153,25 +1155,30 @@ static void buttonAddSameCrystal() {
             theGui.textBoxes[35].valueDouble(), theGui.textBoxes[36].valueDouble(),
             theGui.textBoxes[37].valueDouble(), theGui.textBoxes[42].valueDouble(),
             theGui.textBoxes[43].valueDouble());
+        theGui.sequence.paintSequenceText();
     }
     else {
         theGui.sequence.cPrint("nonlinear({},{},{},{},{})\n",
             theGui.pulldowns[3].getValue(), theGui.textBoxes[32].valueDouble(),
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[42].valueDouble(),
             theGui.textBoxes[43].valueDouble());
+        theGui.sequence.paintSequenceText();
     }
 }
 
 static void buttonAddDefault() {
     theGui.sequence.cPrint("plasma(d,d,d,d,d,d,d,d,d)\n");
+    theGui.sequence.paintSequenceText();
 }
 
 static void buttonAddMirror() {
     theGui.sequence.cPrint("sphericalMirror(-1.0)\n");
+    theGui.sequence.paintSequenceText();
 }
 
 static void buttonAddFilter() {
     theGui.sequence.cPrint("filter(130, 20, 4, 1, 0)\n");
+    theGui.sequence.paintSequenceText();
 }
 
 static void buttonAddLinear() {
@@ -1179,18 +1186,22 @@ static void buttonAddLinear() {
         theGui.pulldowns[3].getValue(), theGui.textBoxes[32].valueDouble(),
         theGui.textBoxes[33].valueDouble(), theGui.textBoxes[42].valueDouble(),
         theGui.textBoxes[43].valueDouble());
+    theGui.sequence.paintSequenceText();
 }
 
 static void buttonAddAperture() {
     theGui.sequence.cPrint("aperture(0.001, 2)\n");
+    theGui.sequence.paintSequenceText();
 }
 
 static void buttonAddFarFieldAperture() {
     theGui.sequence.cPrint("farFieldAperture(2.0,4000,0,0)\n");
+    theGui.sequence.paintSequenceText();
 }
 
 static void buttonAddForLoop() {
     theGui.sequence.cPrint("for(10,1){{\n\n}}\n");
+    theGui.sequence.paintSequenceText();
 }
 static void buttonAddPulse() {
     theGui.sequence.cPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})\n",
@@ -1215,10 +1226,17 @@ static void buttonAddPulse() {
         theGui.pulldowns[3].getValue(),
         theGui.textBoxes[32].valueDouble(),
         theGui.textBoxes[33].valueDouble());
+    theGui.sequence.paintSequenceText();
 }
 
 static void buttonAddRotation() {
     theGui.sequence.cPrint("rotate(90)\n");
+    theGui.sequence.paintSequenceText();
+}
+
+
+static void sequencePaintHandler() {
+    theGui.sequence.paintSequenceText();
 }
 
 static void activate(GtkApplication* app, gpointer user_data) {
@@ -1919,10 +1937,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             error = sequenceFunction(&activeSetPtr[j]);
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    theGui.console.tPrint(_T("Not enough free GPU memory, sorry.\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), activeSetPtr[j].memoryError);
                 }
                 else {
-                    theGui.console.tPrint(_T("Warning: device memory error ({}).\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n"), activeSetPtr[j].memoryError);
                 }
             }
             if (error) break;
@@ -1933,16 +1951,16 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             error = normalFunction(&activeSetPtr[j]);
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
-                    theGui.console.tPrint(_T("Not enough free GPU memory, sorry.\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), activeSetPtr[j].memoryError);
                 }
                 else {
-                    theGui.console.tPrint(_T("Warning: device memory error ({}).\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\r\n"), activeSetPtr[j].memoryError);
                 }
             }
             if (error) break;
         }
         if (cancellationCalled) {
-            theGui.console.tPrint(_T("Warning: series cancelled, stopping after {} simulations.\r\n"), j + 1);
+            theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: series cancelled, stopping after {} simulations.</span>\r\n"), j + 1);
             break;
         }
         theGui.requestSliderMove(j);
@@ -1953,11 +1971,19 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error == 13) {
         theGui.console.tPrint(
-            "NaN detected in grid!\r\nTry using a larger spatial/temporal step\r\nor smaller propagation step.\r\nSimulation was cancelled.\r\n");
+            "<span color=\"#FF88FF\">NaN detected in grid!\nTry using a larger spatial/temporal step\nor smaller propagation step.\nSimulation was cancelled.\n</span>");
+    }
+    if (error == 15) {
+        theGui.console.tPrint(
+            "<span color=\"#FF88FF\">Sorry, that sequence mode has been \nreplaced by the new one. Look in the \ndocumentation for more info. It is a lot \neasier to use now, and hopefully \nit won't take long to set it up. \nSorry about that!\n</span>");
+    }
+    else if(!error){
+        theGui.console.tPrint("<span color=\"#88FFFF\">Finished after {:.4} s. </span>\n", 1e-6 *
+            (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     }
     else {
-        theGui.console.tPrint("<span color=\"cyan\">Finished after {:.4} s. </span>\n", 1e-6 *
-            (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+        theGui.console.tPrint(
+            "<span color=\"#FF88FF\">Unhandled error! Please let me know what you were doing when this happened: nicholas.karpowicz@mpq.mpg.de</span>");
     }
 
     saveDataSet(activeSetPtr);

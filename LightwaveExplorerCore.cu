@@ -2539,8 +2539,8 @@ namespace hostFunctions{
 		return 1;
 	}
 
-	void solveSequenceWithDevice(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s) {
-
+	int solveSequenceWithDevice(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s) {
+		int error = 0;
 		//pointers to where the various parameters are in the struct
 		double* targets[38] = { 0,
 			&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
@@ -2569,7 +2569,7 @@ namespace hostFunctions{
 
 		//if it starts with 0, it's an old sequence; quit
 		if ((*sCPU).sequenceString[0] == '0') {
-			return;
+			return 15;
 		}
 
 		//main text interpreter
@@ -2608,7 +2608,8 @@ namespace hostFunctions{
 				currentString = currentString.substr(1, std::string::npos);
 			}
 
-			interpretCommand(currentString, iBlock, vBlock, d, sCPU, s);
+			error = interpretCommand(currentString, iBlock, vBlock, d, sCPU, s);
+			if (error) break;
 			currentString = currentString.substr(currentString.find_first_of(')'), std::string::npos);
 
 			if (currentString.length() < minLength) break;
@@ -2618,6 +2619,7 @@ namespace hostFunctions{
 			(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
 			memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
 		}
+		return error;
 	}
 
 	// helper function for fitting mode, runs the simulation and returns difference from the desired outcome.
@@ -2719,7 +2721,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	simulationParameterSet sCPUcurrent;
 	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
-
+	
 	
 	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
@@ -2727,10 +2729,10 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	memset(&s, 0, sizeof(deviceParameterSet));
 	activeDevice d(sCPU, &s);
 
-	solveSequenceWithDevice(d, sCPU, s);
+	unsigned long returnValue = solveSequenceWithDevice(d, sCPU, s);
 
 	d.deallocateSet(&s);
-	return 0;
+	return returnValue;
 }
 
 //run in fitting mode
