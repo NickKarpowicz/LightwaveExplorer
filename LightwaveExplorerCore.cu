@@ -2120,6 +2120,7 @@ namespace hostFunctions{
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU, &s);
 			rotateField(d, sCPU, s, DEG2RAD * parameters[0]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
@@ -2206,6 +2207,7 @@ namespace hostFunctions{
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 			d.reset(sCPU, &s);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU, s);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			(*sCPU).isFollowerInSequence = TRUE;
 			break;
 
@@ -2237,6 +2239,7 @@ namespace hostFunctions{
 				if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
 
 				applyLinearPropagation(d, sCPU, s, (*sCPU).materialIndex, (*sCPU).crystalThickness);
+				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			}
 
 			break;
@@ -2254,11 +2257,13 @@ namespace hostFunctions{
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU, &s);
 			applySphericalMirror(d, sCPU, s, parameters[0]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("parabolicMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU, &s);
 			applyParabolicMirror(d, sCPU, s, parameters[0]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("aperture"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
@@ -2266,6 +2271,7 @@ namespace hostFunctions{
 			applyAperature(d, sCPU, s,
 				parameters[0],
 				parameters[1]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("farFieldAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
@@ -2275,6 +2281,7 @@ namespace hostFunctions{
 				parameters[1],
 				parameters[2],
 				parameters[3]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("energy"):
 			{
@@ -2289,6 +2296,7 @@ namespace hostFunctions{
 			energy *= (*sCPU).fStep;
 			vBlock[targetVar] = energy;
 			}
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("filter"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
@@ -2299,11 +2307,13 @@ namespace hostFunctions{
 				parameters[2],
 				parameters[3],
 				parameters[4]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("lorentzian"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU, &s);
 			applyLorenzian(d, sCPU, s, parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("addPulse"):
 			if ((*sCPU).runType == -1) break;
@@ -2343,6 +2353,7 @@ namespace hostFunctions{
 
 			getTotalSpectrum(d);
 		}
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case funHash("for"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
