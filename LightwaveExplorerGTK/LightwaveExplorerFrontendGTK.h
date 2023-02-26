@@ -330,7 +330,6 @@ gboolean formatSequenceBuffer(gpointer data) {
     gtk_text_buffer_get_end_iter(buf, &stop);
     gtk_text_buffer_remove_all_tags(buf, &start, &stop);
     std::string s(gtk_text_buffer_get_text(buf, &start, &stop, FALSE));
-    size_t b = 0;
     std::vector<std::string> functionList{
         "for",
         "plasma",
@@ -365,10 +364,11 @@ gboolean formatSequenceBuffer(gpointer data) {
 
         //anything enclosed between angle brackets is commented
         if (s[i] == '<') {
-            b = s.find(">", i);
+            size_t b = s.find_first_of('>', i);
             if (b == std::string::npos)break;
             applyTag("comment", i, b+1);
             i = b+1;
+            if(i >= s.length())break;
         }
 
         //color function names and arguments
@@ -376,11 +376,11 @@ gboolean formatSequenceBuffer(gpointer data) {
             size_t nameStart = 0;
             size_t close = 0;
             //go backwards from (, amd upon encountering a newline, space, end of
-            //another function, or beginning of the buffer, check if the string
+            //another function, comment, or beginning of the buffer, check if the string
             //spanning that is in the functions list.
             //color it if it is.
             for (size_t j = i; j > 0; --j) {
-                if (j-1 == 0 || s[j-1] == ' ' || s[j-1] == '\n' || s[j-1] == ')') {
+                if (j-1 == 0 || s[j-1] == ' ' || s[j-1] == '\n' || s[j-1] == ')' || s[j-1] == '>') {
                     nameStart = j-((j-1)==0);
                     if (std::find(
                         std::begin(functionList), 
