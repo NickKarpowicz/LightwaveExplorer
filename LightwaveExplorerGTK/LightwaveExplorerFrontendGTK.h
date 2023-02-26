@@ -331,6 +331,27 @@ gboolean formatSequenceBuffer(gpointer data) {
     gtk_text_buffer_remove_all_tags(buf, &start, &stop);
     std::string s(gtk_text_buffer_get_text(buf, &start, &stop, FALSE));
     size_t b = 0;
+    std::vector<std::string> functionList{
+        "for",
+        "plasma",
+        "nonlinear",
+        "linear",
+        "sphericalMirror",
+        "parabolicMirror",
+        "init",
+        "default",
+        "rotate",
+        "set",
+        "plasmaReinject",
+        "save",
+        "fresnelLoss",
+        "aperture",
+        "farFieldAperture",
+        "energy",
+        "filter",
+        "lorentzian",
+        "addPulse"
+        };
 
     auto applyTag = [&](const char* tag, size_t a, size_t b) {
         current = start;
@@ -341,6 +362,8 @@ gboolean formatSequenceBuffer(gpointer data) {
     };
 
     for (size_t i = 0; i < s.length(); ++i) {
+
+        //anything enclosed between angle brackets is commented
         if (s[i] == '<') {
             b = s.find(">", i);
             if (b == std::string::npos)break;
@@ -350,28 +373,54 @@ gboolean formatSequenceBuffer(gpointer data) {
 
         //color function names and arguments
         if (s[i] == '(') {
+            size_t nameStart = 0;
+            size_t close = 0;
+            //go backwards from (, amd upon encountering a newline, space, end of
+            //another function, or beginning of the buffer, check if the string
+            //spanning that is in the functions list.
+            //color it if it is.
             for (size_t j = i; j > 0; --j) {
-                if (j-1 == 0 || s[j-1] == ' ' || s[j-1] == '\n') {
+                if (j-1 == 0 || s[j-1] == ' ' || s[j-1] == '\n' || s[j-1] == ')') {
+                    nameStart = j-((j-1)==0);
+                    if (std::find(
+                        std::begin(functionList), 
+                        std::end(functionList), 
+                        s.substr(nameStart,i-nameStart)) 
+                    != std::end(functionList))
                     applyTag("function", j-1, i);
                     break;
                 }
             }
             //argument
-            for (; i < s.length(); ++i) {
-                if (s[i] == ' ') ++i;
-                if (s[i] == 'd') {
-                    applyTag("deferred", i, i + 1);
-                }
-                if (s[i] == 'v') {
-                    applyTag("variable", i, i + 3);
-                }
-                if (s[i] == 'i') {
-                    applyTag("interface", i, i + 3);
-                }
-                if (s[i] == ')') {
-                    break;
+
+            //if the ( isn't closed properly, paint it as an error
+            close = s.find_first_of(')',i);
+            nameStart = s.find_first_of('(',i+1);
+            if(close == std::string::npos || close > nameStart){
+                applyTag("error", i, i+1);
+            }
+            //if it's closed, paint ( and ) 
+            //and paint special variables in argument
+            else{
+                applyTag("parenthesis", i, i+1);
+                applyTag("parenthesis", close, close+1);
+                for (; i < close; ++i) {
+                    if (s[i] == ' ') ++i;
+                    if (s[i] == 'd') {
+                        applyTag("delegate", i, i + 1);
+                    }
+                    if (s[i] == 'v') {
+                        applyTag("variable", i, i + 3);
+                    }
+                    if (s[i] == 'i') {
+                        applyTag("interface", i, i + 3);
+                    }
+                    if (s[i] == ',') {
+                        applyTag("parenthesis", i, i + 1);
+                    }
                 }
             }
+
         }
     }
     return FALSE;
@@ -405,8 +454,10 @@ public:
         gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
         gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
         gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
-        gtk_text_buffer_create_tag(buf, "deferred", "foreground", "#FF8800FF", NULL);
+        gtk_text_buffer_create_tag(buf, "delegate", "foreground", "#FF8800FF", NULL);
         gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
+        gtk_text_buffer_create_tag(buf, "error", "foreground", "#FF0000FF", NULL);
+        gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#660088FF", NULL);
     }
     void init(GtkWidget* grid, int x, int y, int width, int height, int minWidth, int minHeight) {
         consoleText = gtk_text_view_new();
@@ -419,8 +470,10 @@ public:
         gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
         gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
         gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
-        gtk_text_buffer_create_tag(buf, "deferred", "foreground", "#FF8800FF", NULL);
+        gtk_text_buffer_create_tag(buf, "delegate", "foreground", "#FF8800FF", NULL);
         gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
+        gtk_text_buffer_create_tag(buf, "error", "foreground", "#FF0000FF", NULL);
+        gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#660088FF", NULL);
     }
 
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
