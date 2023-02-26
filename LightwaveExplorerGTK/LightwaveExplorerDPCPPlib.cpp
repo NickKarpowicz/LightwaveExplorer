@@ -4,46 +4,50 @@
 #include "LightwaveExplorerDPCPPlib.h"
 #include "LightwaveExplorerCore.cu"
 #include <stdio.h>
+#include <string>
+#include <algorithm>
+#include <vector>
 
-extern "C" size_t readSYCLDevices(char* deviceListString, char* defaultDeviceString) {
-    size_t convertedChars;
-    size_t offset = 0;
+extern "C" void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
     unsigned char cpuCount = 0;
     unsigned char gpuCount = 0;
-    size_t deviceCount = 0;
-    unsigned char* deviceArray = (unsigned char*)&deviceCount;
-    //try{
-    auto platforms = sycl::platform::get_platforms();
-    for (const auto& p : platforms) {
+    std::vector<std::string> namelist;
+    std::string deviceList;
+    for (const auto& p : cl::sycl::platform::get_platforms()) {
         for (const auto& d : p.get_devices()) {
             //loop through all devices, but only mention the GPUs and CPUs (maybe add accelerators later if there's something
             //useful to target and not emulators)
             if (d.is_cpu()) {
-                cpuCount++;
-
-                offset = strnlen(deviceListString, MAX_LOADSTRING);
-                sprintf(&deviceListString[offset], "SYCL found a CPU: %s\r\n", d.get_info<sycl::info::device::name>().c_str());
-
+                if (!(std::find(
+                    std::begin(namelist),
+                    std::end(namelist),
+                    d.get_info<cl::sycl::info::device::name>())
+                    != std::end(namelist))) {
+                    namelist.push_back(d.get_info<cl::sycl::info::device::name>());
+                    cpuCount++;
+                    deviceList.append("SYCL found a CPU:\n   <span color=\"#66FFFFFF\">");
+                    deviceList.append(d.get_info<cl::sycl::info::device::name>());
+                    deviceList.append("</span>\n");
+                }
             }
             if (d.is_gpu()) {
-                gpuCount++;
-
-                offset = strnlen(deviceListString, MAX_LOADSTRING);
-                sprintf(&deviceListString[offset], "SYCL found a GPU: %s\r\n", d.get_info<sycl::info::device::name>().c_str());
-
+                if (!(std::find(
+                    std::begin(namelist),
+                    std::end(namelist),
+                    d.get_info<cl::sycl::info::device::name>())
+                    != std::end(namelist))) {
+                    namelist.push_back(d.get_info<cl::sycl::info::device::name>());
+                    gpuCount++;
+                    deviceList.append("SYCL found a GPU:\n   <span color=\"#66FFFFFF\">");
+                    deviceList.append(d.get_info<cl::sycl::info::device::name>());
+                    deviceList.append("</span>\n");
+                }
             }
         }
     }
-    //}
-    // catch(int whatever){
-    //     printf("Couldn't get a platform...\n");
-    // }
-
-    
-
     deviceArray[0] = cpuCount;
     deviceArray[1] = gpuCount;
-    return deviceCount;
+    deviceList.copy(deviceListCstring, 1023);
 }
 
 

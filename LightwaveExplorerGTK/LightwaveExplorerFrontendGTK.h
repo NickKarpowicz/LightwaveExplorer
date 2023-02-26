@@ -3,6 +3,7 @@
 #include <complex>
 #include <vector>
 #include <string>
+#include <algorithm>
 #include "../LightwaveExplorerUtilities.h"
 #undef __noinline__
 #include <gtk/gtk.h>
