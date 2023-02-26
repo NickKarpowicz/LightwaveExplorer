@@ -842,14 +842,21 @@ void checkLibraryAvailability() {
 
 	if (cudaGPUCount > 0) {
 		CUDAavailable = TRUE;
+        if (cudaGPUCount == 1) {
+            theGui.console.cPrint("CUDA found a GPU: \n", cudaGPUCount);
+        }
+        else {
+            theGui.console.cPrint("CUDA found {} GPU(s): \n", cudaGPUCount);
+        }
+        for (i = 0; i < cudaGPUCount; ++i) {
+            cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+            theGui.console.cPrint("<span color=\"#66FFFFFF\">   {}\n      Memory: {} MB\n      Multiprocessors: {}</span>\n", 
+                activeCUDADeviceProp.name, 
+                (int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), 
+                activeCUDADeviceProp.multiProcessorCount);
+        }
 	}
-	theGui.console.cPrint("CUDA found {} GPU(s): \n", cudaGPUCount);
-	for (i = 0; i < cudaGPUCount; ++i) {
-		cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-		theGui.console.cPrint("{}\n", activeCUDADeviceProp.name);
-		theGui.console.cPrint("    Memory: {} MB\n    Multiprocessors: {}\n",
-			(int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), activeCUDADeviceProp.multiProcessorCount);
-	}
+
 #else
 #define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
 #define solveNonlinearWaveEquation solveNonlinearWaveEquationCPU
@@ -859,14 +866,12 @@ void checkLibraryAvailability() {
 
 #ifndef NOSYCL
     SYCLavailable = TRUE;
-    char syclDeviceList[MAX_LOADSTRING] = { 0 };
-    char syclDefault[MAX_LOADSTRING] = { 0 };
+    char syclDeviceList[1024] = { 0 };
     size_t syclDevices = 0;
-
-    syclDevices = readSYCLDevices(syclDeviceList, syclDefault);
-
-    unsigned char* counts = (unsigned char*)&syclDevices;
+    char counts[2] = { 0 };
+    readSYCLDevices(counts, syclDeviceList);
     syclGPUCount = (int)counts[1];
+    syclDevices = (size_t)counts[0] + (size_t)counts[1];
     if(syclDevices != 0){
         theGui.console.cPrint("{}",syclDeviceList);
     }
