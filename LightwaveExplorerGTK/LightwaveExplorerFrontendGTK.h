@@ -1,6 +1,8 @@
 #pragma once
 #include <sstream>
 #include <complex>
+#include <vector>
+#include <string>
 #include "../LightwaveExplorerUtilities.h"
 #undef __noinline__
 #include <gtk/gtk.h>
@@ -330,8 +332,7 @@ gboolean formatSequenceBuffer(gpointer data) {
     gtk_text_buffer_get_end_iter(buf, &stop);
     gtk_text_buffer_remove_all_tags(buf, &start, &stop);
     std::string s(gtk_text_buffer_get_text(buf, &start, &stop, FALSE));
-    std::vector<std::string> functionList{
-        "for",
+    std::vector<std::string> functionList { "for",
         "plasma",
         "nonlinear",
         "linear",
@@ -349,8 +350,7 @@ gboolean formatSequenceBuffer(gpointer data) {
         "energy",
         "filter",
         "lorentzian",
-        "addPulse"
-        };
+        "addPulse"};
 
     auto applyTag = [&](const char* tag, size_t a, size_t b) {
         current = start;
