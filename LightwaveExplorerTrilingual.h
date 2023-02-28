@@ -11,6 +11,7 @@
 #define hardwareCheck hardwareCheckCUDA
 #define deviceFunctions deviceFunctionsCUDA
 #define atomicAddDevice atomicAdd
+#define j0Device j0
 #define hostFunctions hostFunctionsCUDA
 #ifndef NOCUDAMAIN
 #define mainX main
@@ -32,6 +33,7 @@
 #define withStream , stream
 #define activeDevice deviceSYCL
 #define atomicAddDevice atomicAddSYCL
+#define j0Device j0SYCL
 #define hardwareCheck hardwareCheckSYCL
 
 #define deviceFunctions deviceFunctionsSYCL
@@ -52,6 +54,7 @@
 #define withStream 
 #define activeDevice deviceCounter
 #define atomicAddDevice atomicAddCounter
+#define j0Device j0Counter
 #define hardwareCheck hardwareCheckCounter
 #define deviceFunctions deviceFunctionsCounter
 #define hostFunctions hostFunctionsCounter
@@ -71,6 +74,7 @@
 #define withStream 
 #define activeDevice deviceCPU
 #define atomicAddDevice atomicAddCPU
+#define j0Device j0CPU
 #define hardwareCheck hardwareCheckCPU
 #define deviceFunctions deviceFunctionsCPU
 #define hostFunctions hostFunctionsCPU
