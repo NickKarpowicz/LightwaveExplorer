@@ -198,7 +198,14 @@ public:
 		deviceFree((*s).inverseChiLinear1);
 	}
 	void reset(simulationParameterSet* sCPU, deviceParameterSet* s) {
-		initializeDeviceParameters(sCPU, s);
+		if((*s).hasPlasma != ((*sCPU).nonlinearAbsorptionStrength != 0.0)){
+			deallocateSet(s);
+			memoryStatus = allocateSet(sCPU,s);
+		}
+		else{
+			initializeDeviceParameters(sCPU, s);
+		}
+		
 		fillRotationMatricies(sCPU, s);
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
