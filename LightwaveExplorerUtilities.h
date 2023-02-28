@@ -213,6 +213,7 @@ typedef struct deviceParameterSet {
     deviceComplex* k1 = 0;
     deviceComplex* k2 = 0;
     deviceComplex n0 = 0.0;
+    double* J0 = 0;
     double* gridRadialLaplacian1 = 0;
     double* gridRadialLaplacian2 = 0;
     double* gridETime1 = 0;

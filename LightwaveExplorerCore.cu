@@ -437,6 +437,21 @@ namespace kernels {
 		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
+	trilingual hankelKernel asKernel(withID deviceParameterSet* s, deviceComplex* in, deviceComplex* out) {
+		size_t i = localIndex;
+		size_t col, j, k;
+		deviceComplex dZero = deviceComplex(0, 0);
+		col = i / ((*s).Nfreq - 1); //spatial coordinate
+		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+		i = j + col * (*s).Nfreq;
+		out[i] = dZero;
+		if (j == 1)out[i - 1] = dZero;
+		in += j;
+		for (size_t r = 0; r < (*s).Nspace; ++r) {
+			out[i] += (*s).J0[j + r * (*s).Nfreq] * in[r * (*s).Nfreq];
+		}
+	};
+
 	//Calculate the power spectrum after a 3D propagation
 	trilingual totalSpectrum3DKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
