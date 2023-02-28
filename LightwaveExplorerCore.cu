@@ -52,6 +52,32 @@ namespace deviceFunctions {
 		return INVSQRTPI * d;
 	}
 
+	deviceFunction double besselj0(double x) {
+		double ax, z;
+		double xx, y, ans, ans1, ans2;
+
+		if ((ax = fabs(x)) < 8.0) {
+			y = x * x;
+			ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
+				y * (-11214424.18 + y * (77392.33017 + y * (-184.9052456)))));
+			ans2 = 57568490411.0 + y * (1029532985.0 + y * (9494680.718 +
+				y * (59272.64853 + y * (267.8532712 + y))));
+				ans = ans1 / ans2;
+		}
+		else {
+			z = 8.0 / ax;
+			y = z * z;
+			xx = ax - 0.785398164;
+			ans1 = 1.0 + y * (-0.1098628627e-2 + y * (0.2734510407e-4 +
+				y * (-0.2073370639e-5 + y * 0.2093887211e-6)));
+			ans2 = -0.1562499995e-1 + y * (0.1430488765e-3 +
+				y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934935152e-7)));
+			ans = sqrt(0.636619772 / ax) * (cos(xx) * ans1 - z * sin(xx) * ans2);
+		}
+
+		return ans;
+	}
+
 	//Inner function for the Sellmeier equation to provide the refractive indicies
 	//current equation form:
 	//n^2 = a[0] //background (high freq) contribution
@@ -210,6 +236,16 @@ namespace deviceFunctions {
 			neighbors[3] = (N - j - 1) * Ntime + h;
 			neighbors[4] = (j + 1) * Ntime + h;
 			neighbors[5] = (N - j - 2) * Ntime + h;
+			return dr * (j - N / 2) + 0.25 * dr;
+		}
+	}
+
+	deviceFunction double rhoInRadialSymmetry(
+		long long N, int j, double dr) {
+		if (j < N / 2) {
+			return -(dr * (j - N / 2) + 0.25 * dr);
+		}
+		else {
 			return dr * (j - N / 2) + 0.25 * dr;
 		}
 	}
@@ -443,19 +479,54 @@ namespace kernels {
 		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
-	trilingual hankelKernel asKernel(withID deviceParameterSet* s, deviceComplex* in, deviceComplex* out) {
+	trilingual hankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
 		size_t i = localIndex;
-		size_t col, j, k;
-		deviceComplex dZero = deviceComplex(0, 0);
-		col = i / ((*s).Nfreq - 1); //spatial coordinate
-		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
-		i = j + col * (*s).Nfreq;
-		out[i] = dZero;
-		if (j == 1)out[i - 1] = dZero;
-		in += j;
+		size_t col;
+		col = i / (*s).Ntime; //spatial coordinate
+		
+		in += i % (*s).Ntime;;
+		out[i] = 0.0;
+
+		double r0; 
+		double J0 = 1.0;
+		double k0 = col * (*s).dk1;
 		for (size_t r = 0; r < (*s).Nspace; ++r) {
-			out[i] += (*s).J0[j + r * (*s).Nfreq] * in[r * (*s).Nfreq];
+			r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
+#ifdef __CUDACC__
+			J0 = j0(r0 * k0);
+#else
+			J0 = besselj0(r0 * k0);
+#endif
+			out[i] += r0 * J0 * in[r * (*s).Ntime];
+			out[i+(*s).Ngrid] += r0 * J0 * in[r * (*s).Ntime + (*s).Ngrid];
 		}
+		out[i] *= (*s).dx;
+		out[i + (*s).Ngrid] *= (*s).dx;
+	};
+
+	trilingual inverseHankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
+		size_t i = localIndex;
+		size_t col;
+		col = i / (*s).Ntime; //spatial coordinate
+
+		in += i % (*s).Ntime;;
+		out[i] = 0.0;
+
+		double r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
+		double J0 = 1.0;
+		double k0 = col * (*s).dk1;
+		for (size_t k = 0; k < (*s).Nspace; ++k) {
+			k0 = k * (*s).dk1;
+#ifdef __CUDACC__
+			J0 = j0(r0 * k0);
+#else
+			J0 = besselj0(r0 * k0);
+#endif
+			out[i] += k0 * J0 * in[k * (*s).Ntime];
+			out[i] += k0 * J0 * in[k * (*s).Ntime + (*s).Ngrid];
+		}
+		out[i] *= 0.5 * (*s).dk1 / ((*s).Ntime);
+		out[i + (*s).Ngrid] *= 0.5 * (*s).dk1 / ((*s).Ntime);
 	};
 
 	//Calculate the power spectrum after a 3D propagation
@@ -560,6 +631,40 @@ namespace kernels {
 		double r = sqrt(theta1 * theta1 + theta2 * theta2);
 
 		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (r-radius))));
+
+		(*s).gridEFrequency1[i] *= a;
+		(*s).gridEFrequency2[i] *= a;
+	};
+
+	trilingual apertureFarFieldKernelHankel asKernel(withID deviceParameterSet* s, double radius, double activationParameter, double xOffset, double yOffset) {
+		long long i = localIndex;
+		long long col, j, k;
+		deviceComplex cuZero = deviceComplex(0, 0);
+		col = i / ((*s).Nfreq - 1); //spatial coordinate
+		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+		i = j + col * (*s).Nfreq;
+		k = col % (*s).Nspace;
+
+		//magnitude of k vector
+		double ko = TWOPI * j * (*s).fStep / LIGHTC;
+
+		//transverse wavevector being resolved
+		double dk1 = k * (*s).dk1; //frequency grid in x direction
+
+		//light that won't go the the farfield is immediately zero
+		if (dk1 * dk1 > ko * ko) {
+			(*s).gridEFrequency1[i] = cuZero;
+			(*s).gridEFrequency2[i] = cuZero;
+			return;
+		}
+
+		double theta1 = asin(dk1 / ko);
+
+		theta1 -= (!(*s).isCylindric) * xOffset;
+
+		double r = sqrt(theta1 * theta1);
+
+		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (r - radius))));
 
 		(*s).gridEFrequency1[i] *= a;
 		(*s).gridEFrequency2[i] *= a;
@@ -1653,6 +1758,19 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	int forwardHankel(activeDevice& d, double* in, deviceComplex* out) {
+		deviceParameterSet* sc = d.dParams;
+		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, hankelKernel, d.dParamsDevice, in, (double*)(*sc).workspace1);
+		d.fft((*sc).workspace1, out, deviceFFTD2Z1D);
+		return 0;
+	}
+	int backwardHankel(activeDevice& d, deviceComplex* in, double* out) {
+		deviceParameterSet* sc = d.dParams;
+		d.fft(in, (*sc).workspace1, deviceFFTZ2D1D);
+		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, inverseHankelKernel, d.dParamsDevice, (double*)(*sc).workspace1, out);
+		return 0;
+	}
+
 	int addPulseToFieldArrays(activeDevice& d, pulse& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
@@ -1828,7 +1946,25 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	int applyAperatureFarFieldHankel(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double diameter, double activationParameter, double xOffset, double yOffset) {
+		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
+		forwardHankel(d, s.gridETime1, s.gridEFrequency1);
+		deviceParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, apertureFarFieldKernelHankel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
+		//d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+		backwardHankel(d, s.gridEFrequency1, s.gridETime1);
+		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
+		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+		getTotalSpectrum(d);
+		return 0;
+	}
+
 	int applyAperatureFarField(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double diameter, double activationParameter, double xOffset, double yOffset) {
+		if ((*sCPU).isCylindric) {
+			return applyAperatureFarFieldHankel(d, sCPU, s, diameter, activationParameter, xOffset, yOffset);
+		}
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		deviceParameterSet* sDevice = d.dParamsDevice;
@@ -1847,6 +1983,8 @@ namespace hostFunctions{
 
 		return 0;
 	}
+
+
 
 
 	int applyAperature(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s,double diameter, double activationParameter) {
