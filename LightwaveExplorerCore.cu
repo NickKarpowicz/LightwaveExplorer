@@ -403,20 +403,26 @@ namespace kernels {
 		double a, x;
 
 		//find beam centers
-		for (j = 0; j < (*s).Nspace; ++j) {
-			x = (*s).dx * j;
-			a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
-			beamTotal1 += a;
-			beamCenter1 += x * a;
-			a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
-			beamTotal2 += a;
-			beamCenter2 += x * a;
+		if ((*s).isCylindric) {
+			beamCenter1 = ((*s).Nspace / 2 * (*s).dx) + 0.25 * (*s).dx;
+			beamCenter2 = beamCenter1;
 		}
-		if (beamTotal1 > 0) {
-			beamCenter1 /= beamTotal1;
-		}
-		if (beamTotal2 > 0) {
-			beamCenter2 /= beamTotal2;
+		else{
+			for (j = 0; j < (*s).Nspace; ++j) {
+				x = (*s).dx * j;
+				a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+				beamTotal1 += a;
+				beamCenter1 += x * a;
+				a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+				beamTotal2 += a;
+				beamCenter2 += x * a;
+			}
+			if (beamTotal1 > 0) {
+				beamCenter1 /= beamTotal1;
+			}
+			if (beamTotal2 > 0) {
+				beamCenter2 /= beamTotal2;
+			}
 		}
 
 		//Integrate total beam power, assuming radially-symmetric beam around
