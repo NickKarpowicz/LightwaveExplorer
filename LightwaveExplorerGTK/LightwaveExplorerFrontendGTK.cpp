@@ -393,7 +393,6 @@ public:
         pulldowns[7].setTooltip("Select the primary method of calculation. The algorithm is the same, but you can run it either on a GPU or CPU depending on your machine");
         pulldowns[8].setTooltip("Select a secondary mode of calculation for offloading jobs from a batch. For example, if the pulldown to the left is set to CUDA and this one is OpenMP, and the number to the right is 2, 2 of the simulations from the batch will be performed on the CPU");
 
-
         pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
         textBoxes[1].setLabel(-labelWidth, 0, _T("Frequency (THz)"));

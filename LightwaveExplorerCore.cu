@@ -217,10 +217,10 @@ namespace deviceFunctions {
 	deviceFunction double rhoInRadialSymmetry(
 		long long N, int j, double dr) {
 		if (j < N / 2) {
-			return -(dr * (j - N / 2) + 0.25 * dr);
+			return abs( - (dr * (j - N / 2) + 0.25 * dr));
 		}
 		else {
-			return dr * (j - N / 2) + 0.25 * dr;
+			return abs(dr * (j - N / 2) + 0.25 * dr);
 		}
 	}
 
@@ -460,15 +460,15 @@ namespace kernels {
 		
 		in += i % (*s).Ntime;;
 		out[i] = 0.0;
-
+		out[i + (*s).Ngrid] = 0.0;
 		double r0; 
 		double J0 = 1.0;
 		double k0 = col * (*s).dk1;
 		for (size_t r = 0; r < (*s).Nspace; ++r) {
 			r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
-			J0 = j0Device(r0 * k0);
-			out[i] += r0 * J0 * in[r * (*s).Ntime];
-			out[i+(*s).Ngrid] += r0 * J0 * in[r * (*s).Ntime + (*s).Ngrid];
+			J0 = r0*j0Device(r0 * k0);
+			out[i] += J0 * in[r * (*s).Ntime];
+			out[i+(*s).Ngrid] += J0 * in[r * (*s).Ntime + (*s).Ngrid];
 		}
 		out[i] *= (*s).dx;
 		out[i + (*s).Ngrid] *= (*s).dx;
@@ -481,15 +481,15 @@ namespace kernels {
 
 		in += i % (*s).Ntime;;
 		out[i] = 0.0;
-
+		out[i + (*s).Ngrid] = 0.0;
 		double r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
 		double J0 = 1.0;
 		double k0 = col * (*s).dk1;
 		for (size_t k = 0; k < (*s).Nspace; ++k) {
 			k0 = k * (*s).dk1;
-			J0 = j0Device(r0 * k0);
-			out[i] += k0 * J0 * in[k * (*s).Ntime];
-			out[i] += k0 * J0 * in[k * (*s).Ntime + (*s).Ngrid];
+			J0 = k0*j0Device(r0 * k0);
+			out[i] += J0 * in[k * (*s).Ntime];
+			out[i + (*s).Ngrid] += J0 * in[k * (*s).Ntime + (*s).Ngrid];
 		}
 		out[i] *= 0.5 * (*s).dk1 / ((*s).Ntime);
 		out[i + (*s).Ngrid] *= 0.5 * (*s).dk1 / ((*s).Ntime);
@@ -626,11 +626,7 @@ namespace kernels {
 
 		double theta1 = asin(dk1 / ko);
 
-		theta1 -= (!(*s).isCylindric) * xOffset;
-
-		double r = sqrt(theta1 * theta1);
-
-		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (r - radius))));
+		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (abs(theta1) - radius))));
 
 		(*s).gridEFrequency1[i] *= a;
 		(*s).gridEFrequency2[i] *= a;
@@ -1917,8 +1913,7 @@ namespace hostFunctions{
 		forwardHankel(d, s.gridETime1, s.gridEFrequency1);
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
-		d.deviceLaunch(s.Nblock / 2, s.Nthread, apertureFarFieldKernelHankel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
-		//d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+		//d.deviceLaunch(s.Nblock / 2, s.Nthread, apertureFarFieldKernelHankel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
 		backwardHankel(d, s.gridEFrequency1, s.gridETime1);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
