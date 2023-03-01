@@ -2000,25 +2000,28 @@ void fittingThread(int pulldownSelection) {
     cancellationCalled = FALSE;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
-    readParametersFromInterface();
-    (*activeSetPtr).runType = 0;
+
+
     if (isGridAllocated) {
         freeSemipermanentGrids();
+        isGridAllocated = FALSE;
     }
-
+    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+    readParametersFromInterface();
+    (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
+    theGui.requestSliderUpdate();
     (*activeSetPtr).isFollowerInSequence = FALSE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
+
+    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
     configureBatchMode(activeSetPtr);
     readFittingString(activeSetPtr);
     if ((*activeSetPtr).Nfitting == 0) {
         theGui.console.tPrint("Couldn't interpret fitting command.\n");
-        free((*activeSetPtr).statusFlags);
-        free((*activeSetPtr).deffTensor);
-        free((*activeSetPtr).loadedField1);
-        free((*activeSetPtr).loadedField2);
+        deallocateGrids(activeSetPtr, FALSE);
         return;
     }
     progressCounter = 0;
@@ -2026,10 +2029,7 @@ void fittingThread(int pulldownSelection) {
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
             theGui.console.tPrint("Could not read reference file!\n");
-            free((*activeSetPtr).statusFlags);
-            free((*activeSetPtr).deffTensor);
-            free((*activeSetPtr).loadedField1);
-            free((*activeSetPtr).loadedField2);
+            deallocateGrids(activeSetPtr, FALSE);
             return;
         }
     }
@@ -2062,10 +2062,10 @@ void fittingThread(int pulldownSelection) {
         assignedGPU = 1;
         fittingFunction = &runDlibFittingSYCL;
     }
+    isRunning = TRUE;
     fittingFunction(activeSetPtr);
     (*activeSetPtr).plotSim = 0;
-    (*activeSetPtr).runningOnCPU = forceCPU;
-    (*activeSetPtr).assignedGPU = assignedGPU;
+
     theGui.requestPlotUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.tPrint(_T("Finished fitting after {:.4} s.\n"), 1e-6 *

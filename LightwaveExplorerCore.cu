@@ -455,20 +455,19 @@ namespace kernels {
 
 	trilingual hankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
 		size_t i = localIndex;
-		size_t col;
-		col = i / (*s).Ntime; //spatial coordinate
-		
-		in += i % (*s).Ntime;;
+		size_t col = i / (*s).Ntime; //spatial coordinate
+		double dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
+		in += i % (*s).Ntime;
 		out[i] = 0.0;
 		out[i + (*s).Ngrid] = 0.0;
-		double r0; 
+		double r0;
 		double J0 = 1.0;
-		double k0 = col * (*s).dk1;
+		double k0 = col * dk;
 		for (size_t r = 0; r < (*s).Nspace; ++r) {
 			r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
-			J0 = r0*j0Device(r0 * k0);
+			J0 = r0 * j0Device(r0 * k0);
 			out[i] += J0 * in[r * (*s).Ntime];
-			out[i+(*s).Ngrid] += J0 * in[r * (*s).Ntime + (*s).Ngrid];
+			out[i + (*s).Ngrid] += J0 * in[r * (*s).Ntime + (*s).Ngrid];
 		}
 		out[i] *= (*s).dx;
 		out[i + (*s).Ngrid] *= (*s).dx;
@@ -476,23 +475,22 @@ namespace kernels {
 
 	trilingual inverseHankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
 		size_t i = localIndex;
-		size_t col;
-		col = i / (*s).Ntime; //spatial coordinate
-
+		size_t col = i / (*s).Ntime; //spatial coordinate
+		double dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
 		in += i % (*s).Ntime;;
 		out[i] = 0.0;
 		out[i + (*s).Ngrid] = 0.0;
 		double r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
 		double J0 = 1.0;
-		double k0 = col * (*s).dk1;
+		double k0 = col * dk;
 		for (size_t k = 0; k < (*s).Nspace; ++k) {
-			k0 = k * (*s).dk1;
+			k0 = k * dk;
 			J0 = k0*j0Device(r0 * k0);
 			out[i] += J0 * in[k * (*s).Ntime];
 			out[i + (*s).Ngrid] += J0 * in[k * (*s).Ntime + (*s).Ngrid];
 		}
-		out[i] *= 0.5 * (*s).dk1 / ((*s).Ntime);
-		out[i + (*s).Ngrid] *= 0.5 * (*s).dk1 / ((*s).Ntime);
+		out[i] *= 0.5 * dk / ((*s).Ntime);
+		out[i + (*s).Ngrid] *= 0.5 * dk / ((*s).Ntime);
 	};
 
 	//Calculate the power spectrum after a 3D propagation
@@ -524,6 +522,30 @@ namespace kernels {
 		long long i = localIndex;
 		Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
 		Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
+	};
+
+
+	//Calculate the power spectrum after a 3D propagation
+	trilingual totalSpectrum2DSquareKernel asKernel(withID deviceParameterSet* s) {
+		size_t i = localIndex;
+		size_t j;
+
+		double beamTotal1 = 0.;
+		double beamTotal2 = 0.;
+		//Integrate total beam power
+		beamTotal1 = 0.;
+		beamTotal2 = 0.;
+		for (j = 0; j < (*s).Nspace; ++j) {
+			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+		}
+		beamTotal1 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
+		beamTotal2 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
+
+		//put the values into the output spectrum
+		(*s).gridPolarizationTime1[i] = beamTotal1;
+		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
 	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/r d/drho)
@@ -615,7 +637,7 @@ namespace kernels {
 		double ko = TWOPI * j * (*s).fStep / LIGHTC;
 
 		//transverse wavevector being resolved
-		double dk1 = k * (*s).dk1; //frequency grid in x direction
+		double dk1 = k * 2.0 / (PI * (*s).dx * (*s).Nspace);; //frequency grid in x direction
 
 		//light that won't go the the farfield is immediately zero
 		if (dk1 * dk1 > ko * ko) {
@@ -1713,8 +1735,11 @@ namespace hostFunctions{
 		if ((*sc).is3D) {
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel, d.dParamsDevice);
 		}
-		else {
+		else if ((*sc).isCylindric) {
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
+		}
+		else {
+			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum2DSquareKernel, d.dParamsDevice);
 		}
 		d.deviceMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), DeviceToHost);
 		return 0;
@@ -1913,7 +1938,7 @@ namespace hostFunctions{
 		forwardHankel(d, s.gridETime1, s.gridEFrequency1);
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
-		//d.deviceLaunch(s.Nblock / 2, s.Nthread, apertureFarFieldKernelHankel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, apertureFarFieldKernelHankel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
 		backwardHankel(d, s.gridEFrequency1, s.gridETime1);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
@@ -2791,6 +2816,7 @@ namespace hostFunctions{
 		d.reset(fittingSet, &s);
 
 		if ((*fittingSet).isInSequence) {
+			(*fittingSet).isFollowerInSequence = FALSE;
 			solveSequenceWithDevice(d, fittingSet, s);
 		}
 		else {
@@ -2827,6 +2853,7 @@ namespace hostFunctions{
 			a = (refSpec[i] / maxRef) - (simSpec[i] / maxSim);
 			result += a * a;
 		}
+
 		return sqrt(result);
 	}
 	
@@ -2868,12 +2895,13 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 
 //run in fitting mode
 unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
-	fittingSet = (simulationParameterSet*)calloc(1, sizeof(simulationParameterSet));
-	if (fittingSet == NULL) return 1;
+	simulationParameterSet sCPUcurrent;
+	fittingSet = &sCPUcurrent;
+
 	memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
 	deviceParameterSet s;
 	memset(&s, 0, sizeof(deviceParameterSet));
-	activeDevice d(sCPU, &s);
+	activeDevice d(fittingSet, &s);
 	dFit = &d;
 	column_vector parameters;
 	parameters.set_size((*sCPU).Nfitting);
@@ -2934,15 +2962,13 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 		solveSequenceWithDevice(d, sCPU, s);
 	}
 	else {
-
 		solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 	}
 
 	(*sCPU).progressCounter = originalCounter;
 
 	d.deallocateSet(&s);
-	free(fittingSet);
-	
+	dFit = NULL;
 	return 0;
 }
 
