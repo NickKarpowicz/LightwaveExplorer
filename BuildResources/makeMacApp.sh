@@ -24,7 +24,7 @@ mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerGTK/Lig
 
 #restore the original source and clean up
 cp BuildResources/AppImage/AppImageCPU/COPYING COPYING
-tar cf GPLsource.tar COPYING *.cpp *.cu *.h LightwaveExplorerGTK/* DlibLibraryComponents/* BuildResources/macplistbase.plist CMakeLists.txt BuildResources/AppIcon.icns
+tar cf GPLsource.tar COPYING *.cpp *.cu *.h LightwaveExplorerGTK/* LightwaveExplorerDevices/* BuildResources/macplistbase.plist CMakeLists.txt BuildResources/AppIcon.icns
 rm COPYING
 
 #complete the directory structure of the .app
@@ -36,7 +36,7 @@ mkdir $APP/Contents/Resources/share
 
 #copy in the databases and icons
 cp CrystalDatabase.txt $APP/Contents/Resources
-cp DefaultValues.ini $APP/Contents/Resources
+cp BuildResources/DefaultValues.ini $APP/Contents/Resources
 cp BuildResources/AppIcon.icns $APP/Contents/Resources
 
 #Functions:

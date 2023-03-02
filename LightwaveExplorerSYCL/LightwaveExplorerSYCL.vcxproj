@@ -167,7 +167,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <SpecifyGPUTargetForAOT>Default</SpecifyGPUTargetForAOT>
-      <AdditionalDependencies>DlibLibraryComponents.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>
       </AdditionalOptions>
       <SpecifyCPUTargetForAOT>Default</SpecifyCPUTargetForAOT>
@@ -183,6 +183,7 @@
     <ClInclude Include="LightwaveExplorerSYCL.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\LightwaveExplorerDevices\DlibLibraryComponents.cpp" />
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp" />
     <ClCompile Include="LightwaveExplorerSYCL.cpp" />
   </ItemGroup>
