@@ -2824,14 +2824,14 @@ namespace hostFunctions{
 		}
 
 		//maximize total spectrum in ROI
-		if ((*fittingSet).fittingMode != 3) {
+		if ((*fittingSet).fittingMode < 3) {
 			for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
 				result += (*fittingSet).totalSpectrum[(*fittingSet).fittingMode * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i];
 			}
 			return result;
 		}
 
-		//mode 3: match total spectrum to reference given in ascii file
+		//mode 3 & 4: match total spectrum to reference given in ascii file
 		double a;
 		double maxSim = 0.0;
 		double maxRef = 0.0;
@@ -2849,10 +2849,20 @@ namespace hostFunctions{
 			maxRef = 1;
 		}
 		result = 0.0;
-		for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
-			a = (refSpec[i] / maxRef) - (simSpec[i] / maxSim);
-			result += a * a;
+
+		if ((*fittingSet).fittingMode == 4) {
+			for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
+				a = log10(refSpec[i] / maxRef) - log10(simSpec[i] / maxSim);
+				if(!isnan(a)) result += a * a;
+			}
 		}
+		else {
+			for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
+				a = (refSpec[i] / maxRef) - (simSpec[i] / maxSim);
+				result += a * a;
+			}
+		}
+
 
 		return sqrt(result);
 	}

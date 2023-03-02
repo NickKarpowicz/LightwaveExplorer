@@ -190,6 +190,7 @@ public:
         pulldowns[2].addElement(_T("Maximize y"));
         pulldowns[2].addElement(_T("Maximize Total"));
         pulldowns[2].addElement(_T("Fit spectrum"));
+        pulldowns[2].addElement(_T("Fit spectrum (log)"));
         pulldowns[2].init(parentHandle, labelWidth, 20, 2 * textWidth, 1);
 
         filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
