@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include "../LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #undef __noinline__
 #include <gtk/gtk.h>
 

@@ -121,21 +121,21 @@ copy "$(SolutionDir)DefaultValues.ini" "$(SolutionDir)LightwaveExplorerWin64"</C
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\LightwaveExplorerCoreCounter.cpp" />
-    <ClCompile Include="..\LightwaveExplorerCoreCPU.cpp" />
-    <ClCompile Include="..\LightwaveExplorerUtilities.cpp" />
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.cpp" />
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.cpp" />
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp" />
     <ClCompile Include="LightwaveExplorerFrontendGTK.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\LightwaveExplorerCore.cuh" />
-    <ClInclude Include="..\LightwaveExplorerCoreCounter.h" />
-    <ClInclude Include="..\LightwaveExplorerCoreCPU.h" />
-    <ClInclude Include="..\LightwaveExplorerTrilingual.h" />
-    <ClInclude Include="..\LightwaveExplorerUtilities.h" />
-    <ClInclude Include="..\LWEAciveDeviceCounter.h" />
-    <ClInclude Include="..\LWEActiveDeviceCPU.h" />
-    <ClInclude Include="..\LWEActiveDeviceCUDA.cuh" />
-    <ClInclude Include="..\LWEActiveDeviceSYCL.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerTrilingual.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LWEAciveDeviceCounter.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCPU.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceSYCL.h" />
     <ClInclude Include="LightwaveExplorerFrontendGTK.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

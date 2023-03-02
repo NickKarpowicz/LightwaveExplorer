@@ -1,7 +1,7 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 #define RUNONSYCL
 
-#include "LightwaveExplorerUtilities.h"
+#include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerSYCL.h"
 #include "LightwaveExplorerCore.cu"
 #include <string>

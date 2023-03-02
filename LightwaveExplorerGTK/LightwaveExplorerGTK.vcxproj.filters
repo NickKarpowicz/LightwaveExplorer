@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\LightwaveExplorerCoreCPU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LightwaveExplorerFrontendGTK.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerUtilities.cpp">
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerCoreCounter.cpp">
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -38,28 +38,28 @@
     <ClInclude Include="..\LightwaveExplorerCore.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerCoreCPU.h">
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerTrilingual.h">
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerUtilities.h">
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerTrilingual.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LWEActiveDeviceCPU.h">
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LWEActiveDeviceCUDA.cuh">
+    <ClInclude Include="..\LightwaveExplorerDevices\LWEAciveDeviceCounter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LWEActiveDeviceSYCL.h">
+    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCPU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LWEAciveDeviceCounter.h">
+    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceSYCL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerCoreCounter.h">
+    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

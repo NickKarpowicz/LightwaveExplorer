@@ -3,8 +3,8 @@
 #include <chrono>
 #include <locale>
 #include <fstream>
-#include "../LightwaveExplorerCoreCPU.h"
-#include "../LightwaveExplorerCoreCounter.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
 #ifndef CPUONLY
 #ifndef NOCUDA
 #include <cuda_runtime.h>
