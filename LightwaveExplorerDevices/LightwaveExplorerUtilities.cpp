@@ -508,7 +508,10 @@ double saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, 
 	if ((*sCPU).nonlinearAbsorptionStrength != 0.0) timeEstimate *= 2.1;
 	timeEstimate /= 3600.0;
 	if (gpuType != 2) timeEstimate *= 8;
-
+	if ((*sCPU).fittingString[0] != 0 && (*sCPU).fittingString[0] != 'N') {
+		readFittingString(sCPU);
+		if ((*sCPU).fittingMaxIterations > 0) timeEstimate *= (*sCPU).fittingMaxIterations;
+	}
 	std::string baseName = getBasename((*sCPU).outputBasePath);
 
 	fs << "#!/bin/bash -l" << '\x0A';
@@ -567,6 +570,9 @@ int saveSettingsFile(simulationParameterSet* sCPU) {
 	if (fs.fail()) return -1;
 
 	std::string baseName = getBasename((*sCPU).outputBasePath);
+	std::string referenceBaseName = getBasename((*sCPU).fittingPath);
+	std::string pulse1BaseName = getBasename((*sCPU).field1FilePath);
+	std::string pulse2BaseName = getBasename((*sCPU).field2FilePath);
 	fs.precision(15);
 
 	fs << "Pulse energy 1 (J): " << (*sCPU).pulse1.energy << '\x0A';
@@ -633,15 +639,21 @@ int saveSettingsFile(simulationParameterSet* sCPU) {
 	fs << "Fitting mode: " << (*sCPU).fittingMode << '\x0A';
 	if ((*sCPU).runType > 0) { //don't include full path if making a cluster script
 		fs << "Output base path: " << baseName << '\x0A';
+		fs << "Field 1 from file type: " << (*sCPU).pulse1FileType << '\x0A';
+		fs << "Field 2 from file type: " << (*sCPU).pulse2FileType << '\x0A';
+		fs << "Field 1 file path: " << pulse1BaseName << '\x0A';
+		fs << "Field 2 file path: " << pulse2BaseName << '\x0A';
+		fs << "Fitting reference file path: " << referenceBaseName << '\x0A';
 	}
 	else {
 		fs << "Output base path: " << (*sCPU).outputBasePath << '\x0A';
+		fs << "Field 1 from file type: " << (*sCPU).pulse1FileType << '\x0A';
+		fs << "Field 2 from file type: " << (*sCPU).pulse2FileType << '\x0A';
+		fs << "Field 1 file path: " << (*sCPU).field1FilePath << '\x0A';
+		fs << "Field 2 file path: " << (*sCPU).field2FilePath << '\x0A';
+		fs << "Fitting reference file path: " << (*sCPU).fittingPath << '\x0A';
 	}
-	fs << "Field 1 from file type: " << (*sCPU).pulse1FileType << '\x0A';
-	fs << "Field 2 from file type: " << (*sCPU).pulse2FileType << '\x0A';
-	fs << "Field 1 file path: " << (*sCPU).field1FilePath << '\x0A';
-	fs << "Field 2 file path: " << (*sCPU).field2FilePath << '\x0A';
-	fs << "Fitting reference file path: " << (*sCPU).fittingPath << '\x0A';
+
 	fs << "Material name: " << crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW << '\x0A';
 	fs << "Sellmeier reference: " << crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference << '\x0A';
 	fs << "Chi2 reference: " << crystalDatabasePtr[(*sCPU).materialIndex].dReference << '\x0A';

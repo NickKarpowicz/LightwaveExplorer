@@ -1152,7 +1152,7 @@ void createRunFile() {
 
     theGui.console.tPrint(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
-        (*activeSetPtr).outputBasePath, (*activeSetPtr).outputBasePath);
+        getBasename((*activeSetPtr).outputBasePath), getBasename((*activeSetPtr).outputBasePath));
     theGui.console.tPrint("Estimated time to complete: {:.2} hours\n", timeEstimate, (double)totalSteps * (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2, (*activeSetPtr).runType);
     isRunning = FALSE;
     isGridAllocated = FALSE;
