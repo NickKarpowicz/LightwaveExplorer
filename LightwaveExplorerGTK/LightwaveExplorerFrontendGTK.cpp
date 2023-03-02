@@ -566,17 +566,17 @@ void setInterfaceValuesToActiveValues(){
     theGui.pulldowns[4].setValue((*activeSetPtr).symmetryType);
     theGui.pulldowns[5].setValue((*activeSetPtr).batchIndex);
     theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
-
+    theGui.sequence.clear();
     if (std::string((*activeSetPtr).sequenceString).length() > 6) {
         std::string formattedSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
         formatSequence(formattedSequence);
         theGui.sequence.directOverwritePrintSequencce(formattedSequence.c_str());
     }
-    stripLineBreaks((*activeSetPtr).field1FilePath);
+    stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
     if (std::string((*activeSetPtr).field2FilePath).compare("None") != 0) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
     if (std::string((*activeSetPtr).fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
-
+    theGui.fitCommand.clear();
     if (!((*activeSetPtr).fittingString[0] == 'N')) {
         std::string formattedFit((*activeSetPtr).fittingString,MAX_LOADSTRING);
         insertAfterCharacter(formattedFit,';',std::string("\n"));
@@ -649,7 +649,7 @@ void readParametersFromInterface() {
         noneString.copy((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
     }
     else {
-        stripWhiteSpace((*activeSetPtr).sequenceString);
+        stripWhiteSpace((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
     }
     
     memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
@@ -659,7 +659,7 @@ void readParametersFromInterface() {
         noneString.copy((*activeSetPtr).fittingString, MAX_LOADSTRING);
     }
     else {
-        stripLineBreaks((*activeSetPtr).fittingString);
+        stripLineBreaks((*activeSetPtr).fittingString, MAX_LOADSTRING);
     }
     
     memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING);
@@ -668,21 +668,21 @@ void readParametersFromInterface() {
     if (s.length() == 0) {
         noneString.copy((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     }
-    stripLineBreaks((*activeSetPtr).field1FilePath);
+    stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING);
     theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     s.assign((*activeSetPtr).field2FilePath);
     if (s.length() == 0) {
         noneString.copy((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     }
-    stripLineBreaks((*activeSetPtr).field2FilePath);
+    stripLineBreaks((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING);
     theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     s.assign((*activeSetPtr).outputBasePath);
     if (s.length() == 0) {
         noneString.copy((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     }
-    stripLineBreaks((*activeSetPtr).outputBasePath);
+    stripLineBreaks((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     
     memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING);
     theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath, MAX_LOADSTRING);
@@ -690,7 +690,7 @@ void readParametersFromInterface() {
     if (s.length() == 0) {
         noneString.copy((*activeSetPtr).fittingPath, MAX_LOADSTRING);
     }
-    stripLineBreaks((*activeSetPtr).fittingPath);
+    stripLineBreaks((*activeSetPtr).fittingPath, MAX_LOADSTRING);
 
     //derived parameters and cleanup:
     (*activeSetPtr).sellmeierType = 0;

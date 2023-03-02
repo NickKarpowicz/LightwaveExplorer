@@ -287,6 +287,6 @@ int             skipFileUntilCharacter(FILE* fstream, char target);
 int             copyParamsIntoStrings(char parameterBlock[22][256], const char* cc, int n);
 void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(const char* pString, double* iBlock, double* vBlock);
-void            stripWhiteSpace(char* sequenceString);
-void            stripLineBreaks(char* sequenceString);
+void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
+void            stripLineBreaks(char* sequenceString, size_t bufferSize);
 int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);

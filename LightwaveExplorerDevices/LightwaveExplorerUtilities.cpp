@@ -11,14 +11,16 @@
 
 int readFittingString(simulationParameterSet* sCPU) {
 	std::string sIn((*sCPU).fittingString);
-#if __cplusplus >= 202002L
+#ifndef __CUDACC__
 	std::erase(sIn, '\r');
 	std::erase(sIn, '\n');
 	std::erase(sIn, '\t');
+	memset((*sCPU).fittingString, 0, MAX_LOADSTRING);
+	sIn.copy((*sCPU).fittingString, MAX_LOADSTRING - 1);
 #endif
 
 
-	std::stringstream ss((*sCPU).fittingString);
+	std::stringstream ss(sIn);
 	double ROIbegin, ROIend;
 	int maxIterations = 0;
 	int fittingCount = 0;
@@ -92,27 +94,28 @@ int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, cha
 }
 
 
-void stripWhiteSpace(char* sequenceString) {
+void stripWhiteSpace(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
-#if __cplusplus >= 202002L
+#ifndef __CUDACC__
 	std::erase(s, '\r');
 	std::erase(s, '\n');
 	std::erase(s, '\t');
 #endif
 
 
-	memset(sequenceString, 0, 2 * MAX_LOADSTRING);
-	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
+	memset(sequenceString, 0, bufferSize);
+	s.copy(sequenceString, bufferSize - 1);
 }
 
-void stripLineBreaks(char* sequenceString) {
+void stripLineBreaks(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
-#if __cplusplus >= 202002L
+#ifndef __CUDACC__
 	std::erase(s, '\r');
 	std::erase(s, '\n');
 #endif
-	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
+	memset(sequenceString, 0, bufferSize);
+	s.copy(sequenceString, bufferSize-1);
 }
 
 
