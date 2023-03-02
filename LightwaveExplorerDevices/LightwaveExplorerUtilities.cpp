@@ -11,9 +11,13 @@
 
 int readFittingString(simulationParameterSet* sCPU) {
 	std::string sIn((*sCPU).fittingString);
+#if __cplusplus >= 202002L
 	std::erase(sIn, '\r');
 	std::erase(sIn, '\n');
 	std::erase(sIn, '\t');
+#endif
+
+
 	std::stringstream ss((*sCPU).fittingString);
 	double ROIbegin, ROIend;
 	int maxIterations = 0;
@@ -91,17 +95,23 @@ int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, cha
 void stripWhiteSpace(char* sequenceString) {
 	std::string s(sequenceString);
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
+#if __cplusplus >= 202002L
 	std::erase(s, '\r');
 	std::erase(s, '\n');
 	std::erase(s, '\t');
+#endif
+
+
 	memset(sequenceString, 0, 2 * MAX_LOADSTRING);
 	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
 }
 
 void stripLineBreaks(char* sequenceString) {
 	std::string s(sequenceString);
+#if __cplusplus >= 202002L
 	std::erase(s, '\r');
 	std::erase(s, '\n');
+#endif
 	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
 }
 
