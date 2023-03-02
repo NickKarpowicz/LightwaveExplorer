@@ -9,9 +9,9 @@
 # load modules (you probably don't need this if you're not on the cluster
 # but you will need to set MKL_HOME to the location of MKL)
 module purge
-module load gcc/11
+module load gcc/12
 module load cuda/11.6
-module load mkl/2022.1
+module load mkl/2022.2
 
 git clone https://github.com/NickKarpowicz/LightwaveExplorer
 git clone https://github.com/davisking/dlib
