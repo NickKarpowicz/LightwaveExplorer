@@ -2064,6 +2064,8 @@ void fittingThread(int pulldownSelection) {
         fittingFunction = &runDlibFittingSYCL;
     }
     isRunning = TRUE;
+    (*activeSetPtr).runningOnCPU = forceCPU;
+    (*activeSetPtr).assignedGPU = assignedGPU;
     fittingFunction(activeSetPtr);
     (*activeSetPtr).plotSim = 0;
 
