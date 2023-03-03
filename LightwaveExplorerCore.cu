@@ -2832,6 +2832,7 @@ namespace hostFunctions{
 		if ((*fittingSet).isInSequence) {
 			(*fittingSet).isFollowerInSequence = FALSE;
 			solveSequenceWithDevice(d, fittingSet, s);
+			(*(*fittingSet).progressCounter)++;
 		}
 		else {
 			solveNonlinearWaveEquationWithDevice(d, fittingSet, s);

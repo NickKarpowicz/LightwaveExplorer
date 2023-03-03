@@ -1,6 +1,4 @@
 #include <cstdlib>
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <complex>
 #include <fstream>
