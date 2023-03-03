@@ -1,7 +1,6 @@
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
-#include <stdlib.h>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
@@ -60,7 +59,7 @@ namespace deviceFunctions {
 	//      + 2 complex-valued Lorenzian contribution
 	//inputs:
 	//a: 22 component array of the coefficients
-	//ls: lamda^2 (microns^2)
+	//ls: lambda^2 (microns^2)
 	//omega: frequency (rad/s)
 	//ii: sqrt(-1)
 	//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
@@ -213,7 +212,9 @@ namespace deviceFunctions {
 			return dr * (j - N / 2) + 0.25 * dr;
 		}
 	}
-
+	//provide the position rho in cylindric mode; a simplified
+	//version of the resolveNeighbors function above for cases where
+	//the neighbors aren't required
 	deviceFunction double rhoInRadialSymmetry(
 		long long N, int j, double dr) {
 		if (j < N / 2) {
@@ -401,8 +402,9 @@ namespace kernels {
 	// SYCL threads to be passed their ID.
 	// The function's closing } has to be followed by a ; to have valid syntax in SYCL.
 
-	//calculate the total power spectrum of the beam for the 2D modes. Note that for the cartesian one, it will be treated as
-	//a round beam instead of an infinite plane wave in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
+	//calculate the total energy spectrum of the beam for the 2D modes. Note that for the 
+	//cartesian one, it will be treated as a round beam instead of an infinite plane wave 
+	//in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
 	trilingual totalSpectrumKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		size_t j;
@@ -453,47 +455,32 @@ namespace kernels {
 		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
-	trilingual hankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
+	//Calculate the energy spectrum after a 2D propagation assuming that the beam
+	//height in the non-resolved direction is == the grid width (i.e. square grid)
+	//More quantitative than the mapping to round beams, but rather specific
+	trilingual totalSpectrum2DSquareKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
-		size_t col = i / (*s).Ntime; //spatial coordinate
-		double dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
-		in += i % (*s).Ntime;
-		out[i] = 0.0;
-		out[i + (*s).Ngrid] = 0.0;
-		double r0;
-		double J0 = 1.0;
-		double k0 = col * dk;
-		for (size_t r = 0; r < (*s).Nspace; ++r) {
-			r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
-			J0 = r0 * j0Device(r0 * k0);
-			out[i] += J0 * in[r * (*s).Ntime];
-			out[i + (*s).Ngrid] += J0 * in[r * (*s).Ntime + (*s).Ngrid];
+		size_t j;
+
+		double beamTotal1 = 0.;
+		double beamTotal2 = 0.;
+		//Integrate total beam power
+		beamTotal1 = 0.;
+		beamTotal2 = 0.;
+		for (j = 0; j < (*s).Nspace; ++j) {
+			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 		}
-		out[i] *= (*s).dx;
-		out[i + (*s).Ngrid] *= (*s).dx;
+		beamTotal1 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
+		beamTotal2 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
+
+		//put the values into the output spectrum
+		(*s).gridPolarizationTime1[i] = beamTotal1;
+		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
-	trilingual inverseHankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
-		size_t i = localIndex;
-		size_t col = i / (*s).Ntime; //spatial coordinate
-		double dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
-		in += i % (*s).Ntime;;
-		out[i] = 0.0;
-		out[i + (*s).Ngrid] = 0.0;
-		double r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
-		double J0 = 1.0;
-		double k0 = col * dk;
-		for (size_t k = 0; k < (*s).Nspace; ++k) {
-			k0 = k * dk;
-			J0 = k0*j0Device(r0 * k0);
-			out[i] += J0 * in[k * (*s).Ntime];
-			out[i + (*s).Ngrid] += J0 * in[k * (*s).Ntime + (*s).Ngrid];
-		}
-		out[i] *= 0.5 * dk / ((*s).Ntime);
-		out[i + (*s).Ngrid] *= 0.5 * dk / ((*s).Ntime);
-	};
-
-	//Calculate the power spectrum after a 3D propagation
+	//Calculate the energy spectrum after a 3D propagation
 	trilingual totalSpectrum3DKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		size_t j;
@@ -516,36 +503,61 @@ namespace kernels {
 		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
+	//perform a Hankel transform by direct quadrature
+	//the offset radial grid allows the sum to be done with a midpoint method
+	//with no numerical effort and the rho=0 point is excluded from the grid
+	//this function is slow and order N^2 as it is not used in the core loop.
+	//the numerical accuracy of Hankel transforms that I've seen in relatively
+	//low due to Gibbs phenomena and I find the FFT-based propagation implemented
+	//below better for nonlinear phenomena. I might later use this for linear propagation
+	//in sequences however.
+	trilingual hankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
+		size_t i = localIndex;
+		size_t col = i / (*s).Ntime; //spatial coordinate
+		double dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
+		in += i % (*s).Ntime;
+		out[i] = 0.0;
+		out[i + (*s).Ngrid] = 0.0;
+		double r0;
+		double J0 = 1.0;
+		double k0 = col * dk;
+		for (size_t r = 0; r < (*s).Nspace; ++r) {
+			r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
+			J0 = r0 * j0Device(r0 * k0);
+			out[i] += J0 * in[r * (*s).Ntime];
+			out[i + (*s).Ngrid] += J0 * in[r * (*s).Ntime + (*s).Ngrid];
+		}
+		out[i] *= (*s).dx;
+		out[i + (*s).Ngrid] *= (*s).dx;
+	};
+
+	//inverse Hankel transform from the k-space back to the offset spatial grid
+	trilingual inverseHankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
+		size_t i = localIndex;
+		size_t col = i / (*s).Ntime; //spatial coordinate
+		double dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
+		in += i % (*s).Ntime;;
+		out[i] = 0.0;
+		out[i + (*s).Ngrid] = 0.0;
+		double r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
+		double J0 = 1.0;
+		double k0 = col * dk;
+		for (size_t k = 0; k < (*s).Nspace; ++k) {
+			k0 = k * dk;
+			J0 = k0*j0Device(r0 * k0);
+			out[i] += J0 * in[k * (*s).Ntime];
+			out[i + (*s).Ngrid] += J0 * in[k * (*s).Ntime + (*s).Ngrid];
+		}
+		out[i] *= 0.5 * dk / ((*s).Ntime);
+		out[i + (*s).Ngrid] *= 0.5 * dk / ((*s).Ntime);
+	};
+
 	//rotate the field around the propagation axis (basis change)
 	trilingual rotateFieldKernel asKernel(withID deviceComplex* Ein1, deviceComplex* Ein2, deviceComplex* Eout1,
 		deviceComplex* Eout2, double rotationAngle) {
 		long long i = localIndex;
 		Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
 		Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
-	};
-
-
-	//Calculate the power spectrum after a 3D propagation
-	trilingual totalSpectrum2DSquareKernel asKernel(withID deviceParameterSet* s) {
-		size_t i = localIndex;
-		size_t j;
-
-		double beamTotal1 = 0.;
-		double beamTotal2 = 0.;
-		//Integrate total beam power
-		beamTotal1 = 0.;
-		beamTotal2 = 0.;
-		for (j = 0; j < (*s).Nspace; ++j) {
-			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
-			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
-		}
-		beamTotal1 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
-		beamTotal2 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
-
-		//put the values into the output spectrum
-		(*s).gridPolarizationTime1[i] = beamTotal1;
-		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
-		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
 	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/r d/drho)
@@ -1735,11 +1747,13 @@ namespace hostFunctions{
 		if ((*sc).is3D) {
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel, d.dParamsDevice);
 		}
-		else if ((*sc).isCylindric) {
-			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
-		}
+		// else if ((*sc).isCylindric) {
+		// 	d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
+		// }
 		else {
-			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum2DSquareKernel, d.dParamsDevice);
+			//uncomment and change logic if I want to use the square spectra
+			//d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum2DSquareKernel, d.dParamsDevice);
+			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
 		}
 		d.deviceMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), DeviceToHost);
 		return 0;
