@@ -12,7 +12,7 @@
 #include <oneapi/dpl/cmath>
 #define deviceComplex oneapi::dpl::complex<double>
 #define deviceLib oneapi::dpl
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #elif defined CPUONLY
 #include <fftw3.h>
 #define deviceComplex std::complex<double>

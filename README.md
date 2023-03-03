@@ -33,18 +33,19 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ---
 
   ### Installation on a Windows PC
-  In order to install and run Lightwave Explorer on Windows, just download the file LightwaveExplorer.zip or LightwaveExplorer.7z (the two files have the same contents, I just upload both because not everyone can open 7z) from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
+  FIrst, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
+
+  Next, download the file LightwaveExplorerWin64.zip or LightwaveExplorerWin64.7z (the two files have the same contents, I just upload both because not everyone can open 7z) from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
 
   The Python module for working with the results is also in that folder for convenience; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder. It's also in this repo if you think of any improvements.
 
   You can also download the version using the Win32 interface rather than the newer interface, in case there are some bugs in the latter which I haven't found yet.
   
-  To use the SYCL version, you might also need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html). However, on my laptop it wasn't needed.
+
 
 ---
 
   ### Installation on Linux
-
   The easiest way is to use the AppImage located in the same [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP) as the Windows one. You just have to download the image and mark it as executable (either under the properties in your file explorer or by "chmod +x LightwaveExplorer-x86_64.AppImage").
 
   The appimage should be in the same directory as the files CrystalDatabase.txt and DefaultValues.ini - you can also put them into /usr/share/LightwaveExplorer - I can make other options possible, not sure where the modern Linux user prefers.

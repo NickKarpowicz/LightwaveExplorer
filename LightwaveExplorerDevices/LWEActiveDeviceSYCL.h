@@ -1,5 +1,5 @@
 #include "LWEActiveDeviceCommon.cpp"
-#include <sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
 #define DeviceToHost 2
@@ -313,12 +313,19 @@ public:
 			}
 		}
 		else if ((*sCPU).runningOnCPU) {
-			sycl::queue cpuStream{ sycl::gpu_selector_v, sycl::property::queue::in_order() };
+			sycl::queue cpuStream{ sycl::cpu_selector_v, sycl::property::queue::in_order() };
 			stream = cpuStream;
 		}
 		else {
 			sycl::queue defaultStream{ sycl::default_selector_v, sycl::property::queue::in_order() };
-			stream = defaultStream;
+			if (defaultStream.get_device().get_info<cl::sycl::info::device::double_fp_config>().size() == 0) {
+				sycl::queue cpuStream{ sycl::cpu_selector_v, sycl::property::queue::in_order() };
+				stream = cpuStream;
+			}
+			else {
+				stream = defaultStream;
+			}
+			
 		}
 		
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
