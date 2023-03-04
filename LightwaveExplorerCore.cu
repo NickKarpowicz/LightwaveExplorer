@@ -1,6 +1,7 @@
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
+#include <stdlib.h>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
