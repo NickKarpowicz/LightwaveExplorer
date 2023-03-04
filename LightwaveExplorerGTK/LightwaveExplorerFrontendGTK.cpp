@@ -23,7 +23,6 @@ bool isIntelRuntimeInstalled() {
     if (envcount != 0) {
         return TRUE;
     }
-    printf("No runtime!");
     return FALSE;
 }
 #else
