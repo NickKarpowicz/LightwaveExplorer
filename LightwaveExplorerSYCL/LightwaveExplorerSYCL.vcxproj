@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>Intel(R) oneAPI DPC++ Compiler 2022</PlatformToolset>
+    <PlatformToolset>Intel(R) oneAPI DPC++ Compiler 2023</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -167,7 +167,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <SpecifyGPUTargetForAOT>Default</SpecifyGPUTargetForAOT>
-      <AdditionalDependencies>DlibLibraryComponents.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>
       </AdditionalOptions>
       <SpecifyCPUTargetForAOT>Default</SpecifyCPUTargetForAOT>
@@ -178,13 +178,13 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\LightwaveExplorerUtilities.h" />
-    <ClInclude Include="..\LWEActiveDeviceSYCL.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerTrilingual.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LightwaveExplorerSYCL.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\LightwaveExplorerUtilities.cpp" />
+    <ClCompile Include="..\LightwaveExplorerDevices\DlibLibraryComponents.cpp" />
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp" />
     <ClCompile Include="LightwaveExplorerSYCL.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,7 +1,6 @@
 #include "LightwaveExplorerCore.cuh"
-#include "LightwaveExplorerUtilities.h"
-#include "LightwaveExplorerTrilingual.h"
-#include <stdlib.h>
+#include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
+#include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
@@ -60,7 +59,7 @@ namespace deviceFunctions {
 	//      + 2 complex-valued Lorenzian contribution
 	//inputs:
 	//a: 22 component array of the coefficients
-	//ls: lamda^2 (microns^2)
+	//ls: lambda^2 (microns^2)
 	//omega: frequency (rad/s)
 	//ii: sqrt(-1)
 	//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
@@ -211,6 +210,18 @@ namespace deviceFunctions {
 			neighbors[4] = (j + 1) * Ntime + h;
 			neighbors[5] = (N - j - 2) * Ntime + h;
 			return dr * (j - N / 2) + 0.25 * dr;
+		}
+	}
+	//provide the position rho in cylindric mode; a simplified
+	//version of the resolveNeighbors function above for cases where
+	//the neighbors aren't required
+	deviceFunction double rhoInRadialSymmetry(
+		long long N, int j, double dr) {
+		if (j < N / 2) {
+			return abs( - (dr * (j - N / 2) + 0.25 * dr));
+		}
+		else {
+			return abs(dr * (j - N / 2) + 0.25 * dr);
 		}
 	}
 
@@ -391,8 +402,9 @@ namespace kernels {
 	// SYCL threads to be passed their ID.
 	// The function's closing } has to be followed by a ; to have valid syntax in SYCL.
 
-	//calculate the total power spectrum of the beam for the 2D modes. Note that for the cartesian one, it will be treated as
-	//a round beam instead of an infinite plane wave in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
+	//calculate the total energy spectrum of the beam for the 2D modes. Note that for the 
+	//cartesian one, it will be treated as a round beam instead of an infinite plane wave 
+	//in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
 	trilingual totalSpectrumKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		size_t j;
@@ -403,20 +415,26 @@ namespace kernels {
 		double a, x;
 
 		//find beam centers
-		for (j = 0; j < (*s).Nspace; ++j) {
-			x = (*s).dx * j;
-			a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
-			beamTotal1 += a;
-			beamCenter1 += x * a;
-			a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
-			beamTotal2 += a;
-			beamCenter2 += x * a;
+		if ((*s).isCylindric) {
+			beamCenter1 = ((*s).Nspace / 2 * (*s).dx) + 0.25 * (*s).dx;
+			beamCenter2 = beamCenter1;
 		}
-		if (beamTotal1 > 0) {
-			beamCenter1 /= beamTotal1;
-		}
-		if (beamTotal2 > 0) {
-			beamCenter2 /= beamTotal2;
+		else{
+			for (j = 0; j < (*s).Nspace; ++j) {
+				x = (*s).dx * j;
+				a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+				beamTotal1 += a;
+				beamCenter1 += x * a;
+				a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+				beamTotal2 += a;
+				beamCenter2 += x * a;
+			}
+			if (beamTotal1 > 0) {
+				beamCenter1 /= beamTotal1;
+			}
+			if (beamTotal2 > 0) {
+				beamCenter2 /= beamTotal2;
+			}
 		}
 
 		//Integrate total beam power, assuming radially-symmetric beam around
@@ -437,7 +455,32 @@ namespace kernels {
 		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
-	//Calculate the power spectrum after a 3D propagation
+	//Calculate the energy spectrum after a 2D propagation assuming that the beam
+	//height in the non-resolved direction is == the grid width (i.e. square grid)
+	//More quantitative than the mapping to round beams, but rather specific
+	trilingual totalSpectrum2DSquareKernel asKernel(withID deviceParameterSet* s) {
+		size_t i = localIndex;
+		size_t j;
+
+		double beamTotal1 = 0.;
+		double beamTotal2 = 0.;
+		//Integrate total beam power
+		beamTotal1 = 0.;
+		beamTotal2 = 0.;
+		for (j = 0; j < (*s).Nspace; ++j) {
+			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+		}
+		beamTotal1 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
+		beamTotal2 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
+
+		//put the values into the output spectrum
+		(*s).gridPolarizationTime1[i] = beamTotal1;
+		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
+	};
+
+	//Calculate the energy spectrum after a 3D propagation
 	trilingual totalSpectrum3DKernel asKernel(withID deviceParameterSet* s) {
 		size_t i = localIndex;
 		size_t j;
@@ -458,6 +501,55 @@ namespace kernels {
 		(*s).gridPolarizationTime1[i] = beamTotal1;
 		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
 		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
+	};
+
+	//perform a Hankel transform by direct quadrature
+	//the offset radial grid allows the sum to be done with a midpoint method
+	//with no numerical effort and the rho=0 point is excluded from the grid
+	//this function is slow and order N^2 as it is not used in the core loop.
+	//the numerical accuracy of Hankel transforms that I've seen in relatively
+	//low due to Gibbs phenomena and I find the FFT-based propagation implemented
+	//below better for nonlinear phenomena. I might later use this for linear propagation
+	//in sequences however.
+	trilingual hankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
+		size_t i = localIndex;
+		size_t col = i / (*s).Ntime; //spatial coordinate
+		double dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
+		in += i % (*s).Ntime;
+		out[i] = 0.0;
+		out[i + (*s).Ngrid] = 0.0;
+		double r0;
+		double J0 = 1.0;
+		double k0 = col * dk;
+		for (size_t r = 0; r < (*s).Nspace; ++r) {
+			r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
+			J0 = r0 * j0Device(r0 * k0);
+			out[i] += J0 * in[r * (*s).Ntime];
+			out[i + (*s).Ngrid] += J0 * in[r * (*s).Ntime + (*s).Ngrid];
+		}
+		out[i] *= (*s).dx;
+		out[i + (*s).Ngrid] *= (*s).dx;
+	};
+
+	//inverse Hankel transform from the k-space back to the offset spatial grid
+	trilingual inverseHankelKernel asKernel(withID deviceParameterSet* s, double* in, double* out) {
+		size_t i = localIndex;
+		size_t col = i / (*s).Ntime; //spatial coordinate
+		double dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
+		in += i % (*s).Ntime;;
+		out[i] = 0.0;
+		out[i + (*s).Ngrid] = 0.0;
+		double r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
+		double J0 = 1.0;
+		double k0 = col * dk;
+		for (size_t k = 0; k < (*s).Nspace; ++k) {
+			k0 = k * dk;
+			J0 = k0*j0Device(r0 * k0);
+			out[i] += J0 * in[k * (*s).Ntime];
+			out[i + (*s).Ngrid] += J0 * in[k * (*s).Ntime + (*s).Ngrid];
+		}
+		out[i] *= 0.5 * dk / ((*s).Ntime);
+		out[i + (*s).Ngrid] *= 0.5 * dk / ((*s).Ntime);
 	};
 
 	//rotate the field around the propagation axis (basis change)
@@ -539,6 +631,36 @@ namespace kernels {
 		double r = sqrt(theta1 * theta1 + theta2 * theta2);
 
 		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (r-radius))));
+
+		(*s).gridEFrequency1[i] *= a;
+		(*s).gridEFrequency2[i] *= a;
+	};
+
+	trilingual apertureFarFieldKernelHankel asKernel(withID deviceParameterSet* s, double radius, double activationParameter, double xOffset, double yOffset) {
+		long long i = localIndex;
+		long long col, j, k;
+		deviceComplex cuZero = deviceComplex(0, 0);
+		col = i / ((*s).Nfreq - 1); //spatial coordinate
+		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+		i = j + col * (*s).Nfreq;
+		k = col % (*s).Nspace;
+
+		//magnitude of k vector
+		double ko = TWOPI * j * (*s).fStep / LIGHTC;
+
+		//transverse wavevector being resolved
+		double dk1 = k * 2.0 / (PI * (*s).dx * (*s).Nspace);; //frequency grid in x direction
+
+		//light that won't go the the farfield is immediately zero
+		if (dk1 * dk1 > ko * ko) {
+			(*s).gridEFrequency1[i] = cuZero;
+			(*s).gridEFrequency2[i] = cuZero;
+			return;
+		}
+
+		double theta1 = asin(dk1 / ko);
+
+		double a = 1.0 - (1.0 / (1.0 + exp(-activationParameter * (abs(theta1) - radius))));
 
 		(*s).gridEFrequency1[i] *= a;
 		(*s).gridEFrequency2[i] *= a;
@@ -1625,10 +1747,28 @@ namespace hostFunctions{
 		if ((*sc).is3D) {
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel, d.dParamsDevice);
 		}
+		// else if ((*sc).isCylindric) {
+		// 	d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
+		// }
 		else {
+			//uncomment and change logic if I want to use the square spectra
+			//d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum2DSquareKernel, d.dParamsDevice);
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
 		}
 		d.deviceMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), DeviceToHost);
+		return 0;
+	}
+
+	int forwardHankel(activeDevice& d, double* in, deviceComplex* out) {
+		deviceParameterSet* sc = d.dParams;
+		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, hankelKernel, d.dParamsDevice, in, (double*)(*sc).workspace1);
+		d.fft((*sc).workspace1, out, deviceFFTD2Z1D);
+		return 0;
+	}
+	int backwardHankel(activeDevice& d, deviceComplex* in, double* out) {
+		deviceParameterSet* sc = d.dParams;
+		d.fft(in, (*sc).workspace1, deviceFFTZ2D1D);
+		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, inverseHankelKernel, d.dParamsDevice, (double*)(*sc).workspace1, out);
 		return 0;
 	}
 
@@ -1807,7 +1947,24 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	int applyAperatureFarFieldHankel(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double diameter, double activationParameter, double xOffset, double yOffset) {
+		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
+		forwardHankel(d, s.gridETime1, s.gridEFrequency1);
+		deviceParameterSet* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, apertureFarFieldKernelHankel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
+		backwardHankel(d, s.gridEFrequency1, s.gridETime1);
+		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
+		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(deviceComplex), DeviceToHost);
+		getTotalSpectrum(d);
+		return 0;
+	}
+
 	int applyAperatureFarField(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double diameter, double activationParameter, double xOffset, double yOffset) {
+		if ((*sCPU).isCylindric) {
+			return applyAperatureFarFieldHankel(d, sCPU, s, diameter, activationParameter, xOffset, yOffset);
+		}
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		deviceParameterSet* sDevice = d.dParamsDevice;
@@ -1826,6 +1983,8 @@ namespace hostFunctions{
 
 		return 0;
 	}
+
+
 
 
 	int applyAperature(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s,double diameter, double activationParameter) {
@@ -2671,21 +2830,23 @@ namespace hostFunctions{
 		d.reset(fittingSet, &s);
 
 		if ((*fittingSet).isInSequence) {
+			(*fittingSet).isFollowerInSequence = FALSE;
 			solveSequenceWithDevice(d, fittingSet, s);
+			(*(*fittingSet).progressCounter)++;
 		}
 		else {
 			solveNonlinearWaveEquationWithDevice(d, fittingSet, s);
 		}
 
 		//maximize total spectrum in ROI
-		if ((*fittingSet).fittingMode != 3) {
+		if ((*fittingSet).fittingMode < 3) {
 			for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
 				result += (*fittingSet).totalSpectrum[(*fittingSet).fittingMode * (*fittingSet).Nfreq + (*fittingSet).fittingROIstart + i];
 			}
 			return result;
 		}
 
-		//mode 3: match total spectrum to reference given in ascii file
+		//mode 3 & 4: match total spectrum to reference given in ascii file
 		double a;
 		double maxSim = 0.0;
 		double maxRef = 0.0;
@@ -2703,10 +2864,21 @@ namespace hostFunctions{
 			maxRef = 1;
 		}
 		result = 0.0;
-		for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
-			a = (refSpec[i] / maxRef) - (simSpec[i] / maxSim);
-			result += a * a;
+
+		if ((*fittingSet).fittingMode == 4) {
+			for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
+				a = log10(refSpec[i] / maxRef) - log10(simSpec[i] / maxSim);
+				if(!isnan(a)) result += a * a;
+			}
 		}
+		else {
+			for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
+				a = (refSpec[i] / maxRef) - (simSpec[i] / maxSim);
+				result += a * a;
+			}
+		}
+
+
 		return sqrt(result);
 	}
 	
@@ -2748,12 +2920,13 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 
 //run in fitting mode
 unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
-	fittingSet = (simulationParameterSet*)calloc(1, sizeof(simulationParameterSet));
-	if (fittingSet == NULL) return 1;
+	simulationParameterSet sCPUcurrent;
+	fittingSet = &sCPUcurrent;
+
 	memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
 	deviceParameterSet s;
 	memset(&s, 0, sizeof(deviceParameterSet));
-	activeDevice d(sCPU, &s);
+	activeDevice d(fittingSet, &s);
 	dFit = &d;
 	column_vector parameters;
 	parameters.set_size((*sCPU).Nfitting);
@@ -2814,15 +2987,13 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 		solveSequenceWithDevice(d, sCPU, s);
 	}
 	else {
-
 		solveNonlinearWaveEquationWithDevice(d, sCPU, s);
 	}
 
 	(*sCPU).progressCounter = originalCounter;
 
 	d.deallocateSet(&s);
-	free(fittingSet);
-	
+	dFit = NULL;
 	return 0;
 }
 

@@ -3,8 +3,8 @@
 #include <chrono>
 #include <locale>
 #include <fstream>
-#include "../LightwaveExplorerCoreCPU.h"
-#include "../LightwaveExplorerCoreCounter.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
 #ifndef CPUONLY
 #ifndef NOCUDA
 #include <cuda_runtime.h>
@@ -14,7 +14,21 @@
 #endif
 #ifdef _WIN32
 #include "../LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+// Windows Header Files
+#include <windows.h>
+bool isIntelRuntimeInstalled() {
+    wchar_t loadBuffer[1024];
+    DWORD envcount = GetEnvironmentVariableW(L"INTEL_DEV_REDIST", loadBuffer, 16);
+    if (envcount != 0) {
+        return TRUE;
+    }
+    return FALSE;
+}
 #else
+bool isIntelRuntimeInstalled() {
+    return TRUE;
+}
 #include "LightwaveExplorerDPCPPlib.h"
 #endif
 #endif
@@ -36,6 +50,8 @@ bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
 bool CUDAavailable = FALSE;
 bool SYCLavailable = FALSE;
+bool doNotLoadSYCL = FALSE;
+std::string inputArgs;
 int cudaGPUCount = 0;
 int syclGPUCount = 0;
 size_t progressCounter = 0;
@@ -190,6 +206,7 @@ public:
         pulldowns[2].addElement(_T("Maximize y"));
         pulldowns[2].addElement(_T("Maximize Total"));
         pulldowns[2].addElement(_T("Fit spectrum"));
+        pulldowns[2].addElement(_T("Fit spectrum (log)"));
         pulldowns[2].init(parentHandle, labelWidth, 20, 2 * textWidth, 1);
 
         filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
@@ -393,7 +410,6 @@ public:
         pulldowns[7].setTooltip("Select the primary method of calculation. The algorithm is the same, but you can run it either on a GPU or CPU depending on your machine");
         pulldowns[8].setTooltip("Select a secondary mode of calculation for offloading jobs from a batch. For example, if the pulldown to the left is set to CUDA and this one is OpenMP, and the number to the right is 2, 2 of the simulations from the batch will be performed on the CPU");
 
-
         pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
         textBoxes[1].setLabel(-labelWidth, 0, _T("Frequency (THz)"));
@@ -566,17 +582,17 @@ void setInterfaceValuesToActiveValues(){
     theGui.pulldowns[4].setValue((*activeSetPtr).symmetryType);
     theGui.pulldowns[5].setValue((*activeSetPtr).batchIndex);
     theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
-
+    theGui.sequence.clear();
     if (std::string((*activeSetPtr).sequenceString).length() > 6) {
         std::string formattedSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
         formatSequence(formattedSequence);
         theGui.sequence.directOverwritePrintSequencce(formattedSequence.c_str());
     }
-    stripLineBreaks((*activeSetPtr).field1FilePath);
+    stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
     if (std::string((*activeSetPtr).field2FilePath).compare("None") != 0) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
     if (std::string((*activeSetPtr).fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
-
+    theGui.fitCommand.clear();
     if (!((*activeSetPtr).fittingString[0] == 'N')) {
         std::string formattedFit((*activeSetPtr).fittingString,MAX_LOADSTRING);
         insertAfterCharacter(formattedFit,';',std::string("\n"));
@@ -649,7 +665,7 @@ void readParametersFromInterface() {
         noneString.copy((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
     }
     else {
-        stripWhiteSpace((*activeSetPtr).sequenceString);
+        stripWhiteSpace((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
     }
     
     memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
@@ -659,7 +675,7 @@ void readParametersFromInterface() {
         noneString.copy((*activeSetPtr).fittingString, MAX_LOADSTRING);
     }
     else {
-        stripLineBreaks((*activeSetPtr).fittingString);
+        stripLineBreaks((*activeSetPtr).fittingString, MAX_LOADSTRING);
     }
     
     memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING);
@@ -668,21 +684,21 @@ void readParametersFromInterface() {
     if (s.length() == 0) {
         noneString.copy((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     }
-    stripLineBreaks((*activeSetPtr).field1FilePath);
+    stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING);
     theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     s.assign((*activeSetPtr).field2FilePath);
     if (s.length() == 0) {
         noneString.copy((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     }
-    stripLineBreaks((*activeSetPtr).field2FilePath);
+    stripLineBreaks((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
     memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING);
     theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     s.assign((*activeSetPtr).outputBasePath);
     if (s.length() == 0) {
         noneString.copy((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     }
-    stripLineBreaks((*activeSetPtr).outputBasePath);
+    stripLineBreaks((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
     
     memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING);
     theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath, MAX_LOADSTRING);
@@ -690,7 +706,7 @@ void readParametersFromInterface() {
     if (s.length() == 0) {
         noneString.copy((*activeSetPtr).fittingPath, MAX_LOADSTRING);
     }
-    stripLineBreaks((*activeSetPtr).fittingPath);
+    stripLineBreaks((*activeSetPtr).fittingPath, MAX_LOADSTRING);
 
     //derived parameters and cleanup:
     (*activeSetPtr).sellmeierType = 0;
@@ -865,15 +881,21 @@ void checkLibraryAvailability() {
 
 
 #ifndef NOSYCL
-    SYCLavailable = TRUE;
-    char syclDeviceList[1024] = { 0 };
-    size_t syclDevices = 0;
-    char counts[2] = { 0 };
-    readSYCLDevices(counts, syclDeviceList);
-    syclGPUCount = (int)counts[1];
-    syclDevices = (size_t)counts[0] + (size_t)counts[1];
-    if(syclDevices != 0){
-        theGui.console.cPrint("{}",syclDeviceList);
+    if (isIntelRuntimeInstalled()) {
+        SYCLavailable = TRUE;
+        char syclDeviceList[1024] = { 0 };
+        size_t syclDevices = 0;
+        char counts[2] = { 0 };
+        readSYCLDevices(counts, syclDeviceList);
+        syclGPUCount = (int)counts[1];
+        syclDevices = (size_t)counts[0] + (size_t)counts[1];
+        if (syclDevices != 0) {
+            theGui.console.cPrint("{}", syclDeviceList);
+        }
+    }
+    else {
+        theGui.console.cPrint("Not using SYCL because the Intel DPC++\nCompiler Runtime is not installed.\n");
+        SYCLavailable = FALSE;
     }
 #endif
 #endif
@@ -1152,7 +1174,7 @@ void createRunFile() {
 
     theGui.console.tPrint(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
-        (*activeSetPtr).outputBasePath, (*activeSetPtr).outputBasePath);
+        getBasename((*activeSetPtr).outputBasePath), getBasename((*activeSetPtr).outputBasePath));
     theGui.console.tPrint("Estimated time to complete: {:.2} hours\n", timeEstimate, (double)totalSteps * (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2, (*activeSetPtr).runType);
     isRunning = FALSE;
     isGridAllocated = FALSE;
@@ -2001,25 +2023,28 @@ void fittingThread(int pulldownSelection) {
     cancellationCalled = FALSE;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
-    readParametersFromInterface();
-    (*activeSetPtr).runType = 0;
+
+
     if (isGridAllocated) {
         freeSemipermanentGrids();
+        isGridAllocated = FALSE;
     }
-
+    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+    readParametersFromInterface();
+    (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
+    theGui.requestSliderUpdate();
     (*activeSetPtr).isFollowerInSequence = FALSE;
     (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
     loadPulseFiles(activeSetPtr);
+
+    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
     configureBatchMode(activeSetPtr);
     readFittingString(activeSetPtr);
     if ((*activeSetPtr).Nfitting == 0) {
         theGui.console.tPrint("Couldn't interpret fitting command.\n");
-        free((*activeSetPtr).statusFlags);
-        free((*activeSetPtr).deffTensor);
-        free((*activeSetPtr).loadedField1);
-        free((*activeSetPtr).loadedField2);
+        deallocateGrids(activeSetPtr, FALSE);
         return;
     }
     progressCounter = 0;
@@ -2027,10 +2052,7 @@ void fittingThread(int pulldownSelection) {
     if ((*activeSetPtr).fittingMode == 3) {
         if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
             theGui.console.tPrint("Could not read reference file!\n");
-            free((*activeSetPtr).statusFlags);
-            free((*activeSetPtr).deffTensor);
-            free((*activeSetPtr).loadedField1);
-            free((*activeSetPtr).loadedField2);
+            deallocateGrids(activeSetPtr, FALSE);
             return;
         }
     }
@@ -2063,10 +2085,12 @@ void fittingThread(int pulldownSelection) {
         assignedGPU = 1;
         fittingFunction = &runDlibFittingSYCL;
     }
-    fittingFunction(activeSetPtr);
-    (*activeSetPtr).plotSim = 0;
+    isRunning = TRUE;
     (*activeSetPtr).runningOnCPU = forceCPU;
     (*activeSetPtr).assignedGPU = assignedGPU;
+    fittingFunction(activeSetPtr);
+    (*activeSetPtr).plotSim = 0;
+
     theGui.requestPlotUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.tPrint(_T("Finished fitting after {:.4} s.\n"), 1e-6 *
@@ -2081,6 +2105,12 @@ void fittingThread(int pulldownSelection) {
 }
 
 int main(int argc, char **argv){
+    printf("argc is %i\n", argc);
+    for (size_t i; i < argc; i++) {
+        inputArgs.append(argv[i]);
+        if (argv[i][0] == 'n') doNotLoadSYCL = TRUE;
+        printf("i hear you");
+    }
     GtkApplication* app = gtk_application_new("nickkarpowicz.lightwave", (GApplicationFlags)0);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);

@@ -13,6 +13,10 @@ int hardwareCheckCounter(int* CUDAdeviceCount) {
 void atomicAddCounter(double* pulseSum, double pointEnergy) {
 }
 
+double j0Counter(double x) {
+	return x;
+}
+
 namespace {
 
 	void initializeDeviceParameters(simulationParameterSet* sCPU, deviceParameterSet* s) {

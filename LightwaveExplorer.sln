@@ -4,19 +4,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.3.32901.215
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightwaveExplorerSYCL", "LightwaveExplorerSYCL\LightwaveExplorerSYCL.vcxproj", "{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}"
-	ProjectSection(ProjectDependencies) = postProject
-		{5497503A-5EC8-4153-9713-5312E502BF36} = {5497503A-5EC8-4153-9713-5312E502BF36}
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DlibLibraryComponents", "DlibLibraryComponents\DlibLibraryComponents.vcxproj", "{5497503A-5EC8-4153-9713-5312E502BF36}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightwaveExplorerGTK", "LightwaveExplorerGTK\LightwaveExplorerGTK.vcxproj", "{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}"
 	ProjectSection(ProjectDependencies) = postProject
-		{5497503A-5EC8-4153-9713-5312E502BF36} = {5497503A-5EC8-4153-9713-5312E502BF36}
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69} = {FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LWElauncher", "LWElauncher\LWElauncher.vcxproj", "{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LWElauncher", "BuildResources\LWElauncher\LWElauncher.vcxproj", "{BB99C918-65B7-41A8-9B66-DE67DC4CB26A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -34,14 +28,6 @@ Global
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}.Release|x64.Build.0 = Release|x64
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}.Release|x86.ActiveCfg = Release|Win32
 		{FAB0594B-13F1-44A3-8BFB-BAFAD7FD4F69}.Release|x86.Build.0 = Release|Win32
-		{5497503A-5EC8-4153-9713-5312E502BF36}.Debug|x64.ActiveCfg = Debug|x64
-		{5497503A-5EC8-4153-9713-5312E502BF36}.Debug|x64.Build.0 = Debug|x64
-		{5497503A-5EC8-4153-9713-5312E502BF36}.Debug|x86.ActiveCfg = Debug|Win32
-		{5497503A-5EC8-4153-9713-5312E502BF36}.Debug|x86.Build.0 = Debug|Win32
-		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x64.ActiveCfg = Release|x64
-		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x64.Build.0 = Release|x64
-		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x86.ActiveCfg = Release|Win32
-		{5497503A-5EC8-4153-9713-5312E502BF36}.Release|x86.Build.0 = Release|Win32
 		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Debug|x64.ActiveCfg = Debug|x64
 		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Debug|x64.Build.0 = Debug|x64
 		{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}.Debug|x86.ActiveCfg = Debug|x64

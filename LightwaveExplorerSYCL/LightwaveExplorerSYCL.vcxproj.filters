@@ -18,13 +18,10 @@
     <ClInclude Include="framework.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerUtilities.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="LightwaveExplorerSYCL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LWEActiveDeviceSYCL.h">
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerTrilingual.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,7 +29,10 @@
     <ClCompile Include="LightwaveExplorerSYCL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerUtilities.cpp">
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LightwaveExplorerDevices\DlibLibraryComponents.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

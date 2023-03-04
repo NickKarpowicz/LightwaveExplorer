@@ -1,6 +1,6 @@
 #pragma once
 #include <complex>
-#include<cstring>
+#include <cstring>
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
@@ -12,7 +12,7 @@
 #include <oneapi/dpl/cmath>
 #define deviceComplex oneapi::dpl::complex<double>
 #define deviceLib oneapi::dpl
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #elif defined CPUONLY
 #include <fftw3.h>
 #define deviceComplex std::complex<double>
@@ -213,6 +213,7 @@ typedef struct deviceParameterSet {
     deviceComplex* k1 = 0;
     deviceComplex* k2 = 0;
     deviceComplex n0 = 0.0;
+    double* J0 = 0;
     double* gridRadialLaplacian1 = 0;
     double* gridRadialLaplacian2 = 0;
     double* gridETime1 = 0;
@@ -286,6 +287,7 @@ int             skipFileUntilCharacter(FILE* fstream, char target);
 int             copyParamsIntoStrings(char parameterBlock[22][256], const char* cc, int n);
 void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(const char* pString, double* iBlock, double* vBlock);
-void            stripWhiteSpace(char* sequenceString);
-void            stripLineBreaks(char* sequenceString);
+std::string     getBasename(char* fullPath);
+void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
+void            stripLineBreaks(char* sequenceString, size_t bufferSize);
 int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);

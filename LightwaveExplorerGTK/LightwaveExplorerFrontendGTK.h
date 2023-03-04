@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include "../LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #undef __noinline__
 #include <gtk/gtk.h>
 
@@ -628,7 +628,7 @@ public:
         s.append("\0");
         strArray[Nelements] = &strings[Nelements * strLength];
         s.copy(strArray[Nelements], 127);
-        stripLineBreaks(strArray[Nelements]);
+        stripLineBreaks(strArray[Nelements],128);
         ++Nelements;
     }
     void init(GtkWidget* grid, int x, int y, int width, int height) {

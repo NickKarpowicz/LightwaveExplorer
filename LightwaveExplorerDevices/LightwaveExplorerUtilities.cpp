@@ -1,6 +1,4 @@
 #include <cstdlib>
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <complex>
 #include <fstream>
@@ -11,10 +9,16 @@
 
 int readFittingString(simulationParameterSet* sCPU) {
 	std::string sIn((*sCPU).fittingString);
+#ifndef __CUDACC__
 	std::erase(sIn, '\r');
 	std::erase(sIn, '\n');
 	std::erase(sIn, '\t');
-	std::stringstream ss((*sCPU).fittingString);
+	memset((*sCPU).fittingString, 0, MAX_LOADSTRING);
+	sIn.copy((*sCPU).fittingString, MAX_LOADSTRING - 1);
+#endif
+
+
+	std::stringstream ss(sIn);
 	double ROIbegin, ROIend;
 	int maxIterations = 0;
 	int fittingCount = 0;
@@ -88,21 +92,28 @@ int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, cha
 }
 
 
-void stripWhiteSpace(char* sequenceString) {
+void stripWhiteSpace(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
+#ifndef __CUDACC__
 	std::erase(s, '\r');
 	std::erase(s, '\n');
 	std::erase(s, '\t');
-	memset(sequenceString, 0, 2 * MAX_LOADSTRING);
-	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
+#endif
+
+
+	memset(sequenceString, 0, bufferSize);
+	s.copy(sequenceString, bufferSize - 1);
 }
 
-void stripLineBreaks(char* sequenceString) {
+void stripLineBreaks(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
+#ifndef __CUDACC__
 	std::erase(s, '\r');
 	std::erase(s, '\n');
-	s.copy(sequenceString, 2 * MAX_LOADSTRING - 1);
+#endif
+	memset(sequenceString, 0, bufferSize);
+	s.copy(sequenceString, bufferSize-1);
 }
 
 
@@ -495,7 +506,10 @@ double saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, 
 	if ((*sCPU).nonlinearAbsorptionStrength != 0.0) timeEstimate *= 2.1;
 	timeEstimate /= 3600.0;
 	if (gpuType != 2) timeEstimate *= 8;
-
+	if ((*sCPU).fittingString[0] != 0 && (*sCPU).fittingString[0] != 'N') {
+		readFittingString(sCPU);
+		if ((*sCPU).fittingMaxIterations > 0) timeEstimate *= (*sCPU).fittingMaxIterations;
+	}
 	std::string baseName = getBasename((*sCPU).outputBasePath);
 
 	fs << "#!/bin/bash -l" << '\x0A';
@@ -554,6 +568,9 @@ int saveSettingsFile(simulationParameterSet* sCPU) {
 	if (fs.fail()) return -1;
 
 	std::string baseName = getBasename((*sCPU).outputBasePath);
+	std::string referenceBaseName = getBasename((*sCPU).fittingPath);
+	std::string pulse1BaseName = getBasename((*sCPU).field1FilePath);
+	std::string pulse2BaseName = getBasename((*sCPU).field2FilePath);
 	fs.precision(15);
 
 	fs << "Pulse energy 1 (J): " << (*sCPU).pulse1.energy << '\x0A';
@@ -620,15 +637,21 @@ int saveSettingsFile(simulationParameterSet* sCPU) {
 	fs << "Fitting mode: " << (*sCPU).fittingMode << '\x0A';
 	if ((*sCPU).runType > 0) { //don't include full path if making a cluster script
 		fs << "Output base path: " << baseName << '\x0A';
+		fs << "Field 1 from file type: " << (*sCPU).pulse1FileType << '\x0A';
+		fs << "Field 2 from file type: " << (*sCPU).pulse2FileType << '\x0A';
+		fs << "Field 1 file path: " << pulse1BaseName << '\x0A';
+		fs << "Field 2 file path: " << pulse2BaseName << '\x0A';
+		fs << "Fitting reference file path: " << referenceBaseName << '\x0A';
 	}
 	else {
 		fs << "Output base path: " << (*sCPU).outputBasePath << '\x0A';
+		fs << "Field 1 from file type: " << (*sCPU).pulse1FileType << '\x0A';
+		fs << "Field 2 from file type: " << (*sCPU).pulse2FileType << '\x0A';
+		fs << "Field 1 file path: " << (*sCPU).field1FilePath << '\x0A';
+		fs << "Field 2 file path: " << (*sCPU).field2FilePath << '\x0A';
+		fs << "Fitting reference file path: " << (*sCPU).fittingPath << '\x0A';
 	}
-	fs << "Field 1 from file type: " << (*sCPU).pulse1FileType << '\x0A';
-	fs << "Field 2 from file type: " << (*sCPU).pulse2FileType << '\x0A';
-	fs << "Field 1 file path: " << (*sCPU).field1FilePath << '\x0A';
-	fs << "Field 2 file path: " << (*sCPU).field2FilePath << '\x0A';
-	fs << "Fitting reference file path: " << (*sCPU).fittingPath << '\x0A';
+
 	fs << "Material name: " << crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW << '\x0A';
 	fs << "Sellmeier reference: " << crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference << '\x0A';
 	fs << "Chi2 reference: " << crystalDatabasePtr[(*sCPU).materialIndex].dReference << '\x0A';

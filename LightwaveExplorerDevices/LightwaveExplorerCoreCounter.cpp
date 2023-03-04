@@ -10,7 +10,7 @@ bool isnan(double x){
     return std::isnan(x);
 }
 #endif
-#include "LightwaveExplorerCore.cu"
+#include "../LightwaveExplorerCore.cu"
 #undef RUNSTEPCOUNTER
 #undef kernels
 #undef deviceFunctions
