@@ -14,7 +14,22 @@
 #endif
 #ifdef _WIN32
 #include "../LightwaveExplorerSYCL/LightwaveExplorerSYCL.h"
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+// Windows Header Files
+#include <windows.h>
+bool isIntelRuntimeInstalled() {
+    wchar_t loadBuffer[1024];
+    DWORD envcount = GetEnvironmentVariableW(L"INTEL_DEV_REDIST", loadBuffer, 16);
+    if (envcount != 0) {
+        return TRUE;
+    }
+    printf("No runtime!");
+    return FALSE;
+}
 #else
+bool isIntelRuntimeInstalled() {
+    return TRUE;
+}
 #include "LightwaveExplorerDPCPPlib.h"
 #endif
 #endif
@@ -36,6 +51,8 @@ bool isGridAllocated = FALSE;
 bool cancellationCalled = FALSE;
 bool CUDAavailable = FALSE;
 bool SYCLavailable = FALSE;
+bool doNotLoadSYCL = FALSE;
+std::string inputArgs;
 int cudaGPUCount = 0;
 int syclGPUCount = 0;
 size_t progressCounter = 0;
@@ -865,15 +882,21 @@ void checkLibraryAvailability() {
 
 
 #ifndef NOSYCL
-    SYCLavailable = TRUE;
-    char syclDeviceList[1024] = { 0 };
-    size_t syclDevices = 0;
-    char counts[2] = { 0 };
-    readSYCLDevices(counts, syclDeviceList);
-    syclGPUCount = (int)counts[1];
-    syclDevices = (size_t)counts[0] + (size_t)counts[1];
-    if(syclDevices != 0){
-        theGui.console.cPrint("{}",syclDeviceList);
+    if (isIntelRuntimeInstalled()) {
+        SYCLavailable = TRUE;
+        char syclDeviceList[1024] = { 0 };
+        size_t syclDevices = 0;
+        char counts[2] = { 0 };
+        readSYCLDevices(counts, syclDeviceList);
+        syclGPUCount = (int)counts[1];
+        syclDevices = (size_t)counts[0] + (size_t)counts[1];
+        if (syclDevices != 0) {
+            theGui.console.cPrint("{}", syclDeviceList);
+        }
+    }
+    else {
+        theGui.console.cPrint("Not using SYCL because the Intel DPC++\nCompiler Runtime is not installed.\n");
+        SYCLavailable = FALSE;
     }
 #endif
 #endif
@@ -2083,6 +2106,12 @@ void fittingThread(int pulldownSelection) {
 }
 
 int main(int argc, char **argv){
+    printf("argc is %i\n", argc);
+    for (size_t i; i < argc; i++) {
+        inputArgs.append(argv[i]);
+        if (argv[i][0] == 'n') doNotLoadSYCL = TRUE;
+        printf("i hear you");
+    }
     GtkApplication* app = gtk_application_new("nickkarpowicz.lightwave", (GApplicationFlags)0);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);

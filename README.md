@@ -33,9 +33,9 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ---
 
   ### Installation on a Windows PC
-  FIrst, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
+  Download and extract either LightwaveExplorerWin64.zip or LightwaveExplorerWin64.7z from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP). The LighwaveExplorer.exe application should just work.
 
-  Next, download the file LightwaveExplorerWin64.zip or LightwaveExplorerWin64.7z (the two files have the same contents, I just upload both because not everyone can open 7z) from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP).
+  If you want to use SYCL for propagation, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
 
   The Python module for working with the results is also in that folder for convenience; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder. It's also in this repo if you think of any improvements.
 

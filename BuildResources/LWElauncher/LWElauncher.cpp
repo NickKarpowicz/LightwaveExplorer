@@ -5,6 +5,7 @@
 
 #include "framework.h"
 #include "LWElauncher.h"
+#include <stdio.h>
 void setSYCLvars() {
     wchar_t loadBuffer[1024];
     DWORD envcount = GetEnvironmentVariableW(L"SYCL_CACHE_PERSISTENT", loadBuffer, 16);
@@ -44,7 +45,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
-
     setSYCLvars();
 
     STARTUPINFO si;
@@ -69,7 +69,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Wait until child process exits.
     WaitForSingleObject(pi.hProcess, INFINITE);
     ExitProcess(0);
-  
 
     return 0;
 }
