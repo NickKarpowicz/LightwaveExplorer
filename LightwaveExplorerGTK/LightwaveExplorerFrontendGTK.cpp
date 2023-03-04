@@ -2105,12 +2105,6 @@ void fittingThread(int pulldownSelection) {
 }
 
 int main(int argc, char **argv){
-    printf("argc is %i\n", argc);
-    for (size_t i; i < argc; i++) {
-        inputArgs.append(argv[i]);
-        if (argv[i][0] == 'n') doNotLoadSYCL = TRUE;
-        printf("i hear you");
-    }
     GtkApplication* app = gtk_application_new("nickkarpowicz.lightwave", (GApplicationFlags)0);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);
