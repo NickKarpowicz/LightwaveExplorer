@@ -5,7 +5,6 @@
 
 #include "framework.h"
 #include "LWElauncher.h"
-#include <stdio.h>
 void setSYCLvars() {
     wchar_t loadBuffer[1024];
     DWORD envcount = GetEnvironmentVariableW(L"SYCL_CACHE_PERSISTENT", loadBuffer, 16);
