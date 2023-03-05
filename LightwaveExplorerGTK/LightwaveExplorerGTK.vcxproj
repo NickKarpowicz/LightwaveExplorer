@@ -125,7 +125,9 @@ copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveEx
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.cpp" />
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.cpp" />
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp" />
-    <ClCompile Include="..\LightwaveExplorerDevices\LWEActiveDeviceCommon.cpp" />
+    <ClCompile Include="..\LightwaveExplorerDevices\LWEActiveDeviceCommon.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="LightwaveExplorerFrontendGTK.cpp" />
   </ItemGroup>
   <ItemGroup>
