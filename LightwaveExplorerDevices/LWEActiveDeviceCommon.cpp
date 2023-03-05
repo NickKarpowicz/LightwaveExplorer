@@ -45,7 +45,7 @@ namespace {
 		(*s).isCylindric = (*sCPU).isCylindric;
 		(*s).forceLinear = (*sCPU).forceLinear;
 		(*s).isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;
-		(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0;
+		(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0.0;
 
 		if ((*sCPU).nonlinearAbsorptionStrength > 0.) {
 			(*s).hasPlasma = TRUE;

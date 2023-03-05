@@ -1052,10 +1052,10 @@ namespace kernels {
 			(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
 			(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
 		}
-		if ((*s).chiLinear1[i].real() <= 0.0) {
+		if ((*s).chiLinear1[i].real() < -0.1) {
 			(*s).fieldFactor1[i] = 0.0;
 		}
-		if ((*s).chiLinear2[i].real() <= 0.0) {
+		if ((*s).chiLinear2[i].real() < -0.1) {
 			(*s).fieldFactor2[i] = 0.0;
 		}
 
@@ -1123,7 +1123,7 @@ namespace kernels {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (minN(ne.real(), no.real()) < 1.0 || ne.real() > 6.0 || no.real() > 6.0 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
+		if (minN(ne.real(), no.real()) < 0.95 || ne.real() > 6.0 || no.real() > 6.0 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -1142,10 +1142,6 @@ namespace kernels {
 		if ((*s).isUsingMillersRule) {
 			chi11 = (*s).chiLinear1[k];
 			chi12 = (*s).chiLinear2[k];
-		}
-		else {
-			chi11 = deviceComplex(1, 0);
-			chi12 = deviceComplex(1, 0);
 		}
 
 		if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())) && (*s).fieldFactor1[k] > 0.0 && (*s).fieldFactor2[k] > 0.0) {
