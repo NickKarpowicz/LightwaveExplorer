@@ -8,26 +8,23 @@
 #define DeviceToDevice cudaMemcpyDeviceToDevice
 
 #ifdef __CUDACC__
-
 //In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
-__device__ thrust::complex<double> operator/(double a, thrust::complex<double> b) {
-    double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
-    return thrust::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
+__device__ thrust::complex<double> operator/(const double& a, const thrust::complex<double>& b) {
+	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
+	return thrust::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
 }
-__device__ thrust::complex<double> operator/(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() / b, a.imag() / b); }
+__device__ thrust::complex<double> operator/(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() / b, a.imag() / b); }
 
-__device__ thrust::complex<double> operator*(double b, thrust::complex<double> a) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
+__device__ thrust::complex<double> operator*(const double& b, const thrust::complex<double>& a) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
 __device__ thrust::complex<double> operator*(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
 
-__device__ thrust::complex<double> operator+(double a, thrust::complex<double> b) { return thrust::complex<double>(b.real() + a, b.imag()); }
-__device__ thrust::complex<double> operator+(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() + b, a.imag()); }
+__device__ thrust::complex<double> operator+(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(b.real() + a, b.imag()); }
+__device__ thrust::complex<double> operator+(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() + b, a.imag()); }
 
-__device__ thrust::complex<double> operator-(double a, thrust::complex<double> b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
-__device__ thrust::complex<double> operator-(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() - b, a.imag()); }
+__device__ thrust::complex<double> operator-(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
+__device__ thrust::complex<double> operator-(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() - b, a.imag()); }
 
 #endif
-
-
 
 int hardwareCheckCUDA(int* CUDAdeviceCount) {
 	int CUDAdevice;
@@ -118,13 +115,13 @@ public:
 		cudaStreamDestroy(stream);
 	}
 
-	bool isTheCanaryPixelNaN(double* canaryPointer) {
+	const bool isTheCanaryPixelNaN(double* canaryPointer) {
 		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
 		return(isnan(canaryPixel));
 	}
 
 	template<typename Function, typename... Args>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
+	const void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
 		kernel << <Nblock, Nthread, 0, stream >> > (args...);
 	}
 

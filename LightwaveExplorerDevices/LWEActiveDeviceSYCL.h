@@ -97,7 +97,7 @@ public:
 	}
 
 	template<typename Function, typename... Args>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
+	const void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
 		stream.submit([&](sycl::handler& h) {
 			h.parallel_for(Nblock * Nthread, [=](auto i) {kernel(i, args...); });
 			});
@@ -217,7 +217,7 @@ public:
 		configuredFFT = 1;
 	}
 
-	void fft(void* input, void* output, int type) {
+	const void fft(void* input, void* output, int type) const {
 		switch (type) {
 		case 0:
 			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (double*)input, (double*)(sycl::double2*)output);
