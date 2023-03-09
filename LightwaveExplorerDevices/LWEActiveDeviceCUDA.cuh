@@ -115,13 +115,13 @@ public:
 		cudaStreamDestroy(stream);
 	}
 
-	const bool isTheCanaryPixelNaN(double* canaryPointer) {
+	bool isTheCanaryPixelNaN(double* canaryPointer) {
 		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
 		return(isnan(canaryPixel));
 	}
 
 	template<typename Function, typename... Args>
-	const void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
+	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
 		kernel << <Nblock, Nthread, 0, stream >> > (args...);
 	}
 

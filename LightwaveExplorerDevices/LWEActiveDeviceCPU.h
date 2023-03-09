@@ -120,7 +120,7 @@ public:
 		fftDestroy();
 	}
 	template<typename Function, typename... Args>
-	const void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
+	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
 #pragma omp parallel for num_threads(deviceThreads)
 		for (int i = 0; i < (int)Nthread; ++i) {
 			for (unsigned int j = 0u; j < Nblock; ++j) {
@@ -150,7 +150,7 @@ public:
 		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
 		return(isnan(canaryPixel));
 	}
-	const void fft(void* input, void* output, int type) const {
+	void fft(void* input, void* output, int type) const {
 		if (!configuredFFT) return;
 		switch (type) {
 		case 0:
