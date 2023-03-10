@@ -13,6 +13,27 @@ typedef double deviceFP;
 #include <oneapi/dpl/cmath>
 typedef oneapi::dpl::complex<double> deviceComplex;
 typedef double deviceFP;
+// float cos(float x){
+//     return cosf(x);
+// }
+// float acos(float x){
+//     return acosf(x);
+// }
+// float sin(float x){
+//     return sinf(x);
+// }
+// float asin(float x){
+//     return asinf(x);
+// }
+// float sqrt(float x){
+//     return sqrtf(x);
+// }
+// float tan(float x){
+//     return tanf(x);
+// }
+// float atan(float x){
+//     return atanf(x);
+// }
 #define deviceLib oneapi::dpl
 #include <sycl/sycl.hpp>
 #elif defined CPUONLY

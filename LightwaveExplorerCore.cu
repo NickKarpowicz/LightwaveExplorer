@@ -271,8 +271,8 @@ namespace deviceFunctions {
 		}
 
 		deviceFP gradient[2][2] = { {0.0} };
-		deviceFP alpha[2] = { asin(kx1 / n[0][0].real()),asin(kx1 / n[0][1].real()) };
-		deviceFP beta[2] = { asin(ky1 / n[0][0].real()),asin(ky1 / n[0][1].real()) };
+		deviceFP alpha[2] = { asin(kx1 / n[0][0].real()),(deviceFP)asin(kx1 / n[0][1].real()) };
+		deviceFP beta[2] = { asin(ky1 / n[0][0].real()),(deviceFP)asin(ky1 / n[0][1].real()) };
 
 		deviceFP gradientStep = 1.0e-6;
 		deviceFP gradientFactor = 0.5 / gradientStep;
@@ -1564,7 +1564,7 @@ namespace kernels {
 			specfac = loadedField[h] * deviceLib::exp(specphase);
 		}
 		deviceComplex ne, no;
-		sellmeierCuda(&ne, &no, sellmeierCoefficients, abs(f), (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 		deviceFP ko = TWOPI * no.real() * f / LIGHTC;
 		deviceFP zR = PI * (*p).beamwaist * (*p).beamwaist * no.real() * f / LIGHTC;
 		if (f == 0) {
@@ -1753,7 +1753,8 @@ namespace hostFunctions{
 			//d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum2DSquareKernel, d.dParamsDevice);
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
 		}
-		d.deviceMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(deviceFP), DeviceToHost);
+		
+		d.deviceMemcpy((*sCPU).totalSpectrum, (*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), DeviceToHost);
 		return 0;
 	}
 
@@ -1797,7 +1798,6 @@ namespace hostFunctions{
 		devpCPU.beamAnglePhi = pCPU.beamAnglePhi;
 		devpCPU.circularity = pCPU.circularity;
 		devpCPU.pulseSum = pCPU.pulseSum;
-
 		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet), HostToDevice);
 
 		deviceFP* materialPhase;
@@ -1811,7 +1811,6 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&materialCoefficients, 66, sizeof(deviceFP));
 		d.deviceCalloc((void**)&sellmeierPropagationMedium, 66, sizeof(deviceFP));
 		d.deviceCalloc((void**)&materialPhase, (*s).Ntime, sizeof(deviceFP));
-
 		d.deviceMemcpy(materialCoefficients, (*s).crystalDatabase[pCPU.phaseMaterial].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
 		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
 		d.deviceLaunch((unsigned int)(*s).Ntime, 1, materialPhaseKernel, (*s).fStep, (*s).Ntime, materialCoefficients, pCPU.frequency, pCPU.frequency, pCPU.phaseMaterialThickness, pCPU.phaseMaterialThickness, materialPhase, materialPhase);
@@ -1821,7 +1820,6 @@ namespace hostFunctions{
 		if (useLoadedField) {
 			d.deviceMemcpy(loadedField, loadedFieldIn, (*s).Ntime * sizeof(std::complex<double>), HostToDevice);
 		}
-
 		d.deviceMemset(pulseSum, 0, sizeof(deviceFP));
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
 		d.deviceMemcpy(p, &devpCPU, sizeof(devicePulse), HostToDevice);
@@ -1858,6 +1856,7 @@ namespace hostFunctions{
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet* sc = d.dParams;
+		
 		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet), HostToDevice);
 		deviceParameterSet* scDevice = d.dParamsDevice;
 		
@@ -1869,7 +1868,9 @@ namespace hostFunctions{
 				d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
 				d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFTD2Z);
 			}
+			
 			addPulseToFieldArrays(d, d.cParams->pulse1, d.cParams->field1IsAllocated, d.cParams->loadedField1);
+			
 			addPulseToFieldArrays(d, d.cParams->pulse2, d.cParams->field2IsAllocated, d.cParams->loadedField2);
 		}
 		else {
@@ -2230,7 +2231,6 @@ namespace hostFunctions{
 
 
 	unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s) {
-
 		if ((d.hasPlasma != s.hasPlasma) && s.isCylindric) {
 			d.deallocateSet(&s);
 			d.allocateSet(sCPU, &s);
