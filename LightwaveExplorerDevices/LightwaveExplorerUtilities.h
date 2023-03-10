@@ -86,6 +86,28 @@ typedef struct pulse {
     double pulseSum;
 } pulse;
 
+typedef struct devicePulse {
+    deviceFP energy;
+    deviceFP frequency;
+    deviceFP bandwidth;
+    int sgOrder;
+    deviceFP cep;
+    deviceFP delay;
+    deviceFP gdd;
+    deviceFP tod;
+    int phaseMaterial;
+    deviceFP phaseMaterialThickness;
+    deviceFP beamwaist;
+    deviceFP x0;
+    deviceFP y0;
+    deviceFP z0;
+    deviceFP beamAngle;
+    deviceFP polarizationAngle;
+    deviceFP beamAnglePhi;
+    deviceFP circularity;
+    deviceFP pulseSum;
+} devicePulse;
+
 //Simulation parameter struct to pass to the simulations running in threads
 typedef struct simulationParameterSet {
     double rStep = 0;

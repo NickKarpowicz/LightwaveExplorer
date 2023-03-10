@@ -119,9 +119,33 @@ public:
 		stream.memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
+	template<typename dstType, typename srcType>
+	void deviceMemcpy(dstType* dst, srcType* src, size_t count, cudaMemcpyKind kind) {
 		stream.wait();
-		stream.memcpy(dst, src, count);
+		if (sizeof(dstType) == sizeof(srcType) || kind == DeviceToDevice) {
+			stream.memcpy(dst, src, count);
+		}
+		//if not the same size, explictly cast on the host
+		else {
+			if (kind == DeviceToHost) {
+				srcType* copyBuffer = new srcType[count / sizeof(srcType)];
+				stream.memcpy(copyBuffer, src, count);
+				stream.wait();
+				for (size_t i = 0; i < count / sizeof(dstType); i++) {
+					dst[i] = static_cast<dstType>(copyBuffer[i]);
+				}
+				delete[] copyBuffer;
+			}
+			else if (kind == HostToDevice) {
+				dstType* copyBuffer = new dstType[count / sizeof(dstType)];
+				for (size_t i = 0; i < count / sizeof(srcType); i++) {
+					copyBuffer[i] = static_cast<dstType>(src[i]);
+				}
+				stream.memcpy(dst, copyBuffer, (count * sizeof(srcType)) / sizeof(dstType));
+				stream.wait();
+				delete[] copyBuffer;
+			}
+		}
 	}
 
 	void deviceFree(void* block) {
