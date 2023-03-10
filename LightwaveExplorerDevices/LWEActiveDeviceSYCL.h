@@ -2,13 +2,16 @@
 #include <sycl/sycl.hpp>
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
+#include <oneapi/dpl/complex>
 #define DeviceToHost 2
 #define HostToDevice 1
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
 #define isnan(x) std::isnan(x)
-void atomicAddSYCL(double* pulseSum, double pointEnergy) {
-	sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
+#define dftPrecision oneapi::mkl::dft::precision::DOUBLE
+#define dftComplexType sycl::double2
+void atomicAddSYCL(deviceFP* pulseSum, deviceFP pointEnergy) {
+	sycl::atomic_ref<deviceFP, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
 	a.fetch_add(pointEnergy);
 }
 
@@ -16,47 +19,48 @@ int hardwareCheckSYCL(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
-double j0SYCL(double x) {
+deviceFP j0SYCL(deviceFP x) {
 	if (x < 8.0) {
-		double y = x * x;
-		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
+		deviceFP y = x * x;
+		deviceFP ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
 			y * (-11214424.18 + y * (77392.33017 + y * (-184.9052456)))));
-		double ans2 = 57568490411.0 + y * (1029532985.0 + y * (9494680.718 +
+		deviceFP ans2 = 57568490411.0 + y * (1029532985.0 + y * (9494680.718 +
 			y * (59272.64853 + y * (267.8532712 + y))));
 		return ans1 / ans2;
 	}
 	else {
-		double z = 8.0 / x;
-		double y = z * z;
-		double xx = x - 0.785398164;
-		double ans1 = 1.0 + y * (-0.1098628627e-2 + y * (0.2734510407e-4 +
+		deviceFP z = 8.0 / x;
+		deviceFP y = z * z;
+		deviceFP xx = x - 0.785398164;
+		deviceFP ans1 = 1.0 + y * (-0.1098628627e-2 + y * (0.2734510407e-4 +
 			y * (-0.2073370639e-5 + y * 0.2093887211e-6)));
-		double ans2 = -0.1562499995e-1 + y * (0.1430488765e-3 +
+		deviceFP ans2 = -0.1562499995e-1 + y * (0.1430488765e-3 +
 			y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934935152e-7)));
 		return sqrt(0.636619772 / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
 namespace oneapi::dpl {
-	double abs(oneapi::dpl::complex<double>& a) {
+	deviceFP abs(oneapi::dpl::complex<deviceFP>& a) {
 		return oneapi::dpl::sqrt(a.real() * a.real() + a.imag() * a.imag());
 	}
 }
 
-oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b) {
-	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
-	return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
+oneapi::dpl::complex<deviceFP> operator/(deviceFP a, oneapi::dpl::complex<deviceFP> b) {
+	deviceFP divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
+	return oneapi::dpl::complex<deviceFP>(b.real() * divByDenominator, -b.imag() * divByDenominator);
 }
 
 class deviceSYCL {
 private:
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;
-	double canaryPixel = 0.0;
-	oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>* fftPlanD2Z;
-	oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>* fftPlanZ2D;
-	oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>* fftPlan1DD2Z;
-	oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>* fftPlan1DZ2D;
-	oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>* doublePolfftPlan;
+	deviceFP canaryPixel = 0.0;
+
+	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlanD2Z;
+	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlanZ2D;
+	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlan1DD2Z;
+	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlan1DZ2D;
+	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* doublePolfftPlan;
 
 	void fftDestroy() {
 		delete fftPlan1DD2Z;
@@ -91,8 +95,8 @@ public:
 		deviceFree(dParamsDevice);
 	}
 
-	bool isTheCanaryPixelNaN(double* canaryPointer) {
-		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
+	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
+		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
 		return(isnan(canaryPixel));
 	}
 
@@ -105,7 +109,7 @@ public:
 	}
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
-		(*ptr) = sycl::aligned_alloc_device(2 * sizeof(double), N * elementSize, stream.get_device(), stream.get_context());
+		(*ptr) = sycl::aligned_alloc_device(2 * sizeof(deviceFP), N * elementSize, stream.get_device(), stream.get_context());
 		stream.memset((*ptr), 0, N * elementSize);
 		return 0;
 	}
@@ -138,7 +142,7 @@ public:
 		int Nspace2 = (*s).Nspace2;
 		int Nfreq = (*s).Nfreq;
 
-		fftPlan1DD2Z = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>((int)Ntime);
+		fftPlan1DD2Z = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>((int)Ntime);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 		std::int64_t outputStrides[2] = { 0, 1 };
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES, outputStrides);
@@ -146,7 +150,7 @@ public:
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2 * (int)(Nspace * Nspace2));
 
-		fftPlan1DZ2D = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>(Ntime);
+		fftPlan1DZ2D = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(Ntime);
 		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 
 		fftPlan1DZ2D->set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES, outputStrides);
@@ -156,7 +160,7 @@ public:
 
 		if ((*s).is3D) {
 			int cufftSizes1[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-			fftPlanD2Z = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>
+			fftPlanD2Z = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>
 				(std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1], cufftSizes1[2]});
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
@@ -166,7 +170,7 @@ public:
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime * Nspace * Nspace2);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq * Nspace * Nspace2);
 
-			fftPlanZ2D = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>
+			fftPlanZ2D = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>
 				(std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1], cufftSizes1[2]});
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
@@ -179,7 +183,7 @@ public:
 		else {
 			int cufftSizes1[] = { (int)(*s).Nspace, (int)(*s).Ntime };
 
-			fftPlanD2Z = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>(
+			fftPlanD2Z = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
 				std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1]});
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
@@ -188,7 +192,7 @@ public:
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, Ntime * Nspace);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, Nfreq * Nspace);
 
-			fftPlanZ2D = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>(
+			fftPlanZ2D = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
 				std::vector<std::int64_t>{cufftSizes1[0], cufftSizes1[1]});
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 			fftPlanZ2D->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
@@ -199,7 +203,7 @@ public:
 			if ((*s).isCylindric) {
 				isCylindric = 1;
 				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
-				doublePolfftPlan = new oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE, oneapi::mkl::dft::domain::REAL>(
+				doublePolfftPlan = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
 					std::vector<std::int64_t>{cufftSizes2[0], cufftSizes2[1]});
 				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
 				doublePolfftPlan->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2 + 2*(*s).hasPlasma);
@@ -220,19 +224,19 @@ public:
 	void fft(void* input, void* output, int type) const {
 		switch (type) {
 		case 0:
-			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (double*)input, (double*)(sycl::double2*)output);
+			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (deviceFP*)(dftComplexType*)output);
 			break;
 		case 1:
-			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (double*)(sycl::double2*)input, (double*)output);
+			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (deviceFP*)(dftComplexType*)input, (deviceFP*)output);
 			break;
 		case 2:
-			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (double*)input, (double*)(sycl::double2*)output);
+			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (deviceFP*)(dftComplexType*)output);
 			break;
 		case 3:
-			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (double*)(sycl::double2*)input, (double*)output);
+			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (deviceFP*)(dftComplexType*)input, (deviceFP*)output);
 			break;
 		case 4:
-			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (double*)input, (double*)(sycl::double2*)output);
+			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (deviceFP*)(dftComplexType*)output);
 			break;
 		}
 	}
@@ -269,33 +273,33 @@ public:
 			beamExpansionFactor = 2;
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
-		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(double));
-		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(double));
-		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridPropagationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
+		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
+		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
+		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).gridPropagationFactor1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(std::complex<double>));
-			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(std::complex<double>));
+			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(deviceComplex));
+			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(deviceComplex));
 		}
 
 		//smaller helper grids
-		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(double));
-		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(std::complex<double>));
-		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(double));
-		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(double));
+		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(deviceFP));
+		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceComplex));
+		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
+		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		deviceFP* expGammaTCPU = new deviceFP[2 * (*s).Ntime];
 		for (size_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(deviceFP) * (*s).Ntime, HostToDevice);
 		delete[] expGammaTCPU;
 
 		finishConfiguration(sCPU, s);
@@ -334,7 +338,7 @@ public:
 		initializeDeviceParameters(sCPU, s);
 		fftInitialize(s);
 		int memErrors = 0;
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		deviceFP* expGammaTCPU = new deviceFP[2 * (*s).Ntime];
 
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
@@ -348,31 +352,31 @@ public:
 		// currently 8 large grids, meaning memory use is approximately
 		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
 		// plus a little bit for additional constants/workspaces/etc
-		memErrors += deviceCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).k1, 2 * (*s).NgridC, sizeof(std::complex<double>));
+		memErrors += deviceCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).k1, 2 * (*s).NgridC, sizeof(deviceComplex));
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(std::complex<double>));
-			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, beamExpansionFactor * 2 * (*s).Ngrid, sizeof(std::complex<double>));
+			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(deviceComplex));
+			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, beamExpansionFactor * 2 * (*s).Ngrid, sizeof(deviceComplex));
 		}
 
 		//smaller helper grids
-		memErrors += deviceCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
+		memErrors += deviceCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
 		for (size_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(deviceFP) * (*s).Ntime, HostToDevice);
 		delete[] expGammaTCPU;
 		(*sCPU).memoryError = memErrors;
 		if (memErrors > 0) {

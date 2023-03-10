@@ -6,20 +6,24 @@
 #include <thrust/complex.h>
 #include <fftw3_mkl.h>
 #define deviceLib thrust
-#define deviceComplex thrust::complex<double>
+typedef thrust::complex<double> deviceComplex;
+typedef double deviceFP;
 #elif defined RUNONSYCL
 #include <oneapi/dpl/complex>
 #include <oneapi/dpl/cmath>
-#define deviceComplex oneapi::dpl::complex<double>
+typedef oneapi::dpl::complex<double> deviceComplex;
+typedef double deviceFP;
 #define deviceLib oneapi::dpl
 #include <sycl/sycl.hpp>
 #elif defined CPUONLY
 #include <fftw3.h>
-#define deviceComplex std::complex<double>
+typedef std::complex<double> deviceComplex;
+typedef double deviceFP;
 #define deviceLib std
 #else
 #include <fftw3_mkl.h>
-#define deviceComplex std::complex<double>
+typedef std::complex<double> deviceComplex;
+typedef double deviceFP;
 #define deviceLib std
 #endif
 
@@ -206,32 +210,32 @@ typedef struct deviceParameterSet {
     deviceComplex* gridPlasmaCurrentFrequency2 = 0;
     deviceComplex* chiLinear1 = 0;
     deviceComplex* chiLinear2 = 0;
-    double* inverseChiLinear1 = 0;
-    double* inverseChiLinear2 = 0;
-    double* fieldFactor1 = 0;
-    double* fieldFactor2 = 0;
+    deviceFP* inverseChiLinear1 = 0;
+    deviceFP* inverseChiLinear2 = 0;
+    deviceFP* fieldFactor1 = 0;
+    deviceFP* fieldFactor2 = 0;
     deviceComplex* k1 = 0;
     deviceComplex* k2 = 0;
     deviceComplex n0 = 0.0;
-    double* J0 = 0;
-    double* gridRadialLaplacian1 = 0;
-    double* gridRadialLaplacian2 = 0;
-    double* gridETime1 = 0;
-    double* gridETime2 = 0;
-    double* gridPolarizationTime1 = 0;
-    double* gridPolarizationTime2 = 0;
-    double* expGammaT = 0;
-    double* gridPlasmaCurrent1 = 0;
-    double* gridPlasmaCurrent2 = 0;
+    deviceFP* J0 = 0;
+    deviceFP* gridRadialLaplacian1 = 0;
+    deviceFP* gridRadialLaplacian2 = 0;
+    deviceFP* gridETime1 = 0;
+    deviceFP* gridETime2 = 0;
+    deviceFP* gridPolarizationTime1 = 0;
+    deviceFP* gridPolarizationTime2 = 0;
+    deviceFP* expGammaT = 0;
+    deviceFP* gridPlasmaCurrent1 = 0;
+    deviceFP* gridPlasmaCurrent2 = 0;
 
     //fixed length arrays
-    double firstDerivativeOperation[6] = { 0 };
-    double plasmaParameters[6] = { 0 }; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
-    double chi2Tensor[18] = { 0 };
-    double chi3Tensor[81] = { 0 };
-    double absorptionParameters[6] = { 0 };
-    double rotationForward[9] = { 0 };
-    double rotationBackward[9] = { 0 };
+    deviceFP firstDerivativeOperation[6] = { 0 };
+    deviceFP plasmaParameters[6] = { 0 }; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
+    deviceFP chi2Tensor[18] = { 0 };
+    deviceFP chi3Tensor[81] = { 0 };
+    deviceFP absorptionParameters[6] = { 0 };
+    deviceFP rotationForward[9] = { 0 };
+    deviceFP rotationBackward[9] = { 0 };
     int nonlinearSwitches[4] = { 0 };
 
     bool isCylindric = 0;
@@ -246,18 +250,18 @@ typedef struct deviceParameterSet {
     size_t Nspace2 = 0;
     size_t Ngrid = 0;
     size_t NgridC = 0;
-    double fftNorm = 0;
+    deviceFP fftNorm = 0;
     int axesNumber = 0;
     int sellmeierType = 0;
-    double crystalTheta;
-    double crystalPhi;
-    double f0 = 0;
-    double fStep = 0;
-    double dt = 0;
-    double dx = 0;
-    double dk1 = 0;
-    double dk2 = 0;
-    double h = 0;
+    deviceFP crystalTheta;
+    deviceFP crystalPhi;
+    deviceFP f0 = 0;
+    deviceFP fStep = 0;
+    deviceFP dt = 0;
+    deviceFP dx = 0;
+    deviceFP dk1 = 0;
+    deviceFP dk2 = 0;
+    deviceFP h = 0;
     size_t Nsteps = 0;
     int Nthread = 0;
     int NblockC = 0;
