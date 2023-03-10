@@ -13,8 +13,11 @@ namespace {
 		double backward[9] =
 		{ cosT * cosP, -sinP * cosT, sinT, sinP, cosP, 0, -sinT * cosP, sinP * sinT, cosT };
 
-		memcpy((*s).rotationForward, forward, 9 * sizeof(double));
-		memcpy((*s).rotationBackward, backward, 9 * sizeof(double));
+		for (size_t i = 0; i < 9; i++) {
+			(*s).rotationForward[i] = forward[i];
+			(*s).rotationBackward[i] = backward[i];
+		}
+
 		return 0;
 	}
 
@@ -104,15 +107,27 @@ namespace {
 			plasmaParametersCPU[2] = 0;
 		}
 
-		memcpy((*s).chi2Tensor, (*sCPU).chi2Tensor, 18 * sizeof(double));
 		for (int j = 0; j < 18; ++j) {
-			(*s).chi2Tensor[j] *= 2e-12; //go from d in pm/V to chi2 in m/V
+			(*s).chi2Tensor[j] = 2e-12 * (*sCPU).chi2Tensor[j]; //go from d in pm/V to chi2 in m/V
 			if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
 		}
 		memcpy((*s).nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int));
-		memcpy((*s).chi3Tensor, (*sCPU).chi3Tensor, 81 * sizeof(double));
-		memcpy((*s).absorptionParameters, (*sCPU).absorptionParameters, 6 * sizeof(double));
-		memcpy((*s).plasmaParameters, plasmaParametersCPU, 6 * sizeof(double));
-		memcpy((*s).firstDerivativeOperation, firstDerivativeOperation, 6 * sizeof(double));
+
+		for (size_t i = 0; i < 81; i++) {
+			(*s).chi3Tensor[i] = (*sCPU).chi3Tensor[i];
+		}
+
+		for (size_t i = 0; i < 6; i++) {
+			(*s).absorptionParameters[i] = (*sCPU).absorptionParameters[i];
+		}
+
+		for (size_t i = 0; i < 6; i++) {
+			(*s).plasmaParameters[i] = plasmaParametersCPU[i];
+		}
+
+		for (size_t i = 0; i < 6; i++) {
+			(*s).firstDerivativeOperation[i] = firstDerivativeOperation[i];
+		}
+
 	}
 }

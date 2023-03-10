@@ -9,7 +9,7 @@
 #define cudaMemcpyKind int
 #define isnan(x) std::isnan(x)
 #define dftPrecision oneapi::mkl::dft::precision::DOUBLE
-#define dftComplexType sycl::double2
+
 void atomicAddSYCL(deviceFP* pulseSum, deviceFP pointEnergy) {
 	sycl::atomic_ref<deviceFP, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
 	a.fetch_add(pointEnergy);
@@ -128,20 +128,20 @@ public:
 		//if not the same size, explictly cast on the host
 		else {
 			if (kind == DeviceToHost) {
-				srcType* copyBuffer = new srcType[count / sizeof(srcType)];
+				srcType* copyBuffer = new srcType[count];
 				stream.memcpy(copyBuffer, src, count);
 				stream.wait();
 				for (size_t i = 0; i < count / sizeof(dstType); i++) {
-					dst[i] = static_cast<dstType>(copyBuffer[i]);
+					dst[i] = copyBuffer[i];
 				}
 				delete[] copyBuffer;
 			}
 			else if (kind == HostToDevice) {
-				dstType* copyBuffer = new dstType[count / sizeof(dstType)];
+				dstType* copyBuffer = new dstType[count];
 				for (size_t i = 0; i < count / sizeof(srcType); i++) {
-					copyBuffer[i] = static_cast<dstType>(src[i]);
+					copyBuffer[i] = src[i];
 				}
-				stream.memcpy(dst, copyBuffer, (count * sizeof(srcType)) / sizeof(dstType));
+				stream.memcpy(dst, copyBuffer, (count * sizeof(srcType)) / (sizeof(srcType) / sizeof(dstType)));
 				stream.wait();
 				delete[] copyBuffer;
 			}
@@ -248,19 +248,19 @@ public:
 	void fft(void* input, void* output, int type) const {
 		switch (type) {
 		case 0:
-			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (deviceFP*)(dftComplexType*)output);
+			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (deviceComplex*)output);
 			break;
 		case 1:
-			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (deviceFP*)(dftComplexType*)input, (deviceFP*)output);
+			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (deviceComplex*)input, (deviceFP*)output);
 			break;
 		case 2:
-			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (deviceFP*)(dftComplexType*)output);
+			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (deviceComplex*)output);
 			break;
 		case 3:
-			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (deviceFP*)(dftComplexType*)input, (deviceFP*)output);
+			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (deviceComplex*)input, (deviceFP*)output);
 			break;
 		case 4:
-			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (deviceFP*)(dftComplexType*)output);
+			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (deviceComplex*)output);
 			break;
 		}
 	}
