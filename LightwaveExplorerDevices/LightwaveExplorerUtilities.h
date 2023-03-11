@@ -1,51 +1,33 @@
 #pragma once
+#define LWEFLOATINGPOINT 32
+
+#if LWEFLOATINGPOINT==32
+#define LWEFLOATINGPOINTTYPE float
+#else
+#define LWEFLOATINGPOINTTYPE double
+#endif
 #include <complex>
 #include <cstring>
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
 #include <fftw3_mkl.h>
-#define deviceLib thrust
-typedef thrust::complex<double> deviceComplex;
-typedef double deviceFP;
+typedef thrust::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
+typedef LWEFLOATINGPOINTTYPE deviceFP;
 #elif defined RUNONSYCL
 #include <oneapi/dpl/complex>
 #include <oneapi/dpl/cmath>
-typedef oneapi::dpl::complex<double> deviceComplex;
-typedef double deviceFP;
- //float cos(float x){
- //    return cosf(x);
- //}
- //float acos(float x){
- //    return acosf(x);
- //}
- //float sin(float x){
- //    return sinf(x);
- //}
- //float asin(float x){
- //    return asinf(x);
- //}
- //float sqrt(float x){
- //    return sqrtf(x);
- //}
- //float tan(float x){
- //    return tanf(x);
- //}
- //float atan(float x){
- //    return atanf(x);
- //}
-#define deviceLib oneapi::dpl
+typedef oneapi::dpl::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
+typedef LWEFLOATINGPOINTTYPE deviceFP;
 #include <sycl/sycl.hpp>
 #elif defined CPUONLY
 #include <fftw3.h>
-typedef std::complex<double> deviceComplex;
-typedef double deviceFP;
-#define deviceLib std
+typedef std::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
+typedef LWEFLOATINGPOINTTYPE deviceFP;
 #else
 #include <fftw3_mkl.h>
-typedef std::complex<double> deviceComplex;
-typedef double deviceFP;
-#define deviceLib std
+typedef std::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
+typedef LWEFLOATINGPOINTTYPE deviceFP;
 #endif
 
 #define THREADS_PER_BLOCK 32

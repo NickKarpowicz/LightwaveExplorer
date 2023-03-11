@@ -4,6 +4,8 @@
 #define HostToDevice 1
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
+#define deviceLib std
+#define deviceFPLib std
 
 int hardwareCheckCounter(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;

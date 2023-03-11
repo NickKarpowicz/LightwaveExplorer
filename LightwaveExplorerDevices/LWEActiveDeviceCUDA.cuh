@@ -4,11 +4,22 @@
 #include <cufft.h>
 #include <nvml.h>
 #include <thrust/complex.h>
+
 #define DeviceToHost cudaMemcpyDeviceToHost
 #define HostToDevice cudaMemcpyHostToDevice
 #define DeviceToDevice cudaMemcpyDeviceToDevice
-#define CUFFT_fwd CUFFT_D2Z
-#define CUFFT_bwd CUFFT_Z2D
+#if LWEFLOATINGPOINT==32
+	#define deviceLib deviceLibCUDAFP32
+	#define deviceFPLib deviceLibCUDAFP32 
+	#define CUFFT_fwd CUFFT_R2C
+	#define CUFFT_bwd CUFFT_C2R
+#else
+	#define deviceLib thrust
+	#define deviceFPLib 
+	#define CUFFT_fwd CUFFT_D2Z
+	#define CUFFT_bwd CUFFT_Z2D
+#endif
+
 
 #ifdef __CUDACC__
 //In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
@@ -26,9 +37,53 @@ __device__ thrust::complex<double> operator+(const thrust::complex<double>& a, c
 
 __device__ thrust::complex<double> operator-(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
 __device__ thrust::complex<double> operator-(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() - b, a.imag()); }
-
 #endif
 
+
+
+namespace deviceLibCUDAFP32{
+	__device__ float exp(float x){
+		return expf(x);
+	}
+	__device__ float abs(float x){
+		return fabs(x);
+	}
+	__device__ float sin(float x){
+		return sinf(x);
+	}
+	__device__ float cos(float x){
+		return cosf(x);
+	}
+	__device__ float atan(float x){
+		return atanf(x);
+	}
+	__device__ float sqrt(float x){
+		return sqrtf(x);
+	}
+	__device__ float asin(float x){
+		return asinf(x);
+	}
+	__device__ float pow(float x, float y){
+		return powf(x,y);
+	}
+	__device__ float pow(float x, int y){
+		return powf(x,y);
+	}
+	__device__ thrust::complex<float> pow(thrust::complex<float> x, deviceFP y){
+		return thrust::pow(x,y);
+	}
+	__device__ thrust::complex<float> exp(thrust::complex<float> x){
+		return thrust::exp(x);
+	}
+	__device__ float abs(thrust::complex<float> x){
+		return thrust::abs(x);
+	}
+	__device__ thrust::complex<float> sqrt(thrust::complex<float> x){
+		return thrust::sqrt(x);
+	}
+
+
+};
 int hardwareCheckCUDA(int* CUDAdeviceCount) {
 	int CUDAdevice;
 	cudaGetDeviceCount(CUDAdeviceCount);

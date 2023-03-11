@@ -10,6 +10,14 @@
 #define HostToDevice 1
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
+
+#if LWEFLOATINGPOINT==32
+	#define deviceFPLib deviceLibCPUFP32
+	#define deviceLib deviceLibCPUFP32
+#else
+	#define deviceFPLib std
+	#define deviceLib std
+#endif
 #if defined _WIN32 || __linux__
 const int deviceThreads = maxN(1, std::thread::hardware_concurrency()/2);
 #else
@@ -20,6 +28,7 @@ const int deviceThreads = std::thread::hardware_concurrency();
 #define isnan std::isnan
 #endif
 #if defined __APPLE__ || defined __linux__
+
 void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	deviceFP expected = pulseSumAtomic->load();
@@ -35,6 +44,47 @@ int hardwareCheckCPU(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
+namespace deviceLibCPUFP32{
+	float exp(float x){
+		return expf(x);
+	}
+	float abs(float x){
+		return fabs(x);
+	}
+	float sin(float x){
+		return sinf(x);
+	}
+	float cos(float x){
+		return cosf(x);
+	}
+	float atan(float x){
+		return atanf(x);
+	}
+	float sqrt(float x){
+		return sqrtf(x);
+	}
+	float asin(float x){
+		return asinf(x);
+	}
+	float pow(float x, float y){
+		return powf(x,y);
+	}
+	float pow(float x, int y){
+		return powf(x,y);
+	}
+	std::complex<float> pow(std::complex<float> x, float y){
+		return std::pow(x,y);
+	}
+	std::complex<float> exp(std::complex<float> x){
+		return std::exp(x);
+	}
+	float abs(std::complex<float> x){
+		return std::abs(x);
+	}
+	std::complex<float> sqrt(std::complex<float> x){
+		return std::sqrt(x);
+	}
+};
 deviceFP j0CPU(deviceFP x) {
 	if (x < 8.0) {
 		deviceFP y = x * x;
@@ -166,7 +216,7 @@ public:
 		float* copyBuffer = new float[count / sizeof(double)];
 		memcpy(copyBuffer, src, count/2);
 		for (size_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = copyBuffer[i];
+			dst[i] = (double)copyBuffer[i];
 		}
 		delete[] copyBuffer;
 	}
