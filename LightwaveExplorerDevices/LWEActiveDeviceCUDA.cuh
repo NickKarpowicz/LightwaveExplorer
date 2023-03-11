@@ -3,9 +3,12 @@
 #include <device_launch_parameters.h>
 #include <cufft.h>
 #include <nvml.h>
+#include <thrust/complex.h>
 #define DeviceToHost cudaMemcpyDeviceToHost
 #define HostToDevice cudaMemcpyHostToDevice
 #define DeviceToDevice cudaMemcpyDeviceToDevice
+#define CUFFT_fwd CUFFT_D2Z
+#define CUFFT_bwd CUFFT_Z2D
 
 #ifdef __CUDACC__
 //In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
@@ -51,7 +54,7 @@ class deviceCUDA {
 private:
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;
-	double canaryPixel = 0.0;
+	deviceFP canaryPixel = 0.0;
 	cufftHandle fftPlanD2Z;
 	cufftHandle fftPlanZ2D;
 	cufftHandle fftPlan1DD2Z;
@@ -64,7 +67,7 @@ private:
 		nvmlInit_v2();
 		nvmlDeviceGetHandleByIndex_v2((*sCPU).assignedGPU, &nvmlDevice);
 		nvmlDeviceGetMemoryInfo(nvmlDevice, &nvmlMemoryInfo);
-		size_t memoryEstimate = sizeof(double) * ((*s).Ngrid * 2 * 2 + 2 * (*s).NgridC * 6 * 2 + 2 * (*s).isCylindric * 5 * 2 + 2 * (*s).Ntime + 2 * (*s).Nfreq + 81 + 65536);
+		size_t memoryEstimate = sizeof(deviceFP) * ((*s).Ngrid * 2 * 2 + 2 * (*s).NgridC * 6 * 2 + 2 * (*s).isCylindric * 5 * 2 + 2 * (*s).Ntime + 2 * (*s).Nfreq + 81 + 65536);
 		nvmlShutdown();
 		if (nvmlMemoryInfo.free < memoryEstimate) {
 			(*sCPU).memoryError = -1;
@@ -115,14 +118,14 @@ public:
 		cudaStreamDestroy(stream);
 	}
 
-	bool isTheCanaryPixelNaN(double* canaryPointer) {
-		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
+	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
+		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
 		return(isnan(canaryPixel));
 	}
 
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
-		kernel << <Nblock, Nthread, 0, stream >> > (args...);
+		kernel<<<Nblock, Nthread, 0, stream>>>(args...);
 	}
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
@@ -138,6 +141,44 @@ public:
 	void deviceMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
 		cudaMemcpy(dst, src, count, kind);
 	}
+	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
+		float* copyBuffer = new float[count / sizeof(double)];
+		cudaMemcpy(copyBuffer, src, count/2, kind);
+		for (size_t i = 0; i < count / sizeof(double); i++) {
+			dst[i] = copyBuffer[i];
+		}
+		delete[] copyBuffer;
+	}
+
+	void deviceMemcpy(std::complex<double>* dst, thrust::complex<float>* src, size_t count, cudaMemcpyKind kind) {
+		thrust::complex<float>* copyBuffer = new thrust::complex<float>[count / sizeof(std::complex<double>)];
+		cudaMemcpy(copyBuffer, src, count/2, kind);
+		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
+		}
+		delete[] copyBuffer;
+	}
+
+	void deviceMemcpy(thrust::complex<float>* dst, std::complex<double>* src, size_t count, cudaMemcpyKind kind) {
+		thrust::complex<float>* copyBuffer = new thrust::complex<float>[count / sizeof(std::complex<double>)];
+		
+		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+			copyBuffer[i] = thrust::complex<float>((float)src[i].real(), (float)src[i].imag());
+		}
+		cudaMemcpy(dst, copyBuffer, count / 2, kind);
+		delete[] copyBuffer;
+	}
+
+	void deviceMemcpy(float* dst, double* src, size_t count, cudaMemcpyKind kind) {
+		float* copyBuffer = new float[count / sizeof(double)];
+
+		for (size_t i = 0; i < count / sizeof(double); i++) {
+			copyBuffer[i] = (float)src[i];
+		}
+		cudaMemcpy(dst, copyBuffer, count / 2, kind);
+		delete[] copyBuffer;
+	}
+
 
 	void deviceFree(void* block) {
 		cudaFree(block);
@@ -150,37 +191,37 @@ public:
 		isCylindric = 0;
 		hasPlasma = (*s).hasPlasma;
 		size_t workSize;
-		cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_D2Z, 2 * (int)((*s).Nspace * (*s).Nspace2));
-		cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_Z2D, 2 * (int)((*s).Nspace * (*s).Nspace2));
+		cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_fwd, 2 * (int)((*s).Nspace * (*s).Nspace2));
+		cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_bwd, 2 * (int)((*s).Nspace * (*s).Nspace2));
 		cufftSetStream(fftPlan1DD2Z, stream);
 		cufftSetStream(fftPlan1DZ2D, stream);
 		if ((*s).is3D) {
 			int cufftSizes1[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
 			cufftCreate(&fftPlanD2Z);
-			cufftGetSizeMany(fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-			cufftMakePlanMany(fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+			cufftGetSizeMany(fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_fwd, 2, &workSize);
+			cufftMakePlanMany(fftPlanD2Z, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_fwd, 2, &workSize);
 
 			cufftCreate(&fftPlanZ2D);
-			cufftGetSizeMany(fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-			cufftMakePlanMany(fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+			cufftGetSizeMany(fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_bwd, 2, &workSize);
+			cufftMakePlanMany(fftPlanZ2D, 3, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_bwd, 2, &workSize);
 		}
 		else {
 			int cufftSizes1[] = { (int)(*s).Nspace, (int)(*s).Ntime };
 
 			cufftCreate(&fftPlanD2Z);
-			cufftGetSizeMany(fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
-			cufftMakePlanMany(fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2, &workSize);
+			cufftGetSizeMany(fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_fwd, 2, &workSize);
+			cufftMakePlanMany(fftPlanD2Z, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_fwd, 2, &workSize);
 
 			cufftCreate(&fftPlanZ2D);
-			cufftGetSizeMany(fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
-			cufftMakePlanMany(fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_Z2D, 2, &workSize);
+			cufftGetSizeMany(fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_bwd, 2, &workSize);
+			cufftMakePlanMany(fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_bwd, 2, &workSize);
 
 			if ((*s).isCylindric) {
 				isCylindric = 1;
 				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
 				cufftCreate(&doublePolfftPlan);
-				cufftGetSizeMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2 + 2 * (*s).hasPlasma, &workSize);
-				cufftMakePlanMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_D2Z, 2 + 2 * (*s).hasPlasma, &workSize);
+				cufftGetSizeMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_fwd, 2 + 2 * (*s).hasPlasma, &workSize);
+				cufftMakePlanMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_fwd, 2 + 2 * (*s).hasPlasma, &workSize);
 				cufftSetStream(doublePolfftPlan, stream);
 			}
 		}
@@ -190,6 +231,7 @@ public:
 	}
 
 	void fft(void* input, void* output, int type) {
+		if (sizeof(deviceFP) == sizeof(float)) type += 5;
 		switch (type) {
 		case 0:
 			cufftExecD2Z(fftPlanD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
@@ -205,6 +247,21 @@ public:
 			break;
 		case 4:
 			cufftExecD2Z(doublePolfftPlan, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+			break;
+		case 5:
+			cufftExecR2C(fftPlanD2Z, (cufftReal*)input, (cufftComplex*)output);
+			break;
+		case 6:
+			cufftExecC2R(fftPlanZ2D, (cufftComplex*)input, (cufftReal*)output);
+			break;
+		case 7:
+			cufftExecR2C(fftPlan1DD2Z, (cufftReal*)input, (cufftComplex*)output);
+			break;
+		case 8:
+			cufftExecC2R(fftPlan1DZ2D, (cufftComplex*)input, (cufftReal*)output);
+			break;
+		case 9:
+			cufftExecR2C(doublePolfftPlan, (cufftReal*)input, (cufftComplex*)output);
 			break;
 		}
 	}
@@ -240,26 +297,26 @@ public:
 			beamExpansionFactor = 2;
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
-		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(double));
-		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(double));
-		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridPropagationFactor1, 0,  2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
+		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
+		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
+		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).gridPropagationFactor1, 0,  2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
+		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(std::complex<double>));
-			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(std::complex<double>));
+			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(deviceComplex));
+			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(deviceComplex));
 		}
 
 		//smaller helper grids
-		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(double));
-		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(std::complex<double>));
-		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(double));
-		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(double));
+		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(deviceFP));
+		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceComplex));
+		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
+		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
 		for (size_t i = 0; i < (*s).Ntime; ++i) {
@@ -299,26 +356,26 @@ public:
 		// currently 8 large grids, meaning memory use is approximately
 		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
 		// plus a little bit for additional constants/workspaces/etc
-		memErrors += deviceCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).k1, 2 * (*s).NgridC, sizeof(std::complex<double>));
+		memErrors += deviceCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).k1, 2 * (*s).NgridC, sizeof(deviceComplex));
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(std::complex<double>));
-			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(std::complex<double>));
+			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(deviceComplex));
+			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(deviceComplex));
 		}
 
 		//smaller helper grids
 		memErrors += deviceCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
+		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
 
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
 		for (size_t i = 0; i < (*s).Ntime; ++i) {

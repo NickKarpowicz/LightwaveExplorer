@@ -2812,7 +2812,7 @@ namespace hostFunctions{
 	}
 
 	// helper function for fitting mode, runs the simulation and returns difference from the desired outcome.
-	double getResidual(const column_vector& x) {
+	double getResidual(const dlib::matrix<double, 0, 1>& x) {
 
 		double multipliers[36] = { 0,
 	1, 1, 1e12, 1e12,
@@ -2887,7 +2887,7 @@ namespace hostFunctions{
 		if ((*fittingSet).fittingMode == 4) {
 			for (int i = 0; i < (*fittingSet).fittingROIsize; ++i) {
 				a = log10(refSpec[i] / maxRef) - log10(simSpec[i] / maxSim);
-				if(!isnan(a)) result += a * a;
+				if (!isnan(a)) result += a * a;
 			}
 		}
 		else {
@@ -2947,11 +2947,11 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	memset(&s, 0, sizeof(deviceParameterSet));
 	activeDevice d(fittingSet, &s);
 	dFit = &d;
-	column_vector parameters;
+	dlib::matrix<double, 0, 1> parameters;
 	parameters.set_size((*sCPU).Nfitting);
-	column_vector lowerBounds;
+	dlib::matrix<double, 0, 1> lowerBounds;
 	lowerBounds.set_size((*sCPU).Nfitting);
-	column_vector upperBounds;
+	dlib::matrix<double, 0, 1> upperBounds;
 	upperBounds.set_size((*sCPU).Nfitting);
 	double* targets[36] = { 0,
 	&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,

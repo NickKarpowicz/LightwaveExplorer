@@ -14,8 +14,8 @@ namespace {
 		{ cosT * cosP, -sinP * cosT, sinT, sinP, cosP, 0, -sinT * cosP, sinP * sinT, cosT };
 
 		for (size_t i = 0; i < 9; i++) {
-			(*s).rotationForward[i] = forward[i];
-			(*s).rotationBackward[i] = backward[i];
+			(*s).rotationForward[i] = (deviceFP)forward[i];
+			(*s).rotationBackward[i] = (deviceFP)backward[i];
 		}
 
 		return 0;
