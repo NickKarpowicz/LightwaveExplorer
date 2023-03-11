@@ -42,43 +42,40 @@ __device__ thrust::complex<double> operator-(const thrust::complex<double>& a, c
 
 
 namespace deviceLibCUDAFP32{
-	__device__ float exp(float x){
+	__device__ float exp(const float x){
 		return expf(x);
 	}
-	__device__ float abs(float x){
+	__device__ float abs(const float x){
 		return fabs(x);
 	}
-	__device__ float sin(float x){
+	__device__ float sin(const float x){
 		return sinf(x);
 	}
-	__device__ float cos(float x){
+	__device__ float cos(const float x){
 		return cosf(x);
 	}
-	__device__ float atan(float x){
+	__device__ float atan(const float x){
 		return atanf(x);
 	}
-	__device__ float sqrt(float x){
+	__device__ float sqrt(const float x){
 		return sqrtf(x);
 	}
-	__device__ float asin(float x){
+	__device__ float asin(const float x){
 		return asinf(x);
 	}
-	__device__ float pow(float x, float y){
+	__device__ float pow(const float x, const float y){
 		return powf(x,y);
 	}
-	__device__ float pow(float x, int y){
-		return powf(x,y);
-	}
-	__device__ thrust::complex<float> pow(thrust::complex<float> x, deviceFP y){
+	__device__ thrust::complex<float> pow(const thrust::complex<float> x, const  deviceFP y){
 		return thrust::pow(x,y);
 	}
-	__device__ thrust::complex<float> exp(thrust::complex<float> x){
+	__device__ thrust::complex<float> exp(const thrust::complex<float> x){
 		return thrust::exp(x);
 	}
-	__device__ float abs(thrust::complex<float> x){
+	__device__ float abs(const thrust::complex<float> x){
 		return thrust::abs(x);
 	}
-	__device__ thrust::complex<float> sqrt(thrust::complex<float> x){
+	__device__ thrust::complex<float> sqrt(const thrust::complex<float> x){
 		return thrust::sqrt(x);
 	}
 

@@ -45,64 +45,82 @@ int hardwareCheckCPU(int* CUDAdeviceCount) {
 	return 0;
 }
 namespace deviceLibCPUFP32{
-	float exp(float x){
+	float exp(const float x){
 		return expf(x);
 	}
-	float abs(float x){
+	float abs(const float x){
 		return fabs(x);
 	}
-	float sin(float x){
+	float sin(const float x){
 		return sinf(x);
 	}
-	float cos(float x){
+	float cos(const float x){
 		return cosf(x);
 	}
-	float atan(float x){
+	float atan(const float x){
 		return atanf(x);
 	}
-	float sqrt(float x){
+	float sqrt(const float x){
 		return sqrtf(x);
 	}
-	float asin(float x){
+	float asin(const float x){
 		return asinf(x);
 	}
-	float pow(float x, float y){
+	float pow(const float x, const float y){
 		return powf(x,y);
 	}
-	float pow(float x, int y){
-		return powf(x,y);
-	}
-	std::complex<float> pow(std::complex<float> x, float y){
+	std::complex<float> pow(const std::complex<float> x, const float y){
 		return std::pow(x,y);
 	}
-	std::complex<float> exp(std::complex<float> x){
+	std::complex<float> exp(const std::complex<float> x){
 		return std::exp(x);
 	}
-	float abs(std::complex<float> x){
+	float abs(const std::complex<float> x){
 		return std::abs(x);
 	}
-	std::complex<float> sqrt(std::complex<float> x){
+	std::complex<float> sqrt(const std::complex<float> x){
 		return std::sqrt(x);
 	}
 };
-deviceFP j0CPU(deviceFP x) {
+double j0CPU(double x) {
 	if (x < 8.0) {
-		deviceFP y = x * x;
-		deviceFP ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
+		double y = x * x;
+		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
 			y * (-11214424.18 + y * (77392.33017 + y * (-184.9052456)))));
-		deviceFP ans2 = 57568490411.0 + y * (1029532985.0 + y * (9494680.718 +
+		double ans2 = 57568490411.0 + y * (1029532985.0 + y * (9494680.718 +
 			y * (59272.64853 + y * (267.8532712 + y))));
 		return ans1 / ans2;
 	}
 	else {
-		deviceFP z = 8.0 / x;
-		deviceFP y = z * z;
-		deviceFP xx = x - 0.785398164;
-		deviceFP ans1 = 1.0 + y * (-0.1098628627e-2 + y * (0.2734510407e-4 +
+		double z = 8.0 / x;
+		double y = z * z;
+		double xx = x - 0.785398164;
+		double ans1 = 1.0 + y * (-0.1098628627e-2 + y * (0.2734510407e-4 +
 			y * (-0.2073370639e-5 + y * 0.2093887211e-6)));
-		deviceFP ans2 = -0.1562499995e-1 + y * (0.1430488765e-3 +
+		double ans2 = -0.1562499995e-1 + y * (0.1430488765e-3 +
 			y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934935152e-7)));
 		return sqrt(0.636619772 / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
+	}
+}
+
+float j0CPU(float x) {
+	if (x < 8.0f) {
+		float y = x * x;
+		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +
+			y * (-11214424.18f + y * (77392.33017f + y * (-184.9052456f)))));
+		float ans2 = 57568490411.0f + y * (1029532985.0f + y * (9494680.718f +
+			y * (59272.64853f + y * (267.8532712f + y))));
+		return ans1 / ans2;
+	}
+	else {
+		float z = 8.0f / x;
+		float y = z * z;
+		float xx = x - 0.785398164f;
+		float ans1 = 1.0f + y * (-0.1098628627e-2f + y * (0.2734510407e-4f +
+			y * (-0.2073370639e-5f + y * 0.2093887211e-6f)));
+		float ans2 = -0.1562499995e-1f + y * (0.1430488765e-3f +
+			y * (-0.6911147651e-5f + y * (0.7621095161e-6f - y * 0.934935152e-7f)));
+		return sqrt(0.636619772f / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
 class deviceCPU {

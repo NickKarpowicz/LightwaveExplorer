@@ -29,14 +29,14 @@ namespace {
 		(*s).Nfreq = ((*s).Ntime / 2 + 1);
 		(*s).Ngrid = (*s).Ntime * (*s).Nspace * (*s).Nspace2;
 		(*s).NgridC = (*s).Nfreq * (*s).Nspace * (*s).Nspace2; //size of the positive frequency side of the grid
-		(*s).fftNorm = 1.0 / (*s).Ngrid;
-		(*s).dt = (*sCPU).tStep;
-		(*s).dx = (*sCPU).rStep;
-		(*s).dk1 = TWOPI / ((*sCPU).Nspace * (*sCPU).rStep);
-		(*s).dk2 = TWOPI / ((*sCPU).Nspace2 * (*sCPU).rStep);
-		(*s).fStep = (*sCPU).fStep;
+		(*s).fftNorm = (deviceFP)1.0 / (*s).Ngrid;
+		(*s).dt = (deviceFP)(*sCPU).tStep;
+		(*s).dx = (deviceFP)(*sCPU).rStep;
+		(*s).dk1 = (deviceFP)(TWOPI / ((*sCPU).Nspace * (*sCPU).rStep));
+		(*s).dk2 = (deviceFP)(TWOPI / ((*sCPU).Nspace2 * (*sCPU).rStep));
+		(*s).fStep = (deviceFP)(*sCPU).fStep;
 		(*s).Nsteps = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
-		(*s).h = (*sCPU).crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
+		(*s).h = (deviceFP)((*sCPU).crystalThickness / ((*s).Nsteps)); //adjust step size so that thickness can be varied continuously by fitting
 	}
 }
 class deviceCounter {

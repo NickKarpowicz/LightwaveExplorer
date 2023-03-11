@@ -28,22 +28,46 @@ namespace deviceFunctions {
 	//based on Rybicki G.B., Computers in Physics, 3,85-87 (1989)
 	//this is the simplest implementation of the formula he provides, he also suggests speed improvements in case
 	//evaluation of this becomes a bottleneck
-	deviceFunction deviceFP deviceDawson(const deviceFP& x) {
+	deviceFunction float deviceDawson(const float& x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
 		int n = 15;
-		deviceFP h = 0.3;
+		float h = 0.3f;
 
 		//series expansion for small x
-		if (deviceFPLib::abs(x) < 0.2) {
-			deviceFP x2 = x * x;
-			deviceFP x4 = x2 * x2;
+		if (fabs(x) < 0.2f) {
+			float x2 = x * x;
+			float x4 = x2 * x2;
+			return x * (1.0f - 2.0f * x2 / 3.0f + 4.0f * x4 / 15.0f - 8.0f * x2 * x4 / 105.0f + (16.0f / 945.0f) * x4 * x4 - (32.0f / 10395.0f) * x4 * x4 * x2);
+		}
+
+		int n0 = 2 * int(round(0.5f * x / h));
+		float x0 = h * n0;
+		float xp = x - x0;
+		float d = 0.0f;
+		for (int i = -n; i < n; i++) {
+			if (i % 2 != 0) {
+				d += expf(-(xp - i * h) * (xp - i * h)) / (i + n0);
+			}
+		}
+		return INVSQRTPI * d;
+	}
+
+	deviceFunction double deviceDawson(const double& x) {
+		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
+		int n = 15;
+		double h = 0.3;
+
+		//series expansion for small x
+		if (abs(x) < 0.2) {
+			double x2 = x * x;
+			double x4 = x2 * x2;
 			return x * (1.0 - 2.0 * x2 / 3.0 + 4.0 * x4 / 15.0 - 8.0 * x2 * x4 / 105.0 + (16.0 / 945) * x4 * x4 - (32.0 / 10395) * x4 * x4 * x2);
 		}
 
 		int n0 = 2 * int(round(0.5 * x / h));
-		deviceFP x0 = h * n0;
-		deviceFP xp = x - x0;
-		deviceFP d = 0.0;
+		double x0 = h * n0;
+		double xp = x - x0;
+		double d = 0.0;
 		for (int i = -n; i < n; i++) {
 			if (i % 2 != 0) {
 				d += exp(-(xp - i * h) * (xp - i * h)) / (i + n0);

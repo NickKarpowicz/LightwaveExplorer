@@ -29,19 +29,19 @@ namespace {
 		(*s).Nfreq = ((*s).Ntime / 2 + 1);
 		(*s).Ngrid = (*s).Ntime * (*s).Nspace * (*s).Nspace2;
 		(*s).NgridC = (*s).Nfreq * (*s).Nspace * (*s).Nspace2; //size of the positive frequency side of the grid
-		(*s).fftNorm = 1.0 / (*s).Ngrid;
-		(*s).dt = (*sCPU).tStep;
-		(*s).dx = (*sCPU).rStep;
-		(*s).dk1 = TWOPI / ((*sCPU).Nspace * (*sCPU).rStep);
-		(*s).dk2 = TWOPI / ((*sCPU).Nspace2 * (*sCPU).rStep);
-		(*s).fStep = (*sCPU).fStep;
+		(*s).fftNorm = (deviceFP)1.0 / (*s).Ngrid;
+		(*s).dt = (deviceFP)(*sCPU).tStep;
+		(*s).dx = (deviceFP)(*sCPU).rStep;
+		(*s).dk1 = (deviceFP)(TWOPI / ((*sCPU).Nspace * (*sCPU).rStep));
+		(*s).dk2 = (deviceFP)(TWOPI / ((*sCPU).Nspace2 * (*sCPU).rStep));
+		(*s).fStep = (deviceFP)(*sCPU).fStep;
 		(*s).Nsteps = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
-		(*s).h = (*sCPU).crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
+		(*s).h = (deviceFP)(*sCPU).crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
 		(*s).axesNumber = (*sCPU).axesNumber;
 		(*s).sellmeierType = (*sCPU).sellmeierType;
-		(*s).crystalPhi = (*sCPU).crystalPhi;
-		(*s).crystalTheta = (*sCPU).crystalTheta;
-		(*s).f0 = (*sCPU).pulse1.frequency;
+		(*s).crystalPhi = (deviceFP)(*sCPU).crystalPhi;
+		(*s).crystalTheta = (deviceFP)(*sCPU).crystalTheta;
+		(*s).f0 = (deviceFP)(*sCPU).pulse1.frequency;
 		(*s).Nthread = THREADS_PER_BLOCK;
 		(*s).Nblock = (int)((*s).Ngrid / THREADS_PER_BLOCK);
 		(*s).NblockC = (int)((*s).NgridC / THREADS_PER_BLOCK);
@@ -108,25 +108,25 @@ namespace {
 		}
 
 		for (int j = 0; j < 18; ++j) {
-			(*s).chi2Tensor[j] = 2e-12 * (*sCPU).chi2Tensor[j]; //go from d in pm/V to chi2 in m/V
+			(*s).chi2Tensor[j] = (deviceFP)(2e-12 * (*sCPU).chi2Tensor[j]); //go from d in pm/V to chi2 in m/V
 			if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
 		}
 		memcpy((*s).nonlinearSwitches, (*sCPU).nonlinearSwitches, 4 * sizeof(int));
 
 		for (size_t i = 0; i < 81; i++) {
-			(*s).chi3Tensor[i] = (*sCPU).chi3Tensor[i];
+			(*s).chi3Tensor[i] = (deviceFP)(*sCPU).chi3Tensor[i];
 		}
 
 		for (size_t i = 0; i < 6; i++) {
-			(*s).absorptionParameters[i] = (*sCPU).absorptionParameters[i];
+			(*s).absorptionParameters[i] = (deviceFP)(*sCPU).absorptionParameters[i];
 		}
 
 		for (size_t i = 0; i < 6; i++) {
-			(*s).plasmaParameters[i] = plasmaParametersCPU[i];
+			(*s).plasmaParameters[i] = (deviceFP)plasmaParametersCPU[i];
 		}
 
 		for (size_t i = 0; i < 6; i++) {
-			(*s).firstDerivativeOperation[i] = firstDerivativeOperation[i];
+			(*s).firstDerivativeOperation[i] = (deviceFP)firstDerivativeOperation[i];
 		}
 
 	}
