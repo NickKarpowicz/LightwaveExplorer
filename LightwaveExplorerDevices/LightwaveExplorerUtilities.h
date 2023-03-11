@@ -38,8 +38,8 @@ typedef double deviceFP;
 #include <sycl/sycl.hpp>
 #elif defined CPUONLY
 #include <fftw3.h>
-typedef std::complex<float> deviceComplex;
-typedef float deviceFP;
+typedef std::complex<double> deviceComplex;
+typedef double deviceFP;
 #define deviceLib std
 #else
 #include <fftw3_mkl.h>

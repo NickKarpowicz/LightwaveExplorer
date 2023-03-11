@@ -10,10 +10,10 @@ int hardwareCheckCounter(int* CUDAdeviceCount) {
 	return 0;
 }
 
-void atomicAddCounter(double* pulseSum, double pointEnergy) {
+void atomicAddCounter(deviceFP* pulseSum, deviceFP pointEnergy) {
 }
 
-double j0Counter(double x) {
+double j0Counter(deviceFP x) {
 	return x;
 }
 
@@ -96,7 +96,7 @@ public:
 	void deviceFree(void* block) {
 	}
 
-	bool isTheCanaryPixelNaN(double* canaryPointer) {
+	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
 		return FALSE;
 	}
 

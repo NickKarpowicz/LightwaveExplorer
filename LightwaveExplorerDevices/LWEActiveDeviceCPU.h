@@ -20,14 +20,14 @@ const int deviceThreads = std::thread::hardware_concurrency();
 #define isnan std::isnan
 #endif
 #if defined __APPLE__ || defined __linux__
-void atomicAddCPU(double* pulseSum, double pointEnergy) {
-	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
-	double expected = pulseSumAtomic->load();
+void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
+	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
+	deviceFP expected = pulseSumAtomic->load();
 	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 }
 #else
-void atomicAddCPU(double* pulseSum, double pointEnergy) {
-	std::atomic<double>* pulseSumAtomic = (std::atomic<double>*)pulseSum;
+void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
+	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
 }
 #endif
@@ -35,22 +35,22 @@ int hardwareCheckCPU(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
-double j0CPU(double x) {
+deviceFP j0CPU(deviceFP x) {
 	if (x < 8.0) {
-		double y = x * x;
-		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
+		deviceFP y = x * x;
+		deviceFP ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
 			y * (-11214424.18 + y * (77392.33017 + y * (-184.9052456)))));
-		double ans2 = 57568490411.0 + y * (1029532985.0 + y * (9494680.718 +
+		deviceFP ans2 = 57568490411.0 + y * (1029532985.0 + y * (9494680.718 +
 			y * (59272.64853 + y * (267.8532712 + y))));
 		return ans1 / ans2;
 	}
 	else {
-		double z = 8.0 / x;
-		double y = z * z;
-		double xx = x - 0.785398164;
-		double ans1 = 1.0 + y * (-0.1098628627e-2 + y * (0.2734510407e-4 +
+		deviceFP z = 8.0 / x;
+		deviceFP y = z * z;
+		deviceFP xx = x - 0.785398164;
+		deviceFP ans1 = 1.0 + y * (-0.1098628627e-2 + y * (0.2734510407e-4 +
 			y * (-0.2073370639e-5 + y * 0.2093887211e-6)));
-		double ans2 = -0.1562499995e-1 + y * (0.1430488765e-3 +
+		deviceFP ans2 = -0.1562499995e-1 + y * (0.1430488765e-3 +
 			y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934935152e-7)));
 		return sqrt(0.636619772 / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
@@ -59,20 +59,35 @@ class deviceCPU {
 private:
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;
-	double canaryPixel = 0.0;
+	deviceFP canaryPixel = 0.0;
 	deviceParameterSet dParamslocal;
 	fftw_plan fftPlanD2Z;
 	fftw_plan fftPlanZ2D;
 	fftw_plan fftPlan1DD2Z;
 	fftw_plan fftPlan1DZ2D;
 	fftw_plan doublePolfftPlan;
+	fftwf_plan fftPlanD2Z32;
+	fftwf_plan fftPlanZ2D32;
+	fftwf_plan fftPlan1DD2Z32;
+	fftwf_plan fftPlan1DZ2D32;
+	fftwf_plan doublePolfftPlan32;
 
 	void fftDestroy() {
-		fftw_destroy_plan(fftPlanD2Z);
-		fftw_destroy_plan(fftPlanZ2D);
-		fftw_destroy_plan(fftPlan1DD2Z);
-		fftw_destroy_plan(fftPlan1DZ2D);
-		if (isCylindric)fftw_destroy_plan(doublePolfftPlan);
+		if(sizeof(deviceFP)==sizeof(double)){
+			fftw_destroy_plan(fftPlanD2Z);
+			fftw_destroy_plan(fftPlanZ2D);
+			fftw_destroy_plan(fftPlan1DD2Z);
+			fftw_destroy_plan(fftPlan1DZ2D);
+			if (isCylindric)fftw_destroy_plan(doublePolfftPlan);
+		}
+		else{
+			fftwf_destroy_plan(fftPlanD2Z32);
+			fftwf_destroy_plan(fftPlanZ2D32);
+			fftwf_destroy_plan(fftPlan1DD2Z32);
+			fftwf_destroy_plan(fftPlan1DZ2D32);
+			if (isCylindric)fftwf_destroy_plan(doublePolfftPlan32);
+		}
+
 		fftw_cleanup();
 	}
 
@@ -96,6 +111,11 @@ public:
 		fftPlan1DD2Z = 0;
 		fftPlan1DZ2D = 0;
 		doublePolfftPlan = 0;
+		fftPlanD2Z32 = 0;
+		fftPlanZ2D32 = 0;
+		fftPlan1DD2Z32 = 0;
+		fftPlan1DZ2D32 = 0;
+		doublePolfftPlan32 = 0;
 		dParamsDevice = &dParamslocal;
 	}
 
@@ -142,16 +162,56 @@ public:
 		memcpy(dst, src, count);
 	}
 
+	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
+		float* copyBuffer = new float[count / sizeof(double)];
+		memcpy(copyBuffer, src, count/2);
+		for (size_t i = 0; i < count / sizeof(double); i++) {
+			dst[i] = copyBuffer[i];
+		}
+		delete[] copyBuffer;
+	}
+
+	void deviceMemcpy(std::complex<double>* dst, std::complex<float>* src, size_t count, cudaMemcpyKind kind) {
+		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)];
+		memcpy(copyBuffer, src, count/2);
+		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
+		}
+		delete[] copyBuffer;
+	}
+
+	void deviceMemcpy(std::complex<float>* dst, std::complex<double>* src, size_t count, cudaMemcpyKind kind) {
+		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)];
+		
+		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+			copyBuffer[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
+		}
+		memcpy(dst, copyBuffer, count / 2);
+		delete[] copyBuffer;
+	}
+
+	void deviceMemcpy(float* dst, double* src, size_t count, cudaMemcpyKind kind) {
+		float* copyBuffer = new float[count / sizeof(double)];
+
+		for (size_t i = 0; i < count / sizeof(double); i++) {
+			copyBuffer[i] = (float)src[i];
+		}
+		memcpy(dst, copyBuffer, count / 2);
+		delete[] copyBuffer;
+	}
+
+
 	void deviceFree(void* block) {
 		free(block);
 	}
 
-	bool isTheCanaryPixelNaN(double* canaryPointer) {
-		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(double), DeviceToHost);
+	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
+		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
 		return(isnan(canaryPixel));
 	}
 	void fft(void* input, void* output, int type) const {
 		if (!configuredFFT) return;
+		if (sizeof(deviceFP) == sizeof(float)) type += 5;
 		switch (type) {
 		case 0:
 			fftw_execute_dft_r2c(fftPlanD2Z, (double*)input, (fftw_complex*)output);
@@ -168,6 +228,21 @@ public:
 		case 4:
 			fftw_execute_dft_r2c(doublePolfftPlan, (double*)input, (fftw_complex*)output);
 			break;
+		case 5:
+			fftwf_execute_dft_r2c(fftPlanD2Z32, (float*)input, (fftwf_complex*)output);
+			break;
+		case 6:
+			fftwf_execute_dft_c2r(fftPlanZ2D32, (fftwf_complex*)input, (float*)output);
+			break;
+		case 7:
+			fftwf_execute_dft_r2c(fftPlan1DD2Z32, (float*)input, (fftwf_complex*)output);
+			break;
+		case 8:
+			fftwf_execute_dft_c2r(fftPlan1DZ2D32, (fftwf_complex*)input, (float*)output);
+			break;
+		case 9:
+			fftwf_execute_dft_r2c(doublePolfftPlan32, (float*)input, (fftwf_complex*)output);
+			break;
 		}
 	}
 
@@ -175,28 +250,58 @@ public:
 		if (configuredFFT) fftDestroy();
 		isCylindric = (*s).isCylindric;
 		hasPlasma = (*s).hasPlasma;
-		double* setupWorkD = new double[(*s).Ngrid * (2 + 2 * (*s).isCylindric)];
-		std::complex<double>* setupWorkC = new std::complex<double>[(*s).NgridC * (2 + 2 * (*s).isCylindric)];
-		const int fftw1[1] = { (int)(*s).Ntime };
-		fftPlan1DD2Z = fftw_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD, fftw1, 1, (int)(*s).Ntime, (fftw_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
-		fftPlan1DZ2D = fftw_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftw_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, setupWorkD, fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
-		if ((*s).is3D) {
-			const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-			fftPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-			fftPlanZ2D = fftw_plan_many_dft_c2r(3, fftwSizes, 2, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
-		}
-		else {
-			const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-			fftPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-			fftPlanZ2D = fftw_plan_many_dft_c2r(2, fftwSizes, 2, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
-
-			if ((*s).isCylindric) {
-				const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
-				doublePolfftPlan = fftw_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD, NULL, 1, 2 * (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
+		if(sizeof(deviceFP)==sizeof(double)){
+			double* setupWorkD = new double[(*s).Ngrid * (2 + 2 * (*s).isCylindric)];
+			std::complex<double>* setupWorkC = new std::complex<double>[(*s).NgridC * (2 + 2 * (*s).isCylindric)];
+			const int fftw1[1] = { (int)(*s).Ntime };
+			fftPlan1DD2Z = fftw_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD, fftw1, 1, (int)(*s).Ntime, (fftw_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
+			fftPlan1DZ2D = fftw_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftw_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, setupWorkD, fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
+			if ((*s).is3D) {
+				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
+				fftPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
+				fftPlanZ2D = fftw_plan_many_dft_c2r(3, fftwSizes, 2, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
 			}
+			else {
+				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
+				fftPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
+				fftPlanZ2D = fftw_plan_many_dft_c2r(2, fftwSizes, 2, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+
+				if ((*s).isCylindric) {
+					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
+					doublePolfftPlan = fftw_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD, NULL, 1, 2 * (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
+				}
+			}
+			delete[] setupWorkC;
+			delete[] setupWorkD;
 		}
-		delete[] setupWorkC;
-		delete[] setupWorkD;
+		else if(sizeof(deviceFP)==sizeof(float)){
+			float* setupWorkD = new float[(*s).Ngrid * (2 + 2 * (*s).isCylindric)];
+			std::complex<float>* setupWorkC = new std::complex<float>[(*s).NgridC * (2 + 2 * (*s).isCylindric)];
+			const int fftw1[1] = { (int)(*s).Ntime };
+			fftPlan1DD2Z32 = fftwf_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD, fftw1, 1, (int)(*s).Ntime, (fftwf_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
+			fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftwf_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, setupWorkD, fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
+			if ((*s).is3D) {
+				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
+				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftwf_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
+				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(3, fftwSizes, 2, (fftwf_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+			}
+			else {
+				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
+				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftwf_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
+				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(2, fftwSizes, 2, (fftwf_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+
+				if ((*s).isCylindric) {
+					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
+					doublePolfftPlan32 = fftwf_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD, NULL, 1, 2 * (int)(*s).Ngrid, (fftwf_complex*)setupWorkC, NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
+				}
+			}
+			delete[] setupWorkC;
+			delete[] setupWorkD;
+		}
+		else{
+			configuredFFT = 0;
+			return;
+		}
 		configuredFFT = 1;
 	}
 	void deallocateSet(deviceParameterSet* s) {
@@ -232,26 +337,26 @@ public:
 			beamExpansionFactor = 2;
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
-		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(double));
-		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(double));
-		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridPropagationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
-		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(std::complex<double>));
+		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
+		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
+		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
+		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
+		deviceMemset((*s).gridPropagationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
+		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
+		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
+		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(std::complex<double>));
-			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(std::complex<double>));
+			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(std::complex<deviceFP>));
+			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(std::complex<deviceFP>));
 		}
 
 		//smaller helper grids
-		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(double));
-		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(std::complex<double>));
-		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(double));
-		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(double));
+		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(deviceFP));
+		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(std::complex<deviceFP>));
+		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
+		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
 		for (size_t i = 0; i < (*s).Ntime; ++i) {
@@ -286,26 +391,26 @@ public:
 		// currently 8 large grids, meaning memory use is approximately
 		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
 		// plus a little bit for additional constants/workspaces/etc
-		memErrors += deviceCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).k1, 2 * (*s).NgridC, sizeof(std::complex<double>));
+		memErrors += deviceCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)&(*s).k1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(std::complex<double>));
-			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(std::complex<double>));
+			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(std::complex<deviceFP>));
 		}
 
 		//smaller helper grids
-		memErrors += deviceCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<double>));
-		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(double));
+		memErrors += deviceCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
 		for (size_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);

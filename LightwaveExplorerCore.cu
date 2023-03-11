@@ -78,8 +78,8 @@ namespace deviceFunctions {
 				+ a[13] * ls
 				+ a[14] * ls * ls
 				+ a[15] * ls * ls * ls;
-			compPart = KLORENTZIAN*a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
-				+ KLORENTZIAN*a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
+			compPart = (deviceFP)KLORENTZIAN*a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
+				+ (deviceFP)KLORENTZIAN*a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
 			return deviceLib::sqrt(maxN(realPart, 0.9f) + compPart);
 		case 1:
 			//up to 7 Lorentzian lines
@@ -558,8 +558,8 @@ namespace kernels {
 	trilingual rotateFieldKernel asKernel(withID deviceComplex* Ein1, deviceComplex* Ein2, deviceComplex* Eout1,
 		deviceComplex* Eout2, deviceFP rotationAngle) {
 		long long i = localIndex;
-		Eout1[i] = cos(rotationAngle) * Ein1[i] - sin(rotationAngle) * Ein2[i];
-		Eout2[i] = sin(rotationAngle) * Ein1[i] + cos(rotationAngle) * Ein2[i];
+		Eout1[i] = deviceLib::cos(rotationAngle) * Ein1[i] - deviceLib::sin(rotationAngle) * Ein2[i];
+		Eout2[i] = deviceLib::sin(rotationAngle) * Ein1[i] + deviceLib::cos(rotationAngle) * Ein2[i];
 	};
 
 	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/r d/drho)
@@ -864,8 +864,8 @@ namespace kernels {
 
 		deviceComplex ts = deviceComplex(0.0, 0.0);//deviceLib::exp(ii * (k0 - kze) * thickness);
 		deviceComplex tp = deviceComplex(0.0, 0.0);// deviceLib::exp(ii * (k0 - kzo) * thickness);
-		if(kze>=0.0) ts = deviceLib::exp(ii * (k0 - sqrt(kze)) * thickness);
-		if(kzo>=0.0) tp = deviceLib::exp(ii * (k0 - sqrt(kzo)) * thickness);
+		if(kze>=0.0) ts = deviceLib::exp(ii * (k0 - deviceLib::sqrt(kze)) * thickness);
+		if(kzo>=0.0) tp = deviceLib::exp(ii * (k0 - deviceLib::sqrt(kzo)) * thickness);
 		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
 		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0, 0);
 		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
@@ -1317,7 +1317,8 @@ namespace kernels {
 		deviceFP* Jx = (*s).gridPolarizationTime1;
 		deviceFP* Jy = (*s).gridPolarizationTime2;
 		Esquared = (*s).gridETime1[i] * (*s).gridETime1[i] + (*s).gridETime2[i] * (*s).gridETime2[i];
-		a = (*s).plasmaParameters[0] * Esquared;
+		Esquared *= (*s).plasmaParameters[0];
+		a = Esquared;
 		for (unsigned char p = 0; p < pMax; ++p) {
 			a *= Esquared;
 		}
