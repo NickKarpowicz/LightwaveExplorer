@@ -60,7 +60,7 @@
 			(*s).hasPlasma = FALSE;
 			(*s).isNonLinear = FALSE;
 		}
-
+		hasPlasma = (*s).hasPlasma;
 	}
 
 	void finishConfiguration(simulationParameterSet* sCPU) {

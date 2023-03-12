@@ -445,6 +445,7 @@ public:
 		}
 		
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
+		
 		cParams = sCPU;
 		initializeDeviceParameters(sCPU);
 		fftInitialize();
