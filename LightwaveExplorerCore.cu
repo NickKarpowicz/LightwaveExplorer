@@ -255,10 +255,10 @@ namespace deviceFunctions {
 	deviceFunction deviceFP rhoInRadialSymmetry(
 		long long N, int j, deviceFP dr) {
 		if (j < N / 2) {
-			return deviceFPLib::abs( - (dr * (j - N / 2) + 0.25 * dr));
+			return deviceFPLib::abs( - (dr * (j - N / 2) + 0.25f * dr));
 		}
 		else {
-			return deviceFPLib::abs(dr * (j - N / 2) + 0.25 * dr);
+			return deviceFPLib::abs(dr * (j - N / 2) + 0.25f * dr);
 		}
 	}
 
@@ -499,17 +499,17 @@ namespace kernels {
 		size_t i = localIndex;
 		size_t j;
 
-		deviceFP beamTotal1 = 0.;
-		deviceFP beamTotal2 = 0.;
+		deviceFP beamTotal1 = 0.0f;
+		deviceFP beamTotal2 = 0.0f;
 		//Integrate total beam power
-		beamTotal1 = 0.;
-		beamTotal2 = 0.;
+		beamTotal1 = 0.0f;
+		beamTotal2 = 0.0f;
 		for (j = 0; j < (*s).Nspace; ++j) {
 			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 		}
-		beamTotal1 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
-		beamTotal2 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
+		beamTotal1 *= 2.0f * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
+		beamTotal2 *= 2.0f * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
 
 		//put the values into the output spectrum
 		(*s).gridPolarizationTime1[i] = beamTotal1;
@@ -551,12 +551,12 @@ namespace kernels {
 	trilingual hankelKernel asKernel(withID const deviceParameterSet* s, deviceFP* in, deviceFP* out) {
 		size_t i = localIndex;
 		size_t col = i / (*s).Ntime; //spatial coordinate
-		deviceFP dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
+		deviceFP dk = 2.0f / (PI * (*s).dx * (*s).Nspace);
 		in += i % (*s).Ntime;
-		out[i] = 0.0;
-		out[i + (*s).Ngrid] = 0.0;
+		out[i] = 0.0f;
+		out[i + (*s).Ngrid] = 0.0f;
 		deviceFP r0;
-		deviceFP J0 = 1.0;
+		deviceFP J0 = 1.0f;
 		deviceFP k0 = col * dk;
 		for (size_t r = 0; r < (*s).Nspace; ++r) {
 			r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
@@ -572,12 +572,12 @@ namespace kernels {
 	trilingual inverseHankelKernel asKernel(withID const deviceParameterSet* s, deviceFP* in, deviceFP* out) {
 		size_t i = localIndex;
 		size_t col = i / (*s).Ntime; //spatial coordinate
-		deviceFP dk = 2.0 / (PI * (*s).dx * (*s).Nspace);
+		deviceFP dk = 2.0f / (PI * (*s).dx * (*s).Nspace);
 		in += i % (*s).Ntime;;
-		out[i] = 0.0;
-		out[i + (*s).Ngrid] = 0.0;
+		out[i] = 0.0f;
+		out[i + (*s).Ngrid] = 0.0f;
 		deviceFP r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
-		deviceFP J0 = 1.0;
+		deviceFP J0 = 1.0f;
 		deviceFP k0 = col * dk;
 		for (size_t k = 0; k < (*s).Nspace; ++k) {
 			k0 = k * dk;
@@ -585,8 +585,8 @@ namespace kernels {
 			out[i] += J0 * in[k * (*s).Ntime];
 			out[i + (*s).Ngrid] += J0 * in[k * (*s).Ntime + (*s).Ngrid];
 		}
-		out[i] *= 0.5 * dk / ((*s).Ntime);
-		out[i + (*s).Ngrid] *= 0.5 * dk / ((*s).Ntime);
+		out[i] *= 0.5f * dk / ((*s).Ntime);
+		out[i + (*s).Ngrid] *= 0.5f * dk / ((*s).Ntime);
 	};
 
 	//rotate the field around the propagation axis (basis change)
@@ -637,7 +637,7 @@ namespace kernels {
 	trilingual apertureFarFieldKernel asKernel(withID const deviceParameterSet* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
 		long long i = localIndex;
 		long long col, j, k, l;
-		deviceComplex cuZero = deviceComplex(0, 0);
+		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
 		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 		i = j + col * (*s).Nfreq;
@@ -649,7 +649,7 @@ namespace kernels {
 
 		//transverse wavevector being resolved
 		deviceFP dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
-		deviceFP dk2 = 0.0;
+		deviceFP dk2 = 0.0f;
 		if((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 
 		//light that won't go the the farfield is immediately zero
@@ -667,7 +667,7 @@ namespace kernels {
 
 		deviceFP r = deviceFPLib::sqrt(theta1 * theta1 + theta2 * theta2);
 
-		deviceFP a = 1.0 - (1.0 / (1.0 + deviceFPLib::exp(-activationParameter * (r-radius))));
+		deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r-radius))));
 
 		(*s).gridEFrequency1[i] *= a;
 		(*s).gridEFrequency2[i] *= a;
@@ -676,7 +676,7 @@ namespace kernels {
 	trilingual apertureFarFieldKernelHankel asKernel(withID const deviceParameterSet* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
 		long long i = localIndex;
 		long long col, j, k;
-		deviceComplex cuZero = deviceComplex(0, 0);
+		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
 		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 		i = j + col * (*s).Nfreq;
@@ -686,7 +686,7 @@ namespace kernels {
 		deviceFP ko = TWOPI * j * (*s).fStep / LIGHTC;
 
 		//transverse wavevector being resolved
-		deviceFP dk1 = k * 2.0 / (PI * (*s).dx * (*s).Nspace);; //frequency grid in x direction
+		deviceFP dk1 = k * 2.0f / (PI * (*s).dx * (*s).Nspace);; //frequency grid in x direction
 
 		//light that won't go the the farfield is immediately zero
 		if (dk1 * dk1 > ko * ko) {
@@ -697,7 +697,7 @@ namespace kernels {
 
 		deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
 
-		deviceFP a = 1.0 - (1.0 / (1.0 + deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
+		deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
 
 		(*s).gridEFrequency1[i] *= a;
 		(*s).gridEFrequency2[i] *= a;
@@ -717,7 +717,7 @@ namespace kernels {
 			bandwidth *= bandwidth;
 			f *= f;
 		}
-		deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude*deviceFPLib::exp(-f / (2.0 * bandwidth));
+		deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude*deviceFPLib::exp(-f / (2.0f * bandwidth));
 		(*s).gridEFrequency1[i] *= filterFunction;
 		(*s).gridEFrequency2[i] *= filterFunction;
 	};
@@ -744,8 +744,8 @@ namespace kernels {
 			k = col / (*s).Nspace;
 			f = h * (*s).fStep;
 
-			x = ((*s).dx * (j - (*s).Nspace / 2.0));
-			y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+			x = ((*s).dx * (j - (*s).Nspace / 2.0f));
+			y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
 			r = sqrt(x * x + y * y);
 		}
 		else {
@@ -753,17 +753,17 @@ namespace kernels {
 			j = i / ((*s).Nfreq - 1);
 			i = h + j * ((*s).Nfreq);
 			f = h * (*s).fStep;
-			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
+			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
 		}
 
 		deviceFP w0 = TWOPI * f0;
 		deviceFP w = TWOPI * f;
-		deviceComplex lorentzian = gamma * w0 * amplitude / (w0 * w0 - w * w + deviceComplex(0.0, gamma * w));
+		deviceComplex lorentzian = gamma * w0 * amplitude / (w0 * w0 - w * w + deviceComplex(0.0f, gamma * w));
 		deviceFP spotFactor = r / radius;
 		for (int p = 1; p < (int)order; p++) {
 			spotFactor *= spotFactor;
 		}
-		deviceComplex filterFunction = deviceComplex(0.0, exp(-spotFactor)) * lorentzian;
+		deviceComplex filterFunction = deviceComplex(0.0f, exp(-spotFactor)) * lorentzian;
 		(*s).gridEFrequency1[i] += filterFunction * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] += filterFunction * (*s).gridEFrequency2[i];
 	};
@@ -778,15 +778,15 @@ namespace kernels {
 		k = col / (*s).Nspace;
 		deviceFP r;
 		if ((*s).is3D) {
-			deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0));
-			deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+			deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
+			deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
 			r = sqrt(x * x + y * y);
 		}
 		else {
-			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
+			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
 		}
 
-		deviceFP a = 1.0 - (1.0 / (1.0 + deviceFPLib::exp(-activationParameter * (r - radius) / (*s).dx)));
+		deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius) / (*s).dx)));
 
 		//if (r>radius) a = 0;
 		(*s).gridETime1[i] *= a;
@@ -806,16 +806,16 @@ namespace kernels {
 		deviceFP w = TWOPI * h * (*s).fStep;
 		deviceFP r;
 		if ((*s).is3D) {
-			deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0));
-			deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+			deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
+			deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
 			r = sqrt(x * x + y * y);
 		}
 		else {
-			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
+			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
 		}
 
-		deviceComplex	u = deviceLib::exp(deviceComplex(0.0,
-			w * r * r * (0.5 / focus) / LIGHTC));
+		deviceComplex	u = deviceLib::exp(deviceComplex(0.0f,
+			w * r * r * (0.5f / focus) / LIGHTC));
 
 		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
@@ -834,20 +834,20 @@ namespace kernels {
 		deviceFP w = TWOPI * h * (*s).fStep;
 		deviceFP r;
 		if ((*s).is3D) {
-			deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0));
-			deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0));
+			deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
+			deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
 			r = deviceFPLib::sqrt(x * x + y * y);
 		}
 		else {
-			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0) + 0.25 * (*s).dx);
+			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
 		}
 
-		bool isNegative = ROC < 0.0;
+		bool isNegative = ROC < 0.0f;
 		ROC = deviceFPLib::abs(ROC);
 		deviceComplex u = deviceComplex(0.0f, 0.0f);
 		if (r < ROC) {
-			u = deviceLib::exp(deviceComplex(0.0,
-				2.0 * deviceFPLib::pow(-1, isNegative) * w * ROC * ((deviceFPLib::sqrt(1.0 - r * r / (ROC * ROC))) - 1.0) / LIGHTC));
+			u = deviceLib::exp(deviceComplex(0.0f,
+				2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC * ((deviceFPLib::sqrt(1.0f - r * r / (ROC * ROC))) - 1.0f) / LIGHTC));
 		}
 
 		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
@@ -870,7 +870,7 @@ namespace kernels {
 		i = h + col * ((*s).Nfreq);
 		j = col % (*s).Nspace;
 		k = col / (*s).Nspace;
-		deviceComplex ii = deviceComplex(0, 1);
+		deviceComplex ii = deviceComplex(0.0f, 1.0f);
 		deviceFP crystalTheta = sellmeierCoefficients[66];
 		deviceFP crystalPhi = sellmeierCoefficients[67];
 
@@ -880,13 +880,13 @@ namespace kernels {
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 		deviceFP dk1 = j * (*s).dk1 - (j >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 		deviceFP dk2 = k * (*s).dk2 - (k >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
-		if (!(*s).is3D)dk2 = 0.0;
+		if (!(*s).is3D)dk2 = 0.0f;
 		//if ((*s).isCylindric) dk2 = dk1;
 		sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
 			crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		if (isnan(ne.real()) || isnan(no.real())) {
-			ne = deviceComplex(1, 0);
-			no = deviceComplex(1, 0);
+			ne = deviceComplex(1.0f, 0.0f);
+			no = deviceComplex(1.0f, 0.0f);
 		}
 
 		deviceComplex ke = ne * omega / (deviceFP)LIGHTC;
@@ -901,8 +901,8 @@ namespace kernels {
 		deviceComplex tp = deviceComplex(0.0f, 0.0f);// deviceLib::exp(ii * (k0 - kzo) * thickness);
 		if(kze>=0.0) ts = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kze)) * thickness);
 		if(kzo>=0.0) tp = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kzo)) * thickness);
-		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
-		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0, 0);
+		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0.0f, 0.0f);
+		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0.0f, 0.0f);
 		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
 	};
@@ -1339,8 +1339,8 @@ namespace kernels {
 			else{
 			//this should never be called: the simulation thinks there's a nonlinearity, but they're all off
 			//zero just in case.
-				(*s).gridPolarizationTime1[i] = 0.0;
-				(*s).gridPolarizationTime2[i] = 0.0;
+				(*s).gridPolarizationTime1[i] = 0.0f;
+				(*s).gridPolarizationTime2[i] = 0.0f;
 			}
 		}
 		if ((*s).isCylindric)expandCylindricalBeamDevice(s, i, (*s).gridRadialLaplacian1 + (*s).Ngrid * 4 * (*s).hasPlasma, (*s).gridPolarizationTime1, (*s).gridPolarizationTime2);
@@ -1945,8 +1945,11 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
 
 		//set the propagation grids how they should be at the beginning of the next step
-		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompactDoubleVector, (*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
-		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelDZ, (*sc).workspace1, (*sc).fftNorm);
+		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, 
+			multiplicationKernelCompactDoubleVector, 
+			(*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
+		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, 
+			multiplyByConstantKernelDZ, (*sc).workspace1, (*sc).fftNorm);
 		//d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 
 		return 0;
@@ -1981,7 +1984,8 @@ namespace hostFunctions{
 
 		//transform final result
 		d.fft(sc.gridEFrequency1, sc.gridETime1, deviceFFTZ2D);
-		d.deviceLaunch(2 * sc.Nblock, sc.Nthread, multiplyByConstantKernelD, sc.gridETime1, 1.0 / sc.Ngrid);
+		d.deviceLaunch(2 * sc.Nblock, sc.Nthread, multiplyByConstantKernelD, 
+			sc.gridETime1, (deviceFP)(1.0 / sc.Ngrid));
 		//copy the field arrays from the GPU to CPU memory
 		d.deviceMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * (*s).Ngrid * sizeof(std::complex<double>), DeviceToHost);
@@ -1998,13 +2002,20 @@ namespace hostFunctions{
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
-		d.deviceLaunch(s.Nblock / 2, s.Nthread, filterKernel, sDevice, 1.0e12*f0, 1.0e12*bandwidth, order, inBandAmplitude, outOfBandAmplitude);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, filterKernel, 
+			sDevice, 
+			(deviceFP)(1.0e12 * f0),
+			(deviceFP)(1.0e12 * bandwidth),
+			(deviceFP)order,
+			(deviceFP)inBandAmplitude,
+			(deviceFP)outOfBandAmplitude);
 
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(std::complex<double>), DeviceToHost);
 
 		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
 
-		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+			s.gridETime1, (deviceFP)(1.0 / s.Ngrid));
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
 		getTotalSpectrum(d);
@@ -2018,9 +2029,16 @@ namespace hostFunctions{
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z1D);
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
-		d.deviceLaunch(s.Nblock / 2, s.Nthread, lorentzianSpotKernel, sDevice, amplitude, 1.0e12 * f0, 1.0e12 * gamma, radius, order);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, lorentzianSpotKernel, 
+			sDevice, 
+			(deviceFP)amplitude, 
+			(deviceFP)(1.0e12 * f0),
+			(deviceFP)(1.0e12 * gamma),
+			(deviceFP)radius,
+			(deviceFP)order);
 		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D1D);
-		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ntime);
+		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+			s.gridETime1, (deviceFP)(1.0 / s.Ntime));
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(std::complex<double>), DeviceToHost);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
@@ -2035,7 +2053,13 @@ namespace hostFunctions{
 		forwardHankel(d, s.gridETime1, s.gridEFrequency1);
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
-		d.deviceLaunch(s.Nblock / 2, s.Nthread, apertureFarFieldKernelHankel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, 
+			apertureFarFieldKernelHankel, 
+			sDevice, 
+			(deviceFP)(0.5 * DEG2RAD * diameter), 
+			(deviceFP)activationParameter, 
+			(deviceFP)(DEG2RAD * xOffset), 
+			(deviceFP)(DEG2RAD * yOffset));
 		backwardHankel(d, s.gridEFrequency1, s.gridETime1);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
@@ -2052,14 +2076,20 @@ namespace hostFunctions{
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
-		d.deviceLaunch(s.Nblock/2, s.Nthread, apertureFarFieldKernel, sDevice, 0.5 * DEG2RAD * diameter, activationParameter, DEG2RAD * xOffset, DEG2RAD * yOffset);
+		d.deviceLaunch(s.Nblock/2, s.Nthread, apertureFarFieldKernel, 
+			sDevice, 
+			(deviceFP)(0.5 * DEG2RAD * diameter), 
+			(deviceFP)activationParameter, 
+			(deviceFP)(DEG2RAD * xOffset),
+			(deviceFP)(DEG2RAD * yOffset));
 
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(std::complex<double>), DeviceToHost);
 
 
 		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
 
-		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+			s.gridETime1, (deviceFP)(1.0 / s.Ngrid));
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
 		getTotalSpectrum(d);
@@ -2075,7 +2105,10 @@ namespace hostFunctions{
 
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
-		d.deviceLaunch(s.Nblock, s.Nthread, apertureKernel, sDevice, 0.5 * diameter, activationParameter);
+		d.deviceLaunch(s.Nblock, s.Nthread, apertureKernel, 
+			sDevice, 
+			(deviceFP)(0.5 * diameter), 
+			(deviceFP)(activationParameter));
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(std::complex<double>), DeviceToHost);
@@ -2090,9 +2123,9 @@ namespace hostFunctions{
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z1D);
-		d.deviceLaunch(s.Nblock / 2, s.Nthread, sphericalMirrorKernel, sDevice, ROC);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, sphericalMirrorKernel, sDevice, (deviceFP)ROC);
 		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D1D);
-		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ntime);
+		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, (deviceFP)(1.0 / s.Ntime));
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(std::complex<double>), DeviceToHost);
@@ -2105,9 +2138,9 @@ namespace hostFunctions{
 
 		d.deviceMemcpy(s.gridETime1, (*sCPU).ExtOut, 2 * s.Ngrid * sizeof(double), HostToDevice);
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z1D);
-		d.deviceLaunch(s.Nblock / 2, s.Nthread, parabolicMirrorKernel, sDevice, focus);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, parabolicMirrorKernel, sDevice, (deviceFP)focus);
 		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D1D);
-		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ntime);
+		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, (deviceFP)(1.0 / s.Ntime));
 		d.fft(s.gridETime1, s.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(std::complex<double>), DeviceToHost);
@@ -2136,10 +2169,10 @@ namespace hostFunctions{
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
 
-		d.deviceLaunch(s.Nblock / 2, s.Nthread, applyLinearPropagationKernel, sellmeierCoefficients, thickness, sDevice);
+		d.deviceLaunch(s.Nblock / 2, s.Nthread, applyLinearPropagationKernel, sellmeierCoefficients, (deviceFP)thickness, sDevice);
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, s.NgridC * 2 * sizeof(std::complex<double>), DeviceToHost);
 		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
-		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, (deviceFP)(1.0 / s.Ngrid));
 
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * s.Ngrid * sizeof(double), DeviceToHost);
 
@@ -2193,12 +2226,12 @@ namespace hostFunctions{
 
 		//retrieve/rotate the field from the CPU memory
 		d.deviceMemcpy(Ein1, (*sCPU).EkwOut, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), HostToDevice);
-		d.deviceLaunch((unsigned int)(s.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, rotationAngle);
+		d.deviceLaunch((unsigned int)(s.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle);
 		d.deviceMemcpy((*sCPU).EkwOut, Eout1, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), DeviceToHost);
 
 		//transform back to time
 		d.fft(Eout1, s.gridETime1, deviceFFTZ2D);
-		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceLaunch(2 * s.Nblock, s.Nthread, multiplyByConstantKernelD, s.gridETime1, (deviceFP)(1.0 / s.Ngrid));
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
 		//update spectrum
@@ -2628,166 +2661,6 @@ namespace hostFunctions{
 			break;
 		}
 		return error;
-	}
-
-	//deprecated sequence mode; kept for compatibility with old files, but better to use interpretCommand() instead
-	int resolveSequence(int currentIndex, simulationParameterSet * s, crystalEntry * db) {
-
-
-		//double* offsetArray = &(*s).sequenceArray[11 * currentIndex];
-		//int error = 0;
-		////sequence format
-		////0: step type
-		//int stepType = (int)offsetArray[0];
-		//int materialIndex = 0;
-		//double thickness = 0;
-		//// 
-		//// if stepType == 0, normal propagation
-		////1: material index
-		////2: theta,
-		////3: phi, 
-		////4: NL absorption
-		////5: Band gap
-		////6: Drude relaxation
-		////7: Effective mass
-		////8: Crystal thickness
-		////9: Propagation step size
-		////10: rotation angle
-		////
-		//// if stepType == 1, linear propagation
-		//// same parameters as 0, but only 1,2,3,8, and 10 matter
-		////
-		//// if stepType == 2, fresnel loss
-		//// 1: incidence material index
-		//// 2: transmission material index
-		//// other parameters don't matter
-		//// 
-		//// if stepType == 3, spherical mirror
-		//// 1: ROC (m)
-		////
-		//// if stepType == 4, parabolic mirror
-		//// 1: focus (m)
-		//// 
-		//// if stepType == 5, aperture
-		//// 1: diameter (m)
-		//// 2: activation parameter p (function is 1 - 1/(1 + exp(-p*(r-radius)))
-		////
-		//// if stepType == 6, loop back to start (handled by solveNonlinearWaveEquationSequence())
-		//// 1: counter (counts down to zero)
-		////
-		//// if stepType == 7, reinjection, same as 0, but input fields are added to current fields.
-
-		//switch (stepType) {
-		//case 7:
-		//	(*s).isReinjecting = TRUE;
-		//case 0:
-		//	if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-		//	if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-		//	if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-		//	if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
-		//	if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
-		//	if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
-		//	if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
-		//	if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
-		//	if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
-		//	if ((int)offsetArray[8] != -1) (*s).Npropagation
-		//		= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
-		//	if (currentIndex > 0) {
-		//		(*s).isFollowerInSequence = TRUE;
-		//	}
-		//	(*s).chi2Tensor = db[(*s).materialIndex].d;
-		//	(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-		//	(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-		//	(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-		//	(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
-
-		//	(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-		//	(*s).axesNumber = db[(*s).materialIndex].axisType;
-
-		//	error = solveNonlinearWaveEquationX(s);
-
-		//	if (offsetArray[10] != 0.0) {
-		//		rotateField(s, DEG2RAD * offsetArray[10]);
-		//	}
-
-		//	if ((*s).memoryError > 0) {
-		//		printf("Warning: device memory error (%i).\n", (*s).memoryError);
-		//	}
-		//	return error;
-
-		//case 1:
-		//	if ((*s).isCylindric) {
-		//		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-		//		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-		//		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-		//		if ((int)offsetArray[4] != -1) (*s).nonlinearAbsorptionStrength = offsetArray[4];
-		//		if ((int)offsetArray[5] != -1) (*s).bandGapElectronVolts = offsetArray[5];
-		//		if ((int)offsetArray[6] != -1) (*s).drudeGamma = offsetArray[6];
-		//		if ((int)offsetArray[7] != -1) (*s).effectiveMass = offsetArray[7];
-		//		if ((int)offsetArray[8] != -1) (*s).crystalThickness = 1e-6 * offsetArray[8];
-		//		if ((int)offsetArray[9] != -1) (*s).propagationStep = 1e-9 * offsetArray[9];
-		//		if ((int)offsetArray[8] != -1) (*s).Npropagation
-		//			= (size_t)(1e-6 * offsetArray[8] / (*s).propagationStep);
-		//		if (currentIndex > 0) {
-		//			(*s).isFollowerInSequence = TRUE;
-		//		}
-		//		(*s).chi2Tensor = db[(*s).materialIndex].d;
-		//		(*s).chi3Tensor = db[(*s).materialIndex].chi3;
-		//		(*s).nonlinearSwitches = db[(*s).materialIndex].nonlinearSwitches;
-		//		(*s).absorptionParameters = db[(*s).materialIndex].absorptionParameters;
-		//		(*s).sellmeierCoefficients = db[(*s).materialIndex].sellmeierCoefficients;
-		//		(*s).sellmeierType = db[(*s).materialIndex].sellmeierType;
-		//		(*s).axesNumber = db[(*s).materialIndex].axisType;
-		//		(*s).forceLinear = TRUE;
-		//		solveNonlinearWaveEquationX(s);
-		//	}
-		//	else {
-		//		if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-		//		if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-		//		if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-		//		thickness = 1.0e-6 * offsetArray[8];
-		//		if (offsetArray[8] == -1) {
-		//			thickness = (*s).crystalThickness;
-		//		}
-		//		materialIndex = (int)offsetArray[1];
-		//		if (offsetArray[1] == -1) {
-		//			materialIndex = (*s).materialIndex;
-		//		}
-		//		applyLinearPropagation(s, materialIndex, thickness);
-		//	}
-
-		//	if (offsetArray[10] != 0.0) {
-		//		rotateField(s, DEG2RAD * offsetArray[10]);
-		//	}
-		//	return 0;
-
-		//case 2:
-		//	if ((int)offsetArray[1] != -1) (*s).materialIndex = (int)offsetArray[1];
-		//	if ((int)offsetArray[2] != -1) (*s).crystalTheta = DEG2RAD * offsetArray[2];
-		//	if ((int)offsetArray[3] != -1) (*s).crystalPhi = DEG2RAD * offsetArray[3];
-		//	applyFresnelLoss(s, (int)offsetArray[4], (int)offsetArray[5]);
-		//	return 0;
-		//case 3:
-		//	applySphericalMirror(s, offsetArray[8]);
-		//	if (offsetArray[10] != 0.0) {
-		//		rotateField(s, DEG2RAD * offsetArray[10]);
-		//	}
-		//	return 0;
-		//case 4:
-		//	applyParabolicMirror(s, offsetArray[8]);
-		//	if (offsetArray[10] != 0.0) {
-		//		rotateField(s, DEG2RAD * offsetArray[10]);
-		//	}
-		//	return 0;
-		//case 5:
-		//	applyAperature(s, offsetArray[1], offsetArray[2]);
-		//	if (offsetArray[10] != 0.0) {
-		//		rotateField(s, DEG2RAD * offsetArray[10]);
-		//	}
-		//	return 0;
-		//}
-
-		return 1;
 	}
 
 	int solveSequenceWithDevice(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s) {

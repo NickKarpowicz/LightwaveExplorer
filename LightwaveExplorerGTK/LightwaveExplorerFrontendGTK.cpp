@@ -1962,7 +1962,12 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
         activeSetPtr[j].runningOnCPU = forceCPU;
         activeSetPtr[j].assignedGPU = assignedGPU;
         if ((*activeSetPtr).isInSequence) {
-            error = sequenceFunction(&activeSetPtr[j]);
+            try {
+                error = sequenceFunction(&activeSetPtr[j]);
+            }
+            catch (...) {
+                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception, probably SYCL</span>\n");
+            }
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
                     theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), activeSetPtr[j].memoryError);
@@ -1979,7 +1984,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             try {
                 error = normalFunction(&activeSetPtr[j]);
             } catch (...) {
-                theGui.console.tPrint("Simulation failed with exception\n");
+                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception, probably SYCL</span>\n");
             }
             
             if (activeSetPtr[j].memoryError != 0) {
