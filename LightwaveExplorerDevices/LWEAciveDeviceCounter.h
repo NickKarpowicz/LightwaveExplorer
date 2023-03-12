@@ -1,5 +1,5 @@
 #pragma once
-
+#include "LightwaveExplorerUtilities.h"
 #define DeviceToHost 2
 #define HostToDevice 1
 #define DeviceToDevice 3
@@ -12,37 +12,27 @@ int hardwareCheckCounter(int* CUDAdeviceCount) {
 	return 0;
 }
 
-void atomicAddCounter(deviceFP* pulseSum, deviceFP pointEnergy) {
+void atomicAddCounter(float* pulseSum, float pointEnergy) {
 }
 
-double j0Counter(deviceFP x) {
+void atomicAddCounter(double* pulseSum, double pointEnergy) {
+}
+
+
+
+double j0Counter(float x) {
 	return x;
 }
 
-namespace {
-
-	void initializeDeviceParameters(simulationParameterSet* sCPU, deviceParameterSet* s) {
-		(*s).Ntime = (*sCPU).Ntime;
-		(*s).Nspace = (*sCPU).Nspace;
-		(*s).Nspace2 = (*sCPU).Nspace2;
-		(*s).is3D = (*sCPU).is3D;
-		(*s).Nfreq = ((*s).Ntime / 2 + 1);
-		(*s).Ngrid = (*s).Ntime * (*s).Nspace * (*s).Nspace2;
-		(*s).NgridC = (*s).Nfreq * (*s).Nspace * (*s).Nspace2; //size of the positive frequency side of the grid
-		(*s).fftNorm = (deviceFP)1.0 / (*s).Ngrid;
-		(*s).dt = (deviceFP)(*sCPU).tStep;
-		(*s).dx = (deviceFP)(*sCPU).rStep;
-		(*s).dk1 = (deviceFP)(TWOPI / ((*sCPU).Nspace * (*sCPU).rStep));
-		(*s).dk2 = (deviceFP)(TWOPI / ((*sCPU).Nspace2 * (*sCPU).rStep));
-		(*s).fStep = (deviceFP)(*sCPU).fStep;
-		(*s).Nsteps = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
-		(*s).h = (deviceFP)((*sCPU).crystalThickness / ((*s).Nsteps)); //adjust step size so that thickness can be varied continuously by fitting
-	}
+double j0Counter(double x) {
+	return x;
 }
+
 class deviceCounter {
 private:
-	bool configuredFFT = FALSE;
-	bool isCylindric = FALSE;
+#include "LWEActiveDeviceCommon.cpp"
+	bool configuredFFT = 0;
+	bool isCylindric = 0;
 	deviceParameterSet dParamslocal;
 	void fftDestroy() {
 	}
@@ -51,32 +41,24 @@ public:
 	int stream;
 	int memoryStatus;
 	bool hasPlasma;
-	deviceParameterSet* dParams;
+	deviceParameterSet deviceStruct;
+	deviceParameterSet* s;
 	simulationParameterSet* cParams;
 	deviceParameterSet* dParamsDevice;
-	deviceCounter() {
-		memoryStatus = -1;
-		stream = 0;
-		dParams = NULL;
-		cParams = NULL;
-		dParamsDevice = NULL;
-		configuredFFT = 0;
-		isCylindric = 0;
-		dParamsDevice = &dParamslocal;
-	}
 
-	deviceCounter(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	deviceCounter(simulationParameterSet* sCPU) {
+		s = &deviceStruct;
+		memset(s, 0, sizeof(deviceParameterSet));
+
 		memoryStatus = 0;
 		stream = 0;
-		dParams = NULL;
 		cParams = NULL;
 		dParamsDevice = NULL;
 		configuredFFT = 0;
 		isCylindric = 0;
-		dParams = s;
 		cParams = sCPU;
 		dParamsDevice = &dParamslocal;
-		initializeDeviceParameters(sCPU, s);
+		initializeDeviceParameters(sCPU);
 	}
 
 	~deviceCounter() {
@@ -105,16 +87,16 @@ public:
 	void fft(void* input, void* output, int type) {
 	}
 
-	void fftInitialize(deviceParameterSet* s) {
+	void fftInitialize() {
 		hasPlasma = (*s).hasPlasma;
 		configuredFFT = 1;
 	}
-	void deallocateSet(deviceParameterSet* s) {
+	void deallocateSet() {
 	}
-	void reset(simulationParameterSet* sCPU, deviceParameterSet* s) {
-		initializeDeviceParameters(sCPU, s);
+	void reset(simulationParameterSet* sCPU) {
+		initializeDeviceParameters(sCPU);
 	}
-	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	int allocateSet(simulationParameterSet* sCPU) {
 		return 0;
 	}
 };

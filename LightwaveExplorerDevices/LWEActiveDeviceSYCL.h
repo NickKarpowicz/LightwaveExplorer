@@ -1,4 +1,4 @@
-#include "LWEActiveDeviceCommon.cpp"
+#include "LightwaveExplorerUtilities.h"
 #include <sycl/sycl.hpp>
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
@@ -120,10 +120,10 @@ oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b)
 
 class deviceSYCL {
 private:
+#include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;
 	deviceFP canaryPixel = 0.0;
-
 	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlanD2Z;
 	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlanZ2D;
 	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlan1DD2Z;
@@ -135,26 +135,25 @@ private:
 		delete fftPlan1DZ2D;
 		delete fftPlanD2Z;
 		delete fftPlanZ2D;
-		if ((*dParams).isCylindric) delete doublePolfftPlan;
+		if ((*s).isCylindric) delete doublePolfftPlan;
 	}
 public:
 	sycl::queue stream;
-	deviceParameterSet* dParams;
+	deviceParameterSet deviceStruct;
+	deviceParameterSet* s;
 	deviceParameterSet* dParamsDevice;
 	simulationParameterSet* cParams;
 	int memoryStatus;
 	bool hasPlasma = FALSE;
-	deviceSYCL() {
-		memoryStatus = -1;
-		configuredFFT = 0;
-		isCylindric = 0;
-	}
 
-	deviceSYCL(simulationParameterSet* sCPU, deviceParameterSet* s) {
+
+	deviceSYCL(simulationParameterSet* sCPU) {
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
-		memoryStatus = allocateSet(sCPU, s);
+		s = &deviceStruct;
+		memset(s, 0, sizeof(deviceParameterSet));
+		memoryStatus = allocateSet(sCPU);
 	}
 
 	~deviceSYCL() {
@@ -242,8 +241,7 @@ public:
 		sycl::free(block, stream);
 	}
 
-	//to do
-	void fftInitialize(deviceParameterSet* s) {
+	void fftInitialize() {
 		if (configuredFFT) {
 			fftDestroy();
 		}
@@ -353,7 +351,7 @@ public:
 			break;
 		}
 	}
-	void deallocateSet(deviceParameterSet* s) {
+	void deallocateSet() {
 		stream.wait();
 		deviceFree((*s).gridETime1);
 		deviceFree((*s).workspace1);
@@ -372,15 +370,15 @@ public:
 		deviceFree((*s).fieldFactor1);
 		deviceFree((*s).inverseChiLinear1);
 	}
-	void reset(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	void reset(simulationParameterSet* sCPU) {
 		if((*s).hasPlasma != ((*sCPU).nonlinearAbsorptionStrength != 0.0)){
-			deallocateSet(s);
-			memoryStatus = allocateSet(sCPU,s);
+			deallocateSet();
+			memoryStatus = allocateSet(sCPU);
 		}
 		else{
-			initializeDeviceParameters(sCPU, s);
+			initializeDeviceParameters(sCPU);
 		}
-		fillRotationMatricies(sCPU, s);
+		fillRotationMatricies(sCPU);
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
@@ -415,10 +413,11 @@ public:
 		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
 		delete[] expGammaTCPU;
 
-		finishConfiguration(sCPU, s);
+		finishConfiguration(sCPU);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
 	}
-	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	int allocateSet(simulationParameterSet* sCPU) {
+		
 		if ((*sCPU).assignedGPU) {
 			try {
 				sycl::queue gpuStream{ sycl::gpu_selector_v, { sycl::property::queue::in_order() } };
@@ -446,10 +445,9 @@ public:
 		}
 		
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
-		dParams = s;
 		cParams = sCPU;
-		initializeDeviceParameters(sCPU, s);
-		fftInitialize(s);
+		initializeDeviceParameters(sCPU);
+		fftInitialize();
 		int memErrors = 0;
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
 
@@ -459,7 +457,7 @@ public:
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
 
-		fillRotationMatricies(sCPU, s);
+		fillRotationMatricies(sCPU);
 		//GPU allocations
 		//
 		// currently 8 large grids, meaning memory use is approximately
@@ -495,7 +493,7 @@ public:
 		if (memErrors > 0) {
 			return memErrors;
 		}
-		finishConfiguration(sCPU, s);
+		finishConfiguration(sCPU);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
 		return 0;
 	}

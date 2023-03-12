@@ -1,10 +1,9 @@
-#include "LWEActiveDeviceCommon.cpp"
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cufft.h>
 #include <nvml.h>
 #include <thrust/complex.h>
-
+#include "LightwaveExplorerUtilities.h"
 #define DeviceToHost cudaMemcpyDeviceToHost
 #define HostToDevice cudaMemcpyHostToDevice
 #define DeviceToDevice cudaMemcpyDeviceToDevice
@@ -104,16 +103,18 @@ int hardwareCheckCUDA(int* CUDAdeviceCount) {
 
 class deviceCUDA {
 private:
+#include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;
 	deviceFP canaryPixel = 0.0;
+	
 	cufftHandle fftPlanD2Z;
 	cufftHandle fftPlanZ2D;
 	cufftHandle fftPlan1DD2Z;
 	cufftHandle fftPlan1DZ2D;
 	cufftHandle doublePolfftPlan;
 
-	int checkDeviceMemory(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	int checkDeviceMemory(simulationParameterSet* sCPU) {
 		nvmlDevice_t nvmlDevice = 0;
 		nvmlMemory_t nvmlMemoryInfo;
 		nvmlInit_v2();
@@ -140,27 +141,23 @@ private:
 	}
 public:
 	cudaStream_t stream;
-	deviceParameterSet* dParams;
+	deviceParameterSet deviceStruct;
+	deviceParameterSet* s;
 	deviceParameterSet* dParamsDevice;
 	simulationParameterSet* cParams;
 	int memoryStatus;
 	bool hasPlasma;
-	deviceCUDA() {
-		memoryStatus = -1;
-		configuredFFT = 0;
-		isCylindric = 0;
-		cudaStreamCreate(&stream);
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
-	}
 
-	deviceCUDA(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	deviceCUDA(simulationParameterSet* sCPU) {
+		s = &deviceStruct;
+		memset(s, 0, sizeof(deviceParameterSet));
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
 		cudaSetDevice((*sCPU).assignedGPU);
 		cudaStreamCreate(&stream);
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
-		memoryStatus = allocateSet(sCPU, s);
+		memoryStatus = allocateSet(sCPU);
 	}
 
 
@@ -236,7 +233,7 @@ public:
 		cudaFree(block);
 	}
 
-	void fftInitialize(deviceParameterSet* s) {
+	void fftInitialize() {
 		if (configuredFFT) {
 			fftDestroy();
 		}
@@ -317,7 +314,7 @@ public:
 			break;
 		}
 	}
-	void deallocateSet(deviceParameterSet* s) {
+	void deallocateSet() {
 		deviceFree((*s).gridETime1);
 		deviceFree((*s).workspace1);
 		deviceFree((*s).gridEFrequency1);
@@ -335,15 +332,15 @@ public:
 		deviceFree((*s).fieldFactor1);
 		deviceFree((*s).inverseChiLinear1);
 	}
-	void reset(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	void reset(simulationParameterSet* sCPU) {
 		if((*s).hasPlasma != ((*sCPU).nonlinearAbsorptionStrength != 0.0)){
-			deallocateSet(s);
-			memoryStatus = allocateSet(sCPU,s);
+			deallocateSet();
+			memoryStatus = allocateSet(sCPU);
 		}
 		else{
-			initializeDeviceParameters(sCPU, s);
+			initializeDeviceParameters(sCPU);
 		}
-		fillRotationMatricies(sCPU, s);
+		fillRotationMatricies(sCPU);
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
@@ -378,16 +375,15 @@ public:
 		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
 		delete[] expGammaTCPU;
 
-		finishConfiguration(sCPU, s);
+		finishConfiguration(sCPU);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
 	}
-	int allocateSet(simulationParameterSet* sCPU, deviceParameterSet* s) {
-		dParams = s;
+	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
 		cudaSetDevice((*sCPU).assignedGPU);
-		initializeDeviceParameters(sCPU, s);
-		fftInitialize(s);
-		if (checkDeviceMemory(sCPU, s)) {
+		initializeDeviceParameters(sCPU);
+		fftInitialize();
+		if (checkDeviceMemory(sCPU)) {
 			fftDestroy();
 			return 1;
 		}
@@ -401,7 +397,7 @@ public:
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
 
-		fillRotationMatricies(sCPU, s);
+		fillRotationMatricies(sCPU);
 
 		//GPU allocations
 		//
@@ -441,7 +437,7 @@ public:
 		if (memErrors > 0) {
 			return memErrors;
 		}
-		finishConfiguration(sCPU, s);
+		finishConfiguration(sCPU);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
 		return 0;
 	}

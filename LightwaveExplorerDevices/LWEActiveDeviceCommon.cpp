@@ -1,7 +1,5 @@
-#include "LightwaveExplorerUtilities.h"
 
-namespace {
-	int fillRotationMatricies(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	int fillRotationMatricies(simulationParameterSet* sCPU) {
 		double cosT = cos((*sCPU).crystalTheta);
 		double sinT = sin((*sCPU).crystalTheta);
 		double cosP = cos((*sCPU).crystalPhi);
@@ -21,7 +19,7 @@ namespace {
 		return 0;
 	}
 
-	void initializeDeviceParameters(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	void initializeDeviceParameters(simulationParameterSet* sCPU) {
 		(*s).Ntime = (*sCPU).Ntime;
 		(*s).Nspace = (*sCPU).Nspace;
 		(*s).Nspace2 = (*sCPU).Nspace2;
@@ -65,7 +63,7 @@ namespace {
 
 	}
 
-	void finishConfiguration(simulationParameterSet* sCPU, deviceParameterSet* s) {
+	void finishConfiguration(simulationParameterSet* sCPU) {
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
@@ -130,4 +128,3 @@ namespace {
 		}
 
 	}
-}
