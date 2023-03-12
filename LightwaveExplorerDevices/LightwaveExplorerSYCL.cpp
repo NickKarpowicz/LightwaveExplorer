@@ -50,7 +50,7 @@ void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                     gpuCount++;
                     deviceList.append(Sformat("SYCL found a GPU:\n   <span color=\"#66FFFFFF\">{}</span>\n", d.get_info<cl::sycl::info::device::name>()));
                     if(d.get_info<cl::sycl::info::device::double_fp_config>().size()==0){
-                        gpuCount--;
+                        //gpuCount--;
                         deviceList.append(Sformat("   <span color=\"#FF6666\">Disabled; doesn't support FP64</span>\n"));
                     }
                 }

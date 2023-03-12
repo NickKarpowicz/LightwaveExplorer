@@ -1976,7 +1976,12 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
             independentPlotQueue();
         }
         else {
-            error = normalFunction(&activeSetPtr[j]);
+            try {
+                error = normalFunction(&activeSetPtr[j]);
+            } catch (const std::exception& e) {
+                theGui.console.tPrint("Simulation failed with exception\n");
+            }
+            
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
                     theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), activeSetPtr[j].memoryError);

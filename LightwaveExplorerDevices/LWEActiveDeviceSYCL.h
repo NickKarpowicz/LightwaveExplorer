@@ -50,10 +50,14 @@ namespace deviceLibSYCLFP32{
 		return powf(x,y);
 	}
 	oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
-		return oneapi::dpl::pow(x,y);
+		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
+		float theta = atan2f(x.imag(), x.real());
+		float rn = powf(r, y);
+		return oneapi::dpl::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
 	}
 	oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::exp(x);
+
 	}
 	float abs(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::abs(x);
@@ -228,7 +232,7 @@ public:
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			copyBuffer[i] = (float)src[i];
 		}
-		memcpy(dst, copyBuffer, count / 2);
+		stream.memcpy(dst, copyBuffer, count / 2);
 		stream.wait();
 		delete[] copyBuffer;
 	}

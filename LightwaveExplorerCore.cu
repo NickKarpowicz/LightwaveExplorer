@@ -115,16 +115,16 @@ namespace deviceFunctions {
 				+ a[15] / deviceComplex(a[16] - omega2, a[17] * omega)
 				+ a[18] / deviceComplex(a[19] - omega2, a[20] * omega);
 			compPart *= KLORENTZIAN;
-			return deviceLib::sqrt((deviceFP)1.0f + compPart);
+			return deviceLib::sqrt(1.0f + compPart);
 		case 2:
 		{
 			//Up to 7 complex Gaussian functions
 			//the real part is the Hilbert transform of the Gaussian, th
 			deviceFP scaledF;
-			compPart = deviceComplex(a[0], 0.0);
+			compPart = deviceComplex(a[0], 0.0f);
 			for (int i = 0; i < 7; ++i) {
-				if (a[3 * i + 1] != 0.0){
-					scaledF = (omega - a[1 + 3 * i]) / (deviceFPLib::sqrt(2.0) * a[2 + 3 * i]);
+				if (a[3 * i + 1] != 0.0f){
+					scaledF = (omega - a[1 + 3 * i]) / (deviceFPLib::sqrt(2.0f) * a[2 + 3 * i]);
 					compPart += a[3 + 3 * i] * deviceComplex(-INVSQRTPI * deviceDawson(scaledF), -deviceFPLib::exp(-scaledF * scaledF));
 				}
 
@@ -142,21 +142,21 @@ namespace deviceFunctions {
 				+ a[14] * ls * ls
 				+ a[15] * ls * ls * ls;
 			//"real-valued equation has no business being < 1" - causality
-			return deviceComplex(deviceFPLib::sqrt(maxN(realPart, 0.9)), 0.0);
+			return deviceComplex(deviceFPLib::sqrt(maxN(realPart, 0.9f)), 0.0f);
 		}
 		
-		return deviceComplex(1.0, 0.0);
+		return deviceComplex(1.0f, 0.0f);
 	};
 
 	//Sellmeier equation for refractive indicies
 	deviceFunction deviceComplex sellmeierCuda(
 		deviceComplex* ne, deviceComplex* no, const deviceFP* a, deviceFP f, deviceFP theta, deviceFP phi, int type, int eqn) {
-		if (f == 0) {
-			*ne = deviceComplex(1.0, 0.0); 
-			*no = deviceComplex(1.0, 0.0); 
-			return deviceComplex(1.0, 0.0);
+		if (f == 0.0f) {
+			*ne = deviceComplex(1.0f, 0.0f); 
+			*no = deviceComplex(1.0f, 0.0f); 
+			return deviceComplex(1.0f, 0.0f);
 		} //exit immediately for f=0
-		deviceFP ls = 2.99792458e14 / f; //wavelength in microns
+		deviceFP ls = 2.99792458e14f / f; //wavelength in microns
 		ls *= ls; //only wavelength^2 is ever used
 		deviceFP omega = TWOPI * maxN(f,-f);
 
@@ -226,7 +226,7 @@ namespace deviceFunctions {
 			neighbors[3] = (N - j) * Ntime + h;
 			neighbors[4] = (j - 1) * Ntime + h;
 			neighbors[5] = (N - j + 1) * Ntime + h;
-			return -(dr * (j - N / 2) + 0.25 * dr);
+			return -(dr * (j - N / 2) + 0.25f * dr);
 		}
 		else {
 			neighbors[0] = (N - j + 1) * Ntime + h;
@@ -235,7 +235,7 @@ namespace deviceFunctions {
 			neighbors[3] = (N - j - 1) * Ntime + h;
 			neighbors[4] = (j + 1) * Ntime + h;
 			neighbors[5] = (N - j - 2) * Ntime + h;
-			return dr * (j - N / 2) + 0.25 * dr;
+			return dr * (j - N / 2) + 0.25f * dr;
 		}
 	}
 	//provide the position rho in cylindric mode; a simplified
@@ -285,8 +285,8 @@ namespace deviceFunctions {
 		//alpha is deviation from crystal Theta (x2 polarizations)
 		//beta is deviation from crystal Phi
 		//
-		deviceComplex n[4][2] = { {deviceComplex(0.0, 0.0)} };
-		deviceComplex nW = deviceComplex(0.0, 0.0);
+		deviceComplex n[4][2] = { {deviceComplex(0.0f, 0.0f)} };
+		deviceComplex nW = deviceComplex(0.0f, 0.0f);
 		sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		if ((*s).axesNumber == 0) {
 			*n1 = n[0][0];
@@ -294,27 +294,27 @@ namespace deviceFunctions {
 			return;
 		}
 
-		deviceFP gradient[2][2] = { {0.0} };
+		deviceFP gradient[2][2] = { {0.0f} };
 		deviceFP alpha[2] = { deviceFPLib::asin(kx1 / n[0][0].real()),deviceFPLib::asin(kx1 / n[0][1].real()) };
 		deviceFP beta[2] = { deviceFPLib::asin(ky1 / n[0][0].real()), deviceFPLib::asin(ky1 / n[0][1].real()) };
 
-		deviceFP gradientStep = 1.0e-6;
-		deviceFP gradientFactor = 0.5 / gradientStep;
+		deviceFP gradientStep = 1.0e-6f;
+		deviceFP gradientFactor = 0.5f / gradientStep;
 		int it = 0;
 		int maxiter = 64;
-		deviceFP gradientTol = 1e-3;
+		deviceFP gradientTol = 1e-3f;
 		//emperical testing: 
 		// converges to double precision limit in two iterations for BBO
 		// converges in 32 iterations in BiBO
 
-		deviceFP errArray[4][2] = { {0.0} };
+		deviceFP errArray[4][2] = { {0.0f} };
 		if ((*s).axesNumber == 1) {
 			maxiter = 64;
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
-				*n1 = deviceComplex(0.0, 0.0);
-				*n2 = deviceComplex(0.0, 0.0);
+				*n1 = deviceComplex(0.0f, 0.0f);
+				*n2 = deviceComplex(0.0f, 0.0f);
 				return;
 			}
 			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
@@ -323,12 +323,12 @@ namespace deviceFunctions {
 
 			for (it = 0; it < maxiter; ++it) {
 				if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
-					*n1 = deviceComplex(0.0, 0.0);
-					*n2 = deviceComplex(0.0, 0.0);
+					*n1 = deviceComplex(0.0f, 0.0f);
+					*n2 = deviceComplex(0.0f, 0.0f);
 					return;
 				}
 				if (deviceFPLib::abs(gradient[0][0]) > gradientTol) {
-					alpha[0] -= 0.5 * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
+					alpha[0] -= 0.5f * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
 				} 
 				else {
 					break;
@@ -376,14 +376,14 @@ namespace deviceFunctions {
 
 			for (it = 0; it < maxiter; ++it) {
 				if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
-					*n1 = deviceComplex(0.0, 0.0);
-					*n2 = deviceComplex(0.0, 0.0);
+					*n1 = deviceComplex(0.0f, 0.0f);
+					*n2 = deviceComplex(0.0f, 0.0f);
 					return;
 				}
-				if (deviceFPLib::abs(gradient[0][0]) > 1e-2) alpha[0] -= 0.25 * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
-				if (deviceFPLib::abs(gradient[1][0]) > 1e-2) beta[0] -= 0.25 * (errArray[2][0] + errArray[3][0]) / gradient[1][0];
-				if (deviceFPLib::abs(gradient[0][1]) > 1e-2) alpha[1] -= 0.25 * (errArray[0][1] + errArray[1][1]) / gradient[0][1];
-				if (deviceFPLib::abs(gradient[1][1]) > 1e-2) beta[1] -= 0.25 * (errArray[2][1] + errArray[3][1]) / gradient[1][1];
+				if (deviceFPLib::abs(gradient[0][0]) > 1e-2f) alpha[0] -= 0.25f * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
+				if (deviceFPLib::abs(gradient[1][0]) > 1e-2f) beta[0] -= 0.25f * (errArray[2][0] + errArray[3][0]) / gradient[1][0];
+				if (deviceFPLib::abs(gradient[0][1]) > 1e-2f) alpha[1] -= 0.25f * (errArray[0][1] + errArray[1][1]) / gradient[0][1];
+				if (deviceFPLib::abs(gradient[1][1]) > 1e-2f) beta[1] -= 0.25f * (errArray[2][1] + errArray[3][1]) / gradient[1][1];
 
 				if (maxN(maxN(deviceFPLib::abs(gradient[0][0]), deviceFPLib::abs(gradient[1][0])), maxN(deviceFPLib::abs(gradient[0][1]), deviceFPLib::abs(gradient[1][1]))) < gradientTol) break;
 				sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
@@ -434,15 +434,15 @@ namespace kernels {
 	trilingual totalSpectrumKernel asKernel(withID const deviceParameterSet* s) {
 		size_t i = localIndex;
 		size_t j;
-		deviceFP beamCenter1 = 0.;
-		deviceFP beamCenter2 = 0.;
-		deviceFP beamTotal1 = 0.;
-		deviceFP beamTotal2 = 0.;
+		deviceFP beamCenter1 = 0.0f;
+		deviceFP beamCenter2 = 0.0f;
+		deviceFP beamTotal1 = 0.0f;
+		deviceFP beamTotal2 = 0.0f;
 		deviceFP a, x;
 
 		//find beam centers
 		if ((*s).isCylindric) {
-			beamCenter1 = ((*s).Nspace / 2 * (*s).dx) + 0.25 * (*s).dx;
+			beamCenter1 = ((*s).Nspace / 2.0f * (*s).dx) + 0.25f * (*s).dx;
 			beamCenter2 = beamCenter1;
 		}
 		else{
@@ -455,25 +455,25 @@ namespace kernels {
 				beamTotal2 += a;
 				beamCenter2 += x * a;
 			}
-			if (beamTotal1 > 0) {
+			if (beamTotal1 > 0.0f) {
 				beamCenter1 /= beamTotal1;
 			}
-			if (beamTotal2 > 0) {
+			if (beamTotal2 > 0.0f) {
 				beamCenter2 /= beamTotal2;
 			}
 		}
 
 		//Integrate total beam power, assuming radially-symmetric beam around
 		//the center
-		beamTotal1 = 0.;
-		beamTotal2 = 0.;
+		beamTotal1 = 0.0f;
+		beamTotal2 = 0.0f;
 		for (j = 0; j < (*s).Nspace; ++j) {
 			x = (*s).dx * j;
 			beamTotal1 += deviceFPLib::abs(x - beamCenter1) * cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 			beamTotal2 += deviceFPLib::abs(x - beamCenter2) * cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 		}
-		beamTotal1 *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt * (*s).dt;
-		beamTotal2 *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt * (*s).dt;
+		beamTotal1 *= 2.0f * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt * (*s).dt;
+		beamTotal2 *= 2.0f * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt * (*s).dt;
 
 		//put the values into the output spectrum
 		(*s).gridPolarizationTime1[i] = beamTotal1;
@@ -511,17 +511,17 @@ namespace kernels {
 		size_t i = localIndex;
 		size_t j;
 
-		deviceFP beamTotal1 = 0.;
-		deviceFP beamTotal2 = 0.;
+		deviceFP beamTotal1 = 0.0f;
+		deviceFP beamTotal2 = 0.0f;
 		//Integrate total beam power
-		beamTotal1 = 0.;
-		beamTotal2 = 0.;
+		beamTotal1 = 0.0f;
+		beamTotal2 = 0.0f;
 		for (j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
 			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 		}
-		beamTotal1 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
-		beamTotal2 *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
+		beamTotal1 *= 2.0f * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
+		beamTotal2 *= 2.0f * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
 
 		//put the values into the output spectrum
 		(*s).gridPolarizationTime1[i] = beamTotal1;
@@ -595,12 +595,12 @@ namespace kernels {
 
 		//zero at edges of grid
 		if (j<3 || j>((long long)(*s).Nspace - 4)) {
-			(*s).gridRadialLaplacian1[i] = 0.;
-			(*s).gridRadialLaplacian2[i] = 0.;
+			(*s).gridRadialLaplacian1[i] = 0.0f;
+			(*s).gridRadialLaplacian2[i] = 0.0f;
 		}
 		else {
 			deviceFP rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, (int)j, (*s).dx, (*s).Ntime, h);
-			rho = -1.0 / rho;
+			rho = -1.0f / rho;
 			(*s).gridRadialLaplacian1[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
 				+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
 				+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
@@ -833,7 +833,7 @@ namespace kernels {
 
 		bool isNegative = ROC < 0.0;
 		ROC = deviceFPLib::abs(ROC);
-		deviceComplex u = deviceComplex(0.0, 0.0);
+		deviceComplex u = deviceComplex(0.0f, 0.0f);
 		if (r < ROC) {
 			u = deviceLib::exp(deviceComplex(0.0,
 				2.0 * deviceFPLib::pow(-1, isNegative) * w * ROC * ((deviceFPLib::sqrt(1.0 - r * r / (ROC * ROC))) - 1.0) / LIGHTC));
@@ -842,8 +842,8 @@ namespace kernels {
 		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
 		if (isnan((*s).gridEFrequency1[i].real()) || isnan((*s).gridEFrequency2[i].real()) || isnan((*s).gridEFrequency1[i].imag()) || isnan((*s).gridEFrequency2[i].imag())) {
-			(*s).gridEFrequency1[i] = deviceComplex(0.0, 0.0);
-			(*s).gridEFrequency2[i] = deviceComplex(0.0, 0.0);
+			(*s).gridEFrequency1[i] = deviceComplex(0.0f, 0.0f);
+			(*s).gridEFrequency2[i] = deviceComplex(0.0f, 0.0f);
 		}
 	};
 
@@ -886,8 +886,8 @@ namespace kernels {
 			//deviceFP kze = (deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2)).real();
 			//deviceFP kzo = (deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2)).real();
 
-		deviceComplex ts = deviceComplex(0.0, 0.0);//deviceLib::exp(ii * (k0 - kze) * thickness);
-		deviceComplex tp = deviceComplex(0.0, 0.0);// deviceLib::exp(ii * (k0 - kzo) * thickness);
+		deviceComplex ts = deviceComplex(0.0f, 0.0f);//deviceLib::exp(ii * (k0 - kze) * thickness);
+		deviceComplex tp = deviceComplex(0.0f, 0.0f);// deviceLib::exp(ii * (k0 - kzo) * thickness);
 		if(kze>=0.0) ts = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kze)) * thickness);
 		if(kzo>=0.0) tp = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kzo)) * thickness);
 		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0, 0);
@@ -904,11 +904,11 @@ namespace kernels {
 		long long j, k;
 		deviceComplex ne, no;
 		deviceComplex n0 = (*s).n0;
-		deviceComplex cuZero = deviceComplex(0, 0);
+		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
 		j = i / ((*s).Nfreq - 1); //spatial coordinate
 		k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
 		i = k + j * (*s).Nfreq;
-		deviceComplex ii = deviceComplex(0, 1);
+		deviceComplex ii = deviceComplex(0.0f, 1.0f);
 		deviceFP kStep = sellmeierCoefficients[70];
 		deviceFP fStep = sellmeierCoefficients[71];
 
@@ -920,7 +920,7 @@ namespace kernels {
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (minN(ne.real(), no.real()) < 0.9 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
+		if (minN(ne.real(), no.real()) < 0.9f || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -928,36 +928,36 @@ namespace kernels {
 			return;
 		}
 
-		deviceComplex k0 = deviceComplex((deviceFP)TWOPI * n0.real() * f / LIGHTC, 0);
+		deviceComplex k0 = deviceComplex((deviceFP)TWOPI * n0.real() * f / LIGHTC, 0.0f);
 		deviceComplex ke = (deviceFP)TWOPI * ne * f / (deviceFP)LIGHTC;
 		deviceComplex ko = (deviceFP)TWOPI * no * f / (deviceFP)LIGHTC;
 
-		deviceComplex chi11 = deviceComplex(1.0, 0);
-		deviceComplex chi12 = deviceComplex(1.0, 0);
+		deviceComplex chi11 = deviceComplex(1.0f, 0.0f);
+		deviceComplex chi12 = deviceComplex(1.0f, 0.0f);
 		if ((*s).isUsingMillersRule) {
 			chi11 = (*s).chiLinear1[k];
 			chi12 = (*s).chiLinear2[k];
 		}
 		else {
-			chi11 = deviceComplex(1, 0);
-			chi12 = deviceComplex(1, 0);
+			chi11 = deviceComplex(1.0f, 0.0f);
+			chi12 = deviceComplex(1.0f, 0.0f);
 		}
 		deviceComplex kz1 = deviceLib::sqrt(ke * ke - dk * dk);
 		deviceComplex kz2 = deviceLib::sqrt(ko * ko - dk * dk);
 
-		if (kz1.real() > 0.0 && kz2.real() > 0.0){
-			(*s).gridPropagationFactor1[i] = deviceLib::exp(-(deviceFP)0.5 * ii * (kz1 - k0) * (*s).h);
+		if (kz1.real() > 0.0f && kz2.real() > 0.0f){
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(-0.5f * ii * (kz1 - k0) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor1[i]).real())) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = deviceLib::exp(-(deviceFP)0.5 * ii * (kz2 - k0) * (*s).h);
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(-0.5f * ii * (kz2 - k0) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor2[i]).real())) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 			}
 
-			(*s).gridPolarizationFactor1[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + (deviceFP)1.0, (deviceFP)0.25) * chi11 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / ((2 * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz1)) * (*s).h;
-			(*s).gridPolarizationFactor2[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + (deviceFP)1.0, (deviceFP)0.25) * chi12 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / ((2 * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz2)) * (*s).h;
+			(*s).gridPolarizationFactor1[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + (deviceFP)1.0f, (deviceFP)0.25f) * chi11 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / ((2.0f * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz1)) * (*s).h;
+			(*s).gridPolarizationFactor2[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + (deviceFP)1.0f, (deviceFP)0.25f) * chi12 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / ((2.0f * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz2)) * (*s).h;
 		}
 		else {
 			(*s).gridPropagationFactor1[i] = cuZero;
@@ -975,14 +975,14 @@ namespace kernels {
 		long long col, j, k, l;
 		deviceComplex ne, no;
 		deviceComplex n0 = (*s).n0;
-		deviceComplex cuZero = deviceComplex(0, 0);
+		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
 		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 		i = j + col * (*s).Nfreq;
 		k = col % (*s).Nspace;
 		l = col / (*s).Nspace;
 
-		deviceComplex ii = deviceComplex(0, 1);
+		deviceComplex ii = deviceComplex(0.0f, 1.0f);
 
 		//frequency being resolved by current thread
 		deviceFP f = j * (*s).fStep;
@@ -992,7 +992,7 @@ namespace kernels {
 		deviceFP dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-		if (minN(ne.real(), no.real()) < 0.9 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
+		if (minN(ne.real(), no.real()) < 0.9f || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -1000,36 +1000,36 @@ namespace kernels {
 			return;
 		}
 
-		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
+		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0.0f);
 		deviceComplex ke = (deviceFP)TWOPI * ne * f / (deviceFP)LIGHTC;
 		deviceComplex ko = (deviceFP)TWOPI * no * f / (deviceFP)LIGHTC;
 
-		deviceComplex chi11 = deviceComplex(1.0, 0);
-		deviceComplex chi12 = deviceComplex(1.0, 0);
+		deviceComplex chi11 = deviceComplex(1.0f, 0.0f);
+		deviceComplex chi12 = deviceComplex(1.0f, 0.0f);
 		if ((*s).isUsingMillersRule) {
 			chi11 = (*s).chiLinear1[j];
 			chi12 = (*s).chiLinear2[j];
 		}
 		else {
-			chi11 = deviceComplex(1, 0);
-			chi12 = deviceComplex(1, 0);
+			chi11 = deviceComplex(1.0f, 0.0f);
+			chi12 = deviceComplex(1.0f, 0.0f);
 		}
 		deviceComplex kz1 = deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2);
 		deviceComplex kz2 = deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2);
 
-		if (kz1.real() > 0.0 && kz2.real() > 0.0) {
-			(*s).gridPropagationFactor1[i] = deviceLib::exp(-(deviceFP)0.5 * ii * (kz1 - k0) * (*s).h);
+		if (kz1.real() > 0.0f && kz2.real() > 0.0f) {
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(-0.5f * ii * (kz1 - k0) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = deviceLib::exp(-(deviceFP)0.5 * ii * (kz2 - k0) * (*s).h);
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(-0.5f * ii * (kz2 - k0) * (*s).h);
 			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 			}
 
-			(*s).gridPolarizationFactor1[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear1[j] + (deviceFP)1.0, (deviceFP)0.25) * chi11 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / (2 * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz1) * (*s).h;
-			(*s).gridPolarizationFactor2[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear2[j] + (deviceFP)1.0, (deviceFP)0.25) * chi12 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / (2 * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz2) * (*s).h;
+			(*s).gridPolarizationFactor1[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear1[j] + 1.0f, 0.25f) * chi11 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / (2.0f * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz1) * (*s).h;
+			(*s).gridPolarizationFactor2[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear2[j] + 1.0f, 0.25f) * chi12 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / (2.0f * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz2) * (*s).h;
 		}
 
 		else {
@@ -1054,46 +1054,46 @@ namespace kernels {
 		//frequency being resolved by current thread
 		deviceFP f = i * fStep;
 		
-		sellmeierCuda(&ne, &no, sellmeierCoefficients, deviceFPLib::abs(f), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+		sellmeierCuda(&ne, &no, sellmeierCoefficients, f, crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		if (isnan(ne.real()) || isnan(no.real())) {
-			ne = deviceComplex(1.0, 0);
+			ne = deviceComplex(1.0f, 0.0f);
 			no = ne;
 		}
 
-		(*s).chiLinear1[i] = ne * ne - (deviceFP)1.0;
-		(*s).chiLinear2[i] = no * no - (deviceFP)1.0;
-		if ((*s).chiLinear1[i].real() != 0.0 && (*s).chiLinear2[i].real() != 0.0) {
-			(*s).inverseChiLinear1[i] = (deviceFP)1.0 / (*s).chiLinear1[i].real();
-			(*s).inverseChiLinear2[i] = (deviceFP)1.0 / (*s).chiLinear2[i].real();
+		(*s).chiLinear1[i] = ne * ne - 1.0f;
+		(*s).chiLinear2[i] = no * no - 1.0f;
+		if ((*s).chiLinear1[i].real() != 0.0f && (*s).chiLinear2[i].real() != 0.0f) {
+			(*s).inverseChiLinear1[i] = 1.0f / (*s).chiLinear1[i].real();
+			(*s).inverseChiLinear2[i] = 1.0f / (*s).chiLinear2[i].real();
 		}
 		else {
-			(*s).inverseChiLinear1[i] = 0.0;
-			(*s).inverseChiLinear2[i] = 0.0;
+			(*s).inverseChiLinear1[i] = 0.0f;
+			(*s).inverseChiLinear2[i] = 0.0f;
 		}
 
-		(*s).fieldFactor1[i] = 1.0 / deviceFPLib::pow((*s).chiLinear1[i].real() + (deviceFP)1.0, (deviceFP)0.25); //account for the effective field strength in the medium (1/n)
-		(*s).fieldFactor2[i] = 1.0 / deviceFPLib::pow((*s).chiLinear2[i].real() + (deviceFP)1.0, (deviceFP)0.25);
+		(*s).fieldFactor1[i] = 1.0f / deviceFPLib::pow((*s).chiLinear1[i].real() + 1.0f, 0.25f); //account for the effective field strength in the medium (1/n)
+		(*s).fieldFactor2[i] = 1.0f / deviceFPLib::pow((*s).chiLinear2[i].real() + 1.0f, 0.25f);
 		if ((*s).isUsingMillersRule) {
 			(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
 			(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
 		}
-		if ((*s).chiLinear1[i].real() < -(deviceFP)0.1) {
-			(*s).fieldFactor1[i] = 0.0;
+		if ((*s).chiLinear1[i].real() < -0.1f) {
+			(*s).fieldFactor1[i] = 0.0f;
 		}
-		if ((*s).chiLinear2[i].real() < -(deviceFP)0.1) {
-			(*s).fieldFactor2[i] = 0.0;
+		if ((*s).chiLinear2[i].real() < -0.1f) {
+			(*s).fieldFactor2[i] = 0.0f;
 		}
 
 		if (i == 81) {
 			deviceComplex n0;
 			sellmeierCuda(&n0, &no, sellmeierCoefficients, deviceFPLib::abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 			(*s).n0 = no;
-			(*s).chiLinear1[(*s).Ntime / 2] = deviceComplex(1.0, 0.0);
-			(*s).chiLinear2[(*s).Ntime / 2] = deviceComplex(1.0, 0.0);
-			(*s).fieldFactor1[(*s).Ntime / 2] = 0.0;
-			(*s).fieldFactor2[(*s).Ntime / 2] = 0.0;
-			(*s).inverseChiLinear1[(*s).Ntime / 2] = 1.0 / (*s).chiLinear1[i].real();
-			(*s).inverseChiLinear2[(*s).Ntime / 2] = 1.0 / (*s).chiLinear2[i].real();
+			(*s).chiLinear1[(*s).Ntime / 2] = deviceComplex(1.0f, 0.0f);
+			(*s).chiLinear2[(*s).Ntime / 2] = deviceComplex(1.0f, 0.0f);
+			(*s).fieldFactor1[(*s).Ntime / 2] = 0.0f;
+			(*s).fieldFactor2[(*s).Ntime / 2] = 0.0f;
+			(*s).inverseChiLinear1[(*s).Ntime / 2] = 1.0f / (*s).chiLinear1[i].real();
+			(*s).inverseChiLinear2[(*s).Ntime / 2] = 1.0f / (*s).chiLinear2[i].real();
 		}
 
 		//apply Miller's rule to nonlinear coefficients
@@ -1104,12 +1104,12 @@ namespace kernels {
 			deviceFP chi11[7];
 
 			for (int im = (i>17)*3; im < 7; ++im) {
-				if (referenceFrequencies[im] == 0) {
-					chi11[im] = 100000.0;
+				if (referenceFrequencies[im] == 0.0f) {
+					chi11[im] = 100000.0f;
 				}
 				else {
 					sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[im], sellmeierCoefficients[66], sellmeierCoefficients[67], axesNumber, sellmeierType);
-					chi11[im] = no.real() * no.real() - 1.0;
+					chi11[im] = no.real() * no.real() - 1.0f;
 				}
 			}
 
@@ -1128,11 +1128,11 @@ namespace kernels {
 		long long i = localIndex;
 		long long j, k;
 		long long Nspace = (*s).Nspace;
-		deviceComplex cuZero = deviceComplex(0.0, 0.0);
+		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
 		j = i / ((*s).Nfreq - 1); //spatial coordinate
 		k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
 		i = k + j * (*s).Nfreq;
-		deviceComplex ii = deviceComplex(0.0, 1.0);
+		deviceComplex ii = deviceComplex(0.0f, 1.0f);
 		deviceFP kStep = sellmeierCoefficients[70];
 		deviceFP fStep = sellmeierCoefficients[71];
 
@@ -1148,7 +1148,7 @@ namespace kernels {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
-		if (minN(ne.real(), no.real()) < 0.95 || ne.real() > 6.0 || no.real() > 6.0 || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
+		if (minN(ne.real(), no.real()) < 0.95f || ne.real() > 6.0f || no.real() > 6.0f || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -1158,35 +1158,68 @@ namespace kernels {
 			return;
 		}
 
-		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0);
-		deviceComplex ke = (deviceFP)TWOPI * ne * f / (deviceFP)LIGHTC;
-		deviceComplex ko = (deviceFP)TWOPI * no * f / (deviceFP)LIGHTC;
+		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0.0f);
+		deviceComplex ke = TWOPI * ne * f / LIGHTC;
+		deviceComplex ko = TWOPI * no * f / LIGHTC;
 
-		deviceComplex chi11 = deviceComplex(1.0, 0);
-		deviceComplex chi12 = deviceComplex(1.0, 0);
+		deviceComplex chi11 = deviceComplex(1.0f, 0.0f);
+		deviceComplex chi12 = deviceComplex(1.0f, 0.0f);
 		if ((*s).isUsingMillersRule) {
 			chi11 = (*s).chiLinear1[k];
 			chi12 = (*s).chiLinear2[k];
 		}
-
-		if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())) && (*s).fieldFactor1[k] > 0.0 && (*s).fieldFactor2[k] > 0.0) {
-			(*s).gridPropagationFactor1[i] = deviceLib::exp((deviceFP)0.5 * ii * (ke - k0 - dk * dk / (2 * ke.real())) * (*s).h);
-			(*s).gridPropagationFactor1Rho1[i] = ii * (*s).h / ((*s).fieldFactor1[k] * 2 * ke);
+		//fine to here
+		if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())) 
+			&& (*s).fieldFactor1[k] > 0.0f 
+			&& (*s).fieldFactor2[k] > 0.0f) {
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
+			(*s).gridPropagationFactor1Rho1[i] = ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
 			if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho1[i]+(*s).gridPropagationFactor1[i])))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 				(*s).gridPropagationFactor1Rho1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = deviceLib::exp((deviceFP)0.5 * ii * (ko - k0 - dk * dk / (2 * ko.real())) * (*s).h);
-			(*s).gridPropagationFactor1Rho2[i] = ii * (*s).h / ((*s).fieldFactor2[k] * 2 * ko);
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5f * ii * (ko - k0 - dk * dk / (2.0f * ko.real())) * (*s).h);
+			(*s).gridPropagationFactor1Rho2[i] = ii * (*s).h / ((*s).fieldFactor2[k] * 2.0f * ko);
 			if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho2[i]+(*s).gridPropagationFactor2[i])))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 				(*s).gridPropagationFactor1Rho2[i] = cuZero;
 			}
 
 			//factor of 0.5 comes from deviceFPd grid size in cylindrical symmetry mode after expanding the beam
-			(*s).gridPolarizationFactor1[i] = (deviceFP)0.5 * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + (deviceFP)1.0, (deviceFP)0.25) * chi11 * ii * ((deviceFP)TWOPI * f) / (2 * ne.real() * (deviceFP)LIGHTC) * (*s).h;
-			(*s).gridPolarizationFactor2[i] = (deviceFP)0.5 * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + (deviceFP)1.0, (deviceFP)0.25) * chi12 * ii * ((deviceFP)TWOPI * f) / (2 * no.real() * (deviceFP)LIGHTC) * (*s).h;
+			(*s).gridPolarizationFactor1[i] = 0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + 1.0f, 0.25f) * chi11 * ii * (TWOPI * f) / (2.0f * ne.real() * LIGHTC) * (*s).h;
+			(*s).gridPolarizationFactor2[i] = 0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + 1.0f, 0.25f) * chi12 * ii * (TWOPI * f) / (2.0f * no.real() * LIGHTC) * (*s).h;
+			if (isnan((*s).gridPolarizationFactor1[i].real()) || isnan((*s).gridPolarizationFactor1[i].imag()) || isnan((*s).gridPolarizationFactor2[i].real()) || isnan((*s).gridPolarizationFactor2[i].imag())) {
+				(*s).gridPolarizationFactor1[i] = cuZero;
+				(*s).gridPolarizationFactor2[i] = cuZero;
+			}
+		}
+		else {
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor2[i] = cuZero;
+			(*s).gridPolarizationFactor1[i] = cuZero;
+			(*s).gridPolarizationFactor2[i] = cuZero;
+			(*s).gridPropagationFactor1Rho1[i] = cuZero;
+			(*s).gridPropagationFactor1Rho2[i] = cuZero;
+		}
+		if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())) && (*s).fieldFactor1[k] > 0.0f && (*s).fieldFactor2[k] > 0.0f) {
+			(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
+			(*s).gridPropagationFactor1Rho1[i] = ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
+			if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho1[i]+(*s).gridPropagationFactor1[i])))) {
+				(*s).gridPropagationFactor1[i] = cuZero;
+				(*s).gridPropagationFactor1Rho1[i] = cuZero;
+			}
+
+			(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5f * ii * (ko - k0 - dk * dk / (2.0f * ko.real())) * (*s).h);
+			(*s).gridPropagationFactor1Rho2[i] = ii * (*s).h / ((*s).fieldFactor2[k] * 2.0f * ko);
+			if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho2[i]+(*s).gridPropagationFactor2[i])))) {
+				(*s).gridPropagationFactor2[i] = cuZero;
+				(*s).gridPropagationFactor1Rho2[i] = cuZero;
+			}
+
+			//factor of 0.5 comes from deviceFPd grid size in cylindrical symmetry mode after expanding the beam
+			(*s).gridPolarizationFactor1[i] = 0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + 1.0f, 0.25f) * chi11 * ii * (TWOPI * f) / (2.0f * ne.real() * LIGHTC) * (*s).h;
+			(*s).gridPolarizationFactor2[i] = 0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + 1.0f, 0.25f) * chi12 * ii * (TWOPI * f) / (2.0f * no.real() * LIGHTC) * (*s).h;
 			if (isnan((*s).gridPolarizationFactor1[i].real()) || isnan((*s).gridPolarizationFactor1[i].imag()) || isnan((*s).gridPolarizationFactor2[i].real()) || isnan((*s).gridPolarizationFactor2[i].imag())) {
 				(*s).gridPolarizationFactor1[i] = cuZero;
 				(*s).gridPolarizationFactor2[i] = cuZero;
@@ -1205,7 +1238,7 @@ namespace kernels {
 
 	trilingual realToComplexKernel asKernel(withID deviceFP* in, deviceComplex* out) {
 		long long i = localIndex;
-		out[i] = deviceComplex(in[i], 0.0);
+		out[i] = deviceComplex(in[i], 0.0f);
 	};
 
 	trilingual complexToRealKernel asKernel(withID deviceComplex* in, deviceFP* out) {
@@ -1213,30 +1246,22 @@ namespace kernels {
 		out[i] = in[i].real();
 	};
 
-	trilingual materialPhaseKernel asKernel(withID deviceFP df, size_t Ntime, deviceFP* a, deviceFP f01, deviceFP f02,
-		deviceFP thickness1, deviceFP thickness2, deviceFP* phase1, deviceFP* phase2) {
+	trilingual materialPhaseKernel asKernel(withID deviceFP df, size_t Ntime, deviceFP* a, deviceFP f0,
+		deviceFP thickness, deviceFP* phase1) {
 		size_t i = localIndex;
 		//frequency being resolved by current thread
 		deviceFP f = i * df;
-		if (i >= Ntime / 2) {
-			f -= df * Ntime;
-		}
 
 		//give phase shift relative to group velocity (approximated 
 		// with low-order finite difference) so the pulse doesn't move
 		deviceComplex ne, no, no0, n0p, n0m;
-		sellmeierCuda(&ne, &no, a, deviceFPLib::abs(f), 0, 0, 0, 0);
+		sellmeierCuda(&ne, &no, a, f, 0.0f, 0.0f, 0, 0);
 		f *= TWOPI;
-		sellmeierCuda(&ne, &no0, a, f01, 0, 0, 0, 0);
-		sellmeierCuda(&ne, &n0p, a, f01 + (deviceFP)1e11, 0, 0, 0, 0);
-		sellmeierCuda(&ne, &n0m, a, f01 - (deviceFP)1e11, 0, 0, 0, 0);
-		no0 = no0 + f01 * (n0p - n0m) / (deviceFP)2e11;
-		phase1[i] = thickness1 * f * (no.real() - no0.real()) / LIGHTC;
-		sellmeierCuda(&ne, &no0, a, f02, 0, 0, 0, 0);
-		sellmeierCuda(&ne, &n0p, a, f02 + (deviceFP)1e11, 0, 0, 0, 0);
-		sellmeierCuda(&ne, &n0m, a, f02 - (deviceFP)1e11, 0, 0, 0, 0);
-		no0 = no0 + f02 * (n0p - n0m) / (deviceFP)2e11;
-		phase2[i] = thickness2 * f * (no.real() - no0.real()) / LIGHTC;
+		sellmeierCuda(&ne, &no0, a, f0, 0.0f, 0.0f, 0, 0);
+		sellmeierCuda(&ne, &n0p, a, f0 + 1.0e11f, 0.0f, 0.0f, 0, 0);
+		sellmeierCuda(&ne, &n0m, a, f0 - 1.0e11f, 0.0f, 0.0f, 0, 0);
+		no0 = no0 + f0 * (n0p - n0m) / 2.0e11f;
+		phase1[i] = thickness* f* (no.real() - no0.real()) / LIGHTC;
 	};
 
 	//calculate the nonlinear polarization, after FFT to get the field
@@ -1248,7 +1273,7 @@ namespace kernels {
 
 		if ((*s).nonlinearSwitches[0] == 1 || (*s).nonlinearSwitches[1] == 1){
 			
-			deviceFP P[3] = {0.0};
+			deviceFP P[3] = {0.0f};
 
 			// rotate field into crystal frame
 			deviceFP E3[3] = {(*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
@@ -1355,8 +1380,8 @@ namespace kernels {
 	trilingual plasmaCurrentKernel_twoStage_B asKernel(withID const deviceParameterSet* s) {
 		size_t j = localIndex;
 		j *= (*s).Ntime;
-		deviceFP N = 0;
-		deviceFP integralx = 0;
+		deviceFP N = 0.0f;
+		deviceFP integralx = 0.0f;
 		deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
 		deviceFP* dN = j + (deviceFP*)(*s).workspace1;
 		deviceFP* E = &(*s).gridETime1[j];
@@ -1371,8 +1396,8 @@ namespace kernels {
 	trilingual plasmaCurrentKernel_twoStage_B_Cylindric asKernel(withID const deviceParameterSet* s) {
 		size_t j = localIndex;
 		j *= (*s).Ntime;
-		deviceFP N = 0.0;
-		deviceFP integral1 = 0.0; 
+		deviceFP N = 0.0f;
+		deviceFP integral1 = 0.0f; 
 		deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
 		deviceFP* dN = j + (deviceFP*)(*s).workspace1;
 		deviceFP* E1 = &(*s).gridETime1[j];
@@ -1409,7 +1434,7 @@ namespace kernels {
 		size_t i = localIndex;
 		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
-		deviceComplex jfac = deviceComplex(0.0, -1.0 / (h * (*sP).fStep));
+		deviceComplex jfac = deviceComplex(0.0f, -1.0f / (h * (*sP).fStep));
 		h += j * (*sP).Nfreq;
 		(*sP).k1[h] += jfac * (*sP).gridPolarizationFactor1[h] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[h % ((*sP).Nfreq)];
 		(*sP).k2[h] += jfac * (*sP).gridPolarizationFactor2[h] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[h % ((*sP).Nfreq)];
@@ -1427,7 +1452,7 @@ namespace kernels {
 		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
 		i = h + j * ((*sP).Nfreq);
-		deviceComplex jfac = deviceComplex(0.0, -(deviceFP)1.0 / (h * (*sP).fStep));
+		deviceComplex jfac = deviceComplex(0.0f, -1.0f / (h * (*sP).fStep));
 		h += (j + ( (j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 		(*sP).k1[i] += jfac * (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[i % ((*sP).Nfreq)];
 		(*sP).k2[i] += jfac * (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[i % ((*sP).Nfreq)];
@@ -1446,11 +1471,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if(iC>(*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0.0, 0.0);
-		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (deviceFP)0.5 * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * ((deviceFP)SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
+		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
+		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
 	trilingual rkKernel1 asKernel(withID const deviceParameterSet* sP) {
@@ -1460,11 +1485,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0, 0.0);
-		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (deviceFP)0.5 * (*sP).k1[iC];
+		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)THIRD * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
+		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
 	trilingual rkKernel2 asKernel(withID const deviceParameterSet* sP) {
@@ -1474,11 +1499,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0, 0.0);
+		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)THIRD * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
+		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
 	trilingual rkKernel3 asKernel(withID const deviceParameterSet* sP) {
@@ -1488,10 +1513,10 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0, 0.0);
-		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + (deviceFP)SIXTH * (*sP).k1[iC];
+		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * (*sP).gridEFrequency1[iC];
-		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
+		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
 	//Kernels for symmetry around z axis use a different form, adding the radial Laplacian
@@ -1503,11 +1528,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
-		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (deviceFP)0.5 * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * ((deviceFP)SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
+		if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (SIXTH * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
 		(*sP).workspace1[iC] =  (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
+		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
 	trilingual rkKernel1Cylindric asKernel(withID const deviceParameterSet* sP) {
@@ -1517,11 +1542,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
-		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (deviceFP)0.5 * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)THIRD * (*sP).k1[iC];
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * THIRD * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
+		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
 	trilingual rkKernel2Cylindric asKernel(withID const deviceParameterSet* sP) {
@@ -1531,11 +1556,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
-		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)THIRD * (*sP).k1[iC];
+		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * THIRD * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
+		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
 	trilingual rkKernel3Cylindric asKernel(withID const deviceParameterSet* sP) {
@@ -1545,16 +1570,16 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0, 0.0);
-		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + (deviceFP)SIXTH * (*sP).k1[iC];
+		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + SIXTH * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * (*sP).gridEFrequency1[iC];
-		(*sP).k1[iC] = deviceComplex(0.0, 0.0);
+		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
-	trilingual beamNormalizeKernel asKernel(withID const deviceParameterSet* s, deviceFP* rawSum, deviceFP* pulse, deviceFP pulseEnergy) {
+	trilingual beamNormalizeKernel asKernel(withID const deviceParameterSet* s, const deviceFP* rawSum, deviceFP* field, const deviceFP pulseEnergy) {
 		size_t i = localIndex;
-		deviceFP normFactor = deviceFPLib::sqrt(pulseEnergy / ((*s).Ntime * (*rawSum)));
-		pulse[i] *= normFactor;
+		deviceFP normFactor = deviceFPLib::sqrt(pulseEnergy / ((deviceFP)(*s).Ntime * (*rawSum)));
+		field[i]  *= normFactor;
 	};
 
 	trilingual addDoubleArraysKernel asKernel(withID deviceFP* A, deviceFP* B) {
@@ -1575,13 +1600,13 @@ namespace kernels {
 		deviceFP w = TWOPI * (f - (*p).frequency);
 
 		//supergaussian pulse spectrum, if no input pulse specified
-		deviceComplex specfac = deviceComplex(-deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 0);
+		deviceComplex specfac = deviceComplex(-deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 0.0f);
 
-		deviceComplex specphase = deviceComplex(0,
+		deviceComplex specphase = deviceComplex(0.0f,
 			-((*p).cep
-				+ TWOPI * f * ((*p).delay - 0.5 * (*s).dt * (*s).Ntime)
-				+ 0.5 * (*p).gdd * w * w
-				+ (*p).tod * w * w * w / 6.0
+				+ TWOPI * f * ((*p).delay - 0.5f * (*s).dt * (*s).Ntime)
+				+ 0.5f * (*p).gdd * w * w
+				+ (*p).tod * w * w * w / 6.0f
 				+ materialPhase[h]));
 		specfac = deviceLib::exp(specfac + specphase);
 
@@ -1592,30 +1617,30 @@ namespace kernels {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 		deviceFP ko = TWOPI * no.real() * f / LIGHTC;
 		deviceFP zR = PI * (*p).beamwaist * (*p).beamwaist * no.real() * f / LIGHTC;
-		if (f == 0) {
-			zR = 1e3;
+		if (f == 0.0f) {
+			zR = 1e3f;
 		}
-		deviceFP rB = ((*p).x0 - (*s).dx * (j - (*s).Nspace / 2.0) - 0.25 * (*s).dx);
+		deviceFP rB = ((*p).x0 - (*s).dx * (j - (*s).Nspace / 2.0f) - 0.25f * (*s).dx);
 		deviceFP r = rB * deviceFPLib::cos((*p).beamAngle) - (*p).z0 * deviceFPLib::sin((*p).beamAngle);
 		deviceFP z = rB * deviceFPLib::sin((*p).beamAngle) + (*p).z0 * deviceFPLib::cos((*p).beamAngle);
 
-		deviceFP wz = (*p).beamwaist * deviceFPLib::sqrt(1 + (z * z / (zR * zR)));
-		deviceFP Rz = z * (1. + (zR * zR / (z * z)));
+		deviceFP wz = (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
+		deviceFP Rz = z * (1.0f + (zR * zR / (z * z)));
 
-		if (z == 0) {
-			Rz = 1.0e15;
+		if (z == 0.0f) {
+			Rz = 1.0e15f;
 		}
 		deviceFP phi = deviceFPLib::atan(z / zR);
-		deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - (*p).z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+		deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0.0f, 1.0f) * (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
 		Eb = Eb * specfac;
-		if (isnan(cuCModSquared(Eb)) || f <= 0) {
-			Eb = deviceComplex(0., 0.);
+		if (isnan(cuCModSquared(Eb)) || f <= 0.0f) {
+			Eb = deviceComplex(0.0f, 0.0f);
 		}
 
 		field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle), -(*p).circularity * deviceFPLib::sin((*p).polarizationAngle)) * Eb;
 		field[i + (*s).NgridC] = deviceComplex(deviceFPLib::sin((*p).polarizationAngle), (*p).circularity * deviceFPLib::cos((*p).polarizationAngle)) * Eb;
 		deviceFP pointEnergy = deviceFPLib::abs(r) * (cuCModSquared(field[i]) + cuCModSquared(field[i + (*s).NgridC]));
-		pointEnergy *= 2 * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt;
+		pointEnergy *= 2.0f * PI * LIGHTC * EPS0 * (*s).dx * (*s).dt;
 		//two factors of two cancel here - there should be one for the missing frequency plane, but the sum is over x instead of r
 		//accordingly we already multiplied by two
 		atomicAddDevice(pulseSum, pointEnergy);
@@ -1635,13 +1660,13 @@ namespace kernels {
 		deviceFP w = TWOPI * (f - (*p).frequency);
 
 		//supergaussian pulse spectrum, if no input pulse specified
-		deviceComplex specfac = deviceComplex(-deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 0);
+		deviceComplex specfac = deviceComplex(-deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 0.0f);
 
-		deviceComplex specphase = deviceComplex(0,
+		deviceComplex specphase = deviceComplex(0.0f,
 			-((*p).cep
-				+ TWOPI * f * ((*p).delay - 0.5 * (*s).dt * (*s).Ntime)
-				+ 0.5 * (*p).gdd * w * w
-				+ (*p).tod * w * w * w / 6.0
+				+ TWOPI * f * ((*p).delay - 0.5f * (*s).dt * (*s).Ntime)
+				+ 0.5f * (*p).gdd * w * w
+				+ (*p).tod * w * w * w / 6.0f
 				+ materialPhase[h]));
 		specfac = deviceLib::exp(specfac + specphase);
 		
@@ -1653,12 +1678,12 @@ namespace kernels {
 
 		deviceFP ko = TWOPI * no.real() * f / LIGHTC;
 		deviceFP zR = PI * (*p).beamwaist * (*p).beamwaist * no.real() * f / LIGHTC;
-		if (f == 0) {
-			zR = 1e3;
+		if (f == 0.0f) {
+			zR = 1e3f;
 		}
-		deviceFP xo = ((*s).dx * (j - (*s).Nspace / 2.0)) - (*p).x0;
-		deviceFP yo = ((*s).dx * (k - (*s).Nspace2 / 2.0)) - (*p).y0;
-		if (!(*s).is3D) yo = 0.0;
+		deviceFP xo = ((*s).dx * (j - (*s).Nspace / 2.0f)) - (*p).x0;
+		deviceFP yo = ((*s).dx * (k - (*s).Nspace2 / 2.0f)) - (*p).y0;
+		if (!(*s).is3D) yo = 0.0f;
 		deviceFP zo = (*p).z0;
 		deviceFP cB = deviceFPLib::cos((*p).beamAngle);
 		deviceFP cA = deviceFPLib::cos((*p).beamAnglePhi);
@@ -1667,25 +1692,25 @@ namespace kernels {
 		deviceFP x = cB * xo + sA * sB * yo + sA * sB * zo;
 		deviceFP y = cA * yo - sA * zo;
 		deviceFP z = -sB * xo + sA * cB * yo + cA * cB * zo;
-		deviceFP r = sqrt(x * x + y * y);
+		deviceFP r = deviceFPLib::sqrt(x * x + y * y);
 
-		deviceFP wz = (*p).beamwaist * sqrt(1 + (z * z / (zR * zR)));
-		deviceFP Rz = 1.0e15;
-		if (z != 0.0) {
-			Rz = z * (1. + (zR * zR / (z * z)));
+		deviceFP wz = (*p).beamwaist * sqrt(1.0f + (z * z / (zR * zR)));
+		deviceFP Rz = 1.0e15f;
+		if (z != 0.0f) {
+			Rz = z * (1.0f + (zR * zR / (z * z)));
 		}
 
 		deviceFP phi = deviceFPLib::atan(z / zR);
-		deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0., 1.) * (ko * (z - (*p).z0) + ko * r * r / (2 * Rz) - phi) - r * r / (wz * wz));
+		deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0.0f, 1.0f) * (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
 		Eb = Eb * specfac;
-		if (isnan(cuCModSquared(Eb)) || f <= 0) {
-			Eb = deviceComplex(0., 0.);
+		if (isnan(cuCModSquared(Eb)) || f <= 0.0f) {
+			Eb = deviceComplex(0.0f, 0.0f);
 		}
 
 		field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle), -(*p).circularity * deviceFPLib::sin((*p).polarizationAngle)) * Eb;
 		field[i + (*s).NgridC] = deviceComplex(deviceFPLib::sin((*p).polarizationAngle), (*p).circularity * deviceFPLib::cos((*p).polarizationAngle)) * Eb;
 		deviceFP pointEnergy = (cuCModSquared(field[i]) + cuCModSquared(field[i + (*s).NgridC]));
-		pointEnergy *= 2 * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
+		pointEnergy *= 2.0f * LIGHTC * EPS0 * (*s).dx * (*s).dx * (*s).dt;
 
 		//factor 2 accounts for the missing negative frequency plane
 		atomicAddDevice(pulseSum, pointEnergy);
@@ -1770,9 +1795,9 @@ namespace hostFunctions{
 		if ((*sc).is3D) {
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel, d.dParamsDevice);
 		}
-		// else if ((*sc).isCylindric) {
-		// 	d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
-		// }
+		else if ((*sc).isCylindric) {
+		 	d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
+		}
 		else {
 			//uncomment and change logic if I want to use the square spectra
 			//d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum2DSquareKernel, d.dParamsDevice);
@@ -1835,10 +1860,12 @@ namespace hostFunctions{
 
 		d.deviceCalloc((void**)&materialCoefficients, 66, sizeof(deviceFP));
 		d.deviceCalloc((void**)&sellmeierPropagationMedium, 66, sizeof(deviceFP));
-		d.deviceCalloc((void**)&materialPhase, (*s).Ntime, sizeof(deviceFP));
+		d.deviceCalloc((void**)&materialPhase, (*s).Nfreq, sizeof(deviceFP));
 		d.deviceMemcpy(materialCoefficients, (*s).crystalDatabase[pCPU.phaseMaterial].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
 		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
-		d.deviceLaunch((unsigned int)(*s).Ntime, 1, materialPhaseKernel, (*s).fStep, (*s).Ntime, materialCoefficients, pCPU.frequency, pCPU.frequency, pCPU.phaseMaterialThickness, pCPU.phaseMaterialThickness, materialPhase, materialPhase);
+		d.deviceLaunch((unsigned int)(*s).Nfreq, 1, materialPhaseKernel, (deviceFP)(*s).fStep, 
+			(*s).Ntime, materialCoefficients, (deviceFP)pCPU.frequency, (deviceFP)pCPU.phaseMaterialThickness, 
+			materialPhase);
 
 		deviceFP* pulseSum = &materialCoefficients[0];
 
@@ -1861,7 +1888,7 @@ namespace hostFunctions{
 
 		d.fft((*sc).workspace1, (*sc).gridPolarizationTime1, deviceFFTZ2D1D);
 
-		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridPolarizationTime1, pCPU.energy);
+		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, beamNormalizeKernel, scDevice, pulseSum, (*sc).gridPolarizationTime1, (deviceFP)pCPU.energy);
 
 		//add the pulses
 		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, addDoubleArraysKernel, (*sc).gridETime1, (deviceFP*)(*sc).gridPolarizationTime1);
@@ -2265,7 +2292,6 @@ namespace hostFunctions{
 		prepareElectricFieldArrays(d);
 		d.deviceMemcpy(d.dParamsDevice, &s, sizeof(deviceParameterSet), HostToDevice);
 		deviceFP* canaryPointer = &s.gridETime1[s.Ntime / 2 + s.Ntime * (s.Nspace / 2 + s.Nspace * (s.Nspace2 / 2))];
-
 		//Core propagation loop
 		for (size_t i = 0; i < s.Nsteps; ++i) {
 
@@ -2292,11 +2318,11 @@ namespace hostFunctions{
 		//take final spectra and transfer the results to the CPU
 		d.deviceMemcpy((*sCPU).EkwOut, s.gridEFrequency1, 2 * s.NgridC * sizeof(std::complex<double>), DeviceToHost);
 		d.fft(s.gridEFrequency1, s.gridETime1, deviceFFTZ2D);
-		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, 1.0 / s.Ngrid);
+		d.deviceLaunch((int)(s.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, s.gridETime1, (deviceFP)(1.0 / s.Ngrid));
 		d.deviceMemcpy((*sCPU).ExtOut, s.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 		getTotalSpectrum(d);
 
-		int returnval = 13 * d.isTheCanaryPixelNaN(canaryPointer);
+		int returnval =  13 * d.isTheCanaryPixelNaN(canaryPointer);
 
 		(*sCPU).statusFlags[0] = 1;
 		return returnval;
