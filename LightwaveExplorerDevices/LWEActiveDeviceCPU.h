@@ -69,6 +69,12 @@ namespace deviceLibCPUFP32{
 	float pow(const float x, const float y){
 		return powf(x,y);
 	}
+	float atan2(const float x, const float y) {
+		return atan2f(x, y);
+	}
+	float acos(const float x) {
+		return acosf(x);
+	}
 	std::complex<float> pow(const std::complex<float> x, const float y){
 		return std::pow(x,y);
 	}

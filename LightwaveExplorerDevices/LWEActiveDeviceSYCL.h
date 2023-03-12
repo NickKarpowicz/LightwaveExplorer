@@ -49,6 +49,13 @@ namespace deviceLibSYCLFP32{
 	float pow(const float x, const float y){
 		return powf(x,y);
 	}
+	float acos(const float x) {
+		return acosf(x);
+	}
+	float atan2(const float x, const float y) {
+		return atan2f(x, y);
+	}
+
 	oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
 		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
 		float theta = atan2f(x.imag(), x.real());

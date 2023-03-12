@@ -65,6 +65,12 @@ namespace deviceLibCUDAFP32{
 	__device__ float pow(const float x, const float y){
 		return powf(x,y);
 	}
+	__device__ float atan2(const float x, const float y) {
+		return atan2f(x, y);
+	}
+	__device__ float acos(const float x) {
+		return acosf(x);
+	}
 	__device__ thrust::complex<float> pow(const thrust::complex<float> x, const  deviceFP y){
 		return thrust::pow(x,y);
 	}
