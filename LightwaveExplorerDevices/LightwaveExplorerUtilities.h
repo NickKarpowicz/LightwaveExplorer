@@ -1,6 +1,7 @@
 #pragma once
-#define LWEFLOATINGPOINT 32
-
+#ifndef LWEFLOATINGPOINT
+#define LWEFLOATINGPOINT 64
+#endif
 #if LWEFLOATINGPOINT==32
 #define LWEFLOATINGPOINTTYPE float
 #else

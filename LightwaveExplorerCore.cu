@@ -6,6 +6,17 @@
 #include <dlib/global_optimization.h>
 
 namespace deviceFunctions {
+	//if running in 64-bit mode, define complex math operations with fixed float constants
+#if LWEFLOATINGPOINT==64
+	namespace {
+		deviceFunction deviceComplex operator+(float f, deviceComplex x) { return deviceComplex(x.real() + f, x.imag()); }
+		deviceFunction deviceComplex operator+(deviceComplex x, float f) { return deviceComplex(x.real() + f, x.imag()); }
+		deviceFunction deviceComplex operator-(deviceComplex x, float f) { return deviceComplex(x.real() - f, x.imag()); }
+		deviceFunction deviceComplex operator*(float f, deviceComplex x) { return deviceComplex(x.real() * f, x.imag() * f); }
+		deviceFunction deviceComplex operator*(deviceComplex x, float f) { return deviceComplex(x.real() * f, x.imag() * f); }
+		deviceFunction deviceComplex operator/(deviceComplex x, float f) { return deviceComplex(x.real() / f, x.imag() / f); }
+	}
+#endif
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details

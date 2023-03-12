@@ -1978,7 +1978,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
         else {
             try {
                 error = normalFunction(&activeSetPtr[j]);
-            } catch (const std::exception& e) {
+            } catch (...) {
                 theGui.console.tPrint("Simulation failed with exception\n");
             }
             

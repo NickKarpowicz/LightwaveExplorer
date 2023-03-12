@@ -435,7 +435,7 @@ public:
 		}
 		else {
 			sycl::queue defaultStream{ sycl::default_selector_v, sycl::property::queue::in_order() };
-			if (defaultStream.get_device().get_info<cl::sycl::info::device::double_fp_config>().size() == 0) {
+			if (LWEFLOATINGPOINT==64 && defaultStream.get_device().get_info<cl::sycl::info::device::double_fp_config>().size() == 0) {
 				sycl::queue cpuStream{ sycl::cpu_selector_v, sycl::property::queue::in_order() };
 				stream = cpuStream;
 			}
