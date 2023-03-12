@@ -705,19 +705,18 @@ namespace kernels {
 
 
 	//apply a spectral filter to the beam (full details in docs)
-	trilingual filterKernel asKernel(withID const deviceParameterSet* s, deviceFP f0, deviceFP bandwidth, deviceFP order, deviceFP inBandAmplitude, deviceFP outOfBandAmplitude) {
+	trilingual filterKernel asKernel(withID const deviceParameterSet* s, deviceFP f0, deviceFP bandwidth, int order, deviceFP inBandAmplitude, deviceFP outOfBandAmplitude) {
 		long long i = localIndex;
 		long long col, j;
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
 		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 		i = j + col * (*s).Nfreq;
 
-		deviceFP f = (*s).fStep * j - f0;
-		for (int p = 1; p < (int)order; p++) {
-			bandwidth *= bandwidth;
+		deviceFP f = ((*s).fStep * j - f0)/bandwidth;
+		for (int p = 1; p < order; p++) {
 			f *= f;
 		}
-		deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude*deviceFPLib::exp(-f / (2.0f * bandwidth));
+		deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude*deviceFPLib::exp(-0.5 *f);
 		(*s).gridEFrequency1[i] *= filterFunction;
 		(*s).gridEFrequency2[i] *= filterFunction;
 	};
@@ -2006,7 +2005,7 @@ namespace hostFunctions{
 			sDevice, 
 			(deviceFP)(1.0e12 * f0),
 			(deviceFP)(1.0e12 * bandwidth),
-			(deviceFP)order,
+			(int)round(order),
 			(deviceFP)inBandAmplitude,
 			(deviceFP)outOfBandAmplitude);
 
