@@ -163,6 +163,7 @@ public:
 
 	~deviceCUDA() {
 		fftDestroy();
+		deallocateSet();
 		deviceFree(dParamsDevice);
 		cudaStreamDestroy(stream);
 	}

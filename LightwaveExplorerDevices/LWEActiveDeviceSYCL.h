@@ -159,6 +159,7 @@ public:
 	~deviceSYCL() {
 		stream.wait();
 		fftDestroy();
+		deallocateSet();
 		deviceFree(dParamsDevice);
 	}
 

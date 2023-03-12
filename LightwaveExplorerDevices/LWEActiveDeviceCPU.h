@@ -190,6 +190,7 @@ public:
 
 	~deviceCPU() {
 		fftDestroy();
+		deallocateSet();
 	}
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
