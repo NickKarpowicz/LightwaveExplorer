@@ -68,9 +68,6 @@
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceConfiguration.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LightwaveExplorerGTK.rc">

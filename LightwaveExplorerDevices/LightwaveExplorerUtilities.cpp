@@ -3,7 +3,6 @@
 #include <complex>
 #include <fstream>
 #include "LightwaveExplorerUtilities.h"
-#include "LWEActiveDeviceConfiguration.h"
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif

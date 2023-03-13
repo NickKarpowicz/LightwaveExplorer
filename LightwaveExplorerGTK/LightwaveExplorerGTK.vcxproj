@@ -137,7 +137,6 @@ copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveEx
     <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerTrilingual.h" />
     <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.h" />
     <ClInclude Include="..\LightwaveExplorerDevices\LWEAciveDeviceCounter.h" />
-    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceConfiguration.h" />
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCPU.h" />
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh" />
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceSYCL.h" />
