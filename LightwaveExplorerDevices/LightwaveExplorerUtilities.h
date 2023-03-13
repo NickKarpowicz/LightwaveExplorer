@@ -5,6 +5,9 @@
 #include <cstring>
 #include <vector>
 #include <fstream>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 #define MAX_LOADSTRING 1024
 
 #ifndef LWEFLOATINGPOINT

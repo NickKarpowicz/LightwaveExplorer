@@ -3,9 +3,7 @@
 #include <complex>
 #include <fstream>
 #include "LightwaveExplorerUtilities.h"
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#endif
+
 
 int readFittingString(simulationParameterSet* sCPU) {
 	std::string sIn((*sCPU).fittingString);
