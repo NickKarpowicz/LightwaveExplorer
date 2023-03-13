@@ -3,10 +3,12 @@
 #define minN(a,b)            (((a) < (b)) ? (a) : (b))
 #include <complex>
 #include <cstring>
+#include <vector>
+#include <fstream>
 #define MAX_LOADSTRING 1024
 
 #ifndef LWEFLOATINGPOINT
-#define LWEFLOATINGPOINT 64
+#define LWEFLOATINGPOINT 32
 #endif
 #if LWEFLOATINGPOINT==32
 #define LWEFLOATINGPOINTTYPE float
@@ -65,30 +67,9 @@ typedef LWEFLOATINGPOINTTYPE deviceFP;
 #define TRUE 1
 #define MAX_LOADSTRING 1024
 
-typedef struct devicePulse {
-    deviceFP energy;
-    deviceFP frequency;
-    deviceFP bandwidth;
-    int sgOrder;
-    deviceFP cep;
-    deviceFP delay;
-    deviceFP gdd;
-    deviceFP tod;
-    int phaseMaterial;
-    deviceFP phaseMaterialThickness;
-    deviceFP beamwaist;
-    deviceFP x0;
-    deviceFP y0;
-    deviceFP z0;
-    deviceFP beamAngle;
-    deviceFP polarizationAngle;
-    deviceFP beamAnglePhi;
-    deviceFP circularity;
-    deviceFP pulseSum;
-} devicePulse;
 
-
-typedef struct deviceParameterSet {
+class deviceParameterSet {
+public:
     deviceComplex* workspace1 = 0;
     deviceComplex* workspace2 = 0;
     deviceComplex* workspace2P = 0;
@@ -166,10 +147,11 @@ typedef struct deviceParameterSet {
     int Nthread = 0;
     int NblockC = 0;
     int Nblock = 0;
-} deviceParameterSet;
+};
 
 
-typedef struct crystalEntry {
+class crystalEntry {
+public:
     char crystalNameW[256] = { 0 };
     int axisType = 0;
     int sellmeierType = 0;
@@ -184,34 +166,225 @@ typedef struct crystalEntry {
     char spectralFile[512] = { 0 };
     double spectralData[2048] = { 0 };
     double nonlinearReferenceFrequencies[7] = { 0 };
-    int numberOfEntries = 0;
-} crystalEntry;
+};
 
-typedef struct pulse {
-    double energy;
-    double frequency;
-    double bandwidth;
+class crystalDatabase {
+public:
+    std::vector<crystalEntry> db;
+
+    crystalDatabase() {
+#ifdef __APPLE__
+        uint32_t bufferSize = 1024;
+        char sysPath[1024] = { 0 };
+        _NSGetExecutablePath(sysPath, &bufferSize);
+        std::string macPath(sysPath);
+        size_t posPath = macPath.find_last_of("/");
+        std::string databasePath = macPath.substr(0, posPath).append("/../Resources/CrystalDatabase.txt");
+        std::ifstream fs(databasePath);
+        if (!fs.is_open()) {
+            fs.open("CrystalDatabase.txt");
+        }
+#elif defined __linux__
+        std::ifstream fs("/usr/share/LightwaveExplorer/CrystalDatabase.txt");
+        if (!fs.is_open()) {
+            fs.open("CrystalDatabase.txt");
+        }
+#else
+        std::ifstream fs("CrystalDatabase.txt");
+#endif
+        
+        std::string line;
+        if (!fs.is_open())return;
+        while (!fs.eof() && fs.good()) {
+            crystalEntry newEntry;
+            std::getline(fs, line);//Name:
+
+            std::getline(fs, line);
+            line.copy(newEntry.crystalNameW, 256);
+
+            std::getline(fs, line); //Type:
+            fs >> newEntry.axisType;
+            std::getline(fs, line);
+
+            std::getline(fs, line); //Sellmeier equation:
+            fs >> newEntry.sellmeierType;
+            std::getline(fs, line);
+
+            std::getline(fs, line); //1st axis coefficients:
+            for (int k = 0; k < 22; ++k) {
+                fs >> newEntry.sellmeierCoefficients[k];
+            }
+            std::getline(fs, line);
+
+            std::getline(fs, line); //2nd axis coefficients:
+            for (int k = 0; k < 22; ++k) {
+                fs >> newEntry.sellmeierCoefficients[k + 22];
+            }
+            std::getline(fs, line);
+
+            std::getline(fs, line); //3rd axis coefficients:
+            for (int k = 0; k < 22; ++k) {
+                fs >> newEntry.sellmeierCoefficients[k + 44];
+            }
+            std::getline(fs, line);
+
+            std::getline(fs, line); //Sellmeier reference:
+            std::getline(fs, line);
+            line.copy(newEntry.sellmeierReference, 512);
+
+            std::getline(fs, line); // chi2 type:
+            fs >> newEntry.nonlinearSwitches[0];
+            std::getline(fs, line);
+
+            std::getline(fs, line); //d:
+            for (int k = 0; k < 18; ++k) {
+                fs >> newEntry.d[3 * (k % 6) + (k / 6)]; //column-order!
+            }
+            std::getline(fs, line);
+
+            std::getline(fs, line); //d reference:
+            std::getline(fs, line);
+            line.copy(newEntry.dReference, 512);
+
+            std::getline(fs, line); //chi3 type:
+            fs >> newEntry.nonlinearSwitches[1];
+            std::getline(fs, line);
+
+            std::getline(fs, line); //chi3:
+            memset(newEntry.chi3, 0, 81 * sizeof(double));
+            switch (newEntry.nonlinearSwitches[1]) {
+            case 0: //no chi3, skip all three lines
+                std::getline(fs, line);
+                std::getline(fs, line);
+                std::getline(fs, line);
+                break;
+            case 1: //read full chi3
+                for (int k = 0; k < 81; ++k) {
+                    fs >> newEntry.chi3[k]; //row-order!
+                }
+                std::getline(fs, line);
+                break;
+
+            case 2: //assume centrosymmetric, just read chi3_1111, then skip
+                fs >> newEntry.chi3[0];
+                std::getline(fs, line);
+                std::getline(fs, line);
+                std::getline(fs, line);
+                break;
+            }
+
+            std::getline(fs, line); //chi3 reference:
+            std::getline(fs, line);
+            line.copy(newEntry.chi3Reference, 512);
+
+            std::getline(fs, line); //Spectral file:
+            std::getline(fs, line);
+            line.copy(newEntry.spectralFile, 512);
+
+            std::getline(fs, line); //Nonlinear reference frequencies:
+            for (int k = 0; k < 7; ++k) {
+                fs >> newEntry.nonlinearReferenceFrequencies[k];
+            }
+            std::getline(fs, line);
+            std::getline(fs, line); //~~~crystal end~~~
+            db.push_back(newEntry);
+        }
+    }
+};
+
+template <typename T>
+class pulse {
+public:
+    T energy;
+    T frequency;
+    T bandwidth;
     int sgOrder;
-    double cep;
-    double delay;
-    double gdd;
-    double tod;
+    T cep;
+    T delay;
+    T gdd;
+    T tod;
     int phaseMaterial;
-    double phaseMaterialThickness;
-    double beamwaist;
-    double x0;
-    double y0;
-    double z0;
-    double beamAngle;
-    double polarizationAngle;
-    double beamAnglePhi;
-    double circularity;
-    double pulseSum;
-} pulse;
+    T phaseMaterialThickness;
+    T beamwaist;
+    T x0;
+    T y0;
+    T z0;
+    T beamAngle;
+    T polarizationAngle;
+    T beamAnglePhi;
+    T circularity;
+    T pulseSum;
+
+    pulse() : energy(), 
+        frequency(),
+        bandwidth(),
+        sgOrder(),
+        cep(),
+        delay(),
+        gdd(),
+        tod(),
+        phaseMaterial(),
+        phaseMaterialThickness(),
+        beamwaist(),
+        x0(),
+        y0(),
+        z0(),
+        beamAngle(),
+        polarizationAngle(),
+        beamAnglePhi(),
+        circularity(),
+        pulseSum(){}
+
+    template<typename U>
+    pulse(pulse<U>& other) : energy((T)other.energy),
+        frequency((T)other.frequency),
+        bandwidth((T)other.bandwidth),
+        sgOrder(other.sgOrder),
+        cep((T)other.cep),
+        delay((T)other.delay),
+        gdd((T)other.gdd),
+        tod((T)other.tod),
+        phaseMaterial(other.phaseMaterial),
+        phaseMaterialThickness((T)other.phaseMaterialThickness),
+        beamwaist((T)other.beamwaist),
+        x0((T)other.x0),
+        y0((T)other.y0),
+        z0((T)other.z0),
+        beamAngle((T)other.beamAngle),
+        polarizationAngle((T)other.polarizationAngle),
+        beamAnglePhi((T)other.beamAnglePhi),
+        circularity((T)other.circularity),
+        pulseSum((T)other.pulseSum) {}
+
+    template <typename U>
+    pulse& operator=(const pulse<U>& other) {
+        energy = (T)other.energy;
+        frequency = (T)other.frequency;
+        bandwidth = (T)other.bandwidth;
+        sgOrder = other.sgOrder;
+        cep = (T)other.cep;
+        delay = (T)other.delay;
+        gdd = (T)other.gdd;
+        tod = (T)other.tod;
+        phaseMaterial = other.phaseMaterial;
+        phaseMaterialThickness = (T)other.phaseMaterialThickness;
+        beamwaist = (T)other.beamwaist;
+        x0 = (T)other.x0;
+        y0 = (T)other.y0;
+        z0 = (T)other.z0;
+        beamAngle = (T)other.beamAngle;
+        polarizationAngle = (T)other.polarizationAngle;
+        beamAnglePhi = (T)other.beamAnglePhi;
+        circularity = (T)other.circularity;
+        pulseSum = (T)other.pulseSum;
+        return *this;
+    }
+};
 
 
 //Simulation parameter struct to pass to the simulations running in threads
-typedef struct simulationParameterSet {
+class simulationParameterSet {
+public:
     double rStep = 0;
     double tStep = 0;
     double fStep = 0;
@@ -228,8 +401,8 @@ typedef struct simulationParameterSet {
     size_t Nsims2 = 0;
     size_t* progressCounter = 0;
     size_t NsimsCPU = 0;
-    pulse pulse1;
-    pulse pulse2;
+    pulse<double> pulse1;
+    pulse<double> pulse2;
     double spatialWidth = 0;
     double spatialHeight = 0;
     double timeSpan = 0;
@@ -309,8 +482,7 @@ typedef struct simulationParameterSet {
     size_t fittingROIsize = 0;
     double fittingResult[64];
     double fittingError[64];
-
-} simulationParameterSet;
+};
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
@@ -326,7 +498,6 @@ int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long 
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);
 int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems);
-int             readCrystalDatabase(crystalEntry* db);
 int             configureBatchMode(simulationParameterSet* sCPU);
 int             saveDataSet(simulationParameterSet* sCPU);
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);

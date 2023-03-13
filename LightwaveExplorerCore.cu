@@ -9,12 +9,12 @@ namespace deviceFunctions {
 	//if running in 64-bit mode, define complex math operations with fixed float constants
 #if LWEFLOATINGPOINT==64
 	namespace {
-		deviceFunction deviceComplex operator+(float f, deviceComplex x) { return deviceComplex(x.real() + f, x.imag()); }
-		deviceFunction deviceComplex operator+(deviceComplex x, float f) { return deviceComplex(x.real() + f, x.imag()); }
-		deviceFunction deviceComplex operator-(deviceComplex x, float f) { return deviceComplex(x.real() - f, x.imag()); }
-		deviceFunction deviceComplex operator*(float f, deviceComplex x) { return deviceComplex(x.real() * f, x.imag() * f); }
-		deviceFunction deviceComplex operator*(deviceComplex x, float f) { return deviceComplex(x.real() * f, x.imag() * f); }
-		deviceFunction deviceComplex operator/(deviceComplex x, float f) { return deviceComplex(x.real() / f, x.imag() / f); }
+		deviceFunction deviceComplex operator+(const float f, const deviceComplex x) { return deviceComplex(x.real() + f, x.imag()); }
+		deviceFunction deviceComplex operator+(const deviceComplex x, const float f) { return deviceComplex(x.real() + f, x.imag()); }
+		deviceFunction deviceComplex operator-(const deviceComplex x, const float f) { return deviceComplex(x.real() - f, x.imag()); }
+		deviceFunction deviceComplex operator*(const float f, const deviceComplex x) { return deviceComplex(x.real() * f, x.imag() * f); }
+		deviceFunction deviceComplex operator*(const deviceComplex x, const float f) { return deviceComplex(x.real() * f, x.imag() * f); }
+		deviceFunction deviceComplex operator/(const deviceComplex x, const float f) { return deviceComplex(x.real() / f, x.imag() / f); }
 	}
 #endif
 	//Expand the information contained in the radially-symmetric beam in the offset grid
@@ -1631,7 +1631,7 @@ namespace kernels {
 
 	//crease a pulse on the grid for the 2D modes. Note that normalization of the 2D mode assumes radial symmetry (i.e. that it's
 	//a gaussian beam, not an infinite plane wave, which would have zero amplitude for finite energy).
-	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, devicePulse* p, deviceFP* pulseSum, deviceParameterSet* s,
+	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet* s,
 		bool hasLoadedField, deviceComplex* loadedField, deviceFP* materialPhase, deviceFP* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, h;
@@ -1689,7 +1689,7 @@ namespace kernels {
 	};
 
 	//Generate a beam in full 3D mode
-	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* field, devicePulse* p, deviceFP* pulseSum, deviceParameterSet* s,
+	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* field, pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet* s,
 		bool hasLoadedField, deviceComplex* loadedField, deviceFP* materialPhase, deviceFP* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, k, h, col;
@@ -1863,33 +1863,15 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int addPulseToFieldArrays(activeDevice& d, pulse& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
+	int addPulseToFieldArrays(activeDevice& d, pulse<double>& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet* sc = d.s;
 		deviceParameterSet* scDevice = d.dParamsDevice;
-		devicePulse* p;
-		d.deviceCalloc((void**)&p, 1, sizeof(devicePulse));
-		devicePulse devpCPU;
-		devpCPU.energy = pCPU.energy;
-		devpCPU.frequency = pCPU.frequency;
-		devpCPU.bandwidth = pCPU.bandwidth;
-		devpCPU.sgOrder = pCPU.sgOrder;
-		devpCPU.cep = pCPU.cep;
-		devpCPU.delay = pCPU.delay;
-		devpCPU.gdd = pCPU.gdd;
-		devpCPU.tod = pCPU.tod;
-		devpCPU.phaseMaterial = pCPU.phaseMaterial;
-		devpCPU.phaseMaterialThickness = pCPU.phaseMaterialThickness;
-		devpCPU.beamwaist = pCPU.beamwaist;
-		devpCPU.x0 = pCPU.x0;
-		devpCPU.y0 = pCPU.y0;
-		devpCPU.z0 = pCPU.z0;
-		devpCPU.beamAngle = pCPU.beamAngle;
-		devpCPU.polarizationAngle = pCPU.polarizationAngle;
-		devpCPU.beamAnglePhi = pCPU.beamAnglePhi;
-		devpCPU.circularity = pCPU.circularity;
-		devpCPU.pulseSum = pCPU.pulseSum;
+		pulse<deviceFP>* p;
+		d.deviceCalloc((void**)&p, 1, sizeof(pulse<deviceFP>));
+		pulse<deviceFP> devpCPU = pCPU;
+
 		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet), HostToDevice);
 
 		deviceFP* materialPhase;
@@ -1916,7 +1898,7 @@ namespace hostFunctions{
 		}
 		d.deviceMemset(pulseSum, 0, sizeof(deviceFP));
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-		d.deviceMemcpy(p, &devpCPU, sizeof(devicePulse), HostToDevice);
+		d.deviceMemcpy(p, &devpCPU, sizeof(pulse<deviceFP>), HostToDevice);
 		if ((*sc).is3D) {
 			d.deviceLaunch((*sc).Nblock / 2, (*sc).Nthread, beamGenerationKernel3D,
 				(*sc).workspace1, p, pulseSum, scDevice, useLoadedField, loadedField, materialPhase,
@@ -2628,8 +2610,8 @@ namespace hostFunctions{
 			d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 			d.deviceMemcpy(d.deviceStruct.gridEFrequency1, (*sCPU).EkwOut, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), HostToDevice);
 
-			pulse p;
-			memcpy(&p, &(sCPU->pulse1), sizeof(pulse));
+			pulse<double> p;
+			memcpy(&p, &(sCPU->pulse1), sizeof(pulse<double>));
 			p.energy = parameters[0];
 			p.frequency = 1e12 * parameters[1];
 			p.bandwidth = 1e12 * parameters[2];
@@ -2989,27 +2971,18 @@ int mainX(int argc, mainArgumentX){
 	// allocate databases, main structs
 	simulationParameterSet initializationStruct;
 	memset(&initializationStruct, 0, sizeof(simulationParameterSet));
-	crystalEntry* crystalDatabasePtr = new crystalEntry[512];
-	initializationStruct.crystalDatabase = crystalDatabasePtr;
+	crystalDatabase db;
+	initializationStruct.crystalDatabase = db.db.data();
 	initializationStruct.progressCounter = &progressCounter;
-	// read crystal database
-	if (readCrystalDatabase(crystalDatabasePtr) == -2) {
-		return 11;
-	}
-	if ((*crystalDatabasePtr).numberOfEntries == 0) {
-		printf("Could not read crystal database.\n");
-		delete[] crystalDatabasePtr;
-		return 12;
-	}
-	printf("Read %i crystal database entries:\n", (*crystalDatabasePtr).numberOfEntries);
-	for (j = 0; j < (*crystalDatabasePtr).numberOfEntries; ++j) {
-		printf("Material %i name: %s\n", j, crystalDatabasePtr[j].crystalNameW);
+
+	printf("Read %zu crystal database entries:\n", db.db.size());
+	for (j = 0; j < db.db.size(); ++j) {
+		printf("Material %i name: %s\n", j, db.db[j].crystalNameW);
 	}
 
 	// read from settings file
-	if (readInputParametersFile(&initializationStruct, crystalDatabasePtr, filepath) == 1) {
+	if (readInputParametersFile(&initializationStruct, db.db.data(), filepath) == 1) {
 		printf("Could not read input file.\n");
-		delete[] crystalDatabasePtr;
 		return 13;
 	}
 	simulationParameterSet* sCPU = new simulationParameterSet[initializationStruct.Nsims];
@@ -3019,7 +2992,6 @@ int mainX(int argc, mainArgumentX){
 		printf("Could not read pulse file.\n");
 		deallocateGrids(sCPU, TRUE);
 		delete[] sCPU;
-		delete[] crystalDatabasePtr;
 		return 14;
 	}
 
@@ -3045,7 +3017,6 @@ int mainX(int argc, mainArgumentX){
 
 		deallocateGrids(sCPU, TRUE);
 		delete[] sCPU;
-		delete[] crystalDatabasePtr;
 		return 0;
 	}
 	// run simulations
@@ -3085,6 +3056,5 @@ int mainX(int argc, mainArgumentX){
 	delete[] threadBlock;
 	deallocateGrids(sCPU, TRUE);
 	delete[] sCPU;
-	delete[] crystalDatabasePtr;
 	return 0;
 }

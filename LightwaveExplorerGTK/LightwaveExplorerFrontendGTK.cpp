@@ -62,7 +62,8 @@ const int interfaceThreads = maxN(1, std::thread::hardware_concurrency() / 2);
 const int interfaceThreads = std::thread::hardware_concurrency();
 #endif
 simulationParameterSet* activeSetPtr;       // Main structure containing simulation parameters and pointers
-crystalEntry* crystalDatabasePtr;           // Crystal info database
+crystalDatabase theDatabase;
+
 bool updateDisplay();
 void destroyMainWindowCallback();
 class mainGui {
@@ -456,17 +457,12 @@ public:
         gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(buttonShrinker), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         //read the crystal database
-        crystalDatabasePtr = new crystalEntry[MAX_LOADSTRING]();
         std::string materialString;
-        if (crystalDatabasePtr != NULL) {
-            readCrystalDatabase(crystalDatabasePtr);
-            //console.cPrint("Material database has {} entries:\n", (*crystalDatabasePtr).numberOfEntries);
-            for (int i = 0; i < (*crystalDatabasePtr).numberOfEntries; ++i) {
-                //console.cPrint("{} : {} \n", i, std::string(crystalDatabasePtr[i].crystalNameW));
-                materialString = Sformat("{:2}: {}", i, std::string(crystalDatabasePtr[i].crystalNameW));
-                pulldowns[3].addElement(materialString.c_str());
-            }
+        for (int i = 0; i < theDatabase.db.size(); ++i) {
+            materialString = Sformat("{:2}: {}", i, std::string(theDatabase.db[i].crystalNameW));
+            pulldowns[3].addElement(materialString.c_str());
         }
+        
         pulldowns[3].init(parentHandle, textCol2a, 0, 2 * textWidth, 1);
         pulldowns[3].setLabel(-labelWidth, 0, _T("Material"));
 
@@ -484,8 +480,8 @@ public:
         
 
 #ifdef __linux__
-		if (1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
-			readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
+		if (1 == readInputParametersFile(activeSetPtr, theDatabase.db.data(), "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
+			readInputParametersFile(activeSetPtr, theDatabase.db.data(), "DefaultValues.ini");
 		}
 #elif defined __APPLE__
 		uint32_t bufferSize = 1024;
@@ -494,11 +490,11 @@ public:
         std::string sysPathFull(sysPathBuffer);
         std::string sysPathIni = sysPathFull.substr(0,sysPathFull.find_last_of("/"));
         sysPathIni.append("/../Resources/DefaultValues.ini");
-		if(1 == readInputParametersFile(activeSetPtr, crystalDatabasePtr, sysPathIni.c_str())){
-            readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
+		if(1 == readInputParametersFile(activeSetPtr, theDatabase.db.data(), sysPathIni.c_str())){
+            readInputParametersFile(activeSetPtr, theDatabase.db.data(), "DefaultValues.ini");
         }
 #else
-		readInputParametersFile(activeSetPtr, crystalDatabasePtr, "DefaultValues.ini");
+		readInputParametersFile(activeSetPtr, theDatabase.db.data(), "DefaultValues.ini");
 #endif
         setInterfaceValuesToActiveValues();
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
@@ -527,7 +523,7 @@ void destroyMainWindowCallback(){
 
 void setInterfaceValuesToActiveValues(){
 	int i = 0;
-    pulse* t = &(*activeSetPtr).pulse1;
+    pulse<double>* t = &(*activeSetPtr).pulse1;
     for (int k = 0; k < 2; ++k) {
         theGui.textBoxes[i++].setToDouble((*t).energy);
         theGui.textBoxes[i++].setToDouble(1e-12 * (*t).frequency);
@@ -605,7 +601,7 @@ void setInterfaceValuesToActiveValues(){
 
 void readParametersFromInterface() {
     int i = 0;
-    pulse* t = &(*activeSetPtr).pulse1;
+    pulse<double>* t = &(*activeSetPtr).pulse1;
     for (int k = 0; k < 2; ++k) {
         theGui.textBoxes[i++].valueToPointer(&(*t).energy);
         theGui.textBoxes[i++].valueToPointer(1e12, &(*t).frequency);
@@ -759,14 +755,14 @@ void readParametersFromInterface() {
     (*activeSetPtr).field2IsAllocated = FALSE;
 
     //crystal from database (database must be loaded!)
-    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
-    (*activeSetPtr).chi2Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].d;
-    (*activeSetPtr).chi3Tensor = crystalDatabasePtr[(*activeSetPtr).materialIndex].chi3;
-    (*activeSetPtr).nonlinearSwitches = crystalDatabasePtr[(*activeSetPtr).materialIndex].nonlinearSwitches;
-    (*activeSetPtr).absorptionParameters = crystalDatabasePtr[(*activeSetPtr).materialIndex].absorptionParameters;
-    (*activeSetPtr).sellmeierCoefficients = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierCoefficients;
-    (*activeSetPtr).sellmeierType = crystalDatabasePtr[(*activeSetPtr).materialIndex].sellmeierType;
-    (*activeSetPtr).axesNumber = crystalDatabasePtr[(*activeSetPtr).materialIndex].axisType;
+    (*activeSetPtr).crystalDatabase = theDatabase.db.data();
+    (*activeSetPtr).chi2Tensor = theDatabase.db[(*activeSetPtr).materialIndex].d;
+    (*activeSetPtr).chi3Tensor = theDatabase.db[(*activeSetPtr).materialIndex].chi3;
+    (*activeSetPtr).nonlinearSwitches = theDatabase.db[(*activeSetPtr).materialIndex].nonlinearSwitches;
+    (*activeSetPtr).absorptionParameters = theDatabase.db[(*activeSetPtr).materialIndex].absorptionParameters;
+    (*activeSetPtr).sellmeierCoefficients = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierCoefficients;
+    (*activeSetPtr).sellmeierType = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierType;
+    (*activeSetPtr).axesNumber = theDatabase.db[(*activeSetPtr).materialIndex].axisType;
     (*activeSetPtr).progressCounter = &progressCounter;
 }
 
@@ -1049,7 +1045,7 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         }
         theGui.sequence.clear();
         theGui.fitCommand.clear();
-        int readParameters = readInputParametersFile(activeSetPtr, crystalDatabasePtr, path.c_str());
+        int readParameters = readInputParametersFile(activeSetPtr, theDatabase.db.data(), path.c_str());
         allocateGrids(activeSetPtr);
         isGridAllocated = TRUE;
         if (readParameters == 61) {
@@ -1110,7 +1106,7 @@ void createRunFile() {
     allocateGrids(activeSetPtr);
     isGridAllocated = TRUE;
     (*activeSetPtr).isFollowerInSequence = FALSE;
-    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    (*activeSetPtr).crystalDatabase = theDatabase.db.data();
 
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
 
@@ -1891,7 +1887,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     isGridAllocated = TRUE;
     theGui.requestSliderUpdate();
     (*activeSetPtr).isFollowerInSequence = FALSE;
-    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    (*activeSetPtr).crystalDatabase = theDatabase.db.data();
     loadPulseFiles(activeSetPtr);
 
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
@@ -2046,7 +2042,7 @@ void fittingThread(int pulldownSelection) {
     isGridAllocated = TRUE;
     theGui.requestSliderUpdate();
     (*activeSetPtr).isFollowerInSequence = FALSE;
-    (*activeSetPtr).crystalDatabase = crystalDatabasePtr;
+    (*activeSetPtr).crystalDatabase = theDatabase.db.data();
     loadPulseFiles(activeSetPtr);
 
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = TRUE;
