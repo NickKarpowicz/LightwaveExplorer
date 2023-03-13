@@ -20,14 +20,15 @@ namespace deviceFunctions {
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details
-	deviceFunction void expandCylindricalBeamDevice(const deviceParameterSet* s, long long i, deviceFP* expandedBeam1, deviceFP* sourceBeam1, deviceFP* sourceBeam2) {
+	template<typename T>
+	deviceFunction void expandCylindricalBeamDevice(const deviceParameterSet* s, long long i, T* expandedBeam1, T* sourceBeam1, T* sourceBeam2) {
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long k = i % (*s).Ntime; //temporal coordinate
 
 		//positions on the expanded grid corresponding the the current index
 		long long pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
 		long long pos2 = (2 * j + 1) * (*s).Ntime + k;
-		deviceFP* expandedBeam2 = expandedBeam1 + 2 * (*s).Ngrid;
+		T* expandedBeam2 = expandedBeam1 + 2 * (*s).Ngrid;
 		expandedBeam1[pos1] = sourceBeam1[i];
 		expandedBeam1[pos2] = sourceBeam1[i];
 		expandedBeam2[pos1] = sourceBeam2[i];
