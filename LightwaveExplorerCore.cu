@@ -847,7 +847,7 @@ namespace kernels {
 		if (r >= ROC) {
 			u = deviceComplex(0.0f, 0.0f);
 		}
-		if (r > 0.1f * ROC) {
+		else if (r > 0.1f * ROC) {
 			u = deviceLib::exp(deviceComplex(0.0f,
 				2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC * ((deviceFPLib::sqrt(1.0f - r * r / (ROC * ROC))) - 1.0f) / LIGHTC));
 		}
@@ -856,7 +856,7 @@ namespace kernels {
 			ratio *= ratio;
 			u = deviceLib::exp(deviceComplex(0.0f,
 				2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC * 
-				(-0.5f * ratio - 0.125f * ratio * ratio - 0.0625 * ratio * ratio * ratio) / LIGHTC));
+				(-0.5f * ratio - 0.125f * ratio * ratio - 0.0625f * ratio * ratio * ratio) / LIGHTC));
 		}
 
 		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
@@ -901,36 +901,35 @@ namespace kernels {
 		deviceComplex ke = ne * omega / (deviceFP)LIGHTC;
 		deviceComplex ko = no * omega / (deviceFP)LIGHTC;
 		deviceFP k0 = (n0 * omega / (deviceFP)LIGHTC).real();
-		//old way:
-		//deviceFP kze = ke.real() * ke.real() - dk1 * dk1 - dk2 * dk2;
-		//deviceFP kzo = ko.real() * ko.real() - dk1 * dk1 - dk2 * dk2;
-		//deviceComplex ts = deviceComplex(0.0f, 0.0f);
-		//deviceComplex tp = deviceComplex(0.0f, 0.0f);
-		//if (kze >= 0.0) ts = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kze)) * thickness);
-		//if (kzo >= 0.0) tp = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kzo)) * thickness);
-		//preserve digits:
-		//get angle theta to z-axis
 		deviceComplex ts = deviceComplex(0.0f, 0.0f);
 		deviceComplex tp = deviceComplex(0.0f, 0.0f);
-		if (dk1 * dk1 + dk2 * dk2 < 0.005f * ke.real() * ke.real()) {
-			ts = deviceLib::exp(ii * (k0 - ke.real() - (dk1 * dk1 + dk2 * dk2) / (2 * ke.real())) * thickness);
-			tp = deviceLib::exp(ii * (k0 - ko.real() - (dk1 * dk1 + dk2 * dk2) / (2 * ko.real())) * thickness);
-		}
-		else {
-			deviceFP delta = k0 - ke.real();
-			deviceFP theta = sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ke.real());
-			theta = sin(theta / 2.0f);
-			theta *= 2.0f * theta;
-			deviceFP kze = delta + ke.real() * theta;
+		//old way:
+		deviceFP kze = ke.real() * ke.real() - dk1 * dk1 - dk2 * dk2;
+		deviceFP kzo = ko.real() * ko.real() - dk1 * dk1 - dk2 * dk2;
+		if (kze >= 0.0) ts = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kze)) * thickness);
+		if (kzo >= 0.0) tp = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kzo)) * thickness);
+		//preserve digits:
+		//get angle theta to z-axis
 
-			delta = k0 - ko.real();
-			theta = sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ko.real());
-			theta = sin(theta / 2.0f);
-			theta *= 2.0f * theta;
-			deviceFP kzo = delta + ko.real() * theta;
-			if (kze >= 0.0) ts = deviceLib::exp(ii * kze * thickness);
-			if (kzo >= 0.0) tp = deviceLib::exp(ii * kzo * thickness);
-		}
+		//if (maxN(deviceFPLib::abs(dk1), deviceFPLib::abs(dk2)) > 0.005f * deviceFPLib::abs(ke.real())) {
+		//	ts = deviceLib::exp(ii * (k0 - ke.real() - (dk1 * dk1 + dk2 * dk2) / (2 * ke.real())) * thickness);
+		//	tp = deviceLib::exp(ii * (k0 - ko.real() - (dk1 * dk1 + dk2 * dk2) / (2 * ko.real())) * thickness);
+		//}
+		//else {
+		//	deviceFP delta = k0 - ke.real();
+		//	deviceFP theta = deviceFPLib::sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ke.real());
+		//	theta = deviceFPLib::sin(theta / 2.0f);
+		//	theta *= 2.0f * theta;
+		//	deviceFP kze = delta + ke.real() * theta;
+
+		//	delta = k0 - ko.real();
+		//	theta = deviceFPLib::sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ko.real());
+		//	theta = deviceFPLib::sin(theta / 2.0f);
+		//	theta *= 2.0f * theta;
+		//	deviceFP kzo = delta + ko.real() * theta;
+		//	if (kze >= 0.0) ts = deviceLib::exp(ii * kze * thickness);
+		//	if (kzo >= 0.0) tp = deviceLib::exp(ii * kzo * thickness);
+		//}
 
 		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0.0f, 0.0f);
 		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0.0f, 0.0f);
@@ -2175,6 +2174,13 @@ namespace hostFunctions{
 	}
 
 	int applyLinearPropagation(activeDevice& d, simulationParameterSet* sCPU, int materialIndex, double thickness) {
+
+		if (d.hasPlasma) {
+			simulationParameterSet sCopy;
+			memcpy(&sCopy, sCPU, sizeof(simulationParameterSet));
+			sCopy.nonlinearAbsorptionStrength = 0.0;
+			d.reset(&sCopy);
+		}
 
 		d.deviceMemcpy(d.deviceStruct.gridEFrequency1, (*sCPU).EkwOut, d.deviceStruct.NgridC * 2 * sizeof(std::complex<double>), HostToDevice);
 

@@ -1,11 +1,39 @@
 #pragma once
+#define maxN(a,b)            (((a) > (b)) ? (a) : (b))
+#define minN(a,b)            (((a) < (b)) ? (a) : (b))
+#include <complex>
+#include <cstring>
+#define MAX_LOADSTRING 1024
+
 #ifndef LWEFLOATINGPOINT
-#define LWEFLOATINGPOINT 32
+#define LWEFLOATINGPOINT 64
 #endif
 #if LWEFLOATINGPOINT==32
 #define LWEFLOATINGPOINTTYPE float
+#define ANGLETOLERANCE 1e-12f
+#define TWOPI 6.2831853071795862f
+#define PI 3.1415926535897931f
+#define INVSQRTPI 0.5641895835477563f
+#define DEG2RAD 1.7453292519943295e-02f
+#define RAD2DEG 57.2957795130823229f
+#define LIGHTC 2.99792458e8f
+#define EPS0 8.8541878128e-12f
+#define SIXTH 0.1666666666666667f
+#define THIRD 0.3333333333333333f
+#define KLORENTZIAN 3182.607353999257f //(e * e / (epsilon_o * m_e)
 #else
 #define LWEFLOATINGPOINTTYPE double
+#define ANGLETOLERANCE 1e-12
+#define TWOPI 6.2831853071795862
+#define PI 3.1415926535897931
+#define INVSQRTPI 0.5641895835477563
+#define DEG2RAD 1.7453292519943295e-02
+#define RAD2DEG 57.2957795130823229
+#define LIGHTC 2.99792458e8
+#define EPS0 8.8541878128e-12
+#define SIXTH 0.1666666666666667
+#define THIRD 0.3333333333333333
+#define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
 #endif
 #include <complex>
 #include <cstring>
@@ -33,22 +61,113 @@ typedef LWEFLOATINGPOINTTYPE deviceFP;
 
 #define THREADS_PER_BLOCK 32
 #define MIN_GRIDDIM 8
-#define ANGLETOLERANCE 1e-12f
 #define FALSE 0
 #define TRUE 1
 #define MAX_LOADSTRING 1024
-#define TWOPI 6.2831853071795862f
-#define PI 3.1415926535897931f
-#define INVSQRTPI 0.5641895835477563f
-#define DEG2RAD 1.7453292519943295e-02f
-#define RAD2DEG 57.2957795130823229f
-#define LIGHTC 2.99792458e8f
-#define EPS0 8.8541878128e-12f
-#define SIXTH 0.1666666666666667f
-#define THIRD 0.3333333333333333f
-#define KLORENTZIAN 3182.607353999257f //(e * e / (epsilon_o * m_e)
-#define maxN(a,b)            (((a) > (b)) ? (a) : (b))
-#define minN(a,b)            (((a) < (b)) ? (a) : (b))
+
+typedef struct devicePulse {
+    deviceFP energy;
+    deviceFP frequency;
+    deviceFP bandwidth;
+    int sgOrder;
+    deviceFP cep;
+    deviceFP delay;
+    deviceFP gdd;
+    deviceFP tod;
+    int phaseMaterial;
+    deviceFP phaseMaterialThickness;
+    deviceFP beamwaist;
+    deviceFP x0;
+    deviceFP y0;
+    deviceFP z0;
+    deviceFP beamAngle;
+    deviceFP polarizationAngle;
+    deviceFP beamAnglePhi;
+    deviceFP circularity;
+    deviceFP pulseSum;
+} devicePulse;
+
+
+typedef struct deviceParameterSet {
+    deviceComplex* workspace1 = 0;
+    deviceComplex* workspace2 = 0;
+    deviceComplex* workspace2P = 0;
+    deviceComplex* gridETemp1 = 0;
+    deviceComplex* gridETemp2 = 0;
+    deviceComplex* gridEFrequency1 = 0;
+    deviceComplex* gridEFrequency2 = 0;
+    deviceComplex* gridPropagationFactor1 = 0;
+    deviceComplex* gridPropagationFactor1Rho1 = 0;
+    deviceComplex* gridPropagationFactor1Rho2 = 0;
+    deviceComplex* gridPolarizationFactor1 = 0;
+    deviceComplex* gridPolarizationFrequency1 = 0;
+    deviceComplex* gridPropagationFactor2 = 0;
+    deviceComplex* gridPolarizationFactor2 = 0;
+    deviceComplex* gridPolarizationFrequency2 = 0;
+    deviceComplex* gridEFrequency1Next1 = 0;
+    deviceComplex* gridEFrequency1Next2 = 0;
+    deviceComplex* gridPlasmaCurrentFrequency1 = 0;
+    deviceComplex* gridPlasmaCurrentFrequency2 = 0;
+    deviceComplex* chiLinear1 = 0;
+    deviceComplex* chiLinear2 = 0;
+    deviceFP* inverseChiLinear1 = 0;
+    deviceFP* inverseChiLinear2 = 0;
+    deviceFP* fieldFactor1 = 0;
+    deviceFP* fieldFactor2 = 0;
+    deviceComplex* k1 = 0;
+    deviceComplex* k2 = 0;
+    deviceComplex n0 = 0.0;
+    deviceFP* J0 = 0;
+    deviceFP* gridRadialLaplacian1 = 0;
+    deviceFP* gridRadialLaplacian2 = 0;
+    deviceFP* gridETime1 = 0;
+    deviceFP* gridETime2 = 0;
+    deviceFP* gridPolarizationTime1 = 0;
+    deviceFP* gridPolarizationTime2 = 0;
+    deviceFP* expGammaT = 0;
+    deviceFP* gridPlasmaCurrent1 = 0;
+    deviceFP* gridPlasmaCurrent2 = 0;
+
+    //fixed length arrays
+    deviceFP firstDerivativeOperation[6] = { 0 };
+    deviceFP plasmaParameters[6] = { 0 }; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
+    deviceFP chi2Tensor[18] = { 0 };
+    deviceFP chi3Tensor[81] = { 0 };
+    deviceFP absorptionParameters[6] = { 0 };
+    deviceFP rotationForward[9] = { 0 };
+    deviceFP rotationBackward[9] = { 0 };
+    int nonlinearSwitches[4] = { 0 };
+
+    bool isCylindric = 0;
+    bool is3D = 0;
+    bool hasPlasma = 0;
+    bool isNonLinear = 0;
+    bool isUsingMillersRule = 0;
+    bool forceLinear = 0;
+    size_t Ntime = 0;
+    size_t Nfreq = 0;
+    size_t Nspace = 0;
+    size_t Nspace2 = 0;
+    size_t Ngrid = 0;
+    size_t NgridC = 0;
+    deviceFP fftNorm = 0;
+    int axesNumber = 0;
+    int sellmeierType = 0;
+    deviceFP crystalTheta;
+    deviceFP crystalPhi;
+    deviceFP f0 = 0;
+    deviceFP fStep = 0;
+    deviceFP dt = 0;
+    deviceFP dx = 0;
+    deviceFP dk1 = 0;
+    deviceFP dk2 = 0;
+    deviceFP h = 0;
+    size_t Nsteps = 0;
+    int Nthread = 0;
+    int NblockC = 0;
+    int Nblock = 0;
+} deviceParameterSet;
+
 
 typedef struct crystalEntry {
     char crystalNameW[256] = { 0 };
@@ -90,27 +209,6 @@ typedef struct pulse {
     double pulseSum;
 } pulse;
 
-typedef struct devicePulse {
-    deviceFP energy;
-    deviceFP frequency;
-    deviceFP bandwidth;
-    int sgOrder;
-    deviceFP cep;
-    deviceFP delay;
-    deviceFP gdd;
-    deviceFP tod;
-    int phaseMaterial;
-    deviceFP phaseMaterialThickness;
-    deviceFP beamwaist;
-    deviceFP x0;
-    deviceFP y0;
-    deviceFP z0;
-    deviceFP beamAngle;
-    deviceFP polarizationAngle;
-    deviceFP beamAnglePhi;
-    deviceFP circularity;
-    deviceFP pulseSum;
-} devicePulse;
 
 //Simulation parameter struct to pass to the simulations running in threads
 typedef struct simulationParameterSet {
@@ -213,86 +311,6 @@ typedef struct simulationParameterSet {
     double fittingError[64];
 
 } simulationParameterSet;
-
-typedef struct deviceParameterSet {
-    deviceComplex* workspace1 = 0;
-    deviceComplex* workspace2 = 0;
-    deviceComplex* workspace2P = 0;
-    deviceComplex* gridETemp1 = 0;
-    deviceComplex* gridETemp2 = 0;
-    deviceComplex* gridEFrequency1 = 0;
-    deviceComplex* gridEFrequency2 = 0;
-    deviceComplex* gridPropagationFactor1 = 0;
-    deviceComplex* gridPropagationFactor1Rho1 = 0;
-    deviceComplex* gridPropagationFactor1Rho2 = 0;
-    deviceComplex* gridPolarizationFactor1 = 0;
-    deviceComplex* gridPolarizationFrequency1 = 0;
-    deviceComplex* gridPropagationFactor2 = 0;
-    deviceComplex* gridPolarizationFactor2 = 0;
-    deviceComplex* gridPolarizationFrequency2 = 0;
-    deviceComplex* gridEFrequency1Next1 = 0;
-    deviceComplex* gridEFrequency1Next2 = 0;
-    deviceComplex* gridPlasmaCurrentFrequency1 = 0;
-    deviceComplex* gridPlasmaCurrentFrequency2 = 0;
-    deviceComplex* chiLinear1 = 0;
-    deviceComplex* chiLinear2 = 0;
-    deviceFP* inverseChiLinear1 = 0;
-    deviceFP* inverseChiLinear2 = 0;
-    deviceFP* fieldFactor1 = 0;
-    deviceFP* fieldFactor2 = 0;
-    deviceComplex* k1 = 0;
-    deviceComplex* k2 = 0;
-    deviceComplex n0 = 0.0;
-    deviceFP* J0 = 0;
-    deviceFP* gridRadialLaplacian1 = 0;
-    deviceFP* gridRadialLaplacian2 = 0;
-    deviceFP* gridETime1 = 0;
-    deviceFP* gridETime2 = 0;
-    deviceFP* gridPolarizationTime1 = 0;
-    deviceFP* gridPolarizationTime2 = 0;
-    deviceFP* expGammaT = 0;
-    deviceFP* gridPlasmaCurrent1 = 0;
-    deviceFP* gridPlasmaCurrent2 = 0;
-
-    //fixed length arrays
-    deviceFP firstDerivativeOperation[6] = { 0 };
-    deviceFP plasmaParameters[6] = { 0 }; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
-    deviceFP chi2Tensor[18] = { 0 };
-    deviceFP chi3Tensor[81] = { 0 };
-    deviceFP absorptionParameters[6] = { 0 };
-    deviceFP rotationForward[9] = { 0 };
-    deviceFP rotationBackward[9] = { 0 };
-    int nonlinearSwitches[4] = { 0 };
-
-    bool isCylindric = 0;
-    bool is3D = 0;
-    bool hasPlasma = 0;
-    bool isNonLinear = 0;
-    bool isUsingMillersRule = 0;
-    bool forceLinear = 0;
-    size_t Ntime = 0;
-    size_t Nfreq = 0;
-    size_t Nspace = 0;
-    size_t Nspace2 = 0;
-    size_t Ngrid = 0;
-    size_t NgridC = 0;
-    deviceFP fftNorm = 0;
-    int axesNumber = 0;
-    int sellmeierType = 0;
-    deviceFP crystalTheta;
-    deviceFP crystalPhi;
-    deviceFP f0 = 0;
-    deviceFP fStep = 0;
-    deviceFP dt = 0;
-    deviceFP dx = 0;
-    deviceFP dk1 = 0;
-    deviceFP dk2 = 0;
-    deviceFP h = 0;
-    size_t Nsteps = 0;
-    int Nthread = 0;
-    int NblockC = 0;
-    int Nblock = 0;
-} deviceParameterSet;
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
