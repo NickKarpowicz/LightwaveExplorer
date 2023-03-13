@@ -849,7 +849,8 @@ namespace kernels {
 		}
 		else if (r > 0.1f * ROC) {
 			u = deviceLib::exp(deviceComplex(0.0f,
-				2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC * ((deviceFPLib::sqrt(1.0f - r * r / (ROC * ROC))) - 1.0f) / LIGHTC));
+				2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC * 
+				((deviceFPLib::sqrt(1.0f - r * r / (ROC * ROC))) - 1.0f) / LIGHTC));
 		}
 		else {
 			deviceFP ratio = r / ROC;
@@ -904,32 +905,32 @@ namespace kernels {
 		deviceComplex ts = deviceComplex(0.0f, 0.0f);
 		deviceComplex tp = deviceComplex(0.0f, 0.0f);
 		//old way:
-		deviceFP kze = ke.real() * ke.real() - dk1 * dk1 - dk2 * dk2;
-		deviceFP kzo = ko.real() * ko.real() - dk1 * dk1 - dk2 * dk2;
-		if (kze >= 0.0) ts = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kze)) * thickness);
-		if (kzo >= 0.0) tp = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kzo)) * thickness);
+		//deviceFP kze = ke.real() * ke.real() - dk1 * dk1 - dk2 * dk2;
+		//deviceFP kzo = ko.real() * ko.real() - dk1 * dk1 - dk2 * dk2;
+		//if (kze >= 0.0) ts = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kze)) * thickness);
+		//if (kzo >= 0.0) tp = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kzo)) * thickness);
 		//preserve digits:
 		//get angle theta to z-axis
 
-		//if (maxN(deviceFPLib::abs(dk1), deviceFPLib::abs(dk2)) > 0.005f * deviceFPLib::abs(ke.real())) {
-		//	ts = deviceLib::exp(ii * (k0 - ke.real() - (dk1 * dk1 + dk2 * dk2) / (2 * ke.real())) * thickness);
-		//	tp = deviceLib::exp(ii * (k0 - ko.real() - (dk1 * dk1 + dk2 * dk2) / (2 * ko.real())) * thickness);
-		//}
-		//else {
-		//	deviceFP delta = k0 - ke.real();
-		//	deviceFP theta = deviceFPLib::sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ke.real());
-		//	theta = deviceFPLib::sin(theta / 2.0f);
-		//	theta *= 2.0f * theta;
-		//	deviceFP kze = delta + ke.real() * theta;
+		if (maxN(deviceFPLib::abs(dk1), deviceFPLib::abs(dk2)) > 0.005f * deviceFPLib::abs(ke.real())) {
+			ts = deviceLib::exp(ii * (k0 - ke.real() - (dk1 * dk1 + dk2 * dk2) / (2 * ke.real())) * thickness);
+			tp = deviceLib::exp(ii * (k0 - ko.real() - (dk1 * dk1 + dk2 * dk2) / (2 * ko.real())) * thickness);
+		}
+		else {
+			deviceFP delta = k0 - ke.real();
+			deviceFP theta = deviceFPLib::sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ke.real());
+			theta = deviceFPLib::sin(theta / 2.0f);
+			theta *= 2.0f * theta;
+			deviceFP kze = delta + ke.real() * theta;
 
-		//	delta = k0 - ko.real();
-		//	theta = deviceFPLib::sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ko.real());
-		//	theta = deviceFPLib::sin(theta / 2.0f);
-		//	theta *= 2.0f * theta;
-		//	deviceFP kzo = delta + ko.real() * theta;
-		//	if (kze >= 0.0) ts = deviceLib::exp(ii * kze * thickness);
-		//	if (kzo >= 0.0) tp = deviceLib::exp(ii * kzo * thickness);
-		//}
+			delta = k0 - ko.real();
+			theta = deviceFPLib::sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ko.real());
+			theta = deviceFPLib::sin(theta / 2.0f);
+			theta *= 2.0f * theta;
+			deviceFP kzo = delta + ko.real() * theta;
+			if (kze >= 0.0) ts = deviceLib::exp(ii * kze * thickness);
+			if (kzo >= 0.0) tp = deviceLib::exp(ii * kzo * thickness);
+		}
 
 		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0.0f, 0.0f);
 		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0.0f, 0.0f);
