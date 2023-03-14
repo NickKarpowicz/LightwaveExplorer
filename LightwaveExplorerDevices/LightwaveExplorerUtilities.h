@@ -101,7 +101,6 @@ public:
     deviceComplex* k1 = 0;
     deviceComplex* k2 = 0;
     deviceComplex n0 = 0.0;
-    deviceFP* J0 = 0;
     deviceFP* gridRadialLaplacian1 = 0;
     deviceFP* gridRadialLaplacian2 = 0;
     deviceFP* gridETime1 = 0;
@@ -155,7 +154,6 @@ public:
 
 class crystalEntry {
 public:
-    //char crystalNameW[256] = { 0 };
     std::string crystalName;
     int axisType = 0;
     int sellmeierType = 0;
@@ -168,7 +166,6 @@ public:
     std::string chi3Reference;
     double absorptionParameters[6] = { 0 };
     char spectralFile[512] = { 0 };
-    //double spectralData[2048] = { 0 };
     double nonlinearReferenceFrequencies[7] = { 0 };
 };
 
@@ -426,8 +423,6 @@ public:
     double* absorptionParameters = 0;
     int sellmeierType = 0;
     int axesNumber = 0;
-    double neref = 0;
-    double noref = 0;
     int* nonlinearSwitches = 0;
     bool isCylindric = 0;
     bool is3D = 0;
@@ -444,7 +439,6 @@ public:
     char field2FilePath[MAX_LOADSTRING] = { 0 };
 
     int pulsetype = 0;
-    double* InfoVec = 0;
     double* ExtOut = 0;
     std::complex<double>* EkwOut = 0;
     double* totalSpectrum = 0;
@@ -476,7 +470,6 @@ public:
     char fittingString[1024] = { 0 };
     char fittingPath[1024] = { 0 };
     double fittingArray[256] = { 0 };
-    double fittingPrecision = 0;
     double* fittingReference = 0;
     int Nfitting = 0;
     int fittingMode = 0;

@@ -25,34 +25,34 @@ void atomicAddSYCL(deviceFP* pulseSum, deviceFP pointEnergy) {
 
 
 namespace deviceLibSYCLFP32{
-	float exp(const float x){
+	inline float exp(const float x){
 		return expf(x);
 	}
-	float abs(const float x){
+	inline float abs(const float x){
 		return fabs(x);
 	}
-	float sin(const float x){
+	inline float sin(const float x){
 		return sinf(x);
 	}
-	float cos(const float x){
+	inline float cos(const float x){
 		return cosf(x);
 	}
-	float atan(const float x){
+	inline float atan(const float x){
 		return atanf(x);
 	}
-	float sqrt(const float x){
+	inline float sqrt(const float x){
 		return sqrtf(x);
 	}
-	float asin(const float x){
+	inline float asin(const float x){
 		return asinf(x);
 	}
-	float pow(const float x, const float y){
+	inline float pow(const float x, const float y){
 		return powf(x,y);
 	}
-	float acos(const float x) {
+	inline float acos(const float x) {
 		return acosf(x);
 	}
-	float atan2(const float x, const float y) {
+	inline float atan2(const float x, const float y) {
 		return atan2f(x, y);
 	}
 
@@ -62,14 +62,14 @@ namespace deviceLibSYCLFP32{
 		float rn = powf(r, y);
 		return oneapi::dpl::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
 	}
-	oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
+	inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::exp(x);
 
 	}
-	float abs(const oneapi::dpl::complex<float> x){
+	inline float abs(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::abs(x);
 	}
-	oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
+	inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::sqrt(x);
 	}
 };

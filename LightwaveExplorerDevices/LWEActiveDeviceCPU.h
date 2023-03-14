@@ -45,46 +45,46 @@ int hardwareCheckCPU(int* CUDAdeviceCount) {
 	return 0;
 }
 namespace deviceLibCPUFP32{
-	float exp(const float x){
+	inline float exp(const float x){
 		return expf(x);
 	}
-	float abs(const float x){
+	inline float abs(const float x){
 		return fabs(x);
 	}
-	float sin(const float x){
+	inline float sin(const float x){
 		return sinf(x);
 	}
-	float cos(const float x){
+	inline float cos(const float x){
 		return cosf(x);
 	}
-	float atan(const float x){
+	inline float atan(const float x){
 		return atanf(x);
 	}
-	float sqrt(const float x){
+	inline float sqrt(const float x){
 		return sqrtf(x);
 	}
-	float asin(const float x){
+	inline float asin(const float x){
 		return asinf(x);
 	}
-	float pow(const float x, const float y){
+	inline float pow(const float x, const float y){
 		return powf(x,y);
 	}
-	float atan2(const float x, const float y) {
+	inline float atan2(const float x, const float y) {
 		return atan2f(x, y);
 	}
-	float acos(const float x) {
+	inline float acos(const float x) {
 		return acosf(x);
 	}
-	std::complex<float> pow(const std::complex<float> x, const float y){
+	inline std::complex<float> pow(const std::complex<float> x, const float y){
 		return std::pow(x,y);
 	}
-	std::complex<float> exp(const std::complex<float> x){
+	inline std::complex<float> exp(const std::complex<float> x){
 		return std::exp(x);
 	}
-	float abs(const std::complex<float> x){
+	inline float abs(const std::complex<float> x){
 		return std::abs(x);
 	}
-	std::complex<float> sqrt(const std::complex<float> x){
+	inline std::complex<float> sqrt(const std::complex<float> x){
 		return std::sqrt(x);
 	}
 };

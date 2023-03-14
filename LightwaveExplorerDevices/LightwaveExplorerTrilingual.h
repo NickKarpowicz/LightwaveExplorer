@@ -1,7 +1,7 @@
 // define a compiler-specific activeDevice class and set of macros
 #ifdef __CUDACC__
 #include "LWEActiveDeviceCUDA.cuh"
-#define trilingual __global__ void
+#define trilingual __global__ static void
 #define withID 
 #define asKernel
 #define deviceFunction __device__
@@ -46,7 +46,7 @@
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
 #elif defined RUNSTEPCOUNTER
 #include "LWEAciveDeviceCounter.h"
-#define trilingual void 
+#define trilingual static void 
 #define withID size_t trilingualLaunchID, 
 #define asKernel
 #define deviceFunction 
@@ -66,7 +66,7 @@
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
 #else
 #include "LWEActiveDeviceCPU.h"
-#define trilingual void 
+#define trilingual static void 
 #define withID size_t trilingualLaunchID, 
 #define asKernel
 #define deviceFunction 
