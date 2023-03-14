@@ -3,6 +3,7 @@
 #include <cufft.h>
 #include <nvml.h>
 #include <thrust/complex.h>
+#include <iostream>
 #include "LightwaveExplorerUtilities.h"
 #define DeviceToHost cudaMemcpyDeviceToHost
 #define HostToDevice cudaMemcpyHostToDevice
@@ -92,16 +93,19 @@ int hardwareCheckCUDA(int* CUDAdeviceCount) {
 	cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
 	struct cudaDeviceProp activeCUDADeviceProp;
 	if (cuErr == cudaSuccess) {
-		printf("Found %i GPU(s): \n", *CUDAdeviceCount);
+		std::cout << "Found " << *CUDAdeviceCount << "GPU(s) : " << std::endl;
 		for (int i = 0; i < *CUDAdeviceCount; ++i) {
 			cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-			printf("%s\r\n", activeCUDADeviceProp.name);
-			printf(" Memory: %i MB; Multiprocessors: %i\n",
-				(int)(activeCUDADeviceProp.totalGlobalMem / (1024 * 1024)), activeCUDADeviceProp.multiProcessorCount);
+			std::cout << activeCUDADeviceProp.name << std::endl;
+			std::cout << " Memory: " << 
+				(int)(activeCUDADeviceProp.totalGlobalMem / (1024 * 1024)) <<
+				"MB; Multiprocessors: " << 
+				activeCUDADeviceProp.multiProcessorCount
+				<<  std::endl;
 		}
 	}
 	else {
-		printf("No GPU found.\n");
+		std::cout << "No GPU found." << std::endl;
 		return 1;
 	}
 	return 0;

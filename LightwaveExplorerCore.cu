@@ -1,7 +1,7 @@
 #include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
-#include <stdlib.h>
+#include <iostream>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
@@ -2954,6 +2954,8 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	return 0;
 }
 
+
+	
 //main function - if included in the GUI, this should have a different name
 // than main() - this one applies when running in command line mode (e.g. on
 // the clusters.)
@@ -2965,7 +2967,7 @@ int mainX(int argc, mainArgumentX){
 	int CUDAdeviceCount = 1;
 	if (hardwareCheck(&CUDAdeviceCount)) return 1;
 	if (argc < 2) {
-		printf("no input file specified.\n");
+		std::cout << "No input file specified." << std::endl;
 		return 2;
 	}
 
@@ -2975,22 +2977,27 @@ int mainX(int argc, mainArgumentX){
 	crystalDatabase db;
 	initializationStruct.crystalDatabase = db.db.data();
 	initializationStruct.progressCounter = &progressCounter;
-
-	printf("Read %zu crystal database entries:\n", db.db.size());
+	// read crystal database
+	if (db.db.size() == 0) {
+		std::cout << "Could not read crystal database." << std::endl;
+		return 12;
+	}
+	std::cout << "Read " << db.db.size() << "crystal database entries :" << std::endl;
 	for (j = 0; j < db.db.size(); ++j) {
-		printf("Material %i name: %s\n", j, db.db[j].crystalNameW);
+		std::cout << "Material " << j << "name: " << db.db[j].crystalNameW << std::endl;
 	}
 
 	// read from settings file
 	if (readInputParametersFile(&initializationStruct, db.db.data(), filepath) == 1) {
-		printf("Could not read input file.\n");
+		std::cout << "Could not read input file." << std::endl;
 		return 13;
 	}
-	simulationParameterSet* sCPU = new simulationParameterSet[initializationStruct.Nsims];
+	size_t Ntotal = minN(1, initializationStruct.Nsims * minN(1, initializationStruct.Nsims2));
+	simulationParameterSet* sCPU = new simulationParameterSet[Ntotal];
 	memcpy(sCPU, &initializationStruct, sizeof(simulationParameterSet));
 	allocateGrids(sCPU);
 	if (loadPulseFiles(sCPU) == 1) {
-		printf("Could not read pulse file.\n");
+		std::cout << "Could not read pulse file." << std::endl;
 		deallocateGrids(sCPU, TRUE);
 		delete[] sCPU;
 		return 14;
@@ -3002,18 +3009,19 @@ int mainX(int argc, mainArgumentX){
 	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
 	if ((*sCPU).Nfitting != 0) {
-		printf("Running optimization for %i iterations...\n", (*sCPU).fittingMaxIterations);
+		std::cout << "Running optimization for" << (*sCPU).fittingMaxIterations << "iterations..." << std::endl;
 
 		runDlibFittingX(sCPU);
 
 		auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-		printf("Finished after %8.4lf s. \n",
-			1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+		std::cout << "Finished after" <<
+			1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
+			<< "s" << std::endl;
 		saveDataSet(sCPU);
 
-		printf("Optimization result:\n (index, value)\n");
+		std::cout << "Optimization result:" << std::endl << "(index, value)" << std::endl;
 		for (int i = 0; i < (*sCPU).Nfitting; ++i) {
-			printf("%i,  %lf\r\n", i, (*sCPU).fittingResult[i]);
+			std::cout << i << (*sCPU).fittingResult[i] << std::endl;
 		}
 
 		deallocateGrids(sCPU, TRUE);
@@ -3021,9 +3029,9 @@ int mainX(int argc, mainArgumentX){
 		return 0;
 	}
 	// run simulations
-	std::thread* threadBlock = new std::thread[(*sCPU).Nsims * (*sCPU).Nsims2];
-	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
-	for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; ++j) {
+	std::thread* threadBlock = new std::thread[Ntotal];
+	size_t maxThreads = minN(CUDAdeviceCount, Ntotal);
+	for (j = 0; j < Ntotal; ++j) {
 
 		sCPU[j].assignedGPU = j % CUDAdeviceCount;
 		if (j >= maxThreads) {
@@ -3042,7 +3050,7 @@ int mainX(int argc, mainArgumentX){
 	}
 	for (i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; ++i) {
 		if (sCPU[i].memoryError > 0) {
-			printf("Warning: device memory error (%i).\n", sCPU[i].memoryError);
+			std::cout << "Warning: device memory error " << sCPU[i].memoryError << std::endl;
 		}
 		if (threadBlock[i].joinable()) {
 			threadBlock[i].join();
@@ -3050,9 +3058,9 @@ int mainX(int argc, mainArgumentX){
 	}
 
 	auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-	printf("Finished after %8.4lf s. \n",
-		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
-
+	std::cout << "Finished after" <<
+		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
+		<< "s" << std::endl;
 	saveDataSet(sCPU);
 	delete[] threadBlock;
 	deallocateGrids(sCPU, TRUE);

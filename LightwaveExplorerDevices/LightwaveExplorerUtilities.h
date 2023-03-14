@@ -167,7 +167,7 @@ public:
     char chi3Reference[512] = { 0 };
     double absorptionParameters[6] = { 0 };
     char spectralFile[512] = { 0 };
-    double spectralData[2048] = { 0 };
+    //double spectralData[2048] = { 0 };
     double nonlinearReferenceFrequencies[7] = { 0 };
 };
 
