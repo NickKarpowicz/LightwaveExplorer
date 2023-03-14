@@ -459,7 +459,7 @@ public:
         //read the crystal database
         std::string materialString;
         for (int i = 0; i < theDatabase.db.size(); ++i) {
-            materialString = Sformat("{:2}: {}", i, std::string(theDatabase.db[i].crystalNameW));
+            materialString = Sformat("{:2}: {}", i, std::string(theDatabase.db[i].crystalName.c_str()));
             pulldowns[3].addElement(materialString.c_str());
         }
         

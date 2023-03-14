@@ -155,16 +155,17 @@ public:
 
 class crystalEntry {
 public:
-    char crystalNameW[256] = { 0 };
+    //char crystalNameW[256] = { 0 };
+    std::string crystalName;
     int axisType = 0;
     int sellmeierType = 0;
     int nonlinearSwitches[4] = { 0 };
     double sellmeierCoefficients[66] = { 0 };
-    char sellmeierReference[512] = { 0 };
+    std::string sellmeierReference;
     double d[18] = { 0 };
-    char dReference[512] = { 0 };
+    std::string dReference;
     double chi3[81] = { 0 };
-    char chi3Reference[512] = { 0 };
+    std::string chi3Reference;
     double absorptionParameters[6] = { 0 };
     char spectralFile[512] = { 0 };
     //double spectralData[2048] = { 0 };
@@ -203,7 +204,7 @@ public:
             std::getline(fs, line);//Name:
 
             std::getline(fs, line);
-            line.copy(newEntry.crystalNameW, 256);
+            newEntry.crystalName = line;
 
             std::getline(fs, line); //Type:
             fs >> newEntry.axisType;
@@ -233,7 +234,7 @@ public:
 
             std::getline(fs, line); //Sellmeier reference:
             std::getline(fs, line);
-            line.copy(newEntry.sellmeierReference, 512);
+            newEntry.sellmeierReference = line;
 
             std::getline(fs, line); // chi2 type:
             fs >> newEntry.nonlinearSwitches[0];
@@ -247,7 +248,7 @@ public:
 
             std::getline(fs, line); //d reference:
             std::getline(fs, line);
-            line.copy(newEntry.dReference, 512);
+            newEntry.dReference = line;
 
             std::getline(fs, line); //chi3 type:
             fs >> newEntry.nonlinearSwitches[1];
@@ -278,7 +279,7 @@ public:
 
             std::getline(fs, line); //chi3 reference:
             std::getline(fs, line);
-            line.copy(newEntry.chi3Reference, 512);
+            newEntry.chi3Reference = line;
 
             std::getline(fs, line); //Spectral file:
             std::getline(fs, line);
@@ -290,7 +291,7 @@ public:
             }
             std::getline(fs, line);
             std::getline(fs, line); //~~~crystal end~~~
-            db.push_back(newEntry);
+            if(fs.good())db.push_back(newEntry);
         }
     }
 };

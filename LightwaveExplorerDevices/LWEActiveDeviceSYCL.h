@@ -186,6 +186,7 @@ public:
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
 		(*ptr) = sycl::aligned_alloc_device(2 * sizeof(deviceFP), N * elementSize, stream.get_device(), stream.get_context());
 		stream.memset((*ptr), 0, N * elementSize);
+		stream.wait();
 		return 0;
 	}
 
@@ -197,6 +198,7 @@ public:
 	void deviceMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
 		stream.wait();
 		stream.memcpy(dst, src, count);
+		stream.wait();
 	}
 
 	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
@@ -229,6 +231,7 @@ public:
 			copyBuffer[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
 		}
 		stream.memcpy(dst, copyBuffer, count / 2);
+		stream.wait();
 		delete[] copyBuffer;
 	}
 

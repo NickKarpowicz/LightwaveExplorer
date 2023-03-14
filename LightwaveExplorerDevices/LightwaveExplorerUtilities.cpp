@@ -650,7 +650,7 @@ int saveSettingsFile(simulationParameterSet* sCPU) {
 		fs << "Fitting reference file path: " << (*sCPU).fittingPath << '\x0A';
 	}
 
-	fs << "Material name: " << crystalDatabasePtr[(*sCPU).materialIndex].crystalNameW << '\x0A';
+	fs << "Material name: " << crystalDatabasePtr[(*sCPU).materialIndex].crystalName << '\x0A';
 	fs << "Sellmeier reference: " << crystalDatabasePtr[(*sCPU).materialIndex].sellmeierReference << '\x0A';
 	fs << "Chi2 reference: " << crystalDatabasePtr[(*sCPU).materialIndex].dReference << '\x0A';
 	fs << "Chi3 reference: " << crystalDatabasePtr[(*sCPU).materialIndex].chi3Reference << '\x0A';
@@ -661,7 +661,7 @@ int saveSettingsFile(simulationParameterSet* sCPU) {
 		}
 		fs << '\x0A';
 	}
-	fs << "Code version: 0.6 January 14, 2023";
+	fs << "Code version: 0.7, " << LWEFLOATINGPOINT << "-bit floating point,  March 14, 2023";
 	fs << '\x0A';
 
 	return 0;
