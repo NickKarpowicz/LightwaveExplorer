@@ -203,7 +203,7 @@ public:
 
 	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
 		stream.wait();
-		float* copyBuffer = new float[count];
+		float* copyBuffer = new float[count / sizeof(double)];
 		stream.memcpy(copyBuffer, src, count/2);
 		stream.wait();
 		for (size_t i = 0; i < count / sizeof(double); i++) {
