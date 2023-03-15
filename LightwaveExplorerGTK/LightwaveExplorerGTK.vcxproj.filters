@@ -35,6 +35,9 @@
     <CudaCompile Include="..\LightwaveExplorerCore.cu">
       <Filter>Source Files</Filter>
     </CudaCompile>
+    <CudaCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LightwaveExplorerFrontendGTK.h">
@@ -66,6 +69,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

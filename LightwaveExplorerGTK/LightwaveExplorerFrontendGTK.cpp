@@ -5,6 +5,7 @@
 #include <fstream>
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
 #ifndef CPUONLY
 #ifndef NOCUDA
 #include <cuda_runtime.h>
@@ -1927,7 +1928,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     }
     if (pulldownSelection < cudaGPUCount) {
         sequenceFunction = &solveNonlinearWaveEquationSequence;
-        normalFunction = &solveNonlinearWaveEquation;
+        normalFunction = &solveNonlinearWaveEquationFP32;
         assignedGPU = pulldownSelection;
     }
     else if (pulldownSelection == cudaGPUCount && SYCLavailable) {

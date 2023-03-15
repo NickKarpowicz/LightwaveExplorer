@@ -13,16 +13,25 @@
 #define atomicAddDevice atomicAdd
 #define j0Device j0
 #define hostFunctions hostFunctionsCUDA
+
+#define mainArgumentX char* argv[]
+#define resolveArgv char* filepath = argv[1];
+#if LWEFLOATINGPOINT==64
 #ifndef NOCUDAMAIN
 #define mainX main
 #else
 #define mainX mainCUDA
 #endif
-#define mainArgumentX char* argv[]
-#define resolveArgv char* filepath = argv[1];
 #define runDlibFittingX runDlibFitting
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquation
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequence
+#else
+#define mainX main
+#define mainX mainCUDAFP32
+#define runDlibFittingX runDlibFittingFP32
+#define solveNonlinearWaveEquationX solveNonlinearWaveEquationFP32
+#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceFP32
+#endif
 #elif defined RUNONSYCL
 #include "LWEActiveDeviceSYCL.h"
 #define trilingual const auto 

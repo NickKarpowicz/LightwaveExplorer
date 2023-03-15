@@ -1,4 +1,3 @@
-#include "LightwaveExplorerCore.cuh"
 #include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
 #include <iostream>
@@ -9,12 +8,12 @@ namespace deviceFunctions {
 	//if running in 64-bit mode, define complex math operations with fixed float constants
 #if LWEFLOATINGPOINT==64
 	namespace {
-		deviceFunction deviceComplex operator+(const float f, const deviceComplex x) { return deviceComplex(x.real() + f, x.imag()); }
-		deviceFunction deviceComplex operator+(const deviceComplex x, const float f) { return deviceComplex(x.real() + f, x.imag()); }
-		deviceFunction deviceComplex operator-(const deviceComplex x, const float f) { return deviceComplex(x.real() - f, x.imag()); }
-		deviceFunction deviceComplex operator*(const float f, const deviceComplex x) { return deviceComplex(x.real() * f, x.imag() * f); }
-		deviceFunction deviceComplex operator*(const deviceComplex x, const float f) { return deviceComplex(x.real() * f, x.imag() * f); }
-		deviceFunction deviceComplex operator/(const deviceComplex x, const float f) { return deviceComplex(x.real() / f, x.imag() / f); }
+		deviceFunction static deviceComplex operator+(const float f, const deviceComplex x) { return deviceComplex(x.real() + f, x.imag()); }
+		deviceFunction static deviceComplex operator+(const deviceComplex x, const float f) { return deviceComplex(x.real() + f, x.imag()); }
+		deviceFunction static deviceComplex operator-(const deviceComplex x, const float f) { return deviceComplex(x.real() - f, x.imag()); }
+		deviceFunction static deviceComplex operator*(const float f, const deviceComplex x) { return deviceComplex(x.real() * f, x.imag() * f); }
+		deviceFunction static deviceComplex operator*(const deviceComplex x, const float f) { return deviceComplex(x.real() * f, x.imag() * f); }
+		deviceFunction static deviceComplex operator/(const deviceComplex x, const float f) { return deviceComplex(x.real() / f, x.imag() / f); }
 	}
 #endif
 	//Expand the information contained in the radially-symmetric beam in the offset grid
@@ -51,7 +50,7 @@ namespace deviceFunctions {
 	//based on Rybicki G.B., Computers in Physics, 3,85-87 (1989)
 	//this is the simplest implementation of the formula he provides, he also suggests speed improvements in case
 	//evaluation of this becomes a bottleneck
-	deviceFunction float deviceDawson(const float& x) {
+	deviceFunction static float deviceDawson(const float& x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
 		int n = 15;
 		float h = 0.3f;
@@ -75,7 +74,7 @@ namespace deviceFunctions {
 		return INVSQRTPI * d;
 	}
 
-	deviceFunction double deviceDawson(const double& x) {
+	deviceFunction static double deviceDawson(const double& x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
 		int n = 15;
 		double h = 0.3;
@@ -111,7 +110,7 @@ namespace deviceFunctions {
 	//omega: frequency (rad/s)
 	//ii: sqrt(-1)
 	//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
-	deviceFunction deviceComplex sellmeierFunc(deviceFP ls, deviceFP omega,const deviceFP* a, int eqn) {
+	deviceFunction static deviceComplex sellmeierFunc(deviceFP ls, deviceFP omega,const deviceFP* a, int eqn) {
 		deviceFP omega2 = omega * omega;
 		deviceFP realPart;
 		deviceComplex compPart;
@@ -172,7 +171,7 @@ namespace deviceFunctions {
 	};
 
 	//Sellmeier equation for refractive indicies
-	deviceFunction deviceComplex sellmeierCuda(
+	deviceFunction static deviceComplex sellmeierCuda(
 		deviceComplex* ne, deviceComplex* no, const deviceFP* a, deviceFP f, deviceFP theta, deviceFP phi, int type, int eqn) {
 		if (f == 0.0f) {
 			*ne = deviceComplex(1.0f, 0.0f); 
@@ -232,7 +231,7 @@ namespace deviceFunctions {
 		}
 	}
 
-	deviceFunction deviceFP cuCModSquared(const deviceComplex& a) {
+	deviceFunction static deviceFP cuCModSquared(const deviceComplex& a) {
 		return a.real() * a.real() + a.imag() * a.imag();
 	}
 
@@ -240,7 +239,7 @@ namespace deviceFunctions {
 	// exploiting the fact that the radial grid is offset by 1/4 step from 0
 	// this means that midpoints are available on the other side of the origin.
 	// returns rho at the given index j
-	deviceFunction deviceFP resolveNeighborsInOffsetRadialSymmetry(
+	deviceFunction static deviceFP resolveNeighborsInOffsetRadialSymmetry(
 		long long* neighbors, long long N, int j, deviceFP dr, long long Ntime, long long h) {
 		if (j < N / 2) {
 			neighbors[0] = (N - j - 2) * Ntime + h;
@@ -264,7 +263,7 @@ namespace deviceFunctions {
 	//provide the position rho in cylindric mode; a simplified
 	//version of the resolveNeighbors function above for cases where
 	//the neighbors aren't required
-	deviceFunction deviceFP rhoInRadialSymmetry(
+	deviceFunction static deviceFP rhoInRadialSymmetry(
 		long long N, int j, deviceFP dr) {
 		if (j < N / 2) {
 			return deviceFPLib::abs( - (dr * (j - N / 2) + 0.25f * dr));
@@ -295,7 +294,7 @@ namespace deviceFunctions {
 	// If uniaxial, solve 1D problem with n(alpha,0)
 	// If biaxial, solve 2D problem
 	// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
-	deviceFunction void findBirefringentCrystalIndex(const deviceParameterSet* s, const deviceFP* sellmeierCoefficients, long long i, deviceComplex* n1, deviceComplex* n2) {
+	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet* s, const deviceFP* sellmeierCoefficients, long long i, deviceComplex* n1, deviceComplex* n2) {
 		unsigned long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
 		col = i / ((*s).Nfreq - 1);
@@ -1774,10 +1773,10 @@ using namespace kernels;
 
 namespace hostFunctions{
 	typedef dlib::matrix<deviceFP, 0, 1> column_vector;
-	simulationParameterSet* fittingSet;
-	activeDevice* dFit;
+	static simulationParameterSet* fittingSet;
+	static activeDevice* dFit;
 
-	int getTotalSpectrum(activeDevice& d) {
+	static int getTotalSpectrum(activeDevice& d) {
 		simulationParameterSet* sCPU = d.cParams;
 		deviceParameterSet* sc = d.s;
 
@@ -1799,20 +1798,20 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int forwardHankel(activeDevice& d, deviceFP* in, deviceComplex* out) {
+	static int forwardHankel(activeDevice& d, deviceFP* in, deviceComplex* out) {
 		deviceParameterSet* sc = d.s;
 		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, hankelKernel, d.dParamsDevice, in, (deviceFP*)(*sc).workspace1);
 		d.fft((*sc).workspace1, out, deviceFFTD2Z1D);
 		return 0;
 	}
-	int backwardHankel(activeDevice& d, deviceComplex* in, deviceFP* out) {
+	static int backwardHankel(activeDevice& d, deviceComplex* in, deviceFP* out) {
 		deviceParameterSet* sc = d.s;
 		d.fft(in, (*sc).workspace1, deviceFFTZ2D1D);
 		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, inverseHankelKernel, d.dParamsDevice, (deviceFP*)(*sc).workspace1, out);
 		return 0;
 	}
 
-	int addPulseToFieldArrays(activeDevice& d, pulse<double>& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
+	static int addPulseToFieldArrays(activeDevice& d, pulse<double>& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet* sc = d.s;
@@ -1877,7 +1876,7 @@ namespace hostFunctions{
 		return 0;
 	}
 	
-	int prepareElectricFieldArrays(activeDevice& d) {
+	static int prepareElectricFieldArrays(activeDevice& d) {
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet* sc = d.s;
@@ -1917,7 +1916,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyFresnelLoss(activeDevice& d, simulationParameterSet* s, deviceParameterSet& sc, int materialIndex1, int materialIndex2) {
+	static int applyFresnelLoss(activeDevice& d, simulationParameterSet* s, deviceParameterSet& sc, int materialIndex1, int materialIndex2) {
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
@@ -1958,7 +1957,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyFilter(activeDevice& d, simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
+	static int applyFilter(activeDevice& d, simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z);
@@ -1984,7 +1983,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyLorenzian(activeDevice& d, simulationParameterSet* sCPU, double amplitude, double f0, double gamma, double radius, double order) {
+	static int applyLorenzian(activeDevice& d, simulationParameterSet* sCPU, double amplitude, double f0, double gamma, double radius, double order) {
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z1D);
@@ -2008,7 +2007,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyAperatureFarFieldHankel(activeDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
+	static int applyAperatureFarFieldHankel(activeDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		forwardHankel(d, d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1);
 		deviceParameterSet* sDevice = d.dParamsDevice;
@@ -2027,7 +2026,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyAperatureFarField(activeDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
+	static int applyAperatureFarField(activeDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
 		if ((*sCPU).isCylindric) {
 			return applyAperatureFarFieldHankel(d, sCPU, diameter, activationParameter, xOffset, yOffset);
 		}
@@ -2058,7 +2057,7 @@ namespace hostFunctions{
 
 
 
-	int applyAperature(activeDevice& d, simulationParameterSet* sCPU,double diameter, double activationParameter) {
+	static int applyAperature(activeDevice& d, simulationParameterSet* sCPU,double diameter, double activationParameter) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 
 		deviceParameterSet* sDevice = d.dParamsDevice;
@@ -2073,7 +2072,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applySphericalMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double ROC) {
+	static int applySphericalMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double ROC) {
 
 		deviceParameterSet* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
@@ -2090,7 +2089,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyParabolicMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double focus) {
+	static int applyParabolicMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double focus) {
 		deviceParameterSet* sDevice = d.dParamsDevice;
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
@@ -2105,7 +2104,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int applyLinearPropagation(activeDevice& d, simulationParameterSet* sCPU, int materialIndex, double thickness) {
+	static int applyLinearPropagation(activeDevice& d, simulationParameterSet* sCPU, int materialIndex, double thickness) {
 
 		if (d.hasPlasma) {
 			simulationParameterSet sCopy;
@@ -2143,7 +2142,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	int preparePropagationGrids(activeDevice& d) {
+	static int preparePropagationGrids(activeDevice& d) {
 		deviceParameterSet* sc = d.s;
 		simulationParameterSet* s = d.cParams;
 		deviceFP* sellmeierCoefficients = (deviceFP*)(*sc).gridEFrequency1Next1;
@@ -2181,7 +2180,7 @@ namespace hostFunctions{
 	//Allocates memory and copies from CPU, then copies back to CPU and deallocates
 	// - inefficient but the general principle is that only the CPU memory is preserved
 	// after simulations finish... and this only runs at the end of the simulation
-	int rotateField(activeDevice& d, simulationParameterSet* sCPU, double rotationAngle) {
+	static int rotateField(activeDevice& d, simulationParameterSet* sCPU, double rotationAngle) {
 
 		deviceComplex* Ein1 = d.deviceStruct.gridEFrequency1;
 		deviceComplex* Ein2 = d.deviceStruct.gridEFrequency2;
@@ -2205,7 +2204,7 @@ namespace hostFunctions{
 
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
-	int runRK4Step(activeDevice& d, uint8_t stepNumber) {
+	static int runRK4Step(activeDevice& d, uint8_t stepNumber) {
 		deviceParameterSet* sH = d.s; 
 		deviceParameterSet* sD = d.dParamsDevice;
 
@@ -2290,7 +2289,7 @@ namespace hostFunctions{
 
 
 
-	unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice& d, simulationParameterSet* sCPU) {
+	static unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice& d, simulationParameterSet* sCPU) {
 		//if ((d.hasPlasma != d.deviceStruct.hasPlasma) && d.deviceStruct.isCylindric) {
 		//	d.deallocateSet();
 		//	d.allocateSet(sCPU);
@@ -2336,17 +2335,17 @@ namespace hostFunctions{
 		return returnval;
 	}
 
-	constexpr unsigned int funHash(const char* s, int off = 0) {
+	static constexpr unsigned int funHash(const char* s, int off = 0) {
 		return (s[off] == 0 || s[off] == '(') ? 7177 : (funHash(s, off + 1) * 31) ^ s[off];
 	}
 
-	unsigned int stringHash(std::string& s, int off = 0){
+	static unsigned int stringHash(std::string& s, int off = 0){
 		return (s.length() == off || s.at(off) == '(') ? 7177 : (stringHash(s,off+1) * 31) ^ s.at(off);
 	}
 	//Dispatcher of the sequence mode. New functions go here, and should have a unique hash (chances of a conflict are small, and 
 	// will produce a compile-time error.
 	// Functions cannot start with a number or the string "None".
-	int interpretCommand(std::string cc, double* iBlock, double* vBlock, activeDevice& d, simulationParameterSet *sCPU) {
+	static int interpretCommand(std::string cc, double* iBlock, double* vBlock, activeDevice& d, simulationParameterSet *sCPU) {
 		crystalEntry* db = (*sCPU).crystalDatabase;
 		int error = 0;
 		double parameters[32] = {0.0};
@@ -2627,7 +2626,7 @@ namespace hostFunctions{
 		return error;
 	}
 
-	int solveSequenceWithDevice(activeDevice& d, simulationParameterSet* sCPU) {
+	static int solveSequenceWithDevice(activeDevice& d, simulationParameterSet* sCPU) {
 		int error = 0;
 		//pointers to where the various parameters are in the struct
 		double* targets[38] = { 0,
@@ -2711,7 +2710,7 @@ namespace hostFunctions{
 	}
 
 	// helper function for fitting mode, runs the simulation and returns difference from the desired outcome.
-	double getResidual(const dlib::matrix<double, 0, 1>& x) {
+	static double getResidual(const dlib::matrix<double, 0, 1>& x) {
 
 		double multipliers[36] = { 0,
 	1, 1, 1e12, 1e12,

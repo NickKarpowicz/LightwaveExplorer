@@ -22,6 +22,7 @@
 
 
 #ifdef __CUDACC__
+#if LWEFLOATINGPOINT==64
 //In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
 __device__ thrust::complex<double> operator/(const double& a, const thrust::complex<double>& b) {
 	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
@@ -38,9 +39,10 @@ __device__ thrust::complex<double> operator+(const thrust::complex<double>& a, c
 __device__ thrust::complex<double> operator-(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
 __device__ thrust::complex<double> operator-(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() - b, a.imag()); }
 #endif
+#endif
 
 
-
+#if LWEFLOATINGPOINT==32
 namespace deviceLibCUDAFP32{
 	__device__ float exp(const float x){
 		return expf(x);
@@ -84,10 +86,10 @@ namespace deviceLibCUDAFP32{
 	__device__ thrust::complex<float> sqrt(const thrust::complex<float> x){
 		return thrust::sqrt(x);
 	}
-
-
 };
-int hardwareCheckCUDA(int* CUDAdeviceCount) {
+#endif
+
+static int hardwareCheckCUDA(int* CUDAdeviceCount) {
 	int CUDAdevice;
 	cudaGetDeviceCount(CUDAdeviceCount);
 	cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
@@ -111,7 +113,7 @@ int hardwareCheckCUDA(int* CUDAdeviceCount) {
 	return 0;
 }
 
-class deviceCUDA {
+static class deviceCUDA {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
