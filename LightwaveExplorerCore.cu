@@ -34,19 +34,15 @@ namespace deviceFunctions {
 		expandedBeam2[pos1] = sourceBeam2[i];
 		expandedBeam2[pos2] = sourceBeam2[i];
 	}
-	//template<typename real_t, typename complex_t>
-	//deviceFunction static complex_t fourierKz(complex_t k0, complex_t ke, real_t dk1, real_t dk2) {
-	//	complex_t delta = k0.real() - ke;
-	//	real_t theta = deviceFPLib::sin(deviceFPLib::atan2(dk1, dk2)) * (dk1 / ke.real());
-	//	theta = deviceFPLib::sin(theta / 2.0f);
-	//	theta *= 2.0f * theta;
-	//	return delta + ke * theta;
-	//}
-
+	
+	//Calculate the fourier optics propagator (e^ik_z*d) for a given set of values of the maknitude of k, transverse k (dk1, dk2)
+	//a reference k0 which defines the speed of the moving frame, and distance d over which to propagate
 	template<typename real_t, typename complex_t>
-	deviceFunction inline static complex_t fourierKz(complex_t k0, complex_t ke, real_t dk1, real_t dk2) {
-		//complex_t kz = deviceLib::sqrt(-dk2 * dk2 / (ke + dk1) + ke - dk1) * deviceLib::sqrt(ke + dk1);
-		return k0.real() - deviceLib::sqrt(-dk2 * dk2 / (ke + dk1) + ke - dk1) * deviceLib::sqrt(ke + dk1);
+	deviceFunction inline static complex_t fourierPropagator(complex_t k, real_t dk1, real_t dk2, real_t k0, real_t d) {
+		if (deviceFPLib::abs(dk2) < 0.1f * k.real() && deviceFPLib::abs(dk1) < 0.1f *  k.real()) {
+			return deviceLib::exp(complex_t(0.0,-d)*((k - k0) - (dk1 * dk1) / (2.0f * k.real()) - (dk2 * dk2) / (2.0f * k.real())));
+		}
+		return deviceLib::exp(complex_t(0.0, -d) * (deviceLib::sqrt(-dk2 * dk2 / (k + dk1) + k - dk1) * deviceLib::sqrt(k + dk1) - k0));
 	}
 
 
@@ -856,7 +852,7 @@ namespace kernels {
 		if (r >= ROC) {
 			u = deviceComplex(0.0f, 0.0f);
 		}
-		else if (r > 0.1f * ROC) {
+		else if (r > 0.5f * ROC) {
 			u = deviceLib::exp(deviceComplex(0.0f,
 				2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC * 
 				((deviceFPLib::sqrt(1.0f - r * r / (ROC * ROC))) - 1.0f) / LIGHTC));
@@ -868,6 +864,13 @@ namespace kernels {
 				2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC * 
 				(-0.5f * ratio - 0.125f * ratio * ratio - 0.0625f * ratio * ratio * ratio) / LIGHTC));
 		}
+		//else {
+		//	deviceFP ratio = r / ROC;
+		//	ratio *= ratio;
+		//	u = deviceLib::exp(deviceComplex(0.0f,
+		//		2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC *
+		//		(-0.5f * ratio) / LIGHTC));
+		//}
 
 		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
@@ -913,22 +916,27 @@ namespace kernels {
 		deviceComplex k0 = n0 * omega / (deviceFP)LIGHTC;
 		deviceComplex ts = deviceComplex(0.0f, 0.0f);
 		deviceComplex tp = deviceComplex(0.0f, 0.0f);
-		//old way:
-		//deviceFP kze = ke.real() * ke.real() - dk1 * dk1 - dk2 * dk2;
-		//deviceFP kzo = ko.real() * ko.real() - dk1 * dk1 - dk2 * dk2;
-		//if (kze >= 0.0) ts = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kze)) * thickness);
-		//if (kzo >= 0.0) tp = deviceLib::exp(ii * (k0 - deviceFPLib::sqrt(kzo)) * thickness);
-		//preserve digits:
-		deviceComplex kze = fourierKz(k0, ke, dk1, dk2);
-		deviceComplex kzo = fourierKz(k0, ko, dk1, dk2);
-		ts = deviceLib::exp(ii * kze * thickness);
-		tp = deviceLib::exp(ii * kzo * thickness);
+
+		ts = fourierPropagator(ke, dk1, dk2, k0.real(), thickness);
+		tp = fourierPropagator(ko, dk1, dk2, k0.real(), thickness);
 		
 
 		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0.0f, 0.0f);
 		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0.0f, 0.0f);
 		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
+		if(isnan((*s).gridEFrequency2[i].real()) ||
+			isnan((*s).gridEFrequency2[i].imag()) || 
+			isnan((*s).gridEFrequency1[i].real()) ||
+			isnan((*s).gridEFrequency1[i].imag())) {
+			(*s).gridEFrequency1[i] = deviceComplex(0.0f, 0.0f);
+			(*s).gridEFrequency2[i] = deviceComplex(0.0f, 0.0f);
+
+		}
+		if (h == 1) {
+			(*s).gridEFrequency1[i-1] = deviceComplex(0.0f, 0.0f);
+			(*s).gridEFrequency2[i-1] = deviceComplex(0.0f, 0.0f);
+		}
 	};
 
 	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
@@ -1035,9 +1043,9 @@ namespace kernels {
 			return;
 		}
 
-		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0.0f);
-		deviceComplex ke = (deviceFP)TWOPI * ne * f / (deviceFP)LIGHTC;
-		deviceComplex ko = (deviceFP)TWOPI * no * f / (deviceFP)LIGHTC;
+		deviceComplex k0 = TWOPI * n0 * f / LIGHTC;
+		deviceComplex ke = TWOPI * ne * f / LIGHTC;
+		deviceComplex ko = (deviceFP)TWOPI * no * f / LIGHTC;
 
 		deviceComplex chi11 = deviceComplex(1.0f, 0.0f);
 		deviceComplex chi12 = deviceComplex(1.0f, 0.0f);
@@ -1049,18 +1057,16 @@ namespace kernels {
 			chi11 = deviceComplex(1.0f, 0.0f);
 			chi12 = deviceComplex(1.0f, 0.0f);
 		}
-		deviceComplex kz1 = fourierKz(k0, ke, dk1, dk2);
-		deviceComplex kz2 = fourierKz(k0, ko, dk1, dk2);
-		//deviceComplex kz1 = deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2);
-		//deviceComplex kz2 = deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2);
 
+		deviceComplex kz1 = deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2);
+		deviceComplex kz2 = deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2);
 		if (kz1.real() > 0.0f && kz2.real() > 0.0f) {
-			(*s).gridPropagationFactor1[i] = deviceLib::exp(-0.5f * ii * (kz1 - k0) * (*s).h);
+			(*s).gridPropagationFactor1[i] = fourierPropagator(ke, dk1, dk2, k0.real(), 0.5f * (*s).h);
 			if (isnan(((*s).gridPropagationFactor1[i].real()))) {
 				(*s).gridPropagationFactor1[i] = cuZero;
 			}
 
-			(*s).gridPropagationFactor2[i] = deviceLib::exp(-0.5f * ii * (kz2 - k0) * (*s).h);
+			(*s).gridPropagationFactor2[i] = fourierPropagator(ko, dk1, dk2, k0.real(), 0.5f * (*s).h);
 			if (isnan(((*s).gridPropagationFactor2[i].real()))) {
 				(*s).gridPropagationFactor2[i] = cuZero;
 			}
@@ -1068,8 +1074,17 @@ namespace kernels {
 			(*s).gridPolarizationFactor1[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear1[j] + 1.0f, 0.25f) * chi11 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / (2.0f * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz1) * (*s).h;
 			(*s).gridPolarizationFactor2[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear2[j] + 1.0f, 0.25f) * chi12 * ((deviceFP)TWOPI * (deviceFP)TWOPI * f * f) / (2.0f * (deviceFP)LIGHTC * (deviceFP)LIGHTC * kz2) * (*s).h;
 		}
-
 		else {
+			(*s).gridPropagationFactor1[i] = cuZero;
+			(*s).gridPropagationFactor2[i] = cuZero;
+			(*s).gridPolarizationFactor1[i] = cuZero;
+			(*s).gridPolarizationFactor2[i] = cuZero;
+		}
+
+		if (isnan((*s).gridPropagationFactor1[i].real() + (*s).gridPropagationFactor1[i].imag()) ||
+			isnan((*s).gridPropagationFactor2[i].real() + (*s).gridPropagationFactor2[i].imag()) ||
+			isnan((*s).gridPolarizationFactor1[i].real() + (*s).gridPolarizationFactor1[i].imag()) ||
+			isnan((*s).gridPolarizationFactor2[i].real() + (*s).gridPolarizationFactor2[i].imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
 			(*s).gridPropagationFactor2[i] = cuZero;
 			(*s).gridPolarizationFactor1[i] = cuZero;
@@ -2129,6 +2144,7 @@ namespace hostFunctions{
 		d.deviceLaunch(2 * d.deviceStruct.Nblock, d.deviceStruct.Nthread, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
 
 		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), DeviceToHost);
+		getTotalSpectrum(d);
 
 		return 0;
 	}
