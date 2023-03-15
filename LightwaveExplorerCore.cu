@@ -864,13 +864,7 @@ namespace kernels {
 				2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC * 
 				(-0.5f * ratio - 0.125f * ratio * ratio - 0.0625f * ratio * ratio * ratio) / LIGHTC));
 		}
-		//else {
-		//	deviceFP ratio = r / ROC;
-		//	ratio *= ratio;
-		//	u = deviceLib::exp(deviceComplex(0.0f,
-		//		2.0f * deviceFPLib::pow(-1.0f, isNegative) * w * ROC *
-		//		(-0.5f * ratio) / LIGHTC));
-		//}
+
 
 		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
