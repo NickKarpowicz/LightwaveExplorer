@@ -36,12 +36,12 @@ void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
 }
 #else
 template<typename deviceFP>
-void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
+static void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
 }
 #endif
-int hardwareCheckCPU(int* CUDAdeviceCount) {
+static int hardwareCheckCPU(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
@@ -105,7 +105,7 @@ static std::complex<double> operator*(const std::complex<double> x, const float 
 static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
 
 #endif
-double j0CPU(double x) {
+static double j0CPU(double x) {
 	if (x < 8.0) {
 		double y = x * x;
 		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
@@ -126,7 +126,7 @@ double j0CPU(double x) {
 	}
 }
 
-float j0CPU(float x) {
+static float j0CPU(float x) {
 	if (x < 8.0f) {
 		float y = x * x;
 		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +

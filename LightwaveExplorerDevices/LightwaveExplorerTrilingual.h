@@ -47,12 +47,20 @@
 
 #define deviceFunctions deviceFunctionsSYCL
 #define hostFunctions hostFunctionsSYCL
-#define mainX mainSYCL
 #define mainArgumentX char* filepath
 #define resolveArgv
+#if LWEFLOATINGPOINT == 64
+#define mainX mainSYCL
 #define runDlibFittingX runDlibFittingSYCL
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCL
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
+#else
+#define mainX mainSYCLFP32
+#define runDlibFittingX runDlibFittingSYCLFP32
+#define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCLFP32
+#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCLFP32
+#endif
+
 #elif defined RUNSTEPCOUNTER
 #include "LWEAciveDeviceCounter.h"
 #define trilingual static void 
@@ -87,12 +95,20 @@
 #define hardwareCheck hardwareCheckCPU
 #define deviceFunctions deviceFunctionsCPU
 #define hostFunctions hostFunctionsCPU
-#define mainX mainCPU
 #define mainArgumentX char* filepath
 #define resolveArgv
+
+#if LWEFLOATINGPOINT == 32
+#define mainX mainCPUFP32
+#define runDlibFittingX runDlibFittingCPUFP32
+#define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPUFP32
+#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPUFP32
+#else
+#define mainX mainCPU
 #define runDlibFittingX runDlibFittingCPU
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPU
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPU
+#endif
 #endif
 
 #define deviceFFTD2Z 0
