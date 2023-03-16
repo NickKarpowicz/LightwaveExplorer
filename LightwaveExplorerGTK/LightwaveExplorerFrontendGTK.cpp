@@ -6,6 +6,8 @@
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerSYCL.h"
 #ifndef CPUONLY
 #ifndef NOCUDA
 #include <cuda_runtime.h>
@@ -1796,6 +1798,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     else {
         SYCLitems = 3;
     }
+#ifndef CPUONLY
     //launch on CUDA if selected, putting in the correct GPU in multi-gpu systems
     if (pulldownSelection < cudaGPUCount) {
         sequenceFunction = &solveNonlinearWaveEquationSequence;
@@ -1842,7 +1845,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
         normalFunction = &solveNonlinearWaveEquationCPU;
     }
-
+#endif
     int error = 0;
     if ((*activeSetPtr).isInSequence) {
         for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; ++i) {
@@ -1921,6 +1924,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     int assignedGPU = 0;
     bool forceCPU = 0;
     int SYCLitems = 0;
+    #ifndef CPUONLY
     if (syclGPUCount == 0) {
         SYCLitems = (int)SYCLavailable;
     }
@@ -1972,7 +1976,9 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             normalFunction = &solveNonlinearWaveEquationSYCLFP32;
         }
     }
-    else {
+    else 
+#endif
+    {
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
@@ -1982,6 +1988,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             normalFunction = &solveNonlinearWaveEquationCPUFP32;
         }
     }
+   
 
     std::thread secondQueueThread(secondaryQueue, 
         &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 

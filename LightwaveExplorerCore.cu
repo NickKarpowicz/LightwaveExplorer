@@ -885,7 +885,6 @@ namespace kernels {
 		i = h + col * ((*s).Nfreq);
 		j = col % (*s).Nspace;
 		k = col / (*s).Nspace;
-		deviceComplex ii = deviceComplex(0.0f, 1.0f);
 		deviceFP crystalTheta = sellmeierCoefficients[66];
 		deviceFP crystalPhi = sellmeierCoefficients[67];
 

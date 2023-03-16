@@ -28,7 +28,7 @@ const int deviceThreads = std::thread::hardware_concurrency();
 #define isnan std::isnan
 #endif
 #if defined __APPLE__ || defined __linux__
-
+template<typename deviceFP>
 void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	deviceFP expected = pulseSumAtomic->load();
