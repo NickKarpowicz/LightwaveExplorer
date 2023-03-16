@@ -437,8 +437,8 @@ namespace deviceFunctions {
 using namespace deviceFunctions;
 
 namespace kernels {
-	using deviceFP = LWEFLOATINGPOINTTYPE;
-	using deviceComplex = complexLib::complex<LWEFLOATINGPOINTTYPE>;
+	typedef LWEFLOATINGPOINTTYPE deviceFP;
+	typedef complexLib::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
 	//the syntax might look a bit strange due to the "trilingual" mode of operation. In short:
 	// CUDA and OpenMP are fine with function pointers being used to launch kernels, but SYCL
 	// doesn't allow them. However, SYCL does allow named lambdas, which have a nearly identical
@@ -1772,9 +1772,9 @@ using namespace kernels;
 namespace hostFunctions{
 	typedef dlib::matrix<deviceFP, 0, 1> column_vector;
 	static simulationParameterSet* fittingSet;
-	static activeDevice* dFit;
+	static activeDevice<LWEFLOATINGPOINTTYPE,complexLib::complex<LWEFLOATINGPOINTTYPE>>* dFit;
 
-	static int getTotalSpectrum(activeDevice& d) {
+	static int getTotalSpectrum(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d) {
 		simulationParameterSet* sCPU = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 
@@ -1796,20 +1796,20 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int forwardHankel(activeDevice& d, deviceFP* in, deviceComplex* out) {
+	static int forwardHankel(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, deviceFP* in, deviceComplex* out) {
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, hankelKernel, d.dParamsDevice, in, (deviceFP*)(*sc).workspace1);
 		d.fft((*sc).workspace1, out, deviceFFTD2Z1D);
 		return 0;
 	}
-	static int backwardHankel(activeDevice& d, deviceComplex* in, deviceFP* out) {
+	static int backwardHankel(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, deviceComplex* in, deviceFP* out) {
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		d.fft(in, (*sc).workspace1, deviceFFTZ2D1D);
 		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, inverseHankelKernel, d.dParamsDevice, (deviceFP*)(*sc).workspace1, out);
 		return 0;
 	}
 
-	static int addPulseToFieldArrays(activeDevice& d, pulse<double>& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
+	static int addPulseToFieldArrays(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, pulse<double>& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
@@ -1874,7 +1874,7 @@ namespace hostFunctions{
 		return 0;
 	}
 	
-	static int prepareElectricFieldArrays(activeDevice& d) {
+	static int prepareElectricFieldArrays(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d) {
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
@@ -1914,7 +1914,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyFresnelLoss(activeDevice& d, simulationParameterSet* s, deviceParameterSet<deviceFP, deviceComplex>& sc, int materialIndex1, int materialIndex2) {
+	static int applyFresnelLoss(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* s, deviceParameterSet<deviceFP, deviceComplex>& sc, int materialIndex1, int materialIndex2) {
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
@@ -1955,7 +1955,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyFilter(activeDevice& d, simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
+	static int applyFilter(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z);
@@ -1981,7 +1981,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyLorenzian(activeDevice& d, simulationParameterSet* sCPU, double amplitude, double f0, double gamma, double radius, double order) {
+	static int applyLorenzian(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double amplitude, double f0, double gamma, double radius, double order) {
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z1D);
@@ -2005,7 +2005,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyAperatureFarFieldHankel(activeDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
+	static int applyAperatureFarFieldHankel(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		forwardHankel(d, d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1);
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
@@ -2024,7 +2024,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyAperatureFarField(activeDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
+	static int applyAperatureFarField(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
 		if ((*sCPU).isCylindric) {
 			return applyAperatureFarFieldHankel(d, sCPU, diameter, activationParameter, xOffset, yOffset);
 		}
@@ -2055,7 +2055,7 @@ namespace hostFunctions{
 
 
 
-	static int applyAperature(activeDevice& d, simulationParameterSet* sCPU,double diameter, double activationParameter) {
+	static int applyAperature(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU,double diameter, double activationParameter) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
@@ -2070,7 +2070,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applySphericalMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double ROC) {
+	static int applySphericalMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double ROC) {
 
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
@@ -2087,7 +2087,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyParabolicMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double focus) {
+	static int applyParabolicMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double focus) {
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
@@ -2102,7 +2102,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyLinearPropagation(activeDevice& d, simulationParameterSet* sCPU, int materialIndex, double thickness) {
+	static int applyLinearPropagation(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, int materialIndex, double thickness) {
 
 		if (d.hasPlasma) {
 			simulationParameterSet sCopy;
@@ -2140,7 +2140,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int preparePropagationGrids(activeDevice& d) {
+	static int preparePropagationGrids(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d) {
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		simulationParameterSet* s = d.cParams;
 		deviceFP* sellmeierCoefficients = (deviceFP*)(*sc).gridEFrequency1Next1;
@@ -2178,7 +2178,7 @@ namespace hostFunctions{
 	//Allocates memory and copies from CPU, then copies back to CPU and deallocates
 	// - inefficient but the general principle is that only the CPU memory is preserved
 	// after simulations finish... and this only runs at the end of the simulation
-	static int rotateField(activeDevice& d, simulationParameterSet* sCPU, double rotationAngle) {
+	static int rotateField(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double rotationAngle) {
 
 		deviceComplex* Ein1 = d.deviceStruct.gridEFrequency1;
 		deviceComplex* Ein2 = d.deviceStruct.gridEFrequency2;
@@ -2202,7 +2202,7 @@ namespace hostFunctions{
 
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
-	static int runRK4Step(activeDevice& d, uint8_t stepNumber) {
+	static int runRK4Step(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, uint8_t stepNumber) {
 		deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
 		deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
 
@@ -2287,7 +2287,7 @@ namespace hostFunctions{
 
 
 
-	static unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice& d, simulationParameterSet* sCPU) {
+	static unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU) {
 		//if ((d.hasPlasma != d.deviceStruct.hasPlasma) && d.deviceStruct.isCylindric) {
 		//	d.deallocateSet();
 		//	d.allocateSet(sCPU);
@@ -2343,7 +2343,7 @@ namespace hostFunctions{
 	//Dispatcher of the sequence mode. New functions go here, and should have a unique hash (chances of a conflict are small, and 
 	// will produce a compile-time error.
 	// Functions cannot start with a number or the string "None".
-	static int interpretCommand(std::string cc, double* iBlock, double* vBlock, activeDevice& d, simulationParameterSet *sCPU) {
+	static int interpretCommand(std::string cc, double* iBlock, double* vBlock, activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet *sCPU) {
 		crystalEntry* db = (*sCPU).crystalDatabase;
 		int error = 0;
 		double parameters[32] = {0.0};
@@ -2624,7 +2624,7 @@ namespace hostFunctions{
 		return error;
 	}
 
-	static int solveSequenceWithDevice(activeDevice& d, simulationParameterSet* sCPU) {
+	static int solveSequenceWithDevice(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU) {
 		int error = 0;
 		//pointers to where the various parameters are in the struct
 		double* targets[38] = { 0,
@@ -2739,7 +2739,7 @@ namespace hostFunctions{
 			*targets[(int)(*fittingSet).fittingArray[3 * i]] = multipliers[(int)(*fittingSet).fittingArray[3 * i]] * x(i);
 		}
 
-		activeDevice& d = *dFit;
+		activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d = *dFit;
 		d.cParams = fittingSet;
 		d.reset(fittingSet);
 
@@ -2804,7 +2804,7 @@ using namespace hostFunctions;
 // a preprocessor definition here.
 unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	activeDevice d(sCPU);
+	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);
 	if (d.memoryStatus) return 1;
 	unsigned long returnValue = solveNonlinearWaveEquationWithDevice(d, sCPU);
 	return returnValue;
@@ -2819,7 +2819,7 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	
 	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
-	activeDevice d(sCPU);
+	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);
 	unsigned long returnValue = solveSequenceWithDevice(d, sCPU);
 	return returnValue;
 }
@@ -2830,7 +2830,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	fittingSet = &sCPUcurrent;
 
 	memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
-	activeDevice d(fittingSet);
+	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(fittingSet);
 	dFit = &d;
 	dlib::matrix<double, 0, 1> parameters;
 	parameters.set_size((*sCPU).Nfitting);

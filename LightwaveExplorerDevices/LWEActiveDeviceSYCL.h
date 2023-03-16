@@ -145,10 +145,9 @@ oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b)
 	return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
 }
 
+template<typename deviceFP, typename deviceComplex>
 class deviceSYCL {
 private:
-	using deviceFP = LWEFLOATINGPOINTTYPE;
-	using deviceComplex = dpl::complex<deviceFP>;
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;

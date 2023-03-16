@@ -42,9 +42,8 @@ double j0Counter(double x) {
 	return x;
 }
 
+template <typename deviceFP, typename deviceComplex>
 class deviceCounter {
-	using deviceFP = LWEFLOATINGPOINTTYPE;
-	using deviceComplex = std::complex<deviceFP>;
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = 0;

@@ -146,10 +146,10 @@ float j0CPU(float x) {
 		return sqrt(0.636619772f / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
+
+template <typename deviceFP, typename deviceComplex>
 class deviceCPU {
 private:
-	using deviceFP = LWEFLOATINGPOINTTYPE;
-	using deviceComplex = std::complex<deviceFP>;
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;

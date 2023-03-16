@@ -118,10 +118,8 @@ static int hardwareCheckCUDA(int* CUDAdeviceCount) {
 	}
 	return 0;
 }
-
-static class deviceCUDA {
-	using deviceFP = LWEFLOATINGPOINTTYPE;
-	using deviceComplex = thrust::complex<deviceFP>;
+template<typename deviceFP, typename deviceComplex>
+class deviceCUDA {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
