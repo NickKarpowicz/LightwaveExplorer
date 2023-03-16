@@ -7,7 +7,7 @@
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.h"
-#include "../LightwaveExplorerDevices/LightwaveExplorerSYCL.h"
+
 #ifndef CPUONLY
 #ifndef NOCUDA
 #include <cuda_runtime.h>
