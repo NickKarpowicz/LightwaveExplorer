@@ -397,10 +397,10 @@ public:
             pulldowns[8].addElement(A.c_str());
             if (syclGPUCount > 0) {
 
-                pulldowns[7].addElement("SYCL cpu");
-                pulldowns[8].addElement("SYCL cpu");
-                pulldowns[7].addElement("SYCL gpu");
-                pulldowns[8].addElement("SYCL gpu");
+                pulldowns[7].addElement("SYCLcpu");
+                pulldowns[8].addElement("SYCLcpu");
+                pulldowns[7].addElement("SYCLgpu");
+                pulldowns[8].addElement("SYCLgpu");
             }
         }
         pulldowns[7].addElement("OpenMP");
@@ -412,7 +412,7 @@ public:
         pulldowns[7].setTooltip("Select the primary method of calculation. The algorithm is the same, but you can run it either on a GPU or CPU depending on your machine");
         pulldowns[8].setTooltip("Select a secondary mode of calculation for offloading jobs from a batch. For example, if the pulldown to the left is set to CUDA and this one is OpenMP, and the number to the right is 2, 2 of the simulations from the batch will be performed on the CPU");
 
-        pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
+        //pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
         textBoxes[1].setLabel(-labelWidth, 0, _T("Frequency (THz)"));
         textBoxes[2].setLabel(-labelWidth, 0, _T("Bandwidth (THz)"));
