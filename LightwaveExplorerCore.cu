@@ -11,7 +11,7 @@ namespace deviceFunctions {
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details
 	template<typename T, typename U>
-	deviceFunction void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, long long i, T* expandedBeam1, T* sourceBeam1, T* sourceBeam2) {
+	deviceFunction static void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, long long i, T* expandedBeam1, const T* sourceBeam1, const T* sourceBeam2) {
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long k = i % (*s).Ntime; //temporal coordinate
 
@@ -28,7 +28,7 @@ namespace deviceFunctions {
 	//Calculate the fourier optics propagator (e^ik_z*d) for a given set of values of the maknitude of k, transverse k (dk1, dk2)
 	//a reference k0 which defines the speed of the moving frame, and distance d over which to propagate
 	template<typename real_t, typename complex_t>
-	deviceFunction inline static complex_t fourierPropagator(complex_t k, real_t dk1, real_t dk2, real_t k0, real_t d) {
+	deviceFunction static complex_t fourierPropagator(complex_t k, real_t dk1, real_t dk2, real_t k0, real_t d) {
 		if (deviceFPLib::abs(dk2) < 0.1f * k.real() && deviceFPLib::abs(dk1) < 0.1f *  k.real()) {
 			return deviceLib::exp(complex_t(0.0,-d)*((k - k0) - (dk1 * dk1) / (2.0f * k.real()) - (dk2 * dk2) / (2.0f * k.real())));
 		}
@@ -43,7 +43,7 @@ namespace deviceFunctions {
 	//based on Rybicki G.B., Computers in Physics, 3,85-87 (1989)
 	//this is the simplest implementation of the formula he provides, he also suggests speed improvements in case
 	//evaluation of this becomes a bottleneck
-	deviceFunction static float deviceDawson(const float& x) {
+	deviceFunction static float deviceDawson(const float x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
 		int n = 15;
 		float h = 0.3f;
@@ -226,7 +226,7 @@ namespace deviceFunctions {
 		}
 	}
 	template<typename T>
-	deviceFunction static LWEFLOATINGPOINTTYPE cuCModSquared(const T& a) {
+	deviceFunction static inline LWEFLOATINGPOINTTYPE cuCModSquared(const T& a) {
 		return a.real() * a.real() + a.imag() * a.imag();
 	}
 
@@ -811,7 +811,7 @@ namespace kernels {
 		if ((*s).is3D) {
 			deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
 			deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
-			r = sqrt(x * x + y * y);
+			r = deviceFPLib::sqrt(x * x + y * y);
 		}
 		else {
 			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
@@ -964,9 +964,9 @@ namespace kernels {
 			return;
 		}
 
-		deviceComplex k0 = deviceComplex((deviceFP)TWOPI * n0.real() * f / LIGHTC, 0.0f);
-		deviceComplex ke = (deviceFP)TWOPI * ne * f / (deviceFP)LIGHTC;
-		deviceComplex ko = (deviceFP)TWOPI * no * f / (deviceFP)LIGHTC;
+		deviceComplex k0 = deviceComplex(TWOPI * n0.real() * f / LIGHTC, 0.0f);
+		deviceComplex ke = TWOPI * ne * f / LIGHTC;
+		deviceComplex ko = TWOPI * no * f / LIGHTC;
 
 		deviceComplex chi11 = deviceComplex(1.0f, 0.0f);
 		deviceComplex chi12 = deviceComplex(1.0f, 0.0f);
@@ -1426,7 +1426,6 @@ namespace kernels {
 			P[k] += expMinusGammaT[k] * integralx;
 		}
 	};
-
 
 	trilingual updateKwithPolarizationKernelCylindric asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t i = localIndex;
