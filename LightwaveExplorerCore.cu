@@ -32,7 +32,9 @@ namespace deviceFunctions {
 		if (deviceFPLib::abs(dk2) < 0.1f * k.real() && deviceFPLib::abs(dk1) < 0.1f *  k.real()) {
 			return deviceLib::exp(complex_t(0.0,-d)*((k - k0) - (dk1 * dk1) / (2.0f * k.real()) - (dk2 * dk2) / (2.0f * k.real())));
 		}
-		return deviceLib::exp(complex_t(0.0, -d) * (deviceLib::sqrt(-dk2 * dk2 / (k + dk1) + k - dk1) * deviceLib::sqrt(k + dk1) - k0));
+		complex_t kz = (deviceLib::sqrt(-dk2 * dk2 / (k + deviceFPLib::abs(dk1)) + k - deviceFPLib::abs(dk1)) * deviceLib::sqrt(k + deviceFPLib::abs(dk1)) - k0);
+		if (kz.imag() > 0.0f) kz = complex_t(kz.real(), -kz.imag());
+		return deviceLib::exp(complex_t(0.0f, -d) * kz);
 	}
 
 
@@ -2052,9 +2054,6 @@ namespace hostFunctions{
 		return 0;
 	}
 
-
-
-
 	static int applyAperature(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU,double diameter, double activationParameter) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 
@@ -2063,8 +2062,8 @@ namespace hostFunctions{
 			sDevice, 
 			(deviceFP)(0.5 * diameter), 
 			(deviceFP)(activationParameter));
-		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), DeviceToHost);
+		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z);
 		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
 		getTotalSpectrum(d);
 		return 0;
@@ -2471,6 +2470,11 @@ namespace hostFunctions{
 				if (!defaultMask[1])(*sCPU).crystalTheta = DEG2RAD * parameters[1];
 				if (!defaultMask[2])(*sCPU).crystalPhi = DEG2RAD * parameters[2];
 				if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
+				if (d.hasPlasma) {
+					(*sCPU).nonlinearAbsorptionStrength = 0.0;
+					(*sCPU).forceLinear = TRUE;
+					d.reset(sCPU);
+				}
 
 				applyLinearPropagation(d, sCPU, (*sCPU).materialIndex, (*sCPU).crystalThickness);
 				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
