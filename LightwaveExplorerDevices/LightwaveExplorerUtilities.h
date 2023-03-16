@@ -46,22 +46,22 @@
 #include <cufft.h>
 #include <thrust/complex.h>
 #include <fftw3_mkl.h>
-typedef thrust::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
-typedef LWEFLOATINGPOINTTYPE deviceFP;
+//typedef thrust::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
+//typedef LWEFLOATINGPOINTTYPE deviceFP;
 #elif defined RUNONSYCL
 #include <oneapi/dpl/complex>
 #include <oneapi/dpl/cmath>
-typedef oneapi::dpl::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
-typedef LWEFLOATINGPOINTTYPE deviceFP;
+//typedef oneapi::dpl::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
+//typedef LWEFLOATINGPOINTTYPE deviceFP;
 #include <sycl/sycl.hpp>
 #elif defined CPUONLY
 #include <fftw3.h>
-typedef std::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
-typedef LWEFLOATINGPOINTTYPE deviceFP;
+//typedef std::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
+//typedef LWEFLOATINGPOINTTYPE deviceFP;
 #else
 #include <fftw3_mkl.h>
-typedef std::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
-typedef LWEFLOATINGPOINTTYPE deviceFP;
+//typedef std::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
+//typedef LWEFLOATINGPOINTTYPE deviceFP;
 #endif
 
 #define THREADS_PER_BLOCK 32
@@ -70,7 +70,7 @@ typedef LWEFLOATINGPOINTTYPE deviceFP;
 #define TRUE 1
 #define MAX_LOADSTRING 1024
 
-
+template <typename deviceFP, typename deviceComplex>
 class deviceParameterSet {
 public:
     deviceComplex* workspace1 = 0;

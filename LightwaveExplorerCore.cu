@@ -1,26 +1,17 @@
-#include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
+#include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
+
 #include <iostream>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
 namespace deviceFunctions {
-	//if running in 64-bit mode, define complex math operations with fixed float constants
-#if LWEFLOATINGPOINT==64
-	namespace {
-		deviceFunction static deviceComplex operator+(const float f, const deviceComplex x) { return deviceComplex(x.real() + f, x.imag()); }
-		deviceFunction static deviceComplex operator+(const deviceComplex x, const float f) { return deviceComplex(x.real() + f, x.imag()); }
-		deviceFunction static deviceComplex operator-(const deviceComplex x, const float f) { return deviceComplex(x.real() - f, x.imag()); }
-		deviceFunction static deviceComplex operator*(const float f, const deviceComplex x) { return deviceComplex(x.real() * f, x.imag() * f); }
-		deviceFunction static deviceComplex operator*(const deviceComplex x, const float f) { return deviceComplex(x.real() * f, x.imag() * f); }
-		deviceFunction static deviceComplex operator/(const deviceComplex x, const float f) { return deviceComplex(x.real() / f, x.imag() / f); }
-	}
-#endif
+
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details
-	template<typename T>
-	deviceFunction void expandCylindricalBeamDevice(const deviceParameterSet* s, long long i, T* expandedBeam1, T* sourceBeam1, T* sourceBeam2) {
+	template<typename T, typename U>
+	deviceFunction void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, long long i, T* expandedBeam1, T* sourceBeam1, T* sourceBeam2) {
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long k = i % (*s).Ntime; //temporal coordinate
 
@@ -110,6 +101,7 @@ namespace deviceFunctions {
 	//omega: frequency (rad/s)
 	//ii: sqrt(-1)
 	//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
+	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static deviceComplex sellmeierFunc(deviceFP ls, deviceFP omega,const deviceFP* a, int eqn) {
 		deviceFP omega2 = omega * omega;
 		deviceFP realPart;
@@ -171,6 +163,7 @@ namespace deviceFunctions {
 	};
 
 	//Sellmeier equation for refractive indicies
+	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static deviceComplex sellmeierCuda(
 		deviceComplex* ne, deviceComplex* no, const deviceFP* a, deviceFP f, deviceFP theta, deviceFP phi, int type, int eqn) {
 		if (f == 0.0f) {
@@ -184,14 +177,14 @@ namespace deviceFunctions {
 
 		//option 0: isotropic
 		if (type == 0) {
-			*ne = sellmeierFunc(ls, omega, a, eqn);
+			*ne = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn);
 			*no = *ne;
 			return *ne;
 		}
 		//option 1: uniaxial
 		else if (type == 1) {
-			deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
-			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
+			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn);
+			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn);
 
 			*no = na;
 			na *= na;
@@ -207,11 +200,11 @@ namespace deviceFunctions {
 		}
 		//option 2: biaxial
 		else {
-			deviceComplex na = sellmeierFunc(ls, omega, a, eqn);
+			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn);
 			na *= na;
-			deviceComplex nb = sellmeierFunc(ls, omega, &a[22], eqn);
+			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn);
 			nb *= nb;
-			deviceComplex nc = sellmeierFunc(ls, omega, &a[44], eqn);
+			deviceComplex nc = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[44], eqn);
 			nc *= nc;
 			deviceFP cp = deviceFPLib::cos(phi);
 			cp *= cp;
@@ -230,8 +223,8 @@ namespace deviceFunctions {
 			return *ne;
 		}
 	}
-
-	deviceFunction static deviceFP cuCModSquared(const deviceComplex& a) {
+	template<typename T>
+	deviceFunction static LWEFLOATINGPOINTTYPE cuCModSquared(const T& a) {
 		return a.real() * a.real() + a.imag() * a.imag();
 	}
 
@@ -239,6 +232,7 @@ namespace deviceFunctions {
 	// exploiting the fact that the radial grid is offset by 1/4 step from 0
 	// this means that midpoints are available on the other side of the origin.
 	// returns rho at the given index j
+	template<typename deviceFP>
 	deviceFunction static deviceFP resolveNeighborsInOffsetRadialSymmetry(
 		long long* neighbors, long long N, int j, deviceFP dr, long long Ntime, long long h) {
 		if (j < N / 2) {
@@ -263,6 +257,7 @@ namespace deviceFunctions {
 	//provide the position rho in cylindric mode; a simplified
 	//version of the resolveNeighbors function above for cases where
 	//the neighbors aren't required
+	template<typename deviceFP>
 	deviceFunction static deviceFP rhoInRadialSymmetry(
 		long long N, int j, deviceFP dr) {
 		if (j < N / 2) {
@@ -294,7 +289,8 @@ namespace deviceFunctions {
 	// If uniaxial, solve 1D problem with n(alpha,0)
 	// If biaxial, solve 2D problem
 	// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
-	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet* s, const deviceFP* sellmeierCoefficients, long long i, deviceComplex* n1, deviceComplex* n2) {
+	template<typename deviceFP, typename deviceComplex>
+	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients, long long i, deviceComplex* n1, deviceComplex* n2) {
 		unsigned long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
 		col = i / ((*s).Nfreq - 1);
@@ -441,6 +437,8 @@ namespace deviceFunctions {
 using namespace deviceFunctions;
 
 namespace kernels {
+	using deviceFP = LWEFLOATINGPOINTTYPE;
+	using deviceComplex = complexLib::complex<LWEFLOATINGPOINTTYPE>;
 	//the syntax might look a bit strange due to the "trilingual" mode of operation. In short:
 	// CUDA and OpenMP are fine with function pointers being used to launch kernels, but SYCL
 	// doesn't allow them. However, SYCL does allow named lambdas, which have a nearly identical
@@ -453,7 +451,7 @@ namespace kernels {
 	//calculate the total energy spectrum of the beam for the 2D modes. Note that for the 
 	//cartesian one, it will be treated as a round beam instead of an infinite plane wave 
 	//in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
-	trilingual totalSpectrumKernel asKernel(withID const deviceParameterSet* s) {
+	trilingual totalSpectrumKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t i = localIndex;
 		size_t j;
 		deviceFP beamCenter1 = 0.0f;
@@ -506,7 +504,7 @@ namespace kernels {
 	//Calculate the energy spectrum after a 2D propagation assuming that the beam
 	//height in the non-resolved direction is == the grid width (i.e. square grid)
 	//More quantitative than the mapping to round beams, but rather specific
-	//trilingual totalSpectrum2DSquareKernel asKernel(withID const deviceParameterSet* s) {
+	//trilingual totalSpectrum2DSquareKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s) {
 	//	size_t i = localIndex;
 	//	size_t j;
 
@@ -529,7 +527,7 @@ namespace kernels {
 	//};
 
 	//Calculate the energy spectrum after a 3D propagation
-	trilingual totalSpectrum3DKernel asKernel(withID const deviceParameterSet* s) {
+	trilingual totalSpectrum3DKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t i = localIndex;
 		size_t j;
 
@@ -559,7 +557,7 @@ namespace kernels {
 	//low due to Gibbs phenomena and I find the FFT-based propagation implemented
 	//below better for nonlinear phenomena. I might later use this for linear propagation
 	//in sequences however.
-	trilingual hankelKernel asKernel(withID const deviceParameterSet* s, const deviceFP* in, deviceFP* out) {
+	trilingual hankelKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
 		size_t i = localIndex;
 		size_t col = i / (*s).Ntime; //spatial coordinate
 		deviceFP dk = 2.0f / (PI * (*s).dx * (*s).Nspace);
@@ -580,7 +578,7 @@ namespace kernels {
 	};
 
 	//inverse Hankel transform from the k-space back to the offset spatial grid
-	trilingual inverseHankelKernel asKernel(withID const deviceParameterSet* s, const deviceFP* in, deviceFP* out) {
+	trilingual inverseHankelKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
 		size_t i = localIndex;
 		size_t col = i / (*s).Ntime; //spatial coordinate
 		deviceFP dk = 2.0f / (PI * (*s).dx * (*s).Nspace);
@@ -609,7 +607,7 @@ namespace kernels {
 	};
 
 	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/r d/drho)
-	trilingual radialLaplacianKernel asKernel(withID const deviceParameterSet* s) {
+	trilingual radialLaplacianKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		unsigned long long i = localIndex;
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long h = i % (*s).Ntime; //temporal coordinate
@@ -638,7 +636,7 @@ namespace kernels {
 		}
 	};
 
-	trilingual apertureFarFieldKernel asKernel(withID const deviceParameterSet* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
+	trilingual apertureFarFieldKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
 		long long i = localIndex;
 		long long col, j, k, l;
 		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
@@ -677,7 +675,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= a;
 	};
 
-	trilingual apertureFarFieldKernelHankel asKernel(withID const deviceParameterSet* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
+	trilingual apertureFarFieldKernelHankel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
 		long long i = localIndex;
 		long long col, j, k;
 		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
@@ -709,7 +707,7 @@ namespace kernels {
 
 
 	//apply a spectral filter to the beam (full details in docs)
-	trilingual filterKernel asKernel(withID const deviceParameterSet* s, deviceFP f0, deviceFP bandwidth, int order, deviceFP inBandAmplitude, deviceFP outOfBandAmplitude) {
+	trilingual filterKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP f0, deviceFP bandwidth, int order, deviceFP inBandAmplitude, deviceFP outOfBandAmplitude) {
 		long long i = localIndex;
 		long long col, j;
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
@@ -731,7 +729,7 @@ namespace kernels {
 	// gamma - linewidth (radHz)
 	// radius - radius of the spot (m)
 	// order - supergaussian order of the spot shape
-	trilingual lorentzianSpotKernel asKernel(withID const deviceParameterSet* s, deviceFP amplitude, deviceFP f0, deviceFP gamma, deviceFP radius, deviceFP order) {
+	trilingual lorentzianSpotKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP amplitude, deviceFP f0, deviceFP gamma, deviceFP radius, deviceFP order) {
 		long long i = localIndex;
 		long long j, h, k, col;
 
@@ -772,7 +770,7 @@ namespace kernels {
 	};
 
 	//Apply a (soft, possibly) aperture
-	trilingual apertureKernel asKernel(withID const deviceParameterSet* s, deviceFP radius, deviceFP activationParameter) {
+	trilingual apertureKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP radius, deviceFP activationParameter) {
 		long long i = localIndex;
 		long long j, k, col;
 
@@ -797,7 +795,7 @@ namespace kernels {
 	};
 
 	//apply a spatial phase corresponding to a parabolic mirror (on-axis)
-	trilingual parabolicMirrorKernel asKernel(withID const deviceParameterSet* s, deviceFP focus) {
+	trilingual parabolicMirrorKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP focus) {
 		long long i = localIndex;
 		long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
@@ -825,7 +823,7 @@ namespace kernels {
 	};
 
 	//apply a spatial phase corresponding to a spherical mirror (on axis)
-	trilingual sphericalMirrorKernel asKernel(withID const deviceParameterSet* s, deviceFP ROC) {
+	trilingual sphericalMirrorKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP ROC) {
 		long long i = localIndex;
 		long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
@@ -874,7 +872,7 @@ namespace kernels {
 	};
 
 	//apply linear propagation through a given medium to the fields
-	trilingual applyLinearPropagationKernel asKernel(withID const deviceFP* sellmeierCoefficients, deviceFP thickness, const deviceParameterSet* s) {
+	trilingual applyLinearPropagationKernel asKernel(withID const deviceFP* sellmeierCoefficients, deviceFP thickness, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		long long i = localIndex;
 		long long j, h, k, col;
 		int axesNumber = (*s).axesNumber;
@@ -935,7 +933,7 @@ namespace kernels {
 	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
 	//note that the sellmeier coefficients have extra values appended to the end
 	//to give info about the current simulation
-	trilingual prepareCartesianGridsKernel asKernel(withID const deviceFP* sellmeierCoefficients, const deviceParameterSet* s) {
+	trilingual prepareCartesianGridsKernel asKernel(withID const deviceFP* sellmeierCoefficients, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		long long i = localIndex;
 		long long j, k;
 		deviceComplex ne, no;
@@ -1006,7 +1004,7 @@ namespace kernels {
 	//prepare propagation constants for the simulation, when it is taking place on a Cartesian grid
 	//note that the sellmeier coefficients have extra values appended to the end
 	//to give info about the current simulation
-	trilingual prepare3DGridsKernel asKernel(withID const deviceFP* sellmeierCoefficients, const deviceParameterSet* s) {
+	trilingual prepare3DGridsKernel asKernel(withID const deviceFP* sellmeierCoefficients, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		long long i = localIndex;
 		long long col, j, k, l;
 		deviceComplex ne, no;
@@ -1086,7 +1084,7 @@ namespace kernels {
 	};
 
 	//prepare the chi(1) arrays that will be needed in the simulation
-	trilingual getChiLinearKernel asKernel(withID deviceParameterSet* s, const deviceFP* sellmeierCoefficients) {
+	trilingual getChiLinearKernel asKernel(withID deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients) {
 		long long i = localIndex;
 		int axesNumber = (*s).axesNumber;
 		int sellmeierType = (*s).sellmeierType;
@@ -1169,7 +1167,7 @@ namespace kernels {
 
 
 	//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
-	trilingual prepareCylindricGridsKernel asKernel(withID deviceFP* sellmeierCoefficients, deviceParameterSet* s) {
+	trilingual prepareCylindricGridsKernel asKernel(withID deviceFP* sellmeierCoefficients, deviceParameterSet<deviceFP, deviceComplex>* s) {
 		long long i = localIndex;
 		long long j, k;
 		long long Nspace = (*s).Nspace;
@@ -1289,18 +1287,18 @@ namespace kernels {
 		//give phase shift relative to group velocity (approximated 
 		// with low-order finite difference) so the pulse doesn't move
 		deviceComplex ne, no, no0, n0p, n0m;
-		sellmeierCuda(&ne, &no, a, f, 0.0f, 0.0f, 0, 0);
+		sellmeierCuda<deviceFP,deviceComplex>(&ne, &no, a, f, 0.0f, 0.0f, 0, 0);
 		f *= TWOPI;
-		sellmeierCuda(&ne, &no0, a, f0, 0.0f, 0.0f, 0, 0);
-		sellmeierCuda(&ne, &n0p, a, f0 + 1.0e11f, 0.0f, 0.0f, 0, 0);
-		sellmeierCuda(&ne, &n0m, a, f0 - 1.0e11f, 0.0f, 0.0f, 0, 0);
+		sellmeierCuda<deviceFP, deviceComplex>(&ne, &no0, a, f0, 0.0f, 0.0f, 0, 0);
+		sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0p, a, f0 + 1.0e11f, 0.0f, 0.0f, 0, 0);
+		sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0m, a, f0 - 1.0e11f, 0.0f, 0.0f, 0, 0);
 		no0 = no0 + f0 * (n0p - n0m) / 2.0e11f;
 		phase1[i] = thickness* f* (no.real() - no0.real()) / LIGHTC;
 	};
 
 	//calculate the nonlinear polarization, after FFT to get the field
 	//in the time domain
-	trilingual nonlinearPolarizationKernel asKernel(withID const deviceParameterSet* s) {
+	trilingual nonlinearPolarizationKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t i = localIndex;
 		deviceFP Ex = (*s).gridETime1[i];
 		deviceFP Ey = (*s).gridETime2[i];
@@ -1389,7 +1387,7 @@ namespace kernels {
 		//of the plasma current
 	//applied in 3 parts due to the different patterns of calculating ionization rate (A)
 	//and integrating over trajectories (B). Added to RK4 propagation array afterwards.
-	trilingual plasmaCurrentKernel_twoStage_A asKernel(withID const deviceParameterSet* s) {
+	trilingual plasmaCurrentKernel_twoStage_A asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t i = localIndex;
 		deviceFP Esquared, a;
 		unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
@@ -1411,7 +1409,7 @@ namespace kernels {
 		dN2[i] = dN[i];
 	};
 
-	trilingual plasmaCurrentKernel_twoStage_B asKernel(withID const deviceParameterSet* s) {
+	trilingual plasmaCurrentKernel_twoStage_B asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t j = localIndex;
 		j *= (*s).Ntime;
 		deviceFP N = 0.0f;
@@ -1428,7 +1426,7 @@ namespace kernels {
 	};
 
 
-	trilingual updateKwithPolarizationKernelCylindric asKernel(withID const deviceParameterSet* sP) {
+	trilingual updateKwithPolarizationKernelCylindric asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t i = localIndex;
 		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
@@ -1438,7 +1436,7 @@ namespace kernels {
 		(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
 	};
 
-	trilingual updateKwithPlasmaKernel asKernel(withID const deviceParameterSet* sP) {
+	trilingual updateKwithPlasmaKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t i = localIndex;
 		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
@@ -1448,7 +1446,7 @@ namespace kernels {
 		(*sP).k2[h] += jfac * (*sP).gridPolarizationFactor2[h] * (*sP).workspace2P[h] * (*sP).inverseChiLinear2[h % ((*sP).Nfreq)];
 	};
 
-	trilingual updateKwithPlasmaKernelCylindric asKernel(withID const deviceParameterSet* sP) {
+	trilingual updateKwithPlasmaKernelCylindric asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t i = localIndex;
 		size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 		size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
@@ -1465,7 +1463,7 @@ namespace kernels {
 
 	//Slightly different kernels for the four stages of RK4. They used to be one big kernel with a switch case
 	//but this has slightly better utilization.
-	trilingual rkKernel0 asKernel(withID const deviceParameterSet* sP) {
+	trilingual rkKernel0 asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t iC = localIndex;
 		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
@@ -1479,7 +1477,7 @@ namespace kernels {
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
-	trilingual rkKernel1 asKernel(withID const deviceParameterSet* sP) {
+	trilingual rkKernel1 asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t iC = localIndex;
 		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
@@ -1493,7 +1491,7 @@ namespace kernels {
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
-	trilingual rkKernel2 asKernel(withID const deviceParameterSet* sP) {
+	trilingual rkKernel2 asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t iC = localIndex;
 		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
@@ -1507,7 +1505,7 @@ namespace kernels {
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
-	trilingual rkKernel3 asKernel(withID const deviceParameterSet* sP) {
+	trilingual rkKernel3 asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t iC = localIndex;
 		size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
@@ -1522,7 +1520,7 @@ namespace kernels {
 
 	//Kernels for symmetry around z axis use a different form, adding the radial Laplacian
 	//instead of the nonlinear polarization
-	trilingual rkKernel0Cylindric asKernel(withID const deviceParameterSet* sP) {
+	trilingual rkKernel0Cylindric asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
@@ -1536,7 +1534,7 @@ namespace kernels {
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
-	trilingual rkKernel1Cylindric asKernel(withID const deviceParameterSet* sP) {
+	trilingual rkKernel1Cylindric asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
@@ -1550,7 +1548,7 @@ namespace kernels {
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
-	trilingual rkKernel2Cylindric asKernel(withID const deviceParameterSet* sP) {
+	trilingual rkKernel2Cylindric asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
@@ -1564,7 +1562,7 @@ namespace kernels {
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
-	trilingual rkKernel3Cylindric asKernel(withID const deviceParameterSet* sP) {
+	trilingual rkKernel3Cylindric asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* sP) {
 		size_t iC = localIndex;
 		unsigned int h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 		iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
@@ -1577,7 +1575,7 @@ namespace kernels {
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
 	};
 
-	trilingual beamNormalizeKernel asKernel(withID const deviceParameterSet* s, const deviceFP* rawSum, deviceFP* field, const deviceFP pulseEnergy) {
+	trilingual beamNormalizeKernel asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* rawSum, deviceFP* field, const deviceFP pulseEnergy) {
 		size_t i = localIndex;
 		deviceFP normFactor = deviceFPLib::sqrt(pulseEnergy / ((deviceFP)(*s).Ntime * (*rawSum)));
 		field[i]  *= normFactor;
@@ -1590,7 +1588,7 @@ namespace kernels {
 
 	//crease a pulse on the grid for the 2D modes. Note that normalization of the 2D mode assumes radial symmetry (i.e. that it's
 	//a gaussian beam, not an infinite plane wave, which would have zero amplitude for finite energy).
-	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet* s,
+	trilingual beamGenerationKernel2D asKernel(withID deviceComplex* field, pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet<deviceFP, deviceComplex>* s,
 		bool hasLoadedField, deviceComplex* loadedField, deviceFP* materialPhase, deviceFP* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, h;
@@ -1648,7 +1646,7 @@ namespace kernels {
 	};
 
 	//Generate a beam in full 3D mode
-	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* field, pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet* s,
+	trilingual beamGenerationKernel3D asKernel(withID deviceComplex* field, pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet<deviceFP, deviceComplex>* s,
 		bool hasLoadedField, deviceComplex* loadedField, deviceFP* materialPhase, deviceFP* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, k, h, col;
@@ -1728,7 +1726,7 @@ namespace kernels {
 
 	};
 
-	trilingual multiplicationKernelCompactDoubleVector asKernel(withID deviceFP* A, deviceComplex* B, deviceComplex* C, const deviceParameterSet* s) {
+	trilingual multiplicationKernelCompactDoubleVector asKernel(withID deviceFP* A, deviceComplex* B, deviceComplex* C, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		long long i = localIndex;
 		long long h = i % (*s).Nfreq; //temporal coordinate
 
@@ -1749,7 +1747,7 @@ namespace kernels {
 	// after FFT, we can discard the high frequencies. Thus we have downsampled
 	// in such a way as to avoid aliasing, which inside the simulation is most
 	// likely the appear (and cause instability) in the nonlinear terms.
-	trilingual expandCylindricalBeam asKernel(withID const deviceParameterSet* s) {
+	trilingual expandCylindricalBeam asKernel(withID const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		long long i = localIndex;
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long k = i % (*s).Ntime; //temporal coordinate
@@ -1778,7 +1776,7 @@ namespace hostFunctions{
 
 	static int getTotalSpectrum(activeDevice& d) {
 		simulationParameterSet* sCPU = d.cParams;
-		deviceParameterSet* sc = d.s;
+		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
 		d.fft((*sc).gridETime1, (*sc).workspace1, deviceFFTD2Z1D);
@@ -1799,13 +1797,13 @@ namespace hostFunctions{
 	}
 
 	static int forwardHankel(activeDevice& d, deviceFP* in, deviceComplex* out) {
-		deviceParameterSet* sc = d.s;
+		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, hankelKernel, d.dParamsDevice, in, (deviceFP*)(*sc).workspace1);
 		d.fft((*sc).workspace1, out, deviceFFTD2Z1D);
 		return 0;
 	}
 	static int backwardHankel(activeDevice& d, deviceComplex* in, deviceFP* out) {
-		deviceParameterSet* sc = d.s;
+		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		d.fft(in, (*sc).workspace1, deviceFFTZ2D1D);
 		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, inverseHankelKernel, d.dParamsDevice, (deviceFP*)(*sc).workspace1, out);
 		return 0;
@@ -1814,13 +1812,13 @@ namespace hostFunctions{
 	static int addPulseToFieldArrays(activeDevice& d, pulse<double>& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
-		deviceParameterSet* sc = d.s;
-		deviceParameterSet* scDevice = d.dParamsDevice;
+		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
+		deviceParameterSet<deviceFP, deviceComplex>* scDevice = d.dParamsDevice;
 		pulse<deviceFP>* p;
 		d.deviceCalloc((void**)&p, 1, sizeof(pulse<deviceFP>));
 		pulse<deviceFP> devpCPU = pCPU;
 
-		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet), HostToDevice);
+		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 
 		deviceFP* materialPhase;
 		deviceComplex* loadedField;
@@ -1879,10 +1877,10 @@ namespace hostFunctions{
 	static int prepareElectricFieldArrays(activeDevice& d) {
 
 		simulationParameterSet* s = d.cParams;
-		deviceParameterSet* sc = d.s;
+		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		
-		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet), HostToDevice);
-		deviceParameterSet* scDevice = d.dParamsDevice;
+		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		deviceParameterSet<deviceFP, deviceComplex>* scDevice = d.dParamsDevice;
 		
 		if (!(*s).isFollowerInSequence || (*s).isReinjecting) {
 			if (!(*s).isReinjecting) {
@@ -1903,7 +1901,7 @@ namespace hostFunctions{
 		}
 		
 		//Copy the field into the temporary array
-		d.deviceMemcpy((*sc).gridEFrequency1Next1, (*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
+		d.deviceMemcpy((void*)(*sc).gridEFrequency1Next1, (void*)(*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
 
 		//set the propagation grids how they should be at the beginning of the next step
 		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, 
@@ -1916,7 +1914,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyFresnelLoss(activeDevice& d, simulationParameterSet* s, deviceParameterSet& sc, int materialIndex1, int materialIndex2) {
+	static int applyFresnelLoss(activeDevice& d, simulationParameterSet* s, deviceParameterSet<deviceFP, deviceComplex>& sc, int materialIndex1, int materialIndex2) {
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients, 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
@@ -1961,7 +1959,7 @@ namespace hostFunctions{
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z);
-		deviceParameterSet* sDevice = d.dParamsDevice;
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, filterKernel, 
 			sDevice, 
 			(deviceFP)(1.0e12 * f0),
@@ -1987,7 +1985,7 @@ namespace hostFunctions{
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z1D);
-		deviceParameterSet* sDevice = d.dParamsDevice;
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, lorentzianSpotKernel, 
 			sDevice, 
 			(deviceFP)amplitude, 
@@ -2010,7 +2008,7 @@ namespace hostFunctions{
 	static int applyAperatureFarFieldHankel(activeDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		forwardHankel(d, d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1);
-		deviceParameterSet* sDevice = d.dParamsDevice;
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, 
 			apertureFarFieldKernelHankel, 
 			sDevice, 
@@ -2032,7 +2030,7 @@ namespace hostFunctions{
 		}
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z);
-		deviceParameterSet* sDevice = d.dParamsDevice;
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock/2, d.deviceStruct.Nthread, apertureFarFieldKernel, 
 			sDevice, 
 			(deviceFP)(0.5 * DEG2RAD * diameter), 
@@ -2060,7 +2058,7 @@ namespace hostFunctions{
 	static int applyAperature(activeDevice& d, simulationParameterSet* sCPU,double diameter, double activationParameter) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 
-		deviceParameterSet* sDevice = d.dParamsDevice;
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock, d.deviceStruct.Nthread, apertureKernel, 
 			sDevice, 
 			(deviceFP)(0.5 * diameter), 
@@ -2072,10 +2070,10 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applySphericalMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double ROC) {
+	static int applySphericalMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double ROC) {
 
-		deviceParameterSet* sDevice = d.dParamsDevice;
-		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet), HostToDevice);
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z1D);
@@ -2089,8 +2087,8 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyParabolicMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet& s, double focus) {
-		deviceParameterSet* sDevice = d.dParamsDevice;
+	static int applyParabolicMirror(activeDevice& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double focus) {
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFTD2Z1D);
@@ -2129,7 +2127,7 @@ namespace hostFunctions{
 		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), HostToDevice);
 		d.deviceStruct.axesNumber = (*sCPU).crystalDatabase[materialIndex].axisType;
 		d.deviceStruct.sellmeierType = (*sCPU).crystalDatabase[materialIndex].sellmeierType;
-		deviceParameterSet* sDevice = d.dParamsDevice;
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, applyLinearPropagationKernel, sellmeierCoefficients, (deviceFP)thickness, sDevice);
 		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, d.deviceStruct.NgridC * 2 * sizeof(std::complex<double>), DeviceToHost);
@@ -2143,7 +2141,7 @@ namespace hostFunctions{
 	}
 
 	static int preparePropagationGrids(activeDevice& d) {
-		deviceParameterSet* sc = d.s;
+		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		simulationParameterSet* s = d.cParams;
 		deviceFP* sellmeierCoefficients = (deviceFP*)(*sc).gridEFrequency1Next1;
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
@@ -2160,8 +2158,8 @@ namespace hostFunctions{
 		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, 79 * sizeof(double), HostToDevice);
 
 		//prepare the propagation grids
-		deviceParameterSet* sD = d.dParamsDevice;
-		d.deviceMemcpy(sD, sc, sizeof(deviceParameterSet), HostToDevice);
+		deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
+		d.deviceMemcpy(sD, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 		d.deviceLaunch((unsigned int)(*sc).Ntime/(2*MIN_GRIDDIM), MIN_GRIDDIM, getChiLinearKernel, sD, sellmeierCoefficients);
 		if ((*s).is3D) {
 			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepare3DGridsKernel, sellmeierCoefficients, sD);
@@ -2172,7 +2170,7 @@ namespace hostFunctions{
 		else {
 			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepareCartesianGridsKernel, sellmeierCoefficients, sD);
 		}
-		d.deviceMemcpy(sc, sD, sizeof(deviceParameterSet), DeviceToHost);
+		d.deviceMemcpy(sc, sD, sizeof(deviceParameterSet<deviceFP, deviceComplex>), DeviceToHost);
 		return 0;
 	}
 
@@ -2205,8 +2203,8 @@ namespace hostFunctions{
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
 	static int runRK4Step(activeDevice& d, uint8_t stepNumber) {
-		deviceParameterSet* sH = d.s; 
-		deviceParameterSet* sD = d.dParamsDevice;
+		deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
+		deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
 
 		// Beam with symmetry around z axis:
 		// Nonlinear polarization and plasma use expanded grid

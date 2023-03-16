@@ -11,10 +11,12 @@
 #if LWEFLOATINGPOINT==32
 	#define deviceLib deviceLibCUDAFP32
 	#define deviceFPLib deviceLibCUDAFP32 
+	#define complexLib thrust
 	#define CUFFT_fwd CUFFT_R2C
 	#define CUFFT_bwd CUFFT_C2R
 #else
 	#define deviceLib thrust
+	#define complexLib thrust
 	#define deviceFPLib 
 	#define CUFFT_fwd CUFFT_D2Z
 	#define CUFFT_bwd CUFFT_Z2D
@@ -24,66 +26,70 @@
 #ifdef __CUDACC__
 #if LWEFLOATINGPOINT==64
 //In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
-__device__ thrust::complex<double> operator/(const double& a, const thrust::complex<double>& b) {
+__device__ static thrust::complex<double> operator/(const double& a, const thrust::complex<double>& b) {
 	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
 	return thrust::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
 }
-__device__ thrust::complex<double> operator/(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() / b, a.imag() / b); }
+__device__ static thrust::complex<double> operator/(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() / b, a.imag() / b); }
 
-__device__ thrust::complex<double> operator*(const double& b, const thrust::complex<double>& a) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
-__device__ thrust::complex<double> operator*(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
+//__device__ static thrust::complex<double> operator*(const double& b, const thrust::complex<double>& a) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
+__device__ static thrust::complex<double> operator*(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
 
-__device__ thrust::complex<double> operator+(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(b.real() + a, b.imag()); }
-__device__ thrust::complex<double> operator+(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() + b, a.imag()); }
+__device__ static thrust::complex<double> operator+(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(b.real() + a, b.imag()); }
+__device__ static thrust::complex<double> operator+(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() + b, a.imag()); }
 
-__device__ thrust::complex<double> operator-(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
-__device__ thrust::complex<double> operator-(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() - b, a.imag()); }
+__device__ static thrust::complex<double> operator-(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
+__device__ static thrust::complex<double> operator-(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() - b, a.imag()); }
 #endif
 #endif
 
 
 #if LWEFLOATINGPOINT==32
 namespace deviceLibCUDAFP32{
-	__device__ float exp(const float x){
+	__device__ static float exp(const float x){
 		return expf(x);
 	}
-	__device__ float abs(const float x){
+	__device__ static float abs(const float x){
 		return fabs(x);
 	}
-	__device__ float sin(const float x){
+	__device__ static float sin(const float x){
 		return sinf(x);
 	}
-	__device__ float cos(const float x){
+	__device__ static float cos(const float x){
 		return cosf(x);
 	}
-	__device__ float atan(const float x){
+	__device__ static float atan(const float x){
 		return atanf(x);
 	}
-	__device__ float sqrt(const float x){
+	__device__ static float sqrt(const float x){
 		return sqrtf(x);
 	}
-	__device__ float asin(const float x){
+	__device__ static float asin(const float x){
 		return asinf(x);
 	}
-	__device__ float pow(const float x, const float y){
+	__device__ static float pow(const float x, const float y){
 		return powf(x,y);
 	}
-	__device__ float atan2(const float x, const float y) {
+	__device__ static float atan2(const float x, const float y) {
 		return atan2f(x, y);
 	}
-	__device__ float acos(const float x) {
+	__device__ static float acos(const float x) {
 		return acosf(x);
 	}
-	__device__ thrust::complex<float> pow(const thrust::complex<float> x, const  deviceFP y){
+
+	__device__ static thrust::complex<float> pow(const thrust::complex<float> x, const float y){
 		return thrust::pow(x,y);
 	}
-	__device__ thrust::complex<float> exp(const thrust::complex<float> x){
+	__device__ static thrust::complex<double> pow(const thrust::complex<double> x, const float y) {
+		return thrust::pow(x, (double)y);
+	}
+	__device__ static thrust::complex<float> exp(const thrust::complex<float> x){
 		return thrust::exp(x);
 	}
-	__device__ float abs(const thrust::complex<float> x){
+	__device__ static float abs(const thrust::complex<float> x){
 		return thrust::abs(x);
 	}
-	__device__ thrust::complex<float> sqrt(const thrust::complex<float> x){
+	__device__ static thrust::complex<float> sqrt(const thrust::complex<float> x){
 		return thrust::sqrt(x);
 	}
 };
@@ -114,6 +120,8 @@ static int hardwareCheckCUDA(int* CUDAdeviceCount) {
 }
 
 static class deviceCUDA {
+	using deviceFP = LWEFLOATINGPOINTTYPE;
+	using deviceComplex = thrust::complex<deviceFP>;
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
@@ -153,22 +161,22 @@ private:
 	}
 public:
 	cudaStream_t stream;
-	deviceParameterSet deviceStruct;
-	deviceParameterSet* s;
-	deviceParameterSet* dParamsDevice;
+	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
+	deviceParameterSet<deviceFP, deviceComplex>* s;
+	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	simulationParameterSet* cParams;
 	int memoryStatus;
 	bool hasPlasma;
 
 	deviceCUDA(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
-		memset(s, 0, sizeof(deviceParameterSet));
+		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
 		cudaSetDevice((*sCPU).assignedGPU);
 		cudaStreamCreate(&stream);
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
+		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = allocateSet(sCPU);
 	}
 
@@ -389,7 +397,7 @@ public:
 		delete[] expGammaTCPU;
 
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
@@ -451,7 +459,7 @@ public:
 			return memErrors;
 		}
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 		return 0;
 	}
 

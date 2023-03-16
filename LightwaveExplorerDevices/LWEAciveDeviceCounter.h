@@ -6,7 +6,7 @@
 #define cudaMemcpyKind int
 #define deviceLib std
 #define deviceFPLib std
-
+#define complexLib std
 int hardwareCheckCounter(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
@@ -19,7 +19,21 @@ void atomicAddCounter(double* pulseSum, double pointEnergy) {
 }
 
 
+#if LWEFLOATINGPOINT==64
 
+static std::complex<double> operator+(const float f, const std::complex<double> x) { return std::complex<double>(x.real() + f, x.imag()); }
+
+static std::complex<double> operator+(const std::complex<double> x, const float f) { return std::complex<double>(x.real() + f, x.imag()); }
+
+static std::complex<double> operator-(const std::complex<double> x, const float f) { return std::complex<double>(x.real() - f, x.imag()); }
+
+static std::complex<double> operator*(const float f, const std::complex<double> x) { return std::complex<double>(x.real() * f, x.imag() * f); }
+
+static std::complex<double> operator*(const std::complex<double> x, const float f) { return std::complex<double>(x.real() * f, x.imag() * f); }
+
+static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
+
+#endif
 double j0Counter(float x) {
 	return x;
 }
@@ -29,11 +43,13 @@ double j0Counter(double x) {
 }
 
 class deviceCounter {
+	using deviceFP = LWEFLOATINGPOINTTYPE;
+	using deviceComplex = std::complex<deviceFP>;
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = 0;
 	bool isCylindric = 0;
-	deviceParameterSet dParamslocal;
+	deviceParameterSet<deviceFP, deviceComplex> dParamslocal;
 	void fftDestroy() {
 	}
 
@@ -41,14 +57,14 @@ public:
 	int stream;
 	int memoryStatus;
 	bool hasPlasma;
-	deviceParameterSet deviceStruct;
-	deviceParameterSet* s;
+	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
+	deviceParameterSet<deviceFP, deviceComplex>* s;
 	simulationParameterSet* cParams;
-	deviceParameterSet* dParamsDevice;
+	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 
 	deviceCounter(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
-		memset(s, 0, sizeof(deviceParameterSet));
+		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 
 		memoryStatus = 0;
 		stream = 0;
