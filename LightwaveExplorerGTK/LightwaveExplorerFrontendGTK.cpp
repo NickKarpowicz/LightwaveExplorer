@@ -5,6 +5,9 @@
 #include <fstream>
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.h"
+
 #ifndef CPUONLY
 #ifndef NOCUDA
 #include <cuda_runtime.h>
@@ -84,7 +87,7 @@ public:
     LwePulldown pulldowns[10];
     LweDrawBox drawBoxes[8];
     LweDrawBox progressBarBox;
-    LweCheckBox checkBoxes[3];
+    LweCheckBox checkBoxes[4];
     LweSlider plotSlider;
     LweWindow window;
     LweSpacer spacers[2];
@@ -251,7 +254,7 @@ public:
         checkBoxes[0].setTooltip("Overlay a plot of the integrated energy spectrum over the two polarization-resolved spectra");
         checkBoxes[1].init(_T("Log"), window.parentHandle(4), 13, 0, 1, 1);
         checkBoxes[1].setTooltip("Plot spectra on a log10 scale");
-
+        checkBoxes[3].init("FP64", window.parentHandle(6), buttonWidth-2, 0, 1, 1);
 
         pulldowns[4].addElement(_T("2D Cartesian"));
         pulldowns[4].addElement(_T("3D radial symm."));
@@ -396,10 +399,10 @@ public:
             pulldowns[8].addElement(A.c_str());
             if (syclGPUCount > 0) {
 
-                pulldowns[7].addElement("SYCL cpu");
-                pulldowns[8].addElement("SYCL cpu");
-                pulldowns[7].addElement("SYCL gpu");
-                pulldowns[8].addElement("SYCL gpu");
+                pulldowns[7].addElement("SYCLcpu");
+                pulldowns[8].addElement("SYCLcpu");
+                pulldowns[7].addElement("SYCLgpu");
+                pulldowns[8].addElement("SYCLgpu");
             }
         }
         pulldowns[7].addElement("OpenMP");
@@ -411,7 +414,7 @@ public:
         pulldowns[7].setTooltip("Select the primary method of calculation. The algorithm is the same, but you can run it either on a GPU or CPU depending on your machine");
         pulldowns[8].setTooltip("Select a secondary mode of calculation for offloading jobs from a batch. For example, if the pulldown to the left is set to CUDA and this one is OpenMP, and the number to the right is 2, 2 of the simulations from the batch will be performed on the CPU");
 
-        pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
+        //pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
         textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
         textBoxes[1].setLabel(-labelWidth, 0, _T("Frequency (THz)"));
         textBoxes[2].setLabel(-labelWidth, 0, _T("Bandwidth (THz)"));
@@ -1761,11 +1764,11 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
 void launchRunThread() {
     (*activeSetPtr).NsimsCPU = theGui.textBoxes[52].valueInt();
-    if(!isRunning) std::thread(mainSimThread, theGui.pulldowns[7].getValue(), theGui.pulldowns[8].getValue()).detach();
+    if(!isRunning) std::thread(mainSimThread, theGui.pulldowns[7].getValue(), theGui.pulldowns[8].getValue(), theGui.checkBoxes[3].isChecked()).detach();
 }
 
 void launchFitThread() {
-    if (!isRunning) std::thread(fittingThread, theGui.pulldowns[7].getValue()).detach();
+    if (!isRunning) std::thread(fittingThread, theGui.pulldowns[7].getValue(), theGui.checkBoxes[3].isChecked()).detach();
 }
 
 void stopButtonCallback() {
@@ -1782,7 +1785,7 @@ void independentPlotQueue(){
     theGui.applyUpdate();
 }
 
-void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int pulldownSelectionPrimary) {
+void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int pulldownSelectionPrimary, bool use64bitFloatingPoint) {
     if ((*activeSetPtr).NsimsCPU < 1) return;
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
@@ -1795,6 +1798,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     else {
         SYCLitems = 3;
     }
+#ifndef CPUONLY
     //launch on CUDA if selected, putting in the correct GPU in multi-gpu systems
     if (pulldownSelection < cudaGPUCount) {
         sequenceFunction = &solveNonlinearWaveEquationSequence;
@@ -1841,7 +1845,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
         normalFunction = &solveNonlinearWaveEquationCPU;
     }
-
+#endif
     int error = 0;
     if ((*activeSetPtr).isInSequence) {
         for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; ++i) {
@@ -1868,7 +1872,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     return;
 }
 
-void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
+void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use64bitFloatingPoint) {
     cancellationCalled = FALSE;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
@@ -1916,9 +1920,11 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     progressCounter = 0;
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
+
     int assignedGPU = 0;
     bool forceCPU = 0;
     int SYCLitems = 0;
+    #ifndef CPUONLY
     if (syclGPUCount == 0) {
         SYCLitems = (int)SYCLavailable;
     }
@@ -1926,32 +1932,67 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
         SYCLitems = 3;
     }
     if (pulldownSelection < cudaGPUCount) {
-        sequenceFunction = &solveNonlinearWaveEquationSequence;
-        normalFunction = &solveNonlinearWaveEquation;
+        if (use64bitFloatingPoint) {
+            sequenceFunction = &solveNonlinearWaveEquationSequence;
+            normalFunction = &solveNonlinearWaveEquation;
+        }
+        else {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceFP32;
+            normalFunction = &solveNonlinearWaveEquationFP32;
+        }
+
         assignedGPU = pulldownSelection;
     }
     else if (pulldownSelection == cudaGPUCount && SYCLavailable) {
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+        if (use64bitFloatingPoint) {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+            normalFunction = &solveNonlinearWaveEquationSYCL;
+        }
+        else {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
+            normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+        }
+
     }
     else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
         forceCPU = 1;
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+        if (use64bitFloatingPoint) {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+            normalFunction = &solveNonlinearWaveEquationSYCL;
+        }
+        else {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
+            normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+        }
     }
     else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
         assignedGPU = 1;
-        sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-        normalFunction = &solveNonlinearWaveEquationSYCL;
+        if (use64bitFloatingPoint) {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+            normalFunction = &solveNonlinearWaveEquationSYCL;
+        }
+        else {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
+            normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+        }
     }
-    else {
-        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-        normalFunction = &solveNonlinearWaveEquationCPU;
+    else 
+#endif
+    {
+        if (use64bitFloatingPoint) {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+            normalFunction = &solveNonlinearWaveEquationCPU;
+        }
+        else {
+            sequenceFunction = &solveNonlinearWaveEquationSequenceCPUFP32;
+            normalFunction = &solveNonlinearWaveEquationCPUFP32;
+        }
     }
+   
 
     std::thread secondQueueThread(secondaryQueue, 
         &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 
-        secondPulldownSelection, pulldownSelection);
+        secondPulldownSelection, pulldownSelection, use64bitFloatingPoint);
 
     for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); ++j) {
 
@@ -2025,7 +2066,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection) {
     isRunning = FALSE;
 }
 
-void fittingThread(int pulldownSelection) {
+void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     cancellationCalled = FALSE;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 

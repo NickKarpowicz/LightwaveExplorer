@@ -124,6 +124,7 @@ copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveEx
     <ClCompile Include="..\LightwaveExplorerDevices\DlibLibraryComponents.cpp" />
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.cpp" />
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.cpp" />
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPUFP32.cpp" />
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp" />
     <ClCompile Include="..\LightwaveExplorerDevices\LWEActiveDeviceCommon.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -134,6 +135,7 @@ copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveEx
     <ClInclude Include="..\LightwaveExplorerCore.cuh" />
     <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.h" />
     <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.h" />
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cuh" />
     <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerTrilingual.h" />
     <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.h" />
     <ClInclude Include="..\LightwaveExplorerDevices\LWEAciveDeviceCounter.h" />
@@ -150,6 +152,7 @@ copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveEx
       <Defines Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NOCUDAMAIN;%(Defines)</Defines>
       <Defines Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NOCUDAMAIN;%(Defines)</Defines>
     </CudaCompile>
+    <CudaCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cu" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LightwaveExplorerGTK.rc" />

@@ -19,6 +19,9 @@
     <ClCompile Include="..\LightwaveExplorerDevices\LWEActiveDeviceCommon.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPUFP32.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
@@ -33,6 +36,9 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\LightwaveExplorerCore.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cu">
       <Filter>Source Files</Filter>
     </CudaCompile>
   </ItemGroup>
@@ -66,6 +72,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

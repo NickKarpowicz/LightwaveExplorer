@@ -10,7 +10,7 @@
 #define HostToDevice 1
 #define DeviceToDevice 3
 #define cudaMemcpyKind int
-
+#define complexLib std
 #if LWEFLOATINGPOINT==32
 	#define deviceFPLib deviceLibCPUFP32
 	#define deviceLib deviceLibCPUFP32
@@ -28,19 +28,20 @@ const int deviceThreads = std::thread::hardware_concurrency();
 #define isnan std::isnan
 #endif
 #if defined __APPLE__ || defined __linux__
-
+template<typename deviceFP>
 void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	deviceFP expected = pulseSumAtomic->load();
 	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 }
 #else
-void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
+template<typename deviceFP>
+static void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
 }
 #endif
-int hardwareCheckCPU(int* CUDAdeviceCount) {
+static int hardwareCheckCPU(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
@@ -88,7 +89,23 @@ namespace deviceLibCPUFP32{
 		return std::sqrt(x);
 	}
 };
-double j0CPU(double x) {
+
+#if LWEFLOATINGPOINT==64
+
+static std::complex<double> operator+(const float f, const std::complex<double> x) { return std::complex<double>(x.real() + f, x.imag()); }
+
+static std::complex<double> operator+(const std::complex<double> x, const float f) { return std::complex<double>(x.real() + f, x.imag()); }
+
+static std::complex<double> operator-(const std::complex<double> x, const float f) { return std::complex<double>(x.real() - f, x.imag()); }
+
+static std::complex<double> operator*(const float f, const std::complex<double> x) { return std::complex<double>(x.real() * f, x.imag() * f); }
+
+static std::complex<double> operator*(const std::complex<double> x, const float f) { return std::complex<double>(x.real() * f, x.imag() * f); }
+
+static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
+
+#endif
+static double j0CPU(double x) {
 	if (x < 8.0) {
 		double y = x * x;
 		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
@@ -109,7 +126,7 @@ double j0CPU(double x) {
 	}
 }
 
-float j0CPU(float x) {
+static float j0CPU(float x) {
 	if (x < 8.0f) {
 		float y = x * x;
 		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +
@@ -129,13 +146,15 @@ float j0CPU(float x) {
 		return sqrt(0.636619772f / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
+
+template <typename deviceFP, typename deviceComplex>
 class deviceCPU {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
 	bool isCylindric = FALSE;
 	deviceFP canaryPixel = 0.0;
-	deviceParameterSet dParamslocal;
+	deviceParameterSet<deviceFP, deviceComplex> dParamslocal;
 	fftw_plan fftPlanD2Z;
 	fftw_plan fftPlanZ2D;
 	fftw_plan fftPlan1DD2Z;
@@ -170,15 +189,15 @@ public:
 	int stream;
 	int memoryStatus;
 	bool hasPlasma = FALSE;
-	deviceParameterSet deviceStruct;
-	deviceParameterSet* s;
+	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
+	deviceParameterSet<deviceFP, deviceComplex>* s;
 	simulationParameterSet* cParams;
-	deviceParameterSet* dParamsDevice;
+	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 
 
 	deviceCPU(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
-		memset(s, 0, sizeof(deviceParameterSet));
+		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = -1;
 		stream = 0;
 		cParams = NULL;
@@ -426,7 +445,7 @@ public:
 		delete[] expGammaTCPU;
 
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
@@ -480,7 +499,7 @@ public:
 			return memErrors;
 		}
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 		return 0;
 	}
 };

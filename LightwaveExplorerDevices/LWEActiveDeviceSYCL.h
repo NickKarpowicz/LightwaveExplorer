@@ -12,73 +12,92 @@
 #if LWEFLOATINGPOINT==32
 	#define deviceLib deviceLibSYCLFP32
 	#define deviceFPLib deviceLibSYCLFP32
+	#define complexLib oneapi::dpl
 	#define dftPrecision oneapi::mkl::dft::precision::SINGLE
 #else
 	#define deviceLib oneapi::dpl
+	#define complexLib oneapi::dpl
 	#define deviceFPLib
 	#define dftPrecision oneapi::mkl::dft::precision::DOUBLE
 #endif
-void atomicAddSYCL(deviceFP* pulseSum, deviceFP pointEnergy) {
+template <typename deviceFP>
+static void atomicAddSYCL(deviceFP* pulseSum, deviceFP pointEnergy) {
 	sycl::atomic_ref<deviceFP, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
 	a.fetch_add(pointEnergy);
 }
 
+//if running in 64-bit mode, define complex math operations with fixed float constants
+#if LWEFLOATINGPOINT==64
+
+		static oneapi::dpl::complex<double> operator+(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
+
+		static oneapi::dpl::complex<double> operator+(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
+
+		static oneapi::dpl::complex<double> operator-(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() - f, x.imag()); }
+
+		static oneapi::dpl::complex<double> operator*(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
+
+		static oneapi::dpl::complex<double> operator*(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
+
+		static oneapi::dpl::complex<double> operator/(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); }
+
+#endif
 
 namespace deviceLibSYCLFP32{
-	inline float exp(const float x){
+	static inline float exp(const float x){
 		return expf(x);
 	}
-	inline float abs(const float x){
+	static inline float abs(const float x){
 		return fabs(x);
 	}
-	inline float sin(const float x){
+	static inline float sin(const float x){
 		return sinf(x);
 	}
-	inline float cos(const float x){
+	static inline float cos(const float x){
 		return cosf(x);
 	}
-	inline float atan(const float x){
+	static inline float atan(const float x){
 		return atanf(x);
 	}
-	inline float sqrt(const float x){
+	static inline float sqrt(const float x){
 		return sqrtf(x);
 	}
-	inline float asin(const float x){
+	static inline float asin(const float x){
 		return asinf(x);
 	}
-	inline float pow(const float x, const float y){
+	static inline float pow(const float x, const float y){
 		return powf(x,y);
 	}
-	inline float acos(const float x) {
+	static inline float acos(const float x) {
 		return acosf(x);
 	}
-	inline float atan2(const float x, const float y) {
+	static inline float atan2(const float x, const float y) {
 		return atan2f(x, y);
 	}
 
-	oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
+	static oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
 		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
 		float theta = atan2f(x.imag(), x.real());
 		float rn = powf(r, y);
 		return oneapi::dpl::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
 	}
-	inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
+	static inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::exp(x);
 
 	}
-	inline float abs(const oneapi::dpl::complex<float> x){
+	static inline float abs(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::abs(x);
 	}
-	inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
+	static inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::sqrt(x);
 	}
 };
 
-int hardwareCheckSYCL(int* CUDAdeviceCount) {
+static int hardwareCheckSYCL(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
-double j0SYCL(double x) {
+static double j0SYCL(double x) {
 	if (x < 8.0) {
 		double y = x * x;
 		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
@@ -99,7 +118,7 @@ double j0SYCL(double x) {
 	}
 }
 
-float j0SYCL(float x) {
+static float j0SYCL(float x) {
 	if (x < 8.0f) {
 		float y = x * x;
 		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +
@@ -120,11 +139,13 @@ float j0SYCL(float x) {
 	}
 }
 
-oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b) {
-	deviceFP divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
+
+static oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b) {
+	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
 	return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
 }
 
+template<typename deviceFP, typename deviceComplex>
 class deviceSYCL {
 private:
 #include "LWEActiveDeviceCommon.cpp"
@@ -146,9 +167,9 @@ private:
 	}
 public:
 	sycl::queue stream;
-	deviceParameterSet deviceStruct;
-	deviceParameterSet* s;
-	deviceParameterSet* dParamsDevice;
+	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
+	deviceParameterSet<deviceFP, deviceComplex>* s;
+	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	simulationParameterSet* cParams;
 	int memoryStatus;
 	bool hasPlasma = FALSE;
@@ -159,7 +180,7 @@ public:
 		configuredFFT = 0;
 		isCylindric = 0;
 		s = &deviceStruct;
-		memset(s, 0, sizeof(deviceParameterSet));
+		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = allocateSet(sCPU);
 	}
 
@@ -425,7 +446,7 @@ public:
 		delete[] expGammaTCPU;
 
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		
@@ -455,7 +476,7 @@ public:
 			
 		}
 		
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet));
+		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		
 		cParams = sCPU;
 		initializeDeviceParameters(sCPU);
@@ -506,7 +527,7 @@ public:
 			return memErrors;
 		}
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
 		return 0;
 	}
 };
