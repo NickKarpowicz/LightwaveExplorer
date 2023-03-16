@@ -2597,6 +2597,7 @@ namespace hostFunctions{
 			std::string forStartString = currentString;
 			vBlock[targetVar] = 0.0;
 			for (int i = 0; i < counter; i++) {
+				
 				while (currentString.length() > 0 && currentString.at(0) != '}'){
 					if (currentString.at(0) == '<'){
 						currentString = currentString.substr(currentString.find_first_of('>'), std::string::npos);
@@ -2613,11 +2614,13 @@ namespace hostFunctions{
 						if(currentString.length()<5) break; 
 						currentString = currentString.substr(1,std::string::npos);
 					}
-					interpretCommand(currentString, iBlock, vBlock, d, sCPU);
+					error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
 					currentString = currentString.substr(currentString.find_first_of(')') + 1, std::string::npos);
+					if (error || (*sCPU).statusFlags[0] == 2) break;
 				}
 				++vBlock[targetVar];
 				currentString = forStartString;
+				if (error || (*sCPU).statusFlags[0] == 2) break;
 			}
 			break;
 		}
@@ -2694,7 +2697,7 @@ namespace hostFunctions{
 			}
 
 			error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
-			if (error) break;
+			if (error || (*sCPU).statusFlags[0]==2) break;
 			currentString = currentString.substr(currentString.find_first_of(')'), std::string::npos);
 
 			if (currentString.length() < minLength) break;
