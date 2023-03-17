@@ -1,6 +1,5 @@
 #define RUNONSYCL
+#undef __CUDACC__
 #define LWEFLOATINGPOINT 32
-#define isnan(x) std::isnan(x)
-#include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
-#include "LightwaveExplorerDPCPPlib.h"
+#undef CPUONLY
 #include "LightwaveExplorerCore.cu"

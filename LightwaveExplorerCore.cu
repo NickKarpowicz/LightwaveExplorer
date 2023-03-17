@@ -110,6 +110,7 @@ namespace deviceFunctions {
 		deviceComplex compPart;
 		switch (eqn) {
 		case 0:
+			if(ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex(0.0f,0.0f);
 			realPart = a[0]
 				+ (a[1] + a[2] * ls) / (ls + a[3])
 				+ (a[4] + a[5] * ls) / (ls + a[6])
@@ -118,8 +119,8 @@ namespace deviceFunctions {
 				+ a[13] * ls
 				+ a[14] * ls * ls
 				+ a[15] * ls * ls * ls;
-			compPart = (deviceFP)KLORENTZIAN*a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
-				+ (deviceFP)KLORENTZIAN*a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
+			compPart = KLORENTZIAN*a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
+				+ KLORENTZIAN*a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
 			return deviceLib::sqrt(maxN(realPart, 0.9f) + compPart);
 		case 1:
 			//up to 7 Lorentzian lines
@@ -149,6 +150,7 @@ namespace deviceFunctions {
 			return deviceComplex((deviceLib::sqrt(compPart)).real(), -deviceFPLib::abs((deviceLib::sqrt(compPart)).imag()));
 		}
 		case 100:
+			if(ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex(0.0f,0.0f);
 			realPart = a[0]
 				+ (a[1] + a[2] * ls) / (ls + a[3])
 				+ (a[4] + a[5] * ls) / (ls + a[6])
@@ -1099,10 +1101,6 @@ namespace kernels {
 		deviceFP f = i * fStep;
 		
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, f, crystalTheta, crystalPhi, axesNumber, sellmeierType);
-		if (isnan(ne.real()) || isnan(no.real())) {
-			ne = deviceComplex(1.0f, 0.0f);
-			no = ne;
-		}
 
 		(*s).chiLinear1[i] = ne * ne - 1.0f;
 		(*s).chiLinear2[i] = no * no - 1.0f;
@@ -1115,17 +1113,21 @@ namespace kernels {
 			(*s).inverseChiLinear2[i] = 0.0f;
 		}
 
+
 		(*s).fieldFactor1[i] = 1.0f / deviceFPLib::pow((*s).chiLinear1[i].real() + 1.0f, 0.25f); //account for the effective field strength in the medium (1/n)
 		(*s).fieldFactor2[i] = 1.0f / deviceFPLib::pow((*s).chiLinear2[i].real() + 1.0f, 0.25f);
 		if ((*s).isUsingMillersRule) {
 			(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
 			(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
 		}
-		if ((*s).chiLinear1[i].real() < -0.1f) {
+	
+		if (isnan(ne.real()) || isnan(no.real()) || ne.real() < 0.9f || no.real()<0.9f || ne.imag()>0.0f || no.imag() > 0.0f) {
+			ne = deviceComplex(1.0f, 0.0f);
+			no = ne;
 			(*s).fieldFactor1[i] = 0.0f;
-		}
-		if ((*s).chiLinear2[i].real() < -0.1f) {
 			(*s).fieldFactor2[i] = 0.0f;
+			(*s).inverseChiLinear1[i] = 0.0f;
+			(*s).inverseChiLinear2[i] = 0.0f;
 		}
 
 		if (i == 81) {
@@ -1190,7 +1192,6 @@ namespace kernels {
 		deviceFP dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
 
 		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
-
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 		if (minN(ne.real(), no.real()) < 0.95f || ne.real() > 6.0f || no.real() > 6.0f || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 			(*s).gridPropagationFactor1[i] = cuZero;
