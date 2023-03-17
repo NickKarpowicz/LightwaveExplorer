@@ -6,6 +6,8 @@
 #endif
 #include <atomic>
 #include <thread>
+#include <iostream>
+#include <math.h>
 #define DeviceToHost 2
 #define HostToDevice 1
 #define DeviceToDevice 3
@@ -24,9 +26,6 @@ const int deviceThreads = maxN(1, std::thread::hardware_concurrency()/2);
 const int deviceThreads = std::thread::hardware_concurrency();
 #endif
 
-#ifdef __linux__
-#define isnan std::isnan
-#endif
 #if defined __APPLE__ || defined __linux__
 template<typename deviceFP>
 void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
@@ -241,51 +240,36 @@ public:
 	}
 
 	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
-		float* copyBuffer = new float[count / sizeof(double)];
-		memcpy(copyBuffer, src, count/2);
 		for (size_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = (double)copyBuffer[i];
+			dst[i] = (double)src[i];
 		}
-		delete[] copyBuffer;
 	}
 
 	void deviceMemcpy(std::complex<double>* dst, std::complex<float>* src, size_t count, cudaMemcpyKind kind) {
-		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)];
-		memcpy(copyBuffer, src, count/2);
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
+			dst[i] = std::complex<double>((double)src[i].real(), (double)src[i].imag());
 		}
-		delete[] copyBuffer;
 	}
 
 	void deviceMemcpy(std::complex<float>* dst, std::complex<double>* src, size_t count, cudaMemcpyKind kind) {
-		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)];
-		
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			copyBuffer[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
+			dst[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
 		}
-		memcpy(dst, copyBuffer, count / 2);
-		delete[] copyBuffer;
 	}
 
 	void deviceMemcpy(float* dst, double* src, size_t count, cudaMemcpyKind kind) {
-		float* copyBuffer = new float[count / sizeof(double)];
-
 		for (size_t i = 0; i < count / sizeof(double); i++) {
-			copyBuffer[i] = (float)src[i];
+			dst[i] = (float)src[i];
 		}
-		memcpy(dst, copyBuffer, count / 2);
-		delete[] copyBuffer;
 	}
-
 
 	void deviceFree(void* block) {
 		free(block);
 	}
 
 	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
-		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
-		return(isnan(canaryPixel));
+		//deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
+		return(isnan(*canaryPointer));
 	}
 	void fft(void* input, void* output, int type) const {
 		if (!configuredFFT) return;

@@ -2285,14 +2285,13 @@ namespace hostFunctions{
 
 
 	static unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU) {
-		//if ((d.hasPlasma != d.deviceStruct.hasPlasma) && d.deviceStruct.isCylindric) {
-		//	d.deallocateSet();
-		//	d.allocateSet(sCPU);
-		//}
+
+		typedef LWEFLOATINGPOINTTYPE deviceFP;
+		typedef complexLib::complex<LWEFLOATINGPOINTTYPE> deviceComplex; 
 		//prepare the propagation arrays
 		preparePropagationGrids(d);
 		prepareElectricFieldArrays(d);
-		//d.deviceMemcpy(d.dParamsDevice, &s, sizeof(deviceParameterSet), HostToDevice);
+
 		deviceFP* canaryPointer = &d.deviceStruct.gridETime1[d.deviceStruct.Ntime / 2 + d.deviceStruct.Ntime * (d.deviceStruct.Nspace / 2 + d.deviceStruct.Nspace * (d.deviceStruct.Nspace2 / 2))];
 		//Core propagation loop
 		for (size_t i = 0; i < d.deviceStruct.Nsteps; ++i) {
@@ -2820,8 +2819,6 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 	simulationParameterSet sCPUcurrent;
 	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
-	
-	
 	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
 	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);

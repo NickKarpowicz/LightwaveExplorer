@@ -224,29 +224,29 @@ public:
 
 	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
 		stream.wait();
-		float* copyBuffer = new float[count / sizeof(double)];
+		float* copyBuffer = new float[count / sizeof(double)]();
 		stream.memcpy(copyBuffer, src, count/2);
 		stream.wait();
 		for (size_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = copyBuffer[i];
+			dst[i] = (double)copyBuffer[i];
 		}
 		delete[] copyBuffer;
 	}
 
 	void deviceMemcpy(std::complex<double>* dst, oneapi::dpl::complex<float>* src, size_t count, cudaMemcpyKind kind) {
 		stream.wait();
-		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)];
+		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
 		stream.memcpy(copyBuffer, src, count/2);
 		stream.wait();
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
+			dst[i] = std::complex<double>((float)copyBuffer[i].real(), (float)copyBuffer[i].imag());
 		}
 		delete[] copyBuffer;
 	}
 
 	void deviceMemcpy(oneapi::dpl::complex<float>* dst, std::complex<double>* src, size_t count, cudaMemcpyKind kind) {
 		stream.wait();
-		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)];
+		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
 		
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			copyBuffer[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
@@ -258,7 +258,7 @@ public:
 
 	void deviceMemcpy(float* dst, double* src, size_t count, cudaMemcpyKind kind) {
 		stream.wait();
-		float* copyBuffer = new float[count / sizeof(double)];
+		float* copyBuffer = new float[count / sizeof(double)]();
 
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			copyBuffer[i] = (float)src[i];

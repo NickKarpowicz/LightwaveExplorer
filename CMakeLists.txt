@@ -26,11 +26,11 @@ if(UNIX AND NOT APPLE)
         include_directories(${GTK4_INCLUDE_DIRS})
         link_directories(${GTK4_LIBRARY_DIRS})
         find_package(fmt)
-        add_compile_options(-std=c++20 -O3 -fopenmp -fsycl -w)
+        add_compile_options(-std=c++20 -O3 -fp-model precise -fopenmp -fsycl -w)
         add_executable(LightwaveExplorer ${LightwaveExplorerCudaObjects} LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerGTK/LightwaveExplorerDPCPPlibFP32.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES} ${CUDA_LIBRARIES} ${CUDAToolkit_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt)
-        target_link_libraries(LightwaveExplorer -lcufft -lnvidia-ml)
+        target_link_libraries(LightwaveExplorer -lcufft -lnvidia-ml -lm)
         target_link_libraries(LightwaveExplorer
             ${MKLROOT}/lib/intel64/libmkl_sycl.a 
             -Wl,--start-group 
