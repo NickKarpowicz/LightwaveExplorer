@@ -2116,22 +2116,32 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     else {
         SYCLitems = 3;
     }
+
     auto fittingFunction = &runDlibFittingCPU;
+    if (!use64bitFloatingPoint) {
+        fittingFunction = &runDlibFittingCPUFP32;
+    }
+#ifndef CPUONLY
     if (pulldownSelection < cudaGPUCount) {
         fittingFunction = &runDlibFitting;
+        if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingFP32;
         assignedGPU = pulldownSelection;
     }
     else if (pulldownSelection == cudaGPUCount && SYCLavailable) {
         fittingFunction = &runDlibFittingSYCL;
+        if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
     else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
         forceCPU = 1;
         fittingFunction = &runDlibFittingSYCL;
+        if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
     else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
         assignedGPU = 1;
         fittingFunction = &runDlibFittingSYCL;
+        if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
+#endif
     isRunning = TRUE;
     (*activeSetPtr).runningOnCPU = forceCPU;
     (*activeSetPtr).assignedGPU = assignedGPU;
