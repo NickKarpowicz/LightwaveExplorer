@@ -146,7 +146,7 @@ static oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<dou
 }
 
 template<typename deviceFP, typename deviceComplex>
-class activeDevice {
+class SYCLDevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
@@ -175,7 +175,7 @@ public:
 	bool hasPlasma = FALSE;
 
 
-	activeDevice(simulationParameterSet* sCPU) {
+	SYCLDevice(simulationParameterSet* sCPU) {
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
@@ -184,7 +184,7 @@ public:
 		memoryStatus = allocateSet(sCPU);
 	}
 
-	~activeDevice() {
+	~SYCLDevice() {
 		stream.wait();
 		fftDestroy();
 		deallocateSet();

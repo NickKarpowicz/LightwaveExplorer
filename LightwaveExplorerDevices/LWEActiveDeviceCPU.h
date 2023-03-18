@@ -149,7 +149,7 @@ static float j0Device(float x) {
 }
 #endif
 template <typename deviceFP, typename deviceComplex>
-class activeDevice {
+class CPUDevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
@@ -196,7 +196,7 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 
 
-	activeDevice(simulationParameterSet* sCPU) {
+	CPUDevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = -1;
@@ -214,7 +214,7 @@ public:
 		memoryStatus = allocateSet(sCPU);
 	}
 
-	~activeDevice() {
+	~CPUDevice() {
 		fftDestroy();
 		deallocateSet();
 	}

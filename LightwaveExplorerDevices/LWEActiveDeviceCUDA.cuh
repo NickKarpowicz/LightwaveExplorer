@@ -127,7 +127,7 @@ static int hardwareCheck(int* CUDAdeviceCount) {
 	return 0;
 }
 template<typename deviceFP, typename deviceComplex>
-class activeDevice {
+class CUDADevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
@@ -174,7 +174,7 @@ public:
 	int memoryStatus;
 	bool hasPlasma;
 
-	activeDevice(simulationParameterSet* sCPU) {
+	CUDADevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = -1;
@@ -187,7 +187,7 @@ public:
 	}
 
 
-	~activeDevice() {
+	~CUDADevice() {
 		fftDestroy();
 		deallocateSet();
 		deviceFree(dParamsDevice);

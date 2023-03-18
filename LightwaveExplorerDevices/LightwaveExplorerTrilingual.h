@@ -5,7 +5,7 @@
 #define localIndex threadIdx.x + blockIdx.x * blockDim.x
 #define deviceFunctions deviceFunctionsCUDA
 #define hostFunctions hostFunctionsCUDA
-
+#define activeDevice CUDADevice
 #define kernelLWE(kernelName,...) \
 __global__ static void kernelName(__VA_ARGS__)
 #if LWEFLOATINGPOINT==64
@@ -29,6 +29,7 @@ __global__ static void kernelName(__VA_ARGS__)
 #endif
 #elif defined RUNONSYCL
 #include "LWEActiveDeviceSYCL.h"
+#define activeDevice SYCLDevice
 #define kernelLWE(kernelName,...) \
 const auto kernelName = [](size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
@@ -48,6 +49,7 @@ const auto kernelName = [](size_t trilingualLaunchID, __VA_ARGS__)
 
 #elif defined RUNSTEPCOUNTER
 #include "LWEAciveDeviceCounter.h"
+#define activeDevice counterDevice
 #define kernelLWE(kernelName,...) \
 static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
@@ -58,7 +60,7 @@ static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
 #else
 #include "LWEActiveDeviceCPU.h"
-
+#define activeDevice CPUDevice
 #define kernelLWE(kernelName,...) \
 static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
