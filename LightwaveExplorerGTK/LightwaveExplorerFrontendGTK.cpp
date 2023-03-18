@@ -585,7 +585,7 @@ void setInterfaceValuesToActiveValues(){
     if (std::string((*activeSetPtr).sequenceString).length() > 6) {
         std::string formattedSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
         formatSequence(formattedSequence);
-        theGui.sequence.directOverwritePrintSequencce(formattedSequence.c_str());
+        theGui.sequence.directOverwritePrintSequence(formattedSequence.c_str());
     }
     stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
     if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
@@ -2003,8 +2003,13 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
                 error = sequenceFunction(&activeSetPtr[j]);
             }
             catch (std::exception const& e) {
-                std::string errorString(e.what());
-                formatSequenceEscapeAngleBrackets(errorString);
+                std::string errorString=e.what();
+                std::erase(errorString,'<');
+                std::erase(errorString,'>');
+                std::erase(errorString,'&');
+                std::erase(errorString,';');
+                std::erase(errorString,'{');
+                std::erase(errorString,'}');
                 theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", errorString);
             }
             if (activeSetPtr[j].memoryError != 0) {

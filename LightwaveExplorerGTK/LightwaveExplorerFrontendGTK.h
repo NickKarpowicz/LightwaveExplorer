@@ -515,7 +515,7 @@ public:
         scrollToEnd();
     }
 
-    void directOverwritePrintSequencce(const char* sIn) {
+    void directOverwritePrintSequence(const char* sIn) {
         gtk_text_buffer_set_text(buf, sIn, -1);
         g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, formatSequenceBuffer, buf, NULL);
         textBuffer.clear();
@@ -548,10 +548,10 @@ public:
     }
 
     void clear() {
-        char emptyBuffer[2] = { 0 };
+        char emptyBuffer[] = "";
         textBuffer.clear();
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        gtk_text_buffer_set_text(buf, emptyBuffer, 1);
+        gtk_text_buffer_set_text(buf, emptyBuffer, NULL);
         scrollToEnd();
     }
 };
