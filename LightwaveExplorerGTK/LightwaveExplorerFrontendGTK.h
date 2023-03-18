@@ -551,7 +551,7 @@ public:
         char emptyBuffer[] = "";
         textBuffer.clear();
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
-        gtk_text_buffer_set_text(buf, emptyBuffer, NULL);
+        gtk_text_buffer_set_text(buf, emptyBuffer, 0);
         scrollToEnd();
     }
 };

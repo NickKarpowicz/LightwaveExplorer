@@ -86,7 +86,7 @@ namespace deviceLibSYCLFP32{
 
 	}
 	static inline float abs(const oneapi::dpl::complex<float> x){
-		return oneapi::dpl::fabs(x);
+		return oneapi::dpl::abs(x);
 	}
 	static inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::sqrt(x);
