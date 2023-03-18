@@ -1791,7 +1791,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
     bool forceCPU = 0;
-    int SYCLitems = 0;
+    [[maybe_unused]]int SYCLitems = 0;
     if (syclGPUCount == 0) {
         SYCLitems = (int)SYCLavailable;
     }
@@ -1923,7 +1923,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
 
     int assignedGPU = 0;
     bool forceCPU = 0;
-    int SYCLitems = 0;
+    [[maybe_unused]]int SYCLitems = 0;
     #ifndef CPUONLY
     if (syclGPUCount == 0) {
         SYCLitems = (int)SYCLavailable;
