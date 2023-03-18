@@ -86,7 +86,7 @@ namespace deviceLibSYCLFP32{
 
 	}
 	static inline float abs(const oneapi::dpl::complex<float> x){
-		return oneapi::dpl::abs(x);
+		return oneapi::dpl::fabs(x);
 	}
 	static inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::sqrt(x);
@@ -135,7 +135,7 @@ static float j0SYCL(float x) {
 			y * (-0.2073370639e-5f + y * 0.2093887211e-6f)));
 		float ans2 = -0.1562499995e-1f + y * (0.1430488765e-3f +
 			y * (-0.6911147651e-5f + y * (0.7621095161e-6f - y * 0.934935152e-7f)));
-		return sqrt(0.636619772f / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
+		return sqrtf(0.636619772f / x) * (cosf(xx) * ans1 - z * sinf(xx) * ans2);
 	}
 }
 

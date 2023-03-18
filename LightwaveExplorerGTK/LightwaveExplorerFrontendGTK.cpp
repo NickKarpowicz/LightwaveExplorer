@@ -2003,7 +2003,9 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
                 error = sequenceFunction(&activeSetPtr[j]);
             }
             catch (std::exception const& e) {
-                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", e.what());
+                std::string errorString(e.what());
+                formatSequenceEscapeAngleBrackets(errorString);
+                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", errorString);
             }
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
@@ -2021,7 +2023,14 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             try {
                 error = normalFunction(&activeSetPtr[j]);
             } catch (std::exception const& e) {
-                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", e.what());
+                std::string errorString=e.what();
+                std::erase(errorString,'<');
+                std::erase(errorString,'>');
+                std::erase(errorString,'&');
+                std::erase(errorString,';');
+                std::erase(errorString,'{');
+                std::erase(errorString,'}');
+                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", errorString);
             }
             
             if (activeSetPtr[j].memoryError != 0) {

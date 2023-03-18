@@ -344,8 +344,8 @@ namespace deviceFunctions {
 				*n2 = deviceComplex(0.0f, 0.0f);
 				return;
 			}
-			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
-			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
+			errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
+			errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 			gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 
 			for (it = 0; it < maxiter; ++it) {
@@ -363,8 +363,8 @@ namespace deviceFunctions {
 
 				sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 				sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
-				errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
-				errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
+				errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
+				errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 				gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 			}
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
@@ -388,14 +388,14 @@ namespace deviceFunctions {
 				*n2 = n[0][1];
 				return;
 			}
-			errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
-			errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
-			errArray[2][0] = sin(beta[0] + gradientStep) * n[2][0].real() - ky1;
-			errArray[3][0] = sin(beta[0] - gradientStep) * n[3][0].real() - ky1;
-			errArray[0][1] = sin(alpha[1] + gradientStep) * n[0][1].real() - kx1;
-			errArray[1][1] = sin(alpha[1] - gradientStep) * n[1][1].real() - kx1;
-			errArray[2][1] = sin(beta[1] + gradientStep) * n[2][1].real() - ky1;
-			errArray[3][1] = sin(beta[1] - gradientStep) * n[3][1].real() - ky1;
+			errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
+			errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
+			errArray[2][0] = deviceFPLib::sin(beta[0] + gradientStep) * n[2][0].real() - ky1;
+			errArray[3][0] = deviceFPLib::sin(beta[0] - gradientStep) * n[3][0].real() - ky1;
+			errArray[0][1] = deviceFPLib::sin(alpha[1] + gradientStep) * n[0][1].real() - kx1;
+			errArray[1][1] = deviceFPLib::sin(alpha[1] - gradientStep) * n[1][1].real() - kx1;
+			errArray[2][1] = deviceFPLib::sin(beta[1] + gradientStep) * n[2][1].real() - ky1;
+			errArray[3][1] = deviceFPLib::sin(beta[1] - gradientStep) * n[3][1].real() - ky1;
 			gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 			gradient[1][0] = gradientFactor * (errArray[2][0] - errArray[3][0]);
 			gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
@@ -421,14 +421,14 @@ namespace deviceFunctions {
 				sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
 				sellmeierCuda(&nW, &n[2][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
 				sellmeierCuda(&nW, &n[3][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
-				errArray[0][0] = sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
-				errArray[1][0] = sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
-				errArray[2][0] = sin(beta[0] + gradientStep) * n[2][0].real() - ky1;
-				errArray[3][0] = sin(beta[0] - gradientStep) * n[3][0].real() - ky1;
-				errArray[0][1] = sin(alpha[1] + gradientStep) * n[0][1].real() - kx1;
-				errArray[1][1] = sin(alpha[1] - gradientStep) * n[1][1].real() - kx1;
-				errArray[2][1] = sin(beta[1] + gradientStep) * n[2][1].real() - ky1;
-				errArray[3][1] = sin(beta[1] - gradientStep) * n[3][1].real() - ky1;
+				errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
+				errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
+				errArray[2][0] = deviceFPLib::sin(beta[0] + gradientStep) * n[2][0].real() - ky1;
+				errArray[3][0] = deviceFPLib::sin(beta[0] - gradientStep) * n[3][0].real() - ky1;
+				errArray[0][1] = deviceFPLib::sin(alpha[1] + gradientStep) * n[0][1].real() - kx1;
+				errArray[1][1] = deviceFPLib::sin(alpha[1] - gradientStep) * n[1][1].real() - kx1;
+				errArray[2][1] = deviceFPLib::sin(beta[1] + gradientStep) * n[2][1].real() - ky1;
+				errArray[3][1] = deviceFPLib::sin(beta[1] - gradientStep) * n[3][1].real() - ky1;
 				gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 				gradient[1][0] = gradientFactor * (errArray[2][0] - errArray[3][0]);
 				gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
@@ -756,7 +756,7 @@ namespace kernels {
 
 			x = ((*s).dx * (j - (*s).Nspace / 2.0f));
 			y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
-			r = sqrt(x * x + y * y);
+			r = deviceFPLib::sqrt(x * x + y * y);
 		}
 		else {
 			h = 1 + i % ((*s).Nfreq - 1);
@@ -773,7 +773,7 @@ namespace kernels {
 		for (int p = 1; p < (int)order; p++) {
 			spotFactor *= spotFactor;
 		}
-		deviceComplex filterFunction = deviceComplex(0.0f, exp(-spotFactor)) * lorentzian;
+		deviceComplex filterFunction = deviceComplex(0.0f, deviceFPLib::exp(-spotFactor)) * lorentzian;
 		(*s).gridEFrequency1[i] += filterFunction * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] += filterFunction * (*s).gridEFrequency2[i];
 	};
@@ -790,7 +790,7 @@ namespace kernels {
 		if ((*s).is3D) {
 			deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
 			deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
-			r = sqrt(x * x + y * y);
+			r = deviceFPLib::sqrt(x * x + y * y);
 		}
 		else {
 			r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
@@ -1699,7 +1699,7 @@ namespace kernels {
 		deviceFP z = -sB * xo + sA * cB * yo + cA * cB * zo;
 		deviceFP r = deviceFPLib::sqrt(x * x + y * y);
 
-		deviceFP wz = (*p).beamwaist * sqrt(1.0f + (z * z / (zR * zR)));
+		deviceFP wz = (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
 		deviceFP Rz = 1.0e15f;
 		if (z != 0.0f) {
 			Rz = z * (1.0f + (zR * zR / (z * z)));
