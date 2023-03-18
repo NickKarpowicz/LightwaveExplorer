@@ -28,7 +28,7 @@ const int deviceThreads = std::thread::hardware_concurrency();
 
 #if defined __APPLE__ || defined __linux__
 template<typename deviceFP>
-void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
+[[maybe_unused]] void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	deviceFP expected = pulseSumAtomic->load();
 	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
