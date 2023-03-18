@@ -1,6 +1,5 @@
 #pragma once
-#define maxN(a,b)            (((a) > (b)) ? (a) : (b))
-#define minN(a,b)            (((a) < (b)) ? (a) : (b))
+
 #include <complex>
 #include <cstring>
 #include <vector>
@@ -8,71 +7,13 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
-#define MAX_LOADSTRING 1024
 
-//ugly macro prefix because CUDA doesn't like my nice constexprs
-#ifdef __CUDACC__
-#define UGLYPREFIX __host__ __device__
-#else
-#define UGLYPREFIX
-#endif
+static const unsigned int THREADS_PER_BLOCK = 32;
+static const unsigned int MIN_GRIDDIM = 8;
+static const bool FALSE = 0;
+static const bool TRUE = 1;
+static const size_t MAX_LOADSTRING = 1024;
 
-//variadic template to constexpr the product of a bunch of values
-//in a way that keeps Xe Graphics happy (no doubles)
-template<typename T>
-UGLYPREFIX static constexpr T constProd(T x) {
-    return x;
-}
-template<typename T, typename... Args>
-UGLYPREFIX static constexpr T constProd(T x, Args... args) {
-    return (T)(x * constProd(args...));
-}
-
-
-template <typename T>
-UGLYPREFIX static constexpr T pi() {
-    return (T)3.1415926535897931;
-}
-template <typename T>
-UGLYPREFIX static constexpr T twoPi() {
-    return (T)6.2831853071795862;
-}
-template <typename T>
-UGLYPREFIX static constexpr T angleTolerance() {
-    return (T)1e-12;
-}
-template <typename T>
-UGLYPREFIX static constexpr T invSqrtPi() {
-    return (T)0.5641895835477563;
-}
-template <typename T>
-UGLYPREFIX static constexpr T deg2Rad() {
-    return (T)1.7453292519943295e-02;
-}
-template <typename T>
-UGLYPREFIX static constexpr T rad2Deg() {
-    return (T)57.2957795130823229;
-}
-template <typename T>
-UGLYPREFIX static constexpr T lightC() {
-    return (T)2.99792458e8;
-}
-template <typename T>
-UGLYPREFIX static constexpr T eps0() {
-    return (T)8.8541878128e-12;
-}
-template <typename T>
-UGLYPREFIX static constexpr T sixth() {
-    return (T)(1.0/6.0);
-}
-template <typename T>
-UGLYPREFIX static constexpr T third() {
-    return (T)(1.0/3.0);
-}
-template <typename T>
-UGLYPREFIX static constexpr T kLorentzian() {
-    return (T)3182.607353999257;
-}
 #ifndef LWEFLOATINGPOINT
 #define LWEFLOATINGPOINT 64
 #endif
@@ -82,35 +23,107 @@ UGLYPREFIX static constexpr T kLorentzian() {
 #define LWEFLOATINGPOINTTYPE double
 #endif
 
+//ugly macro prefix because CUDA doesn't like my nice constexprs
+#ifdef __CUDACC__
+#define hostOrDevice __host__ __device__
+#else
+#define hostOrDevice
+#endif
+
+//variadic template to constexpr the product of a bunch of values
+//in a way that keeps Xe Graphics happy (no doubles)
+//convention: if there are multiple types as inputs, 
+//return type is the type of the first argument
+template<typename T>
+hostOrDevice static constexpr T constProd(T x) {
+    return x;
+}
+template<typename T, typename... Args>
+hostOrDevice static constexpr T constProd(T x, Args... args) {
+    return (T)(x * constProd(args...));
+}
+
+template <typename T, typename U>
+hostOrDevice static constexpr inline T maxN(T a, U b) {
+    return (((a) > (b)) ? (a) : (b));
+}
+
+template <typename T, typename U>
+hostOrDevice static constexpr inline T minN(T a, U b) {
+    return (((a) < (b)) ? (a) : (b));
+}
+
+template <typename T>
+hostOrDevice static constexpr T pi() {
+    return (T)3.1415926535897931;
+}
+template <typename T>
+hostOrDevice static constexpr T twoPi() {
+    return (T)6.2831853071795862;
+}
+template <typename T>
+hostOrDevice static constexpr T angleTolerance() {
+    return (T)1e-12;
+}
+template <typename T>
+hostOrDevice static constexpr T invSqrtPi() {
+    return (T)0.5641895835477563;
+}
+template <typename T>
+hostOrDevice static constexpr T deg2Rad() {
+    return (T)1.7453292519943295e-02;
+}
+template <typename T>
+hostOrDevice static constexpr T rad2Deg() {
+    return (T)57.2957795130823229;
+}
+template <typename T>
+hostOrDevice static constexpr T lightC() {
+    return (T)2.99792458e8;
+}
+template <typename T>
+hostOrDevice static constexpr T eps0() {
+    return (T)8.8541878128e-12;
+}
+template <typename T>
+hostOrDevice static constexpr T sixth() {
+    return (T)(1.0/6.0);
+}
+template <typename T>
+hostOrDevice static constexpr T third() {
+    return (T)(1.0/3.0);
+}
+template <typename T>
+hostOrDevice static constexpr T kLorentzian() {
+    return (T)3182.607353999257;
+}
+
+
+
 #include <complex>
 #include <cstring>
 #ifdef __CUDACC__
 #include <cufft.h>
 #include <thrust/complex.h>
 #include <fftw3_mkl.h>
-//typedef thrust::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
-//typedef LWEFLOATINGPOINTTYPE deviceFP;
 #elif defined RUNONSYCL
 #include <oneapi/dpl/complex>
 #include <oneapi/dpl/cmath>
-//typedef oneapi::dpl::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
-//typedef LWEFLOATINGPOINTTYPE deviceFP;
 #include <sycl/sycl.hpp>
 #elif defined CPUONLY
 #include <fftw3.h>
-//typedef std::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
-//typedef LWEFLOATINGPOINTTYPE deviceFP;
 #else
 #include <fftw3_mkl.h>
-//typedef std::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
-//typedef LWEFLOATINGPOINTTYPE deviceFP;
 #endif
 
-#define THREADS_PER_BLOCK 32
-#define MIN_GRIDDIM 8
-#define FALSE 0
-#define TRUE 1
-#define MAX_LOADSTRING 1024
+enum class deviceFFT : int {
+    D2Z = 0,
+    Z2D = 1,
+    D2Z_1D = 2,
+    Z2D_1D = 3,
+    D2Z_Polarization = 4
+};
+
 
 template <typename deviceFP, typename deviceComplex>
 class deviceParameterSet {

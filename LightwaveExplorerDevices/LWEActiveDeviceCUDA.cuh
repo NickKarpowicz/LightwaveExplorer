@@ -95,7 +95,15 @@ namespace deviceLibCUDAFP32{
 };
 #endif
 
-static int hardwareCheckCUDA(int* CUDAdeviceCount) {
+__device__ static inline float j0Device(float x) {
+	return j0(x);
+}
+
+__device__ static inline double j0Device(double x) {
+	return j0(x);
+}
+
+static int hardwareCheck(int* CUDAdeviceCount) {
 	int CUDAdevice;
 	cudaGetDeviceCount(CUDAdeviceCount);
 	cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
@@ -119,7 +127,7 @@ static int hardwareCheckCUDA(int* CUDAdeviceCount) {
 	return 0;
 }
 template<typename deviceFP, typename deviceComplex>
-class deviceCUDA {
+class activeDevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
@@ -166,7 +174,7 @@ public:
 	int memoryStatus;
 	bool hasPlasma;
 
-	deviceCUDA(simulationParameterSet* sCPU) {
+	activeDevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = -1;
@@ -179,7 +187,7 @@ public:
 	}
 
 
-	~deviceCUDA() {
+	~activeDevice() {
 		fftDestroy();
 		deallocateSet();
 		deviceFree(dParamsDevice);
@@ -298,9 +306,8 @@ public:
 		configuredFFT = 1;
 	}
 
-	void fft(void* input, void* output, int type) {
-		if (sizeof(deviceFP) == sizeof(float)) type += 5;
-		switch (type) {
+	void fft(void* input, void* output, deviceFFT type) {
+		switch (static_cast<int>(type) + 5 * ( sizeof(deviceFP) == sizeof (float))) {
 		case 0:
 			cufftExecD2Z(fftPlanD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
 			break;

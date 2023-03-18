@@ -25,7 +25,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 
 	(*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
 	(*sCPU).fittingROIstop = (size_t)minN(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
-	(*sCPU).fittingROIsize = minN(maxN(1, (*sCPU).fittingROIstop - (*sCPU).fittingROIstart), (*sCPU).Ntime / 2);
+	(*sCPU).fittingROIsize = minN(maxN((*sCPU).fittingROIstop - (*sCPU).fittingROIstart, 1u), (*sCPU).Ntime / 2);
 	(*sCPU).fittingMaxIterations = maxIterations;
 
 	while (ss.good()) {
@@ -526,7 +526,7 @@ double saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, 
 		fs << "#SBATCH --gres=gpu:a100:" << minN(gpuCount, 4) << '\x0A';
 		fs << "#SBATCH --cpus-per-task=" << 2 * minN(gpuCount, 4) << '\x0A';
 	}
-	fs << "#SBATCH --mem=" << 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN(1, (*sCPU).Nsims)) / 1048576 << "M\x0A";
+	fs << "#SBATCH --mem=" << 8192 + (18 * sizeof(double) * (*sCPU).Ngrid * maxN((*sCPU).Nsims, 1u)) / 1048576 << "M\x0A";
 	fs << "#SBATCH --nodes=1" << '\x0A';
 	fs << "#SBATCH --ntasks-per-node=1" << '\x0A';
 	fs << "#SBATCH --time=" << (int)ceil(1.5 * timeEstimate) << ":00:00" << '\x0A';

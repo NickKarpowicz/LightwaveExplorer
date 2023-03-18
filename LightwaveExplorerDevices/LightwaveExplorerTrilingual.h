@@ -1,21 +1,13 @@
 // define a compiler-specific activeDevice class and set of macros
 #ifdef __CUDACC__
 #include "LWEActiveDeviceCUDA.cuh"
-#define trilingual __global__ static void
-#define withID 
-#define asKernel
 #define deviceFunction __device__
 #define localIndex threadIdx.x + blockIdx.x * blockDim.x
-#define withStream 
-#define activeDevice deviceCUDA
-#define hardwareCheck hardwareCheckCUDA
 #define deviceFunctions deviceFunctionsCUDA
-#define atomicAddDevice atomicAdd
-#define j0Device j0
 #define hostFunctions hostFunctionsCUDA
 
-#define mainArgumentX char* argv[]
-#define resolveArgv char* filepath = argv[1];
+#define kernelLWE(kernelName,...) \
+__global__ static void kernelName(__VA_ARGS__)
 #if LWEFLOATINGPOINT==64
 #ifndef NOCUDAMAIN
 #define mainX main
@@ -37,21 +29,11 @@
 #endif
 #elif defined RUNONSYCL
 #include "LWEActiveDeviceSYCL.h"
-#define trilingual const auto 
+#define kernelLWE(kernelName,...) \
+const auto kernelName = [](size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
 #define localIndex trilingualLaunchID
-#define asKernel = []
-#define withID size_t trilingualLaunchID,
-#define withStream , stream
-#define activeDevice deviceSYCL
-#define atomicAddDevice atomicAddSYCL
-#define j0Device j0SYCL
-#define hardwareCheck hardwareCheckSYCL
 
-#define deviceFunctions deviceFunctionsSYCL
-#define hostFunctions hostFunctionsSYCL
-#define mainArgumentX char* filepath
-#define resolveArgv
 #if LWEFLOATINGPOINT == 64
 #define mainX mainSYCL
 #define runDlibFittingX runDlibFittingSYCL
@@ -66,40 +48,21 @@
 
 #elif defined RUNSTEPCOUNTER
 #include "LWEAciveDeviceCounter.h"
-#define trilingual static void 
-#define withID size_t trilingualLaunchID, 
-#define asKernel
+#define kernelLWE(kernelName,...) \
+static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
 #define localIndex trilingualLaunchID
-#define withStream 
-#define activeDevice deviceCounter
-#define atomicAddDevice atomicAddCounter
-#define j0Device j0Counter
-#define hardwareCheck hardwareCheckCounter
-#define deviceFunctions deviceFunctionsCounter
-#define hostFunctions hostFunctionsCounter
 #define mainX mainCounter
-#define mainArgumentX char* filepath
-#define resolveArgv
 #define runDlibFittingX runDlibFittingCounter
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationCounter
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
 #else
 #include "LWEActiveDeviceCPU.h"
-#define trilingual static void 
-#define withID size_t trilingualLaunchID, 
-#define asKernel
+
+#define kernelLWE(kernelName,...) \
+static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
 #define localIndex trilingualLaunchID
-#define withStream 
-#define activeDevice deviceCPU
-#define atomicAddDevice atomicAddCPU
-#define j0Device j0CPU
-#define hardwareCheck hardwareCheckCPU
-#define deviceFunctions deviceFunctionsCPU
-#define hostFunctions hostFunctionsCPU
-#define mainArgumentX char* filepath
-#define resolveArgv
 
 #if LWEFLOATINGPOINT == 32
 #define mainX mainCPUFP32
@@ -114,8 +77,3 @@
 #endif
 #endif
 
-#define deviceFFTD2Z 0
-#define deviceFFTZ2D 1
-#define deviceFFTD2Z1D 2
-#define deviceFFTZ2D1D 3
-#define deviceFFTD2ZPolarization 4

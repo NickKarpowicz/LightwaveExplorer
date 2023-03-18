@@ -21,7 +21,7 @@
 	#define deviceLib std
 #endif
 #if defined _WIN32 || __linux__
-const int deviceThreads = maxN(1, std::thread::hardware_concurrency()/2);
+const int deviceThreads = maxN(std::thread::hardware_concurrency()/2, 1u);
 #else
 const int deviceThreads = std::thread::hardware_concurrency();
 #endif
@@ -35,12 +35,12 @@ void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
 }
 #else
 template<typename deviceFP>
-static void atomicAddCPU(deviceFP* pulseSum, deviceFP pointEnergy) {
+static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
 }
 #endif
-static int hardwareCheckCPU(int* CUDAdeviceCount) {
+static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
@@ -106,7 +106,7 @@ namespace deviceLibCPUFP32{
 #endif
 
 #if LWEFLOATINGPOINT==64
-static double j0CPU(double x) {
+static double j0Device(double x) {
 	if (x < 8.0) {
 		double y = x * x;
 		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
@@ -127,7 +127,7 @@ static double j0CPU(double x) {
 	}
 }
 #else
-static float j0CPU(float x) {
+static float j0Device(float x) {
 	if (x < 8.0f) {
 		float y = x * x;
 		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +
@@ -149,7 +149,7 @@ static float j0CPU(float x) {
 }
 #endif
 template <typename deviceFP, typename deviceComplex>
-class deviceCPU {
+class activeDevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
@@ -196,7 +196,7 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 
 
-	deviceCPU(simulationParameterSet* sCPU) {
+	activeDevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = -1;
@@ -214,7 +214,7 @@ public:
 		memoryStatus = allocateSet(sCPU);
 	}
 
-	~deviceCPU() {
+	~activeDevice() {
 		fftDestroy();
 		deallocateSet();
 	}
@@ -273,10 +273,9 @@ public:
 		//deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
 		return(isnan(*canaryPointer));
 	}
-	void fft(void* input, void* output, int type) const {
+	void fft(void* input, void* output, deviceFFT type) const {
 		if (!configuredFFT) return;
-		if (sizeof(deviceFP) == sizeof(float)) type += 5;
-		switch (type) {
+		switch (static_cast<int>(type) + 5 * (sizeof(deviceFP) == sizeof(float))){
 		case 0:
 			fftw_execute_dft_r2c(fftPlanD2Z, (double*)input, (fftw_complex*)output);
 			break;

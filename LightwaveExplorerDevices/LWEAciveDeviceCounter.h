@@ -7,15 +7,15 @@
 #define deviceLib std
 #define deviceFPLib std
 #define complexLib std
-int hardwareCheckCounter(int* CUDAdeviceCount) {
+int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
 
-void atomicAddCounter(float* pulseSum, float pointEnergy) {
+static void atomicAdd(float* pulseSum, float pointEnergy) {
 }
 
-void atomicAddCounter(double* pulseSum, double pointEnergy) {
+static void atomicAdd(double* pulseSum, double pointEnergy) {
 }
 
 
@@ -34,16 +34,16 @@ void atomicAddCounter(double* pulseSum, double pointEnergy) {
 [[maybe_unused]] static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
 
 #endif
-[[maybe_unused]] double j0Counter(float x) {
+[[maybe_unused]] static float j0Device(float x) {
 	return x;
 }
 
-[[maybe_unused]] double j0Counter(double x) {
+[[maybe_unused]] static double j0Device(double x) {
 	return x;
 }
 
 template <typename deviceFP, typename deviceComplex>
-class deviceCounter {
+class activeDevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = 0;
@@ -61,7 +61,7 @@ public:
 	simulationParameterSet* cParams;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 
-	deviceCounter(simulationParameterSet* sCPU) {
+	activeDevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 
@@ -76,7 +76,7 @@ public:
 		initializeDeviceParameters(sCPU);
 	}
 
-	~deviceCounter() {
+	~activeDevice() {
 	}
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
@@ -99,7 +99,7 @@ public:
 		return FALSE;
 	}
 
-	void fft(void* input, void* output, int type) {
+	void fft(void* input, void* output, deviceFFT type) {
 	}
 
 	void fftInitialize() {

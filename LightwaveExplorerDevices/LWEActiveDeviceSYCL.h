@@ -21,7 +21,7 @@
 	#define dftPrecision oneapi::mkl::dft::precision::DOUBLE
 #endif
 template <typename deviceFP>
-static void atomicAddSYCL(deviceFP* pulseSum, deviceFP pointEnergy) {
+static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	sycl::atomic_ref<deviceFP, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
 	a.fetch_add(pointEnergy);
 }
@@ -93,11 +93,11 @@ namespace deviceLibSYCLFP32{
 	}
 };
 
-static int hardwareCheckSYCL(int* CUDAdeviceCount) {
+static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
-static double j0SYCL(double x) {
+static double j0Device(double x) {
 	if (x < 8.0) {
 		double y = x * x;
 		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
@@ -118,7 +118,7 @@ static double j0SYCL(double x) {
 	}
 }
 
-static float j0SYCL(float x) {
+static float j0Device(float x) {
 	if (x < 8.0f) {
 		float y = x * x;
 		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +
@@ -146,7 +146,7 @@ static oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<dou
 }
 
 template<typename deviceFP, typename deviceComplex>
-class deviceSYCL {
+class activeDevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = FALSE;
@@ -175,7 +175,7 @@ public:
 	bool hasPlasma = FALSE;
 
 
-	deviceSYCL(simulationParameterSet* sCPU) {
+	activeDevice(simulationParameterSet* sCPU) {
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
@@ -184,7 +184,7 @@ public:
 		memoryStatus = allocateSet(sCPU);
 	}
 
-	~deviceSYCL() {
+	~activeDevice() {
 		stream.wait();
 		fftDestroy();
 		deallocateSet();
@@ -366,8 +366,8 @@ public:
 		configuredFFT = 1;
 	}
 
-	void fft(void* input, void* output, int type) const {
-		switch (type) {
+	void fft(void* input, void* output, deviceFFT type) const {
+		switch (static_cast<int>(type)) {
 		case 0:
 			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (deviceComplex*)output);
 			break;
