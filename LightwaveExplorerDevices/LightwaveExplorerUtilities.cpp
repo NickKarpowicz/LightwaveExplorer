@@ -661,7 +661,7 @@ int saveSettingsFile(simulationParameterSet* sCPU) {
 		}
 		fs << '\x0A';
 	}
-	fs << "Code version: 0.7, " << LWEFLOATINGPOINT << "-bit floating point,  March 14, 2023";
+	fs << "Code version: 0.71,  March 18, 2023";
 	fs << '\x0A';
 
 	return 0;

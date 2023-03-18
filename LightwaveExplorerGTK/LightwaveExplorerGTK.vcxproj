@@ -110,6 +110,8 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
       <Optimization>O3</Optimization>
+      <AdditionalCompilerOptions>
+      </AdditionalCompilerOptions>
     </CudaCompile>
     <PostBuildEvent>
       <Command>copy "$(TargetPath)" "$(SolutionDir)LightwaveExplorerWin64\bin\"

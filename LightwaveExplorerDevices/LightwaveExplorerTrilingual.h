@@ -26,8 +26,11 @@
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquation
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequence
 #else
+#ifdef YESCUDAMAIN32
 #define mainX main
+#else
 #define mainX mainCUDAFP32
+#endif
 #define runDlibFittingX runDlibFittingFP32
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationFP32
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceFP32

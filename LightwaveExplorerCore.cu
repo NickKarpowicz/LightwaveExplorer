@@ -43,6 +43,10 @@ namespace deviceFunctions {
 	//based on Rybicki G.B., Computers in Physics, 3,85-87 (1989)
 	//this is the simplest implementation of the formula he provides, he also suggests speed improvements in case
 	//evaluation of this becomes a bottleneck
+	//macro for the two versions because I don't want to lose precision in the double version
+	//but Intel Xe graphics need the constants as floats, and CUDA doesn't work with the
+	//[[maybe_unused]] attribute... and I don't like compiler warnings.
+#if LWEFLOATINGPOINT==32
 	deviceFunction static float deviceDawson(const float x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
 		int n = 15;
@@ -66,7 +70,7 @@ namespace deviceFunctions {
 		}
 		return INVSQRTPI * d;
 	}
-
+#else
 	deviceFunction static double deviceDawson(const double& x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
 		int n = 15;
@@ -90,7 +94,7 @@ namespace deviceFunctions {
 		}
 		return INVSQRTPI * d;
 	}
-
+#endif
 	//Inner function for the Sellmeier equation to provide the refractive indicies
 	//current equation form:
 	//n^2 = a[0] //background (high freq) contribution
@@ -110,6 +114,7 @@ namespace deviceFunctions {
 		deviceComplex compPart;
 		switch (eqn) {
 		case 0:
+			[[unlikely]]
 			if(ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex(0.0f,0.0f);
 			realPart = a[0]
 				+ (a[1] + a[2] * ls) / (ls + a[3])
@@ -150,7 +155,7 @@ namespace deviceFunctions {
 			return deviceComplex((deviceLib::sqrt(compPart)).real(), -deviceFPLib::abs((deviceLib::sqrt(compPart)).imag()));
 		}
 		case 100:
-			if(ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex(0.0f,0.0f);
+			[[unlikely]]if(ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex(0.0f,0.0f);
 			realPart = a[0]
 				+ (a[1] + a[2] * ls) / (ls + a[3])
 				+ (a[4] + a[5] * ls) / (ls + a[6])
@@ -2288,7 +2293,6 @@ namespace hostFunctions{
 	static unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU) {
 
 		typedef LWEFLOATINGPOINTTYPE deviceFP;
-		typedef complexLib::complex<LWEFLOATINGPOINTTYPE> deviceComplex; 
 		//prepare the propagation arrays
 		preparePropagationGrids(d);
 		prepareElectricFieldArrays(d);

@@ -385,43 +385,32 @@ public:
 
         checkLibraryAvailability();
         std::string A;
-        int numberPropagationOptions = 0;
         if (CUDAavailable) {
             pulldowns[7].addElement("CUDA");
             pulldowns[8].addElement("CUDA");
-            numberPropagationOptions++;
             for (int i = 1; i < cudaGPUCount; ++i) {
                 A = Sformat("CUDA {}", i);
                 pulldowns[7].addElement(A.c_str());
                 pulldowns[8].addElement(A.c_str());
-                numberPropagationOptions++;
             }
         }
         if (SYCLavailable) {
             A.assign("SYCL");
             pulldowns[7].addElement(A.c_str());
             pulldowns[8].addElement(A.c_str());
-            numberPropagationOptions++;
             if (syclGPUCount > 0) {
 
                 pulldowns[7].addElement("SYCLcpu");
                 pulldowns[8].addElement("SYCLcpu");
-                numberPropagationOptions++;
                 pulldowns[7].addElement("SYCLgpu");
                 pulldowns[8].addElement("SYCLgpu");
-                numberPropagationOptions++;
             }
         }
         pulldowns[7].addElement("OpenMP");
         pulldowns[8].addElement("OpenMP");
-        numberPropagationOptions++;
 
         pulldowns[7].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
         pulldowns[8].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);
-        // #ifdef __linux__
-        // pulldowns[7].setValue(maxN(numberPropagationOptions-1,0));
-        // pulldowns[8].setValue(maxN(numberPropagationOptions-1,0));
-        // #endif
         textBoxes[52].init(window.parentHandle(6), 4 + 3 * buttonWidth, 0, 1, 1);
         pulldowns[7].setTooltip("Select the primary method of calculation. The algorithm is the same, but you can run it either on a GPU or CPU depending on your machine");
         pulldowns[8].setTooltip("Select a secondary mode of calculation for offloading jobs from a batch. For example, if the pulldown to the left is set to CUDA and this one is OpenMP, and the number to the right is 2, 2 of the simulations from the batch will be performed on the CPU");
@@ -491,7 +480,6 @@ public:
         pulldowns[9].init(parentHandle, 1+buttonCol1, 17, 2 * buttonWidth, 1);
         pulldowns[9].squeeze();
         pulldowns[9].setTooltip("Select the cluster and GPU configuration for generating a SLURM script");
-        //pulldowns[9].setLabel(-1, 0, "Cluster:", 8, 3);
         
 
 #ifdef __linux__
@@ -2015,7 +2003,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
                 error = sequenceFunction(&activeSetPtr[j]);
             }
             catch (std::exception const& e) {
-                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n {}</span>\n", e.what());
+                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", e.what());
             }
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
@@ -2033,7 +2021,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             try {
                 error = normalFunction(&activeSetPtr[j]);
             } catch (std::exception const& e) {
-                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n {}</span>\n", e.what());
+                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", e.what());
             }
             
             if (activeSetPtr[j].memoryError != 0) {
@@ -2121,7 +2109,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
 
     int assignedGPU = 0;
     bool forceCPU = 0;
-    int SYCLitems = 0;
+    [[maybe_unused]]int SYCLitems = 0;
     if (syclGPUCount == 0) {
         SYCLitems = (int)SYCLavailable;
     }

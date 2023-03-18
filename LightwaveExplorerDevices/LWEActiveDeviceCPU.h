@@ -104,6 +104,8 @@ static std::complex<double> operator*(const std::complex<double> x, const float 
 static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
 
 #endif
+
+#if LWEFLOATINGPOINT==64
 static double j0CPU(double x) {
 	if (x < 8.0) {
 		double y = x * x;
@@ -124,7 +126,7 @@ static double j0CPU(double x) {
 		return sqrt(0.636619772 / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
-
+#else
 static float j0CPU(float x) {
 	if (x < 8.0f) {
 		float y = x * x;
@@ -145,7 +147,7 @@ static float j0CPU(float x) {
 		return sqrt(0.636619772f / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
-
+#endif
 template <typename deviceFP, typename deviceComplex>
 class deviceCPU {
 private:
