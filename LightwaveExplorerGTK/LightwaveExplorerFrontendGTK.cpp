@@ -2014,8 +2014,8 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             try {
                 error = sequenceFunction(&activeSetPtr[j]);
             }
-            catch (...) {
-                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception, probably SYCL</span>\n");
+            catch (std::exception const& e) {
+                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n {}</span>\n", e.what());
             }
             if (activeSetPtr[j].memoryError != 0) {
                 if (activeSetPtr[j].memoryError == -1) {
@@ -2032,8 +2032,8 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         else {
             try {
                 error = normalFunction(&activeSetPtr[j]);
-            } catch (...) {
-                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception, probably SYCL</span>\n");
+            } catch (std::exception const& e) {
+                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n {}</span>\n", e.what());
             }
             
             if (activeSetPtr[j].memoryError != 0) {
