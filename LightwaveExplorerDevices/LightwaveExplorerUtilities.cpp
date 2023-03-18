@@ -976,7 +976,7 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 	// (e.g. frequency in THz requires 1e12 multiplier)
 	double multipliers[38] = { 0,
 		1, 1, 1e12, 1e12,
-		1e12, 1e12, pi<double>(), pi<double>(),
+		1e12, 1e12, vPi<double>(), vPi<double>(),
 		1e-15, 1e-15, 1e-30, 1e-30,
 		1e-45, 1e-45, 1e-6, 1e-6,
 		1e-6, 1e-6,

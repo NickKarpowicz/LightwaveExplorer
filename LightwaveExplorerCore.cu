@@ -502,8 +502,8 @@ namespace kernels {
 			beamTotal1 += deviceFPLib::abs(x - beamCenter1) * cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 			beamTotal2 += deviceFPLib::abs(x - beamCenter2) * cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 		}
-		beamTotal1 *= constProd(pi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) * (*s).dx * (*s).dt * (*s).dt;
-		beamTotal2 *= constProd(pi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) * (*s).dx * (*s).dt * (*s).dt;
+		beamTotal1 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) * (*s).dx * (*s).dt * (*s).dt;
+		beamTotal2 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) * (*s).dx * (*s).dt * (*s).dt;
 
 		//put the values into the output spectrum
 		(*s).gridPolarizationTime1[i] = beamTotal1;
@@ -570,7 +570,7 @@ namespace kernels {
 	kernelLWE(hankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
 		size_t i = localIndex;
 		size_t col = i / (*s).Ntime; //spatial coordinate
-		deviceFP dk = constProd((deviceFP)(1.0/pi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
+		deviceFP dk = constProd((deviceFP)(1.0/vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
 		in += i % (*s).Ntime;
 		out[i] = 0.0f;
 		out[i + (*s).Ngrid] = 0.0f;
@@ -591,7 +591,7 @@ namespace kernels {
 	kernelLWE(inverseHankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
 		size_t i = localIndex;
 		size_t col = i / (*s).Ntime; //spatial coordinate
-		deviceFP dk = constProd((deviceFP)(1.0 / pi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
+		deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
 		in += i % (*s).Ntime;;
 		out[i] = 0.0f;
 		out[i + (*s).Ngrid] = 0.0f;
@@ -698,7 +698,7 @@ namespace kernels {
 		deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
 
 		//transverse wavevector being resolved
-		deviceFP dk1 = constProd((deviceFP)2.0,1.0/pi<double>()) * k / ((*s).dx * (*s).Nspace);; //frequency grid in x direction
+		deviceFP dk1 = constProd((deviceFP)2.0,1.0/vPi<double>()) * k / ((*s).dx * (*s).Nspace);; //frequency grid in x direction
 
 		//light that won't go the the farfield is immediately zero
 		if (dk1 * dk1 > ko * ko) {
@@ -1622,7 +1622,7 @@ namespace kernels {
 		deviceComplex ne, no;
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 		deviceFP ko = twoPi<deviceFP>() * no.real() * f / lightC<deviceFP>();
-		deviceFP zR = pi<deviceFP>() * (*p).beamwaist * (*p).beamwaist * no.real() * f / lightC<deviceFP>();
+		deviceFP zR = vPi<deviceFP>() * (*p).beamwaist * (*p).beamwaist * no.real() * f / lightC<deviceFP>();
 		if (f == 0.0f) {
 			zR = 1e3f;
 		}
@@ -1646,7 +1646,7 @@ namespace kernels {
 		field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle), -(*p).circularity * deviceFPLib::sin((*p).polarizationAngle)) * Eb;
 		field[i + (*s).NgridC] = deviceComplex(deviceFPLib::sin((*p).polarizationAngle), (*p).circularity * deviceFPLib::cos((*p).polarizationAngle)) * Eb;
 		deviceFP pointEnergy = deviceFPLib::abs(r) * (cuCModSquared(field[i]) + cuCModSquared(field[i + (*s).NgridC]));
-		pointEnergy *= 2.0f * pi<deviceFP>() * lightC<deviceFP>() * eps0<deviceFP>() * (*s).dx * (*s).dt;
+		pointEnergy *= 2.0f * vPi<deviceFP>() * lightC<deviceFP>() * eps0<deviceFP>() * (*s).dx * (*s).dt;
 		//two factors of two cancel here - there should be one for the missing frequency plane, but the sum is over x instead of r
 		//accordingly we already multiplied by two
 		atomicAdd(pulseSum, pointEnergy);
@@ -1683,7 +1683,7 @@ namespace kernels {
 		sellmeierCuda(&ne, &no, sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 
 		deviceFP ko = twoPi<deviceFP>() * no.real() * f / lightC<deviceFP>();
-		deviceFP zR = pi<deviceFP>() * (*p).beamwaist * (*p).beamwaist * no.real() * f / lightC<deviceFP>();
+		deviceFP zR = vPi<deviceFP>() * (*p).beamwaist * (*p).beamwaist * no.real() * f / lightC<deviceFP>();
 		if (f == 0.0f) {
 			zR = 1e3f;
 		}
@@ -2570,7 +2570,7 @@ namespace hostFunctions{
 			p.frequency = 1e12 * parameters[1];
 			p.bandwidth = 1e12 * parameters[2];
 			p.sgOrder = (int)parameters[3];
-			p.cep = parameters[4] * pi<deviceFP>();
+			p.cep = parameters[4] * vPi<deviceFP>();
 			p.delay = 1e-15 * parameters[5];
 			p.gdd = 1e-30 * parameters[6];
 			p.tod = 1e-45 * parameters[7];
@@ -2652,7 +2652,7 @@ namespace hostFunctions{
 		//unit multipliers from interface units to SI base units.
 		double multipliers[38] = { 0,
 		1, 1, 1e12, 1e12,
-		1e12, 1e12, pi<deviceFP>(), pi<deviceFP>(),
+		1e12, 1e12, vPi<deviceFP>(), vPi<deviceFP>(),
 		1e-15, 1e-15, 1e-30, 1e-30,
 		1e-45, 1e-45, 1e-6, 1e-6,
 		1e-6, 1e-6,
@@ -2722,7 +2722,7 @@ namespace hostFunctions{
 
 		double multipliers[36] = { 0,
 	1, 1, 1e12, 1e12,
-	1e12, 1e12, pi<deviceFP>(), pi<deviceFP>(),
+	1e12, 1e12, vPi<deviceFP>(), vPi<deviceFP>(),
 	1e-15, 1e-15, 1e-30, 1e-30,
 	1e-45, 1e-45, 1e-6, 1e-6,
 	1e-6, 1e-6,
@@ -2860,7 +2860,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 
 	double multipliers[36] = { 0,
 	1, 1, 1e12, 1e12,
-	1e12, 1e12, pi<deviceFP>(), pi<deviceFP>(),
+	1e12, 1e12, vPi<deviceFP>(), vPi<deviceFP>(),
 	1e-15, 1e-15, 1e-30, 1e-30,
 	1e-45, 1e-45, 1e-6, 1e-6,
 	1e-6, 1e-6,

@@ -10,8 +10,8 @@
 
 static const unsigned int THREADS_PER_BLOCK = 32;
 static const unsigned int MIN_GRIDDIM = 8;
-static const bool FALSE = 0;
-static const bool TRUE = 1;
+#define FALSE 0
+#define TRUE 1
 static const size_t MAX_LOADSTRING = 1024;
 
 #ifndef LWEFLOATINGPOINT
@@ -54,7 +54,7 @@ hostOrDevice static constexpr inline T minN(T a, U b) {
 }
 
 template <typename T>
-hostOrDevice static constexpr T pi() {
+hostOrDevice static constexpr T vPi() {
     return (T)3.1415926535897931;
 }
 template <typename T>

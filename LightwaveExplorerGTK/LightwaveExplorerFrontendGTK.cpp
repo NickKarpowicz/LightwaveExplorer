@@ -529,7 +529,7 @@ void setInterfaceValuesToActiveValues(){
         theGui.textBoxes[i++].setToDouble(1e-12 * (*t).frequency);
         theGui.textBoxes[i++].setToDouble(1e-12 * (*t).bandwidth);
         theGui.textBoxes[i++].setToDouble((*t).sgOrder);
-        theGui.textBoxes[i++].setToDouble((*t).cep/pi<double>());
+        theGui.textBoxes[i++].setToDouble((*t).cep/vPi<double>());
         theGui.textBoxes[i++].setToDouble(1e15 * (*t).delay);
         theGui.textBoxes[i++].setToDouble(1e30 * (*t).gdd);
         theGui.textBoxes[i++].setToDouble(1e45 * (*t).tod);
@@ -607,7 +607,7 @@ void readParametersFromInterface() {
         theGui.textBoxes[i++].valueToPointer(1e12, &(*t).frequency);
         theGui.textBoxes[i++].valueToPointer(1e12, &(*t).bandwidth);
         theGui.textBoxes[i++].valueToPointer(&(*t).sgOrder);
-        theGui.textBoxes[i++].valueToPointer(pi<double>(), &(*t).cep);
+        theGui.textBoxes[i++].valueToPointer(vPi<double>(), &(*t).cep);
         theGui.textBoxes[i++].valueToPointer(1e-15, &(*t).delay);
         theGui.textBoxes[i++].valueToPointer(1e-30, &(*t).gdd);
         theGui.textBoxes[i++].valueToPointer(1e-45, &(*t).tod);
@@ -929,15 +929,15 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
             break;
         case 1:
             nval = j * oneOver255;
-            colorMap[j][0] = (unsigned char)(255 * cos(pi<double>() * nval / 2.));
-            colorMap[j][1] = (unsigned char)(255 * cos(pi<double>() * (nval - 0.5)));
-            colorMap[j][2] = (unsigned char)(255 * sin(pi<double>() * nval / 2.));
+            colorMap[j][0] = (unsigned char)(255 * cos(vPi<double>() * nval / 2.));
+            colorMap[j][1] = (unsigned char)(255 * cos(vPi<double>() * (nval - 0.5)));
+            colorMap[j][2] = (unsigned char)(255 * sin(vPi<double>() * nval / 2.));
             break;
         case 2:
             nval = j * oneOver255;
-            colorMap[j][0] = (unsigned char)(255 * cos(pi<double>() * nval / 2.));
-            colorMap[j][1] = (unsigned char)(255 * cos(pi<double>() * (nval - 0.5)));
-            colorMap[j][2] = (unsigned char)(255 * sin(pi<double>() * nval / 2.));
+            colorMap[j][0] = (unsigned char)(255 * cos(vPi<double>() * nval / 2.));
+            colorMap[j][1] = (unsigned char)(255 * cos(vPi<double>() * (nval - 0.5)));
+            colorMap[j][2] = (unsigned char)(255 * sin(vPi<double>() * nval / 2.));
             if (nval < 0.02) {
                 colorMap[j][0] = 255;
                 colorMap[j][1] = 128;
