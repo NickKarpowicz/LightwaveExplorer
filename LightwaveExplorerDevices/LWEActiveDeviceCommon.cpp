@@ -30,8 +30,8 @@
 		(*s).fftNorm = (deviceFP)1.0 / (*s).Ngrid;
 		(*s).dt = (deviceFP)(*sCPU).tStep;
 		(*s).dx = (deviceFP)(*sCPU).rStep;
-		(*s).dk1 = (deviceFP)(TWOPI / ((*sCPU).Nspace * (*sCPU).rStep));
-		(*s).dk2 = (deviceFP)(TWOPI / ((*sCPU).Nspace2 * (*sCPU).rStep));
+		(*s).dk1 = (deviceFP)(twoPi<double>() / ((*sCPU).Nspace * (*sCPU).rStep));
+		(*s).dk2 = (deviceFP)(twoPi<double>() / ((*sCPU).Nspace2 * (*sCPU).rStep));
 		(*s).fStep = (deviceFP)(*sCPU).fStep;
 		(*s).Nsteps = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
 		(*s).h = (deviceFP)(*sCPU).crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting

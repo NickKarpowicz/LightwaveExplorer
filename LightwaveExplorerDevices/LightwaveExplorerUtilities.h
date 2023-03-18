@@ -10,36 +10,78 @@
 #endif
 #define MAX_LOADSTRING 1024
 
+//ugly macro prefix because CUDA doesn't like my nice constexprs
+#ifdef __CUDACC__
+#define UGLYPREFIX __host__ __device__
+#else
+#define UGLYPREFIX
+#endif
+
+//variadic template to constexpr the product of a bunch of values
+//in a way that keeps Xe Graphics happy (no doubles)
+template<typename T>
+UGLYPREFIX static constexpr T constProd(T x) {
+    return x;
+}
+template<typename T, typename... Args>
+UGLYPREFIX static constexpr T constProd(T x, Args... args) {
+    return (T)(x * constProd(args...));
+}
+
+
+template <typename T>
+UGLYPREFIX static constexpr T pi() {
+    return (T)3.1415926535897931;
+}
+template <typename T>
+UGLYPREFIX static constexpr T twoPi() {
+    return (T)6.2831853071795862;
+}
+template <typename T>
+UGLYPREFIX static constexpr T angleTolerance() {
+    return (T)1e-12;
+}
+template <typename T>
+UGLYPREFIX static constexpr T invSqrtPi() {
+    return (T)0.5641895835477563;
+}
+template <typename T>
+UGLYPREFIX static constexpr T deg2Rad() {
+    return (T)1.7453292519943295e-02;
+}
+template <typename T>
+UGLYPREFIX static constexpr T rad2Deg() {
+    return (T)57.2957795130823229;
+}
+template <typename T>
+UGLYPREFIX static constexpr T lightC() {
+    return (T)2.99792458e8;
+}
+template <typename T>
+UGLYPREFIX static constexpr T eps0() {
+    return (T)8.8541878128e-12;
+}
+template <typename T>
+UGLYPREFIX static constexpr T sixth() {
+    return (T)(1.0/6.0);
+}
+template <typename T>
+UGLYPREFIX static constexpr T third() {
+    return (T)(1.0/3.0);
+}
+template <typename T>
+UGLYPREFIX static constexpr T kLorentzian() {
+    return (T)3182.607353999257;
+}
 #ifndef LWEFLOATINGPOINT
 #define LWEFLOATINGPOINT 64
 #endif
 #if LWEFLOATINGPOINT==32
 #define LWEFLOATINGPOINTTYPE float
-#define ANGLETOLERANCE 1e-12f
-#define TWOPI 6.2831853071795862f
-#define PI 3.1415926535897931f
-#define INVSQRTPI 0.5641895835477563f
-#define DEG2RAD 1.7453292519943295e-02f
-#define RAD2DEG 57.2957795130823229f
-#define LIGHTC 2.99792458e8f
-#define EPS0 8.8541878128e-12f
-#define SIXTH 0.1666666666666667f
-#define THIRD 0.3333333333333333f
-#define KLORENTZIAN 3182.607353999257f //(e * e / (epsilon_o * m_e)
 #else
 #define LWEFLOATINGPOINTTYPE double
-#define ANGLETOLERANCE 1e-12
-#define TWOPI 6.2831853071795862
-#define PI 3.1415926535897931
-#define INVSQRTPI 0.5641895835477563
-#define DEG2RAD 1.7453292519943295e-02
-#define RAD2DEG 57.2957795130823229
-#define LIGHTC 2.99792458e8
-#define EPS0 8.8541878128e-12
-#define SIXTH 0.1666666666666667
-#define THIRD 0.3333333333333333
-#define KLORENTZIAN 3182.607353999257 //(e * e / (epsilon_o * m_e)
 #endif
+
 #include <complex>
 #include <cstring>
 #ifdef __CUDACC__

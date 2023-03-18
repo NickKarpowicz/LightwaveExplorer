@@ -389,7 +389,7 @@ int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
 	}
 	size_t maxFileSize = 16384;
 	size_t currentRow = 0;
-	double c = 1e9 * LIGHTC;
+	double c = 1e9 * lightC<double>();
 	double* loadedWavelengths = new double[maxFileSize]();
 	double* loadedFrequencies = new double[maxFileSize]();
 	double* loadedIntensities = new double[maxFileSize]();
@@ -893,7 +893,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	(*sCPU).Nspace2 = (size_t)(MIN_GRIDDIM * round((*sCPU).spatialHeight / (MIN_GRIDDIM * (*sCPU).rStep)));
 	(*sCPU).Ngrid = (*sCPU).Ntime * (*sCPU).Nspace;
 	(*sCPU).NgridC = (*sCPU).Nfreq * (*sCPU).Nspace;
-	(*sCPU).kStep = TWOPI / ((*sCPU).Nspace * (*sCPU).rStep);
+	(*sCPU).kStep = twoPi<double>() / ((*sCPU).Nspace * (*sCPU).rStep);
 	(*sCPU).fStep = 1.0 / ((*sCPU).Ntime * (*sCPU).tStep);
 	(*sCPU).Npropagation = (size_t)round((*sCPU).crystalThickness / (*sCPU).propagationStep);
 
@@ -976,13 +976,13 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 	// (e.g. frequency in THz requires 1e12 multiplier)
 	double multipliers[38] = { 0,
 		1, 1, 1e12, 1e12,
-		1e12, 1e12, PI, PI,
+		1e12, 1e12, pi<double>(), pi<double>(),
 		1e-15, 1e-15, 1e-30, 1e-30,
 		1e-45, 1e-45, 1e-6, 1e-6,
 		1e-6, 1e-6,
 		1e-6, 1e-6, 1e-6, 1e-6,
-		DEG2RAD, DEG2RAD, DEG2RAD, DEG2RAD,
-		1, 1, DEG2RAD, DEG2RAD,
+		deg2Rad<double>(), deg2Rad<double>(), deg2Rad<double>(), deg2Rad<double>(),
+		1, 1, deg2Rad<double>(), deg2Rad<double>(),
 		1, 1e12, 1, 1e-6,
 		1e-9, 1.0, 1.0 };
 
@@ -1071,7 +1071,7 @@ int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Nti
 	double wavelength, R, phi, complexX, complexY, f, f0, f1;
 	double fmax = 0.0;
 	int i, k0, k1;
-	double c = 1e9 * LIGHTC; //for conversion of wavelength in nm to frequency
+	double c = 1e9 * lightC<double>(); //for conversion of wavelength in nm to frequency
 	double df = 0;
 	double fmin = 0;
 	int currentRow = 0;

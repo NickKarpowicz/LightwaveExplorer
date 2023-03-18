@@ -541,8 +541,8 @@ void setInterfaceValuesToActiveValues(){
         theGui.textBoxes[i++].setToDouble(1e6 * (*t).beamwaist);
         theGui.textBoxes[i++].setToDouble(1e6 * (*t).x0);
         theGui.textBoxes[i++].setToDouble(1e6 * (*t).z0);
-        theGui.textBoxes[i++].setToDouble(RAD2DEG * (*t).beamAngle);
-        theGui.textBoxes[i++].setToDouble(RAD2DEG * (*t).polarizationAngle);
+        theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * (*t).beamAngle);
+        theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * (*t).polarizationAngle);
         theGui.textBoxes[i++].setToDouble((*t).circularity);
         t = &(*activeSetPtr).pulse2;
     }
@@ -552,8 +552,8 @@ void setInterfaceValuesToActiveValues(){
     theGui.pulldowns[2].setValue((*activeSetPtr).fittingMode);
     theGui.pulldowns[3].setValue((*activeSetPtr).materialIndex);
     
-    theGui.textBoxes[i++].setToDouble(RAD2DEG * asin(sin((*activeSetPtr).crystalTheta)));
-    theGui.textBoxes[i++].setToDouble(RAD2DEG * asin(sin((*activeSetPtr).crystalPhi)));
+    theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * asin(sin((*activeSetPtr).crystalTheta)));
+    theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * asin(sin((*activeSetPtr).crystalPhi)));
     theGui.textBoxes[i++].setToDouble((*activeSetPtr).nonlinearAbsorptionStrength);
     theGui.textBoxes[i++].setToDouble((*activeSetPtr).bandGapElectronVolts);
     theGui.textBoxes[i++].setToDouble(1e-12 * (*activeSetPtr).drudeGamma);
@@ -619,8 +619,8 @@ void readParametersFromInterface() {
         theGui.textBoxes[i++].valueToPointer(1e-6, &(*t).beamwaist);
         theGui.textBoxes[i++].valueToPointer(1e-6, &(*t).x0);
         theGui.textBoxes[i++].valueToPointer(1e-6, &(*t).z0);
-        theGui.textBoxes[i++].valueToPointer(DEG2RAD, &(*t).beamAngle);
-        theGui.textBoxes[i++].valueToPointer(DEG2RAD, &(*t).polarizationAngle);
+        theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(), &(*t).beamAngle);
+        theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(), &(*t).polarizationAngle);
         theGui.textBoxes[i++].valueToPointer(&(*t).circularity);
         t = &(*activeSetPtr).pulse2;
     }
@@ -630,8 +630,8 @@ void readParametersFromInterface() {
     (*activeSetPtr).fittingMode = theGui.pulldowns[2].getValue();
     (*activeSetPtr).materialIndex = theGui.pulldowns[3].getValue();
 
-    theGui.textBoxes[i++].valueToPointer(DEG2RAD, &(*activeSetPtr).crystalTheta);
-    theGui.textBoxes[i++].valueToPointer(DEG2RAD,  &(*activeSetPtr).crystalPhi);
+    theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(), &(*activeSetPtr).crystalTheta);
+    theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(),  &(*activeSetPtr).crystalPhi);
     theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).nonlinearAbsorptionStrength);
     theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).bandGapElectronVolts);
     theGui.textBoxes[i++].valueToPointer(1e12, &(*activeSetPtr).drudeGamma);
@@ -734,7 +734,7 @@ void readParametersFromInterface() {
     (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
     (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
     (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
-    (*activeSetPtr).kStep = TWOPI / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
+    (*activeSetPtr).kStep = twoPi<double>() / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
     (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
     (*activeSetPtr).Npropagation = (size_t)round((*activeSetPtr).crystalThickness / (*activeSetPtr).propagationStep);
 
