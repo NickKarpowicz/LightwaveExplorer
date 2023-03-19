@@ -152,8 +152,8 @@ template <typename deviceFP, typename deviceComplex>
 class CPUDevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
-	bool configuredFFT = FALSE;
-	bool isCylindric = FALSE;
+	bool configuredFFT = false;
+	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
 	deviceParameterSet<deviceFP, deviceComplex> dParamslocal;
 	fftw_plan fftPlanD2Z;
@@ -189,7 +189,7 @@ private:
 public:
 	int stream;
 	int memoryStatus;
-	bool hasPlasma = FALSE;
+	bool hasPlasma = false;
 	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	simulationParameterSet* cParams;

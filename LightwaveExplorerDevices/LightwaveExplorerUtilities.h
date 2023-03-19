@@ -10,8 +10,6 @@
 
 static const unsigned int THREADS_PER_BLOCK = 32;
 static const unsigned int MIN_GRIDDIM = 8;
-#define FALSE 0
-#define TRUE 1
 static const size_t MAX_LOADSTRING = 1024;
 
 #ifndef LWEFLOATINGPOINT

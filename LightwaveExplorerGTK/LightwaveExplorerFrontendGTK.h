@@ -58,22 +58,22 @@ typedef struct plotStruct {
     double* dataX = NULL;
     const char* xLabel = NULL;
     const char* yLabel = NULL;
-    bool hasDataX = FALSE;
+    bool hasDataX = false;
     std::complex<double>* complexData = NULL;
-    bool logScale = FALSE;
+    bool logScale = false;
     double logMin = 0;
     int dataType = 0;
     double dx = 1.0;
     double x0 = 0.0;
     size_t Npts = 0;
     double unitY = 1.0;
-    bool forceYmin = FALSE;
+    bool forceYmin = false;
     double forcedYmin = 0.0;
-    bool forceYmax = FALSE;
+    bool forceYmax = false;
     double forcedYmax = 0.0;
-    bool forceXmin = FALSE;
+    bool forceXmin = false;
     double forcedXmin = 0.0;
-    bool forceXmax = FALSE;
+    bool forceXmax = false;
     double forcedXmax = 0.0;
     LweColor axisColor = LweColor(0.5, 0.5, 0.5, 0.5);
     LweColor textColor = LweColor(0.8, 0.8, 0.8, 0.8);
@@ -82,7 +82,7 @@ typedef struct plotStruct {
     LweColor color3 = LweColor(1, 1, 1, 1);
     LweColor color4 = LweColor(1, 1, 1, 1);
     std::string SVG;
-    bool makeSVG = FALSE;
+    bool makeSVG = false;
 
 } plotStruct;
 
@@ -94,7 +94,7 @@ typedef struct imagePlotStruct {
     double* data = NULL;
     std::complex<double>* complexData = NULL;
     int colorMap = 4;
-    bool logScale = FALSE;
+    bool logScale = false;
     double logMin = 0;
     int dataType = 0;
 } imagePlotStruct;
@@ -109,7 +109,7 @@ public:
     int _height;
     bool isAttached;
     GtkWidget* _grid;
-    LweGuiElement() : label(0), elementHandle(0), _x(0), _y(0), _width(0), _height(0), isAttached(FALSE), _grid(0) {
+    LweGuiElement() : label(0), elementHandle(0), _x(0), _y(0), _width(0), _height(0), isAttached(false), _grid(0) {
     }
     ~LweGuiElement() {}
     void setPosition(GtkWidget* grid, int x, int y, int width, int height) {
@@ -167,7 +167,7 @@ public:
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         elementHandle = gtk_entry_new();
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
-        gtk_widget_set_hexpand(elementHandle, FALSE);
+        gtk_widget_set_hexpand(elementHandle, false);
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), 7);
         setPosition(grid, x, y, width, height);
     }
@@ -302,7 +302,7 @@ public:
 gboolean scrollTextViewToEndHandler(gpointer data) {
     GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(data));
     gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
-    return FALSE;
+    return false;
 }
 
 void formatSequenceEscapeAngleBrackets(std::string& s) {
@@ -332,7 +332,7 @@ gboolean formatSequenceBuffer(gpointer data) {
     gtk_text_buffer_get_start_iter(buf, &start);
     gtk_text_buffer_get_end_iter(buf, &stop);
     gtk_text_buffer_remove_all_tags(buf, &start, &stop);
-    std::string s(gtk_text_buffer_get_text(buf, &start, &stop, FALSE));
+    std::string s(gtk_text_buffer_get_text(buf, &start, &stop, false));
     std::vector<std::string> functionList { "for",
         "plasma",
         "nonlinear",
@@ -424,7 +424,7 @@ gboolean formatSequenceBuffer(gpointer data) {
 
         }
     }
-    return FALSE;
+    return false;
 }
 
 class LweConsole : public LweGuiElement {
@@ -443,13 +443,13 @@ public:
     }
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         consoleText = gtk_text_view_new();
-        gtk_text_view_set_accepts_tab(GTK_TEXT_VIEW(consoleText), FALSE);
+        gtk_text_view_set_accepts_tab(GTK_TEXT_VIEW(consoleText), false);
         elementHandle = gtk_scrolled_window_new();
         gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(elementHandle), consoleText);
-        gtk_widget_set_vexpand(elementHandle, TRUE);
-        gtk_widget_set_vexpand(consoleText, TRUE);
-        gtk_widget_set_hexpand(elementHandle, TRUE);
-        gtk_widget_set_hexpand(consoleText, TRUE);
+        gtk_widget_set_vexpand(elementHandle, true);
+        gtk_widget_set_vexpand(consoleText, true);
+        gtk_widget_set_hexpand(elementHandle, true);
+        gtk_widget_set_hexpand(consoleText, true);
         setPosition(grid, x, y, width, height);
         buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
@@ -490,14 +490,14 @@ public:
     template<typename... Args> void tPrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
         textBuffer.append(s);
-        hasNewText = TRUE;
+        hasNewText = true;
     }
     void scrollToEnd() {
         g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, scrollTextViewToEndHandler, elementHandle, NULL);
     }
     void updateFromBuffer() {
         if (hasNewText) {
-            hasNewText = FALSE;
+            hasNewText = false;
             //GtkTextIter start;
             GtkTextIter end;
             //gtk_text_buffer_get_start_iter(buf, &start);
@@ -542,7 +542,7 @@ public:
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
-        char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, FALSE);
+        char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, false);
         std::string s(realBuf);
         s.copy(destination, maxLength);
     }
@@ -560,16 +560,16 @@ class LweButton : public LweGuiElement {
 public:
     void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height, auto buttonFunction) {
         elementHandle = gtk_button_new_with_label(buttonName);
-        gtk_widget_set_hexpand(elementHandle, FALSE);
-        gtk_widget_set_vexpand(elementHandle, FALSE);
+        gtk_widget_set_hexpand(elementHandle, false);
+        gtk_widget_set_vexpand(elementHandle, false);
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
         setPosition(grid, x, y, width, height);
         setFunction(buttonFunction);
     }
     void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height, auto buttonFunction, gpointer functionData) {
         elementHandle = gtk_button_new_with_label(buttonName);
-        gtk_widget_set_hexpand(elementHandle, FALSE);
-        gtk_widget_set_vexpand(elementHandle, FALSE);
+        gtk_widget_set_hexpand(elementHandle, false);
+        gtk_widget_set_vexpand(elementHandle, false);
         setPosition(grid, x, y, width, height);
         setFunction(buttonFunction, functionData);
     }
@@ -600,7 +600,7 @@ public:
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         elementHandle = gtk_progress_bar_new();
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_CENTER);
-        gtk_widget_set_hexpand(elementHandle, TRUE);
+        gtk_widget_set_hexpand(elementHandle, true);
         setPosition(grid, x, y, width, height);
     }
     void setValue(double fraction) {
@@ -633,8 +633,8 @@ public:
     }
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         elementHandle = gtk_drop_down_new_from_strings(strArray);
-        gtk_widget_set_hexpand(elementHandle, FALSE);
-        gtk_widget_set_vexpand(elementHandle, FALSE);
+        gtk_widget_set_hexpand(elementHandle, false);
+        gtk_widget_set_vexpand(elementHandle, false);
         setPosition(grid, x, y, width, height);
     }
     int getValue() {
@@ -687,22 +687,22 @@ public:
         gtk_grid_set_column_spacing(GTK_GRID(bigGrid), 1);
         gtk_grid_set_row_spacing(GTK_GRID(plotGrid), 1);
         gtk_grid_set_column_spacing(GTK_GRID(plotGrid), 1);
-        gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
-        gtk_grid_set_column_homogeneous(GTK_GRID(consoleControlsGrid), TRUE);
-        gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
-        gtk_grid_set_column_homogeneous(GTK_GRID(plotGrid), TRUE);
-        gtk_grid_set_row_homogeneous(GTK_GRID(plotGrid), TRUE);
+        gtk_grid_set_row_homogeneous(GTK_GRID(grid), true);
+        gtk_grid_set_column_homogeneous(GTK_GRID(consoleControlsGrid), true);
+        gtk_grid_set_column_homogeneous(GTK_GRID(grid), true);
+        gtk_grid_set_column_homogeneous(GTK_GRID(plotGrid), true);
+        gtk_grid_set_row_homogeneous(GTK_GRID(plotGrid), true);
         gtk_grid_set_row_spacing(GTK_GRID(consoleGrid), 1);
         gtk_grid_set_column_spacing(GTK_GRID(consoleControlsGrid), 8);
         gtk_grid_set_column_spacing(GTK_GRID(consoleGrid), 1);
         gtk_window_set_child(GTK_WINDOW(window), bigGrid);
-        gtk_widget_set_hexpand(grid, FALSE);
+        gtk_widget_set_hexpand(grid, false);
         gtk_widget_set_halign(grid, GTK_ALIGN_START);
-        gtk_widget_set_vexpand(grid, FALSE);
+        gtk_widget_set_vexpand(grid, false);
         gtk_widget_set_valign(grid, GTK_ALIGN_START);
-        gtk_widget_set_hexpand(consoleGrid, FALSE);
-        gtk_widget_set_hexpand(consoleControlsGrid, FALSE);
-        gtk_widget_set_vexpand(consoleGrid, TRUE);
+        gtk_widget_set_hexpand(consoleGrid, false);
+        gtk_widget_set_hexpand(consoleControlsGrid, false);
+        gtk_widget_set_vexpand(consoleGrid, true);
         gtk_widget_set_halign(consoleGrid, GTK_ALIGN_FILL);
         gtk_widget_set_halign(consoleControlsGrid, GTK_ALIGN_FILL);
         gtk_widget_set_valign(consoleGrid, GTK_ALIGN_FILL);
@@ -754,8 +754,8 @@ class LweDrawBox : public LweGuiElement {
 public:
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         elementHandle = gtk_drawing_area_new();
-        gtk_widget_set_hexpand(elementHandle, TRUE);
-        gtk_widget_set_vexpand(elementHandle, TRUE);
+        gtk_widget_set_hexpand(elementHandle, true);
+        gtk_widget_set_vexpand(elementHandle, true);
         setPosition(grid, x, y, width, height);
         gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(elementHandle), 12);
         gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(elementHandle), 12);
@@ -769,15 +769,15 @@ public:
         gtk_widget_queue_draw(elementHandle);
     }
     void noVerticalExpantion() {
-        gtk_widget_set_vexpand(elementHandle, FALSE);
+        gtk_widget_set_vexpand(elementHandle, false);
     }
 };
 class LweSpacer : public LweGuiElement {
 public:
     void init(GtkWidget* grid, int x, int y, int width, int height, int spacing) {
         elementHandle = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, spacing);
-        gtk_widget_set_hexpand(elementHandle, TRUE);
-        gtk_widget_set_vexpand(elementHandle, TRUE);
+        gtk_widget_set_hexpand(elementHandle, true);
+        gtk_widget_set_vexpand(elementHandle, true);
         setPosition(grid, x, y, width, height);
     }
 };
@@ -786,9 +786,9 @@ class LweSlider : public LweGuiElement {
 public:
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         elementHandle = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
-        gtk_scale_set_draw_value(GTK_SCALE(elementHandle), TRUE);
+        gtk_scale_set_draw_value(GTK_SCALE(elementHandle), true);
         gtk_scale_set_value_pos(GTK_SCALE(elementHandle), GTK_POS_LEFT);
-        gtk_widget_set_hexpand(elementHandle, TRUE);
+        gtk_widget_set_hexpand(elementHandle, true);
         gtk_widget_set_margin_top(elementHandle, 0);
         gtk_widget_set_margin_bottom(elementHandle, 0);
         setPosition(grid, x, y, width, height);
@@ -1165,7 +1165,7 @@ int LwePlot2d(plotStruct* inputStruct) {
     };
 
     auto plotSVGPolyline = [&](double* y) {
-        bool lineOn = FALSE;
+        bool lineOn = false;
         x2 = scaleX * (xValues[iMin] - minX) + axisSpaceX;
         if ((*s).logScale) {
             y2 = height - scaleY * (log10(y[iMin]) - minY);
@@ -1176,7 +1176,7 @@ int LwePlot2d(plotStruct* inputStruct) {
         if (y2 <= height) {
             SVGstartPolyLine();
             SVGaddXYtoPolyLine(x2, y2);
-            lineOn = TRUE;
+            lineOn = true;
         }
         for (size_t i = iMin + 1; i < iMax; ++i) {
             x1 = x2;
@@ -1194,7 +1194,7 @@ int LwePlot2d(plotStruct* inputStruct) {
                 if (y2 <= height) {
                     if (!lineOn) {
                         SVGstartPolyLine();
-                        lineOn = TRUE;
+                        lineOn = true;
                     }
                     SVGaddXYtoPolyLine(x2, y2);
                 }
@@ -1202,7 +1202,7 @@ int LwePlot2d(plotStruct* inputStruct) {
                     x1 += (height - y1) / ((y2 - y1) / (x2 - x1));
                     SVGaddXYtoPolyLine(x1, height);
                     SVGendPolyLine();
-                    lineOn = FALSE;
+                    lineOn = false;
                 }
             }
             else if (y2 <= height) {
@@ -1210,13 +1210,13 @@ int LwePlot2d(plotStruct* inputStruct) {
                     x1 += (height - y1) / ((y2 - y1) / (x2 - x1));
                     SVGstartPolyLine();
                     SVGaddXYtoPolyLine(x1, height);
-                    lineOn = TRUE;
+                    lineOn = true;
                 }
                 SVGaddXYtoPolyLine(x2, y2);
             }
             else if(lineOn){
                 SVGendPolyLine();
-                lineOn = FALSE;
+                lineOn = false;
             }
         }
         if (lineOn) {

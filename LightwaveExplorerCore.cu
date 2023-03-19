@@ -452,10 +452,9 @@ namespace kernels {
 	// CUDA and OpenMP are fine with function pointers being used to launch kernels, but SYCL
 	// doesn't allow them. However, SYCL does allow named lambdas, which have a nearly identical
 	// structure. The kernelLWE(preprocessor definition handles the return type (void for CUDA,
-	// auto for SYCL, and the askernel definition is empty for CUDA, but contains the []( syntax
-	// to declare a lambda. The widthID definition gives an additional parameter for openMP and
-	// SYCL threads to be passed their ID.
+	// auto for SYCL, and the []( syntax to declare a lambda for SYCL. 
 	// The function's closing } has to be followed by a ; to have valid syntax in SYCL.
+	// localIndex will point to the current thread id.
 
 	//calculate the total energy spectrum of the beam for the 2D modes. Note that for the 
 	//cartesian one, it will be treated as a round beam instead of an infinite plane wave 
@@ -2363,7 +2362,7 @@ namespace hostFunctions{
 			vBlock[(int)parameters[0]] = parameters[1];
 			break;
 		case funHash("plasmaReinject"):
-			(*sCPU).isReinjecting = TRUE;
+			(*sCPU).isReinjecting = true;
 		case funHash("plasma"):
 		{
 			interpretParameters(cc, 9, iBlock, vBlock, parameters, defaultMask);
@@ -2386,7 +2385,7 @@ namespace hostFunctions{
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 			d.reset(sCPU);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
-			(*sCPU).isFollowerInSequence = TRUE;
+			(*sCPU).isFollowerInSequence = true;
 		}
 			break;
 		case funHash("nonlinear"):
@@ -2408,7 +2407,7 @@ namespace hostFunctions{
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 			d.reset(sCPU);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
-			(*sCPU).isFollowerInSequence = TRUE;
+			(*sCPU).isFollowerInSequence = true;
 			break;
 		case funHash("default"):
 			d.reset(sCPU);
@@ -2444,7 +2443,7 @@ namespace hostFunctions{
 			d.reset(sCPU);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
-			(*sCPU).isFollowerInSequence = TRUE;
+			(*sCPU).isFollowerInSequence = true;
 			break;
 
 		case funHash("linear"):
@@ -2463,10 +2462,10 @@ namespace hostFunctions{
 				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
 				(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 				(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
-				(*sCPU).forceLinear = TRUE;
+				(*sCPU).forceLinear = true;
 				d.reset(sCPU);
 				error = solveNonlinearWaveEquationWithDevice(d, sCPU);
-				(*sCPU).isFollowerInSequence = TRUE;
+				(*sCPU).isFollowerInSequence = true;
 			}
 			else {
 				if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
@@ -2475,7 +2474,7 @@ namespace hostFunctions{
 				if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
 				if (d.hasPlasma) {
 					(*sCPU).nonlinearAbsorptionStrength = 0.0;
-					(*sCPU).forceLinear = TRUE;
+					(*sCPU).forceLinear = true;
 					d.reset(sCPU);
 				}
 
@@ -2588,7 +2587,7 @@ namespace hostFunctions{
 			(*sCPU).crystalTheta = deg2Rad<deviceFP>() * parameters[19];
 			(*sCPU).crystalPhi = deg2Rad<deviceFP>() * parameters[20];
 
-			addPulseToFieldArrays(d, p, FALSE, NULL);
+			addPulseToFieldArrays(d, p, false, NULL);
 			d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
 			d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
@@ -2754,7 +2753,7 @@ namespace hostFunctions{
 		d.reset(fittingSet);
 
 		if ((*fittingSet).isInSequence) {
-			(*fittingSet).isFollowerInSequence = FALSE;
+			(*fittingSet).isFollowerInSequence = false;
 			solveSequenceWithDevice(d, fittingSet);
 			(*(*fittingSet).progressCounter)++;
 		}
@@ -2954,12 +2953,12 @@ int mainX(int argc, char* argv[]){
 	allocateGrids(sCPU);
 	if (loadPulseFiles(sCPU) == 1) {
 		std::cout << "Could not read pulse file." << std::endl;
-		deallocateGrids(sCPU, TRUE);
+		deallocateGrids(sCPU, true);
 		delete[] sCPU;
 		return 14;
 	}
 
-	if (((*sCPU).sequenceString[0] != 'N') && (*sCPU).sequenceString[0] != 0) (*sCPU).isInSequence = TRUE;
+	if (((*sCPU).sequenceString[0] != 'N') && (*sCPU).sequenceString[0] != 0) (*sCPU).isInSequence = true;
 	configureBatchMode(sCPU);
 	readFittingString(sCPU);
 	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
@@ -2980,7 +2979,7 @@ int mainX(int argc, char* argv[]){
 			std::cout << i << (*sCPU).fittingResult[i] << std::endl;
 		}
 
-		deallocateGrids(sCPU, TRUE);
+		deallocateGrids(sCPU, true);
 		delete[] sCPU;
 		return 0;
 	}
@@ -3019,7 +3018,7 @@ int mainX(int argc, char* argv[]){
 		<< "s" << std::endl;
 	saveDataSet(sCPU);
 	delete[] threadBlock;
-	deallocateGrids(sCPU, TRUE);
+	deallocateGrids(sCPU, true);
 	delete[] sCPU;
 	return 0;
 }

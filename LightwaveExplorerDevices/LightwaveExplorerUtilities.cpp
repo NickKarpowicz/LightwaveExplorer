@@ -77,14 +77,14 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 
 
 int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, char startChar, char endChar) {
-	bool removing = TRUE;
+	bool removing = true;
 	for (size_t i = 0; i < s.length(); ++i) {
 		if (s[i] == removedChar && removing) {
 			s.erase(i,1);
 			--i;
 		}
-		if (s[i] == startChar) removing = FALSE;
-		if (s[i] == endChar) removing = TRUE;
+		if (s[i] == startChar) removing = false;
+		if (s[i] == endChar) removing = true;
 	}
 	return 0;
 }
@@ -124,7 +124,7 @@ int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, d
 	while(i<n && ss.good()){
 		std::getline(ss, line, ',');
 		if(line.at(0)=='d'){
-			defaultMask[i] = TRUE;
+			defaultMask[i] = true;
 		}
 		else{
 			parameters[i] = parameterStringToDouble(line.c_str(),iBlock,vBlock);
@@ -677,10 +677,10 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
 	if ((*sCPU).pulse1FileType == 1) {
 		frogLines = loadFrogSpeck((*sCPU).field1FilePath, (*sCPU).loadedField1, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
 		if (frogLines > 1) {
-			(*sCPU).field1IsAllocated = TRUE;
+			(*sCPU).field1IsAllocated = true;
 		}
 		else {
-			(*sCPU).field1IsAllocated = FALSE;
+			(*sCPU).field1IsAllocated = false;
 			errCount++;
 		}
 	}
@@ -688,10 +688,10 @@ int loadPulseFiles(simulationParameterSet* sCPU) {
 	if ((*sCPU).pulse2FileType == 1) {
 		frogLines = loadFrogSpeck((*sCPU).field2FilePath, (*sCPU).loadedField2, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
 		if (frogLines > 1) {
-			(*sCPU).field2IsAllocated = TRUE;
+			(*sCPU).field2IsAllocated = true;
 		}
 		else {
-			(*sCPU).field2IsAllocated = FALSE;
+			(*sCPU).field2IsAllocated = false;
 			errCount++;
 		}
 	}
@@ -919,8 +919,8 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 		(*sCPU).Nsims2 = 1;
 	}
 
-	(*sCPU).field1IsAllocated = FALSE;
-	(*sCPU).field2IsAllocated = FALSE;
+	(*sCPU).field1IsAllocated = false;
+	(*sCPU).field2IsAllocated = false;
 
 	//crystal from database (database must be loaded!)
 	(*sCPU).crystalDatabase = crystalDatabasePtr;
@@ -1013,7 +1013,7 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 			sCPU[j + currentRow].ExtOut = &(*sCPU).ExtOut[(j + currentRow) * (*sCPU).Ngrid * 2];
 			sCPU[j + currentRow].EkwOut = &(*sCPU).EkwOut[(j + currentRow) * (*sCPU).NgridC * 2];
 			sCPU[j + currentRow].totalSpectrum = &(*sCPU).totalSpectrum[(j + currentRow) * (*sCPU).Nfreq * 3];
-			sCPU[j + currentRow].isFollowerInSequence = FALSE;
+			sCPU[j + currentRow].isFollowerInSequence = false;
 
 			// To add new modes, append values to the two arrays above, and to the combobox in the UI.
 			// Cast the pointer to the original value to a pointer to a struct, 

@@ -91,7 +91,7 @@ public:
 	}
 
 	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
-		return FALSE;
+		return false;
 	}
 
 	void fft(void* input, void* output, deviceFFT type) {

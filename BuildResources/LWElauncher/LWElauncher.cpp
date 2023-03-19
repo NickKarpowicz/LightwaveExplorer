@@ -21,7 +21,7 @@ void setSYCLvars() {
             setSYCLpersistent,        // Command line
             NULL,           // Process handle not inheritable
             NULL,           // Thread handle not inheritable
-            FALSE,          // Set handle inheritance to FALSE
+            false,          // Set handle inheritance to false
             CREATE_NO_WINDOW,              // No creation flags
             NULL,           // Use parent's environment block
             NULL,           // Use parent's starting directory 
@@ -58,7 +58,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         launchLWE,        // Command line
         NULL,           // Process handle not inheritable
         NULL,           // Thread handle not inheritable
-        FALSE,          // Set handle inheritance to FALSE
+        false,          // Set handle inheritance to false
         CREATE_NO_WINDOW,              // No creation flags
         NULL,           // Use parent's environment block
         NULL,           // Use parent's starting directory 

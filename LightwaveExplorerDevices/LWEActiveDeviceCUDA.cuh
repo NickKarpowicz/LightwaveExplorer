@@ -130,8 +130,8 @@ template<typename deviceFP, typename deviceComplex>
 class CUDADevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
-	bool configuredFFT = FALSE;
-	bool isCylindric = FALSE;
+	bool configuredFFT = false;
+	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
 	
 	cufftHandle fftPlanD2Z;

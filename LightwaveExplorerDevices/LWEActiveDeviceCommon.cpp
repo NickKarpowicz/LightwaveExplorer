@@ -49,16 +49,16 @@
 		(*s).isUsingMillersRule = ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) != 0.0;
 
 		if ((*sCPU).nonlinearAbsorptionStrength > 0.) {
-			(*s).hasPlasma = TRUE;
-			(*s).isNonLinear = TRUE;
+			(*s).hasPlasma = true;
+			(*s).isNonLinear = true;
 		}
 		else {
-			(*s).hasPlasma = FALSE;
+			(*s).hasPlasma = false;
 		}
 
 		if ((*s).forceLinear) {
-			(*s).hasPlasma = FALSE;
-			(*s).isNonLinear = FALSE;
+			(*s).hasPlasma = false;
+			(*s).isNonLinear = false;
 		}
 		hasPlasma = (*s).hasPlasma;
 	}

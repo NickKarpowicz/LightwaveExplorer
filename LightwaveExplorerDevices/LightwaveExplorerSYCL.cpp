@@ -77,6 +77,6 @@ BOOL DllMain( HMODULE hModule,
     case DLL_PROCESS_DETACH:
         break;
     }
-    return TRUE;
+    return true;
 }
 #endif

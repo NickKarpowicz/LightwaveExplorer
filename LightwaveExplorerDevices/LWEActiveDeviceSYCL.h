@@ -149,8 +149,8 @@ template<typename deviceFP, typename deviceComplex>
 class SYCLDevice {
 private:
 #include "LWEActiveDeviceCommon.cpp"
-	bool configuredFFT = FALSE;
-	bool isCylindric = FALSE;
+	bool configuredFFT = false;
+	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
 	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlanD2Z;
 	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlanZ2D;
@@ -172,7 +172,7 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	simulationParameterSet* cParams;
 	int memoryStatus;
-	bool hasPlasma = FALSE;
+	bool hasPlasma = false;
 
 
 	SYCLDevice(simulationParameterSet* sCPU) {
