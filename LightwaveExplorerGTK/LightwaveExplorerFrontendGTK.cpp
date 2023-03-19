@@ -504,7 +504,7 @@ public:
 };
 mainGui theGui;
 
-char programDirectory[MAX_LOADSTRING];     // Program working directory (useful if the crystal database has to be reloaded)
+char programDirectory[pathArrayLength];     // Program working directory (useful if the crystal database has to be reloaded)
 
 ///////////////////.
 //Definitions over
@@ -580,17 +580,17 @@ void setInterfaceValuesToActiveValues(){
     theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
     theGui.sequence.clear();
     if (std::string((*activeSetPtr).sequenceString).length() > 6) {
-        std::string formattedSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
+        std::string formattedSequence((*activeSetPtr).sequenceString, 2*pathArrayLength);
         formatSequence(formattedSequence);
         theGui.sequence.directOverwritePrintSequence(formattedSequence.c_str());
     }
-    stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
+    stripLineBreaks((*activeSetPtr).field1FilePath, pathArrayLength);
     if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
     if (std::string((*activeSetPtr).field2FilePath).compare("None") != 0) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
     if (std::string((*activeSetPtr).fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
     theGui.fitCommand.clear();
     if (!((*activeSetPtr).fittingString[0] == 'N')) {
-        std::string formattedFit((*activeSetPtr).fittingString,MAX_LOADSTRING);
+        std::string formattedFit((*activeSetPtr).fittingString,pathArrayLength);
         insertAfterCharacter(formattedFit,';',std::string("\n"));
         theGui.fitCommand.overwritePrint(formattedFit.c_str());
     }
@@ -654,66 +654,66 @@ void readParametersFromInterface() {
 
     std::string noneString("None\0");
     std::string s;
-    memset((*activeSetPtr).sequenceString, 0, 2*MAX_LOADSTRING);
-    theGui.sequence.copyBuffer((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
+    memset((*activeSetPtr).sequenceString, 0, 2*pathArrayLength);
+    theGui.sequence.copyBuffer((*activeSetPtr).sequenceString, 2*pathArrayLength);
     s.assign((*activeSetPtr).sequenceString);
     if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
+        noneString.copy((*activeSetPtr).sequenceString, 2*pathArrayLength);
     }
     else {
-        stripWhiteSpace((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
+        stripWhiteSpace((*activeSetPtr).sequenceString, 2*pathArrayLength);
     }
     
-    memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
-    theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString, MAX_LOADSTRING);
+    memset((*activeSetPtr).fittingString, 0, pathArrayLength);
+    theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString, pathArrayLength);
     s.assign((*activeSetPtr).fittingString);
     if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).fittingString, MAX_LOADSTRING);
+        noneString.copy((*activeSetPtr).fittingString, pathArrayLength);
     }
     else {
-        stripLineBreaks((*activeSetPtr).fittingString, MAX_LOADSTRING);
+        stripLineBreaks((*activeSetPtr).fittingString, pathArrayLength);
     }
     
-    memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING);
-    theGui.filePaths[0].copyBuffer((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
+    memset((*activeSetPtr).field1FilePath, 0, pathArrayLength);
+    theGui.filePaths[0].copyBuffer((*activeSetPtr).field1FilePath, pathArrayLength);
     s.assign((*activeSetPtr).field1FilePath);
     if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
+        noneString.copy((*activeSetPtr).field1FilePath, pathArrayLength);
     }
-    stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
-    memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING);
-    theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
+    stripLineBreaks((*activeSetPtr).field1FilePath, pathArrayLength);
+    memset((*activeSetPtr).field2FilePath, 0, pathArrayLength);
+    theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath, pathArrayLength);
     s.assign((*activeSetPtr).field2FilePath);
     if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
+        noneString.copy((*activeSetPtr).field2FilePath, pathArrayLength);
     }
-    stripLineBreaks((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
-    memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING);
-    theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
+    stripLineBreaks((*activeSetPtr).field2FilePath, pathArrayLength);
+    memset((*activeSetPtr).outputBasePath, 0, pathArrayLength);
+    theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath, pathArrayLength);
     s.assign((*activeSetPtr).outputBasePath);
     if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
+        noneString.copy((*activeSetPtr).outputBasePath, pathArrayLength);
     }
-    stripLineBreaks((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
+    stripLineBreaks((*activeSetPtr).outputBasePath, pathArrayLength);
     
-    memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING);
-    theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath, MAX_LOADSTRING);
+    memset((*activeSetPtr).fittingPath, 0, pathArrayLength);
+    theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath, pathArrayLength);
     s.assign((*activeSetPtr).fittingPath);
     if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).fittingPath, MAX_LOADSTRING);
+        noneString.copy((*activeSetPtr).fittingPath, pathArrayLength);
     }
-    stripLineBreaks((*activeSetPtr).fittingPath, MAX_LOADSTRING);
+    stripLineBreaks((*activeSetPtr).fittingPath, pathArrayLength);
 
     //derived parameters and cleanup:
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
-    (*activeSetPtr).Ntime = (size_t)(MIN_GRIDDIM * round((*activeSetPtr).timeSpan / (MIN_GRIDDIM * (*activeSetPtr).tStep)));
+    (*activeSetPtr).Ntime = (size_t)(minGridDimension * round((*activeSetPtr).timeSpan / (minGridDimension * (*activeSetPtr).tStep)));
     if ((*activeSetPtr).symmetryType == 2) {
         (*activeSetPtr).is3D = true;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * minGridDimension)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
         if ((*activeSetPtr).spatialHeight > 0) {
-            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * minGridDimension)));
         }
         else {
             (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
@@ -724,7 +724,7 @@ void readParametersFromInterface() {
         (*activeSetPtr).is3D = false;
         (*activeSetPtr).Nspace2 = 1;
         (*activeSetPtr).spatialHeight = 0;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * minGridDimension)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     }
 
@@ -1340,8 +1340,8 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[MAX_LOADSTRING]();
-        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        char* svgFilename = new char[pathArrayLength]();
+        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
         std::string svgPath(svgFilename);
         svgPath.append("_Ex.svg");
         std::ofstream fs(svgPath);
@@ -1392,8 +1392,8 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[MAX_LOADSTRING]();
-        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        char* svgFilename = new char[pathArrayLength]();
+        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
         std::string svgPath(svgFilename);
         svgPath.append("_Ey.svg");
         std::ofstream fs(svgPath);
@@ -1473,8 +1473,8 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[MAX_LOADSTRING]();
-        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        char* svgFilename = new char[pathArrayLength]();
+        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
         std::string svgPath(svgFilename);
         svgPath.append("_Sx.svg");
         std::ofstream fs(svgPath);
@@ -1555,8 +1555,8 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[MAX_LOADSTRING]();
-        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        char* svgFilename = new char[pathArrayLength]();
+        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
         std::string svgPath(svgFilename);
         svgPath.append("_Sy.svg");
         std::ofstream fs(svgPath);

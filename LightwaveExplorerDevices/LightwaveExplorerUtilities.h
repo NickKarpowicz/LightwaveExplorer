@@ -8,9 +8,9 @@
 #include <mach-o/dyld.h>
 #endif
 
-static const unsigned int THREADS_PER_BLOCK = 32;
-static const unsigned int MIN_GRIDDIM = 8;
-static const size_t MAX_LOADSTRING = 1024;
+static const unsigned int threadsPerBlock = 32;
+static const unsigned int minGridDimension = 8;
+static const size_t pathArrayLength = 1024;
 
 #ifndef LWEFLOATINGPOINT
 #define LWEFLOATINGPOINT 64
@@ -488,8 +488,8 @@ public:
     bool field2IsAllocated = 0;
     int pulse1FileType = 0;
     int pulse2FileType = 0;
-    char field1FilePath[MAX_LOADSTRING] = { 0 };
-    char field2FilePath[MAX_LOADSTRING] = { 0 };
+    char field1FilePath[pathArrayLength] = { 0 };
+    char field2FilePath[pathArrayLength] = { 0 };
 
     int pulsetype = 0;
     double* ExtOut = 0;
@@ -504,7 +504,7 @@ public:
     int batchIndex2 = 0;
     double batchDestination = 0;
     double batchDestination2 = 0;
-    char outputBasePath[MAX_LOADSTRING] = { 0 };
+    char outputBasePath[pathArrayLength] = { 0 };
     int runType = 0;
     bool runningOnCPU = 0;
 
@@ -513,7 +513,7 @@ public:
     bool isFollowerInSequence = 0;
     bool isReinjecting = 0;
     bool forceLinear = 0;
-    char sequenceString[2*MAX_LOADSTRING] = { 0 };
+    char sequenceString[2*pathArrayLength] = { 0 };
     double i37 = 0.0;
     size_t batchLoc1 = 0;
     size_t batchLoc2 = 0;

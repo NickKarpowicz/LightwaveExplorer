@@ -1910,12 +1910,12 @@ namespace hostFunctions{
 		d.deviceMemcpy((void*)(*sc).gridEFrequency1Next1, (void*)(*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
 
 		//set the propagation grids how they should be at the beginning of the next step
-		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, 
+		d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, 
 			multiplicationKernelCompactDoubleVector, 
 			(*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
-		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, 
+		d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, 
 			multiplyByConstantKernelDZ, (*sc).workspace1, (*sc).fftNorm);
-		//d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
+		//d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 
 		return 0;
 	}
@@ -1978,7 +1978,7 @@ namespace hostFunctions{
 
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
 
-		d.deviceLaunch((int)(d.deviceStruct.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+		d.deviceLaunch((int)(d.deviceStruct.Ngrid / minGridDimension), 2 * minGridDimension, multiplyByConstantKernelD, 
 			d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
 		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
@@ -2000,7 +2000,7 @@ namespace hostFunctions{
 			(deviceFP)radius,
 			(deviceFP)order);
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D_1D);
-		d.deviceLaunch((int)(d.deviceStruct.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+		d.deviceLaunch((int)(d.deviceStruct.Ngrid / minGridDimension), 2 * minGridDimension, multiplyByConstantKernelD, 
 			d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ntime));
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
 		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
@@ -2049,7 +2049,7 @@ namespace hostFunctions{
 
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
 
-		d.deviceLaunch((int)(d.deviceStruct.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+		d.deviceLaunch((int)(d.deviceStruct.Ngrid / minGridDimension), 2 * minGridDimension, multiplyByConstantKernelD, 
 			d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
 		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 
@@ -2163,7 +2163,7 @@ namespace hostFunctions{
 		//prepare the propagation grids
 		deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
 		d.deviceMemcpy(sD, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
-		d.deviceLaunch((unsigned int)(*sc).Ntime/(2*MIN_GRIDDIM), MIN_GRIDDIM, getChiLinearKernel, sD, sellmeierCoefficients);
+		d.deviceLaunch((unsigned int)(*sc).Ntime/(2*minGridDimension), minGridDimension, getChiLinearKernel, sD, sellmeierCoefficients);
 		if ((*s).is3D) {
 			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepare3DGridsKernel, sellmeierCoefficients, sD);
 		}
@@ -2190,7 +2190,7 @@ namespace hostFunctions{
 
 		//retrieve/rotate the field from the CPU memory
 		d.deviceMemcpy(Ein1, (*sCPU).EkwOut, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), HostToDevice);
-		d.deviceLaunch((unsigned int)(d.deviceStruct.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle);
+		d.deviceLaunch((unsigned int)(d.deviceStruct.NgridC / minGridDimension), minGridDimension, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle);
 		d.deviceMemcpy((*sCPU).EkwOut, Eout1, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), DeviceToHost);
 
 		//transform back to time
@@ -2224,7 +2224,7 @@ namespace hostFunctions{
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel, sD);
 				if((*sH).hasPlasma){
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
-					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
+					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B, sD);
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam, sD);
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFT::D2Z_Polarization);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernelCylindric, sD);
@@ -2249,7 +2249,7 @@ namespace hostFunctions{
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
-				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
+				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B, sD);
 				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
 				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel, sD);
 			}
@@ -2324,7 +2324,7 @@ namespace hostFunctions{
 		//take final spectra and transfer the results to the CPU
 		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
-		d.deviceLaunch((int)(d.deviceStruct.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
+		d.deviceLaunch((int)(d.deviceStruct.Ngrid / minGridDimension), 2 * minGridDimension, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
 		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
 		getTotalSpectrum(d);
 
@@ -2908,117 +2908,4 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 }
 
 
-	
-//main function - if included in the GUI, this should have a different name
-// than main() - this one applies when running in command line mode (e.g. on
-// the clusters.)
-int mainX(int argc, char* argv[]){
-	char* filepath = argv[1];
-	int i, j;
 
-	size_t progressCounter = 0;
-	int CUDAdeviceCount = 1;
-
-	if (hardwareCheck(&CUDAdeviceCount)) return 1;
-
-	if (argc < 2) {
-		std::cout << "No input file specified." << std::endl;
-		return 2;
-	}
-
-	// allocate databases, main structs
-	simulationParameterSet initializationStruct;
-	memset(&initializationStruct, 0, sizeof(simulationParameterSet));
-	crystalDatabase db;
-	initializationStruct.crystalDatabase = db.db.data();
-	initializationStruct.progressCounter = &progressCounter;
-	// read crystal database
-	if (db.db.size() == 0) {
-		std::cout << "Could not read crystal database." << std::endl;
-		return 12;
-	}
-	std::cout << "Read " << db.db.size() << "crystal database entries :" << std::endl;
-	for (j = 0; j < db.db.size(); ++j) {
-		std::cout << "Material " << j << "name: " << db.db[j].crystalName.c_str() << std::endl;
-	}
-
-	// read from settings file
-	if (readInputParametersFile(&initializationStruct, db.db.data(), filepath) == 1) {
-		std::cout << "Could not read input file." << std::endl;
-		return 13;
-	}
-	size_t Ntotal = minN(1, initializationStruct.Nsims * minN(1, initializationStruct.Nsims2));
-	simulationParameterSet* sCPU = new simulationParameterSet[Ntotal];
-	memcpy(sCPU, &initializationStruct, sizeof(simulationParameterSet));
-	allocateGrids(sCPU);
-	if (loadPulseFiles(sCPU) == 1) {
-		std::cout << "Could not read pulse file." << std::endl;
-		deallocateGrids(sCPU, true);
-		delete[] sCPU;
-		return 14;
-	}
-
-	if (((*sCPU).sequenceString[0] != 'N') && (*sCPU).sequenceString[0] != 0) (*sCPU).isInSequence = true;
-	configureBatchMode(sCPU);
-	readFittingString(sCPU);
-	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
-
-	if ((*sCPU).Nfitting != 0) {
-		std::cout << "Running optimization for" << (*sCPU).fittingMaxIterations << "iterations..." << std::endl;
-
-		runDlibFittingX(sCPU);
-
-		auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-		std::cout << "Finished after" <<
-			1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
-			<< "s" << std::endl;
-		saveDataSet(sCPU);
-
-		std::cout << "Optimization result:" << std::endl << "(index, value)" << std::endl;
-		for (int i = 0; i < (*sCPU).Nfitting; ++i) {
-			std::cout << i << (*sCPU).fittingResult[i] << std::endl;
-		}
-
-		deallocateGrids(sCPU, true);
-		delete[] sCPU;
-		return 0;
-	}
-	// run simulations
-	std::thread* threadBlock = new std::thread[Ntotal];
-	size_t maxThreads = minN(CUDAdeviceCount, Ntotal);
-	for (j = 0; j < Ntotal; ++j) {
-
-		sCPU[j].assignedGPU = j % CUDAdeviceCount;
-		if (j >= maxThreads) {
-			if (threadBlock[j - maxThreads].joinable()) {
-				threadBlock[j - maxThreads].join();
-			}
-		}
-
-		if ((*sCPU).isInSequence) {
-			threadBlock[j] = std::thread(solveNonlinearWaveEquationSequenceX, &sCPU[j]);
-		}
-		else {
-			threadBlock[j] = std::thread(solveNonlinearWaveEquationX, &sCPU[j]);
-		}
-
-	}
-	for (i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; ++i) {
-		if (sCPU[i].memoryError > 0) {
-			std::cout << "Warning: device memory error " << sCPU[i].memoryError << std::endl;
-		}
-		if (threadBlock[i].joinable()) {
-			threadBlock[i].join();
-		}
-	}
-
-	auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-	std::cout << "Finished after" <<
-		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
-		<< "s" << std::endl;
-	saveDataSet(sCPU);
-	delete[] threadBlock;
-	deallocateGrids(sCPU, true);
-	delete[] sCPU;
-	return 0;
-}

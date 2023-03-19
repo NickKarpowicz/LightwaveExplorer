@@ -11,8 +11,8 @@ int readFittingString(simulationParameterSet* sCPU) {
 	std::erase(sIn, '\r');
 	std::erase(sIn, '\n');
 	std::erase(sIn, '\t');
-	memset((*sCPU).fittingString, 0, MAX_LOADSTRING);
-	sIn.copy((*sCPU).fittingString, MAX_LOADSTRING - 1);
+	memset((*sCPU).fittingString, 0, pathArrayLength);
+	sIn.copy((*sCPU).fittingString, pathArrayLength - 1);
 #endif
 
 
@@ -21,7 +21,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 	int maxIterations = 0;
 	int fittingCount = 0;
 	ss >> ROIbegin >> ROIend >> maxIterations;
-	ss.ignore(MAX_LOADSTRING, ';');
+	ss.ignore(pathArrayLength, ';');
 
 	(*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
 	(*sCPU).fittingROIstop = (size_t)minN(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
@@ -31,7 +31,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 	while (ss.good()) {
 		ss >> (*sCPU).fittingArray[fittingCount] >> (*sCPU).fittingArray[fittingCount + 1] >> (*sCPU).fittingArray[fittingCount + 2];
 		if (ss.good()) fittingCount += 3;
-		ss.ignore(MAX_LOADSTRING, ';');
+		ss.ignore(pathArrayLength, ';');
 	}
 
 	(*sCPU).Nfitting = fittingCount / 3;
@@ -39,7 +39,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 
 	if (!(*sCPU).isInFittingMode) {
 		std::string noneString("None.\0");
-		noneString.copy((*sCPU).fittingString, MAX_LOADSTRING);
+		noneString.copy((*sCPU).fittingString, pathArrayLength);
 	}
 
 	return 0;
@@ -834,14 +834,14 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	memset((*sCPU).sequenceString, 0, 2 * MAX_LOADSTRING);
-	line.copy((*sCPU).sequenceString, 2*MAX_LOADSTRING);
+	memset((*sCPU).sequenceString, 0, 2 * pathArrayLength);
+	line.copy((*sCPU).sequenceString, 2*pathArrayLength);
 	
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	memset((*sCPU).fittingString, 0, MAX_LOADSTRING);
-	line.copy((*sCPU).fittingString, MAX_LOADSTRING);
+	memset((*sCPU).fittingString, 0, pathArrayLength);
+	line.copy((*sCPU).fittingString, pathArrayLength);
 	
 	moveToColon();
 	fs >> (*sCPU).fittingMode;
@@ -849,7 +849,7 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).outputBasePath, MAX_LOADSTRING);
+	line.copy((*sCPU).outputBasePath, pathArrayLength);
 
 	moveToColon();
 	fs >> (*sCPU).pulse1FileType;
@@ -859,38 +859,38 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).field1FilePath, MAX_LOADSTRING);
+	line.copy((*sCPU).field1FilePath, pathArrayLength);
 
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).field2FilePath, MAX_LOADSTRING);
+	line.copy((*sCPU).field2FilePath, pathArrayLength);
 
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).fittingPath, MAX_LOADSTRING);
+	line.copy((*sCPU).fittingPath, pathArrayLength);
 
-	removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\r');
-	removeCharacterFromString((*sCPU).field1FilePath, MAX_LOADSTRING, '\n');
-	removeCharacterFromString((*sCPU).field2FilePath, MAX_LOADSTRING, '\r');
-	removeCharacterFromString((*sCPU).field2FilePath, MAX_LOADSTRING, '\n');
-	removeCharacterFromString((*sCPU).fittingPath, MAX_LOADSTRING, '\r');
-	removeCharacterFromString((*sCPU).fittingPath, MAX_LOADSTRING, '\n');
-	removeCharacterFromString((*sCPU).fittingString, MAX_LOADSTRING, '\r');
-	removeCharacterFromString((*sCPU).fittingString, MAX_LOADSTRING, '\n');
-	removeCharacterFromString((*sCPU).sequenceString, 2*MAX_LOADSTRING, '\r');
-	removeCharacterFromString((*sCPU).sequenceString, 2*MAX_LOADSTRING, '\n');
-	removeCharacterFromString((*sCPU).outputBasePath, MAX_LOADSTRING, '\r');
-	removeCharacterFromString((*sCPU).outputBasePath, MAX_LOADSTRING, '\n');
+	removeCharacterFromString((*sCPU).field1FilePath, pathArrayLength, '\r');
+	removeCharacterFromString((*sCPU).field1FilePath, pathArrayLength, '\n');
+	removeCharacterFromString((*sCPU).field2FilePath, pathArrayLength, '\r');
+	removeCharacterFromString((*sCPU).field2FilePath, pathArrayLength, '\n');
+	removeCharacterFromString((*sCPU).fittingPath, pathArrayLength, '\r');
+	removeCharacterFromString((*sCPU).fittingPath, pathArrayLength, '\n');
+	removeCharacterFromString((*sCPU).fittingString, pathArrayLength, '\r');
+	removeCharacterFromString((*sCPU).fittingString, pathArrayLength, '\n');
+	removeCharacterFromString((*sCPU).sequenceString, 2*pathArrayLength, '\r');
+	removeCharacterFromString((*sCPU).sequenceString, 2*pathArrayLength, '\n');
+	removeCharacterFromString((*sCPU).outputBasePath, pathArrayLength, '\r');
+	removeCharacterFromString((*sCPU).outputBasePath, pathArrayLength, '\n');
 
 	//derived parameters and cleanup:
 	(*sCPU).sellmeierType = 0;
 	(*sCPU).axesNumber = 0;
-	(*sCPU).Ntime = (size_t)(MIN_GRIDDIM * round((*sCPU).timeSpan / (MIN_GRIDDIM * (*sCPU).tStep)));
+	(*sCPU).Ntime = (size_t)(minGridDimension * round((*sCPU).timeSpan / (minGridDimension * (*sCPU).tStep)));
 	(*sCPU).Nfreq = (*sCPU).Ntime / 2 + 1;
-	(*sCPU).Nspace = (size_t)(MIN_GRIDDIM * round((*sCPU).spatialWidth / (MIN_GRIDDIM * (*sCPU).rStep)));
-	(*sCPU).Nspace2 = (size_t)(MIN_GRIDDIM * round((*sCPU).spatialHeight / (MIN_GRIDDIM * (*sCPU).rStep)));
+	(*sCPU).Nspace = (size_t)(minGridDimension * round((*sCPU).spatialWidth / (minGridDimension * (*sCPU).rStep)));
+	(*sCPU).Nspace2 = (size_t)(minGridDimension * round((*sCPU).spatialHeight / (minGridDimension * (*sCPU).rStep)));
 	(*sCPU).Ngrid = (*sCPU).Ntime * (*sCPU).Nspace;
 	(*sCPU).NgridC = (*sCPU).Nfreq * (*sCPU).Nspace;
 	(*sCPU).kStep = twoPi<double>() / ((*sCPU).Nspace * (*sCPU).rStep);
