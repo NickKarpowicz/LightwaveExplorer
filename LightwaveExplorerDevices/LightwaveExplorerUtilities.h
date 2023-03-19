@@ -50,14 +50,14 @@ template <typename T, typename U>
 hostOrDevice static constexpr inline T minN(T a, U b) {
     return (((a) < (b)) ? (a) : (b));
 }
-
+//pi to stupid digits
 template <typename T>
 hostOrDevice static constexpr T vPi() {
-    return (T)3.1415926535897931;
+    return (T)3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384L;
 }
 template <typename T>
 hostOrDevice static constexpr T twoPi() {
-    return (T)6.2831853071795862;
+    return (T)(2.0 * vPi<T>());
 }
 template <typename T>
 hostOrDevice static constexpr T angleTolerance() {
@@ -65,15 +65,15 @@ hostOrDevice static constexpr T angleTolerance() {
 }
 template <typename T>
 hostOrDevice static constexpr T invSqrtPi() {
-    return (T)0.5641895835477563;
+    return (T)(1.0/sqrt(vPi<T>()));
 }
 template <typename T>
 hostOrDevice static constexpr T deg2Rad() {
-    return (T)1.7453292519943295e-02;
+    return (T)(vPi<T>()/180.0);
 }
 template <typename T>
 hostOrDevice static constexpr T rad2Deg() {
-    return (T)57.2957795130823229;
+    return (T)(180.0/vPi<T>());
 }
 template <typename T>
 hostOrDevice static constexpr T lightC() {
@@ -85,11 +85,11 @@ hostOrDevice static constexpr T eps0() {
 }
 template <typename T>
 hostOrDevice static constexpr T sixth() {
-    return (T)(1.0/6.0);
+    return (T)((T)1.0/6.0);
 }
 template <typename T>
 hostOrDevice static constexpr T third() {
-    return (T)(1.0/3.0);
+    return (T)((T)1.0/3.0);
 }
 template <typename T>
 hostOrDevice static constexpr T kLorentzian() {
@@ -122,6 +122,11 @@ enum class deviceFFT : int {
     D2Z_Polarization = 4
 };
 
+enum class copyType : int {
+    ToDevice = 1,
+    ToHost =  2,
+    OnDevice = 3
+};
 
 template <typename deviceFP, typename deviceComplex>
 class deviceParameterSet {

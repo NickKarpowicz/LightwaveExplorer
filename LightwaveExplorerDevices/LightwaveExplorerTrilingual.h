@@ -1,4 +1,4 @@
-// define a compiler-specific activeDevice class and set of macros
+// define a compiler-specific device class and set of macros
 #ifdef __CUDACC__
 #include "LWEActiveDeviceCUDA.cuh"
 #define deviceFunction __device__
@@ -24,13 +24,11 @@ __global__ static void kernelName(__VA_ARGS__)
 const auto kernelName = [](size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
 #define localIndex trilingualLaunchID
-
 #if LWEFLOATINGPOINT == 64
 #define runDlibFittingX runDlibFittingSYCL
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCL
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
 #else
-
 #define runDlibFittingX runDlibFittingSYCLFP32
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCLFP32
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCLFP32
@@ -53,7 +51,6 @@ static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
 #define localIndex trilingualLaunchID
-
 #if LWEFLOATINGPOINT == 32
 #define runDlibFittingX runDlibFittingCPUFP32
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPUFP32
