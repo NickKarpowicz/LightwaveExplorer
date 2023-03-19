@@ -3,6 +3,7 @@
 #include <complex>
 #include <cstring>
 #include <vector>
+#include <array>
 #include <fstream>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -207,6 +208,7 @@ public:
     int Nthread = 0;
     int NblockC = 0;
     int Nblock = 0;
+
 };
 
 
@@ -493,8 +495,8 @@ public:
     bool field2IsAllocated = 0;
     int pulse1FileType = 0;
     int pulse2FileType = 0;
-    char field1FilePath[pathArrayLength] = { 0 };
-    char field2FilePath[pathArrayLength] = { 0 };
+    std::string field1FilePath;
+    std::string field2FilePath;
 
     int pulsetype = 0;
     double* ExtOut = 0;
@@ -509,7 +511,7 @@ public:
     int batchIndex2 = 0;
     double batchDestination = 0;
     double batchDestination2 = 0;
-    char outputBasePath[pathArrayLength] = { 0 };
+    std::string outputBasePath;
     int runType = 0;
     bool runningOnCPU = 0;
 
@@ -518,16 +520,16 @@ public:
     bool isFollowerInSequence = 0;
     bool isReinjecting = 0;
     bool forceLinear = 0;
-    char sequenceString[2*pathArrayLength] = { 0 };
+    std::string sequenceString;
     double i37 = 0.0;
     size_t batchLoc1 = 0;
     size_t batchLoc2 = 0;
 
     //fitting
     bool isInFittingMode;
-    char fittingString[1024] = { 0 };
-    char fittingPath[1024] = { 0 };
-    double fittingArray[256] = { 0 };
+    std::string fittingString;
+    std::string fittingPath;
+    std::array<double, 256> fittingArray;
     double* fittingReference = 0;
     int Nfitting = 0;
     int fittingMode = 0;
@@ -535,21 +537,22 @@ public:
     size_t fittingROIstart = 0;
     size_t fittingROIstop = 0;
     size_t fittingROIsize = 0;
-    double fittingResult[64];
-    double fittingError[64];
+    std::array<double, 64> fittingResult;
+    std::array<double, 64> fittingError;
 };
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
+int             removeCharacterFromString(std::string& s, char removedChar);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int             loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU);
+int             loadReferenceSpectrum(std::string spectrumPath, simulationParameterSet* sCPU);
 int             readFittingString(simulationParameterSet* sCPU);
 int             saveSettingsFile(simulationParameterSet* sCPU);
 void            unixNewLine(FILE* iostream);
 double          saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, size_t totalSteps);
-int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
+int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);
 int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems);
@@ -562,6 +565,9 @@ int             copyParamsIntoStrings(char parameterBlock[22][256], const char* 
 void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(const char* pString, double* iBlock, double* vBlock);
 std::string     getBasename(char* fullPath);
+std::string     getBasename(const std::string& fullPath);
 void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
-void            stripLineBreaks(char* sequenceString, size_t bufferSize);
+void            stripWhiteSpace(std::string& s);
+//void            stripLineBreaks(char* sequenceString, size_t bufferSize);
+void            stripLineBreaks(std::string& s);
 int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);

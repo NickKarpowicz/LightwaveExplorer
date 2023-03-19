@@ -6,17 +6,15 @@
 
 
 int readFittingString(simulationParameterSet* sCPU) {
-	std::string sIn((*sCPU).fittingString);
 #ifndef __CUDACC__
-	std::erase(sIn, '\r');
-	std::erase(sIn, '\n');
-	std::erase(sIn, '\t');
-	memset((*sCPU).fittingString, 0, pathArrayLength);
-	sIn.copy((*sCPU).fittingString, pathArrayLength - 1);
+	std::erase((*sCPU).fittingString, '\r');
+	std::erase((*sCPU).fittingString, '\n');
+	std::erase((*sCPU).fittingString, '\t');
+
 #endif
 
 
-	std::stringstream ss(sIn);
+	std::stringstream ss((*sCPU).fittingString);
 	double ROIbegin, ROIend;
 	int maxIterations = 0;
 	int fittingCount = 0;
@@ -39,7 +37,8 @@ int readFittingString(simulationParameterSet* sCPU) {
 
 	if (!(*sCPU).isInFittingMode) {
 		std::string noneString("None.\0");
-		noneString.copy((*sCPU).fittingString, pathArrayLength);
+		//noneString.copy((*sCPU).fittingString, pathArrayLength);
+		(*sCPU).fittingString = noneString;
 	}
 
 	return 0;
@@ -72,7 +71,10 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	}
 	return 0;
 }
-
+int removeCharacterFromString(std::string& s, char removedChar) {
+	s.erase(std::remove(s.begin(), s.end(), removedChar), s.end());
+	return 0;
+}
 
 
 
@@ -104,6 +106,15 @@ void stripWhiteSpace(char* sequenceString, size_t bufferSize) {
 	s.copy(sequenceString, bufferSize - 1);
 }
 
+void stripWhiteSpace(std::string& s) {
+	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
+#ifndef __CUDACC__
+	std::erase(s, '\r');
+	std::erase(s, '\n');
+	std::erase(s, '\t');
+#endif
+}
+
 void stripLineBreaks(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
 #ifndef __CUDACC__
@@ -112,6 +123,13 @@ void stripLineBreaks(char* sequenceString, size_t bufferSize) {
 #endif
 	memset(sequenceString, 0, bufferSize);
 	s.copy(sequenceString, bufferSize-1);
+}
+
+void stripLineBreaks(std::string& s) {
+#ifndef __CUDACC__
+	std::erase(s, '\r');
+	std::erase(s, '\n');
+#endif
 }
 
 
@@ -382,7 +400,7 @@ int fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long 
 	return 0;
 }
 
-int loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU) {
+int loadReferenceSpectrum(std::string spectrumPath, simulationParameterSet* sCPU) {
 	std::ifstream fs(spectrumPath);
 	if (fs.fail()) {
 		return 1;
@@ -483,8 +501,16 @@ std::string getBasename(char* fullPath) {
 	return pathString.substr(positionOfName + 1);
 }
 
+std::string getBasename(const std::string& fullPath) {
+	std::string pathString = fullPath;
+	std::size_t positionOfName = pathString.find_last_of("/\\");
+	if (positionOfName == std::string::npos) return pathString;
+	return pathString.substr(positionOfName + 1);
+}
+
+
 double saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, size_t totalSteps) {
-	std::string outputFile((*sCPU).outputBasePath);
+	std::string outputFile=(*sCPU).outputBasePath;
 	outputFile.append(".slurmScript");
 	std::ofstream fs(outputFile, std::ios::binary);
 	if (fs.fail()) return 1;
@@ -834,23 +860,22 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	memset((*sCPU).sequenceString, 0, 2 * pathArrayLength);
-	line.copy((*sCPU).sequenceString, 2*pathArrayLength);
+
+	(*sCPU).sequenceString = line;
 	
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	memset((*sCPU).fittingString, 0, pathArrayLength);
-	line.copy((*sCPU).fittingString, pathArrayLength);
-	
+
+	(*sCPU).fittingString = line;
 	moveToColon();
 	fs >> (*sCPU).fittingMode;
 
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).outputBasePath, pathArrayLength);
 
+	(*sCPU).outputBasePath = line;
 	moveToColon();
 	fs >> (*sCPU).pulse1FileType;
 	moveToColon();
@@ -859,30 +884,30 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).field1FilePath, pathArrayLength);
 
+	(*sCPU).field1FilePath = line;
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).field2FilePath, pathArrayLength);
 
+	(*sCPU).field2FilePath = line;
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-	line.copy((*sCPU).fittingPath, pathArrayLength);
 
-	removeCharacterFromString((*sCPU).field1FilePath, pathArrayLength, '\r');
-	removeCharacterFromString((*sCPU).field1FilePath, pathArrayLength, '\n');
-	removeCharacterFromString((*sCPU).field2FilePath, pathArrayLength, '\r');
-	removeCharacterFromString((*sCPU).field2FilePath, pathArrayLength, '\n');
-	removeCharacterFromString((*sCPU).fittingPath, pathArrayLength, '\r');
-	removeCharacterFromString((*sCPU).fittingPath, pathArrayLength, '\n');
-	removeCharacterFromString((*sCPU).fittingString, pathArrayLength, '\r');
-	removeCharacterFromString((*sCPU).fittingString, pathArrayLength, '\n');
-	removeCharacterFromString((*sCPU).sequenceString, 2*pathArrayLength, '\r');
-	removeCharacterFromString((*sCPU).sequenceString, 2*pathArrayLength, '\n');
-	removeCharacterFromString((*sCPU).outputBasePath, pathArrayLength, '\r');
-	removeCharacterFromString((*sCPU).outputBasePath, pathArrayLength, '\n');
+	(*sCPU).fittingPath = line;
+	removeCharacterFromString((*sCPU).field1FilePath, '\r');
+	removeCharacterFromString((*sCPU).field1FilePath, '\n');
+	removeCharacterFromString((*sCPU).field2FilePath, '\r');
+	removeCharacterFromString((*sCPU).field2FilePath, '\n');
+	removeCharacterFromString((*sCPU).fittingPath, '\r');
+	removeCharacterFromString((*sCPU).fittingPath, '\n');
+	removeCharacterFromString((*sCPU).fittingString, '\r');
+	removeCharacterFromString((*sCPU).fittingString, '\n');
+	removeCharacterFromString((*sCPU).sequenceString, '\r');
+	removeCharacterFromString((*sCPU).sequenceString, '\n');
+	removeCharacterFromString((*sCPU).outputBasePath, '\r');
+	removeCharacterFromString((*sCPU).outputBasePath, '\n');
 
 	//derived parameters and cleanup:
 	(*sCPU).sellmeierType = 0;
@@ -991,7 +1016,8 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 		currentRow = i * (*sCPU).Nsims;
 		
 		if (currentRow > 0) {
-			memcpy(&sCPU[currentRow], sCPU, sizeof(simulationParameterSet));
+			//memcpy(&sCPU[currentRow], sCPU, sizeof(simulationParameterSet));
+			sCPU[currentRow] = sCPU[0];
 		}
 		if ((*sCPU).Nsims2 > 1) {
 			*((double*)((simulationParameterSet*)targets[(*sCPU).batchIndex2] + currentRow)) +=
@@ -1002,7 +1028,8 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 		for (j = 0; j < (*sCPU).Nsims; j++) {
 
 			if (j > 0) {
-				memcpy(&sCPU[j + currentRow], &sCPU[currentRow], sizeof(simulationParameterSet));
+				//memcpy(&sCPU[j + currentRow], &sCPU[currentRow], sizeof(simulationParameterSet));
+				sCPU[j + currentRow] = sCPU[currentRow];
 			}
 
 			if ((*sCPU).deffTensor != NULL) {
@@ -1063,7 +1090,7 @@ double cModulusSquared(std::complex<double>complexNumber) {
 }
 
 
-int loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel) {
+int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel) {
 	std::string line;
 	std::ifstream fs(frogFilePath);
 	if (fs.fail()) return -1;

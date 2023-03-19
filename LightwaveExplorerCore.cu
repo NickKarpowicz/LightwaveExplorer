@@ -2108,8 +2108,8 @@ namespace hostFunctions{
 	static int applyLinearPropagation(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, int materialIndex, double thickness) {
 
 		if (d.hasPlasma) {
-			simulationParameterSet sCopy;
-			memcpy(&sCopy, sCPU, sizeof(simulationParameterSet));
+			simulationParameterSet sCopy = *sCPU;
+			//memcpy(&sCopy, sCPU, sizeof(simulationParameterSet));
 			sCopy.nonlinearAbsorptionStrength = 0.0;
 			d.reset(&sCopy);
 		}
@@ -2564,7 +2564,8 @@ namespace hostFunctions{
 			d.deviceMemcpy(d.deviceStruct.gridEFrequency1, (*sCPU).EkwOut, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToDevice);
 
 			pulse<double> p;
-			memcpy(&p, &(sCPU->pulse1), sizeof(pulse<double>));
+			//memcpy(&p, &(sCPU->pulse1), sizeof(pulse<double>));
+			p = sCPU->pulse1;
 			p.energy = parameters[0];
 			p.frequency = 1e12 * parameters[1];
 			p.bandwidth = 1e12 * parameters[2];
@@ -2669,8 +2670,8 @@ namespace hostFunctions{
 		//main text interpreter
 		simulationParameterSet sCPUbackupValues;
 		simulationParameterSet* sCPUbackup = &sCPUbackupValues;
-		memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
-
+		//memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
+		sCPUbackup = sCPU;
 		double iBlock[100] = { 0.0 };
 
 		for (int k = 1; k < 38; k++) {
@@ -2711,7 +2712,8 @@ namespace hostFunctions{
 			currentString = currentString.substr(1, std::string::npos);
 
 			(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
-			memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
+			//memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
+			sCPU = sCPUbackup;
 		}
 		return error;
 	}
@@ -2822,9 +2824,11 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 
 // Main function for running a sequence
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
-	simulationParameterSet sCPUcurrent;
+	
+	
+	//memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
+	simulationParameterSet sCPUcurrent = *((simulationParameterSet*)lpParam);
 	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
-	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
 	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);
 	unsigned long returnValue = solveSequenceWithDevice(d, sCPU);
@@ -2833,10 +2837,10 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 
 //run in fitting mode
 unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
-	simulationParameterSet sCPUcurrent;
+	simulationParameterSet sCPUcurrent = *sCPU;
 	fittingSet = &sCPUcurrent;
 
-	memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
+	//memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
 	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(fittingSet);
 	dFit = &d;
 	dlib::matrix<double, 0, 1> parameters;

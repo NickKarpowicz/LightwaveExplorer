@@ -297,6 +297,19 @@ public:
         }
     }
 
+    void copyBuffer(std::string& destination) {
+        GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
+        
+        if (gtk_entry_buffer_get_length(buf) > 0) {
+            std::string s(gtk_entry_buffer_get_text(buf));
+            destination = s;
+        }
+        else {
+            std::string s("None.");
+            destination = s;
+        }
+    }
+
 };
 
 gboolean scrollTextViewToEndHandler(gpointer data) {
@@ -547,6 +560,22 @@ public:
         s.copy(destination, maxLength);
     }
 
+    void copyBuffer(std::string& s) {
+        GtkTextIter start;
+        GtkTextIter stop;
+        if (gtk_text_buffer_get_char_count(buf) > 0) {
+            gtk_text_buffer_get_start_iter(buf, &start);
+            gtk_text_buffer_get_end_iter(buf, &stop);
+            char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, false);
+            std::string c(realBuf);
+            s = c;
+        }
+        else {
+            std::string c("None.");
+            s = c;
+        }
+    }
+
     void clear() {
         char emptyBuffer[] = "";
         textBuffer.clear();
@@ -625,10 +654,10 @@ public:
     void addElement(const char* newelement) {
         if (Nelements == 99) return;
         std::string s(newelement);
+        stripLineBreaks(s);
         s.append("\0");
         strArray[Nelements] = &strings[Nelements * strLength];
         s.copy(strArray[Nelements], 127);
-        stripLineBreaks(strArray[Nelements],128);
         ++Nelements;
     }
     void init(GtkWidget* grid, int x, int y, int width, int height) {
