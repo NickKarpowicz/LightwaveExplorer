@@ -34,8 +34,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 	(*sCPU).isInFittingMode = (((*sCPU).Nfitting > 0) && (maxIterations > 0));
 
 	if (!(*sCPU).isInFittingMode) {
-		std::string noneString("None.\0");
-		//noneString.copy((*sCPU).fittingString, pathArrayLength);
+		std::string noneString("None.");
 		(*sCPU).fittingString = noneString;
 	}
 
@@ -50,6 +49,10 @@ int skipFileUntilCharacter(FILE* fstream, char target) {
 	return 0;
 }
 
+//this is a job for std::erase, but when running the code on the cluster, everything
+//is done with nvcc, with only an old version of cmake available. This means I can't
+//use c++20 features there. So if it's compiled with c++17, use the more complicated
+//function, otherwise just inline to std::erase.
 int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	size_t i = 0;
 	size_t r = 0;
@@ -69,7 +72,6 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	}
 	return 0;
 }
-
 #if __cplusplus==201703L
 inline void removeCharacterFromString(std::string& s, char removedChar) {
 	char* editString = new char[s.length() + 1]();

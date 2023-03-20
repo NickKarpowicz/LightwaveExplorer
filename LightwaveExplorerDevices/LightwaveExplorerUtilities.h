@@ -546,10 +546,10 @@ public:
     size_t batchLoc2 = 0;
 
     //fitting
-    bool isInFittingMode;
+    bool isInFittingMode = false;
     std::string fittingString;
     std::string fittingPath;
-    std::array<double, 256> fittingArray;
+    std::array<double, 256> fittingArray = {};
     double* fittingReference = 0;
     int Nfitting = 0;
     int fittingMode = 0;
@@ -557,8 +557,8 @@ public:
     size_t fittingROIstart = 0;
     size_t fittingROIstop = 0;
     size_t fittingROIsize = 0;
-    std::array<double, 64> fittingResult;
-    std::array<double, 64> fittingError;
+    std::array<double, 64> fittingResult = {};
+    std::array<double, 64> fittingError = {};
 };
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
