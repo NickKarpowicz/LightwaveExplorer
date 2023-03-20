@@ -1,5 +1,7 @@
-	#include "LightwaveExplorerUtilities.h"
-	#include "LWEActiveDeviceCUDA.cuh"
+#include "LightwaveExplorerTrilingual.h"	
+#include "LightwaveExplorerUtilities.h"
+#include <iostream>
+
 	#ifndef PLATFORMTYPE
 	#include "../LightwaveExplorerCore.cuh"
 	#include <chrono>
