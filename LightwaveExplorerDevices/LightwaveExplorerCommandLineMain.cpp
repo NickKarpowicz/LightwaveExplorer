@@ -2,6 +2,8 @@
 	#include "LWEActiveDeviceCUDA.cuh"
 	#ifndef PLATFORMTYPE
 	#include "../LightwaveExplorerCore.cuh"
+	#include <chrono>
+	#include <thread>
 	#endif
 //main function - if included in the GUI, this should have a different name
 // than main() - this one applies when running in command line mode (e.g. on
