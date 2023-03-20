@@ -41,18 +41,11 @@ bool isIntelRuntimeInstalled() {
 #include <mach-o/dyld.h>
 #import<Cocoa/Cocoa.h>
 #endif
-
-const int labelWidth = 6;
-const size_t maxSimulations = 4096;
-
 bool isRunning = false;
-bool isPlotting = false;
 bool isGridAllocated = false;
 bool cancellationCalled = false;
 bool CUDAavailable = false;
 bool SYCLavailable = false;
-bool doNotLoadSYCL = false;
-std::string inputArgs;
 int cudaGPUCount = 0;
 int syclGPUCount = 0;
 size_t progressCounter = 0;
@@ -651,10 +644,10 @@ void readParametersFromInterface() {
     (*activeSetPtr).batchIndex2 = theGui.pulldowns[6].getValue();
     (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
     theGui.textBoxes[52].valueToPointer(&(*activeSetPtr).NsimsCPU);
-
+    (*activeSetPtr).isInSequence = false;
     theGui.sequence.copyBuffer((*activeSetPtr).sequenceString);
     stripWhiteSpace((*activeSetPtr).sequenceString);
-
+    (*activeSetPtr).isInFittingMode = false;
     theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString);
     stripLineBreaks((*activeSetPtr).fittingString);
 
@@ -1068,16 +1061,13 @@ void createRunFile() {
     }
 
     readParametersFromInterface();
-    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > maxSimulations) {
-        theGui.console.tPrint("Too many simulations in batch mode. Must be under {} total.\r\n", maxSimulations);
-    }
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
     isGridAllocated = true;
     (*activeSetPtr).isFollowerInSequence = false;
     (*activeSetPtr).crystalDatabase = theDatabase.db.data();
 
-    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = true;
+    if ((*activeSetPtr).sequenceString[0] != 'N' && (*activeSetPtr).sequenceString.length() > 5) (*activeSetPtr).isInSequence = true;
 
     simulationParameterSet backupSet = *activeSetPtr;
     simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 + 1, backupSet);
@@ -1851,9 +1841,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
 
     readParametersFromInterface();
-    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > maxSimulations) {
-        theGui.console.tPrint("Too many simulations in batch mode. Must be under {} total.\r\n", maxSimulations);
-    }
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
     isGridAllocated = true;
@@ -1862,7 +1849,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     (*activeSetPtr).crystalDatabase = theDatabase.db.data();
     loadPulseFiles(activeSetPtr);
 
-    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = true;
+    if ((*activeSetPtr).sequenceString[0] != 'N' && (*activeSetPtr).sequenceString.length() > 5) (*activeSetPtr).isInSequence = true;
 
     simulationParameterSet backupSet = *activeSetPtr;
     simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2+1, backupSet);
@@ -2071,7 +2058,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     (*activeSetPtr).crystalDatabase = theDatabase.db.data();
     loadPulseFiles(activeSetPtr);
 
-    if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = true;
+    if ((*activeSetPtr).sequenceString[0] != 'N' && (*activeSetPtr).sequenceString.length() > 5) (*activeSetPtr).isInSequence = true;
     simulationParameterSet backupSet = *activeSetPtr;
     simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 + 1, backupSet);
     activeSetPtr = simulationData.data();

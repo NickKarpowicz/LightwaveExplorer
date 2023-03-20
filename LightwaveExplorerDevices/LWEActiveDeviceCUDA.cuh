@@ -209,10 +209,10 @@ public:
 		cudaMemset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, copyType kind) {
+	void deviceMemcpy(void* dst, const void* src, size_t count, copyType kind) {
 		cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 	}
-	void deviceMemcpy(double* dst, float* src, size_t count, copyType kind) {
+	void deviceMemcpy(double* dst, const float* src, size_t count, copyType kind) {
 		float* copyBuffer = new float[count / sizeof(double)];
 		cudaMemcpy(copyBuffer, src, count/2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		for (size_t i = 0; i < count / sizeof(double); i++) {
@@ -221,7 +221,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(std::complex<double>* dst, thrust::complex<float>* src, size_t count, copyType kind) {
+	void deviceMemcpy(std::complex<double>* dst, const thrust::complex<float>* src, size_t count, copyType kind) {
 		thrust::complex<float>* copyBuffer = new thrust::complex<float>[count / sizeof(std::complex<double>)];
 		cudaMemcpy(copyBuffer, src, count/2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
@@ -230,7 +230,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(thrust::complex<float>* dst, std::complex<double>* src, size_t count, copyType kind) {
+	void deviceMemcpy(thrust::complex<float>* dst, const std::complex<double>* src, size_t count, copyType kind) {
 		thrust::complex<float>* copyBuffer = new thrust::complex<float>[count / sizeof(std::complex<double>)];
 		
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
@@ -240,7 +240,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(float* dst, double* src, size_t count, copyType kind) {
+	void deviceMemcpy(float* dst, const double* src, size_t count, copyType kind) {
 		float* copyBuffer = new float[count / sizeof(double)];
 
 		for (size_t i = 0; i < count / sizeof(double); i++) {
@@ -301,7 +301,7 @@ public:
 		configuredFFT = 1;
 	}
 
-	void fft(void* input, void* output, deviceFFT type) {
+	void fft(const void* input, void* output, deviceFFT type) {
 		switch (static_cast<int>(type) + 5 * ( sizeof(deviceFP) == sizeof (float))) {
 		case 0:
 			cufftExecD2Z(fftPlanD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);

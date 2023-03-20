@@ -1,6 +1,5 @@
 #pragma once
 #include <complex>
-#include <cstring>
 #include <vector>
 #include <array>
 #include <fstream>
@@ -570,11 +569,10 @@ int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, lo
 int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int             loadReferenceSpectrum(std::string spectrumPath, simulationParameterSet* sCPU);
 int             readFittingString(simulationParameterSet* sCPU);
-int             saveSettingsFile(simulationParameterSet* sCPU);
-void            unixNewLine(FILE* iostream);
+int             saveSettingsFile(const simulationParameterSet* sCPU);
 double          saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, size_t totalSteps);
 int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
-double          cModulusSquared(std::complex<double>complexNumber);
+double          cModulusSquared(const std::complex<double>& x);
 int             allocateGrids(simulationParameterSet* sCPU);
 int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems);
 int             configureBatchMode(simulationParameterSet* sCPU);
@@ -582,9 +580,8 @@ int             saveDataSet(simulationParameterSet* sCPU);
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);
 int             loadPulseFiles(simulationParameterSet* sCPU);
 int             skipFileUntilCharacter(FILE* fstream, char target);
-int             copyParamsIntoStrings(char parameterBlock[22][256], const char* cc, int n);
 void            applyOp(char op, double* result, double* readout);
-double          parameterStringToDouble(const char* pString, double* iBlock, double* vBlock);
+double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
 std::string     getBasename(char* fullPath);
 std::string     getBasename(const std::string& fullPath);
 void            stripWhiteSpace(char* sequenceString, size_t bufferSize);

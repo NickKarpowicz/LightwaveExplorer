@@ -2367,6 +2367,7 @@ namespace hostFunctions{
 			break;
 		case funHash("plasmaReinject"):
 			(*sCPU).isReinjecting = true;
+			[[fallthrough]];
 		case funHash("plasma"):
 		{
 			interpretParameters(cc, 9, iBlock, vBlock, parameters, defaultMask);
@@ -2805,11 +2806,8 @@ namespace hostFunctions{
 				result += a * a;
 			}
 		}
-
-
 		return sqrt(result);
 	}
-	
 }
 using namespace hostFunctions;
 
@@ -2824,14 +2822,10 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 	return returnValue;
 }
 
-
 // Main function for running a sequence
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
-	
-	
-	//memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
 	simulationParameterSet sCPUcurrent = *((simulationParameterSet*)lpParam);
-	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
+	simulationParameterSet* sCPU = &sCPUcurrent;
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
 	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);
 	unsigned long returnValue = solveSequenceWithDevice(d, sCPU);

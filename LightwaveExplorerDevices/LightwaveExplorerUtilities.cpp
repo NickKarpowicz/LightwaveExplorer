@@ -132,7 +132,6 @@ void stripLineBreaks(std::string& s) {
 	removeCharacterFromString(s, '\n');
 }
 
-
 int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask){
 	std::string ccSegment = cc.substr(cc.find_first_of('(')+1, std::string::npos);
 
@@ -145,7 +144,7 @@ int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, d
 			defaultMask[i] = true;
 		}
 		else{
-			parameters[i] = parameterStringToDouble(line.c_str(),iBlock,vBlock);
+			parameters[i] = parameterStringToDouble(line,iBlock,vBlock);
 		}
 		i++;
 	}
@@ -153,29 +152,6 @@ int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, d
 	return 0;
 }
 
-int copyParamsIntoStrings(char parameterBlock[22][256], const char* cc, int n) {
-	int loc = 0;
-	//scan to opening parenthesis
-	for (;;) {
-		if (cc[loc] == '(') break;
-		if (cc[loc] == 0) return 1;
-		loc++;
-	}
-
-	loc++;
-	for (int i = 0; i < n; ++i) {
-		for (int j = 0; j < 64; j++) {
-			if (cc[loc] == ',' || cc[loc] == ')') {
-				j = 64;
-			}
-			else {
-				parameterBlock[i][j] = cc[loc];
-			}
-			loc++;
-		}
-	}
-	return loc;
-}
 
 void applyOp(char op, double* result, double* readout) {
 	switch (op) {
@@ -202,8 +178,7 @@ void applyOp(char op, double* result, double* readout) {
 	}
 }
 
-double parameterStringToDouble(const char* pString, double* iBlock, double* vBlock) {
-	std::string ss(pString);
+double parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock) {
 
 	auto nextInt = [&](std::string iStr, int location) {
 		std::stringstream s(iStr.substr(location));
@@ -571,15 +546,7 @@ double saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, 
 	return timeEstimate;
 }
 
-//print a linefeed without a carriage return so that linux systems don't complain
-//about impure scripts from DOS machines
-//fopen() should be called with "wb"
-void unixNewLine(FILE* iostream) {
-	char LF = '\x0A';
-	fwrite(&LF, sizeof(char), 1, iostream);
-}
-
-int saveSettingsFile(simulationParameterSet* sCPU) {
+int saveSettingsFile(const simulationParameterSet* sCPU) {
 	crystalEntry *crystalDatabasePtr = (*sCPU).crystalDatabase;
 	std::string outputPath((*sCPU).outputBasePath);
 	if ((*sCPU).runType > 0) {
@@ -1084,9 +1051,8 @@ int deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems) {
 //calculates the squard modulus of a complex number, under the assumption that the
 //machine's complex number format is interleaved doubles.
 //c forced to run in c++ for nostalgia reasons
-double cModulusSquared(std::complex<double>complexNumber) {
-	double* xy = (double*)&complexNumber;
-	return xy[0] * xy[0] + xy[1] * xy[1];
+double cModulusSquared(const std::complex<double>& x) {
+	return x.real()*x.real() + x.imag()*x.imag();
 }
 
 
