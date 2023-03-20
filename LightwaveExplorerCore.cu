@@ -2670,8 +2670,7 @@ namespace hostFunctions{
 		//main text interpreter
 		simulationParameterSet sCPUbackupValues;
 		simulationParameterSet* sCPUbackup = &sCPUbackupValues;
-		//memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
-		sCPUbackup = sCPU;
+		sCPUbackupValues = *sCPU;
 		double iBlock[100] = { 0.0 };
 
 		for (int k = 1; k < 38; k++) {
@@ -2713,7 +2712,7 @@ namespace hostFunctions{
 
 			(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
 			//memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
-			sCPU = sCPUbackup;
+			*sCPU = *sCPUbackup;
 		}
 		return error;
 	}
