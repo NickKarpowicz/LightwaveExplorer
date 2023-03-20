@@ -721,11 +721,11 @@ void readParametersFromInterface() {
 
     //crystal from database (database must be loaded!)
     (*activeSetPtr).crystalDatabase = theDatabase.db.data();
-    (*activeSetPtr).chi2Tensor = theDatabase.db[(*activeSetPtr).materialIndex].d;
-    (*activeSetPtr).chi3Tensor = theDatabase.db[(*activeSetPtr).materialIndex].chi3;
-    (*activeSetPtr).nonlinearSwitches = theDatabase.db[(*activeSetPtr).materialIndex].nonlinearSwitches;
-    (*activeSetPtr).absorptionParameters = theDatabase.db[(*activeSetPtr).materialIndex].absorptionParameters;
-    (*activeSetPtr).sellmeierCoefficients = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierCoefficients;
+    (*activeSetPtr).chi2Tensor = theDatabase.db[(*activeSetPtr).materialIndex].d.data();
+    (*activeSetPtr).chi3Tensor = theDatabase.db[(*activeSetPtr).materialIndex].chi3.data();
+    (*activeSetPtr).nonlinearSwitches = theDatabase.db[(*activeSetPtr).materialIndex].nonlinearSwitches.data();
+    (*activeSetPtr).absorptionParameters = theDatabase.db[(*activeSetPtr).materialIndex].absorptionParameters.data();
+    (*activeSetPtr).sellmeierCoefficients = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierCoefficients.data();
     (*activeSetPtr).sellmeierType = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierType;
     (*activeSetPtr).axesNumber = theDatabase.db[(*activeSetPtr).materialIndex].axisType;
     (*activeSetPtr).progressCounter = &progressCounter;
@@ -1081,7 +1081,6 @@ void createRunFile() {
     configureBatchMode(activeSetPtr);
 
     simulationParameterSet* testSet = new simulationParameterSet[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2]();
-    //memcpy(testSet, activeSetPtr, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 * sizeof(simulationParameterSet));
     totalSteps = 0;
     for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         testSet[j] = activeSetPtr[j];
@@ -1863,9 +1862,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = true;
     
     configureBatchMode(activeSetPtr);
-
     simulationParameterSet* testSet = new simulationParameterSet[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2]();
-    //memcpy(testSet, activeSetPtr, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 * sizeof(simulationParameterSet));
     totalSteps = 0;
     for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         testSet[j] = activeSetPtr[j];

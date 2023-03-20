@@ -1,5 +1,4 @@
 #pragma once
-
 #include <complex>
 #include <cstring>
 #include <vector>
@@ -96,8 +95,6 @@ template <typename T>
 hostOrDevice static constexpr T kLorentzian() {
     return (T)3182.607353999257;
 }
-
-
 
 #include <complex>
 #include <cstring>
@@ -208,7 +205,6 @@ public:
     int Nthread = 0;
     int NblockC = 0;
     int Nblock = 0;
-
 };
 
 
@@ -217,16 +213,16 @@ public:
     std::string crystalName;
     int axisType = 0;
     int sellmeierType = 0;
-    int nonlinearSwitches[4] = { 0 };
-    double sellmeierCoefficients[66] = { 0 };
+    std::array<int,4> nonlinearSwitches = {};
+    std::array<double,66> sellmeierCoefficients = {};
     std::string sellmeierReference;
-    double d[18] = { 0 };
+    std::array<double,18> d = {};
     std::string dReference;
-    double chi3[81] = { 0 };
+    std::array<double,81> chi3 = {};
     std::string chi3Reference;
-    double absorptionParameters[6] = { 0 };
-    char spectralFile[512] = { 0 };
-    double nonlinearReferenceFrequencies[7] = { 0 };
+    std::array<double,6> absorptionParameters = {};
+    std::string spectralFile;
+    std::array<double,7> nonlinearReferenceFrequencies = {};
 };
 
 class crystalDatabase {
@@ -312,7 +308,7 @@ public:
             std::getline(fs, line);
 
             std::getline(fs, line); //chi3:
-            memset(newEntry.chi3, 0, 81 * sizeof(double));
+            
             switch (newEntry.nonlinearSwitches[1]) {
             case 0: //no chi3, skip all three lines
                 std::getline(fs, line);
@@ -340,8 +336,7 @@ public:
 
             std::getline(fs, line); //Spectral file:
             std::getline(fs, line);
-            line.copy(newEntry.spectralFile, 512);
-
+            newEntry.spectralFile = line;
             std::getline(fs, line); //Nonlinear reference frequencies:
             for (int k = 0; k < 7; ++k) {
                 fs >> newEntry.nonlinearReferenceFrequencies[k];

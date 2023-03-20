@@ -73,8 +73,8 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	return 0;
 }
 int removeCharacterFromString(std::string& s, char removedChar) {
-	//s.erase(std::remove(s.begin(), s.end(), removedChar), s.end());
-	std::erase(s,removedChar);
+	s.erase(std::remove(s.begin(), s.end(), removedChar), s.end());
+	//std::erase(s,removedChar);
 	return 0;
 }
 
@@ -951,11 +951,11 @@ int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalD
 
 	//crystal from database (database must be loaded!)
 	(*sCPU).crystalDatabase = crystalDatabasePtr;
-	(*sCPU).chi2Tensor = crystalDatabasePtr[(*sCPU).materialIndex].d;
-	(*sCPU).chi3Tensor = crystalDatabasePtr[(*sCPU).materialIndex].chi3;
-	(*sCPU).nonlinearSwitches = crystalDatabasePtr[(*sCPU).materialIndex].nonlinearSwitches;
-	(*sCPU).absorptionParameters = crystalDatabasePtr[(*sCPU).materialIndex].absorptionParameters;
-	(*sCPU).sellmeierCoefficients = crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients;
+	(*sCPU).chi2Tensor = crystalDatabasePtr[(*sCPU).materialIndex].d.data();
+	(*sCPU).chi3Tensor = crystalDatabasePtr[(*sCPU).materialIndex].chi3.data();
+	(*sCPU).nonlinearSwitches = crystalDatabasePtr[(*sCPU).materialIndex].nonlinearSwitches.data();
+	(*sCPU).absorptionParameters = crystalDatabasePtr[(*sCPU).materialIndex].absorptionParameters.data();
+	(*sCPU).sellmeierCoefficients = crystalDatabasePtr[(*sCPU).materialIndex].sellmeierCoefficients.data();
 	(*sCPU).sellmeierType = crystalDatabasePtr[(*sCPU).materialIndex].sellmeierType;
 	(*sCPU).axesNumber = crystalDatabasePtr[(*sCPU).materialIndex].axisType;
 

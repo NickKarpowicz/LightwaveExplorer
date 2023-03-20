@@ -1837,8 +1837,8 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&materialCoefficients, 66, sizeof(deviceFP));
 		d.deviceCalloc((void**)&sellmeierPropagationMedium, 66, sizeof(deviceFP));
 		d.deviceCalloc((void**)&materialPhase, (*s).Nfreq, sizeof(deviceFP));
-		d.deviceMemcpy(materialCoefficients, (*s).crystalDatabase[pCPU.phaseMaterial].sellmeierCoefficients, 66 * sizeof(double), copyType::ToDevice);
-		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients, 66 * sizeof(double), copyType::ToDevice);
+		d.deviceMemcpy(materialCoefficients, (*s).crystalDatabase[pCPU.phaseMaterial].sellmeierCoefficients.data(), 66 * sizeof(double), copyType::ToDevice);
+		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients.data(), 66 * sizeof(double), copyType::ToDevice);
 		d.deviceLaunch((unsigned int)(*s).Nfreq, 1, materialPhaseKernel, (deviceFP)(*s).fStep, 
 			(*s).Ntime, materialCoefficients, (deviceFP)pCPU.frequency, (deviceFP)pCPU.phaseMaterialThickness, 
 			materialPhase);
@@ -1922,7 +1922,7 @@ namespace hostFunctions{
 
 	static int applyFresnelLoss(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* s, deviceParameterSet<deviceFP, deviceComplex>& sc, int materialIndex1, int materialIndex2) {
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
-		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients, 66 * (sizeof(double)));
+		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients.data(), 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
 		sellmeierCoefficientsAugmentedCPU[68] = (*s).axesNumber;
@@ -1936,7 +1936,7 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&sellmeierCoefficients2, 74, sizeof(deviceFP));
 		d.deviceMemcpy(sellmeierCoefficients1, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), copyType::ToDevice);
 
-		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex2].sellmeierCoefficients, 66 * (sizeof(double)));
+		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex2].sellmeierCoefficients.data(), 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
 		sellmeierCoefficientsAugmentedCPU[68] = (*s).axesNumber;
@@ -2119,7 +2119,7 @@ namespace hostFunctions{
 		deviceFP* sellmeierCoefficients = (deviceFP*)d.deviceStruct.gridEFrequency1Next1;
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
-		memcpy(sellmeierCoefficientsAugmentedCPU, (*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients, 66 * (sizeof(double)));
+		memcpy(sellmeierCoefficientsAugmentedCPU, (*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients.data(), 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*sCPU).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*sCPU).crystalPhi;
 		sellmeierCoefficientsAugmentedCPU[68] = (*sCPU).axesNumber;
@@ -2157,7 +2157,7 @@ namespace hostFunctions{
 		sellmeierCoefficientsAugmentedCPU[70] = (*s).kStep;
 		sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
 		sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-		memcpy(sellmeierCoefficientsAugmentedCPU + 72, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double));
+		memcpy(sellmeierCoefficientsAugmentedCPU + 72, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies.data(), 7 * sizeof(double));
 		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, 79 * sizeof(double), copyType::ToDevice);
 
 		//prepare the propagation grids
@@ -2375,11 +2375,11 @@ namespace hostFunctions{
 			if (!defaultMask[6])(*sCPU).effectiveMass = parameters[6];
 			if (!defaultMask[7])(*sCPU).crystalThickness = 1e-6 * parameters[7];
 			if (!defaultMask[8])(*sCPU).propagationStep = 1e-9 * parameters[8];
-			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
-			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
-			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
@@ -2397,11 +2397,11 @@ namespace hostFunctions{
 			if (!defaultMask[4])(*sCPU).propagationStep = 1e-9 * parameters[4];
 
 			(*sCPU).nonlinearAbsorptionStrength = 0.0;
-			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
-			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
-			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
@@ -2432,11 +2432,11 @@ namespace hostFunctions{
 			(*sCPU).propagationStep = 1e-9;
 
 			(*sCPU).nonlinearAbsorptionStrength = 0.0;
-			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
-			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
-			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
@@ -2455,11 +2455,11 @@ namespace hostFunctions{
 				if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
 				if (!defaultMask[4])(*sCPU).propagationStep = 1e-9 * parameters[4];
 				(*sCPU).nonlinearAbsorptionStrength = 0.0;
-				(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
-				(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
-				(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-				(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
-				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+				(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
+				(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
+				(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+				(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
+				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 				(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 				(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 				(*sCPU).forceLinear = true;
