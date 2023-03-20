@@ -5,14 +5,18 @@
 #include <fstream>
 #include "LightwaveExplorerUtilities.h"
 
-
+#if __cplusplus==201703L
+void std::erase(std::string& s, removedChar) {
+	char* editString = new char[s.length() + 1]();
+	s.copy(editString, s.length() - 1);
+	removeCharacterFromString(editString, s.length() - 1, removedChar);
+	s = std::string(editString);
+}
+#endif
 int readFittingString(simulationParameterSet* sCPU) {
-#ifndef __CUDACC__
 	std::erase((*sCPU).fittingString, '\r');
 	std::erase((*sCPU).fittingString, '\n');
 	std::erase((*sCPU).fittingString, '\t');
-
-#endif
 
 
 	std::stringstream ss((*sCPU).fittingString);
@@ -73,8 +77,7 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	return 0;
 }
 int removeCharacterFromString(std::string& s, char removedChar) {
-	s.erase(std::remove(s.begin(), s.end(), removedChar), s.end());
-	//std::erase(s,removedChar);
+	std::erase(s,removedChar);
 	return 0;
 }
 
@@ -97,11 +100,9 @@ int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, cha
 void stripWhiteSpace(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
-#ifndef __CUDACC__
 	std::erase(s, '\r');
 	std::erase(s, '\n');
 	std::erase(s, '\t');
-#endif
 
 
 	memset(sequenceString, 0, bufferSize);
@@ -110,28 +111,22 @@ void stripWhiteSpace(char* sequenceString, size_t bufferSize) {
 
 void stripWhiteSpace(std::string& s) {
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
-#ifndef __CUDACC__
 	std::erase(s, '\r');
 	std::erase(s, '\n');
 	std::erase(s, '\t');
-#endif
 }
 
 void stripLineBreaks(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
-#ifndef __CUDACC__
 	std::erase(s, '\r');
 	std::erase(s, '\n');
-#endif
 	memset(sequenceString, 0, bufferSize);
 	s.copy(sequenceString, bufferSize-1);
 }
 
 void stripLineBreaks(std::string& s) {
-#ifndef __CUDACC__
 	std::erase(s, '\r');
 	std::erase(s, '\n');
-#endif
 }
 
 
