@@ -1,12 +1,8 @@
 #pragma once
 #include "LightwaveExplorerUtilities.h"
-#define DeviceToHost 2
-#define HostToDevice 1
-#define DeviceToDevice 3
-#define cudaMemcpyKind int
-#define deviceLib std
-#define deviceFPLib std
-#define complexLib std
+namespace deviceLib = std;
+namespace deviceFPLib = std;
+namespace complexLib = std;
 int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
@@ -84,7 +80,7 @@ public:
 	void deviceMemset(void* ptr, int value, size_t count) {
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(void* dst, void* src, size_t count, copyType kind) {
 	}
 
 	void deviceFree(void* block) {

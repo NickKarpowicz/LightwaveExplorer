@@ -1,16 +1,16 @@
 #pragma once
-
 #include <complex>
 #include <cstring>
 #include <vector>
+#include <array>
 #include <fstream>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
 
-static const unsigned int THREADS_PER_BLOCK = 32;
-static const unsigned int MIN_GRIDDIM = 8;
-static const size_t MAX_LOADSTRING = 1024;
+static const unsigned int threadsPerBlock = 32;
+static const unsigned int minGridDimension = 8;
+static const size_t pathArrayLength = 1024;
 
 #ifndef LWEFLOATINGPOINT
 #define LWEFLOATINGPOINT 64
@@ -50,14 +50,14 @@ template <typename T, typename U>
 hostOrDevice static constexpr inline T minN(T a, U b) {
     return (((a) < (b)) ? (a) : (b));
 }
-
+//pi to stupid digits
 template <typename T>
 hostOrDevice static constexpr T vPi() {
-    return (T)3.1415926535897931;
+    return (T)3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384L;
 }
 template <typename T>
 hostOrDevice static constexpr T twoPi() {
-    return (T)6.2831853071795862;
+    return (T)(2.0 * vPi<T>());
 }
 template <typename T>
 hostOrDevice static constexpr T angleTolerance() {
@@ -65,15 +65,15 @@ hostOrDevice static constexpr T angleTolerance() {
 }
 template <typename T>
 hostOrDevice static constexpr T invSqrtPi() {
-    return (T)0.5641895835477563;
+    return (T)(1.0/sqrt(vPi<T>()));
 }
 template <typename T>
 hostOrDevice static constexpr T deg2Rad() {
-    return (T)1.7453292519943295e-02;
+    return (T)(vPi<T>()/180.0);
 }
 template <typename T>
 hostOrDevice static constexpr T rad2Deg() {
-    return (T)57.2957795130823229;
+    return (T)(180.0/vPi<T>());
 }
 template <typename T>
 hostOrDevice static constexpr T lightC() {
@@ -85,18 +85,16 @@ hostOrDevice static constexpr T eps0() {
 }
 template <typename T>
 hostOrDevice static constexpr T sixth() {
-    return (T)(1.0/6.0);
+    return (T)((T)1.0/6.0);
 }
 template <typename T>
 hostOrDevice static constexpr T third() {
-    return (T)(1.0/3.0);
+    return (T)((T)1.0/3.0);
 }
 template <typename T>
 hostOrDevice static constexpr T kLorentzian() {
     return (T)3182.607353999257;
 }
-
-
 
 #include <complex>
 #include <cstring>
@@ -122,6 +120,11 @@ enum class deviceFFT : int {
     D2Z_Polarization = 4
 };
 
+enum class copyType : int {
+    ToDevice = 1,
+    ToHost =  2,
+    OnDevice = 3
+};
 
 template <typename deviceFP, typename deviceComplex>
 class deviceParameterSet {
@@ -210,16 +213,16 @@ public:
     std::string crystalName;
     int axisType = 0;
     int sellmeierType = 0;
-    int nonlinearSwitches[4] = { 0 };
-    double sellmeierCoefficients[66] = { 0 };
+    std::array<int,4> nonlinearSwitches = {};
+    std::array<double,66> sellmeierCoefficients = {};
     std::string sellmeierReference;
-    double d[18] = { 0 };
+    std::array<double,18> d = {};
     std::string dReference;
-    double chi3[81] = { 0 };
+    std::array<double,81> chi3 = {};
     std::string chi3Reference;
-    double absorptionParameters[6] = { 0 };
-    char spectralFile[512] = { 0 };
-    double nonlinearReferenceFrequencies[7] = { 0 };
+    std::array<double,6> absorptionParameters = {};
+    std::string spectralFile;
+    std::array<double,7> nonlinearReferenceFrequencies = {};
 };
 
 class crystalDatabase {
@@ -305,7 +308,7 @@ public:
             std::getline(fs, line);
 
             std::getline(fs, line); //chi3:
-            memset(newEntry.chi3, 0, 81 * sizeof(double));
+            
             switch (newEntry.nonlinearSwitches[1]) {
             case 0: //no chi3, skip all three lines
                 std::getline(fs, line);
@@ -333,8 +336,7 @@ public:
 
             std::getline(fs, line); //Spectral file:
             std::getline(fs, line);
-            line.copy(newEntry.spectralFile, 512);
-
+            newEntry.spectralFile = line;
             std::getline(fs, line); //Nonlinear reference frequencies:
             for (int k = 0; k < 7; ++k) {
                 fs >> newEntry.nonlinearReferenceFrequencies[k];
@@ -488,8 +490,8 @@ public:
     bool field2IsAllocated = 0;
     int pulse1FileType = 0;
     int pulse2FileType = 0;
-    char field1FilePath[MAX_LOADSTRING] = { 0 };
-    char field2FilePath[MAX_LOADSTRING] = { 0 };
+    std::string field1FilePath;
+    std::string field2FilePath;
 
     int pulsetype = 0;
     double* ExtOut = 0;
@@ -504,7 +506,7 @@ public:
     int batchIndex2 = 0;
     double batchDestination = 0;
     double batchDestination2 = 0;
-    char outputBasePath[MAX_LOADSTRING] = { 0 };
+    std::string outputBasePath;
     int runType = 0;
     bool runningOnCPU = 0;
 
@@ -513,16 +515,16 @@ public:
     bool isFollowerInSequence = 0;
     bool isReinjecting = 0;
     bool forceLinear = 0;
-    char sequenceString[2*MAX_LOADSTRING] = { 0 };
+    std::string sequenceString;
     double i37 = 0.0;
     size_t batchLoc1 = 0;
     size_t batchLoc2 = 0;
 
     //fitting
     bool isInFittingMode;
-    char fittingString[1024] = { 0 };
-    char fittingPath[1024] = { 0 };
-    double fittingArray[256] = { 0 };
+    std::string fittingString;
+    std::string fittingPath;
+    std::array<double, 256> fittingArray;
     double* fittingReference = 0;
     int Nfitting = 0;
     int fittingMode = 0;
@@ -530,21 +532,22 @@ public:
     size_t fittingROIstart = 0;
     size_t fittingROIstop = 0;
     size_t fittingROIsize = 0;
-    double fittingResult[64];
-    double fittingError[64];
+    std::array<double, 64> fittingResult;
+    std::array<double, 64> fittingError;
 };
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
+void            removeCharacterFromString(std::string& s, char removedChar);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int             loadReferenceSpectrum(char* spectrumPath, simulationParameterSet* sCPU);
+int             loadReferenceSpectrum(std::string spectrumPath, simulationParameterSet* sCPU);
 int             readFittingString(simulationParameterSet* sCPU);
 int             saveSettingsFile(simulationParameterSet* sCPU);
 void            unixNewLine(FILE* iostream);
 double          saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, size_t totalSteps);
-int				loadFrogSpeck(char* frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
+int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 double          cModulusSquared(std::complex<double>complexNumber);
 int             allocateGrids(simulationParameterSet* sCPU);
 int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems);
@@ -557,6 +560,9 @@ int             copyParamsIntoStrings(char parameterBlock[22][256], const char* 
 void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(const char* pString, double* iBlock, double* vBlock);
 std::string     getBasename(char* fullPath);
+std::string     getBasename(const std::string& fullPath);
 void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
-void            stripLineBreaks(char* sequenceString, size_t bufferSize);
+void            stripWhiteSpace(std::string& s);
+//void            stripLineBreaks(char* sequenceString, size_t bufferSize);
+void            stripLineBreaks(std::string& s);
 int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);

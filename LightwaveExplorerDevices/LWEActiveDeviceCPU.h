@@ -8,23 +8,6 @@
 #include <thread>
 #include <iostream>
 #include <math.h>
-#define DeviceToHost 2
-#define HostToDevice 1
-#define DeviceToDevice 3
-#define cudaMemcpyKind int
-#define complexLib std
-#if LWEFLOATINGPOINT==32
-	#define deviceFPLib deviceLibCPUFP32
-	#define deviceLib deviceLibCPUFP32
-#else
-	#define deviceFPLib std
-	#define deviceLib std
-#endif
-#if defined _WIN32 || __linux__
-const int deviceThreads = maxN(std::thread::hardware_concurrency()/2, 1u);
-#else
-const int deviceThreads = std::thread::hardware_concurrency();
-#endif
 
 #if defined __APPLE__ || defined __linux__
 template<typename deviceFP>
@@ -88,6 +71,20 @@ namespace deviceLibCPUFP32{
 		return std::sqrt(x);
 	}
 };
+
+namespace complexLib = std;
+#if LWEFLOATINGPOINT==32
+namespace deviceFPLib = deviceLibCPUFP32;
+namespace deviceLib = deviceLibCPUFP32;
+#else
+namespace deviceFPLib = std;
+namespace deviceLib = std;
+#endif
+#if defined _WIN32 || __linux__
+const int deviceThreads = maxN(std::thread::hardware_concurrency() / 2, 1u);
+#else
+const int deviceThreads = std::thread::hardware_concurrency();
+#endif
 
 #if LWEFLOATINGPOINT==64
 
@@ -237,29 +234,29 @@ public:
 		memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(void* dst, void* src, size_t count, copyType kind) {
 		memcpy(dst, src, count);
 	}
 
-	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(double* dst, float* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			dst[i] = (double)src[i];
 		}
 	}
 
-	void deviceMemcpy(std::complex<double>* dst, std::complex<float>* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(std::complex<double>* dst, std::complex<float>* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<double>((double)src[i].real(), (double)src[i].imag());
 		}
 	}
 
-	void deviceMemcpy(std::complex<float>* dst, std::complex<double>* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(std::complex<float>* dst, std::complex<double>* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
 		}
 	}
 
-	void deviceMemcpy(float* dst, double* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(float* dst, double* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			dst[i] = (float)src[i];
 		}
@@ -270,7 +267,6 @@ public:
 	}
 
 	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
-		//deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
 		return(isnan(*canaryPointer));
 	}
 	void fft(void* input, void* output, deviceFFT type) const {
@@ -426,11 +422,11 @@ public:
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
@@ -477,14 +473,14 @@ public:
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 		(*sCPU).memoryError = memErrors;
 		if (memErrors > 0) {
 			return memErrors;
 		}
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		return 0;
 	}
 };

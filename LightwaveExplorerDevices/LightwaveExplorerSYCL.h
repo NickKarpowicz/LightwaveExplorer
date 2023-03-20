@@ -8,10 +8,8 @@
 #endif
 LIGHTWAVEEXPLORERSYCL_API unsigned long	solveNonlinearWaveEquationSYCL(void* lpParam);
 LIGHTWAVEEXPLORERSYCL_API unsigned long solveNonlinearWaveEquationSequenceSYCL(void* lpParam);
-LIGHTWAVEEXPLORERSYCL_API int           mainSYCL(int argc, char* filepath);
 LIGHTWAVEEXPLORERSYCL_API unsigned long	runDlibFittingSYCL(simulationParameterSet* sCPU);
 LIGHTWAVEEXPLORERSYCL_API unsigned long	solveNonlinearWaveEquationSYCLFP32(void* lpParam);
 LIGHTWAVEEXPLORERSYCL_API unsigned long solveNonlinearWaveEquationSequenceSYCLFP32(void* lpParam);
-LIGHTWAVEEXPLORERSYCL_API int           mainSYCLFP32(int argc, char* filepath);
 LIGHTWAVEEXPLORERSYCL_API unsigned long	runDlibFittingSYCLFP32(simulationParameterSet* sCPU);
 LIGHTWAVEEXPLORERSYCL_API void readSYCLDevices(char* deviceArray, char* deviceListCstring);

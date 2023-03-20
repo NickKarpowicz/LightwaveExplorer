@@ -3,23 +3,10 @@
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
 #include <oneapi/dpl/complex>
-#define DeviceToHost 2
-#define HostToDevice 1
-#define DeviceToDevice 3
-#define cudaMemcpyKind int
 #define isnan(x) std::isnan(x)
 
-#if LWEFLOATINGPOINT==32
-	#define deviceLib deviceLibSYCLFP32
-	#define deviceFPLib deviceLibSYCLFP32
-	#define complexLib oneapi::dpl
-	#define dftPrecision oneapi::mkl::dft::precision::SINGLE
-#else
-	#define deviceLib oneapi::dpl
-	#define complexLib oneapi::dpl
-	#define deviceFPLib
-	#define dftPrecision oneapi::mkl::dft::precision::DOUBLE
-#endif
+
+
 template <typename deviceFP>
 static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	sycl::atomic_ref<deviceFP, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
@@ -92,6 +79,18 @@ namespace deviceLibSYCLFP32{
 		return oneapi::dpl::sqrt(x);
 	}
 };
+
+#if LWEFLOATINGPOINT==32
+namespace deviceLib = deviceLibSYCLFP32;
+namespace deviceFPLib = deviceLibSYCLFP32;
+namespace complexLib = oneapi::dpl;
+const auto dftPrecision = oneapi::mkl::dft::precision::SINGLE;
+#else
+namespace deviceLib = oneapi::dpl;
+namespace complexLib = oneapi::dpl;
+	#define deviceFPLib
+const auto dftPrecision = oneapi::mkl::dft::precision::DOUBLE;
+#endif
 
 static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
@@ -192,7 +191,7 @@ public:
 	}
 
 	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
-		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
+		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), copyType::ToHost);
 		return(isnan(canaryPixel));
 	}
 
@@ -216,13 +215,13 @@ public:
 		stream.memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(void* dst, void* src, size_t count, copyType kind) {
 		stream.wait();
 		stream.memcpy(dst, src, count);
 		stream.wait();
 	}
 
-	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(double* dst, float* src, size_t count, copyType kind) {
 		stream.wait();
 		float* copyBuffer = new float[count / sizeof(double)]();
 		stream.memcpy(copyBuffer, src, count/2);
@@ -233,7 +232,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(std::complex<double>* dst, oneapi::dpl::complex<float>* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(std::complex<double>* dst, oneapi::dpl::complex<float>* src, size_t count, copyType kind) {
 		stream.wait();
 		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
 		stream.memcpy(copyBuffer, src, count/2);
@@ -244,7 +243,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(oneapi::dpl::complex<float>* dst, std::complex<double>* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(oneapi::dpl::complex<float>* dst, std::complex<double>* src, size_t count, copyType kind) {
 		stream.wait();
 		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
 		
@@ -256,7 +255,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(float* dst, double* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(float* dst, double* src, size_t count, copyType kind) {
 		stream.wait();
 		
 		float* copyBuffer = new float[count / sizeof(double)]();
@@ -444,11 +443,11 @@ public:
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		
@@ -522,14 +521,14 @@ public:
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 		(*sCPU).memoryError = memErrors;
 		if (memErrors > 0) {
 			return memErrors;
 		}
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		return 0;
 	}
 };

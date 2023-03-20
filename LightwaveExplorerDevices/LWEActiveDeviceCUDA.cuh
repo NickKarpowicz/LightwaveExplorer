@@ -5,24 +5,8 @@
 #include <thrust/complex.h>
 #include <iostream>
 #include "LightwaveExplorerUtilities.h"
-#define DeviceToHost cudaMemcpyDeviceToHost
-#define HostToDevice cudaMemcpyHostToDevice
-#define DeviceToDevice cudaMemcpyDeviceToDevice
-#if LWEFLOATINGPOINT==32
-	#define deviceLib deviceLibCUDAFP32
-	#define deviceFPLib deviceLibCUDAFP32 
-	#define complexLib thrust
-	#define CUFFT_fwd CUFFT_R2C
-	#define CUFFT_bwd CUFFT_C2R
-#else
-	#define deviceLib thrust
-	#define complexLib thrust
-	#define deviceFPLib 
-	#define CUFFT_fwd CUFFT_D2Z
-	#define CUFFT_bwd CUFFT_Z2D
-#endif
 
-
+namespace complexLib = thrust;
 #ifdef __CUDACC__
 #if LWEFLOATINGPOINT==64
 //In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
@@ -45,6 +29,7 @@ __device__ static thrust::complex<double> operator-(const thrust::complex<double
 
 
 #if LWEFLOATINGPOINT==32
+#undef deviceFPLib
 namespace deviceLibCUDAFP32{
 	__device__ static float exp(const float x){
 		return expf(x);
@@ -93,6 +78,16 @@ namespace deviceLibCUDAFP32{
 		return thrust::sqrt(x);
 	}
 };
+
+namespace deviceLib = deviceLibCUDAFP32;
+namespace deviceFPLib = deviceLibCUDAFP32;
+const auto CUFFT_fwd = CUFFT_R2C;
+const auto CUFFT_bwd = CUFFT_C2R;
+#else
+namespace deviceLib = thrust;
+#define deviceFPLib
+const auto CUFFT_fwd = CUFFT_D2Z;
+const auto CUFFT_bwd = CUFFT_Z2D;
 #endif
 
 __device__ static inline float j0Device(float x) {
@@ -195,7 +190,7 @@ public:
 	}
 
 	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
-		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(deviceFP), DeviceToHost);
+		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(deviceFP), cudaMemcpyDeviceToHost);
 		return(isnan(canaryPixel));
 	}
 
@@ -214,44 +209,44 @@ public:
 		cudaMemset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, cudaMemcpyKind kind) {
-		cudaMemcpy(dst, src, count, kind);
+	void deviceMemcpy(void* dst, void* src, size_t count, copyType kind) {
+		cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 	}
-	void deviceMemcpy(double* dst, float* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(double* dst, float* src, size_t count, copyType kind) {
 		float* copyBuffer = new float[count / sizeof(double)];
-		cudaMemcpy(copyBuffer, src, count/2, kind);
+		cudaMemcpy(copyBuffer, src, count/2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			dst[i] = copyBuffer[i];
 		}
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(std::complex<double>* dst, thrust::complex<float>* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(std::complex<double>* dst, thrust::complex<float>* src, size_t count, copyType kind) {
 		thrust::complex<float>* copyBuffer = new thrust::complex<float>[count / sizeof(std::complex<double>)];
-		cudaMemcpy(copyBuffer, src, count/2, kind);
+		cudaMemcpy(copyBuffer, src, count/2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
 		}
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(thrust::complex<float>* dst, std::complex<double>* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(thrust::complex<float>* dst, std::complex<double>* src, size_t count, copyType kind) {
 		thrust::complex<float>* copyBuffer = new thrust::complex<float>[count / sizeof(std::complex<double>)];
 		
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			copyBuffer[i] = thrust::complex<float>((float)src[i].real(), (float)src[i].imag());
 		}
-		cudaMemcpy(dst, copyBuffer, count / 2, kind);
+		cudaMemcpy(dst, copyBuffer, count / 2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(float* dst, double* src, size_t count, cudaMemcpyKind kind) {
+	void deviceMemcpy(float* dst, double* src, size_t count, copyType kind) {
 		float* copyBuffer = new float[count / sizeof(double)];
 
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			copyBuffer[i] = (float)src[i];
 		}
-		cudaMemcpy(dst, copyBuffer, count / 2, kind);
+		cudaMemcpy(dst, copyBuffer, count / 2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		delete[] copyBuffer;
 	}
 
@@ -398,11 +393,11 @@ public:
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
@@ -456,7 +451,7 @@ public:
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, HostToDevice);
+		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 
 		(*sCPU).memoryError = memErrors;
@@ -464,7 +459,7 @@ public:
 			return memErrors;
 		}
 		finishConfiguration(sCPU);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		return 0;
 	}
 

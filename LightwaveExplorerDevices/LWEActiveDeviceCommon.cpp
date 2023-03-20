@@ -40,9 +40,9 @@
 		(*s).crystalPhi = (deviceFP)(*sCPU).crystalPhi;
 		(*s).crystalTheta = (deviceFP)(*sCPU).crystalTheta;
 		(*s).f0 = (deviceFP)(*sCPU).pulse1.frequency;
-		(*s).Nthread = THREADS_PER_BLOCK;
-		(*s).Nblock = (int)((*s).Ngrid / THREADS_PER_BLOCK);
-		(*s).NblockC = (int)((*s).NgridC / THREADS_PER_BLOCK);
+		(*s).Nthread = threadsPerBlock;
+		(*s).Nblock = (int)((*s).Ngrid / threadsPerBlock);
+		(*s).NblockC = (int)((*s).NgridC / threadsPerBlock);
 		(*s).isCylindric = (*sCPU).isCylindric;
 		(*s).forceLinear = (*sCPU).forceLinear;
 		(*s).isNonLinear = ((*sCPU).nonlinearSwitches[0] + (*sCPU).nonlinearSwitches[1]) > 0;

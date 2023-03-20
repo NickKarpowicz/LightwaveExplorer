@@ -17,8 +17,7 @@
 #endif
 #ifdef _WIN32
 #include "../LightwaveExplorerDevices/LightwaveExplorerSYCL.h"
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
-// Windows Header Files
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 bool isIntelRuntimeInstalled() {
     wchar_t loadBuffer[1024];
@@ -42,8 +41,8 @@ bool isIntelRuntimeInstalled() {
 #import<Cocoa/Cocoa.h>
 #endif
 
-const int LABELWIDTH = 6;
-const size_t MAX_SIMULATIONS = 4096;
+const int labelWidth = 6;
+const size_t maxSimulations = 4096;
 
 bool isRunning = false;
 bool isPlotting = false;
@@ -152,7 +151,7 @@ public:
     }
 
     void activate(GtkApplication* app) {
-        activeSetPtr = (simulationParameterSet*)calloc(MAX_SIMULATIONS, sizeof(simulationParameterSet));
+        activeSetPtr = new simulationParameterSet[maxSimulations];
         int buttonWidth = 4;
         int textWidth = 3;
         int labelWidth = 6;
@@ -504,7 +503,7 @@ public:
 };
 mainGui theGui;
 
-char programDirectory[MAX_LOADSTRING];     // Program working directory (useful if the crystal database has to be reloaded)
+char programDirectory[pathArrayLength];     // Program working directory (useful if the crystal database has to be reloaded)
 
 ///////////////////.
 //Definitions over
@@ -579,18 +578,18 @@ void setInterfaceValuesToActiveValues(){
     theGui.pulldowns[5].setValue((*activeSetPtr).batchIndex);
     theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
     theGui.sequence.clear();
-    if (std::string((*activeSetPtr).sequenceString).length() > 6) {
-        std::string formattedSequence((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
+    if ((*activeSetPtr).sequenceString.length() > 6) {
+        std::string formattedSequence= (*activeSetPtr).sequenceString;
         formatSequence(formattedSequence);
         theGui.sequence.directOverwritePrintSequence(formattedSequence.c_str());
     }
-    stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
+    stripLineBreaks((*activeSetPtr).field1FilePath);
     if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
     if (std::string((*activeSetPtr).field2FilePath).compare("None") != 0) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
     if (std::string((*activeSetPtr).fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
     theGui.fitCommand.clear();
     if (!((*activeSetPtr).fittingString[0] == 'N')) {
-        std::string formattedFit((*activeSetPtr).fittingString,MAX_LOADSTRING);
+        std::string formattedFit=(*activeSetPtr).fittingString;
         insertAfterCharacter(formattedFit,';',std::string("\n"));
         theGui.fitCommand.overwritePrint(formattedFit.c_str());
     }
@@ -652,68 +651,34 @@ void readParametersFromInterface() {
     (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
     theGui.textBoxes[52].valueToPointer(&(*activeSetPtr).NsimsCPU);
 
-    std::string noneString("None\0");
-    std::string s;
-    memset((*activeSetPtr).sequenceString, 0, 2*MAX_LOADSTRING);
-    theGui.sequence.copyBuffer((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
-    s.assign((*activeSetPtr).sequenceString);
-    if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
-    }
-    else {
-        stripWhiteSpace((*activeSetPtr).sequenceString, 2*MAX_LOADSTRING);
-    }
+    theGui.sequence.copyBuffer((*activeSetPtr).sequenceString);
+    stripWhiteSpace((*activeSetPtr).sequenceString);
+
+    theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString);
+    stripLineBreaks((*activeSetPtr).fittingString);
+
+    theGui.filePaths[0].copyBuffer((*activeSetPtr).field1FilePath);
+    stripLineBreaks((*activeSetPtr).field1FilePath);
+
+    theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath);
+    stripLineBreaks((*activeSetPtr).field2FilePath);
+
+    theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath);
+    stripLineBreaks((*activeSetPtr).outputBasePath);
     
-    memset((*activeSetPtr).fittingString, 0, MAX_LOADSTRING);
-    theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString, MAX_LOADSTRING);
-    s.assign((*activeSetPtr).fittingString);
-    if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).fittingString, MAX_LOADSTRING);
-    }
-    else {
-        stripLineBreaks((*activeSetPtr).fittingString, MAX_LOADSTRING);
-    }
-    
-    memset((*activeSetPtr).field1FilePath, 0, MAX_LOADSTRING);
-    theGui.filePaths[0].copyBuffer((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
-    s.assign((*activeSetPtr).field1FilePath);
-    if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
-    }
-    stripLineBreaks((*activeSetPtr).field1FilePath, MAX_LOADSTRING);
-    memset((*activeSetPtr).field2FilePath, 0, MAX_LOADSTRING);
-    theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
-    s.assign((*activeSetPtr).field2FilePath);
-    if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
-    }
-    stripLineBreaks((*activeSetPtr).field2FilePath, MAX_LOADSTRING);
-    memset((*activeSetPtr).outputBasePath, 0, MAX_LOADSTRING);
-    theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
-    s.assign((*activeSetPtr).outputBasePath);
-    if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
-    }
-    stripLineBreaks((*activeSetPtr).outputBasePath, MAX_LOADSTRING);
-    
-    memset((*activeSetPtr).fittingPath, 0, MAX_LOADSTRING);
-    theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath, MAX_LOADSTRING);
-    s.assign((*activeSetPtr).fittingPath);
-    if (s.length() == 0) {
-        noneString.copy((*activeSetPtr).fittingPath, MAX_LOADSTRING);
-    }
-    stripLineBreaks((*activeSetPtr).fittingPath, MAX_LOADSTRING);
+    theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath);
+    stripLineBreaks((*activeSetPtr).fittingPath);
 
     //derived parameters and cleanup:
     (*activeSetPtr).sellmeierType = 0;
     (*activeSetPtr).axesNumber = 0;
-    (*activeSetPtr).Ntime = (size_t)(MIN_GRIDDIM * round((*activeSetPtr).timeSpan / (MIN_GRIDDIM * (*activeSetPtr).tStep)));
+    (*activeSetPtr).Ntime = (size_t)(minGridDimension * round((*activeSetPtr).timeSpan / (minGridDimension * (*activeSetPtr).tStep)));
     if ((*activeSetPtr).symmetryType == 2) {
         (*activeSetPtr).is3D = true;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * minGridDimension)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
         if ((*activeSetPtr).spatialHeight > 0) {
-            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * minGridDimension)));
         }
         else {
             (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
@@ -724,7 +689,7 @@ void readParametersFromInterface() {
         (*activeSetPtr).is3D = false;
         (*activeSetPtr).Nspace2 = 1;
         (*activeSetPtr).spatialHeight = 0;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (MIN_GRIDDIM * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * MIN_GRIDDIM)));
+        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * minGridDimension)));
         (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
     }
 
@@ -756,11 +721,11 @@ void readParametersFromInterface() {
 
     //crystal from database (database must be loaded!)
     (*activeSetPtr).crystalDatabase = theDatabase.db.data();
-    (*activeSetPtr).chi2Tensor = theDatabase.db[(*activeSetPtr).materialIndex].d;
-    (*activeSetPtr).chi3Tensor = theDatabase.db[(*activeSetPtr).materialIndex].chi3;
-    (*activeSetPtr).nonlinearSwitches = theDatabase.db[(*activeSetPtr).materialIndex].nonlinearSwitches;
-    (*activeSetPtr).absorptionParameters = theDatabase.db[(*activeSetPtr).materialIndex].absorptionParameters;
-    (*activeSetPtr).sellmeierCoefficients = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierCoefficients;
+    (*activeSetPtr).chi2Tensor = theDatabase.db[(*activeSetPtr).materialIndex].d.data();
+    (*activeSetPtr).chi3Tensor = theDatabase.db[(*activeSetPtr).materialIndex].chi3.data();
+    (*activeSetPtr).nonlinearSwitches = theDatabase.db[(*activeSetPtr).materialIndex].nonlinearSwitches.data();
+    (*activeSetPtr).absorptionParameters = theDatabase.db[(*activeSetPtr).materialIndex].absorptionParameters.data();
+    (*activeSetPtr).sellmeierCoefficients = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierCoefficients.data();
     (*activeSetPtr).sellmeierType = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierType;
     (*activeSetPtr).axesNumber = theDatabase.db[(*activeSetPtr).materialIndex].axisType;
     (*activeSetPtr).progressCounter = &progressCounter;
@@ -826,9 +791,9 @@ int formatSequence(std::string& s){
 
 int freeSemipermanentGrids() {
     isGridAllocated = false;
-    delete[](*activeSetPtr).ExtOut;
-    delete[](*activeSetPtr).EkwOut;
-    delete[](*activeSetPtr).totalSpectrum;
+    delete[] (*activeSetPtr).ExtOut;
+    delete[] (*activeSetPtr).EkwOut;
+    delete[] (*activeSetPtr).totalSpectrum;
     return 0;
 }
 
@@ -901,7 +866,7 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     if (Nx * Ny == 0) return 1;
     
     // creating input
-    unsigned char* pixels = (unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
+    unsigned char* pixels = new unsigned char[4 * Nx * Ny]();//(unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
     if (pixels == NULL) return 1;
 
 
@@ -990,7 +955,7 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
     cairo_paint(cr);
     cairo_surface_finish(cSurface);
     cairo_surface_destroy(cSurface);
-    free(pixels);
+    delete[] pixels;
     return 0;
 }
 
@@ -1045,12 +1010,15 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         }
         theGui.sequence.clear();
         theGui.fitCommand.clear();
+        theGui.console.cPrint("Reading params\n");
         int readParameters = readInputParametersFile(activeSetPtr, theDatabase.db.data(), path.c_str());
+        theGui.console.cPrint("Fitting string: {}\n", (*activeSetPtr).fittingString);
         allocateGrids(activeSetPtr);
         isGridAllocated = true;
         if (readParameters == 61) {
             size_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
+            theGui.console.cPrint("Loading fields\n");
             loadSavedFields(activeSetPtr, basePath.c_str());
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();
@@ -1097,10 +1065,10 @@ void createRunFile() {
         freeSemipermanentGrids();
         isGridAllocated = false;
     }
-    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+
     readParametersFromInterface();
-    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
-        theGui.console.tPrint("Too many simulations in batch mode. Must be under {} total.\r\n", MAX_SIMULATIONS);
+    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > maxSimulations) {
+        theGui.console.tPrint("Too many simulations in batch mode. Must be under {} total.\r\n", maxSimulations);
     }
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
@@ -1113,9 +1081,9 @@ void createRunFile() {
     configureBatchMode(activeSetPtr);
 
     simulationParameterSet* testSet = new simulationParameterSet[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2]();
-    memcpy(testSet, activeSetPtr, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 * sizeof(simulationParameterSet));
     totalSteps = 0;
     for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
+        testSet[j] = activeSetPtr[j];
         if ((*activeSetPtr).isInSequence) {
             testSet[j].progressCounter = &totalSteps;
             testSet[j].runType = -1;
@@ -1340,8 +1308,8 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[MAX_LOADSTRING]();
-        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        char* svgFilename = new char[pathArrayLength]();
+        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
         std::string svgPath(svgFilename);
         svgPath.append("_Ex.svg");
         std::ofstream fs(svgPath);
@@ -1392,8 +1360,8 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[MAX_LOADSTRING]();
-        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        char* svgFilename = new char[pathArrayLength]();
+        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
         std::string svgPath(svgFilename);
         svgPath.append("_Ey.svg");
         std::ofstream fs(svgPath);
@@ -1473,8 +1441,8 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[MAX_LOADSTRING]();
-        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        char* svgFilename = new char[pathArrayLength]();
+        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
         std::string svgPath(svgFilename);
         svgPath.append("_Sx.svg");
         std::ofstream fs(svgPath);
@@ -1555,8 +1523,8 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[MAX_LOADSTRING]();
-        theGui.filePaths[3].copyBuffer(svgFilename, MAX_LOADSTRING);
+        char* svgFilename = new char[pathArrayLength]();
+        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
         std::string svgPath(svgFilename);
         svgPath.append("_Sy.svg");
         std::ofstream fs(svgPath);
@@ -1627,8 +1595,8 @@ void imagePlot(imagePlotStruct* s) {
     int dy = (*s).height;
 
     size_t plotSize = (size_t)dx * (size_t)dy;
-    float* plotarr2 = (float*)malloc(plotSize * sizeof(float));
-
+    //float* plotarr2 = (float*)malloc(plotSize * sizeof(float));
+    float* plotarr2 = new float[plotSize];
     switch ((*s).dataType) {
     case 0:
         linearRemapDoubleToFloat((*s).data, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
@@ -1638,7 +1606,7 @@ void imagePlot(imagePlotStruct* s) {
         break;
     }
     drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, (*s).colorMap);
-    free(plotarr2);
+    delete[] plotarr2;
 }
 
 
@@ -1878,10 +1846,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         freeSemipermanentGrids();
         isGridAllocated = false;
     }
-    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+
     readParametersFromInterface();
-    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > MAX_SIMULATIONS) {
-        theGui.console.tPrint("Too many simulations in batch mode. Must be under {} total.\r\n", MAX_SIMULATIONS);
+    if ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 > maxSimulations) {
+        theGui.console.tPrint("Too many simulations in batch mode. Must be under {} total.\r\n", maxSimulations);
     }
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);
@@ -1894,11 +1862,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = true;
     
     configureBatchMode(activeSetPtr);
-
     simulationParameterSet* testSet = new simulationParameterSet[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2]();
-    memcpy(testSet, activeSetPtr, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 * sizeof(simulationParameterSet));
     totalSteps = 0;
     for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
+        testSet[j] = activeSetPtr[j];
         if ((*activeSetPtr).isInSequence) {
             testSet[j].progressCounter = &totalSteps;
             testSet[j].runType = -1;
@@ -2087,7 +2054,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
         freeSemipermanentGrids();
         isGridAllocated = false;
     }
-    memset(activeSetPtr, 0, sizeof(simulationParameterSet));
+
     readParametersFromInterface();
     (*activeSetPtr).runType = 0;
     allocateGrids(activeSetPtr);

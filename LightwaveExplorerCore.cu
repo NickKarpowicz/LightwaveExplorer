@@ -1798,7 +1798,7 @@ namespace hostFunctions{
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel, d.dParamsDevice);
 		}
 		
-		d.deviceMemcpy((double*)(*sCPU).totalSpectrum, (deviceFP*)(*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((double*)(*sCPU).totalSpectrum, (deviceFP*)(*sc).gridPolarizationTime1, 3 * (*sCPU).Nfreq * sizeof(double), copyType::ToHost);
 		return 0;
 	}
 
@@ -1824,7 +1824,7 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&p, 1, sizeof(pulse<deviceFP>));
 		pulse<deviceFP> devpCPU = pCPU;
 
-		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 
 		deviceFP* materialPhase;
 		deviceComplex* loadedField;
@@ -1837,8 +1837,8 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&materialCoefficients, 66, sizeof(deviceFP));
 		d.deviceCalloc((void**)&sellmeierPropagationMedium, 66, sizeof(deviceFP));
 		d.deviceCalloc((void**)&materialPhase, (*s).Nfreq, sizeof(deviceFP));
-		d.deviceMemcpy(materialCoefficients, (*s).crystalDatabase[pCPU.phaseMaterial].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
-		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients, 66 * sizeof(double), HostToDevice);
+		d.deviceMemcpy(materialCoefficients, (*s).crystalDatabase[pCPU.phaseMaterial].sellmeierCoefficients.data(), 66 * sizeof(double), copyType::ToDevice);
+		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients.data(), 66 * sizeof(double), copyType::ToDevice);
 		d.deviceLaunch((unsigned int)(*s).Nfreq, 1, materialPhaseKernel, (deviceFP)(*s).fStep, 
 			(*s).Ntime, materialCoefficients, (deviceFP)pCPU.frequency, (deviceFP)pCPU.phaseMaterialThickness, 
 			materialPhase);
@@ -1846,11 +1846,11 @@ namespace hostFunctions{
 		deviceFP* pulseSum = &materialCoefficients[0];
 
 		if (useLoadedField) {
-			d.deviceMemcpy(loadedField, loadedFieldIn, (*s).Ntime * sizeof(std::complex<double>), HostToDevice);
+			d.deviceMemcpy(loadedField, loadedFieldIn, (*s).Ntime * sizeof(std::complex<double>), copyType::ToDevice);
 		}
 		d.deviceMemset(pulseSum, 0, sizeof(deviceFP));
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-		d.deviceMemcpy(p, &devpCPU, sizeof(pulse<deviceFP>), HostToDevice);
+		d.deviceMemcpy(p, &devpCPU, sizeof(pulse<deviceFP>), copyType::ToDevice);
 		if ((*sc).is3D) {
 			d.deviceLaunch((*sc).Nblock / 2, (*sc).Nthread, beamGenerationKernel3D,
 				(*sc).workspace1, p, pulseSum, scDevice, useLoadedField, loadedField, materialPhase,
@@ -1885,7 +1885,7 @@ namespace hostFunctions{
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		
-		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		d.deviceMemcpy(d.dParamsDevice, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		deviceParameterSet<deviceFP, deviceComplex>* scDevice = d.dParamsDevice;
 		
 		if (!(*s).isFollowerInSequence || (*s).isReinjecting) {
@@ -1893,7 +1893,7 @@ namespace hostFunctions{
 				d.deviceMemset((*sc).gridETime1, 0, 2 * (*sc).Ngrid * sizeof(deviceFP));
 			}
 			else {
-				d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
+				d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), copyType::ToDevice);
 				d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
 			}
 			
@@ -1902,27 +1902,27 @@ namespace hostFunctions{
 			addPulseToFieldArrays(d, d.cParams->pulse2, d.cParams->field2IsAllocated, d.cParams->loadedField2);
 		}
 		else {
-			d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), HostToDevice);
+			d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), copyType::ToDevice);
 			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
 		}
 		
 		//Copy the field into the temporary array
-		d.deviceMemcpy((void*)(*sc).gridEFrequency1Next1, (void*)(*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), DeviceToDevice);
+		d.deviceMemcpy((void*)(*sc).gridEFrequency1Next1, (void*)(*sc).gridEFrequency1, 2 * (*sc).NgridC * sizeof(deviceComplex), copyType::OnDevice);
 
 		//set the propagation grids how they should be at the beginning of the next step
-		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, 
+		d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, 
 			multiplicationKernelCompactDoubleVector, 
 			(*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
-		d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, 
+		d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, 
 			multiplyByConstantKernelDZ, (*sc).workspace1, (*sc).fftNorm);
-		//d.deviceLaunch((unsigned int)((*sc).NgridC / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
+		//d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 
 		return 0;
 	}
 
 	static int applyFresnelLoss(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* s, deviceParameterSet<deviceFP, deviceComplex>& sc, int materialIndex1, int materialIndex2) {
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
-		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients, 66 * (sizeof(double)));
+		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients.data(), 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
 		sellmeierCoefficientsAugmentedCPU[68] = (*s).axesNumber;
@@ -1934,9 +1934,9 @@ namespace hostFunctions{
 		deviceFP* sellmeierCoefficients2;
 		d.deviceCalloc((void**)&sellmeierCoefficients1, 74, sizeof(deviceFP));
 		d.deviceCalloc((void**)&sellmeierCoefficients2, 74, sizeof(deviceFP));
-		d.deviceMemcpy(sellmeierCoefficients1, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), HostToDevice);
+		d.deviceMemcpy(sellmeierCoefficients1, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), copyType::ToDevice);
 
-		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex2].sellmeierCoefficients, 66 * (sizeof(double)));
+		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex2].sellmeierCoefficients.data(), 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*s).crystalPhi;
 		sellmeierCoefficientsAugmentedCPU[68] = (*s).axesNumber;
@@ -1944,16 +1944,16 @@ namespace hostFunctions{
 		sellmeierCoefficientsAugmentedCPU[70] = (*s).kStep;
 		sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
 		sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-		d.deviceMemcpy(sellmeierCoefficients2, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), HostToDevice);
-		d.deviceMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(std::complex<double>), HostToDevice);
+		d.deviceMemcpy(sellmeierCoefficients2, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), copyType::ToDevice);
+		d.deviceMemcpy(sc.gridEFrequency1, (*s).EkwOut, 2 * (*s).NgridC * sizeof(std::complex<double>), copyType::ToDevice);
 
 		//transform final result
 		d.fft(sc.gridEFrequency1, sc.gridETime1, deviceFFT::Z2D);
 		d.deviceLaunch(2 * sc.Nblock, sc.Nthread, multiplyByConstantKernelD, 
 			sc.gridETime1, (deviceFP)(1.0 / sc.Ngrid));
 		//copy the field arrays from the GPU to CPU memory
-		d.deviceMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), DeviceToHost);
-		d.deviceMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * (*s).Ngrid * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*s).ExtOut, sc.gridETime1, 2 * (*s).Ngrid * sizeof(double), copyType::ToHost);
+		d.deviceMemcpy((*s).EkwOut, sc.gridEFrequency1, 2 * (*s).Ngrid * sizeof(std::complex<double>), copyType::ToHost);
 
 		d.deviceFree(sellmeierCoefficients1);
 		d.deviceFree(sellmeierCoefficients2);
@@ -1963,7 +1963,7 @@ namespace hostFunctions{
 
 	static int applyFilter(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
 
-		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
+		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, filterKernel, 
@@ -1974,13 +1974,13 @@ namespace hostFunctions{
 			(deviceFP)inBandAmplitude,
 			(deviceFP)outOfBandAmplitude);
 
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
 
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
 
-		d.deviceLaunch((int)(d.deviceStruct.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+		d.deviceLaunch((int)(d.deviceStruct.Ngrid / minGridDimension), 2 * minGridDimension, multiplyByConstantKernelD, 
 			d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 
 		getTotalSpectrum(d);
 
@@ -1989,7 +1989,7 @@ namespace hostFunctions{
 
 	static int applyLorenzian(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double amplitude, double f0, double gamma, double radius, double order) {
 
-		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
+		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z_1D);
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, lorentzianSpotKernel, 
@@ -2000,11 +2000,11 @@ namespace hostFunctions{
 			(deviceFP)radius,
 			(deviceFP)order);
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D_1D);
-		d.deviceLaunch((int)(d.deviceStruct.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+		d.deviceLaunch((int)(d.deviceStruct.Ngrid / minGridDimension), 2 * minGridDimension, multiplyByConstantKernelD, 
 			d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ntime));
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 
 		getTotalSpectrum(d);
 
@@ -2012,7 +2012,7 @@ namespace hostFunctions{
 	}
 
 	static int applyAperatureFarFieldHankel(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
-		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
+		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		forwardHankel(d, d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1);
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, 
@@ -2023,9 +2023,9 @@ namespace hostFunctions{
 			(deviceFP)(deg2Rad<deviceFP>() * xOffset), 
 			(deviceFP)(deg2Rad<deviceFP>() * yOffset));
 		backwardHankel(d, d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1);
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
 		getTotalSpectrum(d);
 		return 0;
 	}
@@ -2034,7 +2034,7 @@ namespace hostFunctions{
 		if ((*sCPU).isCylindric) {
 			return applyAperatureFarFieldHankel(d, sCPU, diameter, activationParameter, xOffset, yOffset);
 		}
-		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
+		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock/2, d.deviceStruct.Nthread, apertureFarFieldKernel, 
@@ -2044,14 +2044,14 @@ namespace hostFunctions{
 			(deviceFP)(deg2Rad<deviceFP>() * xOffset),
 			(deviceFP)(deg2Rad<deviceFP>() * yOffset));
 
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
 
 
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
 
-		d.deviceLaunch((int)(d.deviceStruct.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, 
+		d.deviceLaunch((int)(d.deviceStruct.Ngrid / minGridDimension), 2 * minGridDimension, multiplyByConstantKernelD, 
 			d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 
 		getTotalSpectrum(d);
 
@@ -2059,16 +2059,16 @@ namespace hostFunctions{
 	}
 
 	static int applyAperature(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU,double diameter, double activationParameter) {
-		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
+		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock, d.deviceStruct.Nthread, apertureKernel, 
 			sDevice, 
 			(deviceFP)(0.5 * diameter), 
 			(deviceFP)(activationParameter));
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
 		getTotalSpectrum(d);
 		return 0;
 	}
@@ -2076,16 +2076,16 @@ namespace hostFunctions{
 	static int applySphericalMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double ROC) {
 
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
-		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
+		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 
-		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
+		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z_1D);
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, sphericalMirrorKernel, sDevice, (deviceFP)ROC);
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D_1D);
 		d.deviceLaunch(2 * d.deviceStruct.Nblock, d.deviceStruct.Nthread, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ntime));
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), DeviceToHost);
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
 		getTotalSpectrum(d);
 		return 0;
 	}
@@ -2093,14 +2093,14 @@ namespace hostFunctions{
 	static int applyParabolicMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double focus) {
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 
-		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
+		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z_1D);
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, parabolicMirrorKernel, sDevice, (deviceFP)focus);
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D_1D);
 		d.deviceLaunch(2 * d.deviceStruct.Nblock, d.deviceStruct.Nthread, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ntime));
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), DeviceToHost);
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
 		getTotalSpectrum(d);
 		return 0;
 	}
@@ -2108,18 +2108,18 @@ namespace hostFunctions{
 	static int applyLinearPropagation(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, int materialIndex, double thickness) {
 
 		if (d.hasPlasma) {
-			simulationParameterSet sCopy;
-			memcpy(&sCopy, sCPU, sizeof(simulationParameterSet));
+			simulationParameterSet sCopy = *sCPU;
+			//memcpy(&sCopy, sCPU, sizeof(simulationParameterSet));
 			sCopy.nonlinearAbsorptionStrength = 0.0;
 			d.reset(&sCopy);
 		}
 
-		d.deviceMemcpy(d.deviceStruct.gridEFrequency1, (*sCPU).EkwOut, d.deviceStruct.NgridC * 2 * sizeof(std::complex<double>), HostToDevice);
+		d.deviceMemcpy(d.deviceStruct.gridEFrequency1, (*sCPU).EkwOut, d.deviceStruct.NgridC * 2 * sizeof(std::complex<double>), copyType::ToDevice);
 
 		deviceFP* sellmeierCoefficients = (deviceFP*)d.deviceStruct.gridEFrequency1Next1;
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
-		memcpy(sellmeierCoefficientsAugmentedCPU, (*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients, 66 * (sizeof(double)));
+		memcpy(sellmeierCoefficientsAugmentedCPU, (*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients.data(), 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*sCPU).crystalTheta;
 		sellmeierCoefficientsAugmentedCPU[67] = (*sCPU).crystalPhi;
 		sellmeierCoefficientsAugmentedCPU[68] = (*sCPU).axesNumber;
@@ -2127,17 +2127,17 @@ namespace hostFunctions{
 		sellmeierCoefficientsAugmentedCPU[70] = (*sCPU).kStep;
 		sellmeierCoefficientsAugmentedCPU[71] = (*sCPU).fStep;
 		sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), HostToDevice);
+		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, (66 + 8) * sizeof(double), copyType::ToDevice);
 		d.deviceStruct.axesNumber = (*sCPU).crystalDatabase[materialIndex].axisType;
 		d.deviceStruct.sellmeierType = (*sCPU).crystalDatabase[materialIndex].sellmeierType;
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, applyLinearPropagationKernel, sellmeierCoefficients, (deviceFP)thickness, sDevice);
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, d.deviceStruct.NgridC * 2 * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, d.deviceStruct.NgridC * 2 * sizeof(std::complex<double>), copyType::ToHost);
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
 		d.deviceLaunch(2 * d.deviceStruct.Nblock, d.deviceStruct.Nthread, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
 
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
 		getTotalSpectrum(d);
 
 		return 0;
@@ -2157,13 +2157,13 @@ namespace hostFunctions{
 		sellmeierCoefficientsAugmentedCPU[70] = (*s).kStep;
 		sellmeierCoefficientsAugmentedCPU[71] = (*s).fStep;
 		sellmeierCoefficientsAugmentedCPU[72] = 1.0e-12;
-		memcpy(sellmeierCoefficientsAugmentedCPU + 72, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies, 7 * sizeof(double));
-		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, 79 * sizeof(double), HostToDevice);
+		memcpy(sellmeierCoefficientsAugmentedCPU + 72, (*s).crystalDatabase[(*s).materialIndex].nonlinearReferenceFrequencies.data(), 7 * sizeof(double));
+		d.deviceMemcpy(sellmeierCoefficients, sellmeierCoefficientsAugmentedCPU, 79 * sizeof(double), copyType::ToDevice);
 
 		//prepare the propagation grids
 		deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
-		d.deviceMemcpy(sD, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), HostToDevice);
-		d.deviceLaunch((unsigned int)(*sc).Ntime/(2*MIN_GRIDDIM), MIN_GRIDDIM, getChiLinearKernel, sD, sellmeierCoefficients);
+		d.deviceMemcpy(sD, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
+		d.deviceLaunch((unsigned int)(*sc).Ntime/(2*minGridDimension), minGridDimension, getChiLinearKernel, sD, sellmeierCoefficients);
 		if ((*s).is3D) {
 			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepare3DGridsKernel, sellmeierCoefficients, sD);
 		}
@@ -2173,7 +2173,7 @@ namespace hostFunctions{
 		else {
 			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepareCartesianGridsKernel, sellmeierCoefficients, sD);
 		}
-		d.deviceMemcpy(sc, sD, sizeof(deviceParameterSet<deviceFP, deviceComplex>), DeviceToHost);
+		d.deviceMemcpy(sc, sD, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToHost);
 		return 0;
 	}
 
@@ -2189,14 +2189,14 @@ namespace hostFunctions{
 		deviceComplex* Eout2 = d.deviceStruct.gridEFrequency1Next2;
 
 		//retrieve/rotate the field from the CPU memory
-		d.deviceMemcpy(Ein1, (*sCPU).EkwOut, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), HostToDevice);
-		d.deviceLaunch((unsigned int)(d.deviceStruct.NgridC / MIN_GRIDDIM), MIN_GRIDDIM, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle);
-		d.deviceMemcpy((*sCPU).EkwOut, Eout1, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy(Ein1, (*sCPU).EkwOut, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), copyType::ToDevice);
+		d.deviceLaunch((unsigned int)(d.deviceStruct.NgridC / minGridDimension), minGridDimension, rotateFieldKernel, Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle);
+		d.deviceMemcpy((*sCPU).EkwOut, Eout1, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), copyType::ToHost);
 
 		//transform back to time
 		d.fft(Eout1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
 		d.deviceLaunch(2 * d.deviceStruct.Nblock, d.deviceStruct.Nthread, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 
 		//update spectrum
 		getTotalSpectrum(d);
@@ -2224,7 +2224,7 @@ namespace hostFunctions{
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel, sD);
 				if((*sH).hasPlasma){
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
-					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
+					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B, sD);
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam, sD);
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFT::D2Z_Polarization);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernelCylindric, sD);
@@ -2249,7 +2249,7 @@ namespace hostFunctions{
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A, sD);
-				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / MIN_GRIDDIM), 2 * MIN_GRIDDIM, plasmaCurrentKernel_twoStage_B, sD);
+				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B, sD);
 				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
 				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel, sD);
 			}
@@ -2313,8 +2313,8 @@ namespace hostFunctions{
 
 			//copy the field arrays from the GPU to CPU memory if requested by the UI
 			if ((*sCPU).statusFlags[0] == 3) {
-				d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
-				d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), DeviceToHost);
+				d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
+				d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), copyType::ToHost);
 				(*sCPU).statusFlags[0] = 0;
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
@@ -2322,10 +2322,10 @@ namespace hostFunctions{
 		if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
 
 		//take final spectra and transfer the results to the CPU
-		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
 		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
-		d.deviceLaunch((int)(d.deviceStruct.Ngrid / MIN_GRIDDIM), 2 * MIN_GRIDDIM, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
-		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+		d.deviceLaunch((int)(d.deviceStruct.Ngrid / minGridDimension), 2 * minGridDimension, multiplyByConstantKernelD, d.deviceStruct.gridETime1, (deviceFP)(1.0 / d.deviceStruct.Ngrid));
+		d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 		getTotalSpectrum(d);
 
 		int returnval =  13 * d.isTheCanaryPixelNaN(canaryPointer);
@@ -2375,11 +2375,11 @@ namespace hostFunctions{
 			if (!defaultMask[6])(*sCPU).effectiveMass = parameters[6];
 			if (!defaultMask[7])(*sCPU).crystalThickness = 1e-6 * parameters[7];
 			if (!defaultMask[8])(*sCPU).propagationStep = 1e-9 * parameters[8];
-			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
-			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
-			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
@@ -2397,11 +2397,11 @@ namespace hostFunctions{
 			if (!defaultMask[4])(*sCPU).propagationStep = 1e-9 * parameters[4];
 
 			(*sCPU).nonlinearAbsorptionStrength = 0.0;
-			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
-			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
-			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
@@ -2432,11 +2432,11 @@ namespace hostFunctions{
 			(*sCPU).propagationStep = 1e-9;
 
 			(*sCPU).nonlinearAbsorptionStrength = 0.0;
-			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
-			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
-			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
+			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
@@ -2455,11 +2455,11 @@ namespace hostFunctions{
 				if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
 				if (!defaultMask[4])(*sCPU).propagationStep = 1e-9 * parameters[4];
 				(*sCPU).nonlinearAbsorptionStrength = 0.0;
-				(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d;
-				(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3;
-				(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-				(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters;
-				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients;
+				(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
+				(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
+				(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+				(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
+				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 				(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 				(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 				(*sCPU).forceLinear = true;
@@ -2560,11 +2560,12 @@ namespace hostFunctions{
 		{
 			interpretParameters(cc, 21, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
-			d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), HostToDevice);
-			d.deviceMemcpy(d.deviceStruct.gridEFrequency1, (*sCPU).EkwOut, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), HostToDevice);
+			d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
+			d.deviceMemcpy(d.deviceStruct.gridEFrequency1, (*sCPU).EkwOut, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToDevice);
 
 			pulse<double> p;
-			memcpy(&p, &(sCPU->pulse1), sizeof(pulse<double>));
+			//memcpy(&p, &(sCPU->pulse1), sizeof(pulse<double>));
+			p = sCPU->pulse1;
 			p.energy = parameters[0];
 			p.frequency = 1e12 * parameters[1];
 			p.bandwidth = 1e12 * parameters[2];
@@ -2588,8 +2589,8 @@ namespace hostFunctions{
 			(*sCPU).crystalPhi = deg2Rad<deviceFP>() * parameters[20];
 
 			addPulseToFieldArrays(d, p, false, NULL);
-			d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), DeviceToHost);
-			d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), DeviceToHost);
+			d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
+			d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 
 			getTotalSpectrum(d);
 		}
@@ -2669,8 +2670,7 @@ namespace hostFunctions{
 		//main text interpreter
 		simulationParameterSet sCPUbackupValues;
 		simulationParameterSet* sCPUbackup = &sCPUbackupValues;
-		memcpy(sCPUbackup, sCPU, sizeof(simulationParameterSet));
-
+		sCPUbackupValues = *sCPU;
 		double iBlock[100] = { 0.0 };
 
 		for (int k = 1; k < 38; k++) {
@@ -2711,7 +2711,8 @@ namespace hostFunctions{
 			currentString = currentString.substr(1, std::string::npos);
 
 			(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
-			memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
+			//memcpy(sCPU, sCPUbackup, sizeof(simulationParameterSet));
+			*sCPU = *sCPUbackup;
 		}
 		return error;
 	}
@@ -2822,9 +2823,11 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 
 // Main function for running a sequence
 unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
-	simulationParameterSet sCPUcurrent;
+	
+	
+	//memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
+	simulationParameterSet sCPUcurrent = *((simulationParameterSet*)lpParam);
 	simulationParameterSet* sCPU = &sCPUcurrent;//(simulationParameterSet*)lpParam;
-	memcpy(sCPU, (simulationParameterSet*)lpParam, sizeof(simulationParameterSet));
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
 	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);
 	unsigned long returnValue = solveSequenceWithDevice(d, sCPU);
@@ -2833,10 +2836,10 @@ unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
 
 //run in fitting mode
 unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
-	simulationParameterSet sCPUcurrent;
+	simulationParameterSet sCPUcurrent = *sCPU;
 	fittingSet = &sCPUcurrent;
 
-	memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
+	//memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
 	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(fittingSet);
 	dFit = &d;
 	dlib::matrix<double, 0, 1> parameters;
@@ -2908,117 +2911,4 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 }
 
 
-	
-//main function - if included in the GUI, this should have a different name
-// than main() - this one applies when running in command line mode (e.g. on
-// the clusters.)
-int mainX(int argc, char* argv[]){
-	char* filepath = argv[1];
-	int i, j;
 
-	size_t progressCounter = 0;
-	int CUDAdeviceCount = 1;
-
-	if (hardwareCheck(&CUDAdeviceCount)) return 1;
-
-	if (argc < 2) {
-		std::cout << "No input file specified." << std::endl;
-		return 2;
-	}
-
-	// allocate databases, main structs
-	simulationParameterSet initializationStruct;
-	memset(&initializationStruct, 0, sizeof(simulationParameterSet));
-	crystalDatabase db;
-	initializationStruct.crystalDatabase = db.db.data();
-	initializationStruct.progressCounter = &progressCounter;
-	// read crystal database
-	if (db.db.size() == 0) {
-		std::cout << "Could not read crystal database." << std::endl;
-		return 12;
-	}
-	std::cout << "Read " << db.db.size() << "crystal database entries :" << std::endl;
-	for (j = 0; j < db.db.size(); ++j) {
-		std::cout << "Material " << j << "name: " << db.db[j].crystalName.c_str() << std::endl;
-	}
-
-	// read from settings file
-	if (readInputParametersFile(&initializationStruct, db.db.data(), filepath) == 1) {
-		std::cout << "Could not read input file." << std::endl;
-		return 13;
-	}
-	size_t Ntotal = minN(1, initializationStruct.Nsims * minN(1, initializationStruct.Nsims2));
-	simulationParameterSet* sCPU = new simulationParameterSet[Ntotal];
-	memcpy(sCPU, &initializationStruct, sizeof(simulationParameterSet));
-	allocateGrids(sCPU);
-	if (loadPulseFiles(sCPU) == 1) {
-		std::cout << "Could not read pulse file." << std::endl;
-		deallocateGrids(sCPU, true);
-		delete[] sCPU;
-		return 14;
-	}
-
-	if (((*sCPU).sequenceString[0] != 'N') && (*sCPU).sequenceString[0] != 0) (*sCPU).isInSequence = true;
-	configureBatchMode(sCPU);
-	readFittingString(sCPU);
-	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
-
-	if ((*sCPU).Nfitting != 0) {
-		std::cout << "Running optimization for" << (*sCPU).fittingMaxIterations << "iterations..." << std::endl;
-
-		runDlibFittingX(sCPU);
-
-		auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-		std::cout << "Finished after" <<
-			1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
-			<< "s" << std::endl;
-		saveDataSet(sCPU);
-
-		std::cout << "Optimization result:" << std::endl << "(index, value)" << std::endl;
-		for (int i = 0; i < (*sCPU).Nfitting; ++i) {
-			std::cout << i << (*sCPU).fittingResult[i] << std::endl;
-		}
-
-		deallocateGrids(sCPU, true);
-		delete[] sCPU;
-		return 0;
-	}
-	// run simulations
-	std::thread* threadBlock = new std::thread[Ntotal];
-	size_t maxThreads = minN(CUDAdeviceCount, Ntotal);
-	for (j = 0; j < Ntotal; ++j) {
-
-		sCPU[j].assignedGPU = j % CUDAdeviceCount;
-		if (j >= maxThreads) {
-			if (threadBlock[j - maxThreads].joinable()) {
-				threadBlock[j - maxThreads].join();
-			}
-		}
-
-		if ((*sCPU).isInSequence) {
-			threadBlock[j] = std::thread(solveNonlinearWaveEquationSequenceX, &sCPU[j]);
-		}
-		else {
-			threadBlock[j] = std::thread(solveNonlinearWaveEquationX, &sCPU[j]);
-		}
-
-	}
-	for (i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; ++i) {
-		if (sCPU[i].memoryError > 0) {
-			std::cout << "Warning: device memory error " << sCPU[i].memoryError << std::endl;
-		}
-		if (threadBlock[i].joinable()) {
-			threadBlock[i].join();
-		}
-	}
-
-	auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-	std::cout << "Finished after" <<
-		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
-		<< "s" << std::endl;
-	saveDataSet(sCPU);
-	delete[] threadBlock;
-	deallocateGrids(sCPU, true);
-	delete[] sCPU;
-	return 0;
-}
