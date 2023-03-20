@@ -71,7 +71,7 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 }
 
 #if __cplusplus==201703L
-inline void removeCharacterFromString(std::string& s, removedChar) {
+inline void removeCharacterFromString(std::string& s, char removedChar) {
 	char* editString = new char[s.length() + 1]();
 	s.copy(editString, s.length() - 1);
 	removeCharacterFromString(editString, s.length() - 1, removedChar);
