@@ -5,17 +5,7 @@
 #include <oneapi/dpl/complex>
 #define isnan(x) std::isnan(x)
 
-#if LWEFLOATINGPOINT==32
-namespace deviceLib = deviceLibSYCLFP32;
-namespace deviceFPLib = deviceLibSYCLFP32;
-namespace complexLib = oneapi::dpl;
-const auto dftPrecision = oneapi::mkl::dft::precision::SINGLE;
-#else
-namespace deviceLib = oneapi::dpl;
-namespace complexLib = oneapi::dpl;
-	#define deviceFPLib
-const auto dftPrecision = oneapi::mkl::dft::precision::DOUBLE;
-#endif
+
 
 template <typename deviceFP>
 static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
@@ -89,6 +79,18 @@ namespace deviceLibSYCLFP32{
 		return oneapi::dpl::sqrt(x);
 	}
 };
+
+#if LWEFLOATINGPOINT==32
+namespace deviceLib = deviceLibSYCLFP32;
+namespace deviceFPLib = deviceLibSYCLFP32;
+namespace complexLib = oneapi::dpl;
+const auto dftPrecision = oneapi::mkl::dft::precision::SINGLE;
+#else
+namespace deviceLib = oneapi::dpl;
+namespace complexLib = oneapi::dpl;
+	#define deviceFPLib
+const auto dftPrecision = oneapi::mkl::dft::precision::DOUBLE;
+#endif
 
 static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;

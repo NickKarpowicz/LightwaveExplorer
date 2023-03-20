@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <string.h>
+#include <string>
 #include <complex>
 #include <fstream>
 #include "LightwaveExplorerUtilities.h"
@@ -72,7 +73,8 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	return 0;
 }
 int removeCharacterFromString(std::string& s, char removedChar) {
-	s.erase(std::remove(s.begin(), s.end(), removedChar), s.end());
+	//s.erase(std::remove(s.begin(), s.end(), removedChar), s.end());
+	std::erase(s,removedChar);
 	return 0;
 }
 
