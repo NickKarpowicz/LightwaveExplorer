@@ -216,7 +216,7 @@ public:
 		deallocateSet();
 	}
 	template<typename Function, typename... Args>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
+	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const Function& kernel, Args... args) const {
 #pragma omp parallel for num_threads(deviceThreads)
 		for (int i = 0; i < (int)Nthread; ++i) {
 			for (unsigned int j = 0u; j < Nblock; ++j) {
@@ -234,29 +234,29 @@ public:
 		memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, copyType kind) {
+	void deviceMemcpy(void* dst, const void* src, size_t count, copyType kind) {
 		memcpy(dst, src, count);
 	}
 
-	void deviceMemcpy(double* dst, float* src, size_t count, copyType kind) {
+	void deviceMemcpy(double* dst, const float* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			dst[i] = (double)src[i];
 		}
 	}
 
-	void deviceMemcpy(std::complex<double>* dst, std::complex<float>* src, size_t count, copyType kind) {
+	void deviceMemcpy(std::complex<double>* dst, const std::complex<float>* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<double>((double)src[i].real(), (double)src[i].imag());
 		}
 	}
 
-	void deviceMemcpy(std::complex<float>* dst, std::complex<double>* src, size_t count, copyType kind) {
+	void deviceMemcpy(std::complex<float>* dst, const std::complex<double>* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
 		}
 	}
 
-	void deviceMemcpy(float* dst, double* src, size_t count, copyType kind) {
+	void deviceMemcpy(float* dst, const double* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			dst[i] = (float)src[i];
 		}
@@ -266,7 +266,7 @@ public:
 		free(block);
 	}
 
-	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
+	inline bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
 		return(isnan(*canaryPointer));
 	}
 	void fft(void* input, void* output, deviceFFT type) const {

@@ -196,7 +196,7 @@ public:
 	}
 
 	template<typename Function, typename... Args>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
+	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const Function& kernel, Args... args) {
 		stream.submit([&](sycl::handler& h) {
 			h.parallel_for(Nblock * Nthread, [=](auto i) {kernel(i, args...); });
 			});
@@ -215,13 +215,13 @@ public:
 		stream.memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, copyType kind) {
+	void deviceMemcpy(void* dst, const void* src, size_t count, copyType kind) {
 		stream.wait();
 		stream.memcpy(dst, src, count);
 		stream.wait();
 	}
 
-	void deviceMemcpy(double* dst, float* src, size_t count, copyType kind) {
+	void deviceMemcpy(double* dst, const float* src, size_t count, copyType kind) {
 		stream.wait();
 		float* copyBuffer = new float[count / sizeof(double)]();
 		stream.memcpy(copyBuffer, src, count/2);
@@ -232,7 +232,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(std::complex<double>* dst, oneapi::dpl::complex<float>* src, size_t count, copyType kind) {
+	void deviceMemcpy(std::complex<double>* dst, const oneapi::dpl::complex<float>* src, size_t count, copyType kind) {
 		stream.wait();
 		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
 		stream.memcpy(copyBuffer, src, count/2);
@@ -243,7 +243,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(oneapi::dpl::complex<float>* dst, std::complex<double>* src, size_t count, copyType kind) {
+	void deviceMemcpy(oneapi::dpl::complex<float>* dst, const std::complex<double>* src, size_t count, copyType kind) {
 		stream.wait();
 		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
 		
@@ -255,7 +255,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(float* dst, double* src, size_t count, copyType kind) {
+	void deviceMemcpy(float* dst, const double* src, size_t count, copyType kind) {
 		stream.wait();
 		
 		float* copyBuffer = new float[count / sizeof(double)]();

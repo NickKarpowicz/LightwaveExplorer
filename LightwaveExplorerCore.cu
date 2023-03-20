@@ -627,7 +627,7 @@ namespace kernels {
 		long long neighbors[6];
 
 		//zero at edges of grid
-		if (j<3 || j>((long long)(*s).Nspace - 4)) {
+		[[unlikely]] if (j<3 || j>((long long)(*s).Nspace - 4)) {
 			(*s).gridRadialLaplacian1[i] = 0.0f;
 			(*s).gridRadialLaplacian2[i] = 0.0f;
 		}
@@ -1480,7 +1480,7 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if(iC>(*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (sixth<deviceFP>() * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
@@ -1494,7 +1494,7 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)third<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
@@ -1508,7 +1508,7 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)third<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
@@ -1522,7 +1522,7 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]]if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + sixth<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * (*sP).gridEFrequency1[iC];
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
@@ -1537,7 +1537,7 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (sixth<deviceFP>() * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
 		(*sP).workspace1[iC] =  (*sP).fftNorm * ff * estimate1;
@@ -1551,7 +1551,7 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * third<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
@@ -1565,7 +1565,7 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * third<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
@@ -1579,7 +1579,7 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + sixth<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * (*sP).gridEFrequency1[iC];
 		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
