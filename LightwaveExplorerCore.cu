@@ -451,10 +451,13 @@ namespace kernels {
 	//the syntax might look a bit strange due to the "trilingual" mode of operation. In short:
 	// CUDA and OpenMP are fine with function pointers being used to launch kernels, but SYCL
 	// doesn't allow them. However, SYCL does allow named lambdas, which have a nearly identical
-	// structure. The kernelLWE(preprocessor definition handles the return type (void for CUDA,
+	// structure. The kernelLWE() preprocessor definition handles the return type (void for CUDA,
 	// auto for SYCL, and the []( syntax to declare a lambda for SYCL. 
-	// The function's closing } has to be followed by a ; to have valid syntax in SYCL.
-	// localIndex will point to the current thread id.
+	// The function's closing } has to be followed by a ; to have valid syntax in SYCL 
+	// (again, it's a lambda, not a function).
+	// localIndex will point to the current thread id. I only use 1D data layouts currently; if
+	// 2D or higher dimensions are required, this could be modified (probably together with a different
+	// preprocessor definition replacing kernelLWE().
 
 	//calculate the total energy spectrum of the beam for the 2D modes. Note that for the 
 	//cartesian one, it will be treated as a round beam instead of an infinite plane wave 
@@ -513,6 +516,7 @@ namespace kernels {
 	//Calculate the energy spectrum after a 2D propagation assuming that the beam
 	//height in the non-resolved direction is == the grid width (i.e. square grid)
 	//More quantitative than the mapping to round beams, but rather specific
+	// DISABLED IN FAVOR OF ROUND-BEAM APPROXIMATION
 	//kernelLWE(totalSpectrum2DSquareKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 	//	size_t i = localIndex;
 	//	size_t j;

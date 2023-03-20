@@ -112,6 +112,15 @@ hostOrDevice static constexpr T kLorentzian() {
 #include <fftw3_mkl.h>
 #endif
 
+//Enum for determining the FFT type:
+// D2Z: real to complex (time to frequency)
+// Z2D: complex to real (f to t)
+// D2Z_1D: real-to-complex, on the time/frequency axis only (to a grid in space vs. frequency)
+// Z2D_1D: complex to real, time/frequency axis only (to space vs. time)
+// D2Z_Polarization: in the case of cylindrical symmetry, a double-sized fft in the de-interlaced
+//                   representation. If plasma calculations are also being done, their FFT will
+//                   be included here as a batch. Thus, this is the most expensive operation
+//                   in such a propagation.
 enum class deviceFFT : int {
     D2Z = 0,
     Z2D = 1,
@@ -120,12 +129,22 @@ enum class deviceFFT : int {
     D2Z_Polarization = 4
 };
 
+//Determine the type of data transfer - not necessary on all devices, but should be specified
+//consistently in the abstracted functions.
+// ToDevice: source is the host, destination is device
+// ToHost: source is the device, destination is host
+// OnDevice: device is both source and destination
 enum class copyType : int {
     ToDevice = 1,
     ToHost =  2,
     OnDevice = 3
 };
 
+//class holding the device data structures
+//note that it uses c-style arrays, this is for compatibility
+//with all of the platforms involved, and because it is transferred
+//to the device with a memcpy-like operation, so constructors
+//would not be called.
 template <typename deviceFP, typename deviceComplex>
 class deviceParameterSet {
 public:
@@ -207,7 +226,7 @@ public:
     int Nblock = 0;
 };
 
-
+//Class which holds a single entry in the crystal database
 class crystalEntry {
 public:
     std::string crystalName;
@@ -225,6 +244,8 @@ public:
     std::array<double,7> nonlinearReferenceFrequencies = {};
 };
 
+//Crystal database class primarily holds a std::vector of crystalEntry elements
+//comprising the database, plus methods for loading the database from the file
 class crystalDatabase {
 public:
     std::vector<crystalEntry> db;
@@ -348,6 +369,8 @@ public:
     }
 };
 
+//templated class for describing a pulse in various floating point representations
+//copyable between representations (required for strict FP32 mode)
 template <typename T>
 class pulse {
 public:
@@ -438,7 +461,9 @@ public:
 };
 
 
-//Simulation parameter struct to pass to the simulations running in threads
+//Simulation parameter class containing the complete description of the running simulation
+//intended only to be present on the CPU, as certain contents (std::array, std::string) can not
+//be assumed to be implemented on the device.
 class simulationParameterSet {
 public:
     double rStep = 0;

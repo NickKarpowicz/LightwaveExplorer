@@ -3,6 +3,7 @@
 #include <chrono>
 #include <locale>
 #include <fstream>
+#include <vector>
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
@@ -61,7 +62,8 @@ const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 1u);
 #else
 const int interfaceThreads = std::thread::hardware_concurrency();
 #endif
-simulationParameterSet* activeSetPtr;       // Main structure containing simulation parameters and pointers
+std::vector<simulationParameterSet> simulationData(1);
+simulationParameterSet* activeSetPtr = simulationData.data();       // Main structure containing simulation parameters and pointers
 crystalDatabase theDatabase;
 
 bool updateDisplay();
@@ -151,7 +153,6 @@ public:
     }
 
     void activate(GtkApplication* app) {
-        activeSetPtr = new simulationParameterSet[maxSimulations];
         int buttonWidth = 4;
         int textWidth = 3;
         int labelWidth = 6;
@@ -1078,12 +1079,15 @@ void createRunFile() {
 
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = true;
 
+    simulationParameterSet backupSet = *activeSetPtr;
+    simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 + 1, backupSet);
+    activeSetPtr = simulationData.data();
     configureBatchMode(activeSetPtr);
 
-    simulationParameterSet* testSet = new simulationParameterSet[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2]();
+    std::vector<simulationParameterSet> counterData = simulationData;
+    simulationParameterSet* testSet = counterData.data();
     totalSteps = 0;
     for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
-        testSet[j] = activeSetPtr[j];
         if ((*activeSetPtr).isInSequence) {
             testSet[j].progressCounter = &totalSteps;
             testSet[j].runType = -1;
@@ -1094,7 +1098,6 @@ void createRunFile() {
             solveNonlinearWaveEquationCounter(&testSet[j]);
         }
     }
-    delete[] testSet;
 
     //create SLURM script
     (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
@@ -1860,9 +1863,14 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     loadPulseFiles(activeSetPtr);
 
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = true;
-    
+
+    simulationParameterSet backupSet = *activeSetPtr;
+    simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2+1, backupSet);
+    activeSetPtr = simulationData.data();
     configureBatchMode(activeSetPtr);
-    simulationParameterSet* testSet = new simulationParameterSet[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2]();
+
+    std::vector<simulationParameterSet> counterData = simulationData;
+    simulationParameterSet* testSet = counterData.data();
     totalSteps = 0;
     for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
         testSet[j] = activeSetPtr[j];
@@ -1876,7 +1884,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             solveNonlinearWaveEquationCounter(&testSet[j]);
         }
     }
-    delete[] testSet;
+    
     (*activeSetPtr).runType = 0;
     int error = 0;
     //run the simulations
@@ -1952,7 +1960,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             normalFunction = &solveNonlinearWaveEquationCPUFP32;
         }
     }
-   
 
     std::thread secondQueueThread(secondaryQueue, 
         &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 
@@ -2065,6 +2072,9 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     loadPulseFiles(activeSetPtr);
 
     if ((*activeSetPtr).sequenceString[0] != 'N') (*activeSetPtr).isInSequence = true;
+    simulationParameterSet backupSet = *activeSetPtr;
+    simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 + 1, backupSet);
+    activeSetPtr = simulationData.data();
     configureBatchMode(activeSetPtr);
     readFittingString(activeSetPtr);
     if ((*activeSetPtr).Nfitting == 0) {
