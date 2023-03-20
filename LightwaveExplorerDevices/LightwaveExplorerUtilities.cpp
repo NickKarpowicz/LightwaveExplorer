@@ -5,18 +5,11 @@
 #include <fstream>
 #include "LightwaveExplorerUtilities.h"
 
-#if __cplusplus==201703L
-void std::erase(std::string& s, removedChar) {
-	char* editString = new char[s.length() + 1]();
-	s.copy(editString, s.length() - 1);
-	removeCharacterFromString(editString, s.length() - 1, removedChar);
-	s = std::string(editString);
-}
-#endif
+
 int readFittingString(simulationParameterSet* sCPU) {
-	std::erase((*sCPU).fittingString, '\r');
-	std::erase((*sCPU).fittingString, '\n');
-	std::erase((*sCPU).fittingString, '\t');
+	removeCharacterFromString((*sCPU).fittingString, '\r');
+	removeCharacterFromString((*sCPU).fittingString, '\n');
+	removeCharacterFromString((*sCPU).fittingString, '\t');
 
 
 	std::stringstream ss((*sCPU).fittingString);
@@ -76,11 +69,19 @@ int removeCharacterFromString(char* cString, size_t N, char removedChar) {
 	}
 	return 0;
 }
-int removeCharacterFromString(std::string& s, char removedChar) {
-	std::erase(s,removedChar);
-	return 0;
-}
 
+#if __cplusplus==201703L
+inline void removeCharacterFromString(std::string& s, removedChar) {
+	char* editString = new char[s.length() + 1]();
+	s.copy(editString, s.length() - 1);
+	removeCharacterFromString(editString, s.length() - 1, removedChar);
+	s = std::string(editString);
+}
+#else
+inline void removeCharacterFromString(std::string& s, char removedChar) {
+	std::erase(s,removedChar);
+}
+#endif
 
 
 int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, char startChar, char endChar) {
@@ -100,9 +101,9 @@ int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, cha
 void stripWhiteSpace(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
-	std::erase(s, '\r');
-	std::erase(s, '\n');
-	std::erase(s, '\t');
+	removeCharacterFromString(s, '\r');
+	removeCharacterFromString(s, '\n');
+	removeCharacterFromString(s, '\t');
 
 
 	memset(sequenceString, 0, bufferSize);
@@ -111,22 +112,22 @@ void stripWhiteSpace(char* sequenceString, size_t bufferSize) {
 
 void stripWhiteSpace(std::string& s) {
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
-	std::erase(s, '\r');
-	std::erase(s, '\n');
-	std::erase(s, '\t');
+	removeCharacterFromString(s, '\r');
+	removeCharacterFromString(s, '\n');
+	removeCharacterFromString(s, '\t');
 }
 
 void stripLineBreaks(char* sequenceString, size_t bufferSize) {
 	std::string s(sequenceString);
-	std::erase(s, '\r');
-	std::erase(s, '\n');
+	removeCharacterFromString(s, '\r');
+	removeCharacterFromString(s, '\n');
 	memset(sequenceString, 0, bufferSize);
 	s.copy(sequenceString, bufferSize-1);
 }
 
 void stripLineBreaks(std::string& s) {
-	std::erase(s, '\r');
-	std::erase(s, '\n');
+	removeCharacterFromString(s, '\r');
+	removeCharacterFromString(s, '\n');
 }
 
 

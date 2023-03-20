@@ -538,7 +538,7 @@ public:
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
 int             removeCharacterFromString(char* cString, size_t N, char removedChar);
-int             removeCharacterFromString(std::string& s, char removedChar);
+void            removeCharacterFromString(std::string& s, char removedChar);
 int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
 int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
