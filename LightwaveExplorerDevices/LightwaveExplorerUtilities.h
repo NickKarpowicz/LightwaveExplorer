@@ -134,6 +134,7 @@ enum class deviceFFT : int {
 // ToDevice: source is the host, destination is device
 // ToHost: source is the device, destination is host
 // OnDevice: device is both source and destination
+// there is no on-host memory transfer to discourage memcpy-like operations where not required...
 enum class copyType : int {
     ToDevice = 1,
     ToHost =  2,
@@ -141,7 +142,7 @@ enum class copyType : int {
 };
 
 //class holding the device data structures
-//note that it uses c-style arrays, this is for compatibility
+//note that it uses c-style arrays-- this is for compatibility
 //with all of the platforms involved, and because it is transferred
 //to the device with a memcpy-like operation, so constructors
 //would not be called.
@@ -244,8 +245,8 @@ public:
     std::array<double,7> nonlinearReferenceFrequencies = {};
 };
 
-//Crystal database class primarily holds a std::vector of crystalEntry elements
-//comprising the database, plus methods for loading the database from the file
+//Crystal database class; primarily holds a std::vector of crystalEntry elements
+//comprising the database, plus method for loading the database from the file
 class crystalDatabase {
 public:
     std::vector<crystalEntry> db;
@@ -546,10 +547,10 @@ public:
     size_t batchLoc2 = 0;
 
     //fitting
-    bool isInFittingMode;
+    bool isInFittingMode = false;
     std::string fittingString;
     std::string fittingPath;
-    std::array<double, 256> fittingArray;
+    std::array<double, 256> fittingArray = {};
     double* fittingReference = 0;
     int Nfitting = 0;
     int fittingMode = 0;
@@ -557,8 +558,8 @@ public:
     size_t fittingROIstart = 0;
     size_t fittingROIstop = 0;
     size_t fittingROIsize = 0;
-    std::array<double, 64> fittingResult;
-    std::array<double, 64> fittingError;
+    std::array<double, 64> fittingResult = {};
+    std::array<double, 64> fittingError = {};
 };
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
@@ -588,6 +589,5 @@ std::string     getBasename(char* fullPath);
 std::string     getBasename(const std::string& fullPath);
 void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
 void            stripWhiteSpace(std::string& s);
-//void            stripLineBreaks(char* sequenceString, size_t bufferSize);
 void            stripLineBreaks(std::string& s);
 int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);
