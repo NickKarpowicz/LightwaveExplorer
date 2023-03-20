@@ -1,5 +1,5 @@
 	#include "LightwaveExplorerUtilities.h"
-	
+	#include "LWEActiveDeviceCUDA.cuh"
 	#ifndef PLATFORMTYPE
 	#include "../LightwaveExplorerCore.cuh"
 	#endif
