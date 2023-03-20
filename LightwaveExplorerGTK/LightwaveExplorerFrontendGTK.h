@@ -699,6 +699,7 @@ public:
     void init(GtkApplication* appHandle, const char* windowName, int width, int height) {
         window = gtk_application_window_new(appHandle);
         gtk_window_set_title(GTK_WINDOW(window), windowName);
+        gtk_window_set_default_size(GTK_WINDOW(window), width, height);
         bigGrid = gtk_grid_new();
         consoleGrid = gtk_grid_new();
         consoleControlsGrid = gtk_grid_new();

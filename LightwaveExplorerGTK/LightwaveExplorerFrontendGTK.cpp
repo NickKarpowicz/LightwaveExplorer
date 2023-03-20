@@ -168,7 +168,7 @@ public:
         int buttonCol2 = buttonCol1 + buttonWidth;
         int buttonCol3 = buttonCol2 + buttonWidth;
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
-        window.init(app, _T("Lightwave Explorer"), 1920, 1080);
+        window.init(app, _T("Lightwave Explorer"), 1600, 980);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
             textBoxes[i].init(parentHandle, textCol1a, i, textWidth, 1);
