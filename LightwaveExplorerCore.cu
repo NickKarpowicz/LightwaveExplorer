@@ -2113,7 +2113,6 @@ namespace hostFunctions{
 
 		if (d.hasPlasma) {
 			simulationParameterSet sCopy = *sCPU;
-			//memcpy(&sCopy, sCPU, sizeof(simulationParameterSet));
 			sCopy.nonlinearAbsorptionStrength = 0.0;
 			d.reset(&sCopy);
 		}
@@ -2569,7 +2568,6 @@ namespace hostFunctions{
 			d.deviceMemcpy(d.deviceStruct.gridEFrequency1, (*sCPU).EkwOut, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToDevice);
 
 			pulse<double> p;
-			//memcpy(&p, &(sCPU->pulse1), sizeof(pulse<double>));
 			p = sCPU->pulse1;
 			p.energy = parameters[0];
 			p.frequency = 1e12 * parameters[1];

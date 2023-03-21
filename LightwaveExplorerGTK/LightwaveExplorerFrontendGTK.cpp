@@ -647,6 +647,8 @@ void readParametersFromInterface() {
     (*activeSetPtr).isInSequence = false;
     theGui.sequence.copyBuffer((*activeSetPtr).sequenceString);
     stripWhiteSpace((*activeSetPtr).sequenceString);
+    if ((*activeSetPtr).sequenceString[0] != 'N' && (*activeSetPtr).sequenceString.length() > 5) (*activeSetPtr).isInSequence = true;
+
     (*activeSetPtr).isInFittingMode = false;
     theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString);
     stripLineBreaks((*activeSetPtr).fittingString);
@@ -856,32 +858,14 @@ void checkLibraryAvailability() {
 #endif
 }
 
-int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
-    if (Nx * Ny == 0) return 1;
-    
-    // creating input
-    unsigned char* pixels = new unsigned char[4 * Nx * Ny]();//(unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
-    if (pixels == NULL) return 1;
-
-
-    size_t Ntot = Nx * Ny;
+static constexpr std::array<std::array<unsigned char, 3>, 256> createColormap(const int cm) {
+    float oneOver255 = 1.0f / 255.0f;
     float nval;
-    int stride = 4;
-    //Find the image maximum and minimum
-    float imin = data[0];
-    float imax = data[0];
-    for (size_t i = 1; i < Ntot; ++i) {
-        if (data[i] > imax) imax = data[i];
-        if (data[i] < imin) imin = data[i];
-    }
+    std::array<std::array<unsigned char, 3>, 256> colorMap = {};
 
-    float oneOver255 = 1.0f / 255;
-    unsigned char colorMap[256][3];
-
-    for (unsigned short int j = 0; j < 256; ++j) {
+    for (int j = 0; j < 256; ++j) {
         switch (cm) {
         case 0:
-
             colorMap[j][0] = (unsigned char)j;
             colorMap[j][1] = (unsigned char)j;
             colorMap[j][2] = (unsigned char)j;
@@ -928,6 +912,29 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
             colorMap[j][2] = (unsigned char)(255. * (0.9 * exp(-pow(4.5 * (nval - 0.05), 2)) + 0.2 * exp(-pow(3.5 * (nval - 1.05), 2))));
         }
     }
+    return colorMap;
+}
+
+int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
+    if (Nx * Ny == 0) return 1;
+    
+    // creating input
+    unsigned char* pixels = new unsigned char[4 * Nx * Ny]();
+    if (pixels == nullptr) return 1;
+
+    std::array<std::array<unsigned char, 3>, 256> colorMap = createColormap(cm);
+    size_t Ntot = Nx * Ny;
+    
+    int stride = 4;
+    //Find the image maximum and minimum
+    float imin = data[0];
+    float imax = data[0];
+    for (size_t i = 1; i < Ntot; ++i) {
+        if (data[i] > imax) imax = data[i];
+        if (data[i] < imin) imin = data[i];
+    }
+
+    
 
     if (cm == 4) {
         imax = maxN(imax, -imin);
@@ -1066,8 +1073,6 @@ void createRunFile() {
     isGridAllocated = true;
     (*activeSetPtr).isFollowerInSequence = false;
     (*activeSetPtr).crystalDatabase = theDatabase.db.data();
-
-    if ((*activeSetPtr).sequenceString[0] != 'N' && (*activeSetPtr).sequenceString.length() > 5) (*activeSetPtr).isInSequence = true;
 
     simulationParameterSet backupSet = *activeSetPtr;
     simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 + 1, backupSet);
@@ -1849,8 +1854,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     (*activeSetPtr).crystalDatabase = theDatabase.db.data();
     loadPulseFiles(activeSetPtr);
 
-    if ((*activeSetPtr).sequenceString[0] != 'N' && (*activeSetPtr).sequenceString.length() > 5) (*activeSetPtr).isInSequence = true;
-
     simulationParameterSet backupSet = *activeSetPtr;
     simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2+1, backupSet);
     activeSetPtr = simulationData.data();
@@ -2058,7 +2061,6 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     (*activeSetPtr).crystalDatabase = theDatabase.db.data();
     loadPulseFiles(activeSetPtr);
 
-    if ((*activeSetPtr).sequenceString[0] != 'N' && (*activeSetPtr).sequenceString.length() > 5) (*activeSetPtr).isInSequence = true;
     simulationParameterSet backupSet = *activeSetPtr;
     simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 + 1, backupSet);
     activeSetPtr = simulationData.data();
