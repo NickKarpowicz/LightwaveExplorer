@@ -240,8 +240,9 @@ public:
 		memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, const void* src, size_t count, copyType kind) {
-		memcpy(dst, src, count);
+	template <typename T>
+	void deviceMemcpy(T* dst, const T* src, size_t count, copyType kind) {
+		std::memcpy(dst, src, count);
 	}
 
 	void deviceMemcpy(double* dst, const float* src, size_t count, copyType kind) {
