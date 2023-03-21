@@ -858,28 +858,10 @@ void checkLibraryAvailability() {
 #endif
 }
 
-int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
-    if (Nx * Ny == 0) return 1;
-    
-    // creating input
-    unsigned char* pixels = new unsigned char[4 * Nx * Ny]();//(unsigned char*)calloc(4 * Nx * Ny, sizeof(unsigned char));
-    if (pixels == NULL) return 1;
-
-
-    size_t Ntot = Nx * Ny;
+static constexpr std::array<std::array<unsigned char, 3>, 256> createColormap(const int cm) {
+    std::array<std::array<unsigned char, 3>, 256> colorMap{};
+    float oneOver255 = 1.0f / 255.0f;
     float nval;
-    int stride = 4;
-    //Find the image maximum and minimum
-    float imin = data[0];
-    float imax = data[0];
-    for (size_t i = 1; i < Ntot; ++i) {
-        if (data[i] > imax) imax = data[i];
-        if (data[i] < imin) imin = data[i];
-    }
-
-    float oneOver255 = 1.0f / 255;
-    unsigned char colorMap[256][3];
-
     for (int j = 0; j < 256; ++j) {
         switch (cm) {
         case 0:
@@ -950,9 +932,6 @@ int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
         if (data[i] > imax) imax = data[i];
         if (data[i] < imin) imin = data[i];
     }
-
-    
-
     if (cm == 4) {
         imax = maxN(imax, -imin);
         imin = minN(imin, -imax);
