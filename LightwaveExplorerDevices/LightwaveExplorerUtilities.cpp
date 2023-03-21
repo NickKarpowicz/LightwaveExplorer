@@ -1,4 +1,5 @@
 #include "LightwaveExplorerUtilities.h"
+#include <cstring>
 
 int readFittingString(simulationParameterSet* sCPU) {
 	removeCharacterFromString((*sCPU).fittingString, '\r');

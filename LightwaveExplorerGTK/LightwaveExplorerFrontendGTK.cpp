@@ -782,8 +782,8 @@ int freeSemipermanentGrids() {
 //ifdef guards are in place to only include CUDA/SYCL when they are being used
 void checkLibraryAvailability() {   
 #if defined CPUONLY
-    CUDAavailable = false;
-    SYCLavailable = false;
+    theSim[0].CUDAavailable = false;
+    theSim[0].SYCLavailable = false;
 #define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
 #define solveNonlinearWaveEquation solveNonlinearWaveEquationCPU
 #define solveNonlinearWaveEquationSequenceSYCL solveNonlinearWaveEquationSequenceCPU

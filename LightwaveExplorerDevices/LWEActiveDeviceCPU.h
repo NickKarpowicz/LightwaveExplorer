@@ -16,6 +16,12 @@ template<typename deviceFP>
 	deviceFP expected = pulseSumAtomic->load();
 	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 }
+static double inline isnan(double x){
+	return std::isnan(x);
+}
+static float inline isnan(float x){
+	return std::isnan(x);
+}
 #else
 template<typename deviceFP>
 static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
