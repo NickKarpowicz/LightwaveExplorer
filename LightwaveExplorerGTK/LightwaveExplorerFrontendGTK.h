@@ -1356,4 +1356,6 @@ static void buttonAddLinear();
 static void buttonAddAperture();
 static void buttonAddFarFieldAperture();
 static void buttonAddForLoop();
+bool updateDisplay();
+void destroyMainWindowCallback();
 

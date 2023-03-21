@@ -55,8 +55,8 @@ const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 1u);
 #else
 const int interfaceThreads = std::thread::hardware_concurrency();
 #endif
-std::vector<simulationParameterSet> simulationData(1);
-simulationParameterSet* activeSetPtr = simulationData.data();       // Main structure containing simulation parameters and pointers
+std::vector<simulationParameterSet> theSim(1);
+//simulationParameterSet* activeSetPtr = theSim.data();       // Main structure containing simulation parameters and pointers
 crystalDatabase theDatabase;
 
 bool updateDisplay();
@@ -136,7 +136,7 @@ public:
 
     void updateSlider() {
         if (queueSliderUpdate) {
-            plotSlider.setRange(0, (double)(((*activeSetPtr).Nsims * maxN((*activeSetPtr).Nsims2, 1u) - 1)));
+            plotSlider.setRange(0, (double)((theSim[0].Nsims * maxN(theSim[0].Nsims2, 1u) - 1)));
             queueSliderUpdate = false;
         }
         if (queueSliderMove) {
@@ -487,7 +487,7 @@ public:
             readInputParametersFile(activeSetPtr, theDatabase.db.data(), "DefaultValues.ini");
         }
 #else
-		readInputParametersFile(activeSetPtr, theDatabase.db.data(), "DefaultValues.ini");
+		readInputParametersFile(theSim.data(), theDatabase.db.data(), "DefaultValues.ini");
 #endif
         setInterfaceValuesToActiveValues();
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
@@ -516,7 +516,7 @@ void destroyMainWindowCallback(){
 
 void setInterfaceValuesToActiveValues(){
 	int i = 0;
-    pulse<double>* t = &(*activeSetPtr).pulse1;
+    pulse<double>* t = &theSim[0].pulse1;
     for (int k = 0; k < 2; ++k) {
         theGui.textBoxes[i++].setToDouble((*t).energy);
         theGui.textBoxes[i++].setToDouble(1e-12 * (*t).frequency);
@@ -534,67 +534,67 @@ void setInterfaceValuesToActiveValues(){
         theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * (*t).beamAngle);
         theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * (*t).polarizationAngle);
         theGui.textBoxes[i++].setToDouble((*t).circularity);
-        t = &(*activeSetPtr).pulse2;
+        t = &theSim[0].pulse2;
     }
 
-    theGui.pulldowns[0].setValue((*activeSetPtr).pulse1FileType);
-    theGui.pulldowns[1].setValue((*activeSetPtr).pulse2FileType);
-    theGui.pulldowns[2].setValue((*activeSetPtr).fittingMode);
-    theGui.pulldowns[3].setValue((*activeSetPtr).materialIndex);
+    theGui.pulldowns[0].setValue(theSim[0].pulse1FileType);
+    theGui.pulldowns[1].setValue(theSim[0].pulse2FileType);
+    theGui.pulldowns[2].setValue(theSim[0].fittingMode);
+    theGui.pulldowns[3].setValue(theSim[0].materialIndex);
     
-    theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * asin(sin((*activeSetPtr).crystalTheta)));
-    theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * asin(sin((*activeSetPtr).crystalPhi)));
-    theGui.textBoxes[i++].setToDouble((*activeSetPtr).nonlinearAbsorptionStrength);
-    theGui.textBoxes[i++].setToDouble((*activeSetPtr).bandGapElectronVolts);
-    theGui.textBoxes[i++].setToDouble(1e-12 * (*activeSetPtr).drudeGamma);
-    theGui.textBoxes[i++].setToDouble((*activeSetPtr).effectiveMass);
+    theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * asin(sin(theSim[0].crystalTheta)));
+    theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * asin(sin(theSim[0].crystalPhi)));
+    theGui.textBoxes[i++].setToDouble(theSim[0].nonlinearAbsorptionStrength);
+    theGui.textBoxes[i++].setToDouble(theSim[0].bandGapElectronVolts);
+    theGui.textBoxes[i++].setToDouble(1e-12 * theSim[0].drudeGamma);
+    theGui.textBoxes[i++].setToDouble(theSim[0].effectiveMass);
 
-    if (!(*activeSetPtr).is3D) {
-        theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).spatialWidth);
+    if (!theSim[0].is3D) {
+        theGui.textBoxes[i++].setToDouble(1e6 * theSim[0].spatialWidth);
     }
-    else if ((*activeSetPtr).spatialHeight == (*activeSetPtr).spatialWidth
-        || (*activeSetPtr).spatialHeight == 1 || (*activeSetPtr).spatialHeight == 0) {
-        theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).spatialWidth);
+    else if (theSim[0].spatialHeight == theSim[0].spatialWidth
+        || theSim[0].spatialHeight == 1 || theSim[0].spatialHeight == 0) {
+        theGui.textBoxes[i++].setToDouble(1e6 * theSim[0].spatialWidth);
     }
     else {
-        theGui.textBoxes[i++].overwritePrint("{};{}", (int)(1e6 * (*activeSetPtr).spatialWidth), (int)(1e6 * (*activeSetPtr).spatialHeight));
+        theGui.textBoxes[i++].overwritePrint("{};{}", (int)(1e6 * theSim[0].spatialWidth), (int)(1e6 * theSim[0].spatialHeight));
     }
-    theGui.textBoxes[i++].setToDouble(1e6*(*activeSetPtr).rStep);
-    theGui.textBoxes[i++].setToDouble(1e15 * (*activeSetPtr).timeSpan);
-    theGui.textBoxes[i++].setToDouble(1e15 * (*activeSetPtr).tStep);
-    theGui.textBoxes[i++].setToDouble(1e6 * (*activeSetPtr).crystalThickness);
-    theGui.textBoxes[i++].setToDouble(1e9 * (*activeSetPtr).propagationStep);
-    theGui.textBoxes[i++].setToDouble((*activeSetPtr).batchDestination);
-    theGui.textBoxes[i++].setToDouble((*activeSetPtr).batchDestination2);
-    theGui.textBoxes[i++].setToDouble((double)(*activeSetPtr).Nsims);
-    theGui.textBoxes[i++].setToDouble((double)(*activeSetPtr).Nsims2);
-    theGui.pulldowns[4].setValue((*activeSetPtr).symmetryType);
-    theGui.pulldowns[5].setValue((*activeSetPtr).batchIndex);
-    theGui.pulldowns[6].setValue((*activeSetPtr).batchIndex2);
+    theGui.textBoxes[i++].setToDouble(1e6*theSim[0].rStep);
+    theGui.textBoxes[i++].setToDouble(1e15 * theSim[0].timeSpan);
+    theGui.textBoxes[i++].setToDouble(1e15 * theSim[0].tStep);
+    theGui.textBoxes[i++].setToDouble(1e6 * theSim[0].crystalThickness);
+    theGui.textBoxes[i++].setToDouble(1e9 * theSim[0].propagationStep);
+    theGui.textBoxes[i++].setToDouble(theSim[0].batchDestination);
+    theGui.textBoxes[i++].setToDouble(theSim[0].batchDestination2);
+    theGui.textBoxes[i++].setToDouble((double)theSim[0].Nsims);
+    theGui.textBoxes[i++].setToDouble((double)theSim[0].Nsims2);
+    theGui.pulldowns[4].setValue(theSim[0].symmetryType);
+    theGui.pulldowns[5].setValue(theSim[0].batchIndex);
+    theGui.pulldowns[6].setValue(theSim[0].batchIndex2);
     theGui.sequence.clear();
-    if ((*activeSetPtr).sequenceString.length() > 6) {
-        std::string formattedSequence= (*activeSetPtr).sequenceString;
+    if (theSim[0].sequenceString.length() > 6) {
+        std::string formattedSequence= theSim[0].sequenceString;
         formatSequence(formattedSequence);
         theGui.sequence.directOverwritePrintSequence(formattedSequence.c_str());
     }
-    stripLineBreaks((*activeSetPtr).field1FilePath);
-    if (std::string((*activeSetPtr).field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint((*activeSetPtr).field1FilePath);
-    if (std::string((*activeSetPtr).field2FilePath).compare("None") != 0) theGui.filePaths[1].overwritePrint((*activeSetPtr).field2FilePath);
-    if (std::string((*activeSetPtr).fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint((*activeSetPtr).fittingPath);
+    stripLineBreaks(theSim[0].field1FilePath);
+    if (std::string(theSim[0].field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint(theSim[0].field1FilePath);
+    if (std::string(theSim[0].field2FilePath).compare("None") != 0) theGui.filePaths[1].overwritePrint(theSim[0].field2FilePath);
+    if (std::string(theSim[0].fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint(theSim[0].fittingPath);
     theGui.fitCommand.clear();
-    if (!((*activeSetPtr).fittingString[0] == 'N')) {
-        std::string formattedFit=(*activeSetPtr).fittingString;
+    if (!(theSim[0].fittingString[0] == 'N')) {
+        std::string formattedFit=theSim[0].fittingString;
         insertAfterCharacter(formattedFit,';',std::string("\n"));
         theGui.fitCommand.overwritePrint(formattedFit.c_str());
     }
 
-    if(!theGui.loadedDefaults) theGui.filePaths[3].overwritePrint((*activeSetPtr).outputBasePath);
+    if(!theGui.loadedDefaults) theGui.filePaths[3].overwritePrint(theSim[0].outputBasePath);
     theGui.loadedDefaults = true;
 }
 
 void readParametersFromInterface() {
     int i = 0;
-    pulse<double>* t = &(*activeSetPtr).pulse1;
+    pulse<double>* t = &theSim[0].pulse1;
     for (int k = 0; k < 2; ++k) {
         theGui.textBoxes[i++].valueToPointer(&(*t).energy);
         theGui.textBoxes[i++].valueToPointer(1e12, &(*t).frequency);
@@ -612,119 +612,119 @@ void readParametersFromInterface() {
         theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(), &(*t).beamAngle);
         theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(), &(*t).polarizationAngle);
         theGui.textBoxes[i++].valueToPointer(&(*t).circularity);
-        t = &(*activeSetPtr).pulse2;
+        t = &theSim[0].pulse2;
     }
     
-    (*activeSetPtr).pulse1FileType = theGui.pulldowns[0].getValue();
-    (*activeSetPtr).pulse2FileType = theGui.pulldowns[1].getValue();
-    (*activeSetPtr).fittingMode = theGui.pulldowns[2].getValue();
-    (*activeSetPtr).materialIndex = theGui.pulldowns[3].getValue();
+    theSim[0].pulse1FileType = theGui.pulldowns[0].getValue();
+    theSim[0].pulse2FileType = theGui.pulldowns[1].getValue();
+    theSim[0].fittingMode = theGui.pulldowns[2].getValue();
+    theSim[0].materialIndex = theGui.pulldowns[3].getValue();
 
-    theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(), &(*activeSetPtr).crystalTheta);
-    theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(),  &(*activeSetPtr).crystalPhi);
-    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).nonlinearAbsorptionStrength);
-    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).bandGapElectronVolts);
-    theGui.textBoxes[i++].valueToPointer(1e12, &(*activeSetPtr).drudeGamma);
-    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).effectiveMass);
+    theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(), &theSim[0].crystalTheta);
+    theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(),  &theSim[0].crystalPhi);
+    theGui.textBoxes[i++].valueToPointer(&theSim[0].nonlinearAbsorptionStrength);
+    theGui.textBoxes[i++].valueToPointer(&theSim[0].bandGapElectronVolts);
+    theGui.textBoxes[i++].valueToPointer(1e12, &theSim[0].drudeGamma);
+    theGui.textBoxes[i++].valueToPointer(&theSim[0].effectiveMass);
 
-    theGui.textBoxes[i++].valueToTwoPointers(1e-6, &(*activeSetPtr).spatialWidth, &(*activeSetPtr).spatialHeight);
+    theGui.textBoxes[i++].valueToTwoPointers(1e-6, &theSim[0].spatialWidth, &theSim[0].spatialHeight);
 
-    theGui.textBoxes[i++].valueToPointer(1e-6, &(*activeSetPtr).rStep);
-    theGui.textBoxes[i++].valueToPointer(1e-15, &(*activeSetPtr).timeSpan);
-    theGui.textBoxes[i++].valueToPointer(1e-15, &(*activeSetPtr).tStep);
-    theGui.textBoxes[i++].valueToPointer(1e-6, &(*activeSetPtr).crystalThickness);
-    theGui.textBoxes[i++].valueToPointer(1e-9, &(*activeSetPtr).propagationStep);
-    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).batchDestination);
-    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).batchDestination2);
-    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).Nsims);
-    theGui.textBoxes[i++].valueToPointer(&(*activeSetPtr).Nsims2);
+    theGui.textBoxes[i++].valueToPointer(1e-6, &theSim[0].rStep);
+    theGui.textBoxes[i++].valueToPointer(1e-15, &theSim[0].timeSpan);
+    theGui.textBoxes[i++].valueToPointer(1e-15, &theSim[0].tStep);
+    theGui.textBoxes[i++].valueToPointer(1e-6, &theSim[0].crystalThickness);
+    theGui.textBoxes[i++].valueToPointer(1e-9, &theSim[0].propagationStep);
+    theGui.textBoxes[i++].valueToPointer(&theSim[0].batchDestination);
+    theGui.textBoxes[i++].valueToPointer(&theSim[0].batchDestination2);
+    theGui.textBoxes[i++].valueToPointer(&theSim[0].Nsims);
+    theGui.textBoxes[i++].valueToPointer(&theSim[0].Nsims2);
 
-    (*activeSetPtr).symmetryType = theGui.pulldowns[4].getValue();
-    (*activeSetPtr).batchIndex = theGui.pulldowns[5].getValue();
-    (*activeSetPtr).batchIndex2 = theGui.pulldowns[6].getValue();
-    (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
-    theGui.textBoxes[52].valueToPointer(&(*activeSetPtr).NsimsCPU);
-    (*activeSetPtr).isInSequence = false;
-    theGui.sequence.copyBuffer((*activeSetPtr).sequenceString);
-    stripWhiteSpace((*activeSetPtr).sequenceString);
-    if ((*activeSetPtr).sequenceString[0] != 'N' && (*activeSetPtr).sequenceString.length() > 5) (*activeSetPtr).isInSequence = true;
+    theSim[0].symmetryType = theGui.pulldowns[4].getValue();
+    theSim[0].batchIndex = theGui.pulldowns[5].getValue();
+    theSim[0].batchIndex2 = theGui.pulldowns[6].getValue();
+    theSim[0].runType = theGui.pulldowns[9].getValue();
+    theGui.textBoxes[52].valueToPointer(&theSim[0].NsimsCPU);
+    theSim[0].isInSequence = false;
+    theGui.sequence.copyBuffer(theSim[0].sequenceString);
+    stripWhiteSpace(theSim[0].sequenceString);
+    if (theSim[0].sequenceString[0] != 'N' && theSim[0].sequenceString.length() > 5) theSim[0].isInSequence = true;
 
-    (*activeSetPtr).isInFittingMode = false;
-    theGui.fitCommand.copyBuffer((*activeSetPtr).fittingString);
-    stripLineBreaks((*activeSetPtr).fittingString);
+    theSim[0].isInFittingMode = false;
+    theGui.fitCommand.copyBuffer(theSim[0].fittingString);
+    stripLineBreaks(theSim[0].fittingString);
 
-    theGui.filePaths[0].copyBuffer((*activeSetPtr).field1FilePath);
-    stripLineBreaks((*activeSetPtr).field1FilePath);
+    theGui.filePaths[0].copyBuffer(theSim[0].field1FilePath);
+    stripLineBreaks(theSim[0].field1FilePath);
 
-    theGui.filePaths[1].copyBuffer((*activeSetPtr).field2FilePath);
-    stripLineBreaks((*activeSetPtr).field2FilePath);
+    theGui.filePaths[1].copyBuffer(theSim[0].field2FilePath);
+    stripLineBreaks(theSim[0].field2FilePath);
 
-    theGui.filePaths[3].copyBuffer((*activeSetPtr).outputBasePath);
-    stripLineBreaks((*activeSetPtr).outputBasePath);
+    theGui.filePaths[3].copyBuffer(theSim[0].outputBasePath);
+    stripLineBreaks(theSim[0].outputBasePath);
     
-    theGui.filePaths[2].copyBuffer((*activeSetPtr).fittingPath);
-    stripLineBreaks((*activeSetPtr).fittingPath);
+    theGui.filePaths[2].copyBuffer(theSim[0].fittingPath);
+    stripLineBreaks(theSim[0].fittingPath);
 
     //derived parameters and cleanup:
-    (*activeSetPtr).sellmeierType = 0;
-    (*activeSetPtr).axesNumber = 0;
-    (*activeSetPtr).Ntime = (size_t)(minGridDimension * round((*activeSetPtr).timeSpan / (minGridDimension * (*activeSetPtr).tStep)));
-    if ((*activeSetPtr).symmetryType == 2) {
-        (*activeSetPtr).is3D = true;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * minGridDimension)));
-        (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
-        if ((*activeSetPtr).spatialHeight > 0) {
-            (*activeSetPtr).spatialHeight = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialHeight / ((*activeSetPtr).rStep * minGridDimension)));
+    theSim[0].sellmeierType = 0;
+    theSim[0].axesNumber = 0;
+    theSim[0].Ntime = (size_t)(minGridDimension * round(theSim[0].timeSpan / (minGridDimension * theSim[0].tStep)));
+    if (theSim[0].symmetryType == 2) {
+        theSim[0].is3D = true;
+        theSim[0].spatialWidth = theSim[0].rStep * (minGridDimension * round(theSim[0].spatialWidth / (theSim[0].rStep * minGridDimension)));
+        theSim[0].Nspace = (size_t)round(theSim[0].spatialWidth / theSim[0].rStep);
+        if (theSim[0].spatialHeight > 0) {
+            theSim[0].spatialHeight = theSim[0].rStep * (minGridDimension * round(theSim[0].spatialHeight / (theSim[0].rStep * minGridDimension)));
         }
         else {
-            (*activeSetPtr).spatialHeight = (*activeSetPtr).spatialWidth;
+            theSim[0].spatialHeight = theSim[0].spatialWidth;
         }
-        (*activeSetPtr).Nspace2 = (size_t)round((*activeSetPtr).spatialHeight / (*activeSetPtr).rStep);
+        theSim[0].Nspace2 = (size_t)round(theSim[0].spatialHeight / theSim[0].rStep);
     }
     else {
-        (*activeSetPtr).is3D = false;
-        (*activeSetPtr).Nspace2 = 1;
-        (*activeSetPtr).spatialHeight = 0;
-        (*activeSetPtr).spatialWidth = (*activeSetPtr).rStep * (minGridDimension * round((*activeSetPtr).spatialWidth / ((*activeSetPtr).rStep * minGridDimension)));
-        (*activeSetPtr).Nspace = (size_t)round((*activeSetPtr).spatialWidth / (*activeSetPtr).rStep);
+        theSim[0].is3D = false;
+        theSim[0].Nspace2 = 1;
+        theSim[0].spatialHeight = 0;
+        theSim[0].spatialWidth = theSim[0].rStep * (minGridDimension * round(theSim[0].spatialWidth / (theSim[0].rStep * minGridDimension)));
+        theSim[0].Nspace = (size_t)round(theSim[0].spatialWidth / theSim[0].rStep);
     }
 
-    (*activeSetPtr).Nfreq = (*activeSetPtr).Ntime / 2 + 1;
-    (*activeSetPtr).NgridC = (*activeSetPtr).Nfreq * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
-    (*activeSetPtr).Ngrid = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2;
-    (*activeSetPtr).kStep = twoPi<double>() / ((*activeSetPtr).Nspace * (*activeSetPtr).rStep);
-    (*activeSetPtr).fStep = 1.0 / ((*activeSetPtr).Ntime * (*activeSetPtr).tStep);
-    (*activeSetPtr).Npropagation = (size_t)round((*activeSetPtr).crystalThickness / (*activeSetPtr).propagationStep);
+    theSim[0].Nfreq = theSim[0].Ntime / 2 + 1;
+    theSim[0].NgridC = theSim[0].Nfreq * theSim[0].Nspace * theSim[0].Nspace2;
+    theSim[0].Ngrid = theSim[0].Ntime * theSim[0].Nspace * theSim[0].Nspace2;
+    theSim[0].kStep = twoPi<double>() / (theSim[0].Nspace * theSim[0].rStep);
+    theSim[0].fStep = 1.0 / (theSim[0].Ntime * theSim[0].tStep);
+    theSim[0].Npropagation = (size_t)round(theSim[0].crystalThickness / theSim[0].propagationStep);
 
-    (*activeSetPtr).isCylindric = (*activeSetPtr).symmetryType == 1;
-    if ((*activeSetPtr).isCylindric) {
-        (*activeSetPtr).pulse1.x0 = 0;
-        (*activeSetPtr).pulse2.x0 = 0;
-        (*activeSetPtr).pulse1.beamAngle = 0;
-        (*activeSetPtr).pulse2.beamAngle = 0;
+    theSim[0].isCylindric = theSim[0].symmetryType == 1;
+    if (theSim[0].isCylindric) {
+        theSim[0].pulse1.x0 = 0;
+        theSim[0].pulse2.x0 = 0;
+        theSim[0].pulse1.beamAngle = 0;
+        theSim[0].pulse2.beamAngle = 0;
     }
 
-    if ((*activeSetPtr).batchIndex == 0 || (*activeSetPtr).Nsims < 1) {
-        (*activeSetPtr).Nsims = 1;
+    if (theSim[0].batchIndex == 0 || theSim[0].Nsims < 1) {
+        theSim[0].Nsims = 1;
     }
-    if ((*activeSetPtr).batchIndex2 == 0 || (*activeSetPtr).Nsims2 < 1) {
-        (*activeSetPtr).Nsims2 = 1;
+    if (theSim[0].batchIndex2 == 0 || theSim[0].Nsims2 < 1) {
+        theSim[0].Nsims2 = 1;
     }
-    (*activeSetPtr).NsimsCPU = minN((*activeSetPtr).NsimsCPU, (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2);
+    theSim[0].NsimsCPU = minN(theSim[0].NsimsCPU, theSim[0].Nsims * theSim[0].Nsims2);
 
-    (*activeSetPtr).field1IsAllocated = false;
-    (*activeSetPtr).field2IsAllocated = false;
+    theSim[0].field1IsAllocated = false;
+    theSim[0].field2IsAllocated = false;
 
     //crystal from database (database must be loaded!)
-    (*activeSetPtr).crystalDatabase = theDatabase.db.data();
-    (*activeSetPtr).chi2Tensor = theDatabase.db[(*activeSetPtr).materialIndex].d.data();
-    (*activeSetPtr).chi3Tensor = theDatabase.db[(*activeSetPtr).materialIndex].chi3.data();
-    (*activeSetPtr).nonlinearSwitches = theDatabase.db[(*activeSetPtr).materialIndex].nonlinearSwitches.data();
-    (*activeSetPtr).absorptionParameters = theDatabase.db[(*activeSetPtr).materialIndex].absorptionParameters.data();
-    (*activeSetPtr).sellmeierCoefficients = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierCoefficients.data();
-    (*activeSetPtr).sellmeierType = theDatabase.db[(*activeSetPtr).materialIndex].sellmeierType;
-    (*activeSetPtr).axesNumber = theDatabase.db[(*activeSetPtr).materialIndex].axisType;
-    (*activeSetPtr).progressCounter = &progressCounter;
+    theSim[0].crystalDatabase = theDatabase.db.data();
+    theSim[0].chi2Tensor = theDatabase.db[theSim[0].materialIndex].d.data();
+    theSim[0].chi3Tensor = theDatabase.db[theSim[0].materialIndex].chi3.data();
+    theSim[0].nonlinearSwitches = theDatabase.db[theSim[0].materialIndex].nonlinearSwitches.data();
+    theSim[0].absorptionParameters = theDatabase.db[theSim[0].materialIndex].absorptionParameters.data();
+    theSim[0].sellmeierCoefficients = theDatabase.db[theSim[0].materialIndex].sellmeierCoefficients.data();
+    theSim[0].sellmeierType = theDatabase.db[theSim[0].materialIndex].sellmeierType;
+    theSim[0].axesNumber = theDatabase.db[theSim[0].materialIndex].axisType;
+    theSim[0].progressCounter = &progressCounter;
 }
 
 int insertAfterCharacter(std::string& s, char target, std::string appended){
@@ -787,9 +787,9 @@ int formatSequence(std::string& s){
 
 int freeSemipermanentGrids() {
     isGridAllocated = false;
-    delete[] (*activeSetPtr).ExtOut;
-    delete[] (*activeSetPtr).EkwOut;
-    delete[] (*activeSetPtr).totalSpectrum;
+    delete[] theSim[0].ExtOut;
+    delete[] theSim[0].EkwOut;
+    delete[] theSim[0].totalSpectrum;
     return 0;
 }
 
@@ -1008,15 +1008,15 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         theGui.sequence.clear();
         theGui.fitCommand.clear();
         theGui.console.cPrint("Reading params\n");
-        int readParameters = readInputParametersFile(activeSetPtr, theDatabase.db.data(), path.c_str());
-        theGui.console.cPrint("Fitting string: {}\n", (*activeSetPtr).fittingString);
-        allocateGrids(activeSetPtr);
+        int readParameters = readInputParametersFile(theSim.data(), theDatabase.db.data(), path.c_str());
+        theGui.console.cPrint("Fitting string: {}\n", theSim[0].fittingString);
+        allocateGrids(theSim.data());
         isGridAllocated = true;
         if (readParameters == 61) {
             size_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
             theGui.console.cPrint("Loading fields\n");
-            loadSavedFields(activeSetPtr, basePath.c_str());
+            loadSavedFields(theSim.data(), basePath.c_str());
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();
             theGui.requestPlotUpdate();
@@ -1064,22 +1064,21 @@ void createRunFile() {
     }
 
     readParametersFromInterface();
-    (*activeSetPtr).runType = 0;
-    allocateGrids(activeSetPtr);
+    theSim[0].runType = 0;
+    allocateGrids(theSim.data());
     isGridAllocated = true;
-    (*activeSetPtr).isFollowerInSequence = false;
-    (*activeSetPtr).crystalDatabase = theDatabase.db.data();
+    theSim[0].isFollowerInSequence = false;
+    theSim[0].crystalDatabase = theDatabase.db.data();
 
-    simulationParameterSet backupSet = *activeSetPtr;
-    simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 + 1, backupSet);
-    activeSetPtr = simulationData.data();
-    configureBatchMode(activeSetPtr);
+    simulationParameterSet backupSet = theSim[0];
+    theSim.assign(theSim[0].Nsims * theSim[0].Nsims2 + 1, backupSet);
+    configureBatchMode(theSim.data());
 
-    std::vector<simulationParameterSet> counterData = simulationData;
+    std::vector<simulationParameterSet> counterData = theSim;
     simulationParameterSet* testSet = counterData.data();
     totalSteps = 0;
-    for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
-        if ((*activeSetPtr).isInSequence) {
+    for (int j = 0; j < theSim[0].Nsims * theSim[0].Nsims2; j++) {
+        if (theSim[0].isInSequence) {
             testSet[j].progressCounter = &totalSteps;
             testSet[j].runType = -1;
             solveNonlinearWaveEquationSequenceCounter(&testSet[j]);
@@ -1091,10 +1090,10 @@ void createRunFile() {
     }
 
     //create SLURM script
-    (*activeSetPtr).runType = theGui.pulldowns[9].getValue();
+    theSim[0].runType = theGui.pulldowns[9].getValue();
     int gpuType = 0;
     int gpuCount = 1;
-    switch ((*activeSetPtr).runType) {
+    switch (theSim[0].runType) {
     case 0:
         gpuType = 0;
         gpuCount = 1;
@@ -1124,16 +1123,16 @@ void createRunFile() {
         gpuCount = 4;
         break;
     }
-    double timeEstimate = saveSlurmScript(activeSetPtr, gpuType, gpuCount, totalSteps);
+    double timeEstimate = saveSlurmScript(theSim.data(), gpuType, gpuCount, totalSteps);
 
     //create command line settings file
-    (*activeSetPtr).runType = 1;
-    saveSettingsFile(activeSetPtr);
+    theSim[0].runType = 1;
+    saveSettingsFile(theSim.data());
 
     theGui.console.tPrint(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
-        getBasename((*activeSetPtr).outputBasePath), getBasename((*activeSetPtr).outputBasePath));
-    theGui.console.tPrint("Estimated time to complete: {:.2} hours\n", timeEstimate, (double)totalSteps * (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * (*activeSetPtr).Nspace2, (*activeSetPtr).runType);
+        getBasename(theSim[0].outputBasePath), getBasename(theSim[0].outputBasePath));
+    theGui.console.tPrint("Estimated time to complete: {:.2} hours\n", timeEstimate, (double)totalSteps * theSim[0].Ntime * theSim[0].Nspace * theSim[0].Nspace2, theSim[0].runType);
     isRunning = false;
     isGridAllocated = false;
 }
@@ -1243,11 +1242,11 @@ void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     cairo_fill(cr);
 
     size_t lengthEstimate = 0;
-    if (!(*activeSetPtr).isInFittingMode) {
+    if (!theSim[0].isInFittingMode) {
         lengthEstimate = totalSteps;
     }
     else {
-        lengthEstimate = (*activeSetPtr).fittingMaxIterations;
+        lengthEstimate = theSim[0].fittingMaxIterations;
     }
 
     double newFraction =  0.0;
@@ -1279,20 +1278,20 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
 
-    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+    if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
     }
 
-    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+    size_t cubeMiddle = theSim[0].Ntime * theSim[0].Nspace * (theSim[0].Nspace2 / 2);
 
     sPlot.area = area;
     sPlot.cr = cr;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dx = (*activeSetPtr).tStep / 1e-15;
-    sPlot.x0 = -((sPlot.dx * (*activeSetPtr).Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + (*activeSetPtr).Ntime * (*activeSetPtr).Nspace / 2];
-    sPlot.Npts = (*activeSetPtr).Ntime;
+    sPlot.dx = theSim[0].tStep / 1e-15;
+    sPlot.x0 = -((sPlot.dx * theSim[0].Ntime) / 2 - sPlot.dx / 2);
+    sPlot.data = &theSim[0].ExtOut[simIndex * theSim[0].Ngrid * 2 + cubeMiddle + theSim[0].Ntime * theSim[0].Nspace / 2];
+    sPlot.Npts = theSim[0].Ntime;
     sPlot.color = LweColor(0, 1, 1, 1);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
@@ -1329,20 +1328,20 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
 
-    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+    if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
     }
 
-    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+    size_t cubeMiddle = theSim[0].Ntime * theSim[0].Nspace * (theSim[0].Nspace2 / 2);
 
     sPlot.area = area;
     sPlot.cr = cr;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dx = (*activeSetPtr).tStep / 1e-15;
-    sPlot.x0 = -((sPlot.dx * (*activeSetPtr).Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle + (*activeSetPtr).Ntime * (*activeSetPtr).Nspace / 2];
-    sPlot.Npts = (*activeSetPtr).Ntime;
+    sPlot.dx = theSim[0].tStep / 1e-15;
+    sPlot.x0 = -((sPlot.dx * theSim[0].Ntime) / 2 - sPlot.dx / 2);
+    sPlot.data = &theSim[0].ExtOut[theSim[0].Ngrid + simIndex * theSim[0].Ngrid * 2 + cubeMiddle + theSim[0].Ntime * theSim[0].Nspace / 2];
+    sPlot.Npts = theSim[0].Ntime;
     sPlot.color = LweColor(1, 0, 1, 1);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
@@ -1382,7 +1381,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         logPlot = true;
     }
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+    if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
     }
 
@@ -1407,9 +1406,9 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.cr = cr;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dx = (*activeSetPtr).fStep / 1e12;
-    sPlot.data = &(*activeSetPtr).totalSpectrum[simIndex * 3 * (*activeSetPtr).Nfreq];
-    sPlot.Npts = (*activeSetPtr).Nfreq;
+    sPlot.dx = theSim[0].fStep / 1e12;
+    sPlot.data = &theSim[0].totalSpectrum[simIndex * 3 * theSim[0].Nfreq];
+    sPlot.Npts = theSim[0].Nfreq;
     sPlot.logScale = logPlot;
     sPlot.forceYmin = forceY;
     //sPlot.forcedYmin = -4.0;
@@ -1426,7 +1425,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     if (overlayTotal) {
-        sPlot.data2 = &(*activeSetPtr).totalSpectrum[(2 + simIndex * 3) * (*activeSetPtr).Nfreq];
+        sPlot.data2 = &theSim[0].totalSpectrum[(2 + simIndex * 3) * theSim[0].Nfreq];
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
@@ -1464,7 +1463,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         logPlot = true;
     }
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+    if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
     }
 
@@ -1488,9 +1487,9 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.cr = cr;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dx = (*activeSetPtr).fStep / 1e12;
-    sPlot.data = &(*activeSetPtr).totalSpectrum[(1 + simIndex * 3) * (*activeSetPtr).Nfreq];
-    sPlot.Npts = (*activeSetPtr).Nfreq;
+    sPlot.dx = theSim[0].fStep / 1e12;
+    sPlot.data = &theSim[0].totalSpectrum[(1 + simIndex * 3) * theSim[0].Nfreq];
+    sPlot.Npts = theSim[0].Nfreq;
     sPlot.logScale = logPlot;
     sPlot.forceYmin = forceY;
     //sPlot.forcedYmin = -4.0;
@@ -1507,7 +1506,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
     if (overlayTotal) {
-        sPlot.data2 = &(*activeSetPtr).totalSpectrum[(2 + simIndex * 3) * (*activeSetPtr).Nfreq];
+        sPlot.data2 = &theSim[0].totalSpectrum[(2 + simIndex * 3) * theSim[0].Nfreq];
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
@@ -1593,10 +1592,10 @@ void imagePlot(imagePlotStruct* s) {
     float* plotarr2 = new float[plotSize];
     switch ((*s).dataType) {
     case 0:
-        linearRemapDoubleToFloat((*s).data, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Ntime, plotarr2, (int)dy, (int)dx);
+        linearRemapDoubleToFloat((*s).data, (int)theSim[0].Nspace, (int)theSim[0].Ntime, plotarr2, (int)dy, (int)dx);
         break;
     case 1:
-        linearRemapZToLogFloatShift((*s).complexData, (int)(*activeSetPtr).Nspace, (int)(*activeSetPtr).Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
+        linearRemapZToLogFloatShift((*s).complexData, (int)theSim[0].Nspace, (int)theSim[0].Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
         break;
     }
     drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, (*s).colorMap);
@@ -1614,14 +1613,14 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     }
     imagePlotStruct sPlot;
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+    if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
     }
 
-    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+    size_t cubeMiddle = theSim[0].Ntime * theSim[0].Nspace * (theSim[0].Nspace2 / 2);
 
     sPlot.data =
-        &(*activeSetPtr).ExtOut[simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+        &theSim[0].ExtOut[simIndex * theSim[0].Ngrid * 2 + cubeMiddle];
     sPlot.area = area;
     sPlot.cr = cr;
     sPlot.height = height;
@@ -1641,14 +1640,14 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     }
     imagePlotStruct sPlot;
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+    if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
     }
 
-    size_t cubeMiddle = (*activeSetPtr).Ntime * (*activeSetPtr).Nspace * ((*activeSetPtr).Nspace2 / 2);
+    size_t cubeMiddle = theSim[0].Ntime * theSim[0].Nspace * (theSim[0].Nspace2 / 2);
 
     sPlot.data =
-        &(*activeSetPtr).ExtOut[(*activeSetPtr).Ngrid + simIndex * (*activeSetPtr).Ngrid * 2 + cubeMiddle];
+        &theSim[0].ExtOut[theSim[0].Ngrid + simIndex * theSim[0].Ngrid * 2 + cubeMiddle];
     sPlot.area = area;
     sPlot.cr = cr;
     sPlot.height = height;
@@ -1668,16 +1667,16 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     imagePlotStruct sPlot;
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+    if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
     }
-    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-    if ((*activeSetPtr).is3D) {
-        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    double logPlotOffset = (double)(1e-4 / (theSim[0].spatialWidth * theSim[0].timeSpan));
+    if (theSim[0].is3D) {
+        logPlotOffset = (double)(1e-4 / (theSim[0].spatialWidth * theSim[0].spatialHeight * theSim[0].timeSpan));
     }
 
     sPlot.complexData =
-        &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2];
+        &theSim[0].EkwOut[simIndex * theSim[0].NgridC * 2];
     sPlot.area = area;
     sPlot.cr = cr;
     sPlot.height = height;
@@ -1699,17 +1698,17 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     imagePlotStruct sPlot;
 
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2) {
+    if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
     }
 
-    double logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).timeSpan));
-    if ((*activeSetPtr).is3D) {
-        logPlotOffset = (double)(1e-4 / ((*activeSetPtr).spatialWidth * (*activeSetPtr).spatialHeight * (*activeSetPtr).timeSpan));
+    double logPlotOffset = (double)(1e-4 / (theSim[0].spatialWidth * theSim[0].timeSpan));
+    if (theSim[0].is3D) {
+        logPlotOffset = (double)(1e-4 / (theSim[0].spatialWidth * theSim[0].spatialHeight * theSim[0].timeSpan));
     }
 
     sPlot.complexData =
-        &(*activeSetPtr).EkwOut[simIndex * (*activeSetPtr).NgridC * 2 + (*activeSetPtr).NgridC];
+        &theSim[0].EkwOut[simIndex * theSim[0].NgridC * 2 + theSim[0].NgridC];
     sPlot.area = area;
     sPlot.cr = cr;
     sPlot.height = height;
@@ -1722,7 +1721,7 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
 
 void launchRunThread() {
-    (*activeSetPtr).NsimsCPU = theGui.textBoxes[52].valueInt();
+    theSim[0].NsimsCPU = theGui.textBoxes[52].valueInt();
     if(!isRunning) std::thread(mainSimThread, theGui.pulldowns[7].getValue(), theGui.pulldowns[8].getValue(), theGui.checkBoxes[3].isChecked()).detach();
 }
 
@@ -1733,8 +1732,8 @@ void launchFitThread() {
 void stopButtonCallback() {
     if (isRunning) {
         cancellationCalled = true;
-        for (int i = 0; i < (*activeSetPtr).Nsims; ++i) {
-            (*activeSetPtr).statusFlags[i] = 2;
+        for (int i = 0; i < theSim[0].Nsims; ++i) {
+            theSim[0].statusFlags[i] = 2;
         }
     }
 }
@@ -1745,7 +1744,7 @@ void independentPlotQueue(){
 }
 
 void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int pulldownSelectionPrimary, bool use64bitFloatingPoint) {
-    if ((*activeSetPtr).NsimsCPU < 1) return;
+    if (theSim[0].NsimsCPU < 1) return;
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
     int assignedGPU = 0;
@@ -1806,8 +1805,8 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     }
 #endif
     int error = 0;
-    if ((*activeSetPtr).isInSequence) {
-        for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; ++i) {
+    if (theSim[0].isInSequence) {
+        for (unsigned int i = 0; i < theSim[0].NsimsCPU; ++i) {
             cpuSims[i].assignedGPU = assignedGPU;
             cpuSims[i].runningOnCPU = forceCPU;
             error = sequenceFunction(&cpuSims[i]);
@@ -1815,7 +1814,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
         }
     }
     else {
-        for (unsigned int i = 0; i < (*activeSetPtr).NsimsCPU; ++i) {
+        for (unsigned int i = 0; i < theSim[0].NsimsCPU; ++i) {
             cpuSims[i].assignedGPU = assignedGPU;
             cpuSims[i].runningOnCPU = forceCPU;
             error = normalFunction(&cpuSims[i]);
@@ -1842,25 +1841,24 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
 
     readParametersFromInterface();
-    (*activeSetPtr).runType = 0;
-    allocateGrids(activeSetPtr);
+    theSim[0].runType = 0;
+    allocateGrids(theSim.data());
     isGridAllocated = true;
     theGui.requestSliderUpdate();
-    (*activeSetPtr).isFollowerInSequence = false;
-    (*activeSetPtr).crystalDatabase = theDatabase.db.data();
-    loadPulseFiles(activeSetPtr);
+    theSim[0].isFollowerInSequence = false;
+    theSim[0].crystalDatabase = theDatabase.db.data();
+    loadPulseFiles(theSim.data());
 
-    simulationParameterSet backupSet = *activeSetPtr;
-    simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2+1, backupSet);
-    activeSetPtr = simulationData.data();
-    configureBatchMode(activeSetPtr);
+    simulationParameterSet backupSet = theSim[0];
+    theSim.assign(theSim[0].Nsims * theSim[0].Nsims2+1, backupSet);
+    configureBatchMode(theSim.data());
 
-    std::vector<simulationParameterSet> counterData = simulationData;
+    std::vector<simulationParameterSet> counterData = theSim;
     simulationParameterSet* testSet = counterData.data();
     totalSteps = 0;
-    for (int j = 0; j < (*activeSetPtr).Nsims * (*activeSetPtr).Nsims2; j++) {
-        testSet[j] = activeSetPtr[j];
-        if ((*activeSetPtr).isInSequence) {
+    for (int j = 0; j < theSim[0].Nsims * theSim[0].Nsims2; j++) {
+        testSet[j] = theSim[j];
+        if (theSim[0].isInSequence) {
             testSet[j].progressCounter = &totalSteps;
             testSet[j].runType = -1;
             solveNonlinearWaveEquationSequenceCounter(&testSet[j]);
@@ -1871,7 +1869,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         }
     }
     
-    (*activeSetPtr).runType = 0;
+    theSim[0].runType = 0;
     int error = 0;
     //run the simulations
     isRunning = true;
@@ -1948,16 +1946,16 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
 
     std::thread secondQueueThread(secondaryQueue, 
-        &activeSetPtr[(*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU], 
+        &theSim[theSim[0].Nsims * theSim[0].Nsims2 - theSim[0].NsimsCPU], 
         secondPulldownSelection, pulldownSelection, use64bitFloatingPoint);
 
-    for (int j = 0; j < ((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 - (*activeSetPtr).NsimsCPU); ++j) {
+    for (int j = 0; j < (theSim[0].Nsims * theSim[0].Nsims2 - theSim[0].NsimsCPU); ++j) {
 
-        activeSetPtr[j].runningOnCPU = forceCPU;
-        activeSetPtr[j].assignedGPU = assignedGPU;
-        if ((*activeSetPtr).isInSequence) {
+        theSim[j].runningOnCPU = forceCPU;
+        theSim[j].assignedGPU = assignedGPU;
+        if (theSim[0].isInSequence) {
             try {
-                error = sequenceFunction(&activeSetPtr[j]);
+                error = sequenceFunction(&theSim[j]);
             }
             catch (std::exception const& e) {
                 std::string errorString=e.what();
@@ -1969,12 +1967,12 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
                 std::erase(errorString,'}');
                 theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", errorString);
             }
-            if (activeSetPtr[j].memoryError != 0) {
-                if (activeSetPtr[j].memoryError == -1) {
-                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), activeSetPtr[j].memoryError);
+            if (theSim[j].memoryError != 0) {
+                if (theSim[j].memoryError == -1) {
+                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), theSim[j].memoryError);
                 }
                 else {
-                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n"), theSim[j].memoryError);
                 }
             }
             if (error) break;
@@ -1983,7 +1981,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         }
         else {
             try {
-                error = normalFunction(&activeSetPtr[j]);
+                error = normalFunction(&theSim[j]);
             } catch (std::exception const& e) {
                 std::string errorString=e.what();
                 std::erase(errorString,'<');
@@ -1995,12 +1993,12 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
                 theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", errorString);
             }
             
-            if (activeSetPtr[j].memoryError != 0) {
-                if (activeSetPtr[j].memoryError == -1) {
-                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), activeSetPtr[j].memoryError);
+            if (theSim[j].memoryError != 0) {
+                if (theSim[j].memoryError == -1) {
+                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), theSim[j].memoryError);
                 }
                 else {
-                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\r\n"), activeSetPtr[j].memoryError);
+                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\r\n"), theSim[j].memoryError);
                 }
             }
             if (error) break;
@@ -2032,8 +2030,8 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             "<span color=\"#FF88FF\">Unhandled error! \nPlease let me know what you \nwere doing when this happened: \nnicholas.karpowicz@mpq.mpg.de</span>");
     }
 
-    saveDataSet(activeSetPtr);
-    deallocateGrids(activeSetPtr, false);
+    saveDataSet(theSim.data());
+    deallocateGrids(theSim.data(), false);
     isRunning = false;
 }
 
@@ -2049,36 +2047,35 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     }
 
     readParametersFromInterface();
-    (*activeSetPtr).runType = 0;
-    allocateGrids(activeSetPtr);
+    theSim[0].runType = 0;
+    allocateGrids(theSim.data());
     isGridAllocated = true;
     theGui.requestSliderUpdate();
-    (*activeSetPtr).isFollowerInSequence = false;
-    (*activeSetPtr).crystalDatabase = theDatabase.db.data();
-    loadPulseFiles(activeSetPtr);
+    theSim[0].isFollowerInSequence = false;
+    theSim[0].crystalDatabase = theDatabase.db.data();
+    loadPulseFiles(theSim.data());
 
-    simulationParameterSet backupSet = *activeSetPtr;
-    simulationData.assign((*activeSetPtr).Nsims * (*activeSetPtr).Nsims2 + 1, backupSet);
-    activeSetPtr = simulationData.data();
-    configureBatchMode(activeSetPtr);
-    readFittingString(activeSetPtr);
-    if ((*activeSetPtr).Nfitting == 0) {
+    simulationParameterSet backupSet = theSim[0];
+    theSim.assign(theSim[0].Nsims * theSim[0].Nsims2 + 1, backupSet);
+    configureBatchMode(theSim.data());
+    readFittingString(theSim.data());
+    if (theSim[0].Nfitting == 0) {
         theGui.console.tPrint("Couldn't interpret fitting command.\n");
-        deallocateGrids(activeSetPtr, false);
+        deallocateGrids(theSim.data(), false);
         return;
     }
     progressCounter = 0;
-    (*activeSetPtr).progressCounter = &progressCounter;
-    if ((*activeSetPtr).fittingMode == 3) {
-        if (loadReferenceSpectrum((*activeSetPtr).fittingPath, activeSetPtr)) {
+    theSim[0].progressCounter = &progressCounter;
+    if (theSim[0].fittingMode == 3) {
+        if (loadReferenceSpectrum(theSim[0].fittingPath, theSim.data())) {
             theGui.console.tPrint("Could not read reference file!\n");
-            deallocateGrids(activeSetPtr, false);
+            deallocateGrids(theSim.data(), false);
             return;
         }
     }
 
     theGui.console.tPrint("Fitting {} values in mode {} over {} iterations.\nRegion of interest contains {} elements\n",
-        (*activeSetPtr).Nfitting, (*activeSetPtr).fittingMode, (*activeSetPtr).fittingMaxIterations, (*activeSetPtr).fittingROIsize);
+        theSim[0].Nfitting, theSim[0].fittingMode, theSim[0].fittingMaxIterations, theSim[0].fittingROIsize);
 
     int assignedGPU = 0;
     bool forceCPU = 0;
@@ -2116,21 +2113,21 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     }
 #endif
     isRunning = true;
-    (*activeSetPtr).runningOnCPU = forceCPU;
-    (*activeSetPtr).assignedGPU = assignedGPU;
-    fittingFunction(activeSetPtr);
-    (*activeSetPtr).plotSim = 0;
+    theSim[0].runningOnCPU = forceCPU;
+    theSim[0].assignedGPU = assignedGPU;
+    fittingFunction(theSim.data());
+    theSim[0].plotSim = 0;
 
     theGui.requestPlotUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.tPrint(_T("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     theGui.console.tPrint("Fitting result:\n (index, value)\n");
-    for (int i = 0; i < (*activeSetPtr).Nfitting; ++i) {
-        theGui.console.tPrint("{},  {}\n", i, (*activeSetPtr).fittingResult[i]);
+    for (int i = 0; i < theSim[0].Nfitting; ++i) {
+        theGui.console.tPrint("{},  {}\n", i, theSim[0].fittingResult[i]);
     }
-    saveDataSet(activeSetPtr);
-    deallocateGrids(activeSetPtr, false);
+    saveDataSet(theSim.data());
+    deallocateGrids(theSim.data(), false);
     isRunning = false;
 }
 
