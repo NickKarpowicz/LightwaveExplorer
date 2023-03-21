@@ -9,6 +9,11 @@
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.h"
 
+//conditional includes and definitions
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#import<Cocoa/Cocoa.h>
+#endif
 #ifndef CPUONLY
 #ifndef NOCUDA
 #include <cuda_runtime.h>
@@ -37,32 +42,18 @@ bool isIntelRuntimeInstalled() {
 #endif
 #endif
 
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#import<Cocoa/Cocoa.h>
-#endif
-
 //Main data structures:
 // theSim contains all of the parameters of the current simulation including grid arrays
 // theDatabase is the database of crystal properties
 std::vector<simulationParameterSet> theSim(1);
 crystalDatabase theDatabase;
 
-//Additional status flags
-bool isRunning = false;
-bool isGridAllocated = false;
-bool cancellationCalled = false;
-bool CUDAavailable = false;
-bool SYCLavailable = false;
-int cudaGPUCount = 0;
-int syclGPUCount = 0;
+//Counter atomics
 std::atomic_uint32_t progressCounter;
 std::atomic_uint32_t totalSteps;
-#if defined _WIN32 || defined __linux__
-const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 1u);
-#else
-const int interfaceThreads = std::thread::hardware_concurrency();
-#endif
+
+//Limit the number of threads used to draw the interface if the processor supports a lot
+const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 2u);
 
 //Main class for controlling the interface
 class mainGui {
@@ -370,20 +361,20 @@ public:
 
         checkLibraryAvailability();
         std::string A;
-        if (CUDAavailable) {
+        if (theSim[0].CUDAavailable) {
             pulldowns[7].addElement("CUDA");
             pulldowns[8].addElement("CUDA");
-            for (int i = 1; i < cudaGPUCount; ++i) {
+            for (int i = 1; i < theSim[0].cudaGPUCount; ++i) {
                 A = Sformat("CUDA {}", i);
                 pulldowns[7].addElement(A.c_str());
                 pulldowns[8].addElement(A.c_str());
             }
         }
-        if (SYCLavailable) {
+        if (theSim[0].SYCLavailable) {
             A.assign("SYCL");
             pulldowns[7].addElement(A.c_str());
             pulldowns[8].addElement(A.c_str());
-            if (syclGPUCount > 0) {
+            if (theSim[0].syclGPUCount > 0) {
 
                 pulldowns[7].addElement("SYCLcpu");
                 pulldowns[8].addElement("SYCLcpu");
@@ -466,7 +457,13 @@ public:
         pulldowns[9].squeeze();
         pulldowns[9].setTooltip("Select the cluster and GPU configuration for generating a SLURM script");
         
-
+        //Linux search order:
+        // /usr/share/LightwaveExplorer
+        // working directory
+        //
+        //Apple search order:
+        // App /Resources folder
+        // working directory
 #ifdef __linux__
 		if (1 == readInputParametersFile(activeSetPtr, theDatabase.db.data(), "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
 			readInputParametersFile(activeSetPtr, theDatabase.db.data(), "DefaultValues.ini");
@@ -492,11 +489,7 @@ public:
 };
 mainGui theGui;
 
-char programDirectory[pathArrayLength];     // Program working directory (useful if the crystal database has to be reloaded)
 
-///////////////////.
-//Definitions over
-///////////////////.
 bool updateDisplay() {
     theGui.console.updateFromBuffer();
     theGui.updateSlider();
@@ -781,13 +774,14 @@ int formatSequence(std::string& s){
 }
 
 int freeSemipermanentGrids() {
-    isGridAllocated = false;
+    theSim[0].isGridAllocated = false;
     delete[] theSim[0].ExtOut;
     delete[] theSim[0].EkwOut;
     delete[] theSim[0].totalSpectrum;
     return 0;
 }
 
+//ifdef guards are in place to only include CUDA/SYCL when they are being used
 void checkLibraryAvailability() {   
 #if defined CPUONLY
     CUDAavailable = false;
@@ -803,20 +797,20 @@ void checkLibraryAvailability() {
 #ifndef NOCUDA
 	//Find, count, and name the GPUs
 	int CUDAdevice, i;
-	cudaGetDeviceCount(&cudaGPUCount);
+	cudaGetDeviceCount(&theSim[0].cudaGPUCount);
 	cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
 	struct cudaDeviceProp activeCUDADeviceProp;
 	//if (cuErr == cudaSuccess) {
 
-	if (cudaGPUCount > 0) {
-		CUDAavailable = true;
-        if (cudaGPUCount == 1) {
-            theGui.console.cPrint("CUDA found a GPU: \n", cudaGPUCount);
+	if (theSim[0].cudaGPUCount > 0) {
+        theSim[0].CUDAavailable = true;
+        if (theSim[0].cudaGPUCount == 1) {
+            theGui.console.cPrint("CUDA found a GPU: \n", theSim[0].cudaGPUCount);
         }
         else {
-            theGui.console.cPrint("CUDA found {} GPU(s): \n", cudaGPUCount);
+            theGui.console.cPrint("CUDA found {} GPU(s): \n", theSim[0].cudaGPUCount);
         }
-        for (i = 0; i < cudaGPUCount; ++i) {
+        for (i = 0; i < theSim[0].cudaGPUCount; ++i) {
             cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
             theGui.console.cPrint("<span color=\"#66FFFFFF\">   {}\n      Memory: {} MB\n      Multiprocessors: {}</span>\n", 
                 activeCUDADeviceProp.name, 
@@ -833,12 +827,12 @@ void checkLibraryAvailability() {
 
 #ifndef NOSYCL
     if (isIntelRuntimeInstalled()) {
-        SYCLavailable = true;
+        theSim[0].SYCLavailable = true;
         char syclDeviceList[1024] = { 0 };
         size_t syclDevices = 0;
         char counts[2] = { 0 };
         readSYCLDevices(counts, syclDeviceList);
-        syclGPUCount = (int)counts[1];
+        theSim[0].syclGPUCount = (int)counts[1];
         syclDevices = (size_t)counts[0] + (size_t)counts[1];
         if (syclDevices != 0) {
             theGui.console.cPrint("{}", syclDeviceList);
@@ -846,7 +840,7 @@ void checkLibraryAvailability() {
     }
     else {
         theGui.console.cPrint("Not using SYCL because the Intel DPC++\nCompiler Runtime is not installed.\n");
-        SYCLavailable = false;
+        theSim[0].SYCLavailable = false;
     }
 #endif
 #endif
@@ -960,8 +954,7 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
         }
         else {
             theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s);
-        }
-        
+        } 
     }
     g_object_unref(dialog);
 }
@@ -995,9 +988,9 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
         std::string path(g_file_get_path(file));
-        if (isGridAllocated) {
+        if (theSim[0].isGridAllocated) {
             freeSemipermanentGrids();
-            isGridAllocated = false;
+            theSim[0].isGridAllocated = false;
         }
         theGui.sequence.clear();
         theGui.fitCommand.clear();
@@ -1005,7 +998,7 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         int readParameters = readInputParametersFile(theSim.data(), theDatabase.db.data(), path.c_str());
         theGui.console.cPrint("Fitting string: {}\n", theSim[0].fittingString);
         allocateGrids(theSim.data());
-        isGridAllocated = true;
+        theSim[0].isGridAllocated = true;
         if (readParameters == 61) {
             size_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
@@ -1052,15 +1045,15 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
 
 void createRunFile() {
 
-    if (isGridAllocated) {
+    if (theSim[0].isGridAllocated) {
         freeSemipermanentGrids();
-        isGridAllocated = false;
+        theSim[0].isGridAllocated = false;
     }
 
     readParametersFromInterface();
     theSim[0].runType = 0;
     allocateGrids(theSim.data());
-    isGridAllocated = true;
+    theSim[0].isGridAllocated = true;
     theSim[0].isFollowerInSequence = false;
     theSim[0].crystalDatabase = theDatabase.db.data();
 
@@ -1127,8 +1120,8 @@ void createRunFile() {
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
         getBasename(theSim[0].outputBasePath), getBasename(theSim[0].outputBasePath));
     theGui.console.tPrint("Estimated time to complete: {:.2} hours\n", timeEstimate, (double)totalSteps * theSim[0].Ntime * theSim[0].Nspace * theSim[0].Nspace2, theSim[0].runType);
-    isRunning = false;
-    isGridAllocated = false;
+    theSim[0].isRunning = false;
+    theSim[0].isGridAllocated = false;
 }
 
 static void buttonAddSameCrystal() {
@@ -1256,7 +1249,7 @@ void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     return;
 }
 void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) {
+    if (!theSim[0].isGridAllocated) {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
@@ -1295,18 +1288,16 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[pathArrayLength]();
-        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
-        std::string svgPath(svgFilename);
+        std::string svgPath;
+        theGui.filePaths[3].copyBuffer(svgPath);
         svgPath.append("_Ex.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(),sPlot.SVG.size());
-        delete[] svgFilename;
     }
 }
 
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) {
+    if (!theSim[0].isGridAllocated) {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
@@ -1346,18 +1337,16 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[pathArrayLength]();
-        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
-        std::string svgPath(svgFilename);
+        std::string svgPath;
+        theGui.filePaths[3].copyBuffer(svgPath);
         svgPath.append("_Ey.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
-        delete[] svgFilename;
     }
 }
 
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) {
+    if (!theSim[0].isGridAllocated) {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
@@ -1426,18 +1415,16 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[pathArrayLength]();
-        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
-        std::string svgPath(svgFilename);
+        std::string svgPath;
+        theGui.filePaths[3].copyBuffer(svgPath);
         svgPath.append("_Sx.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
-        delete[] svgFilename;
     }
 }
 
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) {
+    if (!theSim[0].isGridAllocated) {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
@@ -1506,13 +1493,11 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
-        char* svgFilename = new char[pathArrayLength]();
-        theGui.filePaths[3].copyBuffer(svgFilename, pathArrayLength);
-        std::string svgPath(svgFilename);
+        std::string svgPath;
+        theGui.filePaths[3].copyBuffer(svgPath);
         svgPath.append("_Sy.svg");
         std::ofstream fs(svgPath);
         fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
-        delete[] svgFilename;
     }
 }
 
@@ -1593,7 +1578,7 @@ void imagePlot(imagePlotStruct* s) {
 }
 
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) {
+    if (!theSim[0].isGridAllocated) {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
@@ -1619,7 +1604,7 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 }
 
 void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) {
+    if (!theSim[0].isGridAllocated) {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
@@ -1645,7 +1630,7 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 }
 
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) {
+    if (!theSim[0].isGridAllocated) {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
@@ -1674,7 +1659,7 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 }
 
 void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
-    if (!isGridAllocated) {
+    if (!theSim[0].isGridAllocated) {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
@@ -1704,21 +1689,20 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     imagePlot(&sPlot);
 }
 
-
 void launchRunThread() {
     theSim[0].NsimsCPU = theGui.textBoxes[52].valueInt();
-    if(!isRunning) std::thread(mainSimThread, theGui.pulldowns[7].getValue(), theGui.pulldowns[8].getValue(), theGui.checkBoxes[3].isChecked()).detach();
+    if(!theSim[0].isRunning) std::thread(mainSimThread, theGui.pulldowns[7].getValue(), theGui.pulldowns[8].getValue(), theGui.checkBoxes[3].isChecked()).detach();
 }
 
 void launchFitThread() {
-    if (!isRunning) std::thread(fittingThread, theGui.pulldowns[7].getValue(), theGui.checkBoxes[3].isChecked()).detach();
+    if (!theSim[0].isRunning) std::thread(fittingThread, theGui.pulldowns[7].getValue(), theGui.checkBoxes[3].isChecked()).detach();
 }
 
 void stopButtonCallback() {
-    if (isRunning) {
-        cancellationCalled = true;
-        for (int i = 0; i < theSim[0].Nsims; ++i) {
-            theSim[0].statusFlags[i] = 2;
+    if (theSim[0].isRunning) {
+        theSim[0].cancellationCalled = true;
+        for (int i = 1; i < theSim[0].Nsims; ++i) {
+            theSim[0].cancellationCalled;
         }
     }
 }
@@ -1735,21 +1719,21 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     int assignedGPU = 0;
     bool forceCPU = 0;
     [[maybe_unused]]int SYCLitems = 0;
-    if (syclGPUCount == 0) {
-        SYCLitems = (int)SYCLavailable;
+    if (theSim[0].syclGPUCount == 0) {
+        SYCLitems = (int)theSim[0].SYCLavailable;
     }
     else {
         SYCLitems = 3;
     }
 #ifndef CPUONLY
     //launch on CUDA if selected, putting in the correct GPU in multi-gpu systems
-    if (pulldownSelection < cudaGPUCount) {
+    if (pulldownSelection < theSim[0].cudaGPUCount) {
         sequenceFunction = &solveNonlinearWaveEquationSequence;
         normalFunction = &solveNonlinearWaveEquation;
         assignedGPU = pulldownSelection;
     }
     //launch on SYCL, but if the primary queue matches, default to openMP
-    else if (pulldownSelection == cudaGPUCount && SYCLitems > 0) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount && SYCLitems > 0) {
         if (pulldownSelection == pulldownSelectionPrimary) {
             theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
@@ -1760,7 +1744,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
             normalFunction = &solveNonlinearWaveEquationSYCL;
         }
     }
-    else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount + 1 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
             theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
@@ -1772,7 +1756,7 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
             normalFunction = &solveNonlinearWaveEquationSYCL;
         }
     }
-    else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount + 2 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
             theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
@@ -1816,19 +1800,19 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
 }
 
 void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use64bitFloatingPoint) {
-    cancellationCalled = false;
+    theSim[0].cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
 
-    if (isGridAllocated) {
+    if (theSim[0].isGridAllocated) {
         freeSemipermanentGrids();
-        isGridAllocated = false;
+        theSim[0].isGridAllocated = false;
     }
 
     readParametersFromInterface();
     theSim[0].runType = 0;
     allocateGrids(theSim.data());
-    isGridAllocated = true;
+    theSim[0].isGridAllocated = true;
     theGui.requestSliderUpdate();
     theSim[0].isFollowerInSequence = false;
     theSim[0].crystalDatabase = theDatabase.db.data();
@@ -1856,8 +1840,8 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     
     theSim[0].runType = 0;
     int error = 0;
-    //run the simulations
-    isRunning = true;
+
+    theSim[0].isRunning = true;
     progressCounter = 0;
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
@@ -1866,13 +1850,13 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     bool forceCPU = 0;
     [[maybe_unused]]int SYCLitems = 0;
     #ifndef CPUONLY
-    if (syclGPUCount == 0) {
-        SYCLitems = (int)SYCLavailable;
+    if (theSim[0].syclGPUCount == 0) {
+        SYCLitems = (int)theSim[0].SYCLavailable;
     }
     else {
         SYCLitems = 3;
     }
-    if (pulldownSelection < cudaGPUCount) {
+    if (pulldownSelection < theSim[0].cudaGPUCount) {
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequence;
             normalFunction = &solveNonlinearWaveEquation;
@@ -1884,7 +1868,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
 
         assignedGPU = pulldownSelection;
     }
-    else if (pulldownSelection == cudaGPUCount && SYCLavailable) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount && theSim[0].SYCLavailable) {
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -1895,7 +1879,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         }
 
     }
-    else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount + 1 && SYCLitems > 1) {
         forceCPU = 1;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
@@ -1906,7 +1890,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             normalFunction = &solveNonlinearWaveEquationSYCLFP32;
         }
     }
-    else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount + 2 && SYCLitems > 1) {
         assignedGPU = 1;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
@@ -1988,7 +1972,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             }
             if (error) break;
         }
-        if (cancellationCalled) {
+        if (theSim[0].cancellationCalled) {
             theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: series cancelled, stopping after {} simulations.</span>\r\n"), j + 1);
             break;
         }
@@ -2017,24 +2001,24 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
 
     saveDataSet(theSim.data());
     deallocateGrids(theSim.data(), false);
-    isRunning = false;
+    theSim[0].isRunning = false;
 }
 
 void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
-    cancellationCalled = false;
+    theSim[0].cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
 
 
-    if (isGridAllocated) {
+    if (theSim[0].isGridAllocated) {
         freeSemipermanentGrids();
-        isGridAllocated = false;
+        theSim[0].isGridAllocated = false;
     }
 
     readParametersFromInterface();
     theSim[0].runType = 0;
     allocateGrids(theSim.data());
-    isGridAllocated = true;
+    theSim[0].isGridAllocated = true;
     theGui.requestSliderUpdate();
     theSim[0].isFollowerInSequence = false;
     theSim[0].crystalDatabase = theDatabase.db.data();
@@ -2065,8 +2049,8 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     int assignedGPU = 0;
     bool forceCPU = 0;
     [[maybe_unused]]int SYCLitems = 0;
-    if (syclGPUCount == 0) {
-        SYCLitems = (int)SYCLavailable;
+    if (theSim[0].syclGPUCount == 0) {
+        SYCLitems = (int)theSim[0].SYCLavailable;
     }
     else {
         SYCLitems = 3;
@@ -2077,27 +2061,27 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
         fittingFunction = &runDlibFittingCPUFP32;
     }
 #ifndef CPUONLY
-    if (pulldownSelection < cudaGPUCount) {
+    if (pulldownSelection < theSim[0].cudaGPUCount) {
         fittingFunction = &runDlibFitting;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingFP32;
         assignedGPU = pulldownSelection;
     }
-    else if (pulldownSelection == cudaGPUCount && SYCLavailable) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount && theSim[0].SYCLavailable) {
         fittingFunction = &runDlibFittingSYCL;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
-    else if (pulldownSelection == cudaGPUCount + 1 && SYCLitems > 1) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount + 1 && SYCLitems > 1) {
         forceCPU = 1;
         fittingFunction = &runDlibFittingSYCL;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
-    else if (pulldownSelection == cudaGPUCount + 2 && SYCLitems > 1) {
+    else if (pulldownSelection == theSim[0].cudaGPUCount + 2 && SYCLitems > 1) {
         assignedGPU = 1;
         fittingFunction = &runDlibFittingSYCL;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
 #endif
-    isRunning = true;
+    theSim[0].isRunning = true;
     theSim[0].runningOnCPU = forceCPU;
     theSim[0].assignedGPU = assignedGPU;
     fittingFunction(theSim.data());
@@ -2113,7 +2097,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     }
     saveDataSet(theSim.data());
     deallocateGrids(theSim.data(), false);
-    isRunning = false;
+    theSim[0].isRunning = false;
 }
 
 int main(int argc, char **argv){

@@ -17,7 +17,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 	int maxIterations = 0;
 	int fittingCount = 0;
 	ss >> ROIbegin >> ROIend >> maxIterations;
-	ss.ignore(pathArrayLength, ';');
+	ss.ignore((*sCPU).fittingString.length(), ';');
 
 	(*sCPU).fittingROIstart = (size_t)(ROIbegin / (*sCPU).fStep);
 	(*sCPU).fittingROIstop = (size_t)minN(ROIend / (*sCPU).fStep, (*sCPU).Ntime / 2);
@@ -27,7 +27,7 @@ int readFittingString(simulationParameterSet* sCPU) {
 	while (ss.good()) {
 		ss >> (*sCPU).fittingArray[fittingCount] >> (*sCPU).fittingArray[fittingCount + 1] >> (*sCPU).fittingArray[fittingCount + 2];
 		if (ss.good()) fittingCount += 3;
-		ss.ignore(pathArrayLength, ';');
+		ss.ignore((*sCPU).fittingString.length(), ';');
 	}
 
 	(*sCPU).Nfitting = fittingCount / 3;
@@ -950,58 +950,28 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 	if ((*sCPU).batchIndex == 0 || (*sCPU).Nsims == 1 || (*sCPU).batchIndex > 37 || (*sCPU).batchIndex2 > 37) {
 		return 0;
 	}
-
-	//pointers to values that can be scanned in batch mode
-	double* targets[38] = { 0,
-		&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
-		&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
-		&(*sCPU).pulse1.delay, &(*sCPU).pulse2.delay, &(*sCPU).pulse1.gdd, &(*sCPU).pulse2.gdd,
-		&(*sCPU).pulse1.tod, &(*sCPU).pulse2.tod, &(*sCPU).pulse1.phaseMaterialThickness, &(*sCPU).pulse2.phaseMaterialThickness,
-		&(*sCPU).pulse1.beamwaist, &(*sCPU).pulse2.beamwaist,
-		&(*sCPU).pulse1.x0, &(*sCPU).pulse2.x0, &(*sCPU).pulse1.z0, &(*sCPU).pulse2.z0,
-		&(*sCPU).pulse1.beamAngle, &(*sCPU).pulse2.beamAngle, &(*sCPU).pulse1.polarizationAngle, &(*sCPU).pulse2.polarizationAngle,
-		&(*sCPU).pulse1.circularity, &(*sCPU).pulse2.circularity, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
-		&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
-		&(*sCPU).propagationStep, &(*sCPU).i37, &(*sCPU).i37};
-
-	//multipliers to the Batch end value from the interface
-	// (e.g. frequency in THz requires 1e12 multiplier)
-	double multipliers[38] = { 0,
-		1, 1, 1e12, 1e12,
-		1e12, 1e12, vPi<double>(), vPi<double>(),
-		1e-15, 1e-15, 1e-30, 1e-30,
-		1e-45, 1e-45, 1e-6, 1e-6,
-		1e-6, 1e-6,
-		1e-6, 1e-6, 1e-6, 1e-6,
-		deg2Rad<double>(), deg2Rad<double>(), deg2Rad<double>(), deg2Rad<double>(),
-		1, 1, deg2Rad<double>(), deg2Rad<double>(),
-		1, 1e12, 1, 1e-6,
-		1e-9, 1.0, 1.0 };
-
+	double step1 = ((*sCPU).batchDestination - (*sCPU).getByNumberWithMultiplier((*sCPU).batchIndex))/ ( (*sCPU).Nsims - 1);
+	double step2 = 0.0;
+	if ((*sCPU).Nsims2 > 0) {
+		step2 = ((*sCPU).batchDestination2 - (*sCPU).getByNumberWithMultiplier((*sCPU).batchIndex2)) / ((*sCPU).Nsims2 - 1);
+	}
 	//Configure the struct array if in a batch
 	for (i = 0; i < (*sCPU).Nsims2; i++) {
 		currentRow = i * (*sCPU).Nsims;
 		
 		if (currentRow > 0) {
-			//memcpy(&sCPU[currentRow], sCPU, sizeof(simulationParameterSet));
 			sCPU[currentRow] = sCPU[0];
 		}
 		if ((*sCPU).Nsims2 > 1) {
-			*((double*)((simulationParameterSet*)targets[(*sCPU).batchIndex2] + currentRow)) +=
-				i * (multipliers[(*sCPU).batchIndex2] * (*sCPU).batchDestination2 - *targets[(*sCPU).batchIndex2])
-				/ ((*sCPU).Nsims2 - 1);
+			sCPU[currentRow].setByNumberWithMultiplier((*sCPU).batchIndex2, (*sCPU).getByNumberWithMultiplier((*sCPU).batchIndex2) + i * step2);
 		}
 
 		for (j = 0; j < (*sCPU).Nsims; j++) {
 
 			if (j > 0) {
-				//memcpy(&sCPU[j + currentRow], &sCPU[currentRow], sizeof(simulationParameterSet));
 				sCPU[j + currentRow] = sCPU[currentRow];
 			}
 
-			if ((*sCPU).deffTensor != NULL) {
-				sCPU[j + currentRow].deffTensor = &(*sCPU).deffTensor[9 * (j + currentRow)];;
-			}
 			sCPU[j + currentRow].batchLoc1 = j;
 			sCPU[j + currentRow].batchLoc2 = i;
 			sCPU[j + currentRow].ExtOut = &(*sCPU).ExtOut[(j + currentRow) * (*sCPU).Ngrid * 2];
@@ -1009,15 +979,9 @@ int configureBatchMode(simulationParameterSet* sCPU) {
 			sCPU[j + currentRow].totalSpectrum = &(*sCPU).totalSpectrum[(j + currentRow) * (*sCPU).Nfreq * 3];
 			sCPU[j + currentRow].isFollowerInSequence = false;
 
-			// To add new modes, append values to the two arrays above, and to the combobox in the UI.
-			// Cast the pointer to the original value to a pointer to a struct, 
-			// increment, recast to a pointer to double and resolve then add j times the scan step size.
-			*((double*)((simulationParameterSet*)targets[(*sCPU).batchIndex] + (j + currentRow))) +=
-				j * (multipliers[(*sCPU).batchIndex] * (*sCPU).batchDestination - *targets[(*sCPU).batchIndex])
-				/ ((*sCPU).Nsims - 1);
+			sCPU[currentRow + j].setByNumberWithMultiplier((*sCPU).batchIndex, (*sCPU).getByNumberWithMultiplier((*sCPU).batchIndex) + j * step1);
 		}
 	}
-
 	return 0;
 }
 
@@ -1027,9 +991,7 @@ int allocateGrids(simulationParameterSet* sCPU) {
 	(*sCPU).loadedField2 = new std::complex<double>[(*sCPU).Ntime]();
 	(*sCPU).ExtOut = new double[(*sCPU).Ngrid * 2 * (*sCPU).Nsims * (*sCPU).Nsims2]();
 	(*sCPU).EkwOut = new std::complex<double>[(*sCPU).NgridC * 2 * (*sCPU).Nsims * (*sCPU).Nsims2]();
-	(*sCPU).deffTensor = new double[9 * (*sCPU).Nsims * (*sCPU).Nsims2]();
 	(*sCPU).totalSpectrum = new double[(*sCPU).Nsims * (*sCPU).Nsims2 * (*sCPU).Nfreq * 3]();
-	(*sCPU).statusFlags = new int[(*sCPU).Nsims * (*sCPU).Nsims2]();
 	(*sCPU).fittingReference = new double[(*sCPU).Nfreq]();
 	return 0;
 }
@@ -1037,8 +999,6 @@ int allocateGrids(simulationParameterSet* sCPU) {
 int deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems) {
 	delete[] (*sCPU).loadedField1;
 	delete[] (*sCPU).loadedField2;
-	delete[] (*sCPU).deffTensor;
-	delete[] (*sCPU).statusFlags;
 	delete[] (*sCPU).fittingReference;
 	if (alsoDeleteDisplayItems) {
 		delete[](*sCPU).ExtOut;
@@ -1060,11 +1020,11 @@ int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long lo
 	std::string line;
 	std::ifstream fs(frogFilePath);
 	if (fs.fail()) return -1;
-	int maxFileSize = 16384;
+	const int maxFileSize = 16384;
 	double wavelength, R, phi, complexX, complexY, f, f0, f1;
 	double fmax = 0.0;
 	int i, k0, k1;
-	double c = 1e9 * lightC<double>(); //for conversion of wavelength in nm to frequency
+	constexpr double c = 1e9 * lightC<double>(); //for conversion of wavelength in nm to frequency
 	double df = 0;
 	double fmin = 0;
 	int currentRow = 0;

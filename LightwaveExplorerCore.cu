@@ -2311,15 +2311,8 @@ namespace hostFunctions{
 			runRK4Step(d, 3);
 
 			//periodically check if the simulation diverged or was cancelled
-			if ((*sCPU).statusFlags[0] == 2) break;
+			if ((*sCPU).cancellationCalled) break;
 			if (i % 10 == 0) if (d.isTheCanaryPixelNaN(canaryPointer)) break;
-
-			//copy the field arrays from the GPU to CPU memory if requested by the UI
-			if ((*sCPU).statusFlags[0] == 3) {
-				d.deviceMemcpy((*sCPU).ExtOut, d.deviceStruct.gridETime1, 2 * (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
-				d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * (*sCPU).NgridC * sizeof(std::complex<double>), copyType::ToHost);
-				(*sCPU).statusFlags[0] = 0;
-			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 		}
 		if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
@@ -2332,8 +2325,6 @@ namespace hostFunctions{
 		getTotalSpectrum(d);
 
 		int returnval =  13 * d.isTheCanaryPixelNaN(canaryPointer);
-
-		(*sCPU).statusFlags[0] = 1;
 		return returnval;
 	}
 
@@ -2626,11 +2617,11 @@ namespace hostFunctions{
 					}
 					error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
 					currentString = currentString.substr(currentString.find_first_of(')') + 1, std::string::npos);
-					if (error || (*sCPU).statusFlags[0] == 2) break;
+					if (error || (*sCPU).cancellationCalled) break;
 				}
 				++vBlock[targetVar];
 				currentString = forStartString;
-				if (error || (*sCPU).statusFlags[0] == 2) break;
+				if (error || (*sCPU).cancellationCalled) break;
 			}
 			break;
 		}
@@ -2639,31 +2630,6 @@ namespace hostFunctions{
 
 	static int solveSequenceWithDevice(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU) {
 		int error = 0;
-		//pointers to where the various parameters are in the struct
-		double* targets[38] = { 0,
-			&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
-			&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
-			&(*sCPU).pulse1.delay, &(*sCPU).pulse2.delay, &(*sCPU).pulse1.gdd, &(*sCPU).pulse2.gdd,
-			&(*sCPU).pulse1.tod, &(*sCPU).pulse2.tod, &(*sCPU).pulse1.phaseMaterialThickness, &(*sCPU).pulse2.phaseMaterialThickness,
-			&(*sCPU).pulse1.beamwaist, &(*sCPU).pulse2.beamwaist,
-			&(*sCPU).pulse1.x0, &(*sCPU).pulse2.x0, &(*sCPU).pulse1.z0, &(*sCPU).pulse2.z0,
-			&(*sCPU).pulse1.beamAngle, &(*sCPU).pulse2.beamAngle, &(*sCPU).pulse1.polarizationAngle, &(*sCPU).pulse2.polarizationAngle,
-			&(*sCPU).pulse1.circularity, &(*sCPU).pulse2.circularity, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
-			&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
-			&(*sCPU).propagationStep, &(*sCPU).i37, &(*sCPU).i37 };
-
-		//unit multipliers from interface units to SI base units.
-		double multipliers[38] = { 0,
-		1, 1, 1e12, 1e12,
-		1e12, 1e12, vPi<deviceFP>(), vPi<deviceFP>(),
-		1e-15, 1e-15, 1e-30, 1e-30,
-		1e-45, 1e-45, 1e-6, 1e-6,
-		1e-6, 1e-6,
-		1e-6, 1e-6, 1e-6, 1e-6,
-		deg2Rad<deviceFP>(), deg2Rad<deviceFP>(), deg2Rad<deviceFP>(), deg2Rad<deviceFP>(),
-		1, 1, deg2Rad<deviceFP>(), deg2Rad<deviceFP>(),
-		1, 1e12, 1, 1e-6,
-		1e-9, 1, 1 };
 
 		//if it starts with 0, it's an old sequence; quit
 		if ((*sCPU).sequenceString[0] == '0') {
@@ -2677,7 +2643,7 @@ namespace hostFunctions{
 		double iBlock[100] = { 0.0 };
 
 		for (int k = 1; k < 38; k++) {
-			iBlock[k] = *(targets[k]) / multipliers[k];
+			iBlock[k] = (*sCPU).getByNumberWithMultiplier(k);
 		}
 
 		double vBlock[100] = { 0.0 };
@@ -2706,7 +2672,7 @@ namespace hostFunctions{
 			}
 
 			error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
-			if (error || (*sCPU).statusFlags[0]==2) break;
+			if (error || (*sCPU).cancellationCalled) break;
 			currentString = currentString.substr(currentString.find_first_of(')'), std::string::npos);
 
 			if (currentString.length() < minLength) break;
@@ -2722,34 +2688,9 @@ namespace hostFunctions{
 
 	// helper function for fitting mode, runs the simulation and returns difference from the desired outcome.
 	static double getResidual(const dlib::matrix<double, 0, 1>& x) {
-
-		double multipliers[36] = { 0,
-	1, 1, 1e12, 1e12,
-	1e12, 1e12, vPi<deviceFP>(), vPi<deviceFP>(),
-	1e-15, 1e-15, 1e-30, 1e-30,
-	1e-45, 1e-45, 1e-6, 1e-6,
-	1e-6, 1e-6,
-	1e-6, 1e-6, 1e-6, 1e-6,
-	deg2Rad<deviceFP>(), deg2Rad<deviceFP>(), deg2Rad<deviceFP>(), deg2Rad<deviceFP>(),
-	1, 1, deg2Rad<deviceFP>(), deg2Rad<deviceFP>(),
-	1, 1e12, 1, 1e-6,
-	1e-9 };
-
 		double result = 0.0;
-		double* targets[36] = { 0,
-		&(*fittingSet).pulse1.energy, &(*fittingSet).pulse2.energy, &(*fittingSet).pulse1.frequency, &(*fittingSet).pulse2.frequency,
-		&(*fittingSet).pulse1.bandwidth, &(*fittingSet).pulse2.bandwidth, &(*fittingSet).pulse1.cep, &(*fittingSet).pulse2.cep,
-		&(*fittingSet).pulse1.delay, &(*fittingSet).pulse2.delay, &(*fittingSet).pulse1.gdd, &(*fittingSet).pulse2.gdd,
-		&(*fittingSet).pulse1.tod, &(*fittingSet).pulse2.tod, &(*fittingSet).pulse1.phaseMaterialThickness, &(*fittingSet).pulse2.phaseMaterialThickness,
-		&(*fittingSet).pulse1.beamwaist, &(*fittingSet).pulse2.beamwaist,
-		&(*fittingSet).pulse1.x0, &(*fittingSet).pulse2.x0, &(*fittingSet).pulse1.z0, &(*fittingSet).pulse2.z0,
-		&(*fittingSet).pulse1.beamAngle, &(*fittingSet).pulse2.beamAngle, &(*fittingSet).pulse1.polarizationAngle, &(*fittingSet).pulse2.polarizationAngle,
-		&(*fittingSet).pulse1.circularity, &(*fittingSet).pulse2.circularity, &(*fittingSet).crystalTheta, &(*fittingSet).crystalPhi,
-		&(*fittingSet).nonlinearAbsorptionStrength, &(*fittingSet).drudeGamma, &(*fittingSet).effectiveMass, &(*fittingSet).crystalThickness,
-		&(*fittingSet).propagationStep };
-
 		for (int i = 0; i < (*fittingSet).Nfitting; ++i) {
-			*targets[(int)(*fittingSet).fittingArray[3 * i]] = multipliers[(int)(*fittingSet).fittingArray[3 * i]] * x(i);
+			(*fittingSet).setByNumberWithMultiplier((size_t)(*fittingSet).fittingArray[3 * i], x(i));
 		}
 
 		activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d = *dFit;
@@ -2835,7 +2776,6 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	simulationParameterSet sCPUcurrent = *sCPU;
 	fittingSet = &sCPUcurrent;
 
-	//memcpy(fittingSet, sCPU, sizeof(simulationParameterSet));
 	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(fittingSet);
 	dFit = &d;
 	dlib::matrix<double, 0, 1> parameters;
@@ -2844,32 +2784,9 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	lowerBounds.set_size((*sCPU).Nfitting);
 	dlib::matrix<double, 0, 1> upperBounds;
 	upperBounds.set_size((*sCPU).Nfitting);
-	double* targets[36] = { 0,
-	&(*sCPU).pulse1.energy, &(*sCPU).pulse2.energy, &(*sCPU).pulse1.frequency, &(*sCPU).pulse2.frequency,
-	&(*sCPU).pulse1.bandwidth, &(*sCPU).pulse2.bandwidth, &(*sCPU).pulse1.cep, &(*sCPU).pulse2.cep,
-	&(*sCPU).pulse1.delay, &(*sCPU).pulse2.delay, &(*sCPU).pulse1.gdd, &(*sCPU).pulse2.gdd,
-	&(*sCPU).pulse1.tod, &(*sCPU).pulse2.tod, &(*sCPU).pulse1.phaseMaterialThickness, &(*sCPU).pulse2.phaseMaterialThickness,
-	&(*sCPU).pulse1.beamwaist, &(*sCPU).pulse2.beamwaist,
-	&(*sCPU).pulse1.x0, &(*sCPU).pulse2.x0, &(*sCPU).pulse1.z0, &(*sCPU).pulse2.z0,
-	&(*sCPU).pulse1.beamAngle, &(*sCPU).pulse2.beamAngle, &(*sCPU).pulse1.polarizationAngle, &(*sCPU).pulse2.polarizationAngle,
-	&(*sCPU).pulse1.circularity, &(*sCPU).pulse2.circularity, &(*sCPU).crystalTheta, &(*sCPU).crystalPhi,
-	&(*sCPU).nonlinearAbsorptionStrength, &(*sCPU).drudeGamma, &(*sCPU).effectiveMass, &(*sCPU).crystalThickness,
-	&(*sCPU).propagationStep };
-
-	double multipliers[36] = { 0,
-	1, 1, 1e12, 1e12,
-	1e12, 1e12, vPi<deviceFP>(), vPi<deviceFP>(),
-	1e-15, 1e-15, 1e-30, 1e-30,
-	1e-45, 1e-45, 1e-6, 1e-6,
-	1e-6, 1e-6,
-	1e-6, 1e-6, 1e-6, 1e-6,
-	deg2Rad<deviceFP>(), deg2Rad<deviceFP>(), deg2Rad<deviceFP>(), deg2Rad<deviceFP>(),
-	1, 1, deg2Rad<deviceFP>(), deg2Rad<deviceFP>(),
-	1, 1e12, 1, 1e-6,
-	1e-9 };
 
 	for (int i = 0; i < (*sCPU).Nfitting; ++i) {
-		parameters(i) = *targets[(int)(*sCPU).fittingArray[3 * i]];
+		parameters(i) = (*sCPU).getByNumber((size_t)round((*sCPU).fittingArray[3 * i]));
 		lowerBounds(i) = (*sCPU).fittingArray[3 * i + 1];
 		upperBounds(i) = (*sCPU).fittingArray[3 * i + 2];
 	}
@@ -2884,7 +2801,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	}
 
 	for (int i = 0; i < (*sCPU).Nfitting; ++i) {
-		*targets[(int)round((*sCPU).fittingArray[3 * i])] = multipliers[(int)round((*sCPU).fittingArray[3 * i])] * result.x(i);
+		(*sCPU).setByNumberWithMultiplier((size_t)round((*sCPU).fittingArray[3 * i]), result.x(i));
 		(*sCPU).fittingResult[i] = result.x(i);
 	}
 

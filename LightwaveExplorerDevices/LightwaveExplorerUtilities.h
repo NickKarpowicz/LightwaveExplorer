@@ -10,7 +10,6 @@
 
 static const unsigned int threadsPerBlock = 32;
 static const unsigned int minGridDimension = 8;
-static const size_t pathArrayLength = 1024;
 
 #ifndef LWEFLOATINGPOINT
 #define LWEFLOATINGPOINT 64
@@ -498,7 +497,6 @@ public:
     double crystalPhi = 0;
     double crystalThickness = 0;
     double* chi2Tensor = 0;
-    double* deffTensor = 0;
     double* chi3Tensor = 0;
     double* sellmeierCoefficients = 0;
     double* absorptionParameters = 0;
@@ -523,7 +521,6 @@ public:
     double* ExtOut = 0;
     std::complex<double>* EkwOut = 0;
     double* totalSpectrum = 0;
-    int* statusFlags = 0;
     int memoryError = 0;
     int assignedGPU = 0;
     int plotSim = 0;
@@ -560,6 +557,202 @@ public:
     size_t fittingROIsize = 0;
     std::array<double, 64> fittingResult = {};
     std::array<double, 64> fittingError = {};
+
+    //Status
+    bool isRunning = false;
+    bool isGridAllocated = false;
+    bool cancellationCalled = false;
+    bool CUDAavailable = false;
+    bool SYCLavailable = false;
+    int cudaGPUCount = 0;
+    int syclGPUCount = 0;
+
+	std::array<double, 38> multipliers = { 0,
+        1, 1, 1e12, 1e12,
+        1e12, 1e12, vPi<double>(), vPi<double>(),
+        1e-15, 1e-15, 1e-30, 1e-30,
+        1e-45, 1e-45, 1e-6, 1e-6,
+        1e-6, 1e-6,
+        1e-6, 1e-6, 1e-6, 1e-6,
+        deg2Rad<double>(), deg2Rad<double>(), deg2Rad<double>(), deg2Rad<double>(),
+        1, 1, deg2Rad<double>(), deg2Rad<double>(),
+        1, 1e12, 1, 1e-6,
+        1e-9, 1, 1 };
+
+    double getByNumber(size_t index) {
+        switch (index) {
+        case 0:
+            return 0.0;
+        case 1:
+            return pulse1.energy;
+        case 2:
+            return pulse2.energy;
+        case 3:
+            return pulse1.frequency;
+        case 4:
+            return pulse2.frequency;
+        case 5:
+            return pulse1.bandwidth;
+        case 6:
+            return pulse2.bandwidth;
+        case 7:
+            return pulse1.cep;
+        case 8:
+            return pulse2.cep;
+        case 9:
+            return pulse1.delay;
+        case 10:
+            return pulse2.delay;
+        case 11:
+            return pulse1.gdd;
+        case 12:
+            return pulse2.gdd;
+        case 13:
+            return pulse1.tod;
+        case 14:
+            return pulse2.tod;
+        case 15:
+            return pulse1.phaseMaterialThickness;
+        case 16:
+            return pulse2.phaseMaterialThickness;
+        case 17:
+            return pulse1.beamwaist;
+        case 18:
+            return pulse2.beamwaist;
+        case 19:
+            return pulse1.x0;
+        case 20:
+            return pulse2.x0;
+        case 21:
+            return pulse1.z0;
+        case 22:
+            return pulse2.z0;
+        case 23:
+            return pulse1.beamAngle;
+        case 24:
+            return pulse2.beamAngle;
+        case 25:
+            return pulse1.polarizationAngle;
+        case 26:
+            return pulse2.polarizationAngle;
+        case 27:
+            return pulse1.circularity;
+        case 28:
+            return pulse2.circularity;
+        case 29:
+            return crystalTheta;
+        case 30:
+            return crystalPhi;
+        case 31:
+            return nonlinearAbsorptionStrength;
+        case 32:
+            return drudeGamma;
+        case 33:
+            return effectiveMass;
+        case 34:
+            return crystalThickness;
+        case 35:
+            return propagationStep;
+        case 36:
+            return 0.0;
+        case 37:
+            return i37;
+        default:
+            return 0.0;
+        };
+    }
+    void setByNumber(size_t index, double value) {
+        switch (index) {
+        case 0:
+            return;
+        case 1:
+            pulse1.energy = value; return;
+        case 2:
+            pulse2.energy = value; return;
+        case 3:
+            pulse1.frequency = value; return;
+        case 4:
+            pulse2.frequency = value; return;
+        case 5:
+            pulse1.bandwidth = value; return;
+        case 6:
+            pulse2.bandwidth = value; return;
+        case 7:
+            pulse1.cep = value; return;
+        case 8:
+            pulse2.cep = value; return;
+        case 9:
+            pulse1.delay = value; return;
+        case 10:
+            pulse2.delay = value; return;
+        case 11:
+            pulse1.gdd = value; return;
+        case 12:
+            pulse2.gdd = value; return;
+        case 13:
+            pulse1.tod = value; return;
+        case 14:
+            pulse2.tod = value; return;
+        case 15:
+            pulse1.phaseMaterialThickness = value; return;
+        case 16:
+            pulse2.phaseMaterialThickness = value; return;
+        case 17:
+            pulse1.beamwaist = value; return;
+        case 18:
+            pulse2.beamwaist = value; return;
+        case 19:
+            pulse1.x0 = value; return;
+        case 20:
+            pulse2.x0 = value; return;
+        case 21:
+            pulse1.z0 = value; return;
+        case 22:
+            pulse2.z0 = value; return;
+        case 23:
+            pulse1.beamAngle = value; return;
+        case 24:
+            pulse2.beamAngle = value; return;
+        case 25:
+            pulse1.polarizationAngle = value; return;
+        case 26:
+            pulse2.polarizationAngle = value; return;
+        case 27:
+            pulse1.circularity = value; return;
+        case 28:
+            pulse2.circularity = value; return;
+        case 29:
+            crystalTheta = value; return;
+        case 30:
+            crystalPhi = value; return;
+        case 31:
+            nonlinearAbsorptionStrength = value; return;
+        case 32:
+            drudeGamma = value; return;
+        case 33:
+            effectiveMass = value; return;
+        case 34:
+            crystalThickness = value; return;
+        case 35:
+            propagationStep = value; return;
+        case 36:
+            return;
+        case 37:
+            i37 = value; return;
+        default:
+            return;
+        }
+    }
+	double getByNumberWithMultiplier(size_t index) {
+		if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
+        return  getByNumber(index) / multipliers[index];
+
+	}
+    void setByNumberWithMultiplier(size_t index, double value) {
+        if (index > multipliers.size()) return;
+        setByNumber(index, value * multipliers[index]);
+    }
+    
 };
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
