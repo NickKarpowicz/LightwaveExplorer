@@ -465,8 +465,8 @@ public:
         // App /Resources folder
         // working directory
 #ifdef __linux__
-		if (1 == readInputParametersFile(activeSetPtr, theDatabase.db.data(), "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
-			readInputParametersFile(activeSetPtr, theDatabase.db.data(), "DefaultValues.ini");
+		if (1 == readInputParametersFile(theSim.data(), theDatabase.db.data(), "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
+			readInputParametersFile(theSim.data(), theDatabase.db.data(), "DefaultValues.ini");
 		}
 #elif defined __APPLE__
 		uint32_t bufferSize = 1024;
@@ -475,8 +475,8 @@ public:
         std::string sysPathFull(sysPathBuffer);
         std::string sysPathIni = sysPathFull.substr(0,sysPathFull.find_last_of("/"));
         sysPathIni.append("/../Resources/DefaultValues.ini");
-		if(1 == readInputParametersFile(activeSetPtr, theDatabase.db.data(), sysPathIni.c_str())){
-            readInputParametersFile(activeSetPtr, theDatabase.db.data(), "DefaultValues.ini");
+		if(1 == readInputParametersFile(theSim.data(), theDatabase.db.data(), sysPathIni.c_str())){
+            readInputParametersFile(theSim.data(), theDatabase.db.data(), "DefaultValues.ini");
         }
 #else
 		readInputParametersFile(theSim.data(), theDatabase.db.data(), "DefaultValues.ini");
