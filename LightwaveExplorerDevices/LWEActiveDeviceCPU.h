@@ -7,8 +7,8 @@
 #include <atomic>
 #include <thread>
 #include <iostream>
-#include <math.h>
-
+#include <cmath>
+#include <cstring>
 #if defined __APPLE__ || defined __linux__
 template<typename deviceFP>
 [[maybe_unused]] void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {

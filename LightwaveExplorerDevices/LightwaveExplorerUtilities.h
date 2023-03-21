@@ -2,10 +2,25 @@
 #include <complex>
 #include <vector>
 #include <array>
+#include <string>
 #include <fstream>
 #include <atomic>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
+#endif
+
+#ifdef __CUDACC__
+#include <cufft.h>
+#include <thrust/complex.h>
+#include <fftw3_mkl.h>
+#elif defined RUNONSYCL
+#include <oneapi/dpl/complex>
+#include <oneapi/dpl/cmath>
+#include <sycl/sycl.hpp>
+#elif defined CPUONLY
+#include <fftw3.h>
+#else
+#include <fftw3_mkl.h>
 #endif
 
 static const unsigned int threadsPerBlock = 32;
@@ -95,21 +110,6 @@ hostOrDevice static constexpr T kLorentzian() {
     return (T)3182.607353999257;
 }
 
-#include <complex>
-#include <cstring>
-#ifdef __CUDACC__
-#include <cufft.h>
-#include <thrust/complex.h>
-#include <fftw3_mkl.h>
-#elif defined RUNONSYCL
-#include <oneapi/dpl/complex>
-#include <oneapi/dpl/cmath>
-#include <sycl/sycl.hpp>
-#elif defined CPUONLY
-#include <fftw3.h>
-#else
-#include <fftw3_mkl.h>
-#endif
 
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)
@@ -752,7 +752,6 @@ public:
         if (index > multipliers.size()) return;
         setByNumber(index, value * multipliers[index]);
     }
-    
 };
 
 int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
@@ -773,7 +772,6 @@ int             configureBatchMode(simulationParameterSet* sCPU);
 int             saveDataSet(simulationParameterSet* sCPU);
 int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);
 int             loadPulseFiles(simulationParameterSet* sCPU);
-int             skipFileUntilCharacter(FILE* fstream, char target);
 void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
 std::string     getBasename(char* fullPath);

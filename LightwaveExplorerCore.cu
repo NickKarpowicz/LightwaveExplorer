@@ -1,7 +1,4 @@
 #include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
-#include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
-
-#include <iostream>
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 

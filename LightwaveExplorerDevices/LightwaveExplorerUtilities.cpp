@@ -1,17 +1,9 @@
-#include <cstdlib>
-#include <string.h>
-#include <string>
-#include <complex>
-#include <fstream>
 #include "LightwaveExplorerUtilities.h"
-
 
 int readFittingString(simulationParameterSet* sCPU) {
 	removeCharacterFromString((*sCPU).fittingString, '\r');
 	removeCharacterFromString((*sCPU).fittingString, '\n');
 	removeCharacterFromString((*sCPU).fittingString, '\t');
-
-
 	std::stringstream ss((*sCPU).fittingString);
 	double ROIbegin, ROIend;
 	int maxIterations = 0;
@@ -38,14 +30,6 @@ int readFittingString(simulationParameterSet* sCPU) {
 		(*sCPU).fittingString = noneString;
 	}
 
-	return 0;
-}
-
-int skipFileUntilCharacter(FILE* fstream, char target) {
-	int c = 0;
-	while (c != EOF && c != target) {
-		c = fgetc(fstream);
-	}
 	return 0;
 }
 
@@ -382,7 +366,7 @@ int loadReferenceSpectrum(std::string spectrumPath, simulationParameterSet* sCPU
 	}
 	size_t maxFileSize = 16384;
 	size_t currentRow = 0;
-	double c = 1e9 * lightC<double>();
+	constexpr double c = 1e9 * lightC<double>();
 	double* loadedWavelengths = new double[maxFileSize]();
 	double* loadedFrequencies = new double[maxFileSize]();
 	double* loadedIntensities = new double[maxFileSize]();

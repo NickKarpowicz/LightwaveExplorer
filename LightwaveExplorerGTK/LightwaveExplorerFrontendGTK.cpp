@@ -2,8 +2,6 @@
 #include <thread>
 #include <chrono>
 #include <locale>
-#include <fstream>
-#include <vector>
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
