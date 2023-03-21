@@ -1590,12 +1590,14 @@ void imagePlot(imagePlotStruct* s) {
     switch ((*s).dataType) {
     case 0:
         linearRemapDoubleToFloat((*s).data, (int)theSim[0].Nspace, (int)theSim[0].Ntime, plotarr2, (int)dy, (int)dx);
+        drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, 4);
         break;
     case 1:
         linearRemapZToLogFloatShift((*s).complexData, (int)theSim[0].Nspace, (int)theSim[0].Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
+        drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, 3);
         break;
     }
-    drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, (*s).colorMap);
+    
     delete[] plotarr2;
 }
 
@@ -1622,7 +1624,6 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dataType = 0;
-    sPlot.colorMap = 4;
     imagePlot(&sPlot);
 }
 
@@ -1649,7 +1650,6 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dataType = 0;
-    sPlot.colorMap = 4;
     imagePlot(&sPlot);
 }
 
@@ -1679,7 +1679,6 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.width = width;
     sPlot.dataType = 1;
     sPlot.logMin = logPlotOffset;
-    sPlot.colorMap = 3;
     imagePlot(&sPlot);
 }
 
@@ -1711,7 +1710,6 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.width = width;
     sPlot.dataType = 1;
     sPlot.logMin = logPlotOffset;
-    sPlot.colorMap = 3;
     imagePlot(&sPlot);
 }
 
