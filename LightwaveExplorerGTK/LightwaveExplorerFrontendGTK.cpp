@@ -144,7 +144,7 @@ public:
         int buttonCol2 = buttonCol1 + buttonWidth;
         int buttonCol3 = buttonCol2 + buttonWidth;
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
-        window.init(app, _T("Lightwave Explorer"), 1600, 980);
+        window.init(app, _T("Lightwave Explorer"), 1400, 800);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
             textBoxes[i].init(parentHandle, textCol1a, i, textWidth, 1);
@@ -1704,7 +1704,7 @@ void stopButtonCallback() {
     if (theSim[0].isRunning) {
         theSim[0].cancellationCalled = true;
         for (int i = 1; i < theSim[0].Nsims; ++i) {
-            theSim[0].cancellationCalled;
+            theSim[0].cancellationCalled = true;
         }
     }
 }

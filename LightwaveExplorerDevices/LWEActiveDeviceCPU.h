@@ -16,12 +16,14 @@ template<typename deviceFP>
 	deviceFP expected = pulseSumAtomic->load();
 	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 }
+#ifdef __linux__
 static double inline isnan(double x){
 	return std::isnan(x);
 }
 static float inline isnan(float x){
 	return std::isnan(x);
 }
+#endif
 #else
 template<typename deviceFP>
 static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
@@ -29,7 +31,7 @@ static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	(*pulseSumAtomic).fetch_add(pointEnergy);
 }
 #endif
-static int hardwareCheck(int* CUDAdeviceCount) {
+[[maybe_unused]]static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
