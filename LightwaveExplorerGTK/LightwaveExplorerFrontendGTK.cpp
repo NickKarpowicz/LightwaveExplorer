@@ -41,6 +41,14 @@ bool isIntelRuntimeInstalled() {
 #include <mach-o/dyld.h>
 #import<Cocoa/Cocoa.h>
 #endif
+
+//Main data structures:
+// theSim contains all of the parameters of the current simulation including grid arrays
+// theDatabase is the database of crystal properties
+std::vector<simulationParameterSet> theSim(1);
+crystalDatabase theDatabase;
+
+//Additional status flags
 bool isRunning = false;
 bool isGridAllocated = false;
 bool cancellationCalled = false;
@@ -55,12 +63,8 @@ const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 1u);
 #else
 const int interfaceThreads = std::thread::hardware_concurrency();
 #endif
-std::vector<simulationParameterSet> theSim(1);
-//simulationParameterSet* activeSetPtr = theSim.data();       // Main structure containing simulation parameters and pointers
-crystalDatabase theDatabase;
 
-bool updateDisplay();
-void destroyMainWindowCallback();
+//Main class for controlling the interface
 class mainGui {
     bool queueUpdate;
     bool queueSliderUpdate;
@@ -836,7 +840,6 @@ void checkLibraryAvailability() {
 #define runDlibFitting runDlibFittingCPU
 #endif
 
-
 #ifndef NOSYCL
     if (isIntelRuntimeInstalled()) {
         SYCLavailable = true;
@@ -1349,7 +1352,6 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.unitY = 1e9;
     sPlot.makeSVG = saveSVG;
 
-
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
@@ -1411,7 +1413,6 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.Npts = theSim[0].Nfreq;
     sPlot.logScale = logPlot;
     sPlot.forceYmin = forceY;
-    //sPlot.forcedYmin = -4.0;
     sPlot.forceYmax = forceY;
     sPlot.forcedYmax = yMax;
     if (forceY)sPlot.forcedYmin = yMin;
@@ -1492,7 +1493,6 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.Npts = theSim[0].Nfreq;
     sPlot.logScale = logPlot;
     sPlot.forceYmin = forceY;
-    //sPlot.forcedYmin = -4.0;
     sPlot.forceYmax = forceY;
     sPlot.forcedYmax = yMax;
     if (forceY)sPlot.forcedYmin = yMin;
@@ -1512,7 +1512,6 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     sPlot.makeSVG = saveSVG;
 
-
     LwePlot2d(&sPlot);
 
     if (saveSVG) {
@@ -1525,7 +1524,6 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         delete[] svgFilename;
     }
 }
-
 
 int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
     float f;
@@ -1588,7 +1586,6 @@ void imagePlot(imagePlotStruct* s) {
     int dy = (*s).height;
 
     size_t plotSize = (size_t)dx * (size_t)dy;
-    //float* plotarr2 = (float*)malloc(plotSize * sizeof(float));
     float* plotarr2 = new float[plotSize];
     switch ((*s).dataType) {
     case 0:
@@ -1601,7 +1598,6 @@ void imagePlot(imagePlotStruct* s) {
     drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, (*s).colorMap);
     delete[] plotarr2;
 }
-
 
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!isGridAllocated) {
