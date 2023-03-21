@@ -843,8 +843,7 @@ public:
     }
 };
 
-int LwePlot2d(plotStruct* inputStruct) {
-    plotStruct* s = (plotStruct*)inputStruct;
+int LwePlot2d(plotStruct* s) {
     if ((*s).Npts == 0) return 1;
     size_t iMin = 0;
     size_t iMax = (*s).Npts;
@@ -962,9 +961,6 @@ int LwePlot2d(plotStruct* inputStruct) {
     double scaleY = height / ((double)(maxY - minY));
     LweColor currentColor = (*s).textColor;
 
-
-    //make the paintbrush
-    //hr = pRenderTarget->CreateSolidColorBrush((*s).textColor, &pBrush);
     currentColor = (*s).textColor;
     //lambdas for writing components of SVG file
     auto SVGstdline = [&]() {
@@ -1002,7 +998,6 @@ int LwePlot2d(plotStruct* inputStruct) {
     auto SVGlefttext = [&]() {
         if ((*s).makeSVG)svgString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\">\n{}\n</text>\n", fontSize - 1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, std::string(messageBuffer)));
     };
-
 
     cairo_set_line_width(cr, lineWidth);
     auto cairoLine = [&]() {

@@ -8,33 +8,31 @@
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.h"
 
 //conditional includes and definitions
+//Apple libraries
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #import<Cocoa/Cocoa.h>
 #endif
+
+//if not running on a cpu-only build load CUDA and SYCL code
 #ifndef CPUONLY
+//if using CUDA include CUDA libraries and the 
+//CUDA version of the simulation
 #ifndef NOCUDA
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <nvml.h>
 #include "../LightwaveExplorerCore.cuh"
 #endif
+//if on windows, include the header for the Windows version
+//of the SYCL code and the Windows headers needed to check
+//if the Intel DPC++ runtime is present
 #ifdef _WIN32
 #include "../LightwaveExplorerDevices/LightwaveExplorerSYCL.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-bool isIntelRuntimeInstalled() {
-    wchar_t loadBuffer[1024];
-    DWORD envcount = GetEnvironmentVariableW(L"INTEL_DEV_REDIST", loadBuffer, 16);
-    if (envcount != 0) {
-        return true;
-    }
-    return false;
-}
 #else
-bool isIntelRuntimeInstalled() {
-    return true;
-}
+//on Linux, load the Linux versions of the SYCL code
 #include "LightwaveExplorerDPCPPlib.h"
 #include "LightwaveExplorerDPCPPlibFP32.h"
 #endif
@@ -824,7 +822,13 @@ void checkLibraryAvailability() {
 #endif
 
 #ifndef NOSYCL
-    if (isIntelRuntimeInstalled()) {
+    bool isIntelRuntimeInstalled = true;
+#ifdef _WIN32
+    wchar_t loadBuffer[1024];
+    DWORD envcount = GetEnvironmentVariableW(L"INTEL_DEV_REDIST", loadBuffer, 16);
+    if(envcount==0) isIntelRuntimeInstalled = false;  
+#endif
+    if (isIntelRuntimeInstalled) {
         theSim[0].SYCLavailable = true;
         char syclDeviceList[1024] = { 0 };
         size_t syclDevices = 0;
