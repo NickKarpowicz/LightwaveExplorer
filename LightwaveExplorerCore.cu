@@ -2888,8 +2888,8 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 		(*sCPU).fittingResult[i] = result.x(i);
 	}
 
-	size_t fitCounter = 0;
-	size_t* originalCounter = (*sCPU).progressCounter;
+	std::atomic_uint32_t fitCounter{ 0 };
+	std::atomic_uint32_t* originalCounter = (*sCPU).progressCounter;
 	(*sCPU).progressCounter = &fitCounter;
 	d.cParams = sCPU;
 	d.reset(sCPU);
@@ -2902,7 +2902,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 
 	(*sCPU).progressCounter = originalCounter;
 
-	dFit = NULL;
+	dFit = nullptr;
 	return 0;
 }
 

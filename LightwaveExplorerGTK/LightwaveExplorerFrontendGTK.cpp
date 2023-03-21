@@ -56,8 +56,8 @@ bool CUDAavailable = false;
 bool SYCLavailable = false;
 int cudaGPUCount = 0;
 int syclGPUCount = 0;
-size_t progressCounter = 0;
-size_t totalSteps = 0;
+std::atomic_uint32_t progressCounter;
+std::atomic_uint32_t totalSteps;
 #if defined _WIN32 || defined __linux__
 const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 1u);
 #else
@@ -89,10 +89,6 @@ public:
     LweSpacer spacers[2];
     size_t pathTarget;
     int saveSVG = 0;
-    bool isRunning = false;
-    bool isPlotting = false;
-    bool isGridAllocated = false;
-    bool cancellationCalled = false;
     bool loadedDefaults = false;
     unsigned int timeoutID;
     mainGui() : queueUpdate(0),
@@ -102,10 +98,6 @@ public:
     sliderTarget(0),
     pathTarget(0), 
     saveSVG(0),
-    isRunning(0), 
-    isPlotting(0), 
-    isGridAllocated(0), 
-    cancellationCalled(0),
     loadedDefaults(0),
     timeoutID(0){}
     ~mainGui() {}
@@ -209,7 +201,6 @@ public:
         pulldowns[2].init(parentHandle, labelWidth, 20, 2 * textWidth, 1);
 
         filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
-        //filePaths[3].setLabel(0, -1, _T("Output:"));
         filePaths[3].setMaxCharacters(pathChars);
 
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
@@ -250,7 +241,7 @@ public:
         checkBoxes[1].init(_T("Log"), window.parentHandle(4), 13, 0, 1, 1);
         checkBoxes[1].setTooltip("Plot spectra on a log10 scale");
         checkBoxes[3].init("FP64", window.parentHandle(6), buttonWidth-2, 0, 1, 1);
-
+        checkBoxes[3].setTooltip("Select whether the simulation is performed with 32-bit (unchecked) or 64-bit (checked) floating point numbers");
         pulldowns[4].addElement(_T("2D Cartesian"));
         pulldowns[4].addElement(_T("3D radial symm."));
         pulldowns[4].addElement(_T("3D"));
@@ -1079,7 +1070,7 @@ void createRunFile() {
 
     std::vector<simulationParameterSet> counterData = theSim;
     simulationParameterSet* testSet = counterData.data();
-    totalSteps = 0;
+    totalSteps = 0u;
     for (int j = 0; j < theSim[0].Nsims * theSim[0].Nsims2; j++) {
         if (theSim[0].isInSequence) {
             testSet[j].progressCounter = &totalSteps;

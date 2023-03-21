@@ -3,6 +3,7 @@
 #include <vector>
 #include <array>
 #include <fstream>
+#include <atomic>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
@@ -480,7 +481,7 @@ public:
     size_t NgridC = 0;
     size_t Nsims = 0;
     size_t Nsims2 = 0;
-    size_t* progressCounter = 0;
+    std::atomic_uint32_t* progressCounter = 0;
     size_t NsimsCPU = 0;
     pulse<double> pulse1;
     pulse<double> pulse2;
