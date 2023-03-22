@@ -1,11 +1,15 @@
 #pragma once
 #include <gtk/gtk.h>
 #include <sstream>
+#include <fstream>
 #include <complex>
 #include <vector>
+#include <array>
 #include <string>
 #include <algorithm>
 #include <thread>
+#include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
+
 //temporary set of macros until std::format is on all platforms
 #if defined __linux__ || defined __APPLE__
 #include<fmt/format.h>
@@ -207,7 +211,7 @@ public:
         };
 
         auto SVGendPolyLine = [&]() {
-            SVGString.append(Sformat("\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
+            SVGString.append(Sformat("\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\" fill=\"none\"/>\n", currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
         };
 
         auto SVGaddXYtoPolyLine = [&](double& a, double& b) {
@@ -394,7 +398,7 @@ public:
             else {
                 y2 = height - scaleY * (y[iMin] - minY);
             }
-
+            if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
             for (size_t i = iMin + 1; i < iMax; ++i) {
                 x1 = x2;
                 x2 = scaleX * (xValues[i] - minX) + axisSpaceX;
@@ -405,7 +409,7 @@ public:
                 else {
                     y2 = height - scaleY * (y[i] - minY);
                 }
-
+                if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
                 if (y1 <= height) {
                     if (y2 <= height) {
                         cairo_move_to(cr, x1, y1);
@@ -502,14 +506,7 @@ public:
         };
 
 
-        //Plot the main line
-        currentColor = color;
-        plotCairoPolyline(data);
-        plotCairoDots(data);
-        if (makeSVG) {
-            plotSVGPolyline(data);
-            plotSVGDots(data);
-        }
+
         //Optional overlay curves
         if (ExtraLines > 0) {
             currentColor = color2;
@@ -537,6 +534,15 @@ public:
                 plotSVGPolyline(data4);
                 plotSVGDots(data4);
             }
+        }
+
+        //Plot the main line
+        currentColor = color;
+        plotCairoPolyline(data);
+        plotCairoDots(data);
+        if (makeSVG) {
+            plotSVGPolyline(data);
+            plotSVGDots(data);
         }
 
         delete[] xValues;
@@ -585,6 +591,9 @@ public:
         delete[] plotarr2;
     }
 
+    [[nodiscard]] constexpr double cModulusSquared(const std::complex<double>& x) {
+        return x.real() * x.real() + x.imag() * x.imag();
+    }
 
     int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
         float f;
@@ -1312,6 +1321,15 @@ public:
     }
     void setValue(int target) {
         gtk_drop_down_set_selected(GTK_DROP_DOWN(elementHandle), target);
+    }
+
+    inline void removeCharacterFromString(std::string& s, char removedChar) {
+        std::erase(s, removedChar);
+    }
+
+    void stripLineBreaks(std::string& s) {
+        removeCharacterFromString(s, '\r');
+        removeCharacterFromString(s, '\n');
     }
 };
 
