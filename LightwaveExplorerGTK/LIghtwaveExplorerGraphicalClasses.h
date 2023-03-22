@@ -77,6 +77,7 @@ public:
     double forcedXmax = 0.0;
     LweColor axisColor = LweColor(0.5, 0.5, 0.5, 0.5);
     LweColor textColor = LweColor(0.8, 0.8, 0.8, 0.8);
+    LweColor backgroundColor = LweColor(0.0, 0.0, 0.0, 0.0);
     LweColor color = LweColor(1, 1, 1, 1);
     LweColor color2 = LweColor(1, 1, 1, 1);
     LweColor color3 = LweColor(1, 1, 1, 1);
@@ -186,17 +187,17 @@ public:
             SVGString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
                 SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
         }
-        LweColor black(0, 0, 0, 0);
+     
         cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
+        backgroundColor.setCairo(cr);
         cairo_fill(cr);
         width -= axisSpaceX;
         height -= axisSpaceY;
         double scaleX = width / ((double)(maxX - minX));
         double scaleY = height / ((double)(maxY - minY));
         LweColor currentColor = textColor;
-
         currentColor = textColor;
+
         //lambdas for writing components of SVG file
         auto SVGstdline = [&]() {
             if (makeSVG)SVGString.append(Sformat("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", x1, y1, x2, y2, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
