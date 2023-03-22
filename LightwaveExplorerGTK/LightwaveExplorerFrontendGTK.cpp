@@ -1377,8 +1377,8 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     sPlot.data =
         &theSim[0].ExtOut[simIndex * theSim[0].Ngrid * 2 + cubeMiddle];
-    sPlot.dataX = theSim[0].Ntime;
-    sPlot.dataY = theSim[0].Nspace;
+    sPlot.dataXdim = theSim[0].Ntime;
+    sPlot.dataYdim = theSim[0].Nspace;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.colorMap = 4;
@@ -1404,8 +1404,8 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     sPlot.data =
     &theSim[0].ExtOut[theSim[0].Ngrid + simIndex * theSim[0].Ngrid * 2 + cubeMiddle];
-    sPlot.dataY = theSim[0].Nspace;
-    sPlot.dataX = theSim[0].Ntime;
+    sPlot.dataYdim = theSim[0].Nspace;
+    sPlot.dataXdim = theSim[0].Ntime;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.colorMap = 4;
@@ -1433,8 +1433,8 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
     sPlot.complexData =
         &theSim[0].EkwOut[simIndex * theSim[0].NgridC * 2];
-    sPlot.dataX = theSim[0].Nfreq;
-    sPlot.dataY = theSim[0].Nspace;
+    sPlot.dataXdim = theSim[0].Nfreq;
+    sPlot.dataYdim = theSim[0].Nspace;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dataType = 1;
@@ -1465,8 +1465,8 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
     sPlot.complexData =
         &theSim[0].EkwOut[simIndex * theSim[0].NgridC * 2 + theSim[0].NgridC];
-    sPlot.dataX = theSim[0].Nfreq;
-    sPlot.dataY = theSim[0].Nspace;
+    sPlot.dataXdim = theSim[0].Nfreq;
+    sPlot.dataYdim = theSim[0].Nspace;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.colorMap = 3;

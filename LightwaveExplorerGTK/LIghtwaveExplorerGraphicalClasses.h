@@ -37,10 +37,10 @@ public:
         a = aIn;
     }
     ~LweColor() {};
-    int rHex() { return (int)(15 * r); }
-    int gHex() { return (int)(15 * g); }
-    int bHex() { return (int)(15 * b); }
-    int aHex() { return (int)(15 * a); }
+    [[nodiscard]] constexpr int rHex() const noexcept { return (int)(15 * r); }
+    [[nodiscard]] constexpr int gHex() const noexcept { return (int)(15 * g); }
+    [[nodiscard]] constexpr int bHex() const noexcept { return (int)(15 * b); }
+    [[nodiscard]] constexpr int aHex() const noexcept { return (int)(15 * a); }
     void setCairo(cairo_t* cr) { cairo_set_source_rgb(cr, r, g, b); }
     void setCairoA(cairo_t* cr) { cairo_set_source_rgba(cr, r, g, b, a); }
 };
@@ -59,7 +59,6 @@ public:
     const char* xLabel = nullptr;
     const char* yLabel = nullptr;
     bool hasDataX = false;
-    std::complex<double>* complexData = nullptr;
     bool logScale = false;
     double logMin = 0;
     int dataType = 0;
@@ -552,12 +551,11 @@ public:
 
 class LweImage {
 public:
-    //GtkDrawingArea* area = NULL;
     int width = 0;
     int height = 0;
     double* data = nullptr;
-    size_t dataX = 0;
-    size_t dataY = 0;
+    size_t dataXdim = 0;
+    size_t dataYdim = 0;
     std::complex<double>* complexData = nullptr;
     int colorMap = 4;
     bool logScale = false;
@@ -565,7 +563,7 @@ public:
     int dataType = 0;
 
     void imagePlot(cairo_t* cr) {
-
+        
         int dx = width;
         int dy = height;
 
@@ -573,11 +571,13 @@ public:
         float* plotarr2 = new float[plotSize];
         switch (dataType) {
         case 0:
-            linearRemapDoubleToFloat(data, (int)dataY, (int)dataX, plotarr2, (int)dy, (int)dx);
+            if (data == nullptr) break;
+            linearRemapDoubleToFloat(data, (int)dataYdim, (int)dataXdim, plotarr2, (int)dy, (int)dx);
             drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
             break;
         case 1:
-            linearRemapZToLogFloatShift(complexData, (int)dataY, (int)dataX, plotarr2, (int)dy, (int)dx, logMin);
+            if (complexData == nullptr) break;
+            linearRemapZToLogFloatShift(complexData, (int)dataYdim, (int)dataXdim, plotarr2, (int)dy, (int)dx, logMin);
             drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
             break;
         }
@@ -697,7 +697,7 @@ public:
         return colorMap;
     }
 
-    int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
+    int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, const int cm) {
         if (Nx * Ny == 0) return 1;
 
         // creating input
