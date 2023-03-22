@@ -399,6 +399,7 @@ public:
                 y2 = height - scaleY * (y[iMin] - minY);
             }
             if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
+            cairo_move_to(cr, x2, y2);
             for (size_t i = iMin + 1; i < iMax; ++i) {
                 x1 = x2;
                 x2 = scaleX * (xValues[i] - minX) + axisSpaceX;
@@ -410,13 +411,12 @@ public:
                     y2 = height - scaleY * (y[i] - minY);
                 }
                 if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
-                if (y1 <= height) {
+
+                if (y1 <= height) { 
                     if (y2 <= height) {
-                        cairo_move_to(cr, x1, y1);
                         cairo_line_to(cr, x2, y2);
                     }
                     else {
-                        cairo_move_to(cr, x1, y1);
                         cairo_line_to(cr, x1 + (height - y1) / ((y2 - y1) / (x2 - x1)), height);
                     }
                 }
@@ -426,6 +426,7 @@ public:
                 }
             }
             cairo_stroke(cr);
+            
         };
 
         auto plotSVGPolyline = [&](double* y) {
