@@ -1,42 +1,4 @@
 #include "LightwaveExplorerFrontendGTK.h"
-#include <thread>
-#include <chrono>
-#include <locale>
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.h"
-
-//conditional includes and definitions
-//Apple libraries
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#import<Cocoa/Cocoa.h>
-#endif
-
-//if not running on a cpu-only build load CUDA and SYCL code
-#ifndef CPUONLY
-//if using CUDA include CUDA libraries and the 
-//CUDA version of the simulation
-#ifndef NOCUDA
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-#include <nvml.h>
-#include "../LightwaveExplorerCore.cuh"
-#endif
-//if on windows, include the header for the Windows version
-//of the SYCL code and the Windows headers needed to check
-//if the Intel DPC++ runtime is present
-#ifdef _WIN32
-#include "../LightwaveExplorerDevices/LightwaveExplorerSYCL.h"
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#else
-//on Linux, load the Linux versions of the SYCL code
-#include "LightwaveExplorerDPCPPlib.h"
-#include "LightwaveExplorerDPCPPlibFP32.h"
-#endif
-#endif
 
 //Main data structures:
 // theSim contains all of the parameters of the current simulation including grid arrays
@@ -47,9 +9,6 @@ crystalDatabase theDatabase;
 //Counter atomics
 std::atomic_uint32_t progressCounter;
 std::atomic_uint32_t totalSteps;
-
-//Limit the number of threads used to draw the interface if the processor supports a lot
-const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 2u);
 
 //Main class for controlling the interface
 class mainGui {
@@ -144,7 +103,7 @@ public:
         int buttonCol2 = buttonCol1 + buttonWidth;
         int buttonCol3 = buttonCol2 + buttonWidth;
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
-        window.init(app, _T("Lightwave Explorer"), 1400, 800);
+        window.init(app, "Lightwave Explorer", 1400, 800);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
             textBoxes[i].init(parentHandle, textCol1a, i, textWidth, 1);
@@ -163,28 +122,28 @@ public:
 
         filePaths[0].init(parentHandle, 0, 17, colWidth, 1);
         filePaths[0].setMaxCharacters(pathChars);
-        pulldowns[0].addElement(_T("Synthetic"));
-        pulldowns[0].addElement(_T("FROG"));
-        pulldowns[0].addElement(_T("EOS"));
+        pulldowns[0].addElement(("Synthetic"));
+        pulldowns[0].addElement(("FROG"));
+        pulldowns[0].addElement(("EOS"));
         pulldowns[0].init(parentHandle, labelWidth, 16, 2 * textWidth, 1);
-        filePaths[0].setLabel(0, -1, _T("Data 1:"));
+        filePaths[0].setLabel(0, -1, ("Data 1:"));
 
         filePaths[1].init(parentHandle, 0, 19, colWidth, 1);
         filePaths[1].setMaxCharacters(pathChars);
-        filePaths[1].setLabel(0, -1, _T("Data 2:"));
-        pulldowns[1].addElement(_T("Synthetic"));
-        pulldowns[1].addElement(_T("FROG"));
-        pulldowns[1].addElement(_T("EOS"));
+        filePaths[1].setLabel(0, -1, ("Data 2:"));
+        pulldowns[1].addElement(("Synthetic"));
+        pulldowns[1].addElement(("FROG"));
+        pulldowns[1].addElement(("EOS"));
         pulldowns[1].init(parentHandle, labelWidth, 18, 2 * textWidth, 1);
 
         filePaths[2].init(parentHandle, 0, 21, colWidth, 1);
         filePaths[2].setMaxCharacters(pathChars);
-        filePaths[2].setLabel(0, -1, _T("Fit data:"));
-        pulldowns[2].addElement(_T("Maximize x"));
-        pulldowns[2].addElement(_T("Maximize y"));
-        pulldowns[2].addElement(_T("Maximize Total"));
-        pulldowns[2].addElement(_T("Fit spectrum"));
-        pulldowns[2].addElement(_T("Fit spectrum (log)"));
+        filePaths[2].setLabel(0, -1, ("Fit data:"));
+        pulldowns[2].addElement(("Maximize x"));
+        pulldowns[2].addElement(("Maximize y"));
+        pulldowns[2].addElement(("Maximize Total"));
+        pulldowns[2].addElement(("Fit spectrum"));
+        pulldowns[2].addElement(("Fit spectrum (log)"));
         pulldowns[2].init(parentHandle, labelWidth, 20, 2 * textWidth, 1);
 
         filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
@@ -223,15 +182,15 @@ public:
         textBoxes[50].init(window.parentHandle(4), 8, 0, 2, 1);
         textBoxes[51].init(window.parentHandle(4), 10, 0, 2, 1);
 
-        checkBoxes[0].init(_T("Total"), window.parentHandle(4), 12, 0, 1, 1);
+        checkBoxes[0].init(("Total"), window.parentHandle(4), 12, 0, 1, 1);
         checkBoxes[0].setTooltip("Overlay a plot of the integrated energy spectrum over the two polarization-resolved spectra");
-        checkBoxes[1].init(_T("Log"), window.parentHandle(4), 13, 0, 1, 1);
+        checkBoxes[1].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
         checkBoxes[1].setTooltip("Plot spectra on a log10 scale");
         checkBoxes[3].init("FP64", window.parentHandle(6), buttonWidth-2, 0, 1, 1);
         checkBoxes[3].setTooltip("Select whether the simulation is performed with 32-bit (unchecked) or 64-bit (checked) floating point numbers");
-        pulldowns[4].addElement(_T("2D Cartesian"));
-        pulldowns[4].addElement(_T("3D radial symm."));
-        pulldowns[4].addElement(_T("3D"));
+        pulldowns[4].addElement(("2D Cartesian"));
+        pulldowns[4].addElement(("3D radial symm."));
+        pulldowns[4].addElement(("3D"));
         pulldowns[4].init(parentHandle, textCol2a, 7, 2 * textWidth, 1);
 
         char batchModeNames[38][64] = {
@@ -287,10 +246,10 @@ public:
         int mbRow = 22;
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
 #ifdef __APPLE__
-        miniButtons[0].init(_T("="), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(_T("d"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
-        miniButtons[2].init(_T("r"), parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
-        miniButtons[3].init(_T("p"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
+        miniButtons[0].init(("="), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init(("d"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
+        miniButtons[2].init(("r"), parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
+        miniButtons[3].init(("p"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
         miniButtons[4].init("(", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
         miniButtons[5].init("f", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
         miniButtons[6].init("l", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
@@ -298,10 +257,10 @@ public:
         miniButtons[8].init("ff", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
         miniButtons[9].init("f", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
 #else
-        miniButtons[0].init(_T("\xf0\x9f\x93\xb8"), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(_T("\xe2\x99\x8a"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
-        miniButtons[2].init(_T("\xf0\x9f\x92\xab"), parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
-        miniButtons[3].init(_T("\xf0\x9f\x92\xa1"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
+        miniButtons[0].init(("\xf0\x9f\x93\xb8"), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init(("\xe2\x99\x8a"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
+        miniButtons[2].init(("\xf0\x9f\x92\xab"), parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
+        miniButtons[3].init(("\xf0\x9f\x92\xa1"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
         miniButtons[4].init("\xf0\x9f\x94\x8e", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
         miniButtons[5].init("\xf0\x9f\x98\x8e", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
         miniButtons[6].init("\xf0\x9f\x93\x8f", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
@@ -320,30 +279,30 @@ public:
         miniButtons[7].setTooltip("Add an aperture to the beam. Parameters:\n   diameter (m)\n   activation parameter\n");
         miniButtons[8].setTooltip("Filter the beam with a far-field aperture. Parameters:\n   opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ");
         miniButtons[9].setTooltip("Add an empty for loop. Parameters:\n   Number of times to execute\n   Variable number in which to put the counter");
-        buttons[0].init(_T("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
+        buttons[0].init(("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
         buttons[0].setTooltip("Run the simulation as currently entered on the interface. If a sequence is entered in the sequence box below, that will execute, otherwise, a simulation on the input parameters above and to the left in a single medium will be performed.");
-        buttons[1].init(_T("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
+        buttons[1].init(("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
         buttons[1].setTooltip("Tell a currently-running simulation to stop. It might not stop right away; it will only happen once it reaches a break point");
-        buttons[2].init(_T("Script"), parentHandle, 2 * buttonWidth + 1+buttonCol1, 17, textWidth, 1, createRunFile);
+        buttons[2].init(("Script"), parentHandle, 2 * buttonWidth + 1+buttonCol1, 17, textWidth, 1, createRunFile);
         buttons[2].setTooltip("Generate an input file and SLURM script for running the simulation as entered on the selected cluster");
-        buttons[3].init(_T("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
+        buttons[3].init(("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
         buttons[3].setTooltip("Run the fitting routine with the above parameters. The mode is set in the pulldown next to the (optional) fitting input data file path.");
-        buttons[4].init(_T("Load"), parentHandle, buttonCol1, 15, buttonWidth, 1, loadCallback);
+        buttons[4].init(("Load"), parentHandle, buttonCol1, 15, buttonWidth, 1, loadCallback);
         buttons[4].setTooltip("Load the results of a previous simulation run. You should select the associated .txt file. The parameters will be loaded into the interface, and the data (if it exists) will be plotted.");
-        buttons[6].init(_T("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
-        buttons[7].init(_T("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
-        buttons[8].init(_T("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
-        buttons[9].init(_T("Path"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
+        buttons[6].init(("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
+        buttons[7].init(("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
+        buttons[8].init(("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
+        buttons[9].init(("Path"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
         buttons[9].setTooltip("Sets the base path for the output files");
-        buttons[10].init(_T("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
+        buttons[10].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
         buttons[10].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[10].squeeze();
-        buttons[11].init(_T("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
+        buttons[11].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
         buttons[11].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
         buttons[11].squeeze();
         checkBoxes[0].setFunction(independentPlotQueue);
         checkBoxes[1].setFunction(independentPlotQueue);
-        buttons[12].init(_T("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
+        buttons[12].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
         buttons[12].setTooltip("Generate SVG files of the four line plots, with filenames based on the base path set above");
         buttons[12].squeeze();
         plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
@@ -387,39 +346,39 @@ public:
         pulldowns[7].setTooltip("Select the primary method of calculation. The algorithm is the same, but you can run it either on a GPU or CPU depending on your machine");
         pulldowns[8].setTooltip("Select a secondary mode of calculation for offloading jobs from a batch. For example, if the pulldown to the left is set to CUDA and this one is OpenMP, and the number to the right is 2, 2 of the simulations from the batch will be performed on the CPU");
 
-        //pulldowns[7].setLabel(-2, 0, _T("Config:"), 8, 2);
-        textBoxes[0].setLabel(-labelWidth, 0, _T("Pulse energy (J)"));
-        textBoxes[1].setLabel(-labelWidth, 0, _T("Frequency (THz)"));
-        textBoxes[2].setLabel(-labelWidth, 0, _T("Bandwidth (THz)"));
-        textBoxes[3].setLabel(-labelWidth, 0, _T("SG order"));
-        textBoxes[4].setLabel(-labelWidth, 0, _T("CEP/\xcf\x80"));
-        textBoxes[5].setLabel(-labelWidth, 0, _T("Delay (fs)"));
-        textBoxes[6].setLabel(-labelWidth, 0, _T("GDD (fs\xc2\xb2)"));
-        textBoxes[7].setLabel(-labelWidth, 0, _T("TOD (fs\xc2\xb3)"));
-        textBoxes[8].setLabel(-labelWidth, 0, _T("Phase material"));
-        textBoxes[9].setLabel(-labelWidth, 0, _T("Thickness (\xce\xbcm)"));
-        textBoxes[10].setLabel(-labelWidth, 0, _T("Beamwaist (\xce\xbcm)"));
-        textBoxes[11].setLabel(-labelWidth, 0, _T("x offset (\xce\xbcm)"));
-        textBoxes[12].setLabel(-labelWidth, 0, _T("z offset (\xce\xbcm)"));
-        textBoxes[13].setLabel(-labelWidth, 0, _T("NC angle (deg)"));
-        textBoxes[14].setLabel(-labelWidth, 0, _T("Polarization (deg)"));
-        textBoxes[15].setLabel(-labelWidth, 0, _T("Circularity"));
-        textBoxes[32].setLabel(-labelWidth, 0, _T("Theta, phi (deg)"));
-        textBoxes[34].setLabel(-labelWidth, 0, _T("NL absorption"));
-        textBoxes[36].setLabel(-labelWidth, 0, _T("Drude: gamma, m"));
-        textBoxes[38].setLabel(-labelWidth, 0, _T("Max x, dx (\xce\xbcm)"));
-        textBoxes[40].setLabel(-labelWidth, 0, _T("Time span, dt (fs)"));
-        textBoxes[42].setLabel(-labelWidth, 0, _T("Max z, dz (\xce\xbcm,nm)"));
+        //pulldowns[7].setLabel(-2, 0, ("Config:"), 8, 2);
+        textBoxes[0].setLabel(-labelWidth, 0, ("Pulse energy (J)"));
+        textBoxes[1].setLabel(-labelWidth, 0, ("Frequency (THz)"));
+        textBoxes[2].setLabel(-labelWidth, 0, ("Bandwidth (THz)"));
+        textBoxes[3].setLabel(-labelWidth, 0, ("SG order"));
+        textBoxes[4].setLabel(-labelWidth, 0, ("CEP/\xcf\x80"));
+        textBoxes[5].setLabel(-labelWidth, 0, ("Delay (fs)"));
+        textBoxes[6].setLabel(-labelWidth, 0, ("GDD (fs\xc2\xb2)"));
+        textBoxes[7].setLabel(-labelWidth, 0, ("TOD (fs\xc2\xb3)"));
+        textBoxes[8].setLabel(-labelWidth, 0, ("Phase material"));
+        textBoxes[9].setLabel(-labelWidth, 0, ("Thickness (\xce\xbcm)"));
+        textBoxes[10].setLabel(-labelWidth, 0, ("Beamwaist (\xce\xbcm)"));
+        textBoxes[11].setLabel(-labelWidth, 0, ("x offset (\xce\xbcm)"));
+        textBoxes[12].setLabel(-labelWidth, 0, ("z offset (\xce\xbcm)"));
+        textBoxes[13].setLabel(-labelWidth, 0, ("NC angle (deg)"));
+        textBoxes[14].setLabel(-labelWidth, 0, ("Polarization (deg)"));
+        textBoxes[15].setLabel(-labelWidth, 0, ("Circularity"));
+        textBoxes[32].setLabel(-labelWidth, 0, ("Theta, phi (deg)"));
+        textBoxes[34].setLabel(-labelWidth, 0, ("NL absorption"));
+        textBoxes[36].setLabel(-labelWidth, 0, ("Drude: gamma, m"));
+        textBoxes[38].setLabel(-labelWidth, 0, ("Max x, dx (\xce\xbcm)"));
+        textBoxes[40].setLabel(-labelWidth, 0, ("Time span, dt (fs)"));
+        textBoxes[42].setLabel(-labelWidth, 0, ("Max z, dz (\xce\xbcm,nm)"));
         
-        textBoxes[44].setLabel(-labelWidth, 0, _T("Batch end"));
-        textBoxes[46].setLabel(-labelWidth, 0, _T("Batch steps"));
-        pulldowns[4].setLabel(-labelWidth, 0, _T("Propagation"));
-        pulldowns[5].setLabel(-labelWidth, 0, _T("Batch mode"));
-        pulldowns[6].setLabel(-labelWidth, 0, _T("Batch mode 2"));
+        textBoxes[44].setLabel(-labelWidth, 0, ("Batch end"));
+        textBoxes[46].setLabel(-labelWidth, 0, ("Batch steps"));
+        pulldowns[4].setLabel(-labelWidth, 0, ("Propagation"));
+        pulldowns[5].setLabel(-labelWidth, 0, ("Batch mode"));
+        pulldowns[6].setLabel(-labelWidth, 0, ("Batch mode 2"));
 
-        fitCommand.setLabel(0, -1, _T("Fitting:"));
+        fitCommand.setLabel(0, -1, ("Fitting:"));
         
-        //sequence.setLabel(0, -1, _T("Sequence:"), 11, 3);
+        //sequence.setLabel(0, -1, ("Sequence:"), 11, 3);
         filePaths[3].overwritePrint("TestFile");
 
         GtkCssProvider* textProvider = gtk_css_provider_new();
@@ -440,15 +399,15 @@ public:
         }
         
         pulldowns[3].init(parentHandle, textCol2a, 0, 2 * textWidth, 1);
-        pulldowns[3].setLabel(-labelWidth, 0, _T("Material"));
+        pulldowns[3].setLabel(-labelWidth, 0, ("Material"));
 
-        pulldowns[9].addElement(_T("Cobra 1x R5000"));
-        pulldowns[9].addElement(_T("Cobra 2x R5000"));
-        pulldowns[9].addElement(_T("Cobra 1x V100"));
-        pulldowns[9].addElement(_T("Cobra 2x V100"));
-        pulldowns[9].addElement(_T("Raven 1x A100"));
-        pulldowns[9].addElement(_T("Raven 2x A100"));
-        pulldowns[9].addElement(_T("Raven 4x A100"));
+        pulldowns[9].addElement(("Cobra 1x R5000"));
+        pulldowns[9].addElement(("Cobra 2x R5000"));
+        pulldowns[9].addElement(("Cobra 1x V100"));
+        pulldowns[9].addElement(("Cobra 2x V100"));
+        pulldowns[9].addElement(("Raven 1x A100"));
+        pulldowns[9].addElement(("Raven 2x A100"));
+        pulldowns[9].addElement(("Raven 4x A100"));
         pulldowns[9].init(parentHandle, 1+buttonCol1, 17, 2 * buttonWidth, 1);
         pulldowns[9].squeeze();
         pulldowns[9].setTooltip("Select the cluster and GPU configuration for generating a SLURM script");
@@ -848,103 +807,7 @@ void checkLibraryAvailability() {
 #endif
 }
 
-static constexpr std::array<std::array<unsigned char, 3>, 256> createColormap(const int cm) {
-    std::array<std::array<unsigned char, 3>, 256> colorMap{};
-    float oneOver255 = 1.0f / 255.0f;
-    float nval;
-    for (int j = 0; j < 256; ++j) {
-        switch (cm) {
-        case 0:
-            colorMap[j][0] = (unsigned char)j;
-            colorMap[j][1] = (unsigned char)j;
-            colorMap[j][2] = (unsigned char)j;
-            break;
-        case 1:
-            nval = j * oneOver255;
-            colorMap[j][0] = (unsigned char)(255 * cos(vPi<double>() * nval / 2.));
-            colorMap[j][1] = (unsigned char)(255 * cos(vPi<double>() * (nval - 0.5)));
-            colorMap[j][2] = (unsigned char)(255 * sin(vPi<double>() * nval / 2.));
-            break;
-        case 2:
-            nval = j * oneOver255;
-            colorMap[j][0] = (unsigned char)(255 * cos(vPi<double>() * nval / 2.));
-            colorMap[j][1] = (unsigned char)(255 * cos(vPi<double>() * (nval - 0.5)));
-            colorMap[j][2] = (unsigned char)(255 * sin(vPi<double>() * nval / 2.));
-            if (nval < 0.02) {
-                colorMap[j][0] = 255;
-                colorMap[j][1] = 128;
-                colorMap[j][2] = 128;
-            }
-            if (nval < 0.01) {
-                colorMap[j][0] = 255;
-                colorMap[j][1] = 255;
-                colorMap[j][2] = 255;
-            }
-            break;
-        case 3:
-            nval = 255 * (j * oneOver255);
-            colorMap[j][0] = (unsigned char)(255 *
-                (0.998 * exp(-pow(7.7469e-03 * (nval - 160), 6))
-                    + 0.22 * exp(-pow(0.016818 * (nval - 305), 4))));
-            colorMap[j][1] = (unsigned char)(255 *
-                (0.022 * exp(-pow(0.042045 * (nval - 25), 4))
-                    + 0.11 * exp(-pow(0.015289 * (nval - 120), 4))
-                    + 1 * exp(-pow(4.6889e-03 * (nval - 400), 6))));
-            colorMap[j][2] = (unsigned char)(255 *
-                (exp(-pow(3.1101e-03 * (nval - 415), 10))));
-            break;
-        case 4:
-            nval = j * oneOver255;
-            colorMap[j][0] = (unsigned char)(255. * (1.0 * exp(-pow(4.5 * (nval - 0.05), 2))
-                + 1.00 * exp(-pow(3.5 * (nval - 1.05), 2))));
-            colorMap[j][1] = (unsigned char)(255. * (0.95 * exp(-pow(3.5 * (nval - 1.05), 2))));
-            colorMap[j][2] = (unsigned char)(255. * (0.9 * exp(-pow(4.5 * (nval - 0.05), 2)) + 0.2 * exp(-pow(3.5 * (nval - 1.05), 2))));
-        }
-    }
-    return colorMap;
-}
 
-int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, int cm) {
-    if (Nx * Ny == 0) return 1;
-    
-    // creating input
-    unsigned char* pixels = new unsigned char[4 * Nx * Ny]();
-    if (pixels == nullptr) return 1;
-
-    std::array<std::array<unsigned char, 3>, 256> colorMap = createColormap(cm);
-    size_t Ntot = Nx * Ny;
-    
-    int stride = 4;
-    //Find the image maximum and minimum
-    float imin = data[0];
-    float imax = data[0];
-    for (size_t i = 1; i < Ntot; ++i) {
-        if (data[i] > imax) imax = data[i];
-        if (data[i] < imin) imin = data[i];
-    }
-    if (cm == 4) {
-        imax = maxN(imax, -imin);
-        imin = minN(imin, -imax);
-    }
-    unsigned char currentValue;
-    if (imin != imax) {
-#pragma omp parallel for private(currentValue) num_threads(interfaceThreads)
-        for (int p = 0; p < Ntot; p++) {
-            currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
-            pixels[stride * p + 0] = colorMap[currentValue][0];
-            pixels[stride * p + 1] = colorMap[currentValue][1];
-            pixels[stride * p + 2] = colorMap[currentValue][2];
-        }
-    }
-    int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
-    cairo_surface_t* cSurface = cairo_image_surface_create_for_data(pixels, CAIRO_FORMAT_RGB24, Nx, Ny, caiStride);
-    cairo_set_source_surface(cr, cSurface, 0, 0);
-    cairo_paint(cr);
-    cairo_surface_finish(cSurface);
-    cairo_surface_destroy(cSurface);
-    delete[] pixels;
-    return 0;
-}
 
 void pathFromDialogBox(GtkDialog* dialog, int response) {
     if (response == GTK_RESPONSE_ACCEPT) {
@@ -1258,7 +1121,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         cairo_fill(cr);
         return;
     }
-    plotStruct sPlot;
+    LwePlot sPlot;
 
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -1273,8 +1136,13 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     size_t cubeMiddle = theSim[0].Ntime * theSim[0].Nspace * (theSim[0].Nspace2 / 2);
 
-    sPlot.area = area;
-    sPlot.cr = cr;
+    if (saveSVG) {
+        std::string svgPath;
+        theGui.filePaths[3].copyBuffer(svgPath);
+        svgPath.append("_Ex.svg");
+        sPlot.SVGPath = svgPath;
+    }
+
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theSim[0].tStep / 1e-15;
@@ -1286,16 +1154,8 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ex (GV/m)";
     sPlot.unitY = 1e9;
-    sPlot.makeSVG = saveSVG; // theGui.saveSVG;
-    LwePlot2d(&sPlot);
 
-    if (saveSVG) {
-        std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
-        svgPath.append("_Ex.svg");
-        std::ofstream fs(svgPath);
-        fs.write(sPlot.SVG.c_str(),sPlot.SVG.size());
-    }
+    sPlot.plot(cr);
 }
 
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1306,7 +1166,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         cairo_fill(cr);
         return;
     }
-    plotStruct sPlot;
+    LwePlot sPlot;
 
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -1321,8 +1181,14 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     size_t cubeMiddle = theSim[0].Ntime * theSim[0].Nspace * (theSim[0].Nspace2 / 2);
 
-    sPlot.area = area;
-    sPlot.cr = cr;
+    if (saveSVG) {
+        std::string svgPath;
+        theGui.filePaths[3].copyBuffer(svgPath);
+        svgPath.append("_Ey.svg");
+        sPlot.SVGPath = svgPath;
+    }
+
+
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theSim[0].tStep / 1e-15;
@@ -1334,17 +1200,11 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
-    sPlot.makeSVG = saveSVG;
+    
 
-    LwePlot2d(&sPlot);
+    sPlot.plot(cr);
 
-    if (saveSVG) {
-        std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
-        svgPath.append("_Ey.svg");
-        std::ofstream fs(svgPath);
-        fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
-    }
+    
 }
 
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1355,7 +1215,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         cairo_fill(cr);
         return;
     }
-    plotStruct sPlot;
+    LwePlot sPlot;
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
         theGui.saveSVG--;
@@ -1386,8 +1246,13 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         overlayTotal = true;
     }
 
-    sPlot.area = area;
-    sPlot.cr = cr;
+    if (saveSVG) {
+        std::string svgPath;
+        theGui.filePaths[3].copyBuffer(svgPath);
+        svgPath.append("_Sx.svg");
+        sPlot.SVGPath = svgPath;
+    }
+
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theSim[0].fStep / 1e12;
@@ -1412,17 +1277,8 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
-    sPlot.makeSVG = saveSVG;
 
-    LwePlot2d(&sPlot);
-
-    if (saveSVG) {
-        std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
-        svgPath.append("_Sx.svg");
-        std::ofstream fs(svgPath);
-        fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
-    }
+    sPlot.plot(cr);
 }
 
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1433,7 +1289,8 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         cairo_fill(cr);
         return;
     }
-    plotStruct sPlot;
+
+    LwePlot sPlot;
 
     bool saveSVG = theGui.saveSVG > 0;
     if (saveSVG) {
@@ -1464,8 +1321,13 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.checkBoxes[0].isChecked()) {
         overlayTotal = true;
     }
-    sPlot.area = area;
-    sPlot.cr = cr;
+    if (saveSVG) {
+        std::string svgPath;
+        theGui.filePaths[3].copyBuffer(svgPath);
+        svgPath.append("_Sy.svg");
+        sPlot.SVGPath = svgPath;
+    }
+
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theSim[0].fStep / 1e12;
@@ -1490,94 +1352,12 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
-    sPlot.makeSVG = saveSVG;
 
-    LwePlot2d(&sPlot);
-
-    if (saveSVG) {
-        std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
-        svgPath.append("_Sy.svg");
-        std::ofstream fs(svgPath);
-        fs.write(sPlot.SVG.c_str(), sPlot.SVG.size());
-    }
+    sPlot.plot(cr);
 }
 
-int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
-    float f;
-    int div2 = nax / 2;
-    int nx0, ny0;
-#pragma omp parallel for private(nx0, ny0, f) num_threads(interfaceThreads)
-    for (int i = 0; i < nbx; ++i) {
-        f = i * (nax / (float)nbx);
-        nx0 = minN((int)f, nax);
-        nx0 -= div2 * ((nx0 >= div2) - (nx0 < div2));
-        nx0 *= nay;
-        for (int j = 0; j < nby; ++j) {
-            f = (j * (nay / (float)nby));
-            ny0 = minN(nay, (int)f);
-            B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
-        }
-    }
-    return 0;
-}
 
-int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
-    float A00;
-    float f;
-    int nx0, ny0;
-    int Ni, Nj;
-    for (int i = 0; i < nbx; ++i) {
-        f = i * (nax / (float)nbx);
-        Ni = (int)f;
-        nx0 = nay * minN(Ni, nax);
-        for (int j = 0; j < nby; ++j) {
-            f = (j * (nay / (float)nby));
-            Nj = (int)f;
-            ny0 = minN(nay, Nj);
-            A00 = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
-            B[i * nby + j] = A00;
-        }
-    }
-    return 0;
-}
 
-int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby) {
-    int nx0, ny0;
-    int Ni, Nj;
-#pragma omp parallel for private(nx0, ny0, Ni, Nj) num_threads(interfaceThreads)
-    for (int i = 0; i < nbx; ++i) {
-        Ni = (int)(i * (nax / (float)nbx));
-        nx0 = nay * minN(Ni, nax);
-        for (int j = 0; j < nby; ++j) {
-            Nj = (int)((j * (nay / (float)nby)));
-            ny0 = minN(nay, Nj);
-            B[i * nby + j] = (float)A[ny0 + nx0];
-        }
-    }
-    return 0;
-}
-
-void imagePlot(imagePlotStruct* s) {
-
-    int dx = (*s).width;
-    int dy = (*s).height;
-
-    size_t plotSize = (size_t)dx * (size_t)dy;
-    float* plotarr2 = new float[plotSize];
-    switch ((*s).dataType) {
-    case 0:
-        linearRemapDoubleToFloat((*s).data, (int)theSim[0].Nspace, (int)theSim[0].Ntime, plotarr2, (int)dy, (int)dx);
-        drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, 4);
-        break;
-    case 1:
-        linearRemapZToLogFloatShift((*s).complexData, (int)theSim[0].Nspace, (int)theSim[0].Nfreq, plotarr2, (int)dy, (int)dx, (*s).logMin);
-        drawArrayAsBitmap((*s).cr, (*s).width, (*s).height, plotarr2, 3);
-        break;
-    }
-    
-    delete[] plotarr2;
-}
 
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim[0].isGridAllocated) {
@@ -1587,7 +1367,7 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         cairo_fill(cr);
         return;
     }
-    imagePlotStruct sPlot;
+    LweImage sPlot;
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
@@ -1597,12 +1377,13 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     sPlot.data =
         &theSim[0].ExtOut[simIndex * theSim[0].Ngrid * 2 + cubeMiddle];
-    sPlot.area = area;
-    sPlot.cr = cr;
+    sPlot.dataX = theSim[0].Ntime;
+    sPlot.dataY = theSim[0].Nspace;
     sPlot.height = height;
     sPlot.width = width;
+    sPlot.colorMap = 4;
     sPlot.dataType = 0;
-    imagePlot(&sPlot);
+    sPlot.imagePlot(cr);
 }
 
 void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1613,7 +1394,7 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         cairo_fill(cr);
         return;
     }
-    imagePlotStruct sPlot;
+    LweImage sPlot;
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
@@ -1622,13 +1403,14 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     size_t cubeMiddle = theSim[0].Ntime * theSim[0].Nspace * (theSim[0].Nspace2 / 2);
 
     sPlot.data =
-        &theSim[0].ExtOut[theSim[0].Ngrid + simIndex * theSim[0].Ngrid * 2 + cubeMiddle];
-    sPlot.area = area;
-    sPlot.cr = cr;
+    &theSim[0].ExtOut[theSim[0].Ngrid + simIndex * theSim[0].Ngrid * 2 + cubeMiddle];
+    sPlot.dataY = theSim[0].Nspace;
+    sPlot.dataX = theSim[0].Ntime;
     sPlot.height = height;
     sPlot.width = width;
+    sPlot.colorMap = 4;
     sPlot.dataType = 0;
-    imagePlot(&sPlot);
+    sPlot.imagePlot(cr);
 }
 
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1639,7 +1421,7 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         cairo_fill(cr);
         return;
     }
-    imagePlotStruct sPlot;
+    LweImage sPlot;
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
         simIndex = 0;
@@ -1651,13 +1433,14 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
     sPlot.complexData =
         &theSim[0].EkwOut[simIndex * theSim[0].NgridC * 2];
-    sPlot.area = area;
-    sPlot.cr = cr;
+    sPlot.dataX = theSim[0].Nfreq;
+    sPlot.dataY = theSim[0].Nspace;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dataType = 1;
+    sPlot.colorMap = 3;
     sPlot.logMin = logPlotOffset;
-    imagePlot(&sPlot);
+    sPlot.imagePlot(cr);
 }
 
 void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1668,7 +1451,7 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         cairo_fill(cr);
         return;
     }
-    imagePlotStruct sPlot;
+    LweImage sPlot;
 
     size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim[0].Nsims * theSim[0].Nsims2) {
@@ -1682,13 +1465,14 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
     sPlot.complexData =
         &theSim[0].EkwOut[simIndex * theSim[0].NgridC * 2 + theSim[0].NgridC];
-    sPlot.area = area;
-    sPlot.cr = cr;
+    sPlot.dataX = theSim[0].Nfreq;
+    sPlot.dataY = theSim[0].Nspace;
     sPlot.height = height;
     sPlot.width = width;
+    sPlot.colorMap = 3;
     sPlot.dataType = 1;
     sPlot.logMin = logPlotOffset;
-    imagePlot(&sPlot);
+    sPlot.imagePlot(cr);
 }
 
 void launchRunThread() {
@@ -1940,10 +1724,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             }
             if (theSim[j].memoryError != 0) {
                 if (theSim[j].memoryError == -1) {
-                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), theSim[j].memoryError);
+                    theGui.console.tPrint(("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), theSim[j].memoryError);
                 }
                 else {
-                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n"), theSim[j].memoryError);
+                    theGui.console.tPrint(("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n"), theSim[j].memoryError);
                 }
             }
             if (error) break;
@@ -1966,16 +1750,16 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             
             if (theSim[j].memoryError != 0) {
                 if (theSim[j].memoryError == -1) {
-                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), theSim[j].memoryError);
+                    theGui.console.tPrint(("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), theSim[j].memoryError);
                 }
                 else {
-                    theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\r\n"), theSim[j].memoryError);
+                    theGui.console.tPrint(("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\r\n"), theSim[j].memoryError);
                 }
             }
             if (error) break;
         }
         if (theSim[0].cancellationCalled) {
-            theGui.console.tPrint(_T("<span color=\"#FF88FF\">Warning: series cancelled, stopping after {} simulations.</span>\r\n"), j + 1);
+            theGui.console.tPrint(("<span color=\"#FF88FF\">Warning: series cancelled, stopping after {} simulations.</span>\r\n"), j + 1);
             break;
         }
         theGui.requestSliderMove(j);
@@ -2091,7 +1875,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
 
     theGui.requestPlotUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    theGui.console.tPrint(_T("Finished fitting after {:.4} s.\n"), 1e-6 *
+    theGui.console.tPrint(("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
     theGui.console.tPrint("Fitting result:\n (index, value)\n");
     for (int i = 0; i < theSim[0].Nfitting; ++i) {

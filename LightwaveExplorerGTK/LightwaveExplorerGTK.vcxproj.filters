@@ -77,6 +77,9 @@
     <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LIghtwaveExplorerGraphicalClasses.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LightwaveExplorerGTK.rc">

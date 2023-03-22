@@ -145,6 +145,7 @@ copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveEx
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh" />
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceSYCL.h" />
     <ClInclude Include="LightwaveExplorerFrontendGTK.h" />
+    <ClInclude Include="LIghtwaveExplorerGraphicalClasses.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
