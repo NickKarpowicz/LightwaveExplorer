@@ -669,6 +669,39 @@ public:
             return;
         }
     }
+
+    class simulationBatch {
+        std::vector<simulationParameterSet> parameters;
+        std::vector<double> Ext;
+        std::vector<std::complex<double>> Ekw;
+        std::vector<double> loadedField1;
+        std::vector<double> loadedField2;
+        std::vector<double> fitReference;
+        std::vector<double> totalSpectrum;
+        size_t Nsimstotal;
+        size_t Nfreq;
+        size_t Ngrid;
+        size_t NgridC;
+
+    public:
+        simulationBatch(simulationParameterSet& base) {
+            Nfreq = base.Nfreq;
+            Nsimstotal = base.Nsims * base.Nsims2;
+            Ngrid = base.Ngrid;
+            NgridC = base.NgridC;
+            parameters = std::vector<simulationParameterSet>(Nsimstotal);
+            Ext = std::vector<double>(Nsimstotal * Ngrid);
+            Ekw = std::vector<std::complex<double>>(Nsimstotal * NgridC, std::complex<double>(0.0, 0.0));
+            if (base.pulse1FileType) {
+
+            }
+        }
+        constexpr double* const getExt(size_t i) {
+            if ((i + 1) * Ngrid < Ext.size()) return &Ext.data()[i * Ngrid];
+            else return nullptr;
+        }
+
+    };
 	constexpr double getByNumberWithMultiplier(const size_t index) {
 		if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
         return  getByNumber(index) / multipliers[index];
