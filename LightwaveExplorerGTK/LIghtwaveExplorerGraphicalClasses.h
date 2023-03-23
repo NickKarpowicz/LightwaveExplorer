@@ -52,6 +52,7 @@ public:
 class LwePlot {
     bool makeSVG = false;
 public:
+    bool markers = true;
     double width = 0;
     double height = 0;
     double* data = nullptr;
@@ -262,10 +263,10 @@ public:
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
             cairo_move_to(cr, 0.0, height);
-            cairo_rotate(cr, -3.1415926535897931 / 2);
+            cairo_rotate(cr, -vPi<double>()/2);
             cairo_rel_move_to(cr, 0.5 * (layoutLeft + layoutRight - te.width), fontSize);
             cairo_show_text(cr, messageBuffer.c_str());
-            cairo_rotate(cr, 3.1415926535897931 / 2);
+            cairo_rotate(cr, vPi<double>() / 2);
         };
 
         currentColor = textColor;
@@ -383,10 +384,12 @@ public:
                     y1 = height - scaleY * ((double)y[i] - (double)minY);
                 }
                 if (y1 <= height) {
-                    cairo_arc(cr, x1, y1, radius, 0, 6.2831853071795862);
-                    cairo_fill(cr);
+                    cairo_arc(cr, x1, y1, radius, 0, twoPi<double>());
+                    cairo_close_path(cr);
                 }
             }
+            cairo_fill(cr);
+            
         };
 
         auto plotCairoPolyline = [&](double* y) {
@@ -509,41 +512,41 @@ public:
 
 
         //Optional overlay curves
-        if (ExtraLines > 0) {
+        if (ExtraLines > 0 && data2 != nullptr) {
             currentColor = color2;
             plotCairoPolyline(data2);
-            plotCairoDots(data2);
+            if(markers)plotCairoDots(data2);
             if (makeSVG) {
                 plotSVGPolyline(data2);
-                plotSVGDots(data2);
+                if (markers)plotSVGDots(data2);
             }
         }
-        if (ExtraLines > 1) {
+        if (ExtraLines > 1 && data2 != nullptr) {
             currentColor = color3;
             plotCairoPolyline(data3);
-            plotCairoDots(data3);
+            if (markers)plotCairoDots(data3);
             if (makeSVG) {
                 plotSVGPolyline(data3);
-                plotSVGDots(data3);
+                if (markers)plotSVGDots(data3);
             }
         }
-        if (ExtraLines > 2) {
+        if (ExtraLines > 2 && data2 != nullptr) {
             currentColor = color4;
             plotCairoPolyline(data4);
-            plotCairoDots(data4);
+            if (markers)plotCairoDots(data4);
             if (makeSVG) {
                 plotSVGPolyline(data4);
-                plotSVGDots(data4);
+                if (markers)plotSVGDots(data4);
             }
         }
 
         //Plot the main line
         currentColor = color;
         plotCairoPolyline(data);
-        plotCairoDots(data);
+        if (markers)plotCairoDots(data);
         if (makeSVG) {
             plotSVGPolyline(data);
-            plotSVGDots(data);
+            if (markers)plotSVGDots(data);
         }
 
         delete[] xValues;
