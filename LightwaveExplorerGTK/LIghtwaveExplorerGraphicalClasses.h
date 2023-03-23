@@ -372,7 +372,7 @@ public:
         SVGendgroup();
 
         //Lambdas for plotting a line
-        //currently dots are always there but has been refactored to make it easier to turn the off if I want.
+        //currently dots are always there but has been refactored to make it easier to turn them off if I want.
         auto plotCairoDots = [&](double* y) {
             currentColor.setCairo(cr);
             for (size_t i = iMin; i < iMax - 1; ++i) {
@@ -389,7 +389,6 @@ public:
                 }
             }
             cairo_fill(cr);
-            
         };
 
         auto plotCairoPolyline = [&](double* y) {
