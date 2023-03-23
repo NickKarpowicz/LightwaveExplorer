@@ -505,7 +505,7 @@ public:
         1, 1e12, 1, 1e-6,
         1e-9, 1, 1 };
 
-    double getByNumber(size_t index) {
+    constexpr double getByNumber(const size_t index) {
         switch (index) {
         case 0:
             return 0.0;
@@ -587,7 +587,7 @@ public:
             return 0.0;
         };
     }
-    void setByNumber(size_t index, double value) {
+    void setByNumber(const size_t index, const double value) {
         switch (index) {
         case 0:
             return;
@@ -669,12 +669,12 @@ public:
             return;
         }
     }
-	double getByNumberWithMultiplier(size_t index) {
+	constexpr double getByNumberWithMultiplier(const size_t index) {
 		if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
         return  getByNumber(index) / multipliers[index];
 
 	}
-    void setByNumberWithMultiplier(size_t index, double value) {
+    void setByNumberWithMultiplier(const size_t index, const double value) {
         if (index > multipliers.size()) return;
         setByNumber(index, value * multipliers[index]);
     }

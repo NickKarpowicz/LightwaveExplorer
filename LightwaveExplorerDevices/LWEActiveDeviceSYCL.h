@@ -16,66 +16,66 @@ static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 //if running in 64-bit mode, define complex math operations with fixed float constants
 #if LWEFLOATINGPOINT==64
 
-		static oneapi::dpl::complex<double> operator+(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
+		static constexpr oneapi::dpl::complex<double> operator+(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
 
-		static oneapi::dpl::complex<double> operator+(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
+		static constexpr oneapi::dpl::complex<double> operator+(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
 
-		static oneapi::dpl::complex<double> operator-(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() - f, x.imag()); }
+		static constexpr oneapi::dpl::complex<double> operator-(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() - f, x.imag()); }
 
-		static oneapi::dpl::complex<double> operator*(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
+		static constexpr oneapi::dpl::complex<double> operator*(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
 
-		static oneapi::dpl::complex<double> operator*(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
+		static constexpr oneapi::dpl::complex<double> operator*(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
 
-		static oneapi::dpl::complex<double> operator/(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); }
+		static constexpr oneapi::dpl::complex<double> operator/(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); }
 
 #endif
 
 namespace deviceLibSYCLFP32{
-	static inline float exp(const float x){
+	static constexpr inline float exp(const float x){
 		return expf(x);
 	}
-	static inline float abs(const float x){
+	static constexpr inline float abs(const float x){
 		return fabs(x);
 	}
-	static inline float sin(const float x){
+	static constexpr inline float sin(const float x){
 		return sinf(x);
 	}
-	static inline float cos(const float x){
+	static constexpr inline float cos(const float x){
 		return cosf(x);
 	}
-	static inline float atan(const float x){
+	static constexpr inline float atan(const float x){
 		return atanf(x);
 	}
-	static inline float sqrt(const float x){
+	static constexpr inline float sqrt(const float x){
 		return sqrtf(x);
 	}
-	static inline float asin(const float x){
+	static constexpr inline float asin(const float x){
 		return asinf(x);
 	}
-	static inline float pow(const float x, const float y){
+	static constexpr inline float pow(const float x, const float y){
 		return powf(x,y);
 	}
-	static inline float acos(const float x) {
+	static constexpr inline float acos(const float x) {
 		return acosf(x);
 	}
-	static inline float atan2(const float x, const float y) {
+	static constexpr inline float atan2(const float x, const float y) {
 		return atan2f(x, y);
 	}
 
-	static oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
+	static constexpr oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
 		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
 		float theta = atan2f(x.imag(), x.real());
 		float rn = powf(r, y);
 		return oneapi::dpl::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
 	}
-	static inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
+	static constexpr inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::exp(x);
 
 	}
-	static inline float abs(const oneapi::dpl::complex<float> x){
+	static constexpr inline float abs(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::abs(x);
 	}
-	static inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
+	static constexpr inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::sqrt(x);
 	}
 };
@@ -96,7 +96,7 @@ static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
-static double j0Device(double x) {
+static constexpr double j0Device(const double x) {
 	if (x < 8.0) {
 		double y = x * x;
 		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
@@ -117,7 +117,7 @@ static double j0Device(double x) {
 	}
 }
 
-static float j0Device(float x) {
+static constexpr float j0Device(const float x) {
 	if (x < 8.0f) {
 		float y = x * x;
 		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +
@@ -139,7 +139,7 @@ static float j0Device(float x) {
 }
 
 
-static oneapi::dpl::complex<double> operator/(double a, oneapi::dpl::complex<double> b) {
+static constexpr oneapi::dpl::complex<double> operator/(const double a, const oneapi::dpl::complex<double> b) {
 	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
 	return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
 }
@@ -190,20 +190,19 @@ public:
 		deviceFree(dParamsDevice);
 	}
 
-	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
+	bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
 		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), copyType::ToHost);
 		return(isnan(canaryPixel));
 	}
 
 	template<typename Function, typename... Args>
-	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const Function& kernel, Args... args) {
+	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const Function& kernel, const Args... args) {
 		stream.submit([&](sycl::handler& h) {
-			h.parallel_for(Nblock * Nthread, [=](auto i) {kernel(i, args...); });
+			h.parallel_for(Nblock * Nthread, [=](const auto i) {kernel(i, args...); });
 			});
-
 	}
 
-	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
+	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) {
 		(*ptr) = sycl::aligned_alloc_device(2 * sizeof(deviceFP), N * elementSize, stream.get_device(), stream.get_context());
 		stream.memset((*ptr), 0, N * elementSize);
 		stream.wait();
@@ -215,13 +214,13 @@ public:
 		stream.memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, const void* src, size_t count, copyType kind) {
+	void deviceMemcpy(void* dst, const void* src, const size_t count, const copyType kind) {
 		stream.wait();
 		stream.memcpy(dst, src, count);
 		stream.wait();
 	}
 
-	void deviceMemcpy(double* dst, const float* src, size_t count, copyType kind) {
+	void deviceMemcpy(double* dst, const float* src, const size_t count, const copyType kind) {
 		stream.wait();
 		float* copyBuffer = new float[count / sizeof(double)]();
 		stream.memcpy(copyBuffer, src, count/2);
@@ -243,7 +242,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(oneapi::dpl::complex<float>* dst, const std::complex<double>* src, size_t count, copyType kind) {
+	void deviceMemcpy(oneapi::dpl::complex<float>* dst, const std::complex<double>* src, const size_t count, const copyType kind) {
 		stream.wait();
 		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
 		
@@ -255,7 +254,7 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(float* dst, const double* src, size_t count, copyType kind) {
+	void deviceMemcpy(float* dst, const double* src, const size_t count, const copyType kind) {
 		stream.wait();
 		
 		float* copyBuffer = new float[count / sizeof(double)]();
@@ -365,7 +364,7 @@ public:
 		configuredFFT = 1;
 	}
 
-	void fft(void* input, void* output, deviceFFT type) const {
+	void fft(const void* input, void* output, const deviceFFT type) const {
 		switch (static_cast<int>(type)) {
 		case 0:
 			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (deviceComplex*)output);
@@ -476,7 +475,6 @@ public:
 			}
 			
 		}
-		
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		
 		cParams = sCPU;

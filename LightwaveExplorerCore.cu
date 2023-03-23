@@ -1816,7 +1816,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int addPulseToFieldArrays(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, pulse<double>& pCPU, bool useLoadedField, std::complex<double>* loadedFieldIn) {
+	static int addPulseToFieldArrays(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, pulse<double>& pCPU, const bool useLoadedField, const std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
@@ -2059,7 +2059,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyAperature(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU,double diameter, double activationParameter) {
+	static int applyAperature(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, const simulationParameterSet* sCPU, const double diameter, const double activationParameter) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
@@ -2074,7 +2074,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applySphericalMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double ROC) {
+	static int applySphericalMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, const simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, const double ROC) {
 
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
@@ -2091,7 +2091,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyParabolicMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, double focus) {
+	static int applyParabolicMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, const double focus) {
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
@@ -2106,7 +2106,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyLinearPropagation(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, int materialIndex, double thickness) {
+	static int applyLinearPropagation(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, const int materialIndex, const double thickness) {
 
 		if (d.hasPlasma) {
 			simulationParameterSet sCopy = *sCPU;
@@ -2181,7 +2181,7 @@ namespace hostFunctions{
 	//Allocates memory and copies from CPU, then copies back to CPU and deallocates
 	// - inefficient but the general principle is that only the CPU memory is preserved
 	// after simulations finish... and this only runs at the end of the simulation
-	static int rotateField(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double rotationAngle) {
+	static int rotateField(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, const double rotationAngle) {
 
 		deviceComplex* Ein1 = d.deviceStruct.gridEFrequency1;
 		deviceComplex* Ein2 = d.deviceStruct.gridEFrequency2;

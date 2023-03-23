@@ -70,27 +70,27 @@ public:
 	~counterDevice() {
 	}
 	template<typename Function, typename... Args>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) {
+	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const Function kernel, const Args... args) {
 	}
 
-	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
+	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) {
 		return 0;
 	}
 
-	void deviceMemset(void* ptr, int value, size_t count) {
+	void deviceMemset(void* ptr, const int value, const size_t count) {
 	}
 
-	void deviceMemcpy(void* dst, void* src, size_t count, copyType kind) {
+	void deviceMemcpy(void* dst, const void* src, const size_t count, const copyType kind) {
 	}
 
-	void deviceFree(void* block) {
+	void deviceFree(const void* block) {
 	}
 
-	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
+	bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
 		return false;
 	}
 
-	void fft(void* input, void* output, deviceFFT type) {
+	void fft(const void* input, const void* output, const deviceFFT type) {
 	}
 
 	void fftInitialize() {
