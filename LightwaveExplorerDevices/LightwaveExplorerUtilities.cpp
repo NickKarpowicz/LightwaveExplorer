@@ -617,8 +617,7 @@ void simulationBatch::configure() {
 	if (base.fittingMode > 2) {
 		fitReference = std::vector<double>(Nfreq);
 	}
-	base.isGridAllocated = true;
-	loadPulseFiles();
+
 
 	//configure
 	double step1 = (base.batchDestination - base.getByNumberWithMultiplier(base.batchIndex)) / (Nsims - 1);
@@ -633,7 +632,10 @@ void simulationBatch::configure() {
 	base.loadedField1 = loadedField1.data();
 	base.loadedField2 = loadedField2.data();
 	base.fittingReference = fitReference.data();
+	base.isGridAllocated = true;
 	parameters[0] = base;
+	loadPulseFiles();
+
 	for (size_t i = 0; i < Nsims2; i++) {
 		size_t currentRow = i * Nsims;
 
@@ -667,12 +669,12 @@ void simulationBatch::loadPulseFiles() {
 	//synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
 	int frogLines = 0;
 	if (parameters[0].pulse1FileType == 1) {
-		frogLines = loadFrogSpeck(parameters[0].field1FilePath, parameters[0].loadedField1, parameters[0].Ntime, parameters[0].fStep, 0.0);
+		frogLines = loadFrogSpeck(parameters[0].field1FilePath, loadedField1.data(), parameters[0].Ntime, parameters[0].fStep, 0.0);
 		parameters[0].field1IsAllocated = (frogLines > 1);
 	}
 
 	if (parameters[0].pulse2FileType == 1) {
-		frogLines = loadFrogSpeck(parameters[0].field2FilePath, parameters[0].loadedField2, parameters[0].Ntime, parameters[0].fStep, 0.0);
+		frogLines = loadFrogSpeck(parameters[0].field2FilePath, loadedField2.data(), parameters[0].Ntime, parameters[0].fStep, 0.0);
 		parameters[0].field1IsAllocated = (frogLines > 1);
 	}
 }
