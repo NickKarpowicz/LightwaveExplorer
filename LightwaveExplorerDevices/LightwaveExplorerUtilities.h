@@ -621,12 +621,12 @@ class simulationBatch {
     std::vector<std::complex<double>> loadedField2;
     std::vector<double> fitReference;
     std::vector<double> totalSpectrum;
-    size_t Nsimstotal;
-    size_t Nsims;
-    size_t Nsims2;
-    size_t Nfreq;
-    size_t Ngrid;
-    size_t NgridC;
+    size_t Nsimstotal = 0;
+    size_t Nsims = 0;
+    size_t Nsims2 = 0;
+    size_t Nfreq = 0;
+    size_t Ngrid = 0;
+    size_t NgridC = 0;
     std::vector<simulationParameterSet> parameters;
 public:
     simulationBatch() {
@@ -636,16 +636,13 @@ public:
     void loadPulseFiles();
     int saveDataSet();
     [[nodiscard]] double* getExt(size_t i) {
-        if (i * Ngrid < Ext.size()) return &Ext.data()[i * Ngrid * 2];
-        else return nullptr;
+        return &Ext.data()[i * Ngrid * 2];
     }
     [[nodiscard]] std::complex<double>* getEkw(size_t i) {
-        if (i * NgridC < Ekw.size()) return &Ekw.data()[i * NgridC * 2];
-        else return nullptr;
+        return &Ekw.data()[i * NgridC * 2];
     }
     [[nodiscard]] double* getTotalSpectrum(size_t i) {
-        if (i * (Nfreq * 3) < totalSpectrum.size()) return &totalSpectrum.data()[i * 3 * Nfreq];
-        else return nullptr;
+        return &totalSpectrum.data()[i * 3 * Nfreq];
     }
     [[nodiscard]] simulationParameterSet* sCPU() {
         return parameters.data();

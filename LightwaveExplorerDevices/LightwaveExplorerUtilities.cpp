@@ -597,43 +597,43 @@ int simulationParameterSet::readInputParametersFile(crystalEntry* crystalDatabas
 }
 
 void simulationBatch::configure() {
-	simulationParameterSet base = parameters[0];
-	Nfreq = base.Nfreq;
-	Nsims = base.Nsims;
-	Nsims2 = base.Nsims2;
+	Nfreq = parameters[0].Nfreq;
+	Nsims = parameters[0].Nsims;
+	Nsims2 = parameters[0].Nsims2;
 	Nsimstotal = Nsims * Nsims2;
-	Ngrid = base.Ngrid;
-	NgridC = base.NgridC;
-	parameters = std::vector<simulationParameterSet>(Nsimstotal);
-	Ext = std::vector<double>(Nsimstotal * Ngrid * 2);
-	Ekw = std::vector<std::complex<double>>(Nsimstotal * NgridC * 2);
-	totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
-	if (base.pulse1FileType) {
-		loadedField1 = std::vector<std::complex<double>>(Nfreq);
-	}
-	if (base.pulse2FileType) {
-		loadedField2 = std::vector<std::complex<double>>(Nfreq);
-	}
-	if (base.fittingMode > 2) {
-		fitReference = std::vector<double>(Nfreq);
-	}
+	Ngrid = parameters[0].Ngrid;
+	NgridC = parameters[0].NgridC;
+	simulationParameterSet base = parameters[0];
+	parameters.resize(Nsimstotal, base);
 
+	Ext.resize(Nsimstotal * Ngrid * 2);
+	Ekw.resize(Nsimstotal * NgridC * 2);
+
+	totalSpectrum.resize(Nfreq * Nsimstotal * 3);
+	if (parameters[0].pulse1FileType) {
+		loadedField1.resize(Nfreq);
+	}
+	if (parameters[0].pulse2FileType) {
+		loadedField2.resize(Nfreq);
+	}
+	if (parameters[0].fittingMode > 2) {
+		fitReference.resize(Nfreq);
+	}
 
 	//configure
-	double step1 = (base.batchDestination - base.getByNumberWithMultiplier(base.batchIndex)) / (Nsims - 1);
+	double step1 = (parameters[0].batchDestination - parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex)) / (Nsims - 1);
 	double step2 = 0.0;
-	if (base.Nsims2 > 0) {
-		step2 = (base.batchDestination2 - base.getByNumberWithMultiplier(base.batchIndex2)) / (Nsims2 - 1);
+	if (Nsims2 > 0) {
+		step2 = (parameters[0].batchDestination2 - parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2)) / (Nsims2 - 1);
 	}
 	
-	base.ExtOut = Ext.data();
-	base.EkwOut = Ekw.data();
-	base.totalSpectrum = totalSpectrum.data();
-	base.loadedField1 = loadedField1.data();
-	base.loadedField2 = loadedField2.data();
-	base.fittingReference = fitReference.data();
-	base.isGridAllocated = true;
-	parameters[0] = base;
+	parameters[0].ExtOut = Ext.data();
+	parameters[0].EkwOut = Ekw.data();
+	parameters[0].totalSpectrum = totalSpectrum.data();
+	parameters[0].loadedField1 = loadedField1.data();
+	parameters[0].loadedField2 = loadedField2.data();
+	parameters[0].fittingReference = fitReference.data();
+	parameters[0].isGridAllocated = true;
 	loadPulseFiles();
 
 	for (size_t i = 0; i < Nsims2; i++) {
@@ -643,7 +643,7 @@ void simulationBatch::configure() {
 			parameters[currentRow] = parameters[0];
 		}
 		if (Nsims2 > 1) {
-			parameters[currentRow].setByNumberWithMultiplier(base.batchIndex2, base.getByNumberWithMultiplier(base.batchIndex2) + i * step2);
+			parameters[currentRow].setByNumberWithMultiplier(parameters[0].batchIndex2, parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2) + i * step2);
 		}
 
 		for (size_t j = 0; j < Nsims; j++) {
@@ -658,10 +658,9 @@ void simulationBatch::configure() {
 			parameters[j + currentRow].EkwOut = getEkw((j + currentRow));
 			parameters[j + currentRow].totalSpectrum = getTotalSpectrum((j + currentRow));
 			parameters[j + currentRow].isFollowerInSequence = false;
-			parameters[j + currentRow].setByNumberWithMultiplier(base.batchIndex, base.getByNumberWithMultiplier(base.batchIndex) + j * step1);
+			parameters[j + currentRow].setByNumberWithMultiplier(parameters[0].batchIndex, parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex) + j * step1);
 		}
 	}
-	base = parameters[0];
 }
 
 void simulationBatch::loadPulseFiles() {
@@ -682,15 +681,15 @@ void simulationBatch::loadPulseFiles() {
 int simulationBatch::saveDataSet() {
 	parameters[0].saveSettingsFile();
 
-	std::string Epath(parameters[0].outputBasePath);
+	std::string Epath=parameters[0].outputBasePath;
 	Epath.append("_Ext.dat");
 	std::ofstream Efile(Epath, std::ios::binary);
-	if (Efile.is_open()) Efile.write(reinterpret_cast<char*>(parameters[0].ExtOut), 2 * (parameters[0].Ngrid * parameters[0].Nsims * parameters[0].Nsims2) * sizeof(double));
+	if (Efile.is_open()) Efile.write(reinterpret_cast<char*>(Ext.data()), Ext.size() * sizeof(double));
 
-	std::string Spath(parameters[0].outputBasePath);
+	std::string Spath=parameters[0].outputBasePath;
 	Spath.append("_spectrum.dat");
 	std::ofstream Sfile(Spath, std::ios::binary);
-	if (Sfile.is_open()) Sfile.write(reinterpret_cast<char*>(parameters[0].totalSpectrum), parameters[0].Nsims * parameters[0].Nsims2 * 3 * parameters[0].Nfreq * sizeof(double));
+	if (Sfile.is_open()) Sfile.write(reinterpret_cast<char*>(totalSpectrum.data()), totalSpectrum.size() * sizeof(double));
 	
 	return 0;
 }

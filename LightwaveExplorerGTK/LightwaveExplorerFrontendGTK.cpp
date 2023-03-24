@@ -852,12 +852,12 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         std::string path(g_file_get_path(file));
         theGui.sequence.clear();
         theGui.fitCommand.clear();
-        int readParameters = theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), path);
+        int readParameters = theSim.base().readInputParametersFile(theDatabase.db.data(), path);
         theSim.configure();
         if (readParameters == 61) {
             size_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
-            theSim.sCPU()->loadSavedFields(basePath);
+            theSim.base().loadSavedFields(basePath);
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();
             theGui.requestPlotUpdate();
@@ -1571,8 +1571,8 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     theSim.configure();
     theGui.requestSliderUpdate();
 
-    simulationBatch counterData = theSim;
-    simulationParameterSet* testSet = counterData.sCPU();
+    //simulationBatch counterData = theSim;
+    std::vector<simulationParameterSet> testSet(theSim.base().Nsims*theSim.base().Nsims2, theSim.base());
     totalSteps = 0;
     progressCounter = 0;
     for (size_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
