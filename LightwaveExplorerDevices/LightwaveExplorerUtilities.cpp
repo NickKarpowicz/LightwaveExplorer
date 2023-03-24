@@ -1,5 +1,4 @@
 #include "LightwaveExplorerUtilities.h"
-#include <cstring>
 
 int simulationParameterSet::loadSavedFields(const std::string& outputBase) {
 	std::string Epath = outputBase;
@@ -743,31 +742,11 @@ int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, cha
 	return 0;
 }
 
-void stripWhiteSpace(char* sequenceString, size_t bufferSize) {
-	std::string s(sequenceString);
-	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
-	removeCharacterFromString(s, '\r');
-	removeCharacterFromString(s, '\n');
-	removeCharacterFromString(s, '\t');
-
-
-	memset(sequenceString, 0, bufferSize);
-	s.copy(sequenceString, bufferSize - 1);
-}
-
 void stripWhiteSpace(std::string& s) {
 	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
 	removeCharacterFromString(s, '\r');
 	removeCharacterFromString(s, '\n');
 	removeCharacterFromString(s, '\t');
-}
-
-void stripLineBreaks(char* sequenceString, size_t bufferSize) {
-	std::string s(sequenceString);
-	removeCharacterFromString(s, '\r');
-	removeCharacterFromString(s, '\n');
-	memset(sequenceString, 0, bufferSize);
-	s.copy(sequenceString, bufferSize-1);
 }
 
 void stripLineBreaks(std::string& s) {
@@ -795,7 +774,6 @@ int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, d
 	return 0;
 }
 
-
 void applyOp(char op, double* result, double* readout) {
 	switch (op) {
 	case '*':
@@ -822,7 +800,6 @@ void applyOp(char op, double* result, double* readout) {
 }
 
 double parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock) {
-
 	auto nextInt = [&](std::string iStr, int location) {
 		std::stringstream s(iStr.substr(location));
 		int a;
@@ -936,13 +913,10 @@ std::string getBasename(const std::string& fullPath) {
 	return pathString.substr(positionOfName + 1);
 }
 
-//calculates the squard modulus of a complex number, under the assumption that the
-//machine's complex number format is interleaved doubles.
-//c forced to run in c++ for nostalgia reasons
+//calculates the squared modulus of a complex number
 double cModulusSquared(const std::complex<double>& x) {
 	return x.real()*x.real() + x.imag()*x.imag();
 }
-
 
 int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel) {
 	std::string line;

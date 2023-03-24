@@ -42,7 +42,6 @@ int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long
 double          cModulusSquared(const std::complex<double>& x);
 void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
-void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
 int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);
