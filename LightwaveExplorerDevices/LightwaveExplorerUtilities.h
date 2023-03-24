@@ -5,6 +5,8 @@
 #include <string>
 #include <fstream>
 #include <atomic>
+#include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
+
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
@@ -35,8 +37,18 @@ static const unsigned int minGridDimension = 8;
 #define LWEFLOATINGPOINTTYPE double
 #endif
 
-#include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
-
+std::string     getBasename(const std::string& fullPath);
+void            removeCharacterFromString(std::string& s, char removedChar);
+int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
+double          cModulusSquared(const std::complex<double>& x);
+void            applyOp(char op, double* result, double* readout);
+double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
+std::string     getBasename(char* fullPath);
+void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
+void            stripWhiteSpace(std::string& s);
+void            stripLineBreaks(std::string& s);
+int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);
+int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)
 // Z2D: complex to real (f to t)
@@ -505,6 +517,11 @@ public:
         1, 1e12, 1, 1e-6,
         1e-9, 1, 1 };
 
+    [[nodiscard]] constexpr double getByNumberWithMultiplier(const size_t index) {
+        if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
+        return  getByNumber(index) / multipliers[index];
+    }
+    
     constexpr double getByNumber(const size_t index) {
         switch (index) {
         case 0:
@@ -587,100 +604,15 @@ public:
             return 0.0;
         };
     }
-    void setByNumber(const size_t index, const double value) {
-        switch (index) {
-        case 0:
-            return;
-        case 1:
-            pulse1.energy = value; return;
-        case 2:
-            pulse2.energy = value; return;
-        case 3:
-            pulse1.frequency = value; return;
-        case 4:
-            pulse2.frequency = value; return;
-        case 5:
-            pulse1.bandwidth = value; return;
-        case 6:
-            pulse2.bandwidth = value; return;
-        case 7:
-            pulse1.cep = value; return;
-        case 8:
-            pulse2.cep = value; return;
-        case 9:
-            pulse1.delay = value; return;
-        case 10:
-            pulse2.delay = value; return;
-        case 11:
-            pulse1.gdd = value; return;
-        case 12:
-            pulse2.gdd = value; return;
-        case 13:
-            pulse1.tod = value; return;
-        case 14:
-            pulse2.tod = value; return;
-        case 15:
-            pulse1.phaseMaterialThickness = value; return;
-        case 16:
-            pulse2.phaseMaterialThickness = value; return;
-        case 17:
-            pulse1.beamwaist = value; return;
-        case 18:
-            pulse2.beamwaist = value; return;
-        case 19:
-            pulse1.x0 = value; return;
-        case 20:
-            pulse2.x0 = value; return;
-        case 21:
-            pulse1.z0 = value; return;
-        case 22:
-            pulse2.z0 = value; return;
-        case 23:
-            pulse1.beamAngle = value; return;
-        case 24:
-            pulse2.beamAngle = value; return;
-        case 25:
-            pulse1.polarizationAngle = value; return;
-        case 26:
-            pulse2.polarizationAngle = value; return;
-        case 27:
-            pulse1.circularity = value; return;
-        case 28:
-            pulse2.circularity = value; return;
-        case 29:
-            crystalTheta = value; return;
-        case 30:
-            crystalPhi = value; return;
-        case 31:
-            nonlinearAbsorptionStrength = value; return;
-        case 32:
-            drudeGamma = value; return;
-        case 33:
-            effectiveMass = value; return;
-        case 34:
-            crystalThickness = value; return;
-        case 35:
-            propagationStep = value; return;
-        case 36:
-            return;
-        case 37:
-            i37 = value; return;
-        default:
-            return;
-        }
-    }
-
-	[[nodiscard]] constexpr double getByNumberWithMultiplier(const size_t index) {
-		if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
-        return  getByNumber(index) / multipliers[index];
-
-	}
-    void setByNumberWithMultiplier(const size_t index, const double value) {
-        if (index > multipliers.size()) return;
-        setByNumber(index, value * multipliers[index]);
-    }
+    void setByNumber(const size_t index, const double value);
+    void setByNumberWithMultiplier(const size_t index, const double value);
+    int loadSavedFields(const std::string& outputBase);
+    int loadReferenceSpectrum();
+    int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
+    int saveSettingsFile();
+    double saveSlurmScript(int gpuType, int gpuCount, size_t totalSteps);
+    int readFittingString();
 };
-int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 
 class simulationBatch {
     std::vector<double> Ext;
@@ -700,71 +632,9 @@ public:
     simulationBatch() {
         parameters = std::vector<simulationParameterSet>(1);
     }
-    void configure() {
-        simulationParameterSet base = parameters[0];
-        Nfreq = base.Nfreq;
-        Nsims = base.Nsims;
-        Nsims2 = base.Nsims2;
-        Nsimstotal = Nsims * Nsims2;
-        Ngrid = base.Ngrid;
-        NgridC = base.NgridC;
-        parameters = std::vector<simulationParameterSet>(Nsimstotal);
-        Ext = std::vector<double>(Nsimstotal * Ngrid * 2);
-        Ekw = std::vector<std::complex<double>>(Nsimstotal * NgridC * 2);
-        totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
-        if (base.pulse1FileType) {
-            loadedField1 = std::vector<std::complex<double>>(Nfreq);
-        }
-        if (base.pulse2FileType) {
-            loadedField2 = std::vector<std::complex<double>>(Nfreq);
-        }
-        if (base.fittingMode > 2) {
-            fitReference = std::vector<double>(Nfreq);
-        }
-        base.isGridAllocated = true;
-        loadPulseFiles();
-
-        //configure
-        double step1 = (base.batchDestination - base.getByNumberWithMultiplier(base.batchIndex)) / (Nsims - 1);
-        double step2 = 0.0;
-        if (base.Nsims2 > 0) {
-            step2 = (base.batchDestination2 - base.getByNumberWithMultiplier(base.batchIndex2)) / (Nsims2 - 1);
-        }
-        
-        base.ExtOut = Ext.data();
-        base.EkwOut = Ekw.data();
-        base.totalSpectrum = totalSpectrum.data();
-        base.loadedField1 = loadedField1.data();
-        base.loadedField2 = loadedField2.data();
-        base.fittingReference = fitReference.data();
-        parameters[0] = base;
-        for (size_t i = 0; i < Nsims2; i++) {
-            size_t currentRow = i * Nsims;
-
-            if (currentRow > 0) {
-                parameters[currentRow] = parameters[0];
-            }
-            if (Nsims2 > 1) {
-                parameters[currentRow].setByNumberWithMultiplier(base.batchIndex2, base.getByNumberWithMultiplier(base.batchIndex2) + i * step2);
-            }
-
-            for (size_t j = 0; j < Nsims; j++) {
-
-                if (j > 0) {
-                    parameters[j + currentRow] = parameters[currentRow];
-                }
-
-                parameters[j + currentRow].batchLoc1 = j;
-                parameters[j + currentRow].batchLoc2 = i;
-                parameters[j + currentRow].ExtOut = getExt((j + currentRow));
-                parameters[j + currentRow].EkwOut = getEkw((j + currentRow));
-                parameters[j + currentRow].totalSpectrum = getTotalSpectrum((j + currentRow));
-                parameters[j + currentRow].isFollowerInSequence = false;
-                parameters[j + currentRow].setByNumberWithMultiplier(base.batchIndex, base.getByNumberWithMultiplier(base.batchIndex) + j * step1);
-            }
-        }
-        base = parameters[0];
-    }
+    void configure();
+    void loadPulseFiles();
+    int saveDataSet();
     [[nodiscard]] double* getExt(size_t i) {
         if (i * Ngrid < Ext.size()) return &Ext.data()[i * Ngrid * 2];
         else return nullptr;
@@ -784,47 +654,5 @@ public:
     [[nodiscard]] simulationParameterSet& base() {
         return parameters[0];
     }
-
-    void loadPulseFiles() {
-        simulationParameterSet* sCPU = parameters.data();
-        //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
-        //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
-        int frogLines = 0;
-        if ((*sCPU).pulse1FileType == 1) {
-            frogLines = loadFrogSpeck((*sCPU).field1FilePath, (*sCPU).loadedField1, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
-            (*sCPU).field1IsAllocated = (frogLines > 1);
-        }
-
-        if ((*sCPU).pulse2FileType == 1) {
-            frogLines = loadFrogSpeck((*sCPU).field2FilePath, (*sCPU).loadedField2, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
-            (*sCPU).field1IsAllocated = (frogLines > 1);
-        }
-    }
 };
 
-int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
-int             removeCharacterFromString(char* cString, size_t N, char removedChar);
-void            removeCharacterFromString(std::string& s, char removedChar);
-int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int             loadReferenceSpectrum(std::string spectrumPath, simulationParameterSet* sCPU);
-int             readFittingString(simulationParameterSet* sCPU);
-int             saveSettingsFile(const simulationParameterSet* sCPU);
-double          saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, size_t totalSteps);
-int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
-double          cModulusSquared(const std::complex<double>& x);
-int             allocateGrids(simulationParameterSet* sCPU);
-int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems);
-int             configureBatchMode(simulationParameterSet* sCPU);
-int             saveDataSet(simulationParameterSet* sCPU);
-int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);
-int             loadPulseFiles(simulationParameterSet* sCPU);
-void            applyOp(char op, double* result, double* readout);
-double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
-std::string     getBasename(char* fullPath);
-std::string     getBasename(const std::string& fullPath);
-void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
-void            stripWhiteSpace(std::string& s);
-void            stripLineBreaks(std::string& s);
-int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);

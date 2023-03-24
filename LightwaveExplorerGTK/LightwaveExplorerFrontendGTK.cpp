@@ -420,8 +420,8 @@ public:
         // App /Resources folder
         // working directory
 #ifdef __linux__
-		if (1 == readInputParametersFile(theSim.data(), theDatabase.db.data(), "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
-			readInputParametersFile(theSim.data(), theDatabase.db.data(), "DefaultValues.ini");
+		if (1 == theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "/usr/share/LightwaveExplorer/DefaultValues.ini")) {
+			theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
 		}
 #elif defined __APPLE__
 		uint32_t bufferSize = 1024;
@@ -430,11 +430,11 @@ public:
         std::string sysPathFull(sysPathBuffer);
         std::string sysPathIni = sysPathFull.substr(0,sysPathFull.find_last_of("/"));
         sysPathIni.append("/../Resources/DefaultValues.ini");
-		if(1 == readInputParametersFile(theSim.data(), theDatabase.db.data(), sysPathIni.c_str())){
-            readInputParametersFile(theSim.data(), theDatabase.db.data(), "DefaultValues.ini");
+		if(1 == theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), sysPathIni.c_str())){
+            theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
         }
 #else
-		readInputParametersFile(theSim.sCPU(), theDatabase.db.data(), "DefaultValues.ini");
+		theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
 #endif
         setInterfaceValuesToActiveValues();
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
@@ -852,13 +852,13 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         std::string path(g_file_get_path(file));
         theGui.sequence.clear();
         theGui.fitCommand.clear();
-        int readParameters = readInputParametersFile(theSim.sCPU(), theDatabase.db.data(), path.c_str());
+        int readParameters = theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), path.c_str());
         theSim.configure();
         if (readParameters == 61) {
             size_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
             theGui.console.cPrint("Loading fields\n");
-            loadSavedFields(theSim.sCPU(), basePath.c_str());
+            theSim.sCPU()->loadSavedFields(basePath);
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();
             theGui.requestPlotUpdate();
@@ -956,11 +956,11 @@ void createRunFile() {
         gpuCount = 4;
         break;
     }
-    double timeEstimate = saveSlurmScript(theSim.sCPU(), gpuType, gpuCount, totalSteps);
+    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, totalSteps);
 
     //create command line settings file
     theSim.base().runType = 1;
-    saveSettingsFile(theSim.sCPU());
+    theSim.sCPU()->saveSettingsFile();
 
     theGui.console.tPrint(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
@@ -1567,19 +1567,19 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
 }
 
 void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use64bitFloatingPoint) {
+    int error = 0;
     theSim.base().cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
     readParametersFromInterface();
-    
     theSim.configure();
-
     theGui.requestSliderUpdate();
 
     simulationBatch counterData = theSim;
     simulationParameterSet* testSet = counterData.sCPU();
     totalSteps = 0;
-    for (int j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
+    progressCounter = 0;
+    for (size_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         if (theSim.base().isInSequence) {
             testSet[j].progressCounter = &totalSteps;
             testSet[j].runType = -1;
@@ -1591,14 +1591,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         }
     }
     
-    theSim.base().runType = 0;
-    int error = 0;
-
+    
     theSim.base().isRunning = true;
-    progressCounter = 0;
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
-
     int assignedGPU = 0;
     bool forceCPU = 0;
     [[maybe_unused]]int SYCLitems = 0;
@@ -1672,7 +1668,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         secondPulldownSelection, pulldownSelection, use64bitFloatingPoint);
 
     for (int j = 0; j < (theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU); ++j) {
-
         theSim.sCPU()[j].runningOnCPU = forceCPU;
         theSim.sCPU()[j].assignedGPU = assignedGPU;
         if (theSim.base().isInSequence) {
@@ -1752,7 +1747,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             "<span color=\"#FF88FF\">Unhandled error! \nPlease let me know what you \nwere doing when this happened: \nnicholas.karpowicz@mpq.mpg.de</span>");
     }
 
-    saveDataSet(theSim.sCPU());
+    theSim.saveDataSet();
     theSim.base().isRunning = false;
 }
 
@@ -1765,7 +1760,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
 
     theSim.configure();
     theGui.requestSliderUpdate();
-    readFittingString(theSim.sCPU());
+    theSim.sCPU()->readFittingString();
     if (theSim.base().Nfitting == 0) {
         theGui.console.tPrint("Couldn't interpret fitting command.\n");
         return;
@@ -1773,7 +1768,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     progressCounter = 0;
     theSim.base().progressCounter = &progressCounter;
     if (theSim.base().fittingMode == 3) {
-        if (loadReferenceSpectrum(theSim.base().fittingPath, theSim.sCPU())) {
+        if (theSim.sCPU()->loadReferenceSpectrum()) {
             theGui.console.tPrint("Could not read reference file!\n");
             return;
         }
@@ -1831,8 +1826,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     for (int i = 0; i < theSim.base().Nfitting; ++i) {
         theGui.console.tPrint("{},  {}\n", i, theSim.base().fittingResult[i]);
     }
-    saveDataSet(theSim.sCPU());
-    deallocateGrids(theSim.sCPU(), false);
+    theSim.saveDataSet();
     theSim.base().isRunning = false;
 }
 

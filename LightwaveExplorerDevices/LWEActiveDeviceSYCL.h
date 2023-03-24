@@ -62,20 +62,20 @@ namespace deviceLibSYCLFP32{
 		return atan2f(x, y);
 	}
 
-	static constexpr oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
+	static oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
 		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
 		float theta = atan2f(x.imag(), x.real());
 		float rn = powf(r, y);
 		return oneapi::dpl::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
 	}
-	static constexpr inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
+	static inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::exp(x);
 
 	}
-	static constexpr inline float abs(const oneapi::dpl::complex<float> x){
+	static inline float abs(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::abs(x);
 	}
-	static constexpr inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
+	static inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::sqrt(x);
 	}
 };
