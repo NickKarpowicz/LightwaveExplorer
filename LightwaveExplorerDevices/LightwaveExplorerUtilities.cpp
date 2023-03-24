@@ -33,6 +33,8 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase) {
 	return 0;
 }
 
+
+//note to self: replace raw pointers with std::vector
 int simulationParameterSet::loadReferenceSpectrum() {
 	std::ifstream fs(fittingPath);
 	if (fs.fail()) {
@@ -925,13 +927,6 @@ double parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock) 
 
 	}
 	return result;
-}
-
-std::string getBasename(char* fullPath) {
-	std::string pathString(fullPath);
-	std::size_t positionOfName = pathString.find_last_of("/\\");
-	if (positionOfName == std::string::npos) return pathString;
-	return pathString.substr(positionOfName + 1);
 }
 
 std::string getBasename(const std::string& fullPath) {

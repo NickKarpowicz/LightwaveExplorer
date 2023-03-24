@@ -38,17 +38,15 @@ static const unsigned int minGridDimension = 8;
 #endif
 
 std::string     getBasename(const std::string& fullPath);
-void            removeCharacterFromString(std::string& s, char removedChar);
 int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
 double          cModulusSquared(const std::complex<double>& x);
 void            applyOp(char op, double* result, double* readout);
 double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
-std::string     getBasename(char* fullPath);
 void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
 int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);
-int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
+
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)
 // Z2D: complex to real (f to t)
@@ -643,6 +641,9 @@ public:
     }
     [[nodiscard]] double* getTotalSpectrum(size_t i) {
         return &totalSpectrum.data()[i * 3 * Nfreq];
+    }
+    [[nodiscard]] std::vector<simulationParameterSet>& getParameterVector() {
+        return parameters;
     }
     [[nodiscard]] simulationParameterSet* sCPU() {
         return parameters.data();

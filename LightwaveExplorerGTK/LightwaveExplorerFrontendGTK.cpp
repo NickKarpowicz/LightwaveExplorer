@@ -906,18 +906,17 @@ void createRunFile() {
     theSim.configure();
 
 
-    simulationBatch counterData = theSim;
-    simulationParameterSet* testSet = counterData.sCPU();
-    totalSteps = 0u;
-    for (int j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
+    std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
+    totalSteps = 0;
+    for (size_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         if (theSim.base().isInSequence) {
-            testSet[j].progressCounter = &totalSteps;
-            testSet[j].runType = -1;
-            solveNonlinearWaveEquationSequenceCounter(&testSet[j]);
+            counterVector[j].progressCounter = &totalSteps;
+            counterVector[j].runType = -1;
+            solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
         }
         else {
-            testSet[j].progressCounter = &totalSteps;
-            solveNonlinearWaveEquationCounter(&testSet[j]);
+            counterVector[j].progressCounter = &totalSteps;
+            solveNonlinearWaveEquationCounter(&counterVector[j]);
         }
     }
 
@@ -1571,19 +1570,19 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     theSim.configure();
     theGui.requestSliderUpdate();
 
-    //simulationBatch counterData = theSim;
-    std::vector<simulationParameterSet> testSet(theSim.base().Nsims*theSim.base().Nsims2, theSim.base());
+
+    std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     totalSteps = 0;
     progressCounter = 0;
     for (size_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         if (theSim.base().isInSequence) {
-            testSet[j].progressCounter = &totalSteps;
-            testSet[j].runType = -1;
-            solveNonlinearWaveEquationSequenceCounter(&testSet[j]);
+            counterVector[j].progressCounter = &totalSteps;
+            counterVector[j].runType = -1;
+            solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
         }
         else {
-            testSet[j].progressCounter = &totalSteps;
-            solveNonlinearWaveEquationCounter(&testSet[j]);
+            counterVector[j].progressCounter = &totalSteps;
+            solveNonlinearWaveEquationCounter(&counterVector[j]);
         }
     }
     
