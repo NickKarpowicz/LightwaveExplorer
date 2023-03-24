@@ -859,15 +859,12 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         }
         theGui.sequence.clear();
         theGui.fitCommand.clear();
-        theGui.console.cPrint("Reading params\n");
         int readParameters = readInputParametersFile(theSim.data(), theDatabase.db.data(), path.c_str());
-        theGui.console.cPrint("Fitting string: {}\n", theSim[0].fittingString);
         allocateGrids(theSim.data());
         theSim[0].isGridAllocated = true;
         if (readParameters == 61) {
             size_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
-            theGui.console.cPrint("Loading fields\n");
             loadSavedFields(theSim.data(), basePath.c_str());
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();
