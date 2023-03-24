@@ -645,38 +645,6 @@ int saveSettingsFile(const simulationParameterSet* sCPU) {
 	return 0;
 }
 
-
-int loadPulseFiles(simulationParameterSet* sCPU) {
-
-	//pulse type specifies if something has to be loaded to describe the pulses, or if they should be
-	//synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
-	int frogLines = 0;
-	int errCount = 0;
-	if ((*sCPU).pulse1FileType == 1) {
-		frogLines = loadFrogSpeck((*sCPU).field1FilePath, (*sCPU).loadedField1, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
-		if (frogLines > 1) {
-			(*sCPU).field1IsAllocated = true;
-		}
-		else {
-			(*sCPU).field1IsAllocated = false;
-			errCount++;
-		}
-	}
-
-	if ((*sCPU).pulse2FileType == 1) {
-		frogLines = loadFrogSpeck((*sCPU).field2FilePath, (*sCPU).loadedField2, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
-		if (frogLines > 1) {
-			(*sCPU).field2IsAllocated = true;
-		}
-		else {
-			(*sCPU).field2IsAllocated = false;
-			errCount++;
-		}
-	}
-	return errCount;
-}
-
-
 int readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath) {
 	std::ifstream fs(filePath);
 	std::string line;

@@ -2750,7 +2750,7 @@ using namespace hostFunctions;
 //Main (non sequence) solver. New device typeps should have a unique definition of the name
 // e.g. solveNonlinearWaveEquationSYCL so that the correct one may be called. That's why it's
 // a preprocessor definition here.
-unsigned long solveNonlinearWaveEquationX(void* lpParam) {
+unsigned long solveNonlinearWaveEquationX(simulationParameterSet* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
 	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);
 	if (d.memoryStatus) return 1;
@@ -2759,7 +2759,7 @@ unsigned long solveNonlinearWaveEquationX(void* lpParam) {
 }
 
 // Main function for running a sequence
-unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
+unsigned long solveNonlinearWaveEquationSequenceX(simulationParameterSet* lpParam) {
 	simulationParameterSet sCPUcurrent = *((simulationParameterSet*)lpParam);
 	simulationParameterSet* sCPU = &sCPUcurrent;
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;

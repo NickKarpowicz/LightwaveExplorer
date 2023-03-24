@@ -670,39 +670,7 @@ public:
         }
     }
 
-    class simulationBatch {
-        std::vector<simulationParameterSet> parameters;
-        std::vector<double> Ext;
-        std::vector<std::complex<double>> Ekw;
-        std::vector<double> loadedField1;
-        std::vector<double> loadedField2;
-        std::vector<double> fitReference;
-        std::vector<double> totalSpectrum;
-        size_t Nsimstotal;
-        size_t Nfreq;
-        size_t Ngrid;
-        size_t NgridC;
-
-    public:
-        simulationBatch(simulationParameterSet& base) {
-            Nfreq = base.Nfreq;
-            Nsimstotal = base.Nsims * base.Nsims2;
-            Ngrid = base.Ngrid;
-            NgridC = base.NgridC;
-            parameters = std::vector<simulationParameterSet>(Nsimstotal);
-            Ext = std::vector<double>(Nsimstotal * Ngrid);
-            Ekw = std::vector<std::complex<double>>(Nsimstotal * NgridC, std::complex<double>(0.0, 0.0));
-            if (base.pulse1FileType) {
-
-            }
-        }
-        constexpr double* const getExt(size_t i) {
-            if ((i + 1) * Ngrid < Ext.size()) return &Ext.data()[i * Ngrid];
-            else return nullptr;
-        }
-
-    };
-	constexpr double getByNumberWithMultiplier(const size_t index) {
+	[[nodiscard]] constexpr double getByNumberWithMultiplier(const size_t index) {
 		if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
         return  getByNumber(index) / multipliers[index];
 
@@ -710,6 +678,127 @@ public:
     void setByNumberWithMultiplier(const size_t index, const double value) {
         if (index > multipliers.size()) return;
         setByNumber(index, value * multipliers[index]);
+    }
+};
+int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
+
+class simulationBatch {
+    std::vector<double> Ext;
+    std::vector<std::complex<double>> Ekw;
+    std::vector<std::complex<double>> loadedField1;
+    std::vector<std::complex<double>> loadedField2;
+    std::vector<double> fitReference;
+    std::vector<double> totalSpectrum;
+    size_t Nsimstotal;
+    size_t Nsims;
+    size_t Nsims2;
+    size_t Nfreq;
+    size_t Ngrid;
+    size_t NgridC;
+    std::vector<simulationParameterSet> parameters;
+public:
+    simulationBatch() {
+        parameters = std::vector<simulationParameterSet>(1);
+    }
+    void configure() {
+        simulationParameterSet base = parameters[0];
+        Nfreq = base.Nfreq;
+        Nsims = base.Nsims;
+        Nsims2 = base.Nsims2;
+        Nsimstotal = Nsims * Nsims2;
+        Ngrid = base.Ngrid;
+        NgridC = base.NgridC;
+        parameters = std::vector<simulationParameterSet>(Nsimstotal);
+        Ext = std::vector<double>(Nsimstotal * Ngrid * 2);
+        Ekw = std::vector<std::complex<double>>(Nsimstotal * NgridC * 2);
+        totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
+        if (base.pulse1FileType) {
+            loadedField1 = std::vector<std::complex<double>>(Nfreq);
+        }
+        if (base.pulse2FileType) {
+            loadedField2 = std::vector<std::complex<double>>(Nfreq);
+        }
+        if (base.fittingMode > 2) {
+            fitReference = std::vector<double>(Nfreq);
+        }
+        base.isGridAllocated = true;
+        loadPulseFiles();
+
+        //configure
+        double step1 = (base.batchDestination - base.getByNumberWithMultiplier(base.batchIndex)) / (Nsims - 1);
+        double step2 = 0.0;
+        if (base.Nsims2 > 0) {
+            step2 = (base.batchDestination2 - base.getByNumberWithMultiplier(base.batchIndex2)) / (Nsims2 - 1);
+        }
+        
+        base.ExtOut = Ext.data();
+        base.EkwOut = Ekw.data();
+        base.totalSpectrum = totalSpectrum.data();
+        base.loadedField1 = loadedField1.data();
+        base.loadedField2 = loadedField2.data();
+        base.fittingReference = fitReference.data();
+        parameters[0] = base;
+        for (size_t i = 0; i < Nsims2; i++) {
+            size_t currentRow = i * Nsims;
+
+            if (currentRow > 0) {
+                parameters[currentRow] = parameters[0];
+            }
+            if (Nsims2 > 1) {
+                parameters[currentRow].setByNumberWithMultiplier(base.batchIndex2, base.getByNumberWithMultiplier(base.batchIndex2) + i * step2);
+            }
+
+            for (size_t j = 0; j < Nsims; j++) {
+
+                if (j > 0) {
+                    parameters[j + currentRow] = parameters[currentRow];
+                }
+
+                parameters[j + currentRow].batchLoc1 = j;
+                parameters[j + currentRow].batchLoc2 = i;
+                parameters[j + currentRow].ExtOut = getExt((j + currentRow));
+                parameters[j + currentRow].EkwOut = getEkw((j + currentRow));
+                parameters[j + currentRow].totalSpectrum = getTotalSpectrum((j + currentRow));
+                parameters[j + currentRow].isFollowerInSequence = false;
+                parameters[j + currentRow].setByNumberWithMultiplier(base.batchIndex, base.getByNumberWithMultiplier(base.batchIndex) + j * step1);
+            }
+        }
+        base = parameters[0];
+    }
+    [[nodiscard]] double* getExt(size_t i) {
+        if (i * Ngrid < Ext.size()) return &Ext.data()[i * Ngrid * 2];
+        else return nullptr;
+    }
+    [[nodiscard]] std::complex<double>* getEkw(size_t i) {
+        if (i * NgridC < Ekw.size()) return &Ekw.data()[i * NgridC * 2];
+        else return nullptr;
+    }
+    [[nodiscard]] double* getTotalSpectrum(size_t i) {
+        if (i * (Nfreq * 3) < totalSpectrum.size()) return &totalSpectrum.data()[i * 3 * Nfreq];
+        else return nullptr;
+    }
+    [[nodiscard]] simulationParameterSet* sCPU() {
+        return parameters.data();
+    }
+
+    [[nodiscard]] simulationParameterSet& base() {
+        return parameters[0];
+    }
+
+    void loadPulseFiles() {
+        simulationParameterSet* sCPU = parameters.data();
+        //pulse type specifies if something has to be loaded to describe the pulses, or if they should be
+        //synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
+        int frogLines = 0;
+        if ((*sCPU).pulse1FileType == 1) {
+            frogLines = loadFrogSpeck((*sCPU).field1FilePath, (*sCPU).loadedField1, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
+            (*sCPU).field1IsAllocated = (frogLines > 1);
+        }
+
+        if ((*sCPU).pulse2FileType == 1) {
+            frogLines = loadFrogSpeck((*sCPU).field2FilePath, (*sCPU).loadedField2, (*sCPU).Ntime, (*sCPU).fStep, 0.0);
+            (*sCPU).field1IsAllocated = (frogLines > 1);
+        }
     }
 };
 

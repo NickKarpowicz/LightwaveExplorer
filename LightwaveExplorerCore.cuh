@@ -1,7 +1,7 @@
 #include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 
-unsigned long   solveNonlinearWaveEquationSequence(void* lpParam);
-unsigned long	solveNonlinearWaveEquation(void* lpParam);
+unsigned long   solveNonlinearWaveEquationSequence(simulationParameterSet* lpParam);
+unsigned long	solveNonlinearWaveEquation(simulationParameterSet* lpParam);
 unsigned long   runDlibFitting(simulationParameterSet* sCPU);
 
 
