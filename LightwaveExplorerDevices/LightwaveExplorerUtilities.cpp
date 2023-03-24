@@ -608,18 +608,18 @@ void simulationBatch::configure() {
 	simulationParameterSet base = parameters[0];
 	parameters.resize(Nsimstotal, base);
 
-	Ext.resize(Nsimstotal * Ngrid * 2);
-	Ekw.resize(Nsimstotal * NgridC * 2);
+	Ext = std::vector<double>(Nsimstotal * Ngrid * 2, 0.0);
+	Ekw = std::vector<std::complex<double>>(Nsimstotal * NgridC * 2, std::complex<double>(0.0, 0.0));
+	totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
 
-	totalSpectrum.resize(Nfreq * Nsimstotal * 3);
 	if (parameters[0].pulse1FileType) {
-		loadedField1.resize(Nfreq);
+		loadedField1 = std::vector<std::complex<double>>(Nfreq, std::complex<double>(0.0, 0.0));
 	}
 	if (parameters[0].pulse2FileType) {
-		loadedField2.resize(Nfreq);
+		loadedField2 = std::vector<std::complex<double>>(Nfreq, std::complex<double>(0.0, 0.0));
 	}
 	if (parameters[0].fittingMode > 2) {
-		fitReference.resize(Nfreq);
+		fitReference = std::vector<double>(Nfreq, 0.0);
 	}
 
 	//configure
