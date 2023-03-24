@@ -1337,9 +1337,6 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.plot(cr);
 }
 
-
-
-
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim.base().isGridAllocated) {
         LweColor black(0, 0, 0, 0);

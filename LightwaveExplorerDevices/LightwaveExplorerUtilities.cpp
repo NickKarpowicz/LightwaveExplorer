@@ -663,7 +663,6 @@ void simulationBatch::configure() {
 }
 
 void simulationBatch::loadPulseFiles() {
-	simulationParameterSet* sCPU = parameters.data();
 	//pulse type specifies if something has to be loaded to describe the pulses, or if they should be
 	//synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
 	int frogLines = 0;
