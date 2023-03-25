@@ -383,6 +383,7 @@ public:
                     y1 = height - scaleY * ((double)y[i] - (double)minY);
                 }
                 if (y1 <= height) {
+                    cairo_new_path(cr);
                     cairo_arc(cr, x1, y1, radius, 0, twoPi<double>());
                     cairo_fill(cr);
                 }

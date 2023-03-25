@@ -41,7 +41,6 @@ int hardwareCheck(int* CUDAdeviceCount) {
 template <typename deviceFP, typename deviceComplex>
 class counterDevice {
 private:
-#include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = 0;
 	bool isCylindric = 0;
 	deviceParameterSet<deviceFP, deviceComplex> dParamslocal;
@@ -64,7 +63,8 @@ public:
 		isCylindric = 0;
 		cParams = sCPU;
 		dParamsDevice = &dParamslocal;
-		initializeDeviceParameters(sCPU);
+		sCPU->initializeDeviceParameters(s);
+		hasPlasma = s->hasPlasma;
 	}
 
 	~counterDevice() {
@@ -100,7 +100,8 @@ public:
 	void deallocateSet() {
 	}
 	void reset(simulationParameterSet* sCPU) {
-		initializeDeviceParameters(sCPU);
+		sCPU->initializeDeviceParameters(s);
+		hasPlasma = s->hasPlasma;
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		return 0;

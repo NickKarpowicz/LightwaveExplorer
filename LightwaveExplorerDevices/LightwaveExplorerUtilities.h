@@ -609,6 +609,140 @@ public:
     int saveSettingsFile();
     double saveSlurmScript(int gpuType, int gpuCount, size_t totalSteps);
     int readFittingString();
+
+
+    template <typename deviceFP, typename C>
+    void initializeDeviceParameters(deviceParameterSet<deviceFP, C>* s) {
+        (*s).Ntime = Ntime;
+        (*s).Nspace = Nspace;
+        (*s).Nspace2 = Nspace2;
+        (*s).is3D = is3D;
+        (*s).Nfreq = ((*s).Ntime / 2 + 1);
+        (*s).Ngrid = (*s).Ntime * (*s).Nspace * (*s).Nspace2;
+        (*s).NgridC = (*s).Nfreq * (*s).Nspace * (*s).Nspace2; //size of the positive frequency side of the grid
+        (*s).fftNorm = (deviceFP)1.0 / (*s).Ngrid;
+        (*s).dt = (deviceFP)tStep;
+        (*s).dx = (deviceFP)rStep;
+        (*s).dk1 = (deviceFP)(twoPi<double>() / (Nspace * rStep));
+        (*s).dk2 = (deviceFP)(twoPi<double>() / (Nspace2 * rStep));
+        (*s).fStep = (deviceFP)fStep;
+        (*s).Nsteps = (size_t)round(crystalThickness / propagationStep);
+        (*s).h = (deviceFP)crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
+        (*s).axesNumber = axesNumber;
+        (*s).sellmeierType = sellmeierType;
+        (*s).crystalPhi = (deviceFP)crystalPhi;
+        (*s).crystalTheta = (deviceFP)crystalTheta;
+        (*s).f0 = (deviceFP)pulse1.frequency;
+        (*s).Nthread = threadsPerBlock;
+        (*s).Nblock = (int)((*s).Ngrid / threadsPerBlock);
+        (*s).NblockC = (int)((*s).NgridC / threadsPerBlock);
+        (*s).isCylindric = isCylindric;
+        (*s).forceLinear = forceLinear;
+        (*s).isNonLinear = (nonlinearSwitches[0] + nonlinearSwitches[1]) > 0;
+        (*s).isUsingMillersRule = (crystalDatabase[materialIndex].nonlinearReferenceFrequencies[0]) != 0.0;
+
+        if (nonlinearAbsorptionStrength > 0.) {
+            (*s).hasPlasma = true;
+            (*s).isNonLinear = true;
+        }
+        else {
+            (*s).hasPlasma = false;
+        }
+
+        if ((*s).forceLinear) {
+            (*s).hasPlasma = false;
+            (*s).isNonLinear = false;
+        }
+    }
+
+    template <typename deviceFP, typename C>
+    void fillRotationMatricies(deviceParameterSet<deviceFP, C>* s) {
+        double cosT = cos(crystalTheta);
+        double sinT = sin(crystalTheta);
+        double cosP = cos(crystalPhi);
+        double sinP = sin(crystalPhi);
+        double forward[9] =
+        { cosT * cosP, sinP, -sinT * cosP, -sinP * cosT, cosP, sinP * sinT, sinT, 0, cosT };
+
+        //reverse direction (different order of operations)
+        double backward[9] =
+        { cosT * cosP, -sinP * cosT, sinT, sinP, cosP, 0, -sinT * cosP, sinP * sinT, cosT };
+
+        for (size_t i = 0; i < 9; i++) {
+            (*s).rotationForward[i] = (deviceFP)forward[i];
+            (*s).rotationBackward[i] = (deviceFP)backward[i];
+        }
+    }
+
+    template<typename deviceFP, typename C>
+    void finishConfiguration(deviceParameterSet<deviceFP,C>* s) {
+        size_t beamExpansionFactor = 1;
+        if ((*s).isCylindric) {
+            beamExpansionFactor = 2;
+        }
+        //second polarization grids are to pointers within the first polarization
+        //to have contiguous memory
+        (*s).gridETime2 = (*s).gridETime1 + (*s).Ngrid;
+        (*s).workspace2 = (*s).workspace1 + (*s).NgridC;
+        (*s).gridPolarizationTime2 = (*s).gridPolarizationTime1 + (*s).Ngrid;
+        (*s).workspace2P = (*s).workspace1 + beamExpansionFactor * (*s).NgridC;
+        (*s).k2 = (*s).k1 + (*s).NgridC;
+        (*s).chiLinear2 = (*s).chiLinear1 + (*s).Nfreq;
+        (*s).fieldFactor2 = (*s).fieldFactor1 + (*s).Nfreq;
+        (*s).inverseChiLinear2 = (*s).inverseChiLinear1 + (*s).Nfreq;
+        (*s).gridRadialLaplacian2 = (*s).gridRadialLaplacian1 + (*s).Ngrid;
+        (*s).gridPropagationFactor1Rho2 = (*s).gridPropagationFactor1Rho1 + (*s).NgridC;
+        (*s).gridPolarizationFactor2 = (*s).gridPolarizationFactor1 + (*s).NgridC;
+        (*s).gridEFrequency1Next2 = (*s).gridEFrequency1Next1 + (*s).NgridC;
+        (*s).gridPropagationFactor2 = (*s).gridPropagationFactor1 + (*s).NgridC;
+        (*s).gridEFrequency2 = (*s).gridEFrequency1 + (*s).NgridC;
+
+        double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
+        for (size_t i = 0; i < 6; ++i) {
+            firstDerivativeOperation[i] *= (-2.0 / ((*s).dx));
+        }
+
+        //set nonlinearSwitches[3] to the number of photons needed to overcome bandgap
+        nonlinearSwitches[3] = (int)ceil(bandGapElectronVolts * 241.79893e12 / pulse1.frequency) - 2;
+        double plasmaParametersCPU[6] = { 0 };
+
+
+        plasmaParametersCPU[0] = nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
+        plasmaParametersCPU[1] = drudeGamma; //gamma
+        if (nonlinearAbsorptionStrength > 0.) {
+            plasmaParametersCPU[2] = tStep * tStep
+                * 2.817832e-08 / (1.6022e-19 * bandGapElectronVolts * effectiveMass); // (dt^2)*e* e / (m * band gap));
+        }
+        else {
+            plasmaParametersCPU[2] = 0;
+        }
+
+        for (int j = 0; j < 18; ++j) {
+            (*s).chi2Tensor[j] = (deviceFP)(2e-12 * chi2Tensor[j]); //go from d in pm/V to chi2 in m/V
+            if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
+        }
+
+        for (int i = 0; i < 4; ++i) {
+            (*s).nonlinearSwitches[i] = nonlinearSwitches[i];
+        }
+
+        for (size_t i = 0; i < 81; i++) {
+            (*s).chi3Tensor[i] = (deviceFP)chi3Tensor[i];
+        }
+
+        for (size_t i = 0; i < 6; i++) {
+            (*s).absorptionParameters[i] = (deviceFP)absorptionParameters[i];
+        }
+
+        for (size_t i = 0; i < 6; i++) {
+            (*s).plasmaParameters[i] = (deviceFP)plasmaParametersCPU[i];
+        }
+
+        for (size_t i = 0; i < 6; i++) {
+            (*s).firstDerivativeOperation[i] = (deviceFP)firstDerivativeOperation[i];
+        }
+
+    }
 };
 
 class simulationBatch {
