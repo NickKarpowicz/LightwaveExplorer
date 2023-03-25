@@ -101,6 +101,7 @@ int main(int argc, char* argv[]){
 	std::cout << "Finished after" <<
 		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
 		<< "s" << std::endl;
+	theSim.saveDataSet();
 	delete[] threadBlock;
 	return 0;
 }
