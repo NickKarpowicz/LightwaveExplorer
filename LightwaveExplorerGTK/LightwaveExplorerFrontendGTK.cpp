@@ -858,6 +858,7 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
             size_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
             theSim.base().loadSavedFields(basePath);
+
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();
             theGui.requestPlotUpdate();

@@ -372,6 +372,8 @@ public:
 
         //Lambdas for plotting a line
         //currently dots are always there but has been refactored to make it easier to turn them off if I want.
+        //I would think it would be faster to only call cairo_fill() at the end, but this requires calling cairo_cloase_path()
+        //in the loop, which seems to be even slower....
         auto plotCairoDots = [&](double* y) {
             currentColor.setCairo(cr);
             for (size_t i = iMin; i < iMax - 1; ++i) {
