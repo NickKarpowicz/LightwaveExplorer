@@ -393,7 +393,7 @@ public:
 
         auto plotCairoDots = [&](double* y) {
             currentColor.setCairo(cr);
-            for (size_t i = 0; i < (iMax-iMin); ++i) {
+            for (size_t i = 0; i < (iMax-iMin-1); ++i) {
                 if (scaledY[i] <= height) {
                     cairo_arc(cr, scaledX[i], scaledY[i], radius, 0, twoPi<double>());
                     cairo_fill(cr);
