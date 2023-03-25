@@ -7,7 +7,7 @@ namespace deviceFunctions {
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details
 	template<typename T, typename U>
-	deviceFunction static void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, long long i, T* expandedBeam1, const T* sourceBeam1, const T* sourceBeam2) {
+	deviceFunction static void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, const long long i, T* expandedBeam1, const T* sourceBeam1, const T* sourceBeam2) {
 		long long j = i / (*s).Ntime; //spatial coordinate
 		long long k = i % (*s).Ntime; //temporal coordinate
 
@@ -24,7 +24,7 @@ namespace deviceFunctions {
 	//Calculate the fourier optics propagator (e^ik_z*d) for a given set of values of the maknitude of k, transverse k (dk1, dk2)
 	//a reference k0 which defines the speed of the moving frame, and distance d over which to propagate
 	template<typename real_t, typename complex_t>
-	deviceFunction static complex_t fourierPropagator(complex_t k, real_t dk1, real_t dk2, real_t k0, real_t d) {
+	deviceFunction static complex_t fourierPropagator(const complex_t k, const real_t dk1, const real_t dk2, const real_t k0, const real_t d) {
 		if (deviceFPLib::abs(dk2) < 0.1f * k.real() && deviceFPLib::abs(dk1) < 0.1f *  k.real()) {
 			return deviceLib::exp(complex_t(0.0,-d)*((k - k0) - (dk1 * dk1) / (2.0f * k.real()) - (dk2 * dk2) / (2.0f * k.real())));
 		}
@@ -41,7 +41,7 @@ namespace deviceFunctions {
 	//macro for the two versions because I don't want to lose precision in the double version
 	//but Intel Xe graphics need the constants as floats, and CUDA doesn't work with the
 	//[[maybe_unused]] attribute... and I don't like compiler warnings.
-	deviceFunction static float deviceDawson(const float x) {
+	[[maybe_unused]] deviceFunction static float deviceDawson(const float x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
 		int n = 15;
 		float h = 0.3f;
@@ -65,7 +65,7 @@ namespace deviceFunctions {
 		return invSqrtPi<float>() * d;
 	}
 
-	deviceFunction static double deviceDawson(const double x) {
+	[[maybe_unused]] deviceFunction static double deviceDawson(const double x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
 		int n = 15;
 		double h = 0.3;
@@ -101,8 +101,8 @@ namespace deviceFunctions {
 	//ii: sqrt(-1)
 	//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static deviceComplex sellmeierFunc(deviceFP ls, deviceFP omega,const deviceFP* a, int eqn) {
-		deviceFP omega2 = omega * omega;
+	deviceFunction static deviceComplex sellmeierFunc(const deviceFP ls, const deviceFP omega,const deviceFP* a, const int eqn) {
+		const deviceFP omega2 = omega * omega;
 		deviceFP realPart;
 		deviceComplex compPart;
 		switch (eqn) {
@@ -167,7 +167,7 @@ namespace deviceFunctions {
 	//Sellmeier equation for refractive indicies
 	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static deviceComplex sellmeierCuda(
-		deviceComplex* ne, deviceComplex* no, const deviceFP* a, deviceFP f, deviceFP theta, deviceFP phi, int type, int eqn) {
+		deviceComplex* ne, deviceComplex* no, const deviceFP* a, const deviceFP f, const deviceFP theta, const deviceFP phi, const int type, const int eqn) {
 		if (f == 0.0f) {
 			*ne = deviceComplex(1.0f, 0.0f); 
 			*no = deviceComplex(1.0f, 0.0f); 
@@ -175,7 +175,7 @@ namespace deviceFunctions {
 		} //exit immediately for f=0
 		deviceFP ls = 2.99792458e14f / f; //wavelength in microns
 		ls *= ls; //only wavelength^2 is ever used
-		deviceFP omega = twoPi<deviceFP>() * maxN(f,-f);
+		const deviceFP omega = twoPi<deviceFP>() * maxN(f,-f);
 
 		//option 0: isotropic
 		if (type == 0) {
@@ -236,7 +236,7 @@ namespace deviceFunctions {
 	// returns rho at the given index j
 	template<typename deviceFP>
 	deviceFunction static deviceFP resolveNeighborsInOffsetRadialSymmetry(
-		long long* neighbors, long long N, int j, deviceFP dr, long long Ntime, long long h) {
+		long long* neighbors, const long long N, const int j, const deviceFP dr, const long long Ntime, const long long h) {
 		if (j < N / 2) {
 			neighbors[0] = (N - j - 2) * Ntime + h;
 			neighbors[1] = (j + 1) * Ntime + h;
@@ -261,7 +261,7 @@ namespace deviceFunctions {
 	//the neighbors aren't required
 	template<typename deviceFP>
 	deviceFunction static deviceFP rhoInRadialSymmetry(
-		long long N, int j, deviceFP dr) {
+		const long long N, const int j, const deviceFP dr) {
 		if (j < N / 2) {
 			return deviceFPLib::abs( - (dr * (j - N / 2) + 0.25f * dr));
 		}
@@ -292,7 +292,7 @@ namespace deviceFunctions {
 	// If biaxial, solve 2D problem
 	// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients, long long i, deviceComplex* n1, deviceComplex* n2) {
+	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients, const long long i, deviceComplex* n1, deviceComplex* n2) {
 		unsigned long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
 		col = i / ((*s).Nfreq - 1);
@@ -532,12 +532,11 @@ namespace kernels {
 	//Calculate the energy spectrum after a 3D propagation
 	kernelLWE(totalSpectrum3DKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t i = localIndex;
-		size_t j;
 
 		deviceFP beamTotal1{};
 		deviceFP beamTotal2{};
 		//Integrate total beam power
-		for (j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
+		for (size_t j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
 			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 		}
@@ -601,7 +600,7 @@ namespace kernels {
 
 	//rotate the field around the propagation axis (basis change)
 	kernelLWE(rotateFieldKernel, const deviceComplex* Ein1, const deviceComplex* Ein2, deviceComplex* Eout1,
-		deviceComplex* Eout2, deviceFP rotationAngle) {
+		deviceComplex* Eout2, const deviceFP rotationAngle) {
 		long long i = localIndex;
 		Eout1[i] = deviceFPLib::cos(rotationAngle) * Ein1[i] - deviceFPLib::sin(rotationAngle) * Ein2[i];
 		Eout2[i] = deviceFPLib::sin(rotationAngle) * Ein1[i] + deviceFPLib::cos(rotationAngle) * Ein2[i];
@@ -637,7 +636,7 @@ namespace kernels {
 		}
 	};
 
-	kernelLWE(apertureFarFieldKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
+	kernelLWE(apertureFarFieldKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP radius, const deviceFP activationParameter, const deviceFP xOffset, const deviceFP yOffset) {
 		long long i = localIndex;
 		long long col, j, k, l;
 		deviceComplex cuZero = deviceComplex{};
@@ -676,7 +675,7 @@ namespace kernels {
 		(*s).gridEFrequency2[i] *= a;
 	};
 
-	kernelLWE(apertureFarFieldKernelHankel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
+	kernelLWE(apertureFarFieldKernelHankel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP radius, const deviceFP activationParameter, const deviceFP xOffset, const deviceFP yOffset) {
 		long long i = localIndex;
 		long long col, j, k;
 		deviceComplex cuZero = deviceComplex{};
@@ -708,7 +707,7 @@ namespace kernels {
 
 
 	//apply a spectral filter to the beam (full details in docs)
-	kernelLWE(filterKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP f0, deviceFP bandwidth, int order, deviceFP inBandAmplitude, deviceFP outOfBandAmplitude) {
+	kernelLWE(filterKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP f0, const deviceFP bandwidth, const int order, const deviceFP inBandAmplitude, const deviceFP outOfBandAmplitude) {
 		long long i = localIndex;
 		long long col, j;
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
@@ -730,7 +729,7 @@ namespace kernels {
 	// gamma - linewidth (radHz)
 	// radius - radius of the spot (m)
 	// order - supergaussian order of the spot shape
-	kernelLWE(lorentzianSpotKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP amplitude, deviceFP f0, deviceFP gamma, deviceFP radius, deviceFP order) {
+	kernelLWE(lorentzianSpotKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP amplitude, const deviceFP f0, const deviceFP gamma, const deviceFP radius, const deviceFP order) {
 		long long i = localIndex;
 		long long j, h, k, col;
 
@@ -771,7 +770,7 @@ namespace kernels {
 	};
 
 	//Apply a (soft, possibly) aperture
-	kernelLWE(apertureKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP radius, deviceFP activationParameter) {
+	kernelLWE(apertureKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP radius, const deviceFP activationParameter) {
 		long long i = localIndex;
 		long long j, k, col;
 
@@ -795,7 +794,7 @@ namespace kernels {
 	};
 
 	//apply a spatial phase corresponding to a parabolic mirror (on-axis)
-	kernelLWE(parabolicMirrorKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP focus) {
+	kernelLWE(parabolicMirrorKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP focus) {
 		long long i = localIndex;
 		long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
@@ -872,7 +871,7 @@ namespace kernels {
 	};
 
 	//apply linear propagation through a given medium to the fields
-	kernelLWE(applyLinearPropagationKernel, const deviceFP* sellmeierCoefficients, deviceFP thickness, const deviceParameterSet<deviceFP, deviceComplex>* s) {
+	kernelLWE(applyLinearPropagationKernel, const deviceFP* sellmeierCoefficients, const deviceFP thickness, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		long long i = localIndex;
 		long long j, h, k, col;
 		int axesNumber = (*s).axesNumber;
@@ -1276,8 +1275,8 @@ namespace kernels {
 		}
 	};
 
-	kernelLWE(materialPhaseKernel, deviceFP df, size_t Ntime, deviceFP* a, deviceFP f0,
-		deviceFP thickness, deviceFP* phase1) {
+	kernelLWE(materialPhaseKernel, const deviceFP df, const size_t Ntime, const deviceFP* a, const deviceFP f0,
+		const deviceFP thickness, deviceFP* phase1) {
 		size_t i = localIndex;
 		//frequency being resolved by current thread
 		deviceFP f = i * df;
@@ -1585,8 +1584,8 @@ namespace kernels {
 
 	//crease a pulse on the grid for the 2D modes. Note that normalization of the 2D mode assumes radial symmetry (i.e. that it's
 	//a gaussian beam, not an infinite plane wave, which would have zero amplitude for finite energy).
-	kernelLWE(beamGenerationKernel2D, deviceComplex* field, pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet<deviceFP, deviceComplex>* s,
-		bool hasLoadedField, deviceComplex* loadedField, deviceFP* materialPhase, deviceFP* sellmeierCoefficients) {
+	kernelLWE(beamGenerationKernel2D, deviceComplex* field, const pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet<deviceFP, deviceComplex>* s,
+		const bool hasLoadedField, const deviceComplex* loadedField, const deviceFP* materialPhase, const deviceFP* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, h;
 		h = 1 + i % ((*s).Nfreq - 1);
@@ -1643,8 +1642,8 @@ namespace kernels {
 	};
 
 	//Generate a beam in full 3D mode
-	kernelLWE(beamGenerationKernel3D, deviceComplex* field, pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet<deviceFP, deviceComplex>* s,
-		bool hasLoadedField, deviceComplex* loadedField, deviceFP* materialPhase, deviceFP* sellmeierCoefficients) {
+	kernelLWE(beamGenerationKernel3D, deviceComplex* field, const pulse<deviceFP>* p, deviceFP* pulseSum, deviceParameterSet<deviceFP, deviceComplex>* s,
+		const bool hasLoadedField, const deviceComplex* loadedField, const deviceFP* materialPhase, const deviceFP* sellmeierCoefficients) {
 		long long i = localIndex;
 		long long j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
@@ -1712,18 +1711,18 @@ namespace kernels {
 		atomicAdd(pulseSum, pointEnergy);
 	};
 
-	kernelLWE(multiplyByConstantKernelD, deviceFP* A, deviceFP val) {
+	kernelLWE(multiplyByConstantKernelD, deviceFP* A, const deviceFP val) {
 		long long i = localIndex;
 		A[i] = val * A[i];
 	};
 
-	kernelLWE(multiplyByConstantKernelDZ, deviceComplex* A, deviceFP val) {
+	kernelLWE(multiplyByConstantKernelDZ, deviceComplex* A, const deviceFP val) {
 		size_t i = localIndex;
 		A[i] = val * A[i];
 
 	};
 
-	kernelLWE(multiplicationKernelCompactDoubleVector, deviceFP* A, deviceComplex* B, deviceComplex* C, const deviceParameterSet<deviceFP, deviceComplex>* s) {
+	kernelLWE(multiplicationKernelCompactDoubleVector, const deviceFP* A, const deviceComplex* B, deviceComplex* C, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		long long i = localIndex;
 		long long h = i % (*s).Nfreq; //temporal coordinate
 
