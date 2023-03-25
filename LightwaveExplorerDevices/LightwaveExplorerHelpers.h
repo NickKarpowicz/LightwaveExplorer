@@ -74,6 +74,63 @@ hostOrDevice static constexpr T kLorentzian() {
     return (T)3182.607353999257;
 }
 
+//give the Dawson function value at x
+//used for Gaussian-based "Sellmeier" equation, as it is the Hilbert transform of the Gaussian function (susceptibility obeys Kramers-Kronig relations)
+//based on Rybicki G.B., Computers in Physics, 3,85-87 (1989)
+//this is the simplest implementation of the formula he provides, he also suggests speed improvements in case
+//evaluation of this becomes a bottleneck
+//macro for the two versions because I don't want to lose precision in the double version
+//but Intel Xe graphics need the constants as floats, and CUDA doesn't work with the
+//[[maybe_unused]] attribute... and I don't like compiler warnings.
+[[maybe_unused]] hostOrDevice static float deviceDawson(const float x) {
+	//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
+	int n = 15;
+	float h = 0.3f;
+
+	//series expansion for small x
+	if (fabs(x) < 0.2f) {
+		float x2 = x * x;
+		float x4 = x2 * x2;
+		return x * (1.0f - 2.0f * x2 / 3.0f + 4.0f * x4 / 15.0f - 8.0f * x2 * x4 / 105.0f + (16.0f / 945.0f) * x4 * x4 - (32.0f / 10395.0f) * x4 * x4 * x2);
+	}
+
+	int n0 = 2 * int(round(0.5f * x / h));
+	float x0 = h * n0;
+	float xp = x - x0;
+	float d = 0.0f;
+	for (int i = -n; i < n; i++) {
+		if (i % 2 != 0) {
+			d += expf(-(xp - i * h) * (xp - i * h)) / (i + n0);
+		}
+	}
+	return invSqrtPi<float>() * d;
+}
+
+[[maybe_unused]] hostOrDevice static double deviceDawson(const double x) {
+	//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
+	int n = 15;
+	double h = 0.3;
+
+	//series expansion for small x
+	if (abs(x) < 0.2) {
+		double x2 = x * x;
+		double x4 = x2 * x2;
+		return x * (1.0 - 2.0 * x2 / 3.0 + 4.0 * x4 / 15.0 - 8.0 * x2 * x4 / 105.0 + (16.0 / 945) * x4 * x4 - (32.0 / 10395) * x4 * x4 * x2);
+	}
+
+	int n0 = 2 * int(round(0.5 * x / h));
+	double x0 = h * n0;
+	double xp = x - x0;
+	double d = 0.0;
+	for (int i = -n; i < n; i++) {
+		if (i % 2 != 0) {
+			d += exp(-(xp - i * h) * (xp - i * h)) / (i + n0);
+		}
+	}
+	return invSqrtPi<double>() * d;
+}
+
+
 //this is a job for std::erase, but when running the code on the cluster, everything
 //is done with nvcc, with only an old version of cmake available. This means I can't
 //use c++20 features there. So if it's compiled with c++17, use the more complicated

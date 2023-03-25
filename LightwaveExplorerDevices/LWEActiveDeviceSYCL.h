@@ -14,21 +14,21 @@ static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 }
 
 //if running in 64-bit mode, define complex math operations with fixed float constants
-#if LWEFLOATINGPOINT==64
 
-		static constexpr oneapi::dpl::complex<double> operator+(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
 
-		static constexpr oneapi::dpl::complex<double> operator+(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator+(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
 
-		static constexpr oneapi::dpl::complex<double> operator-(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() - f, x.imag()); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator+(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
 
-		static constexpr oneapi::dpl::complex<double> operator*(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator-(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() - f, x.imag()); }
 
-		static constexpr oneapi::dpl::complex<double> operator*(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator*(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
 
-		static constexpr oneapi::dpl::complex<double> operator/(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator*(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
 
-#endif
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator/(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); }
+
+
 
 namespace deviceLibSYCLFP32{
 	static constexpr inline float exp(const float x){
