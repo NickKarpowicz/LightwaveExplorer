@@ -14,7 +14,7 @@ int main(int argc, char* argv[]){
 	char* filepath = argv[1];
 	int i, j;
 
-	size_t progressCounter = 0;
+	std::atomic_uint32_t progressCounter = 0;
 	int CUDAdeviceCount = 1;
 
 	if (hardwareCheck(&CUDAdeviceCount)) return 1;
@@ -25,8 +25,7 @@ int main(int argc, char* argv[]){
 	}
 
 	// allocate databases, main structs
-	simulationParameterSet initializationStruct;
-	memset(&initializationStruct, 0, sizeof(simulationParameterSet));
+	simlationBatch theSim;
 	crystalDatabase db;
 	initializationStruct.crystalDatabase = db.db.data();
 	initializationStruct.progressCounter = &progressCounter;
@@ -41,24 +40,15 @@ int main(int argc, char* argv[]){
 	}
 
 	// read from settings file
-	if (readInputParametersFile(&initializationStruct, db.db.data(), filepath) == 1) {
+	if (theSim.sCPU()->readInputParametersFile(db.db.data(), filepath) == 1) {
 		std::cout << "Could not read input file." << std::endl;
 		return 13;
 	}
-	size_t Ntotal = minN(1, initializationStruct.Nsims * minN(1, initializationStruct.Nsims2));
-	simulationParameterSet* sCPU = new simulationParameterSet[Ntotal];
-	memcpy(sCPU, &initializationStruct, sizeof(simulationParameterSet));
-	allocateGrids(sCPU);
-	if (loadPulseFiles(sCPU) == 1) {
-		std::cout << "Could not read pulse file." << std::endl;
-		deallocateGrids(sCPU, true);
-		delete[] sCPU;
-		return 14;
-	}
 
+	
 	if (((*sCPU).sequenceString[0] != 'N') && (*sCPU).sequenceString[0] != 0) (*sCPU).isInSequence = true;
-	configureBatchMode(sCPU);
-	readFittingString(sCPU);
+	theSim.configure();
+	simulationParameterSet* sCPU = theSim.sCPU();
 	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
 	if ((*sCPU).Nfitting != 0) {
@@ -114,9 +104,6 @@ int main(int argc, char* argv[]){
 	std::cout << "Finished after" <<
 		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
 		<< "s" << std::endl;
-	saveDataSet(sCPU);
 	delete[] threadBlock;
-	deallocateGrids(sCPU, true);
-	delete[] sCPU;
 	return 0;
 }
