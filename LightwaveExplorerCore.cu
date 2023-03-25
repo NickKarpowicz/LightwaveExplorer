@@ -377,7 +377,6 @@ namespace deviceFunctions {
 			*n2 = n[1][1];
 			return;
 		}
-
 	}
 }
 using namespace deviceFunctions;
@@ -1355,8 +1354,8 @@ namespace kernels {
 	kernelLWE(plasmaCurrentKernel_twoStage_B, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t j = localIndex;
 		j *= (*s).Ntime;
-		deviceFP N = 0.0f;
-		deviceFP integralx = 0.0f;
+		deviceFP N{};
+		deviceFP integralx{};
 		deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
 		deviceFP* dN = j + (deviceFP*)(*s).workspace1;
 		deviceFP* E = &(*s).gridETime1[j];
@@ -1547,7 +1546,7 @@ namespace kernels {
 			-((*p).cep
 				+ twoPi<deviceFP>() * f * ((*p).delay - 0.5f * (*s).dt * (*s).Ntime)
 				+ 0.5f * (*p).gdd * w * w
-				+ (*p).tod * w * w * w / 6.0f
+				+ sixth<deviceFP>()*(*p).tod * w * w * w
 				+ materialPhase[h]));
 		specfac = deviceLib::exp(specfac + specphase);
 
@@ -1851,7 +1850,6 @@ namespace hostFunctions{
 			(*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
 		d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, 
 			multiplyByConstantKernelDZ, (*sc).workspace1, (*sc).fftNorm);
-		//d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 
 		return 0;
 	}
