@@ -1711,7 +1711,6 @@ namespace kernels {
 using namespace kernels;
 
 namespace hostFunctions{
-	typedef dlib::matrix<deviceFP, 0, 1> column_vector;
 	static simulationParameterSet* fittingSet;
 	static ActiveDevice* dFit;
 
@@ -2220,8 +2219,6 @@ namespace hostFunctions{
 		}
 		return 0;
 	}
-
-
 
 	static unsigned long int solveNonlinearWaveEquationWithDevice(ActiveDevice& d, simulationParameterSet* sCPU) {
 		//prepare the propagation arrays
