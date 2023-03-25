@@ -121,7 +121,7 @@ public:
         double minX = 0.0;
         double currentY;
         double currentX;
-        double* xValues = new double[Npts + 2]();
+        std::vector<double> xValues(Npts + 2, 0.0);
         for (int i = 0; i < Npts; ++i) {
             if (hasDataX) currentX = (double)dataX[i];
             else { currentX = (double)(i * dx + x0); }
@@ -374,19 +374,28 @@ public:
         //currently dots are always there but has been refactored to make it easier to turn them off if I want.
         //I would think it would be faster to only call cairo_fill() at the end, but this requires calling cairo_cloase_path()
         //in the loop, which seems to be even slower....
-        auto plotCairoDots = [&](double* y) {
-            currentColor.setCairo(cr);
-            for (size_t i = iMin; i < iMax - 1; ++i) {
-                x1 = scaleX * (xValues[i] - minX) + axisSpaceX;
+
+        std::vector<double> scaledX(iMax - iMin);
+        std::vector<double> scaledY(iMax - iMin);
+        auto getNewScaledXY = [&](std::vector<double>& xValues, double* y) {
+#pragma omp parallel for num_threads(interfaceThreads)
+            for (int i = iMin; i < iMax - 1; i++) {
+                scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
                 if (logScale) {
-                    y1 = height - scaleY * ((double)log10(y[i]) - (double)minY);
+                    scaledY[i] = height - scaleY * ((double)log10(y[i]) - (double)minY);
                 }
                 else {
-                    y1 = height - scaleY * ((double)y[i] - (double)minY);
+                    scaledY[i] = height - scaleY * ((double)y[i] - (double)minY);
                 }
-                if (y1 <= height) {
-                    cairo_new_path(cr);
-                    cairo_arc(cr, x1, y1, radius, 0, twoPi<double>());
+                if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
+            }
+        };
+
+        auto plotCairoDots = [&](double* y) {
+            currentColor.setCairo(cr);
+            for (size_t i = 0; i < (iMax-iMin); ++i) {
+                if (scaledY[i] <= height) {
+                    cairo_arc(cr, scaledX[i], scaledY[i], radius, 0, twoPi<double>());
                     cairo_fill(cr);
                 }
             }
@@ -394,42 +403,22 @@ public:
 
         auto plotCairoPolyline = [&](double* y) {
             currentColor.setCairo(cr);
-            x2 = scaleX * (xValues[iMin] - minX) + axisSpaceX;
-            if (logScale) {
-                y2 = height - scaleY * (log10(y[iMin]) - minY);
-            }
-            else {
-                y2 = height - scaleY * (y[iMin] - minY);
-            }
-            if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
-            cairo_move_to(cr, x2, y2);
-            for (size_t i = iMin + 1; i < iMax; ++i) {
-                x1 = x2;
-                x2 = scaleX * (xValues[i] - minX) + axisSpaceX;
-                y1 = y2;
-                if (logScale) {
-                    y2 = height - scaleY * (log10(y[i]) - minY);
-                }
-                else {
-                    y2 = height - scaleY * (y[i] - minY);
-                }
-                if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
-
-                if (y1 <= height) { 
-                    if (y2 <= height) {
-                        cairo_line_to(cr, x2, y2);
+            cairo_move_to(cr, scaledX[0], scaledY[0]);
+            for (size_t i = 1; i < (iMax-iMin-1); ++i) {
+                if (scaledY[i-1] <= height) { 
+                    if (scaledY[i] <= height) {
+                        cairo_line_to(cr, scaledX[i], scaledY[i]);
                     }
                     else {
-                        cairo_line_to(cr, x1 + (height - y1) / ((y2 - y1) / (x2 - x1)), height);
+                        cairo_line_to(cr, scaledX[i - 1] + (height - scaledY[i-1]) / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i-1])), height);
                     }
                 }
-                else if (y2 <= height) {
-                    cairo_move_to(cr, x1 + (height - y1) / ((y2 - y1) / (x2 - x1)), height);
-                    cairo_line_to(cr, x2, y2);
+                else if (scaledY[i] <= height) {
+                    cairo_move_to(cr, scaledX[i - 1] + (height - scaledY[i - 1]) / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i - 1])), height);
+                    cairo_line_to(cr, scaledX[i], scaledY[i]);
                 }
             }
             cairo_stroke(cr);
-            
         };
 
         auto plotSVGPolyline = [&](double* y) {
@@ -509,10 +498,9 @@ public:
             SVGendgroup();
         };
 
-
-
         //Optional overlay curves
         if (ExtraLines > 0 && data2 != nullptr) {
+            getNewScaledXY(xValues, data2);
             currentColor = color2;
             plotCairoPolyline(data2);
             if(markers)plotCairoDots(data2);
@@ -522,6 +510,7 @@ public:
             }
         }
         if (ExtraLines > 1 && data2 != nullptr) {
+            getNewScaledXY(xValues, data3);
             currentColor = color3;
             plotCairoPolyline(data3);
             if (markers)plotCairoDots(data3);
@@ -531,6 +520,7 @@ public:
             }
         }
         if (ExtraLines > 2 && data2 != nullptr) {
+            getNewScaledXY(xValues, data4);
             currentColor = color4;
             plotCairoPolyline(data4);
             if (markers)plotCairoDots(data4);
@@ -541,6 +531,7 @@ public:
         }
 
         //Plot the main line
+        getNewScaledXY(xValues, data);
         currentColor = color;
         plotCairoPolyline(data);
         if (markers)plotCairoDots(data);
@@ -549,11 +540,10 @@ public:
             if (markers)plotSVGDots(data);
         }
 
-        delete[] xValues;
         if (makeSVG) {
             SVGString.append("</svg>");
             std::ofstream fs(SVGPath);
-            fs.write(SVGString.c_str(), SVGString.size());
+            fs << SVGString;
         }
         return 0;
     }
@@ -599,66 +589,56 @@ public:
         return x.real() * x.real() + x.imag() * x.imag();
     }
 
-    int linearRemapZToLogFloatShift(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
-        float f;
-        int div2 = nax / 2;
-        int nx0, ny0;
-#pragma omp parallel for private(nx0, ny0, f) num_threads(interfaceThreads)
+    void linearRemapZToLogFloatShift(const std::complex<double>* A, const int nax, const int nay, float* B, const int nbx, const int nby, const double logMin) {
+        const int div2 = nax / 2;
+#pragma omp parallel for num_threads(interfaceThreads)
         for (int i = 0; i < nbx; ++i) {
-            f = i * (nax / (float)nbx);
-            nx0 = minN((int)f, nax);
+            float f = i * (nax / (float)nbx);
+            int nx0 = minN((int)f, nax);
             nx0 -= div2 * ((nx0 >= div2) - (nx0 < div2));
             nx0 *= nay;
             for (int j = 0; j < nby; ++j) {
                 f = (j * (nay / (float)nby));
-                ny0 = minN(nay, (int)f);
+                int ny0 = minN(nay, (int)f);
                 B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
             }
         }
-        return 0;
     }
 
-    int linearRemapZToLogFloat(std::complex<double>* A, int nax, int nay, float* B, int nbx, int nby, double logMin) {
-        float A00;
-        float f;
-        int nx0, ny0;
-        int Ni, Nj;
+    void linearRemapZToLogFloat(const std::complex<double>* A, const int nax, const int nay, float* B, const int nbx, const int nby, const double logMin) {
+#pragma omp parallel for num_threads(interfaceThreads)
         for (int i = 0; i < nbx; ++i) {
-            f = i * (nax / (float)nbx);
-            Ni = (int)f;
-            nx0 = nay * minN(Ni, nax);
+            float f = i * (nax / (float)nbx);
+            int Ni = (int)f;
+            int nx0 = nay * minN(Ni, nax);
             for (int j = 0; j < nby; ++j) {
                 f = (j * (nay / (float)nby));
-                Nj = (int)f;
-                ny0 = minN(nay, Nj);
-                A00 = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
-                B[i * nby + j] = A00;
+                int Nj = (int)f;
+                int ny0 = minN(nay, Nj);
+                B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
             }
         }
-        return 0;
     }
 
-    int linearRemapDoubleToFloat(double* A, int nax, int nay, float* B, int nbx, int nby) {
-        int nx0, ny0;
-        int Ni, Nj;
-#pragma omp parallel for private(nx0, ny0, Ni, Nj) num_threads(interfaceThreads)
+    void linearRemapDoubleToFloat(const double* A, const int nax, const int nay, float* B, const int nbx, const int nby) {
+#pragma omp parallel for num_threads(interfaceThreads)
         for (int i = 0; i < nbx; ++i) {
-            Ni = (int)(i * (nax / (float)nbx));
-            nx0 = nay * minN(Ni, nax);
+            int Ni = (int)(i * (nax / (float)nbx));
+            int nx0 = nay * minN(Ni, nax);
             for (int j = 0; j < nby; ++j) {
-                Nj = (int)((j * (nay / (float)nby)));
-                ny0 = minN(nay, Nj);
+                int Nj = (int)((j * (nay / (float)nby)));
+                int ny0 = minN(nay, Nj);
                 B[i * nby + j] = (float)A[ny0 + nx0];
             }
         }
-        return 0;
     }
 
     constexpr std::array<std::array<unsigned char, 3>, 256> createColormap(const int cm) {
         std::array<std::array<unsigned char, 3>, 256> colorMap{};
-        float oneOver255 = 1.0f / 255.0f;
-        float nval;
+        const float oneOver255 = 1.0f / 255.0f;
+        
         for (int j = 0; j < 256; ++j) {
+            float nval;
             switch (cm) {
             case 0:
                 colorMap[j][0] = (unsigned char)j;
@@ -710,17 +690,16 @@ public:
         return colorMap;
     }
 
-    int drawArrayAsBitmap(cairo_t* cr, int Nx, int Ny, float* data, const int cm) {
-        if (Nx * Ny == 0) return 1;
+    void drawArrayAsBitmap(cairo_t* cr, const int Nx, const int Ny, const float* data, const int cm) {
+        if (Nx * Ny == 0) return;
 
         // creating input
-        unsigned char* pixels = new unsigned char[4 * Nx * Ny]();
-        if (pixels == nullptr) return 1;
+        const size_t Ntot = Nx * Ny;
+        unsigned char* pixels = new unsigned char[4 * Ntot]();
+        if (pixels == nullptr) return;
 
-        std::array<std::array<unsigned char, 3>, 256> colorMap = createColormap(cm);
-        size_t Ntot = Nx * Ny;
-
-        int stride = 4;
+        const std::array<std::array<unsigned char, 3>, 256> colorMap = createColormap(cm);
+        const int stride = 4;
         //Find the image maximum and minimum
         float imin = data[0];
         float imax = data[0];
@@ -732,24 +711,23 @@ public:
             imax = maxN(imax, -imin);
             imin = minN(imin, -imax);
         }
-        unsigned char currentValue;
+
         if (imin != imax) {
-#pragma omp parallel for private(currentValue) num_threads(interfaceThreads)
+#pragma omp parallel for num_threads(interfaceThreads)
             for (int p = 0; p < Ntot; p++) {
-                currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
+                unsigned char currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
                 pixels[stride * p + 0] = colorMap[currentValue][0];
                 pixels[stride * p + 1] = colorMap[currentValue][1];
                 pixels[stride * p + 2] = colorMap[currentValue][2];
             }
         }
-        int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
+        const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
         cairo_surface_t* cSurface = cairo_image_surface_create_for_data(pixels, CAIRO_FORMAT_RGB24, Nx, Ny, caiStride);
         cairo_set_source_surface(cr, cSurface, 0, 0);
         cairo_paint(cr);
         cairo_surface_finish(cSurface);
         cairo_surface_destroy(cSurface);
         delete[] pixels;
-        return 0;
     }
 };
 
