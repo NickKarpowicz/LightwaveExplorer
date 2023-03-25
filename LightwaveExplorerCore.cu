@@ -33,6 +33,61 @@ namespace deviceFunctions {
 		return deviceLib::exp(complex_t(0.0f, -d) * kz);
 	}
 
+	//give the Dawson function value at x
+	//used for Gaussian-based "Sellmeier" equation, as it is the Hilbert transform of the Gaussian function (susceptibility obeys Kramers-Kronig relations)
+	//based on Rybicki G.B., Computers in Physics, 3,85-87 (1989)
+	//this is the simplest implementation of the formula he provides, he also suggests speed improvements in case
+	//evaluation of this becomes a bottleneck
+	//macro for the two versions because I don't want to lose precision in the double version
+	//but Intel Xe graphics need the constants as floats, and CUDA doesn't work with the
+	//[[maybe_unused]] attribute... and I don't like compiler warnings.
+	deviceFunction static float deviceDawson(const float x) {
+		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
+		int n = 15;
+		float h = 0.3f;
+
+		//series expansion for small x
+		if (deviceFPLib::abs(x) < 0.2f) {
+			float x2 = x * x;
+			float x4 = x2 * x2;
+			return x * (1.0f - 2.0f * x2 / 3.0f + 4.0f * x4 / 15.0f - 8.0f * x2 * x4 / 105.0f + (16.0f / 945.0f) * x4 * x4 - (32.0f / 10395.0f) * x4 * x4 * x2);
+		}
+
+		int n0 = 2 * (int)(round(0.5f * x / h));
+		float x0 = h * n0;
+		float xp = x - x0;
+		float d = 0.0f;
+		for (int i = -n; i < n; i++) {
+			if (i % 2 != 0) {
+				d += deviceFPLib::exp(-(xp - i * h) * (xp - i * h)) / (i + n0);
+			}
+		}
+		return invSqrtPi<float>() * d;
+	}
+
+	deviceFunction static double deviceDawson(const double x) {
+		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
+		int n = 15;
+		double h = 0.3;
+
+		//series expansion for small x
+		if (deviceFPLib::abs(x) < 0.2) {
+			double x2 = x * x;
+			double x4 = x2 * x2;
+			return x * (1.0 - 2.0 * x2 / 3.0 + 4.0 * x4 / 15.0 - 8.0 * x2 * x4 / 105.0 + (16.0 / 945) * x4 * x4 - (32.0 / 10395) * x4 * x4 * x2);
+		}
+
+		int n0 = 2 * (int)(round(0.5 * x / h));
+		double x0 = h * n0;
+		double xp = x - x0;
+		double d = 0.0;
+		for (int i = -n; i < n; i++) {
+			if (i % 2 != 0) {
+				d += deviceFPLib::exp(-(xp - i * h) * (xp - i * h)) / (i + n0);
+			}
+		}
+		return invSqrtPi<double>() * d;
+	}
 	//Inner function for the Sellmeier equation to provide the refractive indicies
 	//current equation form:
 	//n^2 = a[0] //background (high freq) contribution
@@ -53,7 +108,7 @@ namespace deviceFunctions {
 		switch (eqn) {
 		case 0:
 			[[unlikely]]
-			if(ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex(0.0f,0.0f);
+			if (ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex{};
 			realPart = a[0]
 				+ (a[1] + a[2] * ls) / (ls + a[3])
 				+ (a[4] + a[5] * ls) / (ls + a[6])
@@ -85,12 +140,13 @@ namespace deviceFunctions {
 			for (int i = 0; i < 7; ++i) {
 				if (a[3 * i + 1] != 0.0f){
 					scaledF = (omega - a[1 + 3 * i]) / (deviceFPLib::sqrt(2.0f) * a[2 + 3 * i]);
-					compPart += a[3 + 3 * i] * deviceComplex(-invSqrtPi<deviceFP>() *	(scaledF), -deviceFPLib::exp(-scaledF * scaledF));
+					compPart += a[3 + 3 * i] * deviceComplex(-invSqrtPi<deviceFP>() * deviceDawson(scaledF), -deviceFPLib::exp(-scaledF * scaledF));
 				}
 
 			}
 			//always select branch with imaginary part < 0
 			return deviceComplex((deviceLib::sqrt(compPart)).real(), -deviceFPLib::abs((deviceLib::sqrt(compPart)).imag()));
+
 		}
 		case 100:
 			[[unlikely]]if(ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex(0.0f,0.0f);
