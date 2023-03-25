@@ -42,17 +42,21 @@ int simulationParameterSet::loadReferenceSpectrum() {
 	size_t maxFileSize = 16384;
 	size_t currentRow = 0;
 	constexpr double c = 1e9 * lightC<double>();
-	double* loadedWavelengths = new double[maxFileSize]();
-	double* loadedFrequencies = new double[maxFileSize]();
-	double* loadedIntensities = new double[maxFileSize]();
-	if (loadedWavelengths == NULL) {
-		return 1;
-	}
-	double maxWavelength = 0;
-	double minWavelength = 0;
-
+	std::vector<double> loadedWavelengths(1);
+	loadedWavelengths.reserve(8192);
+	std::vector<double> loadedFrequencies(1);
+	loadedFrequencies.reserve(8192);
+	std::vector<double> loadedIntensities(1);
+	loadedIntensities.reserve(8192);
+	double maxWavelength{};
+	double minWavelength{};
+	double lastRead;
 	while (fs.good() && currentRow < maxFileSize) {
-		fs >> loadedWavelengths[currentRow] >> loadedIntensities[currentRow];
+		//fs >> loadedWavelengths[currentRow] >> loadedIntensities[currentRow];
+		fs >> lastRead;
+		loadedWavelengths.push_back(lastRead);
+		fs >> lastRead;
+		loadedIntensities.push_back(lastRead);
 		if (currentRow == 0) {
 			maxWavelength = loadedWavelengths[currentRow];
 			minWavelength = loadedWavelengths[currentRow];
@@ -63,7 +67,7 @@ int simulationParameterSet::loadReferenceSpectrum() {
 		}
 		//rescale to frequency spacing
 		loadedIntensities[currentRow] *= loadedWavelengths[currentRow] * loadedWavelengths[currentRow];
-		loadedFrequencies[currentRow] = c / loadedWavelengths[currentRow];
+		loadedFrequencies.push_back(c / loadedWavelengths[currentRow]);
 		currentRow++;
 	}
 	size_t sizeData = currentRow - 1;
@@ -88,11 +92,6 @@ int simulationParameterSet::loadReferenceSpectrum() {
 					+ loadedIntensities[j] * (currentFrequency - loadedFrequencies[j - 1])) / df; //linear interpolation
 		}
 	}
-
-	delete[] loadedWavelengths;
-	delete[] loadedIntensities;
-	delete[] loadedFrequencies;
-
 	return 0;
 }
 
@@ -924,16 +923,14 @@ int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long lo
 	if (fs.fail()) return -1;
 	const int maxFileSize = 16384;
 	double wavelength, R, phi, complexX, complexY, f, f0, f1;
-	double fmax = 0.0;
-	int i, k0, k1;
+	double fmax{};
+
 	constexpr double c = 1e9 * lightC<double>(); //for conversion of wavelength in nm to frequency
-	double df = 0;
-	double fmin = 0;
-	int currentRow = 0;
-	std::complex<double>* E = new std::complex<double>[maxFileSize]();
-	if (E == NULL) {
-		return -2;
-	}
+	double df{};
+	double fmin{};
+	int currentRow{};
+	std::vector<std::complex<double>> E;
+	E.reserve(8192);
 
 	while (fs.good() && currentRow < maxFileSize) {
 		fs >> wavelength;
@@ -944,9 +941,7 @@ int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long lo
 		std::getline(fs, line);
 
 		//get the complex field from the data
-		E[currentRow].real(complexX);
-		E[currentRow].imag(complexY);
-
+		E.push_back(std::complex<double>(complexX, complexY));
 		//keep track of the frequency step of the grid (running sum, divide by number of rows at end to get average)
 		if (currentRow > 0) df += c / wavelength - fmax;
 
@@ -961,7 +956,6 @@ int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long lo
 
 	//return an error if nothing was loaded
 	if (currentRow == 0) {
-		delete[] E;
 		return -1;
 	}
 
@@ -970,13 +964,13 @@ int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long lo
 	//interpolate the FROG data onto the simulation grid
 
 	//fill the simulation grid based on the data
-	for (i = 0; i < Ntime / 2 + 1; i++) {
+	for (int i = 0; i < Ntime / 2 + 1; i++) {
 
 		//frequency grid used in the simulation
 		f = i * fStep;
 
-		k0 = (int)floor((f - fmin) / df);
-		k1 = (int)ceil((f - fmin) / df);
+		int k0 = (int)floor((f - fmin) / df);
+		int k1 = (int)ceil((f - fmin) / df);
 		if (k0 < 0 || k1 >= currentRow) {
 			Egrid[i] = 0; //field is zero outside of data range
 		}
@@ -987,7 +981,5 @@ int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long lo
 			Egrid[i] *= (abs(Egrid[i]) > gateLevel);
 		}
 	}
-
-	delete[] E;
 	return currentRow;
 }
