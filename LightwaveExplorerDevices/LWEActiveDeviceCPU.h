@@ -88,13 +88,6 @@ namespace deviceLib = deviceLibCPUFP32;
 namespace deviceFPLib = std;
 namespace deviceLib = std;
 #endif
-#if defined _WIN32 || __linux__
-const int deviceThreads = maxN(std::thread::hardware_concurrency() / 2, 1u);
-#else
-const int deviceThreads = std::thread::hardware_concurrency();
-#endif
-
-#if LWEFLOATINGPOINT==64
 
 [[maybe_unused]] static std::complex<double> operator+(const float f, const std::complex<double> x) { return std::complex<double>(x.real() + f, x.imag()); }
 
@@ -108,10 +101,7 @@ const int deviceThreads = std::thread::hardware_concurrency();
 
 [[maybe_unused]] static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
 
-#endif
-
-#if LWEFLOATINGPOINT==64
-static double j0Device(double x) {
+[[maybe_unused]] static double j0Device(double x) {
 	if (x < 8.0) {
 		double y = x * x;
 		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
@@ -131,8 +121,8 @@ static double j0Device(double x) {
 		return sqrt(0.636619772 / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
-#else
-static float j0Device(float x) {
+
+[[maybe_unused]] static float j0Device(float x) {
 	if (x < 8.0f) {
 		float y = x * x;
 		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +
@@ -152,7 +142,7 @@ static float j0Device(float x) {
 		return sqrt(0.636619772f / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
-#endif
+
 template <typename deviceFP, typename deviceComplex>
 class CPUDevice {
 private:
@@ -186,7 +176,6 @@ private:
 			fftwf_destroy_plan(fftPlan1DZ2D32);
 			if (isCylindric)fftwf_destroy_plan(doublePolfftPlan32);
 		}
-
 		fftw_cleanup();
 	}
 
@@ -198,7 +187,6 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	simulationParameterSet* cParams;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
-
 
 	CPUDevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
@@ -223,7 +211,7 @@ public:
 	}
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const Function& kernel, Args... args) const {
-#pragma omp parallel for num_threads(deviceThreads)
+#pragma omp parallel for
 		for (int i = 0; i < (int)Nthread; ++i) {
 			for (unsigned int j = 0u; j < Nblock; ++j) {
 				kernel(j + Nblock * (unsigned int)i, args...);

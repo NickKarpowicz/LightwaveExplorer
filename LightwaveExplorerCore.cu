@@ -271,7 +271,7 @@ namespace deviceFunctions {
 		// converges to double precision limit in two iterations for BBO
 		// converges in 32 iterations in BiBO
 
-		deviceFP errArray[4][2] = { {0.0f} };
+		deviceFP errArray[4][2]{};
 		if ((*s).axesNumber == 1) {
 			maxiter = 64;
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
