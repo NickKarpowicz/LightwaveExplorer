@@ -88,13 +88,6 @@ namespace deviceLib = deviceLibCPUFP32;
 namespace deviceFPLib = std;
 namespace deviceLib = std;
 #endif
-#if defined _WIN32 || __linux__
-const int deviceThreads = maxN(std::thread::hardware_concurrency() / 2, 1u);
-#else
-const int deviceThreads = std::thread::hardware_concurrency();
-#endif
-
-#if LWEFLOATINGPOINT==64
 
 [[maybe_unused]] static std::complex<double> operator+(const float f, const std::complex<double> x) { return std::complex<double>(x.real() + f, x.imag()); }
 
@@ -108,10 +101,7 @@ const int deviceThreads = std::thread::hardware_concurrency();
 
 [[maybe_unused]] static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
 
-#endif
-
-#if LWEFLOATINGPOINT==64
-static double j0Device(double x) {
+[[maybe_unused]] static double j0Device(double x) {
 	if (x < 8.0) {
 		double y = x * x;
 		double ans1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 +
@@ -131,8 +121,8 @@ static double j0Device(double x) {
 		return sqrt(0.636619772 / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
-#else
-static float j0Device(float x) {
+
+[[maybe_unused]] static float j0Device(float x) {
 	if (x < 8.0f) {
 		float y = x * x;
 		float ans1 = 57568490574.0f + y * (-13362590354.0f + y * (651619640.7f +
@@ -152,11 +142,10 @@ static float j0Device(float x) {
 		return sqrt(0.636619772f / x) * (cos(xx) * ans1 - z * sin(xx) * ans2);
 	}
 }
-#endif
+
 template <typename deviceFP, typename deviceComplex>
 class CPUDevice {
 private:
-#include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = false;
 	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
@@ -187,7 +176,6 @@ private:
 			fftwf_destroy_plan(fftPlan1DZ2D32);
 			if (isCylindric)fftwf_destroy_plan(doublePolfftPlan32);
 		}
-
 		fftw_cleanup();
 	}
 
@@ -200,10 +188,8 @@ public:
 	simulationParameterSet* cParams;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 
-
 	CPUDevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
-		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = -1;
 		stream = 0;
 		cParams = NULL;
@@ -225,7 +211,7 @@ public:
 	}
 	template<typename Function, typename... Args>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const Function& kernel, Args... args) const {
-#pragma omp parallel for num_threads(deviceThreads)
+#pragma omp parallel for
 		for (int i = 0; i < (int)Nthread; ++i) {
 			for (unsigned int j = 0u; j < Nblock; ++j) {
 				kernel(j + Nblock * (unsigned int)i, args...);
@@ -233,12 +219,12 @@ public:
 		}
 	}
 
-	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
+	int deviceCalloc(void** ptr, size_t N, size_t elementSize){
 		(*ptr) = calloc(N, elementSize);
 		return (int)((*ptr) == NULL);
 	}
 
-	void deviceMemset(void* ptr, int value, size_t count) {
+	void deviceMemset(void* ptr, int value, size_t count){
 		memset(ptr, value, count);
 	}
 
@@ -271,7 +257,7 @@ public:
 		}
 	}
 
-	void deviceFree(void* block) {
+	void deviceFree(void* block){
 		free(block);
 	}
 
@@ -396,10 +382,11 @@ public:
 			memoryStatus = allocateSet(sCPU);
 		}
 		else{
-			initializeDeviceParameters(sCPU);
+			sCPU->initializeDeviceParameters(s);
+			hasPlasma = s->hasPlasma;
 		}
 		
-		fillRotationMatricies(sCPU);
+		sCPU->fillRotationMatricies(s);
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
@@ -434,12 +421,13 @@ public:
 		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 
-		finishConfiguration(sCPU);
+		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
-		initializeDeviceParameters(sCPU);
+		sCPU->initializeDeviceParameters(s);
+		hasPlasma = s->hasPlasma;
 		fftInitialize();
 
 		int memErrors = 0;
@@ -450,9 +438,7 @@ public:
 			beamExpansionFactor = 2;
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
-
-		fillRotationMatricies(sCPU);
-
+		sCPU->fillRotationMatricies(s);
 		//GPU allocations
 		//
 		// currently 8 large grids, meaning memory use is approximately
@@ -488,7 +474,7 @@ public:
 		if (memErrors > 0) {
 			return memErrors;
 		}
-		finishConfiguration(sCPU);
+		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		return 0;
 	}

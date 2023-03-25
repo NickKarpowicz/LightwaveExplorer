@@ -14,21 +14,21 @@ static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 }
 
 //if running in 64-bit mode, define complex math operations with fixed float constants
-#if LWEFLOATINGPOINT==64
 
-		static constexpr oneapi::dpl::complex<double> operator+(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
 
-		static constexpr oneapi::dpl::complex<double> operator+(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator+(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
 
-		static constexpr oneapi::dpl::complex<double> operator-(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() - f, x.imag()); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator+(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
 
-		static constexpr oneapi::dpl::complex<double> operator*(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator-(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() - f, x.imag()); }
 
-		static constexpr oneapi::dpl::complex<double> operator*(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator*(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
 
-		static constexpr oneapi::dpl::complex<double> operator/(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); }
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator*(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
 
-#endif
+[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator/(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); }
+
+
 
 namespace deviceLibSYCLFP32{
 	static constexpr inline float exp(const float x){
@@ -62,20 +62,20 @@ namespace deviceLibSYCLFP32{
 		return atan2f(x, y);
 	}
 
-	static constexpr oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
+	static oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
 		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
 		float theta = atan2f(x.imag(), x.real());
 		float rn = powf(r, y);
 		return oneapi::dpl::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
 	}
-	static constexpr inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
+	static inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::exp(x);
 
 	}
-	static constexpr inline float abs(const oneapi::dpl::complex<float> x){
+	static inline float abs(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::abs(x);
 	}
-	static constexpr inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
+	static inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::sqrt(x);
 	}
 };
@@ -147,7 +147,6 @@ static constexpr oneapi::dpl::complex<double> operator/(const double a, const on
 template<typename deviceFP, typename deviceComplex>
 class SYCLDevice {
 private:
-#include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = false;
 	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
@@ -179,7 +178,6 @@ public:
 		configuredFFT = 0;
 		isCylindric = 0;
 		s = &deviceStruct;
-		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = allocateSet(sCPU);
 	}
 
@@ -408,9 +406,10 @@ public:
 			memoryStatus = allocateSet(sCPU);
 		}
 		else{
-			initializeDeviceParameters(sCPU);
+			sCPU->initializeDeviceParameters(s);
+			hasPlasma = s->hasPlasma;
 		}
-		fillRotationMatricies(sCPU);
+		sCPU->fillRotationMatricies(s);
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
@@ -445,7 +444,7 @@ public:
 		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 
-		finishConfiguration(sCPU);
+		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
@@ -478,7 +477,8 @@ public:
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		
 		cParams = sCPU;
-		initializeDeviceParameters(sCPU);
+		sCPU->initializeDeviceParameters(s);
+		hasPlasma = s->hasPlasma;
 		fftInitialize();
 		int memErrors = 0;
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
@@ -489,7 +489,7 @@ public:
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
 
-		fillRotationMatricies(sCPU);
+		sCPU->fillRotationMatricies(s);
 		//GPU allocations
 		//
 		// currently 8 large grids, meaning memory use is approximately
@@ -525,7 +525,7 @@ public:
 		if (memErrors > 0) {
 			return memErrors;
 		}
-		finishConfiguration(sCPU);
+		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		return 0;
 	}

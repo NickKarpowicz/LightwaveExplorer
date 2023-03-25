@@ -1,7 +1,7 @@
 #include "LightwaveExplorerUtilities.h"
 
-unsigned long   solveNonlinearWaveEquationSequenceFP32(void* lpParam);
-unsigned long	solveNonlinearWaveEquationFP32(void* lpParam);
+unsigned long   solveNonlinearWaveEquationSequenceFP32(simulationParameterSet* lpParam);
+unsigned long	solveNonlinearWaveEquationFP32(simulationParameterSet* lpParam);
 unsigned long   runDlibFittingFP32(simulationParameterSet* sCPU);
 
 

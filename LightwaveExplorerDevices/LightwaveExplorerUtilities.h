@@ -5,6 +5,8 @@
 #include <string>
 #include <fstream>
 #include <atomic>
+#include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
+
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
@@ -35,7 +37,14 @@ static const unsigned int minGridDimension = 8;
 #define LWEFLOATINGPOINTTYPE double
 #endif
 
-#include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
+std::string     getBasename(const std::string& fullPath);
+int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
+double          cModulusSquared(const std::complex<double>& x);
+void            applyOp(char op, double* result, double* readout);
+double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
+void            stripWhiteSpace(std::string& s);
+void            stripLineBreaks(std::string& s);
+int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);
 
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)
@@ -505,6 +514,11 @@ public:
         1, 1e12, 1, 1e-6,
         1e-9, 1, 1 };
 
+    [[nodiscard]] constexpr double getByNumberWithMultiplier(const size_t index) {
+        if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
+        return  getByNumber(index) / multipliers[index];
+    }
+    
     constexpr double getByNumber(const size_t index) {
         switch (index) {
         case 0:
@@ -587,122 +601,188 @@ public:
             return 0.0;
         };
     }
-    void setByNumber(const size_t index, const double value) {
-        switch (index) {
-        case 0:
-            return;
-        case 1:
-            pulse1.energy = value; return;
-        case 2:
-            pulse2.energy = value; return;
-        case 3:
-            pulse1.frequency = value; return;
-        case 4:
-            pulse2.frequency = value; return;
-        case 5:
-            pulse1.bandwidth = value; return;
-        case 6:
-            pulse2.bandwidth = value; return;
-        case 7:
-            pulse1.cep = value; return;
-        case 8:
-            pulse2.cep = value; return;
-        case 9:
-            pulse1.delay = value; return;
-        case 10:
-            pulse2.delay = value; return;
-        case 11:
-            pulse1.gdd = value; return;
-        case 12:
-            pulse2.gdd = value; return;
-        case 13:
-            pulse1.tod = value; return;
-        case 14:
-            pulse2.tod = value; return;
-        case 15:
-            pulse1.phaseMaterialThickness = value; return;
-        case 16:
-            pulse2.phaseMaterialThickness = value; return;
-        case 17:
-            pulse1.beamwaist = value; return;
-        case 18:
-            pulse2.beamwaist = value; return;
-        case 19:
-            pulse1.x0 = value; return;
-        case 20:
-            pulse2.x0 = value; return;
-        case 21:
-            pulse1.z0 = value; return;
-        case 22:
-            pulse2.z0 = value; return;
-        case 23:
-            pulse1.beamAngle = value; return;
-        case 24:
-            pulse2.beamAngle = value; return;
-        case 25:
-            pulse1.polarizationAngle = value; return;
-        case 26:
-            pulse2.polarizationAngle = value; return;
-        case 27:
-            pulse1.circularity = value; return;
-        case 28:
-            pulse2.circularity = value; return;
-        case 29:
-            crystalTheta = value; return;
-        case 30:
-            crystalPhi = value; return;
-        case 31:
-            nonlinearAbsorptionStrength = value; return;
-        case 32:
-            drudeGamma = value; return;
-        case 33:
-            effectiveMass = value; return;
-        case 34:
-            crystalThickness = value; return;
-        case 35:
-            propagationStep = value; return;
-        case 36:
-            return;
-        case 37:
-            i37 = value; return;
-        default:
-            return;
+    void setByNumber(const size_t index, const double value);
+    void setByNumberWithMultiplier(const size_t index, const double value);
+    int loadSavedFields(const std::string& outputBase);
+    int loadReferenceSpectrum();
+    int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
+    int saveSettingsFile();
+    double saveSlurmScript(int gpuType, int gpuCount, size_t totalSteps);
+    int readFittingString();
+
+
+    template <typename deviceFP, typename C>
+    void initializeDeviceParameters(deviceParameterSet<deviceFP, C>* s) {
+        (*s).Ntime = Ntime;
+        (*s).Nspace = Nspace;
+        (*s).Nspace2 = Nspace2;
+        (*s).is3D = is3D;
+        (*s).Nfreq = ((*s).Ntime / 2 + 1);
+        (*s).Ngrid = (*s).Ntime * (*s).Nspace * (*s).Nspace2;
+        (*s).NgridC = (*s).Nfreq * (*s).Nspace * (*s).Nspace2; //size of the positive frequency side of the grid
+        (*s).fftNorm = (deviceFP)1.0 / (*s).Ngrid;
+        (*s).dt = (deviceFP)tStep;
+        (*s).dx = (deviceFP)rStep;
+        (*s).dk1 = (deviceFP)(twoPi<double>() / (Nspace * rStep));
+        (*s).dk2 = (deviceFP)(twoPi<double>() / (Nspace2 * rStep));
+        (*s).fStep = (deviceFP)fStep;
+        (*s).Nsteps = (size_t)round(crystalThickness / propagationStep);
+        (*s).h = (deviceFP)crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
+        (*s).axesNumber = axesNumber;
+        (*s).sellmeierType = sellmeierType;
+        (*s).crystalPhi = (deviceFP)crystalPhi;
+        (*s).crystalTheta = (deviceFP)crystalTheta;
+        (*s).f0 = (deviceFP)pulse1.frequency;
+        (*s).Nthread = threadsPerBlock;
+        (*s).Nblock = (int)((*s).Ngrid / threadsPerBlock);
+        (*s).NblockC = (int)((*s).NgridC / threadsPerBlock);
+        (*s).isCylindric = isCylindric;
+        (*s).forceLinear = forceLinear;
+        (*s).isNonLinear = (nonlinearSwitches[0] + nonlinearSwitches[1]) > 0;
+        (*s).isUsingMillersRule = (crystalDatabase[materialIndex].nonlinearReferenceFrequencies[0]) != 0.0;
+
+        if (nonlinearAbsorptionStrength > 0.) {
+            (*s).hasPlasma = true;
+            (*s).isNonLinear = true;
+        }
+        else {
+            (*s).hasPlasma = false;
+        }
+
+        if ((*s).forceLinear) {
+            (*s).hasPlasma = false;
+            (*s).isNonLinear = false;
         }
     }
-	constexpr double getByNumberWithMultiplier(const size_t index) {
-		if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
-        return  getByNumber(index) / multipliers[index];
 
-	}
-    void setByNumberWithMultiplier(const size_t index, const double value) {
-        if (index > multipliers.size()) return;
-        setByNumber(index, value * multipliers[index]);
+    template <typename deviceFP, typename C>
+    void fillRotationMatricies(deviceParameterSet<deviceFP, C>* s) {
+        double cosT = cos(crystalTheta);
+        double sinT = sin(crystalTheta);
+        double cosP = cos(crystalPhi);
+        double sinP = sin(crystalPhi);
+        double forward[9] =
+        { cosT * cosP, sinP, -sinT * cosP, -sinP * cosT, cosP, sinP * sinT, sinT, 0, cosT };
+
+        //reverse direction (different order of operations)
+        double backward[9] =
+        { cosT * cosP, -sinP * cosT, sinT, sinP, cosP, 0, -sinT * cosP, sinP * sinT, cosT };
+
+        for (size_t i = 0; i < 9; i++) {
+            (*s).rotationForward[i] = (deviceFP)forward[i];
+            (*s).rotationBackward[i] = (deviceFP)backward[i];
+        }
+    }
+
+    template<typename deviceFP, typename C>
+    void finishConfiguration(deviceParameterSet<deviceFP,C>* s) {
+        size_t beamExpansionFactor = 1;
+        if ((*s).isCylindric) {
+            beamExpansionFactor = 2;
+        }
+        //second polarization grids are to pointers within the first polarization
+        //to have contiguous memory
+        (*s).gridETime2 = (*s).gridETime1 + (*s).Ngrid;
+        (*s).workspace2 = (*s).workspace1 + (*s).NgridC;
+        (*s).gridPolarizationTime2 = (*s).gridPolarizationTime1 + (*s).Ngrid;
+        (*s).workspace2P = (*s).workspace1 + beamExpansionFactor * (*s).NgridC;
+        (*s).k2 = (*s).k1 + (*s).NgridC;
+        (*s).chiLinear2 = (*s).chiLinear1 + (*s).Nfreq;
+        (*s).fieldFactor2 = (*s).fieldFactor1 + (*s).Nfreq;
+        (*s).inverseChiLinear2 = (*s).inverseChiLinear1 + (*s).Nfreq;
+        (*s).gridRadialLaplacian2 = (*s).gridRadialLaplacian1 + (*s).Ngrid;
+        (*s).gridPropagationFactor1Rho2 = (*s).gridPropagationFactor1Rho1 + (*s).NgridC;
+        (*s).gridPolarizationFactor2 = (*s).gridPolarizationFactor1 + (*s).NgridC;
+        (*s).gridEFrequency1Next2 = (*s).gridEFrequency1Next1 + (*s).NgridC;
+        (*s).gridPropagationFactor2 = (*s).gridPropagationFactor1 + (*s).NgridC;
+        (*s).gridEFrequency2 = (*s).gridEFrequency1 + (*s).NgridC;
+
+        double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
+        for (size_t i = 0; i < 6; ++i) {
+            firstDerivativeOperation[i] *= (-2.0 / ((*s).dx));
+        }
+
+        //set nonlinearSwitches[3] to the number of photons needed to overcome bandgap
+        nonlinearSwitches[3] = (int)ceil(bandGapElectronVolts * 241.79893e12 / pulse1.frequency) - 2;
+        double plasmaParametersCPU[6] = { 0 };
+
+
+        plasmaParametersCPU[0] = nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
+        plasmaParametersCPU[1] = drudeGamma; //gamma
+        if (nonlinearAbsorptionStrength > 0.) {
+            plasmaParametersCPU[2] = tStep * tStep
+                * 2.817832e-08 / (1.6022e-19 * bandGapElectronVolts * effectiveMass); // (dt^2)*e* e / (m * band gap));
+        }
+        else {
+            plasmaParametersCPU[2] = 0;
+        }
+
+        for (int j = 0; j < 18; ++j) {
+            (*s).chi2Tensor[j] = (deviceFP)(2e-12 * chi2Tensor[j]); //go from d in pm/V to chi2 in m/V
+            if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
+        }
+
+        for (int i = 0; i < 4; ++i) {
+            (*s).nonlinearSwitches[i] = nonlinearSwitches[i];
+        }
+
+        for (size_t i = 0; i < 81; i++) {
+            (*s).chi3Tensor[i] = (deviceFP)chi3Tensor[i];
+        }
+
+        for (size_t i = 0; i < 6; i++) {
+            (*s).absorptionParameters[i] = (deviceFP)absorptionParameters[i];
+        }
+
+        for (size_t i = 0; i < 6; i++) {
+            (*s).plasmaParameters[i] = (deviceFP)plasmaParametersCPU[i];
+        }
+
+        for (size_t i = 0; i < 6; i++) {
+            (*s).firstDerivativeOperation[i] = (deviceFP)firstDerivativeOperation[i];
+        }
+
     }
 };
 
-int             loadSavedFields(simulationParameterSet* sCPU, const char* outputBase);
-int             removeCharacterFromString(char* cString, size_t N, char removedChar);
-void            removeCharacterFromString(std::string& s, char removedChar);
-int				fftshiftZ(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int             fftshiftD2Z(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int				fftshiftAndFilp(std::complex<double>* A, std::complex<double>* B, long long dim1, long long dim2);
-int             loadReferenceSpectrum(std::string spectrumPath, simulationParameterSet* sCPU);
-int             readFittingString(simulationParameterSet* sCPU);
-int             saveSettingsFile(const simulationParameterSet* sCPU);
-double          saveSlurmScript(simulationParameterSet* sCPU, int gpuType, int gpuCount, size_t totalSteps);
-int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
-double          cModulusSquared(const std::complex<double>& x);
-int             allocateGrids(simulationParameterSet* sCPU);
-int             deallocateGrids(simulationParameterSet* sCPU, bool alsoDeleteDisplayItems);
-int             configureBatchMode(simulationParameterSet* sCPU);
-int             saveDataSet(simulationParameterSet* sCPU);
-int             readInputParametersFile(simulationParameterSet* sCPU, crystalEntry* crystalDatabasePtr, const char* filePath);
-int             loadPulseFiles(simulationParameterSet* sCPU);
-void            applyOp(char op, double* result, double* readout);
-double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
-std::string     getBasename(char* fullPath);
-std::string     getBasename(const std::string& fullPath);
-void            stripWhiteSpace(char* sequenceString, size_t bufferSize);
-void            stripWhiteSpace(std::string& s);
-void            stripLineBreaks(std::string& s);
-int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);
+class simulationBatch {
+    std::vector<double> Ext;
+    std::vector<std::complex<double>> Ekw;
+    std::vector<std::complex<double>> loadedField1;
+    std::vector<std::complex<double>> loadedField2;
+    std::vector<double> fitReference;
+    std::vector<double> totalSpectrum;
+    size_t Nsimstotal = 0;
+    size_t Nsims = 0;
+    size_t Nsims2 = 0;
+    size_t Nfreq = 0;
+    size_t Ngrid = 0;
+    size_t NgridC = 0;
+    std::vector<simulationParameterSet> parameters;
+public:
+    simulationBatch() {
+        parameters = std::vector<simulationParameterSet>(1);
+    }
+    void configure();
+    void loadPulseFiles();
+    int saveDataSet();
+    [[nodiscard]] double* getExt(size_t i) {
+        return &Ext.data()[i * Ngrid * 2];
+    }
+    [[nodiscard]] std::complex<double>* getEkw(size_t i) {
+        return &Ekw.data()[i * NgridC * 2];
+    }
+    [[nodiscard]] double* getTotalSpectrum(size_t i) {
+        return &totalSpectrum.data()[i * 3 * Nfreq];
+    }
+    [[nodiscard]] std::vector<simulationParameterSet>& getParameterVector() {
+        return parameters;
+    }
+    [[nodiscard]] simulationParameterSet* sCPU() {
+        return parameters.data();
+    }
+
+    [[nodiscard]] simulationParameterSet& base() {
+        return parameters[0];
+    }
+};

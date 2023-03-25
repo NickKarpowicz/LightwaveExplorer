@@ -102,7 +102,6 @@ public:
         cairo_font_extents(cr, &fe);
         double x1, y1, x2, y2;
 
-
         double layoutTop = 0.0;
         double layoutBottom = 0.0;
         double layoutLeft = 0.0;
@@ -386,6 +385,7 @@ public:
                     y1 = height - scaleY * ((double)y[i] - (double)minY);
                 }
                 if (y1 <= height) {
+                    cairo_new_path(cr);
                     cairo_arc(cr, x1, y1, radius, 0, twoPi<double>());
                     cairo_fill(cr);
                 }

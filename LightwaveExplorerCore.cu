@@ -3,7 +3,6 @@
 #include <dlib/global_optimization.h>
 
 namespace deviceFunctions {
-
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details
@@ -34,64 +33,6 @@ namespace deviceFunctions {
 		return deviceLib::exp(complex_t(0.0f, -d) * kz);
 	}
 
-
-	//give the Dawson function value at x
-	//used for Gaussian-based "Sellmeier" equation, as it is the Hilbert transform of the Gaussian function (susceptibility obeys Kramers-Kronig relations)
-	//based on Rybicki G.B., Computers in Physics, 3,85-87 (1989)
-	//this is the simplest implementation of the formula he provides, he also suggests speed improvements in case
-	//evaluation of this becomes a bottleneck
-	//macro for the two versions because I don't want to lose precision in the double version
-	//but Intel Xe graphics need the constants as floats, and CUDA doesn't work with the
-	//[[maybe_unused]] attribute... and I don't like compiler warnings.
-#if LWEFLOATINGPOINT==32
-	deviceFunction static float deviceDawson(const float x) {
-		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
-		int n = 15;
-		float h = 0.3f;
-
-		//series expansion for small x
-		if (fabs(x) < 0.2f) {
-			float x2 = x * x;
-			float x4 = x2 * x2;
-			return x * (1.0f - 2.0f * x2 / 3.0f + 4.0f * x4 / 15.0f - 8.0f * x2 * x4 / 105.0f + (16.0f / 945.0f) * x4 * x4 - (32.0f / 10395.0f) * x4 * x4 * x2);
-		}
-
-		int n0 = 2 * int(round(0.5f * x / h));
-		float x0 = h * n0;
-		float xp = x - x0;
-		float d = 0.0f;
-		for (int i = -n; i < n; i++) {
-			if (i % 2 != 0) {
-				d += expf(-(xp - i * h) * (xp - i * h)) / (i + n0);
-			}
-		}
-		return invSqrtPi<float>() * d;
-	}
-#else
-	deviceFunction static double deviceDawson(const double& x) {
-		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
-		int n = 15;
-		double h = 0.3;
-
-		//series expansion for small x
-		if (abs(x) < 0.2) {
-			double x2 = x * x;
-			double x4 = x2 * x2;
-			return x * (1.0 - 2.0 * x2 / 3.0 + 4.0 * x4 / 15.0 - 8.0 * x2 * x4 / 105.0 + (16.0 / 945) * x4 * x4 - (32.0 / 10395) * x4 * x4 * x2);
-		}
-
-		int n0 = 2 * int(round(0.5 * x / h));
-		double x0 = h * n0;
-		double xp = x - x0;
-		double d = 0.0;
-		for (int i = -n; i < n; i++) {
-			if (i % 2 != 0) {
-				d += exp(-(xp - i * h) * (xp - i * h)) / (i + n0);
-			}
-		}
-		return invSqrtPi<double>() * d;
-	}
-#endif
 	//Inner function for the Sellmeier equation to provide the refractive indicies
 	//current equation form:
 	//n^2 = a[0] //background (high freq) contribution
@@ -144,7 +85,7 @@ namespace deviceFunctions {
 			for (int i = 0; i < 7; ++i) {
 				if (a[3 * i + 1] != 0.0f){
 					scaledF = (omega - a[1 + 3 * i]) / (deviceFPLib::sqrt(2.0f) * a[2 + 3 * i]);
-					compPart += a[3 + 3 * i] * deviceComplex(-invSqrtPi<deviceFP>() * deviceDawson(scaledF), -deviceFPLib::exp(-scaledF * scaledF));
+					compPart += a[3 + 3 * i] * deviceComplex(-invSqrtPi<deviceFP>() *	(scaledF), -deviceFPLib::exp(-scaledF * scaledF));
 				}
 
 			}
@@ -164,7 +105,6 @@ namespace deviceFunctions {
 			//"real-valued equation has no business being < 1" - causality
 			return deviceComplex(deviceFPLib::sqrt(maxN(realPart, 0.9f)), 0.0f);
 		}
-		
 		return deviceComplex(1.0f, 0.0f);
 	};
 
@@ -229,8 +169,8 @@ namespace deviceFunctions {
 			return *ne;
 		}
 	}
-	template<typename T>
-	deviceFunction static inline LWEFLOATINGPOINTTYPE cuCModSquared(const T& a) {
+
+	deviceFunction static inline deviceFP cuCModSquared(const deviceComplex& a) {
 		return a.real() * a.real() + a.imag() * a.imag();
 	}
 
@@ -309,8 +249,8 @@ namespace deviceFunctions {
 		//alpha is deviation from crystal Theta (x2 polarizations)
 		//beta is deviation from crystal Phi
 		//
-		deviceComplex n[4][2] = { {deviceComplex(0.0f, 0.0f)} };
-		deviceComplex nW = deviceComplex(0.0f, 0.0f);
+		deviceComplex n[4][2]{};
+		deviceComplex nW = deviceComplex{};
 		sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		if ((*s).axesNumber == 0) {
 			*n1 = n[0][0];
@@ -318,7 +258,7 @@ namespace deviceFunctions {
 			return;
 		}
 
-		deviceFP gradient[2][2] = { {0.0f} };
+		deviceFP gradient[2][2]{};
 		deviceFP alpha[2] = { deviceFPLib::asin(kx1 / n[0][0].real()),deviceFPLib::asin(kx1 / n[0][1].real()) };
 		deviceFP beta[2] = { deviceFPLib::asin(ky1 / n[0][0].real()), deviceFPLib::asin(ky1 / n[0][1].real()) };
 
@@ -331,14 +271,14 @@ namespace deviceFunctions {
 		// converges to double precision limit in two iterations for BBO
 		// converges in 32 iterations in BiBO
 
-		deviceFP errArray[4][2] = { {0.0f} };
+		deviceFP errArray[4][2]{};
 		if ((*s).axesNumber == 1) {
 			maxiter = 64;
 			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 			if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
-				*n1 = deviceComplex(0.0f, 0.0f);
-				*n2 = deviceComplex(0.0f, 0.0f);
+				*n1 = deviceComplex{};
+				*n2 = deviceComplex{};
 				return;
 			}
 			errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
@@ -347,8 +287,8 @@ namespace deviceFunctions {
 
 			for (it = 0; it < maxiter; ++it) {
 				if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
-					*n1 = deviceComplex(0.0f, 0.0f);
-					*n2 = deviceComplex(0.0f, 0.0f);
+					*n1 = deviceComplex{};
+					*n2 = deviceComplex{};
 					return;
 				}
 				if (deviceFPLib::abs(gradient[0][0]) > gradientTol) {
@@ -400,8 +340,8 @@ namespace deviceFunctions {
 
 			for (it = 0; it < maxiter; ++it) {
 				if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
-					*n1 = deviceComplex(0.0f, 0.0f);
-					*n2 = deviceComplex(0.0f, 0.0f);
+					*n1 = deviceComplex{};
+					*n2 = deviceComplex{};
 					return;
 				}
 				if (deviceFPLib::abs(gradient[0][0]) > 1e-2f) alpha[0] -= 0.25f * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
@@ -437,14 +377,11 @@ namespace deviceFunctions {
 			*n2 = n[1][1];
 			return;
 		}
-
 	}
 }
 using namespace deviceFunctions;
 
 namespace kernels {
-	typedef LWEFLOATINGPOINTTYPE deviceFP;
-	typedef complexLib::complex<LWEFLOATINGPOINTTYPE> deviceComplex;
 	//the syntax might look a bit strange due to the "trilingual" mode of operation. In short:
 	// CUDA and OpenMP are fine with function pointers being used to launch kernels, but SYCL
 	// doesn't allow them. However, SYCL does allow named lambdas, which have a nearly identical
@@ -463,10 +400,10 @@ namespace kernels {
 	//kernelLWE(totalSpectrumKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t i = localIndex;
 		size_t j;
-		deviceFP beamCenter1 = 0.0f;
-		deviceFP beamCenter2 = 0.0f;
-		deviceFP beamTotal1 = 0.0f;
-		deviceFP beamTotal2 = 0.0f;
+		deviceFP beamCenter1{};
+		deviceFP beamCenter2{};
+		deviceFP beamTotal1{};
+		deviceFP beamTotal2{};
 		deviceFP a, x;
 
 		//find beam centers
@@ -541,11 +478,9 @@ namespace kernels {
 		size_t i = localIndex;
 		size_t j;
 
-		deviceFP beamTotal1 = 0.0f;
-		deviceFP beamTotal2 = 0.0f;
+		deviceFP beamTotal1{};
+		deviceFP beamTotal2{};
 		//Integrate total beam power
-		beamTotal1 = 0.0f;
-		beamTotal2 = 0.0f;
 		for (j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
 			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
@@ -649,7 +584,7 @@ namespace kernels {
 	kernelLWE(apertureFarFieldKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
 		long long i = localIndex;
 		long long col, j, k, l;
-		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
+		deviceComplex cuZero = deviceComplex{};
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
 		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 		i = j + col * (*s).Nfreq;
@@ -688,7 +623,7 @@ namespace kernels {
 	kernelLWE(apertureFarFieldKernelHankel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP radius, deviceFP activationParameter, deviceFP xOffset, deviceFP yOffset) {
 		long long i = localIndex;
 		long long col, j, k;
-		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
+		deviceComplex cuZero = deviceComplex{};
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
 		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 		i = j + col * (*s).Nfreq;
@@ -799,7 +734,6 @@ namespace kernels {
 
 		deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius) / (*s).dx)));
 
-		//if (r>radius) a = 0;
 		(*s).gridETime1[i] *= a;
 		(*s).gridETime2[i] *= a;
 	};
@@ -855,9 +789,9 @@ namespace kernels {
 
 		bool isNegative = ROC < 0.0f;
 		ROC = deviceFPLib::abs(ROC);
-		deviceComplex u = deviceComplex(0.0f, 0.0f);
+		deviceComplex u = deviceComplex{};
 		if (r >= ROC) {
-			u = deviceComplex(0.0f, 0.0f);
+			u = deviceComplex{};
 		}
 		else if (r > 0.5f * ROC) {
 			u = deviceLib::exp(deviceComplex(0.0f,
@@ -876,8 +810,8 @@ namespace kernels {
 		(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
 		if (isnan((*s).gridEFrequency1[i].real()) || isnan((*s).gridEFrequency2[i].real()) || isnan((*s).gridEFrequency1[i].imag()) || isnan((*s).gridEFrequency2[i].imag())) {
-			(*s).gridEFrequency1[i] = deviceComplex(0.0f, 0.0f);
-			(*s).gridEFrequency2[i] = deviceComplex(0.0f, 0.0f);
+			(*s).gridEFrequency1[i] = deviceComplex{};
+			(*s).gridEFrequency2[i] = deviceComplex{};
 		}
 	};
 
@@ -914,28 +848,28 @@ namespace kernels {
 		deviceComplex ke = ne * omega / lightC<deviceFP>();
 		deviceComplex ko = no * omega / lightC<deviceFP>();
 		deviceComplex k0 = n0 * omega / lightC<deviceFP>();
-		deviceComplex ts = deviceComplex(0.0f, 0.0f);
-		deviceComplex tp = deviceComplex(0.0f, 0.0f);
+		deviceComplex ts = deviceComplex{};
+		deviceComplex tp = deviceComplex{};
 
 		ts = fourierPropagator(ke, dk1, dk2, k0.real(), thickness);
 		tp = fourierPropagator(ko, dk1, dk2, k0.real(), thickness);
 		
 
-		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex(0.0f, 0.0f);
-		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex(0.0f, 0.0f);
+		if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex{};
+		if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex{};
 		(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
 		(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
 		if(isnan((*s).gridEFrequency2[i].real()) ||
 			isnan((*s).gridEFrequency2[i].imag()) || 
 			isnan((*s).gridEFrequency1[i].real()) ||
 			isnan((*s).gridEFrequency1[i].imag())) {
-			(*s).gridEFrequency1[i] = deviceComplex(0.0f, 0.0f);
-			(*s).gridEFrequency2[i] = deviceComplex(0.0f, 0.0f);
+			(*s).gridEFrequency1[i] = deviceComplex{};
+			(*s).gridEFrequency2[i] = deviceComplex{};
 
 		}
 		if (h == 1) {
-			(*s).gridEFrequency1[i-1] = deviceComplex(0.0f, 0.0f);
-			(*s).gridEFrequency2[i-1] = deviceComplex(0.0f, 0.0f);
+			(*s).gridEFrequency1[i-1] = deviceComplex{};
+			(*s).gridEFrequency2[i - 1] = deviceComplex{};
 		}
 	};
 
@@ -947,7 +881,7 @@ namespace kernels {
 		long long j, k;
 		deviceComplex ne, no;
 		deviceComplex n0 = (*s).n0;
-		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
+		deviceComplex cuZero = deviceComplex{};
 		j = i / ((*s).Nfreq - 1); //spatial coordinate
 		k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
 		i = k + j * (*s).Nfreq;
@@ -1018,7 +952,7 @@ namespace kernels {
 		long long col, j, k, l;
 		deviceComplex ne, no;
 		deviceComplex n0 = (*s).n0;
-		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
+		deviceComplex cuZero = deviceComplex{};
 		col = i / ((*s).Nfreq - 1); //spatial coordinate
 		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 		i = j + col * (*s).Nfreq;
@@ -1180,7 +1114,7 @@ namespace kernels {
 		long long i = localIndex;
 		long long j, k;
 		long long Nspace = (*s).Nspace;
-		deviceComplex cuZero = deviceComplex(0.0f, 0.0f);
+		deviceComplex cuZero = deviceComplex{};
 		j = i / ((*s).Nfreq - 1); //spatial coordinate
 		k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
 		i = k + j * (*s).Nfreq;
@@ -1313,7 +1247,7 @@ namespace kernels {
 
 		if ((*s).nonlinearSwitches[0] == 1 || (*s).nonlinearSwitches[1] == 1){
 			
-			deviceFP P[3] = {0.0f};
+			deviceFP P[3]{};
 
 			// rotate field into crystal frame
 			deviceFP E3[3] = {(*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
@@ -1420,8 +1354,8 @@ namespace kernels {
 	kernelLWE(plasmaCurrentKernel_twoStage_B, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 		size_t j = localIndex;
 		j *= (*s).Ntime;
-		deviceFP N = 0.0f;
-		deviceFP integralx = 0.0f;
+		deviceFP N{};
+		deviceFP integralx{};
 		deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
 		deviceFP* dN = j + (deviceFP*)(*s).workspace1;
 		deviceFP* E = &(*s).gridETime1[j];
@@ -1477,11 +1411,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if(iC>(*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		[[unlikely]] if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1) (*sP).workspace1[iC - 1] = deviceComplex{};
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (sixth<deviceFP>() * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
+		(*sP).k1[iC] = deviceComplex{};
 	};
 
 	kernelLWE(rkKernel1, const deviceParameterSet<deviceFP, deviceComplex>* sP) {
@@ -1491,11 +1425,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex{};
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)third<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
+		(*sP).k1[iC] = deviceComplex{};
 	};
 
 	kernelLWE(rkKernel2, const deviceParameterSet<deviceFP, deviceComplex>* sP) {
@@ -1505,11 +1439,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex{};
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)third<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
+		(*sP).k1[iC] = deviceComplex{};
 	};
 
 	kernelLWE(rkKernel3, const deviceParameterSet<deviceFP, deviceComplex>* sP) {
@@ -1519,10 +1453,10 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-		[[unlikely]]if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]]if (h == 1)(*sP).workspace1[iC - 1] = deviceComplex{};
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + sixth<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * (*sP).gridEFrequency1[iC];
-		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
+		(*sP).k1[iC] = deviceComplex{};
 	};
 
 	//Kernels for symmetry around z axis use a different form, adding the radial Laplacian
@@ -1534,11 +1468,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		[[unlikely]] if (h == 1) (*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1) (*sP).workspace1[iC-1] = deviceComplex{};
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (sixth<deviceFP>() * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
 		(*sP).workspace1[iC] =  (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
+		(*sP).k1[iC] = deviceComplex{};
 	};
 
 	kernelLWE(rkKernel1Cylindric, const deviceParameterSet<deviceFP, deviceComplex>* sP) {
@@ -1548,11 +1482,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex{};
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * third<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
+		(*sP).k1[iC] = deviceComplex{};
 	};
 
 	kernelLWE(rkKernel2Cylindric, const deviceParameterSet<deviceFP, deviceComplex>* sP) {
@@ -1562,11 +1496,11 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex{};
 		deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 		(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * third<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
-		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
+		(*sP).k1[iC] = deviceComplex{};
 	};
 
 	kernelLWE(rkKernel3Cylindric, const deviceParameterSet<deviceFP, deviceComplex>* sP) {
@@ -1576,10 +1510,10 @@ namespace kernels {
 		deviceFP ff = (*sP).fieldFactor1[h];
 		if (iC > (*sP).NgridC)ff = (*sP).fieldFactor2[h];
 		(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
-		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex(0.0f, 0.0f);
+		[[unlikely]] if (h == 1)(*sP).workspace1[iC-1] = deviceComplex{};
 		(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + sixth<deviceFP>() * (*sP).k1[iC];
 		(*sP).workspace1[iC] = (*sP).fftNorm * ff * (*sP).gridEFrequency1[iC];
-		(*sP).k1[iC] = deviceComplex(0.0f, 0.0f);
+		(*sP).k1[iC] = deviceComplex{};
 	};
 
 	kernelLWE(beamNormalizeKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* rawSum, deviceFP* field, const deviceFP pulseEnergy) {
@@ -1612,7 +1546,7 @@ namespace kernels {
 			-((*p).cep
 				+ twoPi<deviceFP>() * f * ((*p).delay - 0.5f * (*s).dt * (*s).Ntime)
 				+ 0.5f * (*p).gdd * w * w
-				+ (*p).tod * w * w * w / 6.0f
+				+ sixth<deviceFP>()*(*p).tod * w * w * w
 				+ materialPhase[h]));
 		specfac = deviceLib::exp(specfac + specphase);
 
@@ -1640,7 +1574,7 @@ namespace kernels {
 		deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0.0f, 1.0f) * (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
 		Eb = Eb * specfac;
 		if (isnan(cuCModSquared(Eb)) || f <= 0.0f) {
-			Eb = deviceComplex(0.0f, 0.0f);
+			Eb = deviceComplex{};
 		}
 
 		field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle), -(*p).circularity * deviceFPLib::sin((*p).polarizationAngle)) * Eb;
@@ -1710,7 +1644,7 @@ namespace kernels {
 		deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0.0f, 1.0f) * (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
 		Eb = Eb * specfac;
 		if (isnan(cuCModSquared(Eb)) || f <= 0.0f) {
-			Eb = deviceComplex(0.0f, 0.0f);
+			Eb = deviceComplex{};
 		}
 
 		field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle), -(*p).circularity * deviceFPLib::sin((*p).polarizationAngle)) * Eb;
@@ -1777,11 +1711,10 @@ namespace kernels {
 using namespace kernels;
 
 namespace hostFunctions{
-	typedef dlib::matrix<deviceFP, 0, 1> column_vector;
 	static simulationParameterSet* fittingSet;
-	static activeDevice<LWEFLOATINGPOINTTYPE,complexLib::complex<LWEFLOATINGPOINTTYPE>>* dFit;
+	static ActiveDevice* dFit;
 
-	static int getTotalSpectrum(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d) {
+	static int getTotalSpectrum(ActiveDevice& d) {
 		simulationParameterSet* sCPU = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 
@@ -1803,20 +1736,20 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int forwardHankel(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, deviceFP* in, deviceComplex* out) {
+	static int forwardHankel(ActiveDevice& d, deviceFP* in, deviceComplex* out) {
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, hankelKernel, d.dParamsDevice, in, (deviceFP*)(*sc).workspace1);
 		d.fft((*sc).workspace1, out, deviceFFT::D2Z_1D);
 		return 0;
 	}
-	static int backwardHankel(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, deviceComplex* in, deviceFP* out) {
+	static int backwardHankel(ActiveDevice& d, deviceComplex* in, deviceFP* out) {
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		d.fft(in, (*sc).workspace1, deviceFFT::Z2D_1D);
 		d.deviceLaunch((*sc).Nblock, (*sc).Nthread, inverseHankelKernel, d.dParamsDevice, (deviceFP*)(*sc).workspace1, out);
 		return 0;
 	}
 
-	static int addPulseToFieldArrays(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, pulse<double>& pCPU, const bool useLoadedField, const std::complex<double>* loadedFieldIn) {
+	static int addPulseToFieldArrays(ActiveDevice& d, pulse<double>& pCPU, const bool useLoadedField, const std::complex<double>* loadedFieldIn) {
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
@@ -1881,7 +1814,7 @@ namespace hostFunctions{
 		return 0;
 	}
 	
-	static int prepareElectricFieldArrays(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d) {
+	static int prepareElectricFieldArrays(ActiveDevice& d) {
 
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
@@ -1916,12 +1849,11 @@ namespace hostFunctions{
 			(*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice);
 		d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, 
 			multiplyByConstantKernelDZ, (*sc).workspace1, (*sc).fftNorm);
-		//d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, multiplicationKernelCompact, (*sc).gridPropagationFactor1, (*sc).gridEFrequency1Next1, (*sc).k1);
 
 		return 0;
 	}
 
-	static int applyFresnelLoss(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* s, deviceParameterSet<deviceFP, deviceComplex>& sc, int materialIndex1, int materialIndex2) {
+	static int applyFresnelLoss(ActiveDevice& d, simulationParameterSet* s, deviceParameterSet<deviceFP, deviceComplex>& sc, int materialIndex1, int materialIndex2) {
 		double sellmeierCoefficientsAugmentedCPU[74] = { 0 };
 		memcpy(sellmeierCoefficientsAugmentedCPU, (*s).crystalDatabase[materialIndex1].sellmeierCoefficients.data(), 66 * (sizeof(double)));
 		sellmeierCoefficientsAugmentedCPU[66] = (*s).crystalTheta;
@@ -1962,7 +1894,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyFilter(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
+	static int applyFilter(ActiveDevice& d, simulationParameterSet* sCPU, double f0, double bandwidth, double order, double inBandAmplitude, double outOfBandAmplitude) {
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
@@ -1988,7 +1920,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyLorenzian(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double amplitude, double f0, double gamma, double radius, double order) {
+	static int applyLorenzian(ActiveDevice& d, simulationParameterSet* sCPU, double amplitude, double f0, double gamma, double radius, double order) {
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z_1D);
@@ -2012,7 +1944,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyAperatureFarFieldHankel(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
+	static int applyAperatureFarFieldHankel(ActiveDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 		forwardHankel(d, d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1);
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
@@ -2031,7 +1963,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyAperatureFarField(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
+	static int applyAperatureFarField(ActiveDevice& d, simulationParameterSet* sCPU, double diameter, double activationParameter, double xOffset, double yOffset) {
 		if ((*sCPU).isCylindric) {
 			return applyAperatureFarFieldHankel(d, sCPU, diameter, activationParameter, xOffset, yOffset);
 		}
@@ -2059,7 +1991,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyAperature(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, const simulationParameterSet* sCPU, const double diameter, const double activationParameter) {
+	static int applyAperature(ActiveDevice& d, const simulationParameterSet* sCPU, const double diameter, const double activationParameter) {
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
 
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
@@ -2074,7 +2006,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applySphericalMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, const simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, const double ROC) {
+	static int applySphericalMirror(ActiveDevice& d, const simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, const double ROC) {
 
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceMemcpy(sDevice, &s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
@@ -2091,7 +2023,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyParabolicMirror(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, const double focus) {
+	static int applyParabolicMirror(ActiveDevice& d, simulationParameterSet* sCPU, deviceParameterSet<deviceFP, deviceComplex>& s, const double focus) {
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 
 		d.deviceMemcpy(d.deviceStruct.gridETime1, (*sCPU).ExtOut, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToDevice);
@@ -2106,7 +2038,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int applyLinearPropagation(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, const int materialIndex, const double thickness) {
+	static int applyLinearPropagation(ActiveDevice& d, simulationParameterSet* sCPU, const int materialIndex, const double thickness) {
 
 		if (d.hasPlasma) {
 			simulationParameterSet sCopy = *sCPU;
@@ -2143,7 +2075,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int preparePropagationGrids(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d) {
+	static int preparePropagationGrids(ActiveDevice& d) {
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		simulationParameterSet* s = d.cParams;
 		deviceFP* sellmeierCoefficients = (deviceFP*)(*sc).gridEFrequency1Next1;
@@ -2181,7 +2113,7 @@ namespace hostFunctions{
 	//Allocates memory and copies from CPU, then copies back to CPU and deallocates
 	// - inefficient but the general principle is that only the CPU memory is preserved
 	// after simulations finish... and this only runs at the end of the simulation
-	static int rotateField(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU, const double rotationAngle) {
+	static int rotateField(ActiveDevice& d, simulationParameterSet* sCPU, const double rotationAngle) {
 
 		deviceComplex* Ein1 = d.deviceStruct.gridEFrequency1;
 		deviceComplex* Ein2 = d.deviceStruct.gridEFrequency2;
@@ -2205,7 +2137,7 @@ namespace hostFunctions{
 
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
-	static int runRK4Step(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, uint8_t stepNumber) {
+	static int runRK4Step(ActiveDevice& d, uint8_t stepNumber) {
 		deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
 		deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
 
@@ -2288,11 +2220,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-
-
-	static unsigned long int solveNonlinearWaveEquationWithDevice(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU) {
-
-		typedef LWEFLOATINGPOINTTYPE deviceFP;
+	static unsigned long int solveNonlinearWaveEquationWithDevice(ActiveDevice& d, simulationParameterSet* sCPU) {
 		//prepare the propagation arrays
 		preparePropagationGrids(d);
 		prepareElectricFieldArrays(d);
@@ -2335,7 +2263,7 @@ namespace hostFunctions{
 	//Dispatcher of the sequence mode. New functions go here, and should have a unique hash (chances of a conflict are small, and 
 	// will produce a compile-time error.
 	// Functions cannot start with a number or the string "None".
-	static int interpretCommand(std::string cc, double* iBlock, double* vBlock, activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet *sCPU) {
+	static int interpretCommand(std::string cc, double* iBlock, double* vBlock, ActiveDevice& d, simulationParameterSet *sCPU) {
 		crystalEntry* db = (*sCPU).crystalDatabase;
 		int error = 0;
 		double parameters[32] = {0.0};
@@ -2625,7 +2553,7 @@ namespace hostFunctions{
 		return error;
 	}
 
-	static int solveSequenceWithDevice(activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d, simulationParameterSet* sCPU) {
+	static int solveSequenceWithDevice(ActiveDevice& d, simulationParameterSet* sCPU) {
 		int error = 0;
 
 		//if it starts with 0, it's an old sequence; quit
@@ -2690,7 +2618,7 @@ namespace hostFunctions{
 			(*fittingSet).setByNumberWithMultiplier((size_t)(*fittingSet).fittingArray[3 * i], x(i));
 		}
 
-		activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>>& d = *dFit;
+		ActiveDevice& d = *dFit;
 		d.cParams = fittingSet;
 		d.reset(fittingSet);
 
@@ -2750,20 +2678,20 @@ using namespace hostFunctions;
 //Main (non sequence) solver. New device typeps should have a unique definition of the name
 // e.g. solveNonlinearWaveEquationSYCL so that the correct one may be called. That's why it's
 // a preprocessor definition here.
-unsigned long solveNonlinearWaveEquationX(void* lpParam) {
+unsigned long solveNonlinearWaveEquationX(simulationParameterSet* lpParam) {
 	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
-	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);
+	ActiveDevice d(sCPU);
 	if (d.memoryStatus) return 1;
 	unsigned long returnValue = solveNonlinearWaveEquationWithDevice(d, sCPU);
 	return returnValue;
 }
 
 // Main function for running a sequence
-unsigned long solveNonlinearWaveEquationSequenceX(void* lpParam) {
+unsigned long solveNonlinearWaveEquationSequenceX(simulationParameterSet* lpParam) {
 	simulationParameterSet sCPUcurrent = *((simulationParameterSet*)lpParam);
 	simulationParameterSet* sCPU = &sCPUcurrent;
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
-	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(sCPU);
+	ActiveDevice d(sCPU);
 	unsigned long returnValue = solveSequenceWithDevice(d, sCPU);
 	return returnValue;
 }
@@ -2773,7 +2701,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	simulationParameterSet sCPUcurrent = *sCPU;
 	fittingSet = &sCPUcurrent;
 
-	activeDevice<LWEFLOATINGPOINTTYPE, complexLib::complex<LWEFLOATINGPOINTTYPE>> d(fittingSet);
+	ActiveDevice d(fittingSet);
 	dFit = &d;
 	dlib::matrix<double, 0, 1> parameters;
 	parameters.set_size((*sCPU).Nfitting);
