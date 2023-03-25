@@ -25,10 +25,10 @@ int main(int argc, char* argv[]){
 	}
 
 	// allocate databases, main structs
-	simlationBatch theSim;
+	simulationBatch theSim;
 	crystalDatabase db;
-	initializationStruct.crystalDatabase = db.db.data();
-	initializationStruct.progressCounter = &progressCounter;
+	theSim.base().crystalDatabase = db.db.data();
+	theSim.base().progressCounter = &progressCounter;
 	// read crystal database
 	if (db.db.size() == 0) {
 		std::cout << "Could not read crystal database." << std::endl;
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]){
 	}
 
 	
-	if (((*sCPU).sequenceString[0] != 'N') && (*sCPU).sequenceString[0] != 0) (*sCPU).isInSequence = true;
+	if ((theSim.sCPU()->sequenceString[0] != 'N') && theSim.sCPU()->sequenceString[0] != 0) theSim.sCPU()->isInSequence = true;
 	theSim.configure();
 	simulationParameterSet* sCPU = theSim.sCPU();
 	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
@@ -60,21 +60,18 @@ int main(int argc, char* argv[]){
 		std::cout << "Finished after" <<
 			1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
 			<< "s" << std::endl;
-		saveDataSet(sCPU);
+		theSim.saveDataSet();
 
 		std::cout << "Optimization result:" << std::endl << "(index, value)" << std::endl;
 		for (int i = 0; i < (*sCPU).Nfitting; ++i) {
 			std::cout << i << (*sCPU).fittingResult[i] << std::endl;
 		}
-
-		deallocateGrids(sCPU, true);
-		delete[] sCPU;
 		return 0;
 	}
 	// run simulations
-	std::thread* threadBlock = new std::thread[Ntotal];
-	size_t maxThreads = minN(CUDAdeviceCount, Ntotal);
-	for (j = 0; j < Ntotal; ++j) {
+	std::thread* threadBlock = new std::thread[(*sCPU).Nsims * (*sCPU).Nsims2];
+	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
+	for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; ++j) {
 
 		sCPU[j].assignedGPU = j % CUDAdeviceCount;
 		if (j >= maxThreads) {
