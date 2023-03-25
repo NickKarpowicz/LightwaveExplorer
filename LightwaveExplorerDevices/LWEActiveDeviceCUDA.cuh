@@ -124,7 +124,6 @@ static int hardwareCheck(int* CUDAdeviceCount) {
 template<typename deviceFP, typename deviceComplex>
 class CUDADevice {
 private:
-#include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = false;
 	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
@@ -171,7 +170,6 @@ public:
 
 	CUDADevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
-		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = -1;
 		configuredFFT = 0;
 		isCylindric = 0;
@@ -359,9 +357,10 @@ public:
 			memoryStatus = allocateSet(sCPU);
 		}
 		else{
-			initializeDeviceParameters(sCPU);
+			sCPU->initializeDeviceParameters(s);
+			hasPlasma = s->hasPlasma;
 		}
-		fillRotationMatricies(sCPU);
+		sCPU->fillRotationMatricies(s);
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
@@ -396,13 +395,14 @@ public:
 		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 
-		finishConfiguration(sCPU);
+		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
 		cudaSetDevice((*sCPU).assignedGPU);
-		initializeDeviceParameters(sCPU);
+		sCPU->initializeDeviceParameters(s);
+		hasPlasma=s->hasPlasma;
 		fftInitialize();
 		if (checkDeviceMemory(sCPU)) {
 			fftDestroy();
@@ -418,7 +418,7 @@ public:
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
 
-		fillRotationMatricies(sCPU);
+		sCPU->fillRotationMatricies(s);
 
 		//GPU allocations
 		//
@@ -458,7 +458,7 @@ public:
 		if (memErrors > 0) {
 			return memErrors;
 		}
-		finishConfiguration(sCPU);
+		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		return 0;
 	}

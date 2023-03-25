@@ -147,7 +147,6 @@ static constexpr oneapi::dpl::complex<double> operator/(const double a, const on
 template<typename deviceFP, typename deviceComplex>
 class SYCLDevice {
 private:
-#include "LWEActiveDeviceCommon.cpp"
 	bool configuredFFT = false;
 	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
@@ -179,7 +178,6 @@ public:
 		configuredFFT = 0;
 		isCylindric = 0;
 		s = &deviceStruct;
-		memset(s, 0, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = allocateSet(sCPU);
 	}
 
@@ -408,9 +406,10 @@ public:
 			memoryStatus = allocateSet(sCPU);
 		}
 		else{
-			initializeDeviceParameters(sCPU);
+			sCPU->initializeDeviceParameters(s);
+			hasPlasma = s->hasPlasma;
 		}
-		fillRotationMatricies(sCPU);
+		sCPU->fillRotationMatricies(s);
 		size_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
@@ -445,7 +444,7 @@ public:
 		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		delete[] expGammaTCPU;
 
-		finishConfiguration(sCPU);
+		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
@@ -478,7 +477,8 @@ public:
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		
 		cParams = sCPU;
-		initializeDeviceParameters(sCPU);
+		sCPU->initializeDeviceParameters(s);
+		hasPlasma = s->hasPlasma;
 		fftInitialize();
 		int memErrors = 0;
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
@@ -489,7 +489,7 @@ public:
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
 		}
 
-		fillRotationMatricies(sCPU);
+		sCPU->fillRotationMatricies(s);
 		//GPU allocations
 		//
 		// currently 8 large grids, meaning memory use is approximately
@@ -525,7 +525,7 @@ public:
 		if (memErrors > 0) {
 			return memErrors;
 		}
-		finishConfiguration(sCPU);
+		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		return 0;
 	}
