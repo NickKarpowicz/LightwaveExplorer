@@ -12,7 +12,7 @@ module purge
 module load gcc/11
 module load mkl/2022.2
 module load cuda/11.6
-git clone https://github.com/NickKarpowicz/LightwaveExplorer
+git clone https://github.com/NickKarpowicz/LightwaveExplorer --branch batchClass
 git clone https://github.com/davisking/dlib
 
 cd LightwaveExplorer
