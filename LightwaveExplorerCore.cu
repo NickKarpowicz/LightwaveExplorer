@@ -1,5 +1,5 @@
 #include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
-#include <dlib/optimization.h>
+//#include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
 namespace deviceFunctions {
@@ -7,13 +7,13 @@ namespace deviceFunctions {
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details
 	template<typename T, typename U>
-	deviceFunction static void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, long long i, T* expandedBeam1, const T* sourceBeam1, const T* sourceBeam2) {
-		long long j = i / (*s).Ntime; //spatial coordinate
-		long long k = i % (*s).Ntime; //temporal coordinate
+	deviceFunction static void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, const size_t i, T* expandedBeam1, const T* sourceBeam1, const T* sourceBeam2) {
+		const size_t j = i / (*s).Ntime; //spatial coordinate
+		const size_t k = i % (*s).Ntime; //temporal coordinate
 
 		//positions on the expanded grid corresponding the the current index
-		long long pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
-		long long pos2 = (2 * j + 1) * (*s).Ntime + k;
+		const size_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
+		const size_t pos2 = (2 * j + 1) * (*s).Ntime + k;
 		T* expandedBeam2 = expandedBeam1 + 2 * (*s).Ngrid;
 		expandedBeam1[pos1] = sourceBeam1[i];
 		expandedBeam1[pos2] = sourceBeam1[i];
@@ -24,7 +24,7 @@ namespace deviceFunctions {
 	//Calculate the fourier optics propagator (e^ik_z*d) for a given set of values of the maknitude of k, transverse k (dk1, dk2)
 	//a reference k0 which defines the speed of the moving frame, and distance d over which to propagate
 	template<typename real_t, typename complex_t>
-	deviceFunction static complex_t fourierPropagator(complex_t k, real_t dk1, real_t dk2, real_t k0, real_t d) {
+	deviceFunction static complex_t fourierPropagator(const complex_t k, const real_t dk1, const real_t dk2, const real_t k0, const real_t d) {
 		if (deviceFPLib::abs(dk2) < 0.1f * k.real() && deviceFPLib::abs(dk1) < 0.1f *  k.real()) {
 			return deviceLib::exp(complex_t(0.0,-d)*((k - k0) - (dk1 * dk1) / (2.0f * k.real()) - (dk2 * dk2) / (2.0f * k.real())));
 		}
@@ -43,19 +43,19 @@ namespace deviceFunctions {
 	//[[maybe_unused]] attribute... and I don't like compiler warnings.
 	deviceFunction static float deviceDawson(const float x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
-		int n = 15;
-		float h = 0.3f;
+		const int n = 15;
+		const float h = 0.3f;
 
 		//series expansion for small x
 		if (deviceFPLib::abs(x) < 0.2f) {
-			float x2 = x * x;
-			float x4 = x2 * x2;
+			const float x2 = x * x;
+			const float x4 = x2 * x2;
 			return x * (1.0f - 2.0f * x2 / 3.0f + 4.0f * x4 / 15.0f - 8.0f * x2 * x4 / 105.0f + (16.0f / 945.0f) * x4 * x4 - (32.0f / 10395.0f) * x4 * x4 * x2);
 		}
 
-		int n0 = 2 * (int)(round(0.5f * x / h));
-		float x0 = h * n0;
-		float xp = x - x0;
+		const int n0 = 2 * (int)(round(0.5f * x / h));
+		const float x0 = h * n0;
+		const float xp = x - x0;
 		float d = 0.0f;
 		for (int i = -n; i < n; i++) {
 			if (i % 2 != 0) {
@@ -67,19 +67,19 @@ namespace deviceFunctions {
 
 	deviceFunction static double deviceDawson(const double x) {
 		//parameters determining accuracy (higher n, smaller h -> more accurate but slower)
-		int n = 15;
-		double h = 0.3;
+		const int n = 15;
+		const double h = 0.3;
 
 		//series expansion for small x
 		if (deviceFPLib::abs(x) < 0.2) {
-			double x2 = x * x;
-			double x4 = x2 * x2;
+			const double x2 = x * x;
+			const double x4 = x2 * x2;
 			return x * (1.0 - 2.0 * x2 / 3.0 + 4.0 * x4 / 15.0 - 8.0 * x2 * x4 / 105.0 + (16.0 / 945) * x4 * x4 - (32.0 / 10395) * x4 * x4 * x2);
 		}
 
-		int n0 = 2 * (int)(round(0.5 * x / h));
-		double x0 = h * n0;
-		double xp = x - x0;
+		const int n0 = 2 * (int)(round(0.5 * x / h));
+		const double x0 = h * n0;
+		const double xp = x - x0;
 		double d = 0.0;
 		for (int i = -n; i < n; i++) {
 			if (i % 2 != 0) {
@@ -101,8 +101,8 @@ namespace deviceFunctions {
 	//ii: sqrt(-1)
 	//kL: 3183.9 i.e. (e * e / (epsilon_o * m_e)
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static deviceComplex sellmeierFunc(deviceFP ls, deviceFP omega,const deviceFP* a, int eqn) {
-		deviceFP omega2 = omega * omega;
+	deviceFunction static deviceComplex sellmeierFunc(deviceFP ls, const deviceFP omega, const deviceFP* a, const int eqn) {
+		const deviceFP omega2 = omega * omega;
 		deviceFP realPart;
 		deviceComplex compPart;
 		switch (eqn) {
@@ -161,17 +161,17 @@ namespace deviceFunctions {
 			//"real-valued equation has no business being < 1" - causality
 			return deviceComplex(deviceFPLib::sqrt(maxN(realPart, 0.9f)), 0.0f);
 		}
-		return deviceComplex(1.0f, 0.0f);
+		return cOne<deviceComplex>();
 	};
 
 	//Sellmeier equation for refractive indicies
 	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static deviceComplex sellmeierCuda(
-		deviceComplex* ne, deviceComplex* no, const deviceFP* a, deviceFP f, deviceFP theta, deviceFP phi, int type, int eqn) {
+		deviceComplex* ne, deviceComplex* no, const deviceFP* a, const deviceFP f, const deviceFP theta, const deviceFP phi, const int type, const int eqn) {
 		if (f == 0.0f) {
-			*ne = deviceComplex(1.0f, 0.0f); 
-			*no = deviceComplex(1.0f, 0.0f); 
-			return deviceComplex(1.0f, 0.0f);
+			*ne = cOne<deviceComplex>(); 
+			*no = cOne<deviceComplex>(); 
+			return cOne<deviceComplex>();
 		} //exit immediately for f=0
 		deviceFP ls = 2.99792458e14f / f; //wavelength in microns
 		ls *= ls; //only wavelength^2 is ever used
@@ -236,7 +236,7 @@ namespace deviceFunctions {
 	// returns rho at the given index j
 	template<typename deviceFP>
 	deviceFunction static deviceFP resolveNeighborsInOffsetRadialSymmetry(
-		long long* neighbors, long long N, int j, deviceFP dr, long long Ntime, long long h) {
+		size_t* neighbors, const size_t N, const size_t j, const deviceFP dr, const size_t Ntime, const size_t h) {
 		if (j < N / 2) {
 			neighbors[0] = (N - j - 2) * Ntime + h;
 			neighbors[1] = (j + 1) * Ntime + h;
@@ -244,7 +244,7 @@ namespace deviceFunctions {
 			neighbors[3] = (N - j) * Ntime + h;
 			neighbors[4] = (j - 1) * Ntime + h;
 			neighbors[5] = (N - j + 1) * Ntime + h;
-			return -(dr * (j - N / 2) + 0.25f * dr);
+			return (dr * (N / 2 - j) - 0.25f * dr);
 		}
 		else {
 			neighbors[0] = (N - j + 1) * Ntime + h;
@@ -261,9 +261,9 @@ namespace deviceFunctions {
 	//the neighbors aren't required
 	template<typename deviceFP>
 	deviceFunction static deviceFP rhoInRadialSymmetry(
-		long long N, int j, deviceFP dr) {
+		const size_t N, const size_t j, const deviceFP dr) {
 		if (j < N / 2) {
-			return deviceFPLib::abs( - (dr * (j - N / 2) + 0.25f * dr));
+			return deviceFPLib::abs((dr * (N / 2 - j) - 0.25f * dr));
 		}
 		else {
 			return deviceFPLib::abs(dr * (j - N / 2) + 0.25f * dr);
@@ -609,18 +609,18 @@ namespace kernels {
 
 	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/r d/drho)
 	kernelLWE(radialLaplacianKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		unsigned long long i = localIndex;
-		long long j = i / (*s).Ntime; //spatial coordinate
-		long long h = i % (*s).Ntime; //temporal coordinate
-		long long neighbors[6];
+		const size_t i = localIndex;
+		const size_t j = i / (*s).Ntime; //spatial coordinate
+		const size_t h = i % (*s).Ntime; //temporal coordinate
+		size_t neighbors[6];
 
 		//zero at edges of grid
-		[[unlikely]] if (j<3 || j>((long long)(*s).Nspace - 4)) {
+		[[unlikely]] if (j<3 || j>((*s).Nspace - 4)) {
 			(*s).gridRadialLaplacian1[i] = 0.0f;
 			(*s).gridRadialLaplacian2[i] = 0.0f;
 		}
 		else {
-			deviceFP rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, (int)j, (*s).dx, (*s).Ntime, h);
+			deviceFP rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, j, (*s).dx, (*s).Ntime, h);
 			rho = -1.0f / rho;
 			(*s).gridRadialLaplacian1[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
 				+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
@@ -897,8 +897,8 @@ namespace kernels {
 		sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
 			crystalTheta, crystalPhi, axesNumber, sellmeierType);
 		if (isnan(ne.real()) || isnan(no.real())) {
-			ne = deviceComplex(1.0f, 0.0f);
-			no = deviceComplex(1.0f, 0.0f);
+			ne = cOne<deviceComplex>();
+			no = cOne<deviceComplex>();
 		}
 
 		deviceComplex ke = ne * omega / lightC<deviceFP>();
@@ -965,15 +965,15 @@ namespace kernels {
 		deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
 		deviceComplex ko = twoPi<deviceFP>() * no * f / lightC<deviceFP>();
 
-		deviceComplex chi11 = deviceComplex(1.0f, 0.0f);
-		deviceComplex chi12 = deviceComplex(1.0f, 0.0f);
+		deviceComplex chi11 = cOne<deviceComplex>();
+		deviceComplex chi12 = cOne<deviceComplex>();
 		if ((*s).isUsingMillersRule) {
 			chi11 = (*s).chiLinear1[k];
 			chi12 = (*s).chiLinear2[k];
 		}
 		else {
-			chi11 = deviceComplex(1.0f, 0.0f);
-			chi12 = deviceComplex(1.0f, 0.0f);
+			chi11 = cOne<deviceComplex>();
+			chi12 = cOne<deviceComplex>();
 		}
 		deviceComplex kz1 = deviceLib::sqrt(ke - dk) * deviceLib::sqrt(ke + dk);
 		deviceComplex kz2 = deviceLib::sqrt(ko - dk) * deviceLib::sqrt(ko + dk);
@@ -1037,15 +1037,15 @@ namespace kernels {
 		deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
 		deviceComplex ko = (deviceFP)twoPi<deviceFP>() * no * f / lightC<deviceFP>();
 
-		deviceComplex chi11 = deviceComplex(1.0f, 0.0f);
-		deviceComplex chi12 = deviceComplex(1.0f, 0.0f);
+		deviceComplex chi11 = cOne<deviceComplex>();
+		deviceComplex chi12 = cOne<deviceComplex>();
 		if ((*s).isUsingMillersRule) {
 			chi11 = (*s).chiLinear1[j];
 			chi12 = (*s).chiLinear2[j];
 		}
 		else {
-			chi11 = deviceComplex(1.0f, 0.0f);
-			chi12 = deviceComplex(1.0f, 0.0f);
+			chi11 = cOne<deviceComplex>();
+			chi12 = cOne<deviceComplex>();
 		}
 
 		deviceComplex kz1 = deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2);
@@ -1118,7 +1118,7 @@ namespace kernels {
 		}
 	
 		if (isnan(ne.real()) || isnan(no.real()) || ne.real() < 0.9f || no.real()<0.9f || ne.imag()>0.0f || no.imag() > 0.0f) {
-			ne = deviceComplex(1.0f, 0.0f);
+			ne = cOne<deviceComplex>();
 			no = ne;
 			(*s).fieldFactor1[i] = 0.0f;
 			(*s).fieldFactor2[i] = 0.0f;
@@ -1130,8 +1130,8 @@ namespace kernels {
 			deviceComplex n0;
 			sellmeierCuda(&n0, &no, sellmeierCoefficients, deviceFPLib::abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
 			(*s).n0 = no;
-			(*s).chiLinear1[(*s).Ntime / 2] = deviceComplex(1.0f, 0.0f);
-			(*s).chiLinear2[(*s).Ntime / 2] = deviceComplex(1.0f, 0.0f);
+			(*s).chiLinear1[(*s).Ntime / 2] = cOne<deviceComplex>();
+			(*s).chiLinear2[(*s).Ntime / 2] = cOne<deviceComplex>();
 			(*s).fieldFactor1[(*s).Ntime / 2] = 0.0f;
 			(*s).fieldFactor2[(*s).Ntime / 2] = 0.0f;
 			(*s).inverseChiLinear1[(*s).Ntime / 2] = 1.0f / (*s).chiLinear1[i].real();
@@ -1203,8 +1203,8 @@ namespace kernels {
 		deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
 		deviceComplex ko = twoPi<deviceFP>() * no * f / lightC<deviceFP>();
 
-		deviceComplex chi11 = deviceComplex(1.0f, 0.0f);
-		deviceComplex chi12 = deviceComplex(1.0f, 0.0f);
+		deviceComplex chi11 = cOne<deviceComplex>();
+		deviceComplex chi12 = cOne<deviceComplex>();
 		if ((*s).isUsingMillersRule) {
 			chi11 = (*s).chiLinear1[k];
 			chi12 = (*s).chiLinear2[k];

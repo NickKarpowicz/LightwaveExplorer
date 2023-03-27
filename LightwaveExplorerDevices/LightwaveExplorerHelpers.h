@@ -73,17 +73,25 @@ template <typename T>
 hostOrDevice static constexpr T kLorentzian() {
     return (T)3182.607353999257;
 }
+template <typename T>
+hostOrDevice static constexpr T cZero() {
+    return T{};
+}
+template <typename T>
+hostOrDevice static constexpr T cOne() {
+    return T(1.0, 0.0);
+}
 
 //this is a job for std::erase, but when running the code on the cluster, everything
 //is done with nvcc, with only an old version of cmake available. This means I can't
 //use c++20 features there. So if it's compiled with c++17, use the more complicated
 //function, otherwise just inline to std::erase.
 #if __cplusplus<=201703L
-inline void removeCharacterFromString(std::string& s, char removedChar) {
+inline void removeCharacterFromString(std::string& s, const char removedChar) {
     s.erase(std::remove(s.begin(), s.end(), removedChar), s.end());
 }
 #else
-inline void removeCharacterFromString(std::string& s, char removedChar) {
-	std::erase(s,removedChar);
+inline void removeCharacterFromString(std::string& s, const char removedChar) {
+	std::erase(s, removedChar);
 }
 #endif
