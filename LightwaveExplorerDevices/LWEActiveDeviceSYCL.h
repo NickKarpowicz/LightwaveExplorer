@@ -3,9 +3,7 @@
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
 #include <oneapi/dpl/complex>
-#define isnan(x) std::isnan(x)
-
-
+using std::isnan;
 
 template <typename deviceFP>
 static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
@@ -13,22 +11,12 @@ static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	a.fetch_add(pointEnergy);
 }
 
-//if running in 64-bit mode, define complex math operations with fixed float constants
-
-
 [[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator+(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
-
 [[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator+(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() + f, x.imag()); }
-
 [[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator-(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() - f, x.imag()); }
-
 [[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator*(const float f, const oneapi::dpl::complex<double> x) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
-
 [[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator*(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); }
-
 [[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator/(const oneapi::dpl::complex<double> x, const float f) { return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); }
-
-
 
 namespace deviceLibSYCLFP32{
 	static constexpr inline float exp(const float x){
@@ -138,7 +126,6 @@ static constexpr float j0Device(const float x) {
 	}
 }
 
-
 static constexpr oneapi::dpl::complex<double> operator/(const double a, const oneapi::dpl::complex<double> b) {
 	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
 	return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
@@ -172,7 +159,6 @@ public:
 	int memoryStatus;
 	bool hasPlasma = false;
 
-
 	SYCLDevice(simulationParameterSet* sCPU) {
 		memoryStatus = -1;
 		configuredFFT = 0;
@@ -189,7 +175,7 @@ public:
 	}
 
 	bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
-		deviceMemcpy(&canaryPixel, canaryPointer, sizeof(deviceFP), copyType::ToHost);
+		stream.memcpy(&canaryPixel, canaryPointer, sizeof(deviceFP));
 		return(isnan(canaryPixel));
 	}
 
@@ -224,7 +210,7 @@ public:
 		stream.memcpy(copyBuffer, src, count/2);
 		stream.wait();
 		for (size_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = (double)copyBuffer[i];
+			dst[i] = static_cast<double>(copyBuffer[i]);
 		}
 		delete[] copyBuffer;
 	}
@@ -235,7 +221,9 @@ public:
 		stream.memcpy(copyBuffer, src, count/2);
 		stream.wait();
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			dst[i] = std::complex<double>((float)copyBuffer[i].real(), (float)copyBuffer[i].imag());
+			dst[i] = std::complex<double>(
+				static_cast<float>(copyBuffer[i].real()), 
+				static_cast<float>(copyBuffer[i].imag()));
 		}
 		delete[] copyBuffer;
 	}
@@ -243,9 +231,10 @@ public:
 	void deviceMemcpy(oneapi::dpl::complex<float>* dst, const std::complex<double>* src, const size_t count, const copyType kind) {
 		stream.wait();
 		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
-		
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			copyBuffer[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
+			copyBuffer[i] = std::complex<float>(
+				static_cast<float>(src[i].real()), 
+				static_cast<float>(src[i].imag()));
 		}
 		stream.memcpy(dst, copyBuffer, count / 2);
 		stream.wait();
@@ -254,11 +243,9 @@ public:
 
 	void deviceMemcpy(float* dst, const double* src, const size_t count, const copyType kind) {
 		stream.wait();
-		
 		float* copyBuffer = new float[count / sizeof(double)]();
-
 		for (size_t i = 0; i < count / sizeof(double); i++) {
-			copyBuffer[i] = (float)src[i];
+			copyBuffer[i] = static_cast<float>(src[i]);
 			
 		}
 		stream.memcpy(dst, copyBuffer, count / 2);
