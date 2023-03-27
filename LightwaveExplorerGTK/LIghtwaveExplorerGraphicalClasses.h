@@ -140,7 +140,7 @@ public:
             maxX = maxN(currentX, maxX);
             minX = minN(currentX, minX);
         }
-
+        if (iMin >= iMax || iMin >= Npts) return -1;
         for (size_t i = iMin; i < iMax; ++i) {
             if (logScale) { currentY = (double)log10(data[i]); }
             else { currentY = (double)data[i]; }
@@ -375,11 +375,11 @@ public:
         //I would think it would be faster to only call cairo_fill() at the end, but this requires calling cairo_cloase_path()
         //in the loop, which seems to be even slower....
 
-        std::vector<double> scaledX(iMax - iMin);
-        std::vector<double> scaledY(iMax - iMin);
+        std::vector<double> scaledX(Npts);
+        std::vector<double> scaledY(Npts);
         auto getNewScaledXY = [&](std::vector<double>& xValues, double* y) {
 #pragma omp parallel for num_threads(interfaceThreads)
-            for (int i = iMin; i < iMax - 1; i++) {
+            for (int i = 0; i < Npts; i++) {
                 scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
                 if (logScale) {
                     scaledY[i] = height - scaleY * ((double)log10(y[i]) - (double)minY);
@@ -393,7 +393,7 @@ public:
 
         auto plotCairoDots = [&](double* y) {
             currentColor.setCairo(cr);
-            for (size_t i = 0; i < (iMax-iMin-1); ++i) {
+            for (size_t i = iMin; i < (iMax-1); ++i) {
                 if (scaledY[i] <= height) {
                     cairo_arc(cr, scaledX[i], scaledY[i], radius, 0, twoPi<double>());
                     cairo_fill(cr);
@@ -403,8 +403,8 @@ public:
 
         auto plotCairoPolyline = [&](double* y) {
             currentColor.setCairo(cr);
-            cairo_move_to(cr, scaledX[0], scaledY[0]);
-            for (size_t i = 1; i < (iMax-iMin-1); ++i) {
+            cairo_move_to(cr, scaledX[iMin], scaledY[iMin]);
+            for (size_t i = iMin+1; i < (iMax-1); ++i) {
                 if (scaledY[i-1] <= height) { 
                     if (scaledY[i] <= height) {
                         cairo_line_to(cr, scaledX[i], scaledY[i]);
