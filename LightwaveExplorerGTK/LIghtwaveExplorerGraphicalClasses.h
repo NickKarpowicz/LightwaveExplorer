@@ -393,7 +393,7 @@ public:
 
         auto plotCairoDots = [&](double* y) {
             currentColor.setCairo(cr);
-            for (size_t i = iMin; i < (iMax-1); ++i) {
+            for (size_t i = iMin; i < iMax; ++i) {
                 if (scaledY[i] <= height) {
                     cairo_arc(cr, scaledX[i], scaledY[i], radius, 0, twoPi<double>());
                     cairo_fill(cr);
@@ -404,7 +404,7 @@ public:
         auto plotCairoPolyline = [&](double* y) {
             currentColor.setCairo(cr);
             cairo_move_to(cr, scaledX[iMin], scaledY[iMin]);
-            for (size_t i = iMin+1; i < (iMax-1); ++i) {
+            for (size_t i = iMin+1; i < iMax; ++i) {
                 if (scaledY[i-1] <= height) { 
                     if (scaledY[i] <= height) {
                         cairo_line_to(cr, scaledX[i], scaledY[i]);
