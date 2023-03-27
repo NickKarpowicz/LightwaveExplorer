@@ -1,5 +1,4 @@
 #include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
-//#include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 
 namespace deviceFunctions {
@@ -149,7 +148,9 @@ namespace deviceFunctions {
 
 		}
 		case 100:
-			[[unlikely]]if(ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex(0.0f,0.0f);
+		{
+			[[unlikely]] if (ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return deviceComplex{};
+		}
 			realPart = a[0]
 				+ (a[1] + a[2] * ls) / (ls + a[3])
 				+ (a[4] + a[5] * ls) / (ls + a[6])
@@ -293,7 +294,7 @@ namespace deviceFunctions {
 	// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
 	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients, const long long i, deviceComplex* n1, deviceComplex* n2) {
-		unsigned long long j, k, h, col;
+		size_t j, k, h, col;
 		h = 1 + i % ((*s).Nfreq - 1);
 		col = i / ((*s).Nfreq - 1);
 		j = col % (*s).Nspace;
@@ -871,8 +872,8 @@ namespace kernels {
 
 	//apply linear propagation through a given medium to the fields
 	kernelLWE(applyLinearPropagationKernel, const deviceFP* sellmeierCoefficients, const deviceFP thickness, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		long long i = localIndex;
-		long long j, h, k, col;
+		size_t i = localIndex;
+		size_t j, h, k, col;
 		int axesNumber = (*s).axesNumber;
 		int sellmeierType = (*s).sellmeierType;
 		deviceComplex ne, no, n0, n0o;
@@ -888,8 +889,8 @@ namespace kernels {
 		deviceFP f = h * (*s).fStep;
 		deviceFP omega = twoPi<deviceFP>() * f;
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-		deviceFP dk1 = j * (*s).dk1 - (j >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
-		deviceFP dk2 = k * (*s).dk2 - (k >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
+		deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
+		deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 		if (!(*s).is3D)dk2 = 0.0f;
 		//if ((*s).isCylindric) dk2 = dk1;
 		sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
@@ -922,7 +923,7 @@ namespace kernels {
 
 		}
 		if (h == 1) {
-			(*s).gridEFrequency1[i-1] = deviceComplex{};
+			(*s).gridEFrequency1[i - 1] = deviceComplex{};
 			(*s).gridEFrequency2[i - 1] = deviceComplex{};
 		}
 	};
@@ -931,8 +932,8 @@ namespace kernels {
 	//note that the sellmeier coefficients have extra values appended to the end
 	//to give info about the current simulation
 	kernelLWE(prepareCartesianGridsKernel, const deviceFP* sellmeierCoefficients, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		long long i = localIndex;
-		long long j, k;
+		size_t i = localIndex;
+		size_t j, k;
 		deviceComplex ne, no;
 		deviceComplex n0 = (*s).n0;
 		deviceComplex cuZero = deviceComplex{};
@@ -947,7 +948,7 @@ namespace kernels {
 		deviceFP f = k * fStep;
 
 		//transverse wavevector being resolved
-		deviceFP dk = j * kStep - (j >= ((long long)(*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
+		deviceFP dk = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
@@ -1002,8 +1003,8 @@ namespace kernels {
 	//note that the sellmeier coefficients have extra values appended to the end
 	//to give info about the current simulation
 	kernelLWE(prepare3DGridsKernel, const deviceFP* sellmeierCoefficients, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		long long i = localIndex;
-		long long col, j, k, l;
+		size_t i = localIndex;
+		size_t col, j, k, l;
 		deviceComplex ne, no;
 		deviceComplex n0 = (*s).n0;
 		deviceComplex cuZero = deviceComplex{};
@@ -1019,8 +1020,8 @@ namespace kernels {
 		deviceFP f = j * (*s).fStep;
 
 		//transverse wavevector being resolved
-		deviceFP dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
-		deviceFP dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
+		deviceFP dk1 = k * (*s).dk1 - (k >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace); //frequency grid in x direction
+		deviceFP dk2 = l * (*s).dk2 - (l >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2); //frequency grid in y direction
 
 		findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 		if (minN(ne.real(), no.real()) < 0.9f || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
@@ -1082,7 +1083,7 @@ namespace kernels {
 
 	//prepare the chi(1) arrays that will be needed in the simulation
 	kernelLWE(getChiLinearKernel, deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients) {
-		long long i = localIndex;
+		size_t i = localIndex;
 		int axesNumber = (*s).axesNumber;
 		int sellmeierType = (*s).sellmeierType;
 		deviceFP crystalTheta = sellmeierCoefficients[66];
@@ -1165,9 +1166,8 @@ namespace kernels {
 
 	//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
 	kernelLWE(prepareCylindricGridsKernel, deviceFP* sellmeierCoefficients, deviceParameterSet<deviceFP, deviceComplex>* s) {
-		long long i = localIndex;
-		long long j, k;
-		long long Nspace = (*s).Nspace;
+		size_t i = localIndex;
+		size_t j, k;
 		deviceComplex cuZero = deviceComplex{};
 		j = i / ((*s).Nfreq - 1); //spatial coordinate
 		k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
@@ -1180,10 +1180,10 @@ namespace kernels {
 		deviceComplex n0 = (*s).n0;
 
 		//frequency being resolved by current thread
-		deviceFP f = -k * fStep;
+		deviceFP f = -(k * fStep);
 
 		//transverse wavevector being resolved
-		deviceFP dk = j * kStep - (j >= (Nspace / 2)) * (kStep * Nspace); //frequency grid in transverse direction
+		deviceFP dk = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
 
 		sellmeierCuda(&ne, &no, sellmeierCoefficients,fStep*k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
 		//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
@@ -1384,9 +1384,9 @@ namespace kernels {
 	//applied in 3 parts due to the different patterns of calculating ionization rate (A)
 	//and integrating over trajectories (B). Added to RK4 propagation array afterwards.
 	kernelLWE(plasmaCurrentKernel_twoStage_A, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		size_t i = localIndex;
+		const size_t i = localIndex;
 		deviceFP Esquared, a;
-		unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
+		const unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
 
 		//save values in workspaces, casting to deviceFP
 		deviceFP* dN = (deviceFP*)(*s).workspace1;
@@ -1406,8 +1406,7 @@ namespace kernels {
 	};
 
 	kernelLWE(plasmaCurrentKernel_twoStage_B, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		size_t j = localIndex;
-		j *= (*s).Ntime;
+		const size_t j = (localIndex) * (*s).Ntime;
 		deviceFP N{};
 		deviceFP integralx{};
 		deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
