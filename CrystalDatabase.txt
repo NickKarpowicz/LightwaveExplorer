@@ -593,3 +593,38 @@ None
 Nonlinear reference frequencies:
 282e12 282e12 564e12 375e12 375e12 375e12 375e12
 ~~~crystal end~~~
+Name:
+ZnS
+Type:
+0
+Sellmeier equation:
+2
+1st axis coefficients:
+4.37758 9.01126e+15 1.57665e+15 11.3178 4.97309e+13 2.27319e+12 73.6161 1.865e+15 3e+14 0.07 4.28103e+13 1.6e+13 0.9 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+4.37758 9.01126e+15 1.57665e+15 11.3178 4.97309e+13 2.27319e+12 73.6161 1.865e+15 3e+14 0.07 4.28103e+13 1.6e+13 0.9 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+4.37758 9.01126e+15 1.57665e+15 11.3178 4.97309e+13 2.27319e+12 73.6161 1.865e+15 3e+14 0.07 4.28103e+13 1.6e+13 0.9 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+M. R. Querry. Optical constants of minerals and other materials from the millimeter to the ultraviolet, Contractor Report CRDEC-CR-88009 (1987) via refractiveindex.info, fit to Gaussian bands
+chi2 type:
+1
+d:
+0 0 0 2.12 0 0
+0 0 0 0 2.12 0
+0 0 0 0 0 2.12
+d reference:
+F. Zhang et al, Optics and Laser Technology 127, 106145(2020).
+chi3 type:
+2
+chi3:
+3.65e-21
+0
+0
+chi3 reference:
+T. Kawamori et al., CLEO 2021 STu4C.1 (ZnSe value)
+Spectral file:
+None
+Nonlinear reference frequencies:
+2.9219298e+14 2.9219298e+14 5.8438596e+14 128e12 128e12 128e12 128e12
+~~~crystal end~~~
