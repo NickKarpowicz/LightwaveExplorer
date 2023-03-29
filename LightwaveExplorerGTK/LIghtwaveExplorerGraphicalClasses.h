@@ -430,6 +430,7 @@ public:
             else {
                 y2 = height - scaleY * (y[iMin] - minY);
             }
+            if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
             if (y2 <= height) {
                 SVGstartPolyLine();
                 SVGaddXYtoPolyLine(x2, y2);
@@ -445,6 +446,7 @@ public:
                 else {
                     y2 = height - scaleY * (y[i] - minY);
                 }
+                if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
                 x2 += axisSpaceX;
 
                 if (y1 <= height) {
@@ -491,7 +493,7 @@ public:
                 else {
                     y1 = height - scaleY * ((double)y[i] - (double)minY);
                 }
-                if (y1 <= height) {
+                if (y1 <= height && !isnan(y1) && !isinf(y1)) {
                     SVGstdcircle();
                 }
             }
