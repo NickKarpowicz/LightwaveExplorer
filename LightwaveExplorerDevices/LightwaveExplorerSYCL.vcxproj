@@ -44,6 +44,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>Intel(R) oneAPI DPC++ Compiler 2023</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <UseInteloneMKL>Parallel</UseInteloneMKL>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -157,7 +158,7 @@
       <FSYCLDeadArgsOptimization>Default</FSYCLDeadArgsOptimization>
       <OpenMP>None</OpenMP>
       <OpenMPOffloading>None</OpenMPOffloading>
-      <FSYCLUnnamedLambda>Yes</FSYCLUnnamedLambda>
+      <FSYCLUnnamedLambda>Default</FSYCLUnnamedLambda>
       <DebugInformationFormat>None</DebugInformationFormat>
     </ClCompile>
     <Link>
@@ -171,6 +172,7 @@
       <AdditionalOptions>
       </AdditionalOptions>
       <SpecifyCPUTargetForAOT>Default</SpecifyCPUTargetForAOT>
+      <SpecifySyclLink>false</SpecifySyclLink>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(TargetPath)" "$(ProjectDir)..\LightwaveExplorerWin64\bin"
