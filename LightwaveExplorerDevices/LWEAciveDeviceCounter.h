@@ -69,8 +69,8 @@ public:
 
 	~counterDevice() {
 	}
-	template<typename Function, typename... Args>
-	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const Function kernel, const Args... args) {
+	template<typename T>
+	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, T functor) {
 	}
 
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) {

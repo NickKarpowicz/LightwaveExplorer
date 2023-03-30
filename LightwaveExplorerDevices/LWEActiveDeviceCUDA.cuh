@@ -192,9 +192,15 @@ public:
 		return(isnan(canaryPixel));
 	}
 
-	template<typename Function, typename... Args>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
-		kernel<<<Nblock, Nthread, 0, stream>>>(args...);
+	//template<typename Function, typename... Args>
+	//void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
+	//	kernel<<<Nblock, Nthread, 0, stream>>>(args...);
+	//}
+
+	template <typename T>
+	__global__ void deviceLaunch(unsigned int Nblock, unsigned int Nthread, T functor){
+		size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+		functor(i);
 	}
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
