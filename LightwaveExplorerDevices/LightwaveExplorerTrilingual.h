@@ -2,7 +2,7 @@
 #ifdef __CUDACC__
 #include "LWEActiveDeviceCUDA.cuh"
 #define deviceFunction __device__
-#define localIndex threadIdx.x + blockIdx.x * blockDim.x
+//#define localIndex threadIdx.x + blockIdx.x * blockDim.x
 #define kernelLWE(kernelName,...) \
 __global__ static void kernelName(__VA_ARGS__)
 #if LWEFLOATINGPOINT==64
@@ -23,9 +23,9 @@ typedef complexLib::complex<float> deviceComplex;
 #elif defined RUNONSYCL
 #include "LWEActiveDeviceSYCL.h"
 #define kernelLWE(kernelName,...) \
-const auto kernelName = [](size_t trilingualLaunchID, __VA_ARGS__)
+auto kernelName = [](size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
-#define localIndex trilingualLaunchID
+//#define localIndex trilingualLaunchID
 #if LWEFLOATINGPOINT == 64
 typedef SYCLDevice<double, oneapi::dpl::complex<double>> ActiveDevice;
 typedef double deviceFP;
@@ -49,7 +49,7 @@ static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 typedef counterDevice<double, std::complex<double>> ActiveDevice;
 typedef double deviceFP;
 typedef complexLib::complex<double> deviceComplex;
-#define localIndex trilingualLaunchID
+//#define localIndex trilingualLaunchID
 #define runDlibFittingX runDlibFittingCounter
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationCounter
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
@@ -58,7 +58,7 @@ typedef complexLib::complex<double> deviceComplex;
 #define kernelLWE(kernelName,...) \
 static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
-#define localIndex trilingualLaunchID
+//#define localIndex trilingualLaunchID
 #if LWEFLOATINGPOINT == 32
 typedef CPUDevice<float, std::complex<float>> ActiveDevice;
 typedef float deviceFP;

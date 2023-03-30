@@ -121,6 +121,13 @@ static int hardwareCheck(int* CUDAdeviceCount) {
 	}
 	return 0;
 }
+
+template <typename T>
+__global__ void deviceLaunchFunctorWrapper(T functor) {
+	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
+	functor(i);
+}
+
 template<typename deviceFP, typename deviceComplex>
 class CUDADevice {
 private:
@@ -196,12 +203,11 @@ public:
 	//void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
 	//	kernel<<<Nblock, Nthread, 0, stream>>>(args...);
 	//}
-
 	template <typename T>
-	__global__ void deviceLaunch(unsigned int Nblock, unsigned int Nthread, T functor){
-		size_t i = threadIdx.x + blockIdx.x * blockDim.x;
-		functor(i);
+	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, T functor) {
+		deviceLaunchFunctorWrapper<<<Nblock, Nthread, 0, stream>>>(functor);
 	}
+
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
 		int err = cudaMalloc(ptr, N * elementSize);

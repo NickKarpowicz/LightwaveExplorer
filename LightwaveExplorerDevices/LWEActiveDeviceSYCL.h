@@ -187,9 +187,9 @@ public:
 	//}
 
 	template <typename T>
-	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T functor) {
+	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, T functor) {
 	stream.submit([&](sycl::handler& h) {
-		h.parallel_for(Nblock * Nthread, functor);
+		h.parallel_for(sycl::range<1>(Nblock * Nthread), functor);
 		});
 }
 
