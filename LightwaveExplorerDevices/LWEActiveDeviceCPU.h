@@ -218,10 +218,9 @@ public:
 //			}
 //		}
 //	}
-
 	template<typename T>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const T& functor) const {
-//#pragma omp parallel for private(functor)
+#pragma omp parallel for
 		for (int i = 0; i < (int)Nthread; ++i) {
 			for (unsigned int j = 0u; j < Nblock; ++j) {
 				functor(j + Nblock * (unsigned int)i);

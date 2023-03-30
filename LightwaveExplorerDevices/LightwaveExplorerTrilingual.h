@@ -2,10 +2,8 @@
 #ifdef __CUDACC__
 #include "LWEActiveDeviceCUDA.cuh"
 #define deviceFunction __device__
-//#define localIndex threadIdx.x + blockIdx.x * blockDim.x
-#define kernelLWE(kernelName,...) \
-__global__ static void kernelName(__VA_ARGS__)
 #if LWEFLOATINGPOINT==64
+#define kernelNamespace CUDA64Kernels
 typedef CUDADevice<double, thrust::complex<double>> ActiveDevice;
 typedef double deviceFP;
 typedef complexLib::complex<double> deviceComplex;
@@ -13,6 +11,7 @@ typedef complexLib::complex<double> deviceComplex;
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquation
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequence
 #else
+#define kernelNamespace CUDA32Kernels
 typedef CUDADevice<float, thrust::complex<float>> ActiveDevice;
 typedef float deviceFP;
 typedef complexLib::complex<float> deviceComplex;
@@ -22,11 +21,9 @@ typedef complexLib::complex<float> deviceComplex;
 #endif
 #elif defined RUNONSYCL
 #include "LWEActiveDeviceSYCL.h"
-#define kernelLWE(kernelName,...) \
-auto kernelName = [](size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
-//#define localIndex trilingualLaunchID
 #if LWEFLOATINGPOINT == 64
+#define kernelNamespace SYCL64Kernels
 typedef SYCLDevice<double, oneapi::dpl::complex<double>> ActiveDevice;
 typedef double deviceFP;
 typedef complexLib::complex<double> deviceComplex;
@@ -34,6 +31,7 @@ typedef complexLib::complex<double> deviceComplex;
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCL
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
 #else
+#define kernelNamespace SYCL32Kernels
 typedef SYCLDevice<float, oneapi::dpl::complex<float>> ActiveDevice;
 typedef float deviceFP;
 typedef complexLib::complex<float> deviceComplex;
@@ -43,23 +41,19 @@ typedef complexLib::complex<float> deviceComplex;
 #endif
 #elif defined RUNSTEPCOUNTER
 #include "LWEAciveDeviceCounter.h"
-#define kernelLWE(kernelName,...) \
-static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
+#define kernelNamespace CounterKernels
 #define deviceFunction 
 typedef counterDevice<double, std::complex<double>> ActiveDevice;
 typedef double deviceFP;
 typedef complexLib::complex<double> deviceComplex;
-//#define localIndex trilingualLaunchID
 #define runDlibFittingX runDlibFittingCounter
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationCounter
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
 #else
 #include "LWEActiveDeviceCPU.h"
-#define kernelLWE(kernelName,...) \
-static void kernelName(size_t trilingualLaunchID, __VA_ARGS__)
 #define deviceFunction 
-//#define localIndex trilingualLaunchID
 #if LWEFLOATINGPOINT == 32
+#define kernelNamespace CPU32Kernels
 typedef CPUDevice<float, std::complex<float>> ActiveDevice;
 typedef float deviceFP;
 typedef complexLib::complex<float> deviceComplex;
@@ -67,6 +61,7 @@ typedef complexLib::complex<float> deviceComplex;
 #define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPUFP32
 #define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPUFP32
 #else
+#define kernelNamespace CPU64Kernels
 typedef CPUDevice<double, std::complex<double>> ActiveDevice;
 typedef double deviceFP;
 typedef complexLib::complex<double> deviceComplex;

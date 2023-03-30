@@ -438,9 +438,10 @@ namespace deviceFunctions {
 }
 using namespace deviceFunctions;
 
-namespace kernels {
+namespace kernelNamespace{
 	//the syntax might look a bit strange due to the "trilingual" mode of operation. In short:
-	// CUDA and OpenMP are fine with function pointers being used to launch kernels, but SYCL
+	// CUDA and O
+	// penMP are fine with function pointers being used to launch kernels, but SYCL
 	// doesn't allow them. However, SYCL does allow named lambdas, which have a nearly identical
 	// structure. The kernelLWE() preprocessor definition handles the return type (void for CUDA,
 	// auto for SYCL, and the []( syntax to declare a lambda for SYCL. 
@@ -1186,8 +1187,7 @@ namespace kernels {
 	public:
 		deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP* sellmeierCoefficients;
-		deviceFunction void operator()(size_t localIndex) const {
-			size_t i = localIndex;
+		deviceFunction void operator()(size_t i) const {
 			int axesNumber = (*s).axesNumber;
 			int sellmeierType = (*s).sellmeierType;
 			deviceFP crystalTheta = sellmeierCoefficients[66];
@@ -1981,7 +1981,7 @@ namespace kernels {
 		}
 	};
 }
-using namespace kernels;
+using namespace kernelNamespace;
 
 namespace hostFunctions{
 	static simulationParameterSet* fittingSet;
