@@ -453,55 +453,60 @@ namespace kernels {
 	//calculate the total energy spectrum of the beam for the 2D modes. Note that for the 
 	//cartesian one, it will be treated as a round beam instead of an infinite plane wave 
 	//in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
-	kernelLWE(totalSpectrumKernel, const deviceParameterSet<deviceFP, deviceComplex>* s){
-	//kernelLWE(totalSpectrumKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		size_t i = localIndex;
-		size_t j;
-		deviceFP beamCenter1{};
-		deviceFP beamCenter2{};
-		deviceFP beamTotal1{};
-		deviceFP beamTotal2{};
-		deviceFP a, x;
+	//kernelLWE(totalSpectrumKernel, const deviceParameterSet<deviceFP, deviceComplex>* s){
+	class totalSpectrumKernel {
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+	public:
+		totalSpectrumKernel(const deviceParameterSet<deviceFP, deviceComplex>* in_s) : s(in_s) {}
+		hostOrDevice void operator()(size_t localIndex) {
+			size_t i = localIndex;
+			size_t j;
+			deviceFP beamCenter1{};
+			deviceFP beamCenter2{};
+			deviceFP beamTotal1{};
+			deviceFP beamTotal2{};
+			deviceFP a, x;
 
-		//find beam centers
-		if ((*s).isCylindric) {
-			beamCenter1 = ((*s).Nspace / 2.0f * (*s).dx) + 0.25f * (*s).dx;
-			beamCenter2 = beamCenter1;
-		}
-		else{
+			//find beam centers
+			if ((*s).isCylindric) {
+				beamCenter1 = ((*s).Nspace / 2.0f * (*s).dx) + 0.25f * (*s).dx;
+				beamCenter2 = beamCenter1;
+			}
+			else {
+				for (j = 0; j < (*s).Nspace; ++j) {
+					x = (*s).dx * j;
+					a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+					beamTotal1 += a;
+					beamCenter1 += x * a;
+					a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+					beamTotal2 += a;
+					beamCenter2 += x * a;
+				}
+				if (beamTotal1 > 0.0f) {
+					beamCenter1 /= beamTotal1;
+				}
+				if (beamTotal2 > 0.0f) {
+					beamCenter2 /= beamTotal2;
+				}
+			}
+
+			//Integrate total beam power, assuming radially-symmetric beam around
+			//the center
+			beamTotal1 = 0.0f;
+			beamTotal2 = 0.0f;
 			for (j = 0; j < (*s).Nspace; ++j) {
 				x = (*s).dx * j;
-				a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
-				beamTotal1 += a;
-				beamCenter1 += x * a;
-				a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
-				beamTotal2 += a;
-				beamCenter2 += x * a;
+				beamTotal1 += deviceFPLib::abs(x - beamCenter1) * cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+				beamTotal2 += deviceFPLib::abs(x - beamCenter2) * cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
-			if (beamTotal1 > 0.0f) {
-				beamCenter1 /= beamTotal1;
-			}
-			if (beamTotal2 > 0.0f) {
-				beamCenter2 /= beamTotal2;
-			}
-		}
+			beamTotal1 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) * (*s).dx * (*s).dt * (*s).dt;
+			beamTotal2 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) * (*s).dx * (*s).dt * (*s).dt;
 
-		//Integrate total beam power, assuming radially-symmetric beam around
-		//the center
-		beamTotal1 = 0.0f;
-		beamTotal2 = 0.0f;
-		for (j = 0; j < (*s).Nspace; ++j) {
-			x = (*s).dx * j;
-			beamTotal1 += deviceFPLib::abs(x - beamCenter1) * cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
-			beamTotal2 += deviceFPLib::abs(x - beamCenter2) * cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+			//put the values into the output spectrum
+			(*s).gridPolarizationTime1[i] = beamTotal1;
+			(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+			(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 		}
-		beamTotal1 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) * (*s).dx * (*s).dt * (*s).dt;
-		beamTotal2 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) * (*s).dx * (*s).dt * (*s).dt;
-
-		//put the values into the output spectrum
-		(*s).gridPolarizationTime1[i] = beamTotal1;
-		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
-		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
 	//Calculate the energy spectrum after a 2D propagation assuming that the beam
@@ -531,23 +536,29 @@ namespace kernels {
 	//};
 
 	//Calculate the energy spectrum after a 3D propagation
-	kernelLWE(totalSpectrum3DKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		size_t i = localIndex;
+	//kernelLWE(totalSpectrum3DKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
+	class totalSpectrum3DKernel {
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+	public:
+		totalSpectrum3DKernel(const deviceParameterSet<deviceFP, deviceComplex>* in_s) : s(in_s) {}
+		hostOrDevice void operator()(size_t localIndex) {
+			size_t i = localIndex;
 
-		deviceFP beamTotal1{};
-		deviceFP beamTotal2{};
-		//Integrate total beam power
-		for (size_t j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
-			beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
-			beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+			deviceFP beamTotal1{};
+			deviceFP beamTotal2{};
+			//Integrate total beam power
+			for (size_t j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
+				beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+				beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+			}
+			beamTotal1 *= constProd(lightC<deviceFP>(), 2.0 * eps0<deviceFP>()) * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
+			beamTotal2 *= constProd(lightC<deviceFP>(), 2.0 * eps0<deviceFP>()) * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
+
+			//put the values into the output spectrum
+			(*s).gridPolarizationTime1[i] = beamTotal1;
+			(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+			(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 		}
-		beamTotal1 *= constProd(lightC<deviceFP>(), 2.0 * eps0<deviceFP>()) * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
-		beamTotal2 *= constProd(lightC<deviceFP>(), 2.0 * eps0<deviceFP>()) * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
-
-		//put the values into the output spectrum
-		(*s).gridPolarizationTime1[i] = beamTotal1;
-		(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
-		(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
 	};
 
 	//perform a Hankel transform by direct quadrature
@@ -558,24 +569,32 @@ namespace kernels {
 	//low due to Gibbs phenomena and I find the FFT-based propagation implemented
 	//below better for nonlinear phenomena. I might later use this for linear propagation
 	//in sequences however.
-	kernelLWE(hankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
-		size_t i = localIndex;
-		size_t col = i / (*s).Ntime; //spatial coordinate
-		deviceFP dk = constProd((deviceFP)(1.0/vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
-		in += i % (*s).Ntime;
-		out[i] = 0.0f;
-		out[i + (*s).Ngrid] = 0.0f;
-		deviceFP r0;
-		deviceFP J0 = 1.0f;
-		deviceFP k0 = col * dk;
-		for (size_t r = 0; r < (*s).Nspace; ++r) {
-			r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
-			J0 = r0 * j0Device(r0 * k0);
-			out[i] += J0 * in[r * (*s).Ntime];
-			out[i + (*s).Ngrid] += J0 * in[r * (*s).Ntime + (*s).Ngrid];
+	//kernelLWE(hankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
+	class hankelKernel {
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP* in;
+		deviceFP* out;
+	public:
+		hankelKernel(const deviceParameterSet<deviceFP, deviceComplex>* in_s, const deviceFP* in_in, deviceFP* in_out) : s(in_s), in(in_in), out(in_out) {}
+		hostOrDevice void operator()(size_t localIndex) {
+			size_t i = localIndex;
+			size_t col = i / (*s).Ntime; //spatial coordinate
+			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
+			in += i % (*s).Ntime;
+			out[i] = 0.0f;
+			out[i + (*s).Ngrid] = 0.0f;
+			deviceFP r0;
+			deviceFP J0 = 1.0f;
+			deviceFP k0 = col * dk;
+			for (size_t r = 0; r < (*s).Nspace; ++r) {
+				r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
+				J0 = r0 * j0Device(r0 * k0);
+				out[i] += J0 * in[r * (*s).Ntime];
+				out[i + (*s).Ngrid] += J0 * in[r * (*s).Ntime + (*s).Ngrid];
+			}
+			out[i] *= (*s).dx;
+			out[i + (*s).Ngrid] *= (*s).dx;
 		}
-		out[i] *= (*s).dx;
-		out[i + (*s).Ngrid] *= (*s).dx;
 	};
 
 	//inverse Hankel transform from the k-space back to the offset spatial grid
