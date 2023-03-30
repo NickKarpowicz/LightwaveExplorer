@@ -455,9 +455,8 @@ namespace kernels {
 	//in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
 	//kernelLWE(totalSpectrumKernel, const deviceParameterSet<deviceFP, deviceComplex>* s){
 	class totalSpectrumKernel {
-		const deviceParameterSet<deviceFP, deviceComplex>* s;
 	public:
-		totalSpectrumKernel(const deviceParameterSet<deviceFP, deviceComplex>* in_s) : s(in_s) {}
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		hostOrDevice void operator()(size_t localIndex) {
 			size_t i = localIndex;
 			size_t j;
@@ -538,9 +537,8 @@ namespace kernels {
 	//Calculate the energy spectrum after a 3D propagation
 	//kernelLWE(totalSpectrum3DKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 	class totalSpectrum3DKernel {
-		const deviceParameterSet<deviceFP, deviceComplex>* s;
 	public:
-		totalSpectrum3DKernel(const deviceParameterSet<deviceFP, deviceComplex>* in_s) : s(in_s) {}
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		hostOrDevice void operator()(size_t localIndex) {
 			size_t i = localIndex;
 
@@ -571,11 +569,10 @@ namespace kernels {
 	//in sequences however.
 	//kernelLWE(hankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
 	class hankelKernel {
+	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP* in;
 		deviceFP* out;
-	public:
-		hankelKernel(const deviceParameterSet<deviceFP, deviceComplex>* in_s, const deviceFP* in_in, deviceFP* in_out) : s(in_s), in(in_in), out(in_out) {}
 		hostOrDevice void operator()(size_t localIndex) {
 			size_t i = localIndex;
 			size_t col = i / (*s).Ntime; //spatial coordinate
@@ -598,148 +595,193 @@ namespace kernels {
 	};
 
 	//inverse Hankel transform from the k-space back to the offset spatial grid
-	kernelLWE(inverseHankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
-		size_t i = localIndex;
-		size_t col = i / (*s).Ntime; //spatial coordinate
-		deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
-		in += i % (*s).Ntime;;
-		out[i] = 0.0f;
-		out[i + (*s).Ngrid] = 0.0f;
-		deviceFP r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
-		deviceFP J0 = 1.0f;
-		deviceFP k0 = col * dk;
-		for (size_t k = 0; k < (*s).Nspace; ++k) {
-			k0 = k * dk;
-			J0 = k0*j0Device(r0 * k0);
-			out[i] += J0 * in[k * (*s).Ntime];
-			out[i + (*s).Ngrid] += J0 * in[k * (*s).Ntime + (*s).Ngrid];
+	//kernelLWE(inverseHankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
+	class inverseHankelKernel {
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP* in;
+		deviceFP* out;
+		hostOrDevice void operator()(size_t localIndex) {
+			size_t i = localIndex;
+			size_t col = i / (*s).Ntime; //spatial coordinate
+			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
+			in += i % (*s).Ntime;;
+			out[i] = 0.0f;
+			out[i + (*s).Ngrid] = 0.0f;
+			deviceFP r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
+			deviceFP J0 = 1.0f;
+			deviceFP k0 = col * dk;
+			for (size_t k = 0; k < (*s).Nspace; ++k) {
+				k0 = k * dk;
+				J0 = k0 * j0Device(r0 * k0);
+				out[i] += J0 * in[k * (*s).Ntime];
+				out[i + (*s).Ngrid] += J0 * in[k * (*s).Ntime + (*s).Ngrid];
+			}
+			out[i] *= 0.5f * dk / ((*s).Ntime);
+			out[i + (*s).Ngrid] *= 0.5f * dk / ((*s).Ntime);
 		}
-		out[i] *= 0.5f * dk / ((*s).Ntime);
-		out[i + (*s).Ngrid] *= 0.5f * dk / ((*s).Ntime);
 	};
 
 	//rotate the field around the propagation axis (basis change)
-	kernelLWE(rotateFieldKernel, const deviceComplex* Ein1, const deviceComplex* Ein2, deviceComplex* Eout1,
-		deviceComplex* Eout2, const deviceFP rotationAngle) {
-		long long i = localIndex;
-		Eout1[i] = deviceFPLib::cos(rotationAngle) * Ein1[i] - deviceFPLib::sin(rotationAngle) * Ein2[i];
-		Eout2[i] = deviceFPLib::sin(rotationAngle) * Ein1[i] + deviceFPLib::cos(rotationAngle) * Ein2[i];
+	//kernelLWE(rotateFieldKernel, const deviceComplex* Ein1, const deviceComplex* Ein2, deviceComplex* Eout1,
+	//	deviceComplex* Eout2, const deviceFP rotationAngle) {
+	class rotateFieldKernel {
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP* Ein1;
+		const deviceFP* Ein2;
+		deviceFP* Eout1;
+		deviceFP* Eout2;
+		const deviceFP rotationAngle;
+		hostOrDevice void operator()(size_t localIndex) {
+			long long i = localIndex;
+			Eout1[i] = deviceFPLib::cos(rotationAngle) * Ein1[i] - deviceFPLib::sin(rotationAngle) * Ein2[i];
+			Eout2[i] = deviceFPLib::sin(rotationAngle) * Ein1[i] + deviceFPLib::cos(rotationAngle) * Ein2[i];
+		}
 	};
 
 	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/r d/drho)
-	kernelLWE(radialLaplacianKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-		const size_t i = localIndex;
-		const size_t j = i / (*s).Ntime; //spatial coordinate
-		const size_t h = i % (*s).Ntime; //temporal coordinate
-		size_t neighbors[6];
+	class radialLaplacianKernel {
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		hostOrDevice void operator()(size_t localIndex) {
+			const size_t i = localIndex;
+			const size_t j = i / (*s).Ntime; //spatial coordinate
+			const size_t h = i % (*s).Ntime; //temporal coordinate
+			size_t neighbors[6];
 
-		//zero at edges of grid
-		[[unlikely]] if (j<3 || j>((*s).Nspace - 4)) {
-			(*s).gridRadialLaplacian1[i] = 0.0f;
-			(*s).gridRadialLaplacian2[i] = 0.0f;
-		}
-		else {
-			deviceFP rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, j, (*s).dx, (*s).Ntime, h);
-			rho = -1.0f / rho;
-			(*s).gridRadialLaplacian1[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
-				+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
-				+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
-				+ (*s).firstDerivativeOperation[3] * (*s).gridETime1[neighbors[3]]
-				+ (*s).firstDerivativeOperation[4] * (*s).gridETime1[neighbors[4]]
-				+ (*s).firstDerivativeOperation[5] * (*s).gridETime1[neighbors[5]]);
-			(*s).gridRadialLaplacian2[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime2[neighbors[0]]
-				+ (*s).firstDerivativeOperation[1] * (*s).gridETime2[neighbors[1]]
-				+ (*s).firstDerivativeOperation[2] * (*s).gridETime2[neighbors[2]]
-				+ (*s).firstDerivativeOperation[3] * (*s).gridETime2[neighbors[3]]
-				+ (*s).firstDerivativeOperation[4] * (*s).gridETime2[neighbors[4]]
-				+ (*s).firstDerivativeOperation[5] * (*s).gridETime2[neighbors[5]]);
+			//zero at edges of grid
+			[[unlikely]] if (j<3 || j>((*s).Nspace - 4)) {
+				(*s).gridRadialLaplacian1[i] = 0.0f;
+				(*s).gridRadialLaplacian2[i] = 0.0f;
+			}
+			else {
+				deviceFP rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, j, (*s).dx, (*s).Ntime, h);
+				rho = -1.0f / rho;
+				(*s).gridRadialLaplacian1[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
+					+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
+					+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
+					+ (*s).firstDerivativeOperation[3] * (*s).gridETime1[neighbors[3]]
+					+ (*s).firstDerivativeOperation[4] * (*s).gridETime1[neighbors[4]]
+					+ (*s).firstDerivativeOperation[5] * (*s).gridETime1[neighbors[5]]);
+				(*s).gridRadialLaplacian2[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime2[neighbors[0]]
+					+ (*s).firstDerivativeOperation[1] * (*s).gridETime2[neighbors[1]]
+					+ (*s).firstDerivativeOperation[2] * (*s).gridETime2[neighbors[2]]
+					+ (*s).firstDerivativeOperation[3] * (*s).gridETime2[neighbors[3]]
+					+ (*s).firstDerivativeOperation[4] * (*s).gridETime2[neighbors[4]]
+					+ (*s).firstDerivativeOperation[5] * (*s).gridETime2[neighbors[5]]);
+			}
 		}
 	};
 
-	kernelLWE(apertureFarFieldKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP radius, const deviceFP activationParameter, const deviceFP xOffset, const deviceFP yOffset) {
-		long long i = localIndex;
-		long long col, j, k, l;
-		deviceComplex cuZero = deviceComplex{};
-		col = i / ((*s).Nfreq - 1); //spatial coordinate
-		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
-		i = j + col * (*s).Nfreq;
-		k = col % (*s).Nspace;
-		l = col / (*s).Nspace;
+	class apertureFarFieldKernel {
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP radius;
+		const deviceFP activationParameter;
+		const deviceFP xOffset;
+		const deviceFP yOffset;
+		hostOrDevice void operator()(size_t localIndex) {
+			long long i = localIndex;
+			long long col, j, k, l;
+			deviceComplex cuZero = deviceComplex{};
+			col = i / ((*s).Nfreq - 1); //spatial coordinate
+			j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			i = j + col * (*s).Nfreq;
+			k = col % (*s).Nspace;
+			l = col / (*s).Nspace;
 
-		//magnitude of k vector
-		deviceFP ko = constProd(twoPi<deviceFP>(),1.0/lightC<double>()) * j * (*s).fStep;
+			//magnitude of k vector
+			deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
 
-		//transverse wavevector being resolved
-		deviceFP dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
-		deviceFP dk2 = 0.0f;
-		if((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
+			//transverse wavevector being resolved
+			deviceFP dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
+			deviceFP dk2 = 0.0f;
+			if ((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 
-		//light that won't go the the farfield is immediately zero
-		if (dk1*dk1 > ko*ko || dk2*dk2 > ko*ko) {
-			(*s).gridEFrequency1[i] = cuZero;
-			(*s).gridEFrequency2[i] = cuZero;
-			return;
+			//light that won't go the the farfield is immediately zero
+			if (dk1 * dk1 > ko * ko || dk2 * dk2 > ko * ko) {
+				(*s).gridEFrequency1[i] = cuZero;
+				(*s).gridEFrequency2[i] = cuZero;
+				return;
+			}
+
+			deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
+			deviceFP theta2 = deviceFPLib::asin(dk2 / ko);
+
+			theta1 -= (!(*s).isCylindric) * xOffset;
+			theta2 -= (*s).is3D * yOffset;
+
+			deviceFP r = deviceFPLib::sqrt(theta1 * theta1 + theta2 * theta2);
+
+			deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
+
+			(*s).gridEFrequency1[i] *= a;
+			(*s).gridEFrequency2[i] *= a;
 		}
-
-		deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
-		deviceFP theta2 = deviceFPLib::asin(dk2 / ko);
-
-		theta1 -= (!(*s).isCylindric) *  xOffset;
-		theta2 -= (*s).is3D * yOffset;
-
-		deviceFP r = deviceFPLib::sqrt(theta1 * theta1 + theta2 * theta2);
-
-		deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r-radius))));
-
-		(*s).gridEFrequency1[i] *= a;
-		(*s).gridEFrequency2[i] *= a;
 	};
 
-	kernelLWE(apertureFarFieldKernelHankel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP radius, const deviceFP activationParameter, const deviceFP xOffset, const deviceFP yOffset) {
-		long long i = localIndex;
-		const deviceComplex cuZero = deviceComplex{};
-		const long long col = i / ((*s).Nfreq - 1); //spatial coordinate
-		const long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
-		i = j + col * (*s).Nfreq;
-		const long long k = col % (*s).Nspace;
+	class apertureFarFieldKernelHankel { 
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP radius;
+		const deviceFP activationParameter; 
+		const deviceFP xOffset;
+		const deviceFP yOffset;
+		hostOrDevice void operator()(size_t localIndex) {
+			long long i = localIndex;
+			const deviceComplex cuZero = deviceComplex{};
+			const long long col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			i = j + col * (*s).Nfreq;
+			const long long k = col % (*s).Nspace;
 
-		//magnitude of k vector
-		deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
+			//magnitude of k vector
+			deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
 
-		//transverse wavevector being resolved
-		deviceFP dk1 = constProd((deviceFP)2.0,1.0/vPi<double>()) * k / ((*s).dx * (*s).Nspace);; //frequency grid in x direction
+			//transverse wavevector being resolved
+			deviceFP dk1 = constProd((deviceFP)2.0, 1.0 / vPi<double>()) * k / ((*s).dx * (*s).Nspace);; //frequency grid in x direction
 
-		//light that won't go the the farfield is immediately zero
-		if (dk1 * dk1 > ko * ko) {
-			(*s).gridEFrequency1[i] = cuZero;
-			(*s).gridEFrequency2[i] = cuZero;
-			return;
+			//light that won't go the the farfield is immediately zero
+			if (dk1 * dk1 > ko * ko) {
+				(*s).gridEFrequency1[i] = cuZero;
+				(*s).gridEFrequency2[i] = cuZero;
+				return;
+			}
+
+			const deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
+
+			const deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
+
+			(*s).gridEFrequency1[i] *= a;
+			(*s).gridEFrequency2[i] *= a;
 		}
-
-		const deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
-
-		const deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
-
-		(*s).gridEFrequency1[i] *= a;
-		(*s).gridEFrequency2[i] *= a;
 	};
 
 
 	//apply a spectral filter to the beam (full details in docs)
-	kernelLWE(filterKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, deviceFP f0, const deviceFP bandwidth, const int order, const deviceFP inBandAmplitude, const deviceFP outOfBandAmplitude) {
-		long long i = localIndex;
-		long long col, j;
-		col = i / ((*s).Nfreq - 1); //spatial coordinate
-		j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
-		i = j + col * (*s).Nfreq;
+	class filterKernel { 
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		deviceFP f0;
+		const deviceFP bandwidth; 
+		const int order; const deviceFP inBandAmplitude;
+		const deviceFP outOfBandAmplitude;
+		hostOrDevice void operator()(size_t localIndex) {
+			long long i = localIndex;
+			long long col, j;
+			col = i / ((*s).Nfreq - 1); //spatial coordinate
+			j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			i = j + col * (*s).Nfreq;
 
-		deviceFP f = ((*s).fStep * j - f0)/bandwidth;
-		for (int p = 1; p < order; p++) {
-			f *= f;
+			deviceFP f = ((*s).fStep * j - f0) / bandwidth;
+			for (int p = 1; p < order; p++) {
+				f *= f;
+			}
+			deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude * deviceFPLib::exp(-0.5 * f);
+			(*s).gridEFrequency1[i] *= filterFunction;
+			(*s).gridEFrequency2[i] *= filterFunction;
 		}
-		deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude*deviceFPLib::exp(-0.5 *f);
-		(*s).gridEFrequency1[i] *= filterFunction;
-		(*s).gridEFrequency2[i] *= filterFunction;
 	};
 
 	//apply a lorentzian gain or loss in a certain cross-section of the beam.
