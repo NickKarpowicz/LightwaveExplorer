@@ -8,10 +8,6 @@
 #include <string>
 #include <algorithm>
 #include <thread>
-#include <ranges>
-#include <execution>
-#include <numeric>
-#include <iterator>
 #include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
 
 //temporary set of macros until std::format is on all platforms
@@ -194,7 +190,7 @@ public:
             SVGString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
                 SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
         }
-     
+
         cairo_rectangle(cr, 0, 0, width, height);
         backgroundColor.setCairo(cr);
         cairo_fill(cr);
@@ -266,7 +262,7 @@ public:
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
             cairo_move_to(cr, 0.0, height);
-            cairo_rotate(cr, -vPi<double>()/2);
+            cairo_rotate(cr, -vPi<double>() / 2);
             cairo_rel_move_to(cr, 0.5 * (layoutLeft + layoutRight - te.width), fontSize);
             cairo_show_text(cr, messageBuffer.c_str());
             cairo_rotate(cr, vPi<double>() / 2);
@@ -381,11 +377,9 @@ public:
 
         std::vector<double> scaledX(Npts);
         std::vector<double> scaledY(Npts);
-        std::vector<size_t> countingVector(Npts);
-        std::iota(countingVector.begin(), countingVector.end(), 0);
-        
         auto getNewScaledXY = [&](std::vector<double>& xValues, double* y) {
-            auto scaleKernel = [&](size_t i) {
+#pragma omp parallel for num_threads(interfaceThreads)
+            for (int i = 0; i < Npts; i++) {
                 scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
                 if (logScale) {
                     scaledY[i] = height - scaleY * ((double)log10(y[i]) - (double)minY);
@@ -394,8 +388,7 @@ public:
                     scaledY[i] = height - scaleY * ((double)y[i] - (double)minY);
                 }
                 if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
-            };
-            std::for_each(std::execution::par_unseq, countingVector.begin(), countingVector.end(), scaleKernel);
+            }
         };
 
         auto plotCairoDots = [&](double* y) {
@@ -411,13 +404,13 @@ public:
         auto plotCairoPolyline = [&](double* y) {
             currentColor.setCairo(cr);
             cairo_move_to(cr, scaledX[iMin], scaledY[iMin]);
-            for (size_t i = iMin+1; i < iMax; ++i) {
-                if (scaledY[i-1] <= height) { 
+            for (size_t i = iMin + 1; i < iMax; ++i) {
+                if (scaledY[i - 1] <= height) {
                     if (scaledY[i] <= height) {
                         cairo_line_to(cr, scaledX[i], scaledY[i]);
                     }
                     else {
-                        cairo_line_to(cr, scaledX[i - 1] + (height - scaledY[i-1]) / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i-1])), height);
+                        cairo_line_to(cr, scaledX[i - 1] + (height - scaledY[i - 1]) / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i - 1])), height);
                     }
                 }
                 else if (scaledY[i] <= height) {
@@ -512,7 +505,7 @@ public:
             getNewScaledXY(xValues, data2);
             currentColor = color2;
             plotCairoPolyline(data2);
-            if(markers)plotCairoDots(data2);
+            if (markers)plotCairoDots(data2);
             if (makeSVG) {
                 plotSVGPolyline(data2);
                 if (markers)plotSVGDots(data2);
@@ -572,19 +565,25 @@ public:
     int dataType = 0;
 
     void imagePlot(cairo_t* cr) {
-        float* plotarr2 = new float[static_cast<size_t> (width * height)];
+
+        int dx = width;
+        int dy = height;
+
+        size_t plotSize = (size_t)dx * (size_t)dy;
+        float* plotarr2 = new float[plotSize];
         switch (dataType) {
         case 0:
             if (data == nullptr) break;
-            linearRemapDoubleToFloat(data, (int)dataYdim, (int)dataXdim, plotarr2, height, width);
+            linearRemapDoubleToFloat(data, (int)dataYdim, (int)dataXdim, plotarr2, (int)dy, (int)dx);
             drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
             break;
         case 1:
             if (complexData == nullptr) break;
-            linearRemapZToLogFloatShift(complexData, (int)dataYdim, (int)dataXdim, plotarr2, height, width, logMin);
+            linearRemapZToLogFloatShift(complexData, (int)dataYdim, (int)dataXdim, plotarr2, (int)dy, (int)dx, logMin);
             drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
             break;
         }
+
         delete[] plotarr2;
     }
 
@@ -594,7 +593,8 @@ public:
 
     void linearRemapZToLogFloatShift(const std::complex<double>* A, const int nax, const int nay, float* B, const int nbx, const int nby, const double logMin) {
         const int div2 = nax / 2;
-        auto shiftKernel = [&](size_t i) {
+#pragma omp parallel for num_threads(interfaceThreads)
+        for (int i = 0; i < nbx; ++i) {
             float f = i * (nax / (float)nbx);
             int nx0 = minN((int)f, nax);
             nx0 -= div2 * ((nx0 >= div2) - (nx0 < div2));
@@ -604,14 +604,27 @@ public:
                 int ny0 = minN(nay, (int)f);
                 B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
             }
-        };
-        std::vector<size_t> vec(nbx);
-        std::iota(vec.begin(), vec.end(), 0);
-        std::for_each(std::execution::par_unseq, vec.begin(), vec.end(), shiftKernel);
+        }
+    }
+
+    void linearRemapZToLogFloat(const std::complex<double>* A, const int nax, const int nay, float* B, const int nbx, const int nby, const double logMin) {
+#pragma omp parallel for num_threads(interfaceThreads)
+        for (int i = 0; i < nbx; ++i) {
+            float f = i * (nax / (float)nbx);
+            int Ni = (int)f;
+            int nx0 = nay * minN(Ni, nax);
+            for (int j = 0; j < nby; ++j) {
+                f = (j * (nay / (float)nby));
+                int Nj = (int)f;
+                int ny0 = minN(nay, Nj);
+                B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
+            }
+        }
     }
 
     void linearRemapDoubleToFloat(const double* A, const int nax, const int nay, float* B, const int nbx, const int nby) {
-        auto remapKernel = [&](size_t i) {
+#pragma omp parallel for num_threads(interfaceThreads)
+        for (int i = 0; i < nbx; ++i) {
             int Ni = (int)(i * (nax / (float)nbx));
             int nx0 = nay * minN(Ni, nax);
             for (int j = 0; j < nby; ++j) {
@@ -619,16 +632,13 @@ public:
                 int ny0 = minN(nay, Nj);
                 B[i * nby + j] = (float)A[ny0 + nx0];
             }
-        };
-        std::vector<size_t> vec(nbx);
-        std::iota(vec.begin(), vec.end(), 0);
-        std::for_each(std::execution::par_unseq, vec.begin(), vec.end(), remapKernel);
+        }
     }
 
     constexpr std::array<std::array<unsigned char, 3>, 256> createColormap(const int cm) {
         std::array<std::array<unsigned char, 3>, 256> colorMap{};
         const float oneOver255 = 1.0f / 255.0f;
-        
+
         for (int j = 0; j < 256; ++j) {
             float nval;
             switch (cm) {
@@ -705,15 +715,13 @@ public:
         }
 
         if (imin != imax) {
-            auto drawPixels = [&](const size_t p) {
+#pragma omp parallel for num_threads(interfaceThreads)
+            for (int p = 0; p < Ntot; p++) {
                 unsigned char currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
                 pixels[stride * p + 0] = colorMap[currentValue][0];
                 pixels[stride * p + 1] = colorMap[currentValue][1];
                 pixels[stride * p + 2] = colorMap[currentValue][2];
-            };
-            std::vector<size_t> vec(Ntot);
-            std::iota(vec.begin(), vec.end(), 0);
-            std::for_each(std::execution::par_unseq, vec.begin(), vec.end(), drawPixels);
+            }
         }
         const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
         cairo_surface_t* cSurface = cairo_image_surface_create_for_data(pixels, CAIRO_FORMAT_RGB24, Nx, Ny, caiStride);
