@@ -213,15 +213,6 @@ public:
 		fftDestroy();
 		deallocateSet();
 	}
-//	template<typename Function, typename... Args>
-//	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const Function& kernel, Args... args) const {
-//#pragma omp parallel for
-//		for (int i = 0; i < (int)Nthread; ++i) {
-//			for (unsigned int j = 0u; j < Nblock; ++j) {
-//				kernel(j + Nblock * (unsigned int)i, args...);
-//			}
-//		}
-//	}
 
 	template<typename T>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const T& functor) const {

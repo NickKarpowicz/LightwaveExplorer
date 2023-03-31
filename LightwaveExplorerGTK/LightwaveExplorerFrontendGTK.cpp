@@ -1815,6 +1815,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     theSim.base().plotSim = 0;
 
     theGui.requestPlotUpdate();
+    theGui.requestInterfaceValuesUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.tPrint(("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
