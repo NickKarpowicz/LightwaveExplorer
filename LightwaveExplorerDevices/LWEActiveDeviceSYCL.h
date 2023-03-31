@@ -176,15 +176,23 @@ public:
 
 	bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
 		stream.memcpy(&canaryPixel, canaryPointer, sizeof(deviceFP));
+		stream.wait();
 		return(isnan(canaryPixel));
 	}
 
-	template<typename Function, typename... Args>
-	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const Function& kernel, const Args... args) {
-		stream.submit([&](sycl::handler& h) {
-			h.parallel_for(Nblock * Nthread, [=](const auto i) {kernel(i, args...); });
-			});
-	}
+	//template<typename Function, typename... Args>
+	//void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const Function& kernel, const Args... args) {
+	//	stream.submit([&](sycl::handler& h) {
+	//		h.parallel_for(Nblock * Nthread, [=](const auto i) {kernel(i, args...); });
+	//		});
+	//}
+
+	template <typename T>
+	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) {
+	stream.submit([&](sycl::handler& h) {
+		h.parallel_for(Nblock * Nthread, functor);
+		});
+}
 
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) {
 		(*ptr) = sycl::aligned_alloc_device(2 * sizeof(deviceFP), N * elementSize, stream.get_device(), stream.get_context());

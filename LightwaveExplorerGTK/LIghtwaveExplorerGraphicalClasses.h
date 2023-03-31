@@ -24,7 +24,7 @@
 #endif
 
 //Limit the number of threads used to draw the interface if the processor supports a lot
-const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 2u);
+const int interfaceThreads = maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
 
 class LweColor {
 public:
@@ -190,7 +190,7 @@ public:
             SVGString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
                 SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
         }
-     
+
         cairo_rectangle(cr, 0, 0, width, height);
         backgroundColor.setCairo(cr);
         cairo_fill(cr);
@@ -262,7 +262,7 @@ public:
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
             cairo_move_to(cr, 0.0, height);
-            cairo_rotate(cr, -vPi<double>()/2);
+            cairo_rotate(cr, -vPi<double>() / 2);
             cairo_rel_move_to(cr, 0.5 * (layoutLeft + layoutRight - te.width), fontSize);
             cairo_show_text(cr, messageBuffer.c_str());
             cairo_rotate(cr, vPi<double>() / 2);
@@ -404,13 +404,13 @@ public:
         auto plotCairoPolyline = [&](double* y) {
             currentColor.setCairo(cr);
             cairo_move_to(cr, scaledX[iMin], scaledY[iMin]);
-            for (size_t i = iMin+1; i < iMax; ++i) {
-                if (scaledY[i-1] <= height) { 
+            for (size_t i = iMin + 1; i < iMax; ++i) {
+                if (scaledY[i - 1] <= height) {
                     if (scaledY[i] <= height) {
                         cairo_line_to(cr, scaledX[i], scaledY[i]);
                     }
                     else {
-                        cairo_line_to(cr, scaledX[i - 1] + (height - scaledY[i-1]) / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i-1])), height);
+                        cairo_line_to(cr, scaledX[i - 1] + (height - scaledY[i - 1]) / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i - 1])), height);
                     }
                 }
                 else if (scaledY[i] <= height) {
@@ -505,7 +505,7 @@ public:
             getNewScaledXY(xValues, data2);
             currentColor = color2;
             plotCairoPolyline(data2);
-            if(markers)plotCairoDots(data2);
+            if (markers)plotCairoDots(data2);
             if (makeSVG) {
                 plotSVGPolyline(data2);
                 if (markers)plotSVGDots(data2);
@@ -565,7 +565,7 @@ public:
     int dataType = 0;
 
     void imagePlot(cairo_t* cr) {
-        
+
         int dx = width;
         int dy = height;
 
@@ -638,7 +638,7 @@ public:
     constexpr std::array<std::array<unsigned char, 3>, 256> createColormap(const int cm) {
         std::array<std::array<unsigned char, 3>, 256> colorMap{};
         const float oneOver255 = 1.0f / 255.0f;
-        
+
         for (int j = 0; j < 256; ++j) {
             float nval;
             switch (cm) {

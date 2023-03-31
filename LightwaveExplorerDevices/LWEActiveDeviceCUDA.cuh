@@ -121,6 +121,12 @@ static int hardwareCheck(int* CUDAdeviceCount) {
 	}
 	return 0;
 }
+
+template <typename T>
+__global__ static void deviceLaunchFunctorWrapper(const T functor) {
+	functor(threadIdx.x + blockIdx.x * blockDim.x);
+}
+
 template<typename deviceFP, typename deviceComplex>
 class CUDADevice {
 private:
@@ -192,10 +198,11 @@ public:
 		return(isnan(canaryPixel));
 	}
 
-	template<typename Function, typename... Args>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
-		kernel<<<Nblock, Nthread, 0, stream>>>(args...);
+	template <typename T>
+	void deviceLaunch (const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
+		deviceLaunchFunctorWrapper<<<Nblock, Nthread, 0, stream>>>(functor);
 	}
+
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
 		int err = cudaMalloc(ptr, N * elementSize);
