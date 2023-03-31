@@ -123,9 +123,8 @@ static int hardwareCheck(int* CUDAdeviceCount) {
 }
 
 template <typename T>
-__global__ void deviceLaunchFunctorWrapper(T functor) {
-	size_t i = threadIdx.x + blockIdx.x * blockDim.x;
-	functor(i);
+__global__ static void deviceLaunchFunctorWrapper(const T functor) {
+	functor(threadIdx.x + blockIdx.x * blockDim.x);
 }
 
 template<typename deviceFP, typename deviceComplex>
@@ -199,12 +198,8 @@ public:
 		return(isnan(canaryPixel));
 	}
 
-	//template<typename Function, typename... Args>
-	//void deviceLaunch(unsigned int Nblock, unsigned int Nthread, Function kernel, Args... args) const {
-	//	kernel<<<Nblock, Nthread, 0, stream>>>(args...);
-	//}
 	template <typename T>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, T functor) {
+	void deviceLaunch (const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
 		deviceLaunchFunctorWrapper<<<Nblock, Nthread, 0, stream>>>(functor);
 	}
 

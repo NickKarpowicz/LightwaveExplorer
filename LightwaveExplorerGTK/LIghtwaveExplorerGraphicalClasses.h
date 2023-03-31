@@ -24,7 +24,7 @@
 #endif
 
 //Limit the number of threads used to draw the interface if the processor supports a lot
-const int interfaceThreads = maxN(std::thread::hardware_concurrency() / 2, 2u);
+const int interfaceThreads = maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
 
 class LweColor {
 public:

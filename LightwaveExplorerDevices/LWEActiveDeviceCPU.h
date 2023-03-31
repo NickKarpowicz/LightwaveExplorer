@@ -9,6 +9,8 @@
 #include <iostream>
 #include <cmath>
 #include <cstring>
+
+static const int LWEThreadCount = maxN(static_cast<int>(std::thread::hardware_concurrency() / 2), 2);
 #if defined __APPLE__ || defined __linux__
 template<typename deviceFP>
 [[maybe_unused]] void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
@@ -219,16 +221,16 @@ public:
 //		}
 //	}
 	template<typename T>
-	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const T& functor) const {
-#pragma omp parallel for
-		for (int i = 0; i < (int)Nthread; ++i) {
-			for (unsigned int j = 0u; j < Nblock; ++j) {
-				functor(j + Nblock * (unsigned int)i);
+	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
+#pragma omp parallel for num_threads(LWEThreadCount)
+		for (int i = 0; i < static_cast<int>(Nthread); i++) {
+			for (size_t j = 0; j < static_cast<size_t>(Nblock); j++) {
+				functor(static_cast<size_t>(j + Nblock * i));
 			}
 		}
 	}
 
-	int deviceCalloc(void** ptr, size_t N, size_t elementSize){
+	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize){
 		(*ptr) = calloc(N, elementSize);
 		return (int)((*ptr) == NULL);
 	}

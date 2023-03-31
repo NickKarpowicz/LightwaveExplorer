@@ -308,7 +308,7 @@ namespace deviceFunctions {
 		//
 		deviceComplex n[4][2]{};
 		deviceComplex nW = deviceComplex{};
-		sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+		sellmeierCuda(&n[0][0], &n[0][1], sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 		if ((*s).axesNumber == 0) {
 			*n1 = n[0][0];
 			*n2 = n[0][1];
@@ -331,8 +331,8 @@ namespace deviceFunctions {
 		deviceFP errArray[4][2]{};
 		if ((*s).axesNumber == 1) {
 			maxiter = 64;
-			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0] + gradientStep, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0] - gradientStep, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 			if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
 				*n1 = deviceComplex{};
 				*n2 = deviceComplex{};
@@ -355,28 +355,28 @@ namespace deviceFunctions {
 					break;
 				}
 
-				sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
-				sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0] + gradientStep, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0] - gradientStep, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 				errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
 				errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 				gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 			}
-			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0], (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1], (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 			*n1 = n[0][0];
 			*n2 = n[1][1];
 			return;
 		}
 
 		if ((*s).axesNumber == 2) {
-			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&n[2][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67] + beta[0] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&n[3][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67] + beta[0] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&nW, &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] + gradientStep, sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&nW, &n[2][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&nW, &n[3][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0] + gradientStep, (*s).crystalPhi + beta[0], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0] - gradientStep, (*s).crystalPhi + beta[0], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[2][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0], (*s).crystalPhi + beta[0] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[3][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0], (*s).crystalPhi + beta[0] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&nW, &n[0][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1] + gradientStep, (*s).crystalPhi + beta[1], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1] - gradientStep, (*s).crystalPhi + beta[1], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&nW, &n[2][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1], (*s).crystalPhi + beta[1] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&nW, &n[3][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1], (*s).crystalPhi + beta[1] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
 			if (isnan(n[0][0].real()) || isnan(n[0][0].imag()) || isnan(n[1][0].real()) || isnan(n[1][0].imag())) {
 				*n1 = n[0][0];
 				*n2 = n[0][1];
@@ -407,14 +407,14 @@ namespace deviceFunctions {
 				if (deviceFPLib::abs(gradient[1][1]) > 1e-2f) beta[1] -= 0.25f * (errArray[2][1] + errArray[3][1]) / gradient[1][1];
 
 				if (maxN(maxN(deviceFPLib::abs(gradient[0][0]), deviceFPLib::abs(gradient[1][0])), maxN(deviceFPLib::abs(gradient[0][1]), deviceFPLib::abs(gradient[1][1]))) < gradientTol) break;
-				sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] + gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
-				sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0] - gradientStep, sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
-				sellmeierCuda(&n[2][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67] + beta[0] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
-				sellmeierCuda(&n[3][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67] + beta[0] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
-				sellmeierCuda(&nW, &n[0][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] + gradientStep, sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
-				sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1] - gradientStep, sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
-				sellmeierCuda(&nW, &n[2][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
-				sellmeierCuda(&nW, &n[3][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0] + gradientStep, (*s).crystalPhi + beta[0], (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&n[1][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0] - gradientStep, (*s).crystalPhi + beta[0], (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&n[2][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0], (*s).crystalPhi + beta[0] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&n[3][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0], (*s).crystalPhi + beta[0] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&nW, &n[0][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1] + gradientStep, (*s).crystalPhi + beta[1], (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1] - gradientStep, (*s).crystalPhi + beta[1], (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&nW, &n[2][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1], (*s).crystalPhi + beta[1] + gradientStep, (*s).axesNumber, (*s).sellmeierType);
+				sellmeierCuda(&nW, &n[3][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1], (*s).crystalPhi + beta[1] - gradientStep, (*s).axesNumber, (*s).sellmeierType);
 				errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
 				errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 				errArray[2][0] = deviceFPLib::sin(beta[0] + gradientStep) * n[2][0].real() - ky1;
@@ -428,8 +428,8 @@ namespace deviceFunctions {
 				gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
 				gradient[1][1] = gradientFactor * (errArray[2][1] - errArray[3][1]);
 			}
-			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[0], sellmeierCoefficients[67] + beta[0], (*s).axesNumber, (*s).sellmeierType);
-			sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, sellmeierCoefficients[66] + alpha[1], sellmeierCoefficients[67] + beta[1], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&n[0][0], &nW, sellmeierCoefficients, f, (*s).crystalTheta + alpha[0], (*s).crystalPhi + beta[0], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&nW, &n[1][1], sellmeierCoefficients, f, (*s).crystalTheta + alpha[1], (*s).crystalPhi + beta[1], (*s).axesNumber, (*s).sellmeierType);
 			*n1 = n[0][0];
 			*n2 = n[1][1];
 			return;
@@ -958,8 +958,8 @@ namespace kernelNamespace{
 			i = h + col * ((*s).Nfreq);
 			j = col % (*s).Nspace;
 			k = col / (*s).Nspace;
-			deviceFP crystalTheta = sellmeierCoefficients[66];
-			deviceFP crystalPhi = sellmeierCoefficients[67];
+			deviceFP crystalTheta = (*s).crystalTheta;
+			deviceFP crystalPhi = (*s).crystalPhi;
 
 			//frequency being resolved by current thread
 			deviceFP f = h * (*s).fStep;
@@ -1176,8 +1176,8 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t i) const {
 			int axesNumber = (*s).axesNumber;
 			int sellmeierType = (*s).sellmeierType;
-			deviceFP crystalTheta = sellmeierCoefficients[66];
-			deviceFP crystalPhi = sellmeierCoefficients[67];
+			deviceFP crystalTheta = (*s).crystalTheta;
+			deviceFP crystalPhi = (*s).crystalPhi;
 			deviceFP fStep = sellmeierCoefficients[71];
 
 			deviceComplex ne, no;
@@ -1239,7 +1239,7 @@ namespace kernelNamespace{
 					chi11[im] = 100000.0f;
 				}
 				else {
-					sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[im], sellmeierCoefficients[66], sellmeierCoefficients[67], axesNumber, sellmeierType);
+					sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[im], (*s).crystalTheta, (*s).crystalPhi, axesNumber, sellmeierType);
 					chi11[im] = no.real() * no.real() - 1.0f;
 				}
 			}
@@ -1279,7 +1279,7 @@ namespace kernelNamespace{
 			//transverse wavevector being resolved
 			deviceFP dk = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
 
-			sellmeierCuda(&ne, &no, sellmeierCoefficients, fStep * k, sellmeierCoefficients[66], sellmeierCoefficients[67], (*s).axesNumber, (*s).sellmeierType);
+			sellmeierCuda(&ne, &no, sellmeierCoefficients, fStep * k, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 			//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 			if (minN(ne.real(), no.real()) < 0.95f || ne.real() > 6.0f || no.real() > 6.0f || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 				(*s).gridPropagationFactor1[i] = cuZero;
