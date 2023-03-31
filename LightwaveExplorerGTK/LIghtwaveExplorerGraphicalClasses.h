@@ -572,25 +572,19 @@ public:
     int dataType = 0;
 
     void imagePlot(cairo_t* cr) {
-        
-        int dx = width;
-        int dy = height;
-
-        size_t plotSize = (size_t)dx * (size_t)dy;
-        float* plotarr2 = new float[plotSize];
+        float* plotarr2 = new float[static_cast<size_t> (width * height)];
         switch (dataType) {
         case 0:
             if (data == nullptr) break;
-            linearRemapDoubleToFloat(data, (int)dataYdim, (int)dataXdim, plotarr2, (int)dy, (int)dx);
+            linearRemapDoubleToFloat(data, (int)dataYdim, (int)dataXdim, plotarr2, height, width);
             drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
             break;
         case 1:
             if (complexData == nullptr) break;
-            linearRemapZToLogFloatShift(complexData, (int)dataYdim, (int)dataXdim, plotarr2, (int)dy, (int)dx, logMin);
+            linearRemapZToLogFloatShift(complexData, (int)dataYdim, (int)dataXdim, plotarr2, height, width, logMin);
             drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
             break;
         }
-
         delete[] plotarr2;
     }
 
