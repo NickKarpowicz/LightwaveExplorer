@@ -9,10 +9,6 @@
 #include <iostream>
 #include <cmath>
 #include <cstring>
-#include <ranges>
-#include <execution>
-#include <numeric>
-#include <iterator>
 #if defined __APPLE__ || defined __linux__
 template<typename deviceFP>
 [[maybe_unused]] void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
@@ -213,12 +209,23 @@ public:
 		fftDestroy();
 		deallocateSet();
 	}
-
+//	template<typename Function, typename... Args>
+//	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const Function& kernel, Args... args) const {
+//#pragma omp parallel for
+//		for (int i = 0; i < (int)Nthread; ++i) {
+//			for (unsigned int j = 0u; j < Nblock; ++j) {
+//				kernel(j + Nblock * (unsigned int)i, args...);
+//			}
+//		}
+//	}
 	template<typename T>
 	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const T& functor) const {
-		std::vector<size_t> vec(Nblock*Nthread);
-		std::iota(vec.begin(), vec.end(), 0);
-		std::for_each(std::execution::par_unseq, vec.begin(), vec.end(), functor);
+#pragma omp parallel for
+		for (int i = 0; i < (int)Nthread; ++i) {
+			for (unsigned int j = 0u; j < Nblock; ++j) {
+				functor(j + Nblock * (unsigned int)i);
+			}
+		}
 	}
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize){
