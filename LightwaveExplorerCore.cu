@@ -439,22 +439,16 @@ namespace deviceFunctions {
 using namespace deviceFunctions;
 
 namespace kernelNamespace{
-	//the syntax might look a bit strange due to the "trilingual" mode of operation. In short:
-	// CUDA and O
-	// penMP are fine with function pointers being used to launch kernels, but SYCL
-	// doesn't allow them. However, SYCL does allow named lambdas, which have a nearly identical
-	// structure. The kernelLWE() preprocessor definition handles the return type (void for CUDA,
-	// auto for SYCL, and the []( syntax to declare a lambda for SYCL. 
-	// The function's closing } has to be followed by a ; to have valid syntax in SYCL 
-	// (again, it's a lambda, not a function).
-	// localIndex will point to the current thread id. I only use 1D data layouts currently; if
-	// 2D or higher dimensions are required, this could be modified (probably together with a different
-	// preprocessor definition replacing kernelLWE().
+	//Kernels are written in the form of functors, which can be passed to the three main
+	// platforms (CUDA, SYCL, c++) without using macros or much in the way of wrappers.
+	// All members are public so that I can do aggregate initliazation without writing
+	// constructors for all of them. (Could therefore be slightly simplified by using structs
+	// instead of classes, but I think a class makes more sense in this context).
+	// A macro is used to name the namespace between different modes to avoid ODR violations.
 
 	//calculate the total energy spectrum of the beam for the 2D modes. Note that for the 
 	//cartesian one, it will be treated as a round beam instead of an infinite plane wave 
 	//in the transverse direction. Thus, the 2D Cartesian spectra are approximations.
-	//kernelLWE(totalSpectrumKernel, const deviceParameterSet<deviceFP, deviceComplex>* s){
 	class totalSpectrumKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
@@ -512,10 +506,7 @@ namespace kernelNamespace{
 	//height in the non-resolved direction is == the grid width (i.e. square grid)
 	//More quantitative than the mapping to round beams, but rather specific
 	// DISABLED IN FAVOR OF ROUND-BEAM APPROXIMATION
-	//kernelLWE(totalSpectrum2DSquareKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
-	//	size_t i = localIndex;
 	//	size_t j;
-
 	//	deviceFP beamTotal1 = 0.0f;
 	//	deviceFP beamTotal2 = 0.0f;
 	//	//Integrate total beam power
@@ -527,7 +518,6 @@ namespace kernelNamespace{
 	//	}
 	//	beamTotal1 *= 2.0f * LIGHTC * eps0<deviceFP>() * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
 	//	beamTotal2 *= 2.0f * LIGHTC * eps0<deviceFP>() * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
-
 	//	//put the values into the output spectrum
 	//	(*s).gridPolarizationTime1[i] = beamTotal1;
 	//	(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
@@ -535,7 +525,6 @@ namespace kernelNamespace{
 	//};
 
 	//Calculate the energy spectrum after a 3D propagation
-	//kernelLWE(totalSpectrum3DKernel, const deviceParameterSet<deviceFP, deviceComplex>* s) {
 	class totalSpectrum3DKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
@@ -565,7 +554,6 @@ namespace kernelNamespace{
 	//low due to Gibbs phenomena and I find the FFT-based propagation implemented
 	//below better for nonlinear phenomena. I might later use this for linear propagation
 	//in sequences however.
-	//kernelLWE(hankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
 	class hankelKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
@@ -592,7 +580,6 @@ namespace kernelNamespace{
 	};
 
 	//inverse Hankel transform from the k-space back to the offset spatial grid
-	//kernelLWE(inverseHankelKernel, const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* in, deviceFP* out) {
 	class inverseHankelKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
@@ -618,8 +605,6 @@ namespace kernelNamespace{
 	};
 
 	//rotate the field around the propagation axis (basis change)
-	//kernelLWE(rotateFieldKernel, const deviceComplex* Ein1, const deviceComplex* Ein2, deviceComplex* Eout1,
-	//	deviceComplex* Eout2, const deviceFP rotationAngle) {
 	class rotateFieldKernel {
 	public:
 		const deviceComplex* Ein1;
@@ -627,7 +612,7 @@ namespace kernelNamespace{
 		deviceComplex* Eout1;
 		deviceComplex* Eout2;
 		const deviceFP rotationAngle;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			Eout1[i] = deviceFPLib::cos(rotationAngle) * Ein1[i] - deviceFPLib::sin(rotationAngle) * Ein2[i];
 			Eout2[i] = deviceFPLib::sin(rotationAngle) * Ein1[i] + deviceFPLib::cos(rotationAngle) * Ein2[i];
 		}
@@ -637,15 +622,15 @@ namespace kernelNamespace{
 	class radialLaplacianKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			const size_t j = i / (*s).Ntime; //spatial coordinate
 			const size_t h = i % (*s).Ntime; //temporal coordinate
 			size_t neighbors[6];
 
 			//zero at edges of grid
-			[[unlikely]] if (j<3 || j>((*s).Nspace - 4)) {
-				(*s).gridRadialLaplacian1[i] = 0.0f;
-				(*s).gridRadialLaplacian2[i] = 0.0f;
+			[[unlikely]] if (j < 3 || j > ((*s).Nspace - 4)) {
+				(*s).gridRadialLaplacian1[i] = {};
+				(*s).gridRadialLaplacian2[i] = {};
 			}
 			else {
 				deviceFP rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, j, (*s).dx, (*s).Ntime, h);
@@ -985,7 +970,6 @@ namespace kernelNamespace{
 			ts = fourierPropagator(ke, dk1, dk2, k0.real(), thickness);
 			tp = fourierPropagator(ko, dk1, dk2, k0.real(), thickness);
 
-
 			if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex{};
 			if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex{};
 			(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
@@ -1022,8 +1006,8 @@ namespace kernelNamespace{
 			k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
 			i = k + j * (*s).Nfreq;
 			deviceComplex ii = deviceComplex(0.0f, 1.0f);
-			deviceFP kStep = sellmeierCoefficients[70];
-			deviceFP fStep = sellmeierCoefficients[71];
+			deviceFP kStep = (*s).dk1;
+			deviceFP fStep = (*s).fStep;
 
 			//frequency being resolved by current thread
 			deviceFP f = k * fStep;
@@ -1178,7 +1162,7 @@ namespace kernelNamespace{
 			int sellmeierType = (*s).sellmeierType;
 			deviceFP crystalTheta = (*s).crystalTheta;
 			deviceFP crystalPhi = (*s).crystalPhi;
-			deviceFP fStep = sellmeierCoefficients[71];
+			deviceFP fStep = (*s).fStep;
 
 			deviceComplex ne, no;
 
@@ -1267,8 +1251,8 @@ namespace kernelNamespace{
 			k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
 			i = k + j * (*s).Nfreq;
 			deviceComplex ii = deviceComplex(0.0f, 1.0f);
-			deviceFP kStep = sellmeierCoefficients[70];
-			deviceFP fStep = sellmeierCoefficients[71];
+			deviceFP kStep = (*s).dk1;
+			deviceFP fStep = (*s).fStep;
 
 			deviceComplex ne, no;
 			deviceComplex n0 = (*s).n0;
@@ -1893,7 +1877,6 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t i) const {
 			A[i] = val * A[i];
 		}
-
 	};
 
 	class multiplicationKernelCompactDoubleVector {
