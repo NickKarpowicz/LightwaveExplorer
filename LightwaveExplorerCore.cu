@@ -550,7 +550,7 @@ namespace kernelNamespace{
 	//the offset radial grid allows the sum to be done with a midpoint method
 	//with no numerical effort and the rho=0 point is excluded from the grid
 	//this function is slow and order N^2 as it is not used in the core loop.
-	//the numerical accuracy of Hankel transforms that I've seen in relatively
+	//the numerical accuracy of Hankel transforms that I've seen is relatively
 	//low due to Gibbs phenomena and I find the FFT-based propagation implemented
 	//below better for nonlinear phenomena. I might later use this for linear propagation
 	//in sequences however.

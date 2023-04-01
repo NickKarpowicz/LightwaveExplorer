@@ -38,10 +38,6 @@ hostOrDevice static constexpr T twoPi() {
     return (T)(2.0 * vPi<T>());
 }
 template <typename T>
-hostOrDevice static constexpr T angleTolerance() {
-    return (T)1e-12;
-}
-template <typename T>
 hostOrDevice static constexpr T invSqrtPi() {
     return (T)(1.0 / sqrt(vPi<T>()));
 }
