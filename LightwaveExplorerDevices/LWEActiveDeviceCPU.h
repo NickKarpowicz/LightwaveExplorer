@@ -211,15 +211,7 @@ public:
 		fftDestroy();
 		deallocateSet();
 	}
-//	template<typename Function, typename... Args>
-//	void deviceLaunch(unsigned int Nblock, unsigned int Nthread, const Function& kernel, Args... args) const {
-//#pragma omp parallel for
-//		for (int i = 0; i < (int)Nthread; ++i) {
-//			for (unsigned int j = 0u; j < Nblock; ++j) {
-//				kernel(j + Nblock * (unsigned int)i, args...);
-//			}
-//		}
-//	}
+
 	template<typename T>
 	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
 #pragma omp parallel for num_threads(LWEThreadCount)
@@ -246,25 +238,29 @@ public:
 
 	void deviceMemcpy(double* dst, const float* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = (double)src[i];
+			dst[i] = static_cast<double>(src[i]);
 		}
 	}
 
 	void deviceMemcpy(std::complex<double>* dst, const std::complex<float>* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			dst[i] = std::complex<double>((double)src[i].real(), (double)src[i].imag());
+			dst[i] = std::complex<double>(
+				static_cast<double>(src[i].real()), 
+				static_cast<double>(src[i].imag()));
 		}
 	}
 
 	void deviceMemcpy(std::complex<float>* dst, const std::complex<double>* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			dst[i] = std::complex<float>((float)src[i].real(), (float)src[i].imag());
+			dst[i] = std::complex<float>(
+				static_cast<float>(src[i].real()), 
+				static_cast<float>(src[i].imag()));
 		}
 	}
 
 	void deviceMemcpy(float* dst, const double* src, size_t count, copyType kind) {
 		for (size_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = (float)src[i];
+			dst[i] = static_cast<float>(src[i]);
 		}
 	}
 
@@ -315,53 +311,49 @@ public:
 		if (configuredFFT) fftDestroy();
 		isCylindric = (*s).isCylindric;
 		hasPlasma = (*s).hasPlasma;
-		if(sizeof(deviceFP)==sizeof(double)){
-			double* setupWorkD = new double[(*s).Ngrid * (2 + 2 * (*s).isCylindric)];
-			std::complex<double>* setupWorkC = new std::complex<double>[(*s).NgridC * (2 + 2 * (*s).isCylindric)];
+		if (sizeof(deviceFP) == sizeof(double)) {
+			std::vector<double> setupWorkD((*s).Ngrid * (2 + 2 * (*s).isCylindric));
+			std::vector<std::complex<double>> setupWorkC((*s).NgridC * (2 + 2 * (*s).isCylindric));
 			const int fftw1[1] = { (int)(*s).Ntime };
-			fftPlan1DD2Z = fftw_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD, fftw1, 1, (int)(*s).Ntime, (fftw_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
-			fftPlan1DZ2D = fftw_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftw_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, setupWorkD, fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
+			fftPlan1DD2Z = fftw_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD.data(), fftw1, 1, (int)(*s).Ntime, (fftw_complex*)setupWorkC.data(), fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
+			fftPlan1DZ2D = fftw_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftw_complex*)setupWorkC.data(), fftw1, 1, (int)(*s).Nfreq, setupWorkD.data(), fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
 			if ((*s).is3D) {
 				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-				fftPlanZ2D = fftw_plan_many_dft_c2r(3, fftwSizes, 2, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+				fftPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
+				fftPlanZ2D = fftw_plan_many_dft_c2r(3, fftwSizes, 2, (fftw_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
 			}
 			else {
 				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-				fftPlanZ2D = fftw_plan_many_dft_c2r(2, fftwSizes, 2, (fftw_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+				fftPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
+				fftPlanZ2D = fftw_plan_many_dft_c2r(2, fftwSizes, 2, (fftw_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
 
 				if ((*s).isCylindric) {
 					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
-					doublePolfftPlan = fftw_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD, NULL, 1, 2 * (int)(*s).Ngrid, (fftw_complex*)setupWorkC, NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
+					doublePolfftPlan = fftw_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD.data(), NULL, 1, 2 * (int)(*s).Ngrid, (fftw_complex*)setupWorkC.data(), NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
 				}
 			}
-			delete[] setupWorkC;
-			delete[] setupWorkD;
 		}
 		else if(sizeof(deviceFP)==sizeof(float)){
-			float* setupWorkD = new float[(*s).Ngrid * (2 + 2 * (*s).isCylindric)];
-			std::complex<float>* setupWorkC = new std::complex<float>[(*s).NgridC * (2 + 2 * (*s).isCylindric)];
+			std::vector<float> setupWorkD((*s).Ngrid * (2 + 2 * (*s).isCylindric));
+			std::vector<std::complex<float>> setupWorkC((*s).NgridC * (2 + 2 * (*s).isCylindric));
 			const int fftw1[1] = { (int)(*s).Ntime };
-			fftPlan1DD2Z32 = fftwf_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD, fftw1, 1, (int)(*s).Ntime, (fftwf_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
-			fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftwf_complex*)setupWorkC, fftw1, 1, (int)(*s).Nfreq, setupWorkD, fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
+			fftPlan1DD2Z32 = fftwf_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD.data(), fftw1, 1, (int)(*s).Ntime, (fftwf_complex*)setupWorkC.data(), fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
+			fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftwf_complex*)setupWorkC.data(), fftw1, 1, (int)(*s).Nfreq, setupWorkD.data(), fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
 			if ((*s).is3D) {
 				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftwf_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(3, fftwSizes, 2, (fftwf_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, (fftwf_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
+				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(3, fftwSizes, 2, (fftwf_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
 			}
 			else {
 				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD, NULL, 1, (int)(*s).Ngrid, (fftwf_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(2, fftwSizes, 2, (fftwf_complex*)setupWorkC, NULL, 1, (int)(*s).NgridC, setupWorkD, NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, (fftwf_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
+				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(2, fftwSizes, 2, (fftwf_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
 
 				if ((*s).isCylindric) {
 					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
-					doublePolfftPlan32 = fftwf_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD, NULL, 1, 2 * (int)(*s).Ngrid, (fftwf_complex*)setupWorkC, NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
+					doublePolfftPlan32 = fftwf_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD.data(), NULL, 1, 2 * (int)(*s).Ngrid, (fftwf_complex*)setupWorkC.data(), NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
 				}
 			}
-			delete[] setupWorkC;
-			delete[] setupWorkD;
 		}
 		else{
 			configuredFFT = 0;

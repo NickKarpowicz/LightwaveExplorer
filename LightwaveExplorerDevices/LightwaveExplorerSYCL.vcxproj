@@ -160,6 +160,8 @@
       <OpenMPOffloading>None</OpenMPOffloading>
       <FSYCLUnnamedLambda>Default</FSYCLUnnamedLambda>
       <DebugInformationFormat>None</DebugInformationFormat>
+      <SYCLOptimization>MaxSpeed</SYCLOptimization>
+      <SYCLWarningLevel>EnablesWarningsAndErrors</SYCLWarningLevel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -58,7 +58,6 @@ namespace deviceLibSYCLFP32{
 	}
 	static inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::exp(x);
-
 	}
 	static inline float abs(const oneapi::dpl::complex<float> x){
 		return oneapi::dpl::abs(x);
@@ -180,18 +179,12 @@ public:
 		return(isnan(canaryPixel));
 	}
 
-	//template<typename Function, typename... Args>
-	//void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const Function& kernel, const Args... args) {
-	//	stream.submit([&](sycl::handler& h) {
-	//		h.parallel_for(Nblock * Nthread, [=](const auto i) {kernel(i, args...); });
-	//		});
-	//}
-
 	template <typename T>
 	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) {
-	stream.submit([&](sycl::handler& h) {
-		h.parallel_for(Nblock * Nthread, functor);
-		});
+		size_t i = static_cast<size_t>(Nblock) * static_cast<size_t>(Nthread);
+		stream.submit([&](sycl::handler& h) {
+			h.parallel_for(i, functor);
+			});
 }
 
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) {
@@ -254,7 +247,6 @@ public:
 		float* copyBuffer = new float[count / sizeof(double)]();
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			copyBuffer[i] = static_cast<float>(src[i]);
-			
 		}
 		stream.memcpy(dst, copyBuffer, count / 2);
 		stream.wait();
