@@ -294,11 +294,10 @@ namespace deviceFunctions {
 	// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
 	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients, const long long i, deviceComplex* n1, deviceComplex* n2) {
-		size_t j, k, h, col;
-		h = 1 + i % ((*s).Nfreq - 1);
-		col = i / ((*s).Nfreq - 1);
-		j = col % (*s).Nspace;
-		k = col / (*s).Nspace;
+		size_t h = 1 + i % ((*s).Nfreq - 1);
+		size_t col = i / ((*s).Nfreq - 1);
+		size_t j = col % (*s).Nspace;
+		size_t k = col / (*s).Nspace;
 
 		deviceFP f = (*s).fStep * h;
 		deviceFP kx1 = (lightC<deviceFP>() / (twoPi<deviceFP>() * f)) * (j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace));
@@ -536,8 +535,8 @@ namespace kernelNamespace{
 				beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 				beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
-			beamTotal1 *= constProd(lightC<deviceFP>(), 2.0 * eps0<deviceFP>()) * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
-			beamTotal2 *= constProd(lightC<deviceFP>(), 2.0 * eps0<deviceFP>()) * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
+			beamTotal1 *= constProd(lightC<deviceFP>(), 2 * eps0<deviceFP>()) * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
+			beamTotal2 *= constProd(lightC<deviceFP>(), 2 * eps0<deviceFP>()) * (*s).dx * (*s).dx * (*s).dt * (*s).dt;
 
 			//put the values into the output spectrum
 			(*s).gridPolarizationTime1[i] = beamTotal1;
@@ -561,10 +560,10 @@ namespace kernelNamespace{
 		deviceFP* out;
 		deviceFunction void operator()(size_t i) const {
 			size_t col = i / (*s).Ntime; //spatial coordinate
-			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
+			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2) / ((*s).dx * (*s).Nspace);
 			//in += i % (*s).Ntime;
-			out[i] = 0.0f;
-			out[i + (*s).Ngrid] = 0.0f;
+			out[i] = {};
+			out[i + (*s).Ngrid] = {};
 			deviceFP r0;
 			deviceFP J0 = 1.0f;
 			deviceFP k0 = col * dk;
@@ -588,8 +587,8 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t i) const {
 			size_t col = i / (*s).Ntime; //spatial coordinate
 			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
-			out[i] = 0.0f;
-			out[i + (*s).Ngrid] = 0.0f;
+			out[i] = {};
+			out[i + (*s).Ngrid] = {};
 			deviceFP r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
 			deviceFP J0 = 1.0f;
 			deviceFP k0 = col * dk;
@@ -659,12 +658,11 @@ namespace kernelNamespace{
 		const deviceFP xOffset;
 		const deviceFP yOffset;
 		deviceFunction void operator()(size_t i) const {
-			long long col, j, k, l;
-			col = i / ((*s).Nfreq - 1); //spatial coordinate
-			j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			long long col = i / ((*s).Nfreq - 1); //spatial coordinate
+			long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			k = col % (*s).Nspace;
-			l = col / (*s).Nspace;
+			long long k = col % (*s).Nspace;
+			long long l = col / (*s).Nspace;
 
 			//magnitude of k vector
 			deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
@@ -769,26 +767,24 @@ namespace kernelNamespace{
 		const deviceFP radius;
 		const deviceFP order;
 		deviceFunction void operator()(size_t i) const {
-			long long j, h, k, col;
 
-			col = i / ((*s).Nfreq - 1);
-			j = col % (*s).Nspace;
-			k = col / (*s).Nspace;
+
+			long long col = i / ((*s).Nfreq - 1);
+			long long j = col % (*s).Nspace;
+			long long k = col / (*s).Nspace;
+			long long h = 1 + i % ((*s).Nfreq - 1);
 			deviceFP r, f, x, y;
 			if ((*s).is3D) {
-				h = 1 + i % ((*s).Nfreq - 1);
 				col = i / ((*s).Nfreq - 1);
 				i = h + col * ((*s).Nfreq);
 				j = col % (*s).Nspace;
 				k = col / (*s).Nspace;
 				f = h * (*s).fStep;
-
 				x = ((*s).dx * (j - (*s).Nspace / 2.0f));
 				y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
 				r = deviceFPLib::sqrt(x * x + y * y);
 			}
 			else {
-				h = 1 + i % ((*s).Nfreq - 1);
 				j = i / ((*s).Nfreq - 1);
 				i = h + j * ((*s).Nfreq);
 				f = h * (*s).fStep;
@@ -815,11 +811,9 @@ namespace kernelNamespace{
 		const deviceFP radius;
 		const deviceFP activationParameter;
 		deviceFunction void operator()(size_t i) const {
-			long long j, k, col;
-
-			col = i / (*s).Ntime;
-			j = col % (*s).Nspace;
-			k = col / (*s).Nspace;
+			long long col = i / (*s).Ntime;
+			long long j = col % (*s).Nspace;
+			long long k = col / (*s).Nspace;
 			deviceFP r;
 			if ((*s).is3D) {
 				deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
@@ -831,7 +825,6 @@ namespace kernelNamespace{
 			}
 
 			deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius) / (*s).dx)));
-
 			(*s).gridETime1[i] *= a;
 			(*s).gridETime2[i] *= a;
 		}
@@ -843,12 +836,11 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP focus;
 		deviceFunction void operator()(size_t i) const {
-			long long j, k, h, col;
-			h = 1 + i % ((*s).Nfreq - 1);
-			col = i / ((*s).Nfreq - 1);
+			long long h = 1 + i % ((*s).Nfreq - 1);
+			long long col = i / ((*s).Nfreq - 1);
 			i = h + col * (*s).Nfreq;
-			j = col % (*s).Nspace;
-			k = col / (*s).Nspace;
+			long long j = col % (*s).Nspace;
+			long long k = col / (*s).Nspace;
 
 			deviceFP w = twoPi<deviceFP>() * h * (*s).fStep;
 			deviceFP r;
@@ -875,12 +867,11 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFP ROC_in;
 		deviceFunction void operator()(size_t i) const {
-			long long j, k, h, col;
-			h = 1 + i % ((*s).Nfreq - 1);
-			col = i / ((*s).Nfreq - 1);
+			long long h = 1 + i % ((*s).Nfreq - 1);
+			long long col = i / ((*s).Nfreq - 1);
 			i = h + col * (*s).Nfreq;
-			j = col % (*s).Nspace;
-			k = col / (*s).Nspace;
+			long long j = col % (*s).Nspace;
+			long long k = col / (*s).Nspace;
 
 			deviceFP w = twoPi<deviceFP>() * h * (*s).fStep;
 			deviceFP r;
@@ -930,15 +921,14 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(size_t localIndex) const {
 			size_t i = localIndex;
-			size_t j, h, k, col;
 			int axesNumber = (*s).axesNumber;
 			int sellmeierType = (*s).sellmeierType;
 			deviceComplex ne, no, n0, n0o;
-			h = 1 + i % ((*s).Nfreq - 1);
-			col = i / ((*s).Nfreq - 1);
+			size_t h = 1 + i % ((*s).Nfreq - 1);
+			size_t col = i / ((*s).Nfreq - 1);
 			i = h + col * ((*s).Nfreq);
-			j = col % (*s).Nspace;
-			k = col / (*s).Nspace;
+			size_t j = col % (*s).Nspace;
+			size_t k = col / (*s).Nspace;
 			deviceFP crystalTheta = (*s).crystalTheta;
 			deviceFP crystalPhi = (*s).crystalPhi;
 
@@ -994,10 +984,9 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(size_t localIndex) const {
 			size_t i = localIndex;
-			size_t j, k;
 			deviceComplex ne, no;
-			j = i / ((*s).Nfreq - 1); //spatial coordinate
-			k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
+			size_t j = i / ((*s).Nfreq - 1); //spatial coordinate
+			size_t k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
 			i = k + j * (*s).Nfreq;
 			deviceComplex ii = deviceComplex(0.0f, 1.0f);
 			deviceFP kStep = (*s).dk1;
@@ -1068,13 +1057,12 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(size_t localIndex) const {
 			size_t i = localIndex;
-			size_t col, j, k, l;
 			deviceComplex ne, no;
-			col = i / ((*s).Nfreq - 1); //spatial coordinate
-			j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			size_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			size_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			k = col % (*s).Nspace;
-			l = col / (*s).Nspace;
+			size_t k = col % (*s).Nspace;
+			size_t l = col / (*s).Nspace;
 
 			deviceComplex ii = deviceComplex(0.0f, 1.0f);
 
@@ -1838,7 +1826,7 @@ namespace kernelNamespace{
 			field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle), -(*p).circularity * deviceFPLib::sin((*p).polarizationAngle)) * Eb;
 			field[i + (*s).NgridC] = deviceComplex(deviceFPLib::sin((*p).polarizationAngle), (*p).circularity * deviceFPLib::cos((*p).polarizationAngle)) * Eb;
 			deviceFP pointEnergy = (cuCModSquared(field[i]) + cuCModSquared(field[i + (*s).NgridC]));
-			pointEnergy *= 2.0f * lightC<deviceFP>() * eps0<deviceFP>() * (*s).dx * (*s).dx * (*s).dt;
+			pointEnergy *= constProd(lightC<deviceFP>() * eps0<deviceFP>(), 2) * (*s).dx * (*s).dx * (*s).dt;
 
 			//factor 2 accounts for the missing negative frequency plane
 			atomicAdd(pulseSum, pointEnergy);
