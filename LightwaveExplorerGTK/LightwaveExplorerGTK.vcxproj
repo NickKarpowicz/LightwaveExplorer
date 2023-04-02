@@ -64,8 +64,8 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>DlibLibraryComponents.lib;LightwaveExplorerSYCL.lib;cufft.lib;nvml.lib;gio-2.0.lib;gtk-4.lib;pangoft2-1.0.lib;gdk_pixbuf-2.0.lib;pangocairo-1.0.lib;cairo.lib;pango-1.0.lib;freetype.lib;fontconfig.lib;gobject-2.0.lib;gthread-2.0.lib;glib-2.0.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalDependencies>LightwaveExplorerSYCL.lib;cufft.lib;nvml.lib;gio-2.0.lib;gtk-4.lib;pangoft2-1.0.lib;gdk_pixbuf-2.0.lib;pangocairo-1.0.lib;cairo.lib;pango-1.0.lib;freetype.lib;fontconfig.lib;gobject-2.0.lib;gthread-2.0.lib;glib-2.0.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>LightwaveExplorerSYCL.dll;nvml.dll;cufft64_11.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <AdditionalLibraryDirectories>$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
