@@ -15,7 +15,7 @@ __device__ static thrust::complex<double> operator/(const double& a, const thrus
 }
 __device__ static thrust::complex<double> operator/(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() / b, a.imag() / b); }
 
-//__device__ static thrust::complex<double> operator*(const double& b, const thrust::complex<double>& a) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
+__device__ static thrust::complex<double> operator*(const double& b, const thrust::complex<double>& a) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
 __device__ static thrust::complex<double> operator*(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
 
 __device__ static thrust::complex<double> operator+(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(b.real() + a, b.imag()); }
