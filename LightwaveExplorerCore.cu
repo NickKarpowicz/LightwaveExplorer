@@ -2349,6 +2349,22 @@ namespace hostFunctions{
 			}
 			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, radialLaplacianKernel{ sD });
 			d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFT::D2Z);
+
+			switch (stepNumber) {
+			case 0:
+				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel0Cylindric{ sD });
+				break;
+			case 1:
+				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel1Cylindric{ sD });
+				break;
+			case 2:
+				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel2Cylindric{ sD });
+				break;
+			case 3:
+				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel3Cylindric{ sD });
+				break;
+			}
+			return 0;
 		}
 		// 2D and 3D cartesian
 		// Only one type of FFT
@@ -2372,7 +2388,7 @@ namespace hostFunctions{
 		}
 
 		//advance an RK4 step
-		switch (stepNumber + 4*(*sH).isCylindric) {
+		switch (stepNumber) {
 		case 0:
 			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel0{ sD });
 			break;
@@ -2384,18 +2400,6 @@ namespace hostFunctions{
 			break;
 		case 3:
 			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel3{ sD });
-			break;
-		case 4:
-			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel0Cylindric{ sD });
-			break;
-		case 5:
-			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel1Cylindric{ sD });
-			break;
-		case 6:
-			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel2Cylindric{ sD });
-			break;
-		case 7:
-			d.deviceLaunch((*sH).Nblock, (*sH).Nthread, rkKernel3Cylindric{ sD });
 			break;
 		}
 		return 0;
