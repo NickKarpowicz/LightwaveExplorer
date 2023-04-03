@@ -19,12 +19,7 @@ template<typename deviceFP>
 	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
 }
 #ifdef __linux__
-static double inline isnan(double x){
-	return std::isnan(x);
-}
-static float inline isnan(float x){
-	return std::isnan(x);
-}
+using std::isnan;
 #endif
 #else
 template<typename deviceFP>

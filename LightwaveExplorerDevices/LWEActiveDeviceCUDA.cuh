@@ -23,10 +23,12 @@ __device__ static thrust::complex<double> operator+(const thrust::complex<double
 
 __device__ static thrust::complex<double> operator-(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
 __device__ static thrust::complex<double> operator-(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() - b, a.imag()); }
-#endif
 
-
-#if LWEFLOATINGPOINT==32
+namespace deviceLib = thrust;
+#define deviceFPLib
+const auto CUFFT_fwd = CUFFT_D2Z;
+const auto CUFFT_bwd = CUFFT_Z2D;
+#else
 namespace deviceLibCUDAFP32{
 	__device__ static float exp(const float x){
 		return expf(x);
@@ -80,11 +82,6 @@ namespace deviceLib = deviceLibCUDAFP32;
 namespace deviceFPLib = deviceLibCUDAFP32;
 const auto CUFFT_fwd = CUFFT_R2C;
 const auto CUFFT_bwd = CUFFT_C2R;
-#else
-namespace deviceLib = thrust;
-#define deviceFPLib
-const auto CUFFT_fwd = CUFFT_D2Z;
-const auto CUFFT_bwd = CUFFT_Z2D;
 #endif
 
 __device__ static inline float j0Device(float x) {
@@ -181,7 +178,6 @@ public:
 		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
 		memoryStatus = allocateSet(sCPU);
 	}
-
 
 	~CUDADevice() {
 		fftDestroy();
