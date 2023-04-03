@@ -60,7 +60,6 @@ namespace deviceLibCUDAFP32{
 	__device__ static float acos(const float x) {
 		return acosf(x);
 	}
-
 	__device__ static thrust::complex<float> pow(const thrust::complex<float> x, const float y){
 		return thrust::pow(x,y);
 	}
