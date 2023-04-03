@@ -15,8 +15,6 @@ int hardwareCheck(int* CUDAdeviceCount) {
 }
 
 
-#if LWEFLOATINGPOINT==64
-
 [[maybe_unused]]static std::complex<double> operator+(const float f, const std::complex<double> x) { return std::complex<double>(x.real() + f, x.imag()); }
 
 [[maybe_unused]] static std::complex<double> operator+(const std::complex<double> x, const float f) { return std::complex<double>(x.real() + f, x.imag()); }
@@ -29,7 +27,7 @@ int hardwareCheck(int* CUDAdeviceCount) {
 
 [[maybe_unused]] static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
 
-#endif
+
 [[maybe_unused]] static float j0Device(float x) {
 	return x;
 }

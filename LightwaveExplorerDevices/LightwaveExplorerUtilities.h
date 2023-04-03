@@ -7,35 +7,9 @@
 #include <atomic>
 #include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
 
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#endif
-
-#ifdef __CUDACC__
-#include <cufft.h>
-#include <thrust/complex.h>
-#include <fftw3_mkl.h>
-#elif defined RUNONSYCL
-#include <oneapi/dpl/complex>
-#include <oneapi/dpl/cmath>
-#include <sycl/sycl.hpp>
-#elif defined CPUONLY
-#include <fftw3.h>
-#else
-#include <fftw3_mkl.h>
-#endif
-
 static const unsigned int threadsPerBlock = 32;
 static const unsigned int minGridDimension = 8;
 
-#ifndef LWEFLOATINGPOINT
-#define LWEFLOATINGPOINT 64
-#endif
-#if LWEFLOATINGPOINT==32
-#define LWEFLOATINGPOINTTYPE float
-#else
-#define LWEFLOATINGPOINTTYPE double
-#endif
 
 std::string     getBasename(const std::string& fullPath);
 int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);

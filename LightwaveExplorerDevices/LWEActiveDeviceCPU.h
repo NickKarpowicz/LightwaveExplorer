@@ -82,15 +82,6 @@ namespace deviceLibCPUFP32{
 	}
 };
 
-namespace complexLib = std;
-#if LWEFLOATINGPOINT==32
-namespace deviceFPLib = deviceLibCPUFP32;
-namespace deviceLib = deviceLibCPUFP32;
-#else
-namespace deviceFPLib = std;
-namespace deviceLib = std;
-#endif
-
 [[maybe_unused]] static std::complex<double> operator+(const float f, const std::complex<double> x) { return std::complex<double>(x.real() + f, x.imag()); }
 
 [[maybe_unused]] static std::complex<double> operator+(const std::complex<double> x, const float f) { return std::complex<double>(x.real() + f, x.imag()); }

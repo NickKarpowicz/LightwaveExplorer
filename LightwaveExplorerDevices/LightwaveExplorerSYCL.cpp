@@ -49,7 +49,7 @@ void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                     namelist.push_back(d.get_info<cl::sycl::info::device::name>());
                     gpuCount++;
                     deviceList.append(Sformat("SYCL found a GPU:\n   <span color=\"#66FFFFFF\">{}</span>\n", d.get_info<cl::sycl::info::device::name>()));
-                    if(LWEFLOATINGPOINT==64 && d.get_info<cl::sycl::info::device::double_fp_config>().size()==0){
+                    if(sizeof(deviceFP) == sizeof(double) && d.get_info<cl::sycl::info::device::double_fp_config>().size() == 0) {
                         //gpuCount--;
                         deviceList.append(Sformat("   <span color=\"#FF6666\">Warning: doesn't support FP64</span>\n"));
                     }

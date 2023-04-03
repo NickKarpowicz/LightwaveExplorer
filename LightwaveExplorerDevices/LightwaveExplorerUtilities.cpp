@@ -1,5 +1,15 @@
 #include "LightwaveExplorerUtilities.h"
 
+#ifdef CPUONLY
+#include <fftw3.h>
+#else
+#include <fftw3_mkl.h>
+#endif
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 int simulationParameterSet::loadSavedFields(const std::string& outputBase) {
 	std::string Epath = outputBase;
 	Epath.append("_Ext.dat");

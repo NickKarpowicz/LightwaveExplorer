@@ -67,17 +67,6 @@ namespace deviceLibSYCLFP32{
 	}
 };
 
-#if LWEFLOATINGPOINT==32
-namespace deviceLib = deviceLibSYCLFP32;
-namespace deviceFPLib = deviceLibSYCLFP32;
-namespace complexLib = oneapi::dpl;
-const auto dftPrecision = oneapi::mkl::dft::precision::SINGLE;
-#else
-namespace deviceLib = oneapi::dpl;
-namespace complexLib = oneapi::dpl;
-	#define deviceFPLib
-const auto dftPrecision = oneapi::mkl::dft::precision::DOUBLE;
-#endif
 
 static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
@@ -452,7 +441,7 @@ public:
 		}
 		else {
 			sycl::queue defaultStream{ sycl::default_selector_v, sycl::property::queue::in_order() };
-			if (LWEFLOATINGPOINT==64 && defaultStream.get_device().get_info<cl::sycl::info::device::double_fp_config>().size() == 0) {
+			if (sizeof(deviceFP) == sizeof(double) && defaultStream.get_device().get_info<cl::sycl::info::device::double_fp_config>().size() == 0) {
 				sycl::queue cpuStream{ sycl::cpu_selector_v, sycl::property::queue::in_order() };
 				stream = cpuStream;
 			}

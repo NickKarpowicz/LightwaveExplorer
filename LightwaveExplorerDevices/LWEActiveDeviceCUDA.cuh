@@ -7,7 +7,6 @@
 #include "LightwaveExplorerUtilities.h"
 
 namespace complexLib = thrust;
-#ifdef __CUDACC__
 #if LWEFLOATINGPOINT==64
 //In tests this mattered, since Thrust does math between complex and double up casting the double to a complex.
 __device__ static thrust::complex<double> operator/(const double& a, const thrust::complex<double>& b) {
@@ -25,11 +24,9 @@ __device__ static thrust::complex<double> operator+(const thrust::complex<double
 __device__ static thrust::complex<double> operator-(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
 __device__ static thrust::complex<double> operator-(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() - b, a.imag()); }
 #endif
-#endif
 
 
 #if LWEFLOATINGPOINT==32
-#undef deviceFPLib
 namespace deviceLibCUDAFP32{
 	__device__ static float exp(const float x){
 		return expf(x);
