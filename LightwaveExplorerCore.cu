@@ -617,30 +617,27 @@ namespace kernelNamespace{
 		}
 	};
 
-	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/r d/drho)
+	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/rho d/drho)
 	class radialLaplacianKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const size_t i) const {
 			const size_t j = i / (*s).Ntime; //spatial coordinate
-			const size_t h = i % (*s).Ntime; //temporal coordinate
-			size_t neighbors[6];
-
 			//zero at edges of grid
 			[[unlikely]] if (j < 3 || j > ((*s).Nspace - 4)) {
 				(*s).gridRadialLaplacian1[i] = {};
 				(*s).gridRadialLaplacian2[i] = {};
 			}
 			else {
-				deviceFP rho = resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, j, (*s).dx, (*s).Ntime, h);
-				rho = -1.0f / rho;
-				(*s).gridRadialLaplacian1[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
+				size_t neighbors[6];
+				deviceFP oneOverRho  = -1.0 / resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, j, (*s).dx, (*s).Ntime, i % (*s).Ntime);
+				(*s).gridRadialLaplacian1[i] = oneOverRho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
 					+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
 					+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
 					+ (*s).firstDerivativeOperation[3] * (*s).gridETime1[neighbors[3]]
 					+ (*s).firstDerivativeOperation[4] * (*s).gridETime1[neighbors[4]]
 					+ (*s).firstDerivativeOperation[5] * (*s).gridETime1[neighbors[5]]);
-				(*s).gridRadialLaplacian2[i] = rho * ((*s).firstDerivativeOperation[0] * (*s).gridETime2[neighbors[0]]
+				(*s).gridRadialLaplacian2[i] = oneOverRho * ((*s).firstDerivativeOperation[0] * (*s).gridETime2[neighbors[0]]
 					+ (*s).firstDerivativeOperation[1] * (*s).gridETime2[neighbors[1]]
 					+ (*s).firstDerivativeOperation[2] * (*s).gridETime2[neighbors[2]]
 					+ (*s).firstDerivativeOperation[3] * (*s).gridETime2[neighbors[3]]
@@ -1375,7 +1372,7 @@ namespace kernelNamespace{
 				// second order nonlinearity, element-by-element in the reduced tensor
 				//note that for historical reasons, chi2 is column-order and chi3 is row-order...
 				if ((*s).nonlinearSwitches[0] == 1) {
-					for (unsigned char a = 0; a < 3; ++a) {
+					for (auto a = 0; a < 3; ++a) {
 						P[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
 						P[a] += (*s).chi2Tensor[3 + a] * E3[1] * E3[1];
 						P[a] += (*s).chi2Tensor[6 + a] * E3[2] * E3[2];
@@ -1389,10 +1386,10 @@ namespace kernelNamespace{
 				if ((*s).nonlinearSwitches[1] == 1) {
 					// loop over tensor element X_abcd
 					// i hope the compiler unrolls this, but no way am I writing that out by hand
-					for (unsigned char a = 0; a < 3; ++a) {
-						for (unsigned char b = 0; b < 3; ++b) {
-							for (unsigned char c = 0; c < 3; ++c) {
-								for (unsigned char d = 0; d < 3; ++d) {
+					for (auto a = 0; a < 3; ++a) {
+						for (auto b = 0; b < 3; ++b) {
+							for (auto c = 0; c < 3; ++c) {
+								for (auto d = 0; d < 3; ++d) {
 									P[d] += (*s).chi3Tensor[a + 3 * b + 9 * c + 27 * d] * E3[a] * E3[b] * E3[c];
 								}
 							}
@@ -1411,18 +1408,9 @@ namespace kernelNamespace{
 				}
 			}
 			else {
-				//case of no chi2, and centrosymmetric chi3
-				if ((*s).nonlinearSwitches[1] == 2) {
-					deviceFP Esquared = (*s).chi3Tensor[0] * (Ex * Ex + Ey * Ey);
-					(*s).gridPolarizationTime1[i] = Ex * Esquared;
-					(*s).gridPolarizationTime2[i] = Ey * Esquared;
-				}
-				else {
-					//this should never be called: the simulation thinks there's a nonlinearity, but they're all off
-					//zero just in case.
-					(*s).gridPolarizationTime1[i] = {};
-					(*s).gridPolarizationTime2[i] = {};
-				}
+				deviceFP Esquared = (*s).chi3Tensor[0] * (Ex * Ex + Ey * Ey);
+				(*s).gridPolarizationTime1[i] = Ex * Esquared;
+				(*s).gridPolarizationTime2[i] = Ey * Esquared;
 			}
 			if ((*s).isCylindric)expandCylindricalBeamDevice(s, i, (*s).gridRadialLaplacian1 + (*s).Ngrid * 4 * (*s).hasPlasma, (*s).gridPolarizationTime1, (*s).gridPolarizationTime2);
 		}
