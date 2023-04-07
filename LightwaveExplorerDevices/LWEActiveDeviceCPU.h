@@ -201,16 +201,14 @@ public:
 	template<typename T>
 	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
 #pragma omp parallel for num_threads(LWEThreadCount)
-		for (int i = 0; i < static_cast<int>(Nthread); i++) {
-			for (size_t j = 0; j < static_cast<size_t>(Nblock); j++) {
-				functor(static_cast<size_t>(j + Nblock * i));
-			}
+		for (int i = 0; i < static_cast<int>(Nthread * Nblock); i++) {
+			functor(static_cast<size_t>(i));
 		}
 	}
 
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize){
 		(*ptr) = calloc(N, elementSize);
-		return (int)((*ptr) == NULL);
+		return static_cast<int>((*ptr) == NULL);
 	}
 
 	void deviceMemset(void* ptr, int value, size_t count){
