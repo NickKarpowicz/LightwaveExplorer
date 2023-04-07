@@ -8,7 +8,7 @@
 #include "LightwaveExplorerGraphicalClasses.h"
 #undef __noinline__
 #include <gtk/gtk.h>
-#if defined __linux__ || defined __APPLE__
+#if defined __linux__
 #include<fmt/format.h>
 #define Sformat fmt::format
 #define Svformat fmt::vformat

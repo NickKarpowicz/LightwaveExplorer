@@ -94,7 +94,7 @@ if(APPLE)
     link_directories(${FMT_LIBRARY_DIRS})
     find_library(OpenMP_LIBRARY NAMES libomp.a HINTS ${BREW_PREFIX}/opt/libomp/lib/)
     include_directories(../dlib)
-    add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -Wall -Wno-deprecated-declarations)
+    add_compile_options(-std=c++20 -O3 -fexperimental-library -stdlib=libc++ -fopenmp -D CPUONLY -Wall -Wno-deprecated-declarations)
     add_executable(LightwaveExplorer MACOSX_BUNDLE LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
     set_target_properties(LightwaveExplorer  PROPERTIES
         BUNDLE True
@@ -105,5 +105,5 @@ if(APPLE)
         MACOSX_BUNDLE_ICON_FILE ${CMAKE_SOURCE_DIR}/BuildResources/AppIcon.icns
     )
     target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES} ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES} ${FMT_LIBRARIES})
-    target_link_libraries(LightwaveExplorer ${OpenMP_LIBRARY} "-framework Cocoa")
+    target_link_libraries(LightwaveExplorer ${OpenMP_LIBRARY} ${LLVM_PREFIX}/lib/c++/libc++.a ${LLVM_PREFIX}/lib/c++/libc++abi.a ${LLVM_PREFIX}/lib/c++/libc++experimental.a "-framework Cocoa")
 endif()

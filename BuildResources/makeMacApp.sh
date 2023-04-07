@@ -4,11 +4,11 @@ APP=build/${BIN}.app
 BINPATH=${APP}/Contents/MacOS/${BIN}
 
 #install the required packages from homebrew
-brew install --quiet cmake make llvm fftw gtk4 fmt pkgconfig libomp
+brew install --quiet cmake make llvm fftw gtk4 pkgconfig libomp
 
 #Homebrew libraries location
 LIBS="$(brew --prefix)"
-
+LLVM="$(brew --prefix llvm)"
 #use .mm extension for the interface to use objective-c++; allows direct calls to Cocoa for file dialogs
 mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
 
@@ -16,7 +16,7 @@ mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerGTK/Li
 rm -rf build
 mkdir build
 cd build
-cmake ..
+cmake .. -DCMAKE_CXX_COMPILER=${LLVM}/bin/clang++ -DCMAKE_C_COMPILER=${LLVM}/bin/clang
 make
 cd ..
 

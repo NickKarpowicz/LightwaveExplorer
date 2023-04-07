@@ -6,7 +6,9 @@
 #include <fstream>
 #include <atomic>
 #include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
-
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 static const unsigned int threadsPerBlock = 32;
 static const unsigned int minGridDimension = 8;
 
@@ -161,6 +163,7 @@ public:
 
     crystalDatabase() {
 #ifdef __APPLE__
+        #include <mach-o/dyld.h>
         uint32_t bufferSize = 1024;
         char sysPath[1024] = { 0 };
         _NSGetExecutablePath(sysPath, &bufferSize);

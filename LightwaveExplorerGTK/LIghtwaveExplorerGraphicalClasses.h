@@ -11,7 +11,7 @@
 #include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
 
 //temporary set of macros until std::format is on all platforms
-#if defined __linux__ || defined __APPLE__
+#if defined __linux__
 #include<fmt/format.h>
 #define Sformat fmt::format
 #define Svformat fmt::vformat
