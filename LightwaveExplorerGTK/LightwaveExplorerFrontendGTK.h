@@ -5,7 +5,7 @@
 #include <string>
 #include <algorithm>
 #include "../LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
-#include "LIghtwaveExplorerGraphicalClasses.h"
+#include "LightwaveExplorerGraphicalClasses.h"
 #undef __noinline__
 #include <gtk/gtk.h>
 #if defined __linux__ || defined __APPLE__

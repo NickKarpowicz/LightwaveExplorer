@@ -763,7 +763,7 @@ void stripLineBreaks(std::string& s) {
 	removeCharacterFromString(s, '\n');
 }
 
-int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask){
+int interpretParameters(const std::string& cc, const int n, const double *iBlock, const double *vBlock, double *parameters, bool* defaultMask){
 	std::string ccSegment = cc.substr(cc.find_first_of('(')+1, std::string::npos);
 
 	std::stringstream ss(ccSegment);
@@ -783,7 +783,7 @@ int interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, d
 	return 0;
 }
 
-void applyOp(char op, double* result, double* readout) {
+void applyOp(const char op, double* result, const double* readout) {
 	switch (op) {
 	case '*':
 		*result *= *readout;
@@ -808,15 +808,15 @@ void applyOp(char op, double* result, double* readout) {
 	}
 }
 
-double parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock) {
-	auto nextInt = [&](std::string iStr, int location) {
+double parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock) {
+	auto nextInt = [&](const std::string& iStr, int location) {
 		std::stringstream s(iStr.substr(location));
 		int a;
 		s >> a;
 		return a;
 	};
 
-	auto nextDouble = [&](std::string iStr, int location) {
+	auto nextDouble = [&](const std::string& iStr, int location) {
 		std::stringstream s(iStr.substr(location));
 		double a;
 		s >> a;
@@ -927,7 +927,7 @@ double cModulusSquared(const std::complex<double>& x) {
 	return x.real()*x.real() + x.imag()*x.imag();
 }
 
-int loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel) {
+int loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const long long Ntime, const double fStep, const double gateLevel) {
 	std::string line;
 	std::ifstream fs(frogFilePath);
 	if (fs.fail()) return -1;

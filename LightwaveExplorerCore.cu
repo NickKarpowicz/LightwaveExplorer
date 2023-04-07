@@ -235,26 +235,26 @@ namespace deviceFunctions {
 	// exploiting the fact that the radial grid is offset by 1/4 step from 0
 	// this means that midpoints are available on the other side of the origin.
 	// returns rho at the given index j
-	template<typename deviceFP>
+	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static deviceFP resolveNeighborsInOffsetRadialSymmetry(
-		size_t* neighbors, const size_t N, const size_t j, const deviceFP dr, const size_t Ntime, const size_t h) {
-		if (j < N / 2) {
-			neighbors[0] = (N - j - 2) * Ntime + h;
-			neighbors[1] = (j + 1) * Ntime + h;
-			neighbors[2] = (N - j - 1) * Ntime + h;
-			neighbors[3] = (N - j) * Ntime + h;
-			neighbors[4] = (j - 1) * Ntime + h;
-			neighbors[5] = (N - j + 1) * Ntime + h;
-			return (dr * (N / 2 - j) - 0.25f * dr);
+		size_t* neighbors, const deviceParameterSet<deviceFP, deviceComplex>* s, const size_t j, const size_t h) {
+		if (j < (*s).Nspace / 2) {
+			neighbors[0] = ((*s).Nspace - j - 2) * (*s).Ntime + h;
+			neighbors[1] = (j + 1) * (*s).Ntime + h;
+			neighbors[2] = ((*s).Nspace - j - 1) * (*s).Ntime + h;
+			neighbors[3] = ((*s).Nspace - j) * (*s).Ntime + h;
+			neighbors[4] = (j - 1) * (*s).Ntime + h;
+			neighbors[5] = ((*s).Nspace - j + 1) * (*s).Ntime + h;
+			return ((*s).dx * ((*s).Nspace / 2 - j) - 0.25f * (*s).dx);
 		}
 		else {
-			neighbors[0] = (N - j + 1) * Ntime + h;
-			neighbors[1] = (j - 1) * Ntime + h;
-			neighbors[2] = (N - j) * Ntime + h;
-			neighbors[3] = (N - j - 1) * Ntime + h;
-			neighbors[4] = (j + 1) * Ntime + h;
-			neighbors[5] = (N - j - 2) * Ntime + h;
-			return dr * (j - N / 2) + 0.25f * dr;
+			neighbors[0] = ((*s).Nspace - j + 1) * (*s).Ntime + h;
+			neighbors[1] = (j - 1) * (*s).Ntime + h;
+			neighbors[2] = ((*s).Nspace - j) * (*s).Ntime + h;
+			neighbors[3] = ((*s).Nspace - j - 1) * (*s).Ntime + h;
+			neighbors[4] = (j + 1) * (*s).Ntime + h;
+			neighbors[5] = ((*s).Nspace - j - 2) * (*s).Ntime + h;
+			return (*s).dx * (j - (*s).Nspace / 2) + 0.25f * (*s).dx;
 		}
 	}
 	//provide the position rho in cylindric mode; a simplified
@@ -452,12 +452,10 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(size_t i) const {
-			size_t j;
 			deviceFP beamCenter1{};
 			deviceFP beamCenter2{};
 			deviceFP beamTotal1{};
 			deviceFP beamTotal2{};
-			deviceFP a, x;
 
 			//find beam centers
 			if ((*s).isCylindric) {
@@ -465,9 +463,9 @@ namespace kernelNamespace{
 				beamCenter2 = beamCenter1;
 			}
 			else {
-				for (j = 0; j < (*s).Nspace; ++j) {
-					x = (*s).dx * j;
-					a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+				for (auto j = 0; j < (*s).Nspace; ++j) {
+					deviceFP x = (*s).dx * j;
+					deviceFP a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 					beamTotal1 += a;
 					beamCenter1 += x * a;
 					a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
@@ -486,8 +484,8 @@ namespace kernelNamespace{
 			//the center
 			beamTotal1 = 0.0f;
 			beamTotal2 = 0.0f;
-			for (j = 0; j < (*s).Nspace; ++j) {
-				x = (*s).dx * j;
+			for (auto j = 0; j < (*s).Nspace; ++j) {
+				deviceFP x = (*s).dx * j;
 				beamTotal1 += deviceFPLib::abs(x - beamCenter1) * cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 				beamTotal2 += deviceFPLib::abs(x - beamCenter2) * cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
@@ -630,7 +628,7 @@ namespace kernelNamespace{
 			}
 			else {
 				size_t neighbors[6];
-				deviceFP oneOverRho  = -1.0 / resolveNeighborsInOffsetRadialSymmetry(neighbors, (*s).Nspace, j, (*s).dx, (*s).Ntime, i % (*s).Ntime);
+				deviceFP oneOverRho  = -1.0 / resolveNeighborsInOffsetRadialSymmetry(neighbors, s, j, i % (*s).Ntime);
 				(*s).gridRadialLaplacian1[i] = oneOverRho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
 					+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
 					+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
@@ -666,7 +664,7 @@ namespace kernelNamespace{
 
 			//transverse wavevector being resolved
 			deviceFP dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
-			deviceFP dk2 = 0.0f;
+			deviceFP dk2 = {};
 			if ((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 
 			//light that won't go the the farfield is immediately zero
@@ -741,9 +739,9 @@ namespace kernelNamespace{
 
 			deviceFP f = ((*s).fStep * j - f0) / bandwidth;
 			for (int p = 1; p < order; p++) {
-				f *= f;
+				f *= ((*s).fStep * j - f0) / bandwidth;
 			}
-			deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude * deviceFPLib::exp(-0.5 * f);
+			deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude * deviceFPLib::exp(-0.5f * f);
 			(*s).gridEFrequency1[i] *= filterFunction;
 			(*s).gridEFrequency2[i] *= filterFunction;
 		}
@@ -979,21 +977,19 @@ namespace kernelNamespace{
 	public:
 		const deviceFP* sellmeierCoefficients;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t localIndex) const {
+		deviceFunction void operator()(const size_t localIndex) const {
 			size_t i = localIndex;
 			deviceComplex ne, no;
-			size_t j = i / ((*s).Nfreq - 1); //spatial coordinate
-			size_t k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
+			const size_t j = i / ((*s).Nfreq - 1); //spatial coordinate
+			const size_t k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
 			i = k + j * (*s).Nfreq;
-			deviceComplex ii = deviceComplex(0.0f, 1.0f);
-			deviceFP kStep = (*s).dk1;
-			deviceFP fStep = (*s).fStep;
+			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
 
 			//frequency being resolved by current thread
-			deviceFP f = k * fStep;
+			const deviceFP f = k * (*s).fStep;
 
 			//transverse wavevector being resolved
-			deviceFP dk = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
+			const deviceFP dk = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
 			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 
 			//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
@@ -1005,9 +1001,9 @@ namespace kernelNamespace{
 				return;
 			}
 
-			deviceComplex k0 = deviceComplex(twoPi<deviceFP>() * (*s).n0.real() * f / lightC<deviceFP>(), 0.0f);
-			deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
-			deviceComplex ko = twoPi<deviceFP>() * no * f / lightC<deviceFP>();
+			const deviceComplex k0 = deviceComplex(twoPi<deviceFP>() * (*s).n0.real() * f / lightC<deviceFP>(), 0.0f);
+			const deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
+			const deviceComplex ko = twoPi<deviceFP>() * no * f / lightC<deviceFP>();
 
 			deviceComplex chi11 = cOne<deviceComplex>();
 			deviceComplex chi12 = cOne<deviceComplex>();
@@ -1019,8 +1015,8 @@ namespace kernelNamespace{
 				chi11 = cOne<deviceComplex>();
 				chi12 = cOne<deviceComplex>();
 			}
-			deviceComplex kz1 = deviceLib::sqrt(ke - dk) * deviceLib::sqrt(ke + dk);
-			deviceComplex kz2 = deviceLib::sqrt(ko - dk) * deviceLib::sqrt(ko + dk);
+			const deviceComplex kz1 = deviceLib::sqrt(ke - dk) * deviceLib::sqrt(ke + dk);
+			const deviceComplex kz2 = deviceLib::sqrt(ko - dk) * deviceLib::sqrt(ko + dk);
 
 			if (kz1.real() > 0.0f && kz2.real() > 0.0f) {
 				(*s).gridPropagationFactor1[i] = deviceLib::exp(-0.5f * ii * (kz1 - k0) * (*s).h);
@@ -1052,23 +1048,23 @@ namespace kernelNamespace{
 	public:
 		const deviceFP* sellmeierCoefficients;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t localIndex) const {
+		deviceFunction void operator()(const size_t localIndex) const {
 			size_t i = localIndex;
 			deviceComplex ne, no;
-			size_t col = i / ((*s).Nfreq - 1); //spatial coordinate
-			size_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			const size_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const size_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			size_t k = col % (*s).Nspace;
-			size_t l = col / (*s).Nspace;
+			const size_t k = col % (*s).Nspace;
+			const size_t l = col / (*s).Nspace;
 
-			deviceComplex ii = deviceComplex(0.0f, 1.0f);
+			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
 
 			//frequency being resolved by current thread
-			deviceFP f = j * (*s).fStep;
+			const deviceFP f = j * (*s).fStep;
 
 			//transverse wavevector being resolved
-			deviceFP dk1 = k * (*s).dk1 - (k >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace); //frequency grid in x direction
-			deviceFP dk2 = l * (*s).dk2 - (l >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2); //frequency grid in y direction
+			const deviceFP dk1 = k * (*s).dk1 - (k >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace); //frequency grid in x direction
+			const deviceFP dk2 = l * (*s).dk2 - (l >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2); //frequency grid in y direction
 
 			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 			if (minN(ne.real(), no.real()) < 0.9f || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
@@ -1134,19 +1130,11 @@ namespace kernelNamespace{
 	public:
 		deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP* sellmeierCoefficients;
-		deviceFunction void operator()(size_t i) const {
-			int axesNumber = (*s).axesNumber;
-			int sellmeierType = (*s).sellmeierType;
-			deviceFP crystalTheta = (*s).crystalTheta;
-			deviceFP crystalPhi = (*s).crystalPhi;
-			deviceFP fStep = (*s).fStep;
-
-			deviceComplex ne, no;
-
+		deviceFunction void operator()(const size_t i) const {
 			//frequency being resolved by current thread
-			deviceFP f = i * fStep;
-
-			sellmeierCuda(&ne, &no, sellmeierCoefficients, f, crystalTheta, crystalPhi, axesNumber, sellmeierType);
+			const deviceFP f = i * (*s).fStep;
+			deviceComplex ne, no;
+			sellmeierCuda(&ne, &no, sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 
 			(*s).chiLinear1[i] = ne * ne - 1.0f;
 			(*s).chiLinear2[i] = no * no - 1.0f;
@@ -1177,7 +1165,7 @@ namespace kernelNamespace{
 
 			if (i == 81) {
 				deviceComplex n0;
-				sellmeierCuda(&n0, &no, sellmeierCoefficients, deviceFPLib::abs((*s).f0), crystalTheta, crystalPhi, axesNumber, sellmeierType);
+				sellmeierCuda(&n0, &no, sellmeierCoefficients, deviceFPLib::abs((*s).f0), (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 				(*s).n0 = no;
 				(*s).chiLinear1[(*s).Ntime / 2] = cOne<deviceComplex>();
 				(*s).chiLinear2[(*s).Ntime / 2] = cOne<deviceComplex>();
@@ -1199,7 +1187,7 @@ namespace kernelNamespace{
 					chi11[im] = 100000.0f;
 				}
 				else {
-					sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[im], (*s).crystalTheta, (*s).crystalPhi, axesNumber, sellmeierType);
+					sellmeierCuda(&ne, &no, sellmeierCoefficients, referenceFrequencies[im], (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 					chi11[im] = no.real() * no.real() - 1.0f;
 				}
 			}
@@ -1214,29 +1202,22 @@ namespace kernelNamespace{
 		}
 	};
 
-
 	//prepare the propagation constants under the assumption of cylindrical symmetry of the beam
 	class prepareCylindricGridsKernel { 
 	public:
 		deviceFP* sellmeierCoefficients;
 		deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(size_t i) const {
-			size_t j = i / ((*s).Nfreq - 1); //spatial coordinate
-			size_t k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
+			const size_t j = i / ((*s).Nfreq - 1); //spatial coordinate
+			const size_t k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
 			i = k + j * (*s).Nfreq;
-			deviceComplex ii = deviceComplex(0.0f, 1.0f);
-			deviceFP kStep = (*s).dk1;
-			deviceFP fStep = (*s).fStep;
-
-			deviceComplex ne, no;
-
+			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
 			//frequency being resolved by current thread
-			deviceFP f = -(k * fStep);
-
+			const deviceFP f = -(k * (*s).fStep);
 			//transverse wavevector being resolved
-			deviceFP dk = j * kStep - (j >= ((*s).Nspace / 2)) * (kStep * (*s).Nspace); //frequency grid in transverse direction
-
-			sellmeierCuda(&ne, &no, sellmeierCoefficients, fStep * k, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
+			const deviceFP dk = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
+			deviceComplex ne, no;
+			sellmeierCuda(&ne, &no, sellmeierCoefficients, (*s).fStep * k, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 			//if the refractive index was returned weird, then the index isn't valid, so set the propagator to zero for that frequency
 			if (minN(ne.real(), no.real()) < 0.95f || ne.real() > 6.0f || no.real() > 6.0f || isnan(ne.real()) || isnan(no.real()) || isnan(ne.imag()) || isnan(no.imag())) {
 				(*s).gridPropagationFactor1[i] = {};
@@ -1252,12 +1233,9 @@ namespace kernelNamespace{
 			deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
 			deviceComplex ko = twoPi<deviceFP>() * no * f / lightC<deviceFP>();
 
-			deviceComplex chi11 = cOne<deviceComplex>();
-			deviceComplex chi12 = cOne<deviceComplex>();
-			if ((*s).isUsingMillersRule) {
-				chi11 = (*s).chiLinear1[k];
-				chi12 = (*s).chiLinear2[k];
-			}
+			const deviceComplex chi11 = ((*s).isUsingMillersRule) ? (*s).chiLinear1[k] : cOne<deviceComplex>();
+			const deviceComplex chi12 = ((*s).isUsingMillersRule) ? (*s).chiLinear2[k] : cOne<deviceComplex>();
+
 			//fine to here
 			if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag()))
 				&& (*s).fieldFactor1[k] > 0.0f
@@ -1334,20 +1312,18 @@ namespace kernelNamespace{
 		const deviceFP f0;
 		const deviceFP thickness;
 		deviceFP* phase1;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			//frequency being resolved by current thread
-			deviceFP f = i * df;
-
+			const deviceFP f = i * df;
 			//give phase shift relative to group velocity (approximated 
 			// with low-order finite difference) so the pulse doesn't move
 			deviceComplex ne, no, no0, n0p, n0m;
-			sellmeierCuda<deviceFP, deviceComplex>(&ne, &no, a, f, 0.0f, 0.0f, 0, 0);
-			f *= twoPi<deviceFP>();
-			sellmeierCuda<deviceFP, deviceComplex>(&ne, &no0, a, f0, 0.0f, 0.0f, 0, 0);
-			sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0p, a, f0 + 1.0e11f, 0.0f, 0.0f, 0, 0);
-			sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0m, a, f0 - 1.0e11f, 0.0f, 0.0f, 0, 0);
+			sellmeierCuda<deviceFP, deviceComplex>(&ne, &no, a, f, {}, {}, 0, 0);
+			sellmeierCuda<deviceFP, deviceComplex>(&ne, &no0, a, f0, {}, {}, 0, 0);
+			sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0p, a, f0 + 1.0e11f, {}, {}, 0, 0);
+			sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0m, a, f0 - 1.0e11f, {}, {}, 0, 0);
 			no0 = no0 + f0 * (n0p - n0m) / 2.0e11f;
-			phase1[i] = thickness * f * (no.real() - no0.real()) / lightC<deviceFP>();
+			phase1[i] = thickness * twoPi<deviceFP>() * f * (no.real() - no0.real()) / lightC<deviceFP>();
 		}
 	};
 
@@ -1357,15 +1333,15 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(size_t i) const {
-			deviceFP Ex = (*s).gridETime1[i];
-			deviceFP Ey = (*s).gridETime2[i];
+			const deviceFP Ex = (*s).gridETime1[i];
+			const deviceFP Ey = (*s).gridETime2[i];
 
 			if ((*s).nonlinearSwitches[0] == 1 || (*s).nonlinearSwitches[1] == 1) {
 
 				deviceFP P[3]{};
 
 				// rotate field into crystal frame
-				deviceFP E3[3] = { (*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
+				const deviceFP E3[3] = { (*s).rotationForward[0] * Ex + (*s).rotationForward[1] * Ey,
 								(*s).rotationForward[3] * Ex + (*s).rotationForward[4] * Ey,
 								(*s).rotationForward[6] * Ex + (*s).rotationForward[7] * Ey };
 
@@ -1402,20 +1378,19 @@ namespace kernelNamespace{
 
 				//using only one value of chi3, under assumption of centrosymmetry when nonlinearSwitches[1]==2
 				if ((*s).nonlinearSwitches[1] == 2) {
-					deviceFP Esquared = (*s).chi3Tensor[0] * (Ex * Ex + Ey * Ey);
+					const deviceFP Esquared = (*s).chi3Tensor[0] * (Ex * Ex + Ey * Ey);
 					(*s).gridPolarizationTime1[i] += Ex * Esquared;
 					(*s).gridPolarizationTime2[i] += Ey * Esquared;
 				}
 			}
 			else {
-				deviceFP Esquared = (*s).chi3Tensor[0] * (Ex * Ex + Ey * Ey);
+				const deviceFP Esquared = (*s).chi3Tensor[0] * (Ex * Ex + Ey * Ey);
 				(*s).gridPolarizationTime1[i] = Ex * Esquared;
 				(*s).gridPolarizationTime2[i] = Ey * Esquared;
 			}
 			if ((*s).isCylindric)expandCylindricalBeamDevice(s, i, (*s).gridRadialLaplacian1 + (*s).Ngrid * 4 * (*s).hasPlasma, (*s).gridPolarizationTime1, (*s).gridPolarizationTime2);
 		}
 	};
-
 
 	//Plasma response with time-dependent carrier density
 	//This polarization needs a different factor in the nonlinear wave equation
@@ -1439,7 +1414,7 @@ namespace kernelNamespace{
 	class plasmaCurrentKernel_twoStage_A {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			const unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
 
 			//save values in workspaces, casting to deviceFP
@@ -1447,8 +1422,7 @@ namespace kernelNamespace{
 			deviceFP* dN2 = dN + (*s).Ngrid;
 			deviceFP* Jx = (*s).gridPolarizationTime1;
 			deviceFP* Jy = (*s).gridPolarizationTime2;
-			deviceFP Esquared = (*s).gridETime1[i] * (*s).gridETime1[i] + (*s).gridETime2[i] * (*s).gridETime2[i];
-			Esquared *= (*s).plasmaParameters[0];
+			const deviceFP Esquared = (*s).plasmaParameters[0] * ((*s).gridETime1[i] * (*s).gridETime1[i] + (*s).gridETime2[i] * (*s).gridETime2[i]);
 			deviceFP EtoThe2N = Esquared;
 			for (unsigned char p = 0; p < pMax; ++p) {
 				EtoThe2N *= Esquared;
@@ -1463,13 +1437,13 @@ namespace kernelNamespace{
 	class plasmaCurrentKernel_twoStage_B {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			const size_t j = (i) * (*s).Ntime;
 			deviceFP N{};
 			deviceFP integralx{};
-			deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-			deviceFP* dN = j + (deviceFP*)(*s).workspace1;
-			deviceFP* E = &(*s).gridETime1[j];
+			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
+			const deviceFP* dN = j + (deviceFP*)(*s).workspace1;
+			const deviceFP* E = &(*s).gridETime1[j];
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
 			for (size_t k = 0; k < (*s).Ntime; ++k) {
 				N += dN[k];
@@ -1686,8 +1660,8 @@ namespace kernelNamespace{
 		const deviceFP* materialPhase;
 		const deviceFP* sellmeierCoefficients;
 		deviceFunction void operator()(size_t i) const {
-			size_t h = 1 + i % ((*s).Nfreq - 1);
-			size_t j = i / ((*s).Nfreq - 1);
+			const size_t h = 1 + i % ((*s).Nfreq - 1);
+			const size_t j = i / ((*s).Nfreq - 1);
 			i = h + j * ((*s).Nfreq);
 			const deviceFP f = h * (*s).fStep;
 			const deviceFP w = twoPi<deviceFP>() * (f - (*p).frequency);
@@ -1716,11 +1690,7 @@ namespace kernelNamespace{
 			const deviceFP z = rB * deviceFPLib::sin((*p).beamAngle) + (*p).z0 * deviceFPLib::cos((*p).beamAngle);
 
 			const deviceFP wz = (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
-			deviceFP Rz = z * (1.0f + (zR * zR / (z * z)));
-
-			if (z == 0.0f) {
-				Rz = 1.0e15f;
-			}
+			const deviceFP Rz = (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
 			const deviceFP phi = deviceFPLib::atan(z / zR);
 			deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0.0f, 1.0f) * (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
 			Eb = Eb * specfac;
@@ -1750,11 +1720,11 @@ namespace kernelNamespace{
 		const deviceFP* materialPhase;
 		const deviceFP* sellmeierCoefficients;
 		deviceFunction void operator()(size_t i) const {
-			size_t h = 1 + i % ((*s).Nfreq - 1);
-			size_t col = i / ((*s).Nfreq - 1);
+			const size_t h = 1 + i % ((*s).Nfreq - 1);
+			const size_t col = i / ((*s).Nfreq - 1);
 			i = h + col * ((*s).Nfreq);
-			size_t j = col % (*s).Nspace;
-			size_t k = col / (*s).Nspace;
+			const size_t j = col % (*s).Nspace;
+			const size_t k = col / (*s).Nspace;
 			const deviceFP f = h * (*s).fStep;
 			const deviceFP w = twoPi<deviceFP>() * (f - (*p).frequency);
 
@@ -1791,12 +1761,9 @@ namespace kernelNamespace{
 			const deviceFP r = deviceFPLib::sqrt(x * x + y * y);
 
 			const deviceFP wz = (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
-			deviceFP Rz = 1.0e15f;
-			if (z != 0.0f) {
-				Rz = z * (1.0f + (zR * zR / (z * z)));
-			}
-
+			const deviceFP Rz = (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
 			const deviceFP phi = deviceFPLib::atan(z / zR);
+
 			deviceComplex Eb = ((*p).beamwaist / wz) * deviceLib::exp(deviceComplex(0.0f, 1.0f) * (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
 			Eb = Eb * specfac;
 			if (isnan(cuCModSquared(Eb)) || f <= 0.0f) {
@@ -1817,7 +1784,7 @@ namespace kernelNamespace{
 	public:
 		deviceFP* A;
 		const deviceFP val;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			A[i] = val * A[i];
 		}
 	};
@@ -1826,7 +1793,7 @@ namespace kernelNamespace{
 	public:
 		deviceComplex* A;
 		const deviceFP val;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			A[i] = val * A[i];
 		}
 	};
@@ -1837,7 +1804,7 @@ namespace kernelNamespace{
 		const deviceComplex* B;
 		deviceComplex* C;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			const size_t h = i % (*s).Nfreq; //temporal coordinate
 			C[i] = A[h] * B[i];
 		}
@@ -1859,7 +1826,7 @@ namespace kernelNamespace{
 	class expandCylindricalBeam {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			const size_t j = i / (*s).Ntime; //spatial coordinate
 			const size_t k = i % (*s).Ntime; //temporal coordinate
 
@@ -2307,8 +2274,8 @@ namespace hostFunctions{
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
 	static int runRK4Step(ActiveDevice& d, const uint8_t stepNumber) {
-		deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
-		deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
+		const deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
+		const deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
 
 		// Beam with symmetry around z axis:
 		// Nonlinear polarization and plasma use expanded grid
@@ -2425,21 +2392,21 @@ namespace hostFunctions{
 		return 13 * d.isTheCanaryPixelNaN(canaryPointer);
 	}
 
-	static constexpr unsigned int funHash(const char* s, int off = 0) {
+	static constexpr unsigned int funHash(const char* s, const int off = 0) {
 		return (s[off] == 0 || s[off] == '(') ? 7177 : (funHash(s, off + 1) * 31) ^ s[off];
 	}
 
-	static unsigned int stringHash(std::string& s, int off = 0){
+	static constexpr unsigned int stringHash(const std::string& s, const int off = 0){
 		return (s.length() == off || s.at(off) == '(') ? 7177 : (stringHash(s,off+1) * 31) ^ s.at(off);
 	}
 	//Dispatcher of the sequence mode. New functions go here, and should have a unique hash (chances of a conflict are small, and 
 	// will produce a compile-time error.
 	// Functions cannot start with a number or the string "None".
-	static int interpretCommand(std::string cc, double* iBlock, double* vBlock, ActiveDevice& d, simulationParameterSet *sCPU) {
+	static int interpretCommand(const std::string& cc, const double* iBlock, double* vBlock, ActiveDevice& d, simulationParameterSet *sCPU) {
 		crystalEntry* db = (*sCPU).crystalDatabase;
 		int error = 0;
-		double parameters[32] = {0.0};
-		bool defaultMask[32] = {0};
+		double parameters[32] = {};
+		bool defaultMask[32] = {};
 
 		switch (stringHash(cc)) {
 		case funHash("rotate"):

@@ -12,13 +12,13 @@ static const unsigned int minGridDimension = 8;
 
 
 std::string     getBasename(const std::string& fullPath);
-int				loadFrogSpeck(std::string frogFilePath, std::complex<double>* Egrid, long long Ntime, double fStep, double gateLevel);
+int				loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const long long Ntime, const double fStep, const double gateLevel);
 double          cModulusSquared(const std::complex<double>& x);
-void            applyOp(char op, double* result, double* readout);
-double          parameterStringToDouble(std::string& ss, double* iBlock, double* vBlock);
+void            applyOp(const char op, double* result, const double* readout);
+double          parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock);
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
-int             interpretParameters(std::string cc, int n, double *iBlock, double *vBlock, double *parameters, bool* defaultMask);
+int             interpretParameters(const std::string& cc, const int n, const double *iBlock, const double *vBlock, double *parameters, bool* defaultMask);
 
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)

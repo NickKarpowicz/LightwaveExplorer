@@ -25,6 +25,7 @@
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
     <UseInteloneMKL>Parallel</UseInteloneMKL>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -81,6 +82,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
+      <AdditionalOptions>-std=c++17 %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -151,7 +153,7 @@ copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveEx
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh" />
     <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceSYCL.h" />
     <ClInclude Include="LightwaveExplorerFrontendGTK.h" />
-    <ClInclude Include="LIghtwaveExplorerGraphicalClasses.h" />
+    <ClInclude Include="LightwaveExplorerGraphicalClasses.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
