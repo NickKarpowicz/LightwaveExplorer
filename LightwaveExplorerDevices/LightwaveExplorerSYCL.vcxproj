@@ -73,7 +73,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)../;$(ProjectDir);$(ProjectDir)../../dlib;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)../;$(ProjectDir);$(IncludePath)</IncludePath>
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -84,7 +84,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
-    <IncludePath>$(ProjectDir)../;$(ProjectDir);$(ProjectDir)../../dlib;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)../;$(ProjectDir);$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgUseStatic>false</VcpkgUseStatic>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -189,7 +195,6 @@
     <ClInclude Include="LWEActiveDeviceSYCL.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\LightwaveExplorerDevices\DlibLibraryComponents.cpp" />
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp" />
     <ClCompile Include="LightwaveExplorerSYCL.cpp" />
     <ClCompile Include="LightwaveExplorerSYCLFP32.cpp" />

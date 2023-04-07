@@ -35,9 +35,6 @@
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerDevices\DlibLibraryComponents.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LightwaveExplorerSYCLFP32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
