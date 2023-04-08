@@ -1153,7 +1153,8 @@ namespace kernelNamespace{
 				(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
 				(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
 			}
-
+			(*s).fieldFactor1[i] *= (*s).fftNorm;
+			(*s).fieldFactor2[i] *= (*s).fftNorm;
 			if (isnan(ne.real()) || isnan(no.real()) || ne.real() < 0.9f || no.real() < 0.9f || ne.imag() > 0.0f || no.imag() > 0.0f) {
 				ne = cOne<deviceComplex>();
 				no = ne;
@@ -1241,14 +1242,14 @@ namespace kernelNamespace{
 				&& (*s).fieldFactor1[k] > 0.0f
 				&& (*s).fieldFactor2[k] > 0.0f) {
 				(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
-				(*s).gridPropagationFactor1Rho1[i] = ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
+				(*s).gridPropagationFactor1Rho1[i] = (*s).fftNorm * ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
 				if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho1[i] + (*s).gridPropagationFactor1[i])))) {
 					(*s).gridPropagationFactor1[i] = {};
 					(*s).gridPropagationFactor1Rho1[i] = {};
 				}
 
 				(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5f * ii * (ko - k0 - dk * dk / (2.0f * ko.real())) * (*s).h);
-				(*s).gridPropagationFactor1Rho2[i] = ii * (*s).h / ((*s).fieldFactor2[k] * 2.0f * ko);
+				(*s).gridPropagationFactor1Rho2[i] = (*s).fftNorm * ii * (*s).h / ((*s).fieldFactor2[k] * 2.0f * ko);
 				if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho2[i] + (*s).gridPropagationFactor2[i])))) {
 					(*s).gridPropagationFactor2[i] = {};
 					(*s).gridPropagationFactor1Rho2[i] = {};
@@ -1272,14 +1273,14 @@ namespace kernelNamespace{
 			}
 			if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag())) && (*s).fieldFactor1[k] > 0.0f && (*s).fieldFactor2[k] > 0.0f) {
 				(*s).gridPropagationFactor1[i] = deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
-				(*s).gridPropagationFactor1Rho1[i] = ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
+				(*s).gridPropagationFactor1Rho1[i] = (*s).fftNorm * ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
 				if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho1[i] + (*s).gridPropagationFactor1[i])))) {
 					(*s).gridPropagationFactor1[i] = {};
 					(*s).gridPropagationFactor1Rho1[i] = {};
 				}
 
 				(*s).gridPropagationFactor2[i] = deviceLib::exp(0.5f * ii * (ko - k0 - dk * dk / (2.0f * ko.real())) * (*s).h);
-				(*s).gridPropagationFactor1Rho2[i] = ii * (*s).h / ((*s).fieldFactor2[k] * 2.0f * ko);
+				(*s).gridPropagationFactor1Rho2[i] = (*s).fftNorm * ii * (*s).h / ((*s).fieldFactor2[k] * 2.0f * ko);
 				if (isnan((deviceLib::abs((*s).gridPropagationFactor1Rho2[i] + (*s).gridPropagationFactor2[i])))) {
 					(*s).gridPropagationFactor2[i] = {};
 					(*s).gridPropagationFactor1Rho2[i] = {};
@@ -1505,12 +1506,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t iC) const {
 			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
-			deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
 			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1) (*sP).workspace1[iC - 1] = {};
-			deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 			(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (sixth<deviceFP>() * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
-			(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
+			
+			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
+			(*sP).workspace1[iC] = ff * (*sP).gridPropagationFactor1[iC] * ((*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC]);
 			(*sP).k1[iC] = {};
 		}
 	};
@@ -1521,12 +1522,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t iC) const {
 			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
-			deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
 			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
-			deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC];
 			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)third<deviceFP>() * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
+
+			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
+			(*sP).workspace1[iC] = ff * ((*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC]);
 			(*sP).k1[iC] = {};
 		}
 	};
@@ -1537,12 +1538,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t iC) const {
 			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
-			deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
 			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
-			deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * (deviceFP)third<deviceFP>() * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
+
+			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
+			(*sP).workspace1[iC] = ff * ((*sP).gridPropagationFactor1[iC] * ((*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).k1[iC]));
 			(*sP).k1[iC] = {};
 		}
 	};
@@ -1553,11 +1554,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t iC) const {
 			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
-			deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
 			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
 			(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + sixth<deviceFP>() * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fftNorm * ff * (*sP).gridEFrequency1[iC];
+
+			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
+			(*sP).workspace1[iC] = ff * (*sP).gridEFrequency1[iC];
 			(*sP).k1[iC] = {};
 		}
 	};
@@ -1570,12 +1572,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t iC) const {
 			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-			deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
 			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1) (*sP).workspace1[iC - 1] = {};
-			deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 			(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (sixth<deviceFP>() * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
-			(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
+			
+			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
+			(*sP).workspace1[iC] = ff * ((*sP).gridPropagationFactor1[iC] * ((*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC]));
 			(*sP).k1[iC] = {};
 		}
 	};
@@ -1586,12 +1588,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t iC) const {
 			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-			deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
 			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
-			deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC];
 			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * third<deviceFP>() * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
+
+			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
+			(*sP).workspace1[iC] = ff * ((*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC]);
 			(*sP).k1[iC] = {};
 		}
 	};
@@ -1602,12 +1604,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t iC) const {
 			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-			deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
 			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
-			deviceComplex estimate1 = (*sP).gridPropagationFactor1[iC] * (*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).gridPropagationFactor1[iC] * (*sP).k1[iC];
 			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] + (*sP).gridPropagationFactor1[iC] * third<deviceFP>() * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fftNorm * ff * estimate1;
+
+			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
+			(*sP).workspace1[iC] = ff * ((*sP).gridPropagationFactor1[iC] * ((*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).k1[iC]));
 			(*sP).k1[iC] = {};
 		}
 	};
@@ -1618,11 +1620,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(size_t iC) const {
 			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
-			deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
 			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
 			(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] + sixth<deviceFP>() * (*sP).k1[iC];
-			(*sP).workspace1[iC] = (*sP).fftNorm * ff * (*sP).gridEFrequency1[iC];
+
+			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
+			(*sP).workspace1[iC] = ff * (*sP).gridEFrequency1[iC];
 			(*sP).k1[iC] = {};
 		}
 	};
@@ -1633,7 +1636,7 @@ namespace kernelNamespace{
 		const deviceFP* rawSum;
 		deviceFP* field;
 		const deviceFP pulseEnergy;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			field[i] *= deviceFPLib::sqrt(pulseEnergy / ((deviceFP)(*s).Ntime * (*rawSum)));
 		}
 	};
@@ -1642,7 +1645,7 @@ namespace kernelNamespace{
 	public:
 		deviceFP* A;
 		deviceFP* B;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			A[i] += B[i];
 		}
 	};
@@ -1984,8 +1987,6 @@ namespace hostFunctions{
 		d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, 
 			multiplicationKernelCompactDoubleVector{
 			(*sc).fieldFactor1, (*sc).gridEFrequency1Next1, (*sc).workspace1, scDevice });
-		d.deviceLaunch((unsigned int)((*sc).NgridC / minGridDimension), 2 * minGridDimension, 
-			multiplyByConstantKernelDZ{ (*sc).workspace1, (*sc).fftNorm });
 
 		return 0;
 	}
