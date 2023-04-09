@@ -201,8 +201,9 @@ public:
 	template<typename T>
 	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
 #pragma omp parallel for num_threads(LWEThreadCount)
-		for (int i = 0; i < static_cast<int>(Nthread * Nblock); i++) {
-			functor(static_cast<size_t>(i));
+		for (int i = 0; i < static_cast<int>(Nblock); i++) {
+			const auto offset = i * Nthread;
+			for(auto j = offset; j<offset+Nthread; functor(j++)){}
 		}
 	}
 
