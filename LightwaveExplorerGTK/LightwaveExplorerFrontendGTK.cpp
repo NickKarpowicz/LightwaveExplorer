@@ -75,7 +75,6 @@ public:
         queueInterfaceValuesUpdate = true;
     }
 
-
     void updateSlider() {
         if (queueSliderUpdate) {
             plotSlider.setRange(0, (double)((theSim.base().Nsims * maxN(theSim.base().Nsims2, 1u) - 1)));
@@ -315,6 +314,7 @@ public:
         console.init(parentHandle, buttonCol1, 18, colWidth, 4);
 
         checkLibraryAvailability();
+        
         std::string A;
         if (theSim.base().CUDAavailable) {
             pulldowns[7].addElement("CUDA");
