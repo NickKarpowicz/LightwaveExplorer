@@ -649,7 +649,7 @@ d:
 0 0 0 0 80 0
 0 0 0 0 0 80
 d reference:
-https://www.optoscience.com/maker/gooch/pdf/II-VI(CdS).pdf
+Fit to data from P. Steinleitner
 chi3 type:
 2
 chi3:
@@ -663,4 +663,38 @@ None
 Nonlinear reference frequencies:
 2.82e13 2.82e13 2.82e13 236e12 236e12 236e12 236e12
 ~~~crystal end~~~
-
+Name:
+SrTiO3
+Type:
+0
+Sellmeier equation:
+0
+1st axis coefficients:
+1 0 3.04214 -0.0217829 0 1.17006 -0.0872072 0 30.8333 -1101.31 0 0 0 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1 0 3.04214 -0.0217829 0 1.17006 -0.0872072 0 30.8333 -1101.31 0 0 0 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1 0 3.04214 -0.0217829 0 1.17006 -0.0872072 0 30.8333 -1101.31 0 0 0 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+via refractiveindex.info: M. J. Dodge. Refractive Index, in M. J. Weber (ed.), Handbook of Laser Science and Technology, Volume IV, Optical Material: Part 2, CRC Press, Boca Raton, 1986 (as cited in Handbook of Optics, 3rd edition, Vol. 4. McGraw-Hill 2009).
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+by symmetry
+chi3 type:
+2
+chi3:
+9.13e-21
+0
+0
+chi3 reference:
+Y. Deng et al., Solid State Communications 135, 221-225 (2005).
+Spectral file:
+None
+Nonlinear reference frequencies:
+2.82e13 2.82e13 2.82e13 282e12 282e12 282e12 282e12
+~~~crystal end~~~

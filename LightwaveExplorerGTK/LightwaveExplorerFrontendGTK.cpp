@@ -377,8 +377,7 @@ public:
         pulldowns[6].setLabel(-labelWidth, 0, ("Batch mode 2"));
 
         fitCommand.setLabel(0, -1, ("Fitting:"));
-        
-        //sequence.setLabel(0, -1, ("Sequence:"), 11, 3);
+
         filePaths[3].overwritePrint("TestFile");
 
         GtkCssProvider* textProvider = gtk_css_provider_new();
@@ -443,7 +442,6 @@ public:
     }
 };
 mainGui theGui;
-
 
 bool updateDisplay() {
     theGui.console.updateFromBuffer();
