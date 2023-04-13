@@ -654,12 +654,12 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
         EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
     return EOSsignal
 
-def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements, eqnType: int, nTarget, imaginaryWeight):
+def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements: np.array, eqnType: int, nTarget, imaginaryWeight):
     fitImaginary = imaginaryWeight != 0
     def expandCoeffs(x):
         x1 = np.array(startingCoefficients)
-        for i in activeElements:
-            x1[activeElements[i]] = x[activeElements[i]]
+        for i in range(0,activeElements.size):
+            x1[activeElements[i]] = x[i]
         return x1
     def fun_nforx(x):
         return sellmeier(wavelengthMicrons, expandCoeffs(x), eqnType)
