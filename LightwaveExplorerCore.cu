@@ -2702,9 +2702,6 @@ namespace hostFunctions{
 		}
 
 		//main text interpreter
-		simulationParameterSet sCPUbackupValues;
-		simulationParameterSet* sCPUbackup = &sCPUbackupValues;
-		sCPUbackupValues = *sCPU;
 		double iBlock[100] = { 0.0 };
 
 		for (int k = 1; k < 38; k++) {
@@ -2713,8 +2710,11 @@ namespace hostFunctions{
 
 		double vBlock[100] = { 0.0 };
 		std::string currentString((*sCPU).sequenceString);
-		//shortest command is either for() or init(), if there's only 4 characters left, it can only
-		//be whitespace or other trailing symbols
+		simulationParameterSet backupSet = *sCPU;
+		//shortest command is for(), if there's only 4 characters left, it can only
+		//be whitespace or other trailing symbols, and even then something is wrong,
+		//since for should be followed by a loop... next shortest is init(), and that
+		//certainly doesn't belong at the end. So anything under six characters=bail
 		size_t minLength = 5;
 		while (currentString.length() > minLength) {
 			//skip curly braces (for loops should have been handled by interpretCommand() already)
@@ -2743,9 +2743,8 @@ namespace hostFunctions{
 			if (currentString.length() < minLength) break;
 
 			currentString = currentString.substr(1, std::string::npos);
-
-			(*sCPUbackup).isFollowerInSequence = (*sCPU).isFollowerInSequence;
-			*sCPU = *sCPUbackup;
+			backupSet.isFollowerInSequence = (*sCPU).isFollowerInSequence;
+			*sCPU = backupSet;
 		}
 		return error;
 	}
