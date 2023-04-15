@@ -556,10 +556,9 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP* in;
 		deviceFP* out;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			size_t col = i / (*s).Ntime; //spatial coordinate
 			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2) / ((*s).dx * (*s).Nspace);
-			//in += i % (*s).Ntime;
 			out[i] = {};
 			out[i + (*s).Ngrid] = {};
 			deviceFP r0;
@@ -582,7 +581,7 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP* in;
 		deviceFP* out;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(const size_t i) const {
 			size_t col = i / (*s).Ntime; //spatial coordinate
 			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
 			out[i] = {};
@@ -628,7 +627,7 @@ namespace kernelNamespace{
 			}
 			else {
 				size_t neighbors[6];
-				deviceFP oneOverRho  = -1.0 / resolveNeighborsInOffsetRadialSymmetry(neighbors, s, j, i % (*s).Ntime);
+				const deviceFP oneOverRho  = -1.0 / resolveNeighborsInOffsetRadialSymmetry(neighbors, s, j, i % (*s).Ntime);
 				(*s).gridRadialLaplacian1[i] = oneOverRho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
 					+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
 					+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
@@ -653,17 +652,17 @@ namespace kernelNamespace{
 		const deviceFP xOffset;
 		const deviceFP yOffset;
 		deviceFunction void operator()(size_t i) const {
-			long long col = i / ((*s).Nfreq - 1); //spatial coordinate
-			long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			const long long col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			long long k = col % (*s).Nspace;
-			long long l = col / (*s).Nspace;
+			const long long k = col % (*s).Nspace;
+			const long long l = col / (*s).Nspace;
 
 			//magnitude of k vector
-			deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
+			const deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
 
 			//transverse wavevector being resolved
-			deviceFP dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
+			const deviceFP dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
 			deviceFP dk2 = {};
 			if ((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
 
@@ -680,10 +679,8 @@ namespace kernelNamespace{
 			theta1 -= (!(*s).isCylindric) * xOffset;
 			theta2 -= (*s).is3D * yOffset;
 
-			deviceFP r = deviceFPLib::sqrt(theta1 * theta1 + theta2 * theta2);
-
-			deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
-
+			const deviceFP r = deviceFPLib::sqrt(theta1 * theta1 + theta2 * theta2);
+			const deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
 			(*s).gridEFrequency1[i] *= a;
 			(*s).gridEFrequency2[i] *= a;
 		}
@@ -732,16 +729,15 @@ namespace kernelNamespace{
 		const int order; const deviceFP inBandAmplitude;
 		const deviceFP outOfBandAmplitude;
 		deviceFunction void operator()(size_t i) const {
-			long long col, j;
-			col = i / ((*s).Nfreq - 1); //spatial coordinate
-			j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			const long long col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
 
 			deviceFP f = ((*s).fStep * j - f0) / bandwidth;
 			for (int p = 1; p < order; p++) {
 				f *= ((*s).fStep * j - f0) / bandwidth;
 			}
-			deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude * deviceFPLib::exp(-0.5f * f);
+			const deviceFP filterFunction = outOfBandAmplitude + inBandAmplitude * deviceFPLib::exp(-0.5f * f);
 			(*s).gridEFrequency1[i] *= filterFunction;
 			(*s).gridEFrequency2[i] *= filterFunction;
 		}
@@ -762,8 +758,6 @@ namespace kernelNamespace{
 		const deviceFP radius;
 		const deviceFP order;
 		deviceFunction void operator()(size_t i) const {
-
-
 			long long col = i / ((*s).Nfreq - 1);
 			long long j = col % (*s).Nspace;
 			long long k = col / (*s).Nspace;
@@ -806,20 +800,20 @@ namespace kernelNamespace{
 		const deviceFP radius;
 		const deviceFP activationParameter;
 		deviceFunction void operator()(size_t i) const {
-			long long col = i / (*s).Ntime;
-			long long j = col % (*s).Nspace;
-			long long k = col / (*s).Nspace;
+			const long long col = i / (*s).Ntime;
+			const long long j = col % (*s).Nspace;
+			const long long k = col / (*s).Nspace;
 			deviceFP r;
 			if ((*s).is3D) {
-				deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
-				deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
+				const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
+				const deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
 				r = deviceFPLib::sqrt(x * x + y * y);
 			}
 			else {
 				r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
 			}
 
-			deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius) / (*s).dx)));
+			const deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius) / (*s).dx)));
 			(*s).gridETime1[i] *= a;
 			(*s).gridETime2[i] *= a;
 		}
@@ -831,24 +825,24 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP focus;
 		deviceFunction void operator()(size_t i) const {
-			long long h = 1 + i % ((*s).Nfreq - 1);
-			long long col = i / ((*s).Nfreq - 1);
+			const long long h = 1 + i % ((*s).Nfreq - 1);
+			const long long col = i / ((*s).Nfreq - 1);
 			i = h + col * (*s).Nfreq;
-			long long j = col % (*s).Nspace;
-			long long k = col / (*s).Nspace;
+			const long long j = col % (*s).Nspace;
+			const long long k = col / (*s).Nspace;
 
-			deviceFP w = twoPi<deviceFP>() * h * (*s).fStep;
+			const deviceFP w = twoPi<deviceFP>() * h * (*s).fStep;
 			deviceFP r;
 			if ((*s).is3D) {
-				deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
-				deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
+				const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
+				const deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
 				r = deviceFPLib::sqrt(x * x + y * y);
 			}
 			else {
 				r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
 			}
 
-			deviceComplex	u = deviceLib::exp(deviceComplex(0.0f,
+			const deviceComplex u = deviceLib::exp(deviceComplex(0.0f,
 				w * r * r * (0.5f / focus) / lightC<deviceFP>()));
 
 			(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
@@ -862,25 +856,24 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFP ROC_in;
 		deviceFunction void operator()(size_t i) const {
-			long long h = 1 + i % ((*s).Nfreq - 1);
-			long long col = i / ((*s).Nfreq - 1);
+			const long long h = 1 + i % ((*s).Nfreq - 1);
+			const long long col = i / ((*s).Nfreq - 1);
 			i = h + col * (*s).Nfreq;
-			long long j = col % (*s).Nspace;
-			long long k = col / (*s).Nspace;
+			const long long j = col % (*s).Nspace;
+			const long long k = col / (*s).Nspace;
 
-			deviceFP w = twoPi<deviceFP>() * h * (*s).fStep;
+			const deviceFP w = twoPi<deviceFP>() * h * (*s).fStep;
 			deviceFP r;
 			if ((*s).is3D) {
-				deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
-				deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
+				const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
+				const deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
 				r = deviceFPLib::sqrt(x * x + y * y);
 			}
 			else {
 				r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
 			}
-
-			bool isNegative = ROC_in < 0.0f;
-			deviceFP ROC = deviceFPLib::abs(ROC_in);
+			const bool isNegative = ROC_in < 0.0f;
+			const deviceFP ROC = deviceFPLib::abs(ROC_in);
 			deviceComplex u = deviceComplex{};
 			if (r >= ROC) {
 				u = deviceComplex{};
@@ -914,24 +907,24 @@ namespace kernelNamespace{
 		const deviceFP* sellmeierCoefficients;
 		const deviceFP thickness;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t localIndex) const {
+		deviceFunction void operator()(const size_t localIndex) const {
 			size_t i = localIndex;
-			int axesNumber = (*s).axesNumber;
-			int sellmeierType = (*s).sellmeierType;
+			const int axesNumber = (*s).axesNumber;
+			const int sellmeierType = (*s).sellmeierType;
 			deviceComplex ne, no, n0, n0o;
-			size_t h = 1 + i % ((*s).Nfreq - 1);
-			size_t col = i / ((*s).Nfreq - 1);
+			const size_t h = 1 + i % ((*s).Nfreq - 1);
+			const size_t col = i / ((*s).Nfreq - 1);
 			i = h + col * ((*s).Nfreq);
-			size_t j = col % (*s).Nspace;
-			size_t k = col / (*s).Nspace;
-			deviceFP crystalTheta = (*s).crystalTheta;
-			deviceFP crystalPhi = (*s).crystalPhi;
+			const size_t j = col % (*s).Nspace;
+			const size_t k = col / (*s).Nspace;
+			const deviceFP crystalTheta = (*s).crystalTheta;
+			const deviceFP crystalPhi = (*s).crystalPhi;
 
 			//frequency being resolved by current thread
-			deviceFP f = h * (*s).fStep;
-			deviceFP omega = twoPi<deviceFP>() * f;
+			const deviceFP f = h * (*s).fStep;
+			const deviceFP omega = twoPi<deviceFP>() * f;
 			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-			deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
+			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 			deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 			if (!(*s).is3D)dk2 = 0.0f;
 			//if ((*s).isCylindric) dk2 = dk1;
@@ -942,14 +935,12 @@ namespace kernelNamespace{
 				no = cOne<deviceComplex>();
 			}
 
-			deviceComplex ke = ne * omega / lightC<deviceFP>();
-			deviceComplex ko = no * omega / lightC<deviceFP>();
-			deviceComplex k0 = n0 * omega / lightC<deviceFP>();
-			deviceComplex ts = deviceComplex{};
-			deviceComplex tp = deviceComplex{};
+			const deviceComplex ke = ne * omega / lightC<deviceFP>();
+			const deviceComplex ko = no * omega / lightC<deviceFP>();
+			const deviceComplex k0 = n0 * omega / lightC<deviceFP>();
 
-			ts = fourierPropagator(ke, dk1, dk2, k0.real(), thickness);
-			tp = fourierPropagator(ko, dk1, dk2, k0.real(), thickness);
+			deviceComplex ts = fourierPropagator(ke, dk1, dk2, k0.real(), thickness);
+			deviceComplex tp = fourierPropagator(ko, dk1, dk2, k0.real(), thickness);
 
 			if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex{};
 			if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex{};
@@ -961,7 +952,6 @@ namespace kernelNamespace{
 				isnan((*s).gridEFrequency1[i].imag())) {
 				(*s).gridEFrequency1[i] = deviceComplex{};
 				(*s).gridEFrequency2[i] = deviceComplex{};
-
 			}
 			if (h == 1) {
 				(*s).gridEFrequency1[i - 1] = deviceComplex{};
@@ -1230,9 +1220,9 @@ namespace kernelNamespace{
 				return;
 			}
 
-			deviceComplex k0 = deviceComplex(twoPi<deviceFP>() * (*s).n0.real() * f / lightC<deviceFP>(), 0.0f);
-			deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
-			deviceComplex ko = twoPi<deviceFP>() * no * f / lightC<deviceFP>();
+			const deviceComplex k0 = deviceComplex(twoPi<deviceFP>() * (*s).n0.real() * f / lightC<deviceFP>(), 0.0f);
+			const deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
+			const deviceComplex ko = twoPi<deviceFP>() * no * f / lightC<deviceFP>();
 
 			const deviceComplex chi11 = ((*s).isUsingMillersRule) ? (*s).chiLinear1[k] : cOne<deviceComplex>();
 			const deviceComplex chi12 = ((*s).isUsingMillersRule) ? (*s).chiLinear2[k] : cOne<deviceComplex>();
@@ -1446,7 +1436,7 @@ namespace kernelNamespace{
 			const deviceFP* dN = j + (deviceFP*)(*s).workspace1;
 			const deviceFP* E = &(*s).gridETime1[j];
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
-			for (size_t k = 0; k < (*s).Ntime; ++k) {
+			for (auto k = 0; k < (*s).Ntime; ++k) {
 				N += dN[k];
 				integralx += N * (*s).expGammaT[k] * E[k];
 				P[k] += expMinusGammaT[k] * integralx;
