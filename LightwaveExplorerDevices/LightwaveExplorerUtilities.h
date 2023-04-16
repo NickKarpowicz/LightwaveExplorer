@@ -718,7 +718,6 @@ public:
         for (size_t i = 0; i < 6; i++) {
             (*s).firstDerivativeOperation[i] = (deviceFP)firstDerivativeOperation[i];
         }
-
     }
 };
 

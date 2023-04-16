@@ -2725,7 +2725,7 @@ namespace hostFunctions{
 				if (currentString.length() < minLength) break;
 				currentString = currentString.substr(1, std::string::npos);
 			}
-
+			if (error || (*sCPU).cancellationCalled) break;
 			error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
 			if (error || (*sCPU).cancellationCalled) break;
 			currentString = currentString.substr(currentString.find_first_of(')'), std::string::npos);
@@ -2806,20 +2806,17 @@ using namespace hostFunctions;
 //Main (non sequence) solver. New device typeps should have a unique definition of the name
 // e.g. solveNonlinearWaveEquationSYCL so that the correct one may be called. That's why it's
 // a preprocessor definition here.
-unsigned long solveNonlinearWaveEquationX(simulationParameterSet* lpParam) {
-	simulationParameterSet* sCPU = (simulationParameterSet*)lpParam;
+unsigned long solveNonlinearWaveEquationX(simulationParameterSet* sCPU) {
 	ActiveDevice d(sCPU);
 	if (d.memoryStatus) return 1;
 	return solveNonlinearWaveEquationWithDevice(d, sCPU);
-
 }
 
 // Main function for running a sequence
-unsigned long solveNonlinearWaveEquationSequenceX(simulationParameterSet* lpParam) {
-	simulationParameterSet sCPUcurrent = *((simulationParameterSet*)lpParam);
-	simulationParameterSet* sCPU = &sCPUcurrent;
+unsigned long solveNonlinearWaveEquationSequenceX(simulationParameterSet* sCPU) {
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
 	ActiveDevice d(sCPU);
+	if (d.memoryStatus) return 1;
 	return solveSequenceWithDevice(d, sCPU);
 }
 
@@ -2827,7 +2824,6 @@ unsigned long solveNonlinearWaveEquationSequenceX(simulationParameterSet* lpPara
 unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	simulationParameterSet sCPUcurrent = *sCPU;
 	fittingSet = &sCPUcurrent;
-
 	ActiveDevice d(fittingSet);
 	dFit = &d;
 	dlib::matrix<double, 0, 1> parameters;
