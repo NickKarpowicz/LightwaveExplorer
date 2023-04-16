@@ -24,11 +24,6 @@ modules:
     sources:
       - type: git
         url: https://github.com/fmtlib/fmt.git
-  - name: dlib
-    buildsystem: simple
-    sources:
-      - type: git
-        url: https://github.com/davisking/dlib.git
   - name: LightwaveExplorer
     buildsystem: cmake
     config-opts:
@@ -36,3 +31,5 @@ modules:
     sources:
       - type: git
         url: https://github.com/NickKarpowicz/LightwaveExplorer
+      - type: git
+        url: https://github.com/davisking/dlib.git

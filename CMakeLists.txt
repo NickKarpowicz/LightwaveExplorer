@@ -75,7 +75,6 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
         target_link_libraries(LightwaveExplorer ${FFTWF_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt)
-        target_link_libraries(LightwaveExplorer dlib::dlib)
 
         install(TARGETS LightwaveExplorer)
         install(TARGETS LightwaveExplorer)
