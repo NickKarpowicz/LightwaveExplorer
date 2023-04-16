@@ -20,7 +20,7 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(GTK4 gtk4)
         pkg_check_modules(LIOMP5 openmp)
         pkg_check_modules(TBB tbb)
-        
+        include_directories(../LightwaveExplorer)
         include_directories(${CUDA_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
         link_directories(${CUDA_LIBRARY_DIRS})
@@ -65,8 +65,6 @@ if(UNIX AND NOT APPLE)
         include_directories(${GTK4_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
         link_directories(${GTK4_LIBRARY_DIRS})
-   
-
         add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -w)
         execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
         add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp  LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
