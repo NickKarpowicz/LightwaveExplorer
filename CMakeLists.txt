@@ -56,23 +56,16 @@ if(UNIX AND NOT APPLE)
         project(LightwaveExplorer)
         find_package(PkgConfig REQUIRED)
         find_package(OpenMP)
+        find_package(fmt)
         pkg_check_modules(GTK4 REQUIRED gtk4)
         pkg_check_modules(FFTW REQUIRED fftw3)
         pkg_check_modules(FFTWF REQUIRED fftw3f)
-        #execute_process(COMMAND git clone https://github.com/davisking/dlib)
         include_directories(build/dlib) 
         include_directories(${FFTW_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
         link_directories(${GTK4_LIBRARY_DIRS})
-        
-        
-        include(FetchContent)
-        FetchContent_Declare(fmt
-            GIT_REPOSITORY fmt/
-            GIT_TAG        9.1.0
-        )
-        FetchContent_MakeAvailable(fmt)
+   
 
         add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -w)
         execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
