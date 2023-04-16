@@ -6,6 +6,7 @@ command: LightwaveExplorer
 finish-args:
   - --share=ipc
   - --socket=x11
+  - --socket=session-bus
   - --device=dri  # for opengl
   - --share=network
 modules:
