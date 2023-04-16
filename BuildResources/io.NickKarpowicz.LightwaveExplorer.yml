@@ -32,4 +32,4 @@ modules:
       - type: git
         url: https://github.com/NickKarpowicz/LightwaveExplorer
       - type: dir
-        path: dlib/dlib
+        path: dlib
