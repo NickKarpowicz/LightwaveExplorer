@@ -72,14 +72,19 @@ A native version for the new Arm-based Macs is technically possible (and has bee
 
   ---
   ### Compilation in Visual Studio
-  LWE was developed in Visual Studio. If you clone this repo, if you have installed the latest [CUDA development kit](https://developer.nvidia.com/cuda-downloads) from NVIDIA, [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler), clone also the dlib repo, and a compiled version of the GTK library, side-by-side with LWE and it should compile directly.
+  LWE was developed in Visual Studio, so you'll need that. You will also need [vcpkg](https://vcpkg.io), and use that to install dlib (make sure you get the 64-bit version, not the 32-bit one).
+  
+   Next, install the [CUDA development kit](https://developer.nvidia.com/cuda-downloads) from NVIDIA, and [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
+   
+   Next, you'll need a compiled version of [GTK4](http://gtk.org) - the easiest way in my view was the gvsbuild option. I also keep a gtk.zip file in the shared folder for convenience, since it's a bit of a pain, and the current version is actually a bit broken on Windows. The resulting compiled thing should be kept in a folder next to the LightwaveExplorer folder (e.g. they're both in the same parent folder).
+
 
   ---
 
 ### Compiling the GUI app on Linux (Easy CPU-only version)
-The easiest version to compile on Linux is the GPL3 version, which doesn't include the CUDA or OneAPI propagators. This means it will _only_ run on CPU, but if you don't have a compatible GPU anyway, it makes use of FFTW for the FFTs, which may be faster on your hardware anyway.
+The easiest version to compile on Linux is the GPL3 version, which doesn't include the CUDA or OneAPI propagators. This means it will _only_ run on CPU, but if you don't have a compatible GPU anyway, it makes use of FFTW for the FFTs, which may be faster on your hardware in any case.
 
-The prerequisite packages are: gcc, cmake, GTK4, and FFTW (plus git to download the repo). Their exact names in your package manager may vary; if you are on an Ubuntu-based distro, you can use:
+The prerequisite packages are: gcc, cmake, GTK4, and FFTW (plus git to download the repo). Their exact names in your package manager may vary; if you are on an Ubuntu-based distro, you can use this to grab everything:
 
 ```
 sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3
@@ -89,9 +94,8 @@ Once you have that, type the following into the terminal:
 
 ```
 git clone https://github.com/NickKarpowicz/LightwaveExplorer
-cd LightwaveExplorer
-mkdir build
-cd build
+mkdir LightwaveExplorer/build
+cd LightwaveExplorer/build
 cmake ..
 make
 ```
@@ -132,10 +136,8 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
   Then, build the executable with:
   ```
   git clone https://github.com/NickKarpowicz/LightwaveExplorer
-  git clone https://github.com/davisking/dlib
-  cd LightwaveExplorer
-  mkdir build
-  cd build
+  mkdir LightwaveExplorer/build
+  cd LightwaveExplorer/build
   cmake -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.0/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
   make
   ```

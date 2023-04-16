@@ -12,12 +12,14 @@ if(UNIX AND NOT APPLE)
         cuda_compile(LightwaveExplorerCudaObjects LightwaveExplorerCore.cu LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
 
         find_package(PkgConfig REQUIRED)
-        
         find_package(CUDAToolkit)
+        find_package(IntelDPCPP)
         find_package(fmt REQUIRED)
         pkg_check_modules(GTK4 gtk4)
         pkg_check_modules(LIOMP5 openmp)
         pkg_check_modules(TBB tbb)
+        execute_process(COMMAND git clone https://github.com/davisking/dlib)
+        include_directories(build/dlib) 
         include_directories(${CUDA_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
         link_directories(${CUDA_LIBRARY_DIRS})
@@ -57,17 +59,15 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(GTK4 REQUIRED gtk4)
         pkg_check_modules(FFTW REQUIRED fftw3)
         pkg_check_modules(FFTWF REQUIRED fftw3f)
+        execute_process(COMMAND git clone https://github.com/davisking/dlib)
+        include_directories(build/dlib) 
         include_directories(${FFTW_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
         link_directories(${GTK4_LIBRARY_DIRS})
         
+        
         include(FetchContent)
-        FetchContent_Declare(dlib
-            GIT_REPOSITORY https://github.com/davisking/dlib.git
-            GIT_TAG        v19.18
-        )
-        FetchContent_MakeAvailable(dlib)
         FetchContent_Declare(fmt
             GIT_REPOSITORY https://github.com/fmtlib/fmt.git
             GIT_TAG        9.1.0
@@ -76,12 +76,11 @@ if(UNIX AND NOT APPLE)
 
         add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -w)
         execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
-        add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp  LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp)
+        add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp  LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
         target_link_libraries(LightwaveExplorer OpenMP::OpenMP_CXX)
         target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
         target_link_libraries(LightwaveExplorer ${FFTWF_LIBRARIES})
-        target_link_libraries(LightwaveExplorer dlib::dlib)
         target_link_libraries(LightwaveExplorer fmt::fmt)
 
         install(TARGETS LightwaveExplorer)
@@ -107,7 +106,8 @@ if(APPLE)
     pkg_check_modules(FFTWF REQUIRED fftw3f)
     find_library(OpenMP_LIBRARY NAMES libomp.a HINTS ${BREW_PREFIX}/opt/libomp/lib/)
 
-    include_directories(../dlib)
+    execute_process(COMMAND git clone https://github.com/davisking/dlib)
+    include_directories(build/dlib) 
     include_directories(${FFTW_INCLUDE_DIRS})
     include_directories(${GTK4_INCLUDE_DIRS})
 
