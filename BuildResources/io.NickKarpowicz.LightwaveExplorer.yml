@@ -1,0 +1,27 @@
+app-id: io.NickKarpowicz.LightwaveExplorer
+runtime: org.gnome.Platform
+runtime-version: '44'
+sdk: org.gnome.Sdk
+command: LightwaveExplorer
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --device=dri  # for opengl
+  - --share=network
+modules:
+  - name: fftw3f
+    buildsystem: autotools
+    config-opts:
+      - --enable-float
+    sources:
+      - type: archive
+        url: http://fftw.org/fftw-3.3.10.tar.gz
+        md5: 8ccbf6a5ea78a16dbc3e1306e234cc5c
+
+  - name: LightwaveExplorer
+    buildsystem: cmake
+    config-opts:
+      - -DGPLFLATPAK
+    sources:
+      - type: git
+        url: https://github.com/NickKarpowicz/LightwaveExplorer

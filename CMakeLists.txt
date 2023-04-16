@@ -1,3 +1,4 @@
+
 if(UNIX AND NOT APPLE)
     if(DEFINED ONEAPI_ROOT)
         cmake_minimum_required(VERSION 3.23.0)
@@ -50,6 +51,42 @@ if(UNIX AND NOT APPLE)
         install(TARGETS LightwaveExplorer)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
         install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+    elseif(DEFINED GPLFLATPAK)
+        cmake_minimum_required(VERSION 3.16)
+        project(LightwaveExplorer)
+        find_package(PkgConfig REQUIRED)
+        find_package(OpenMP)
+        pkg_check_modules(GTK4 REQUIRED gtk4)
+        pkg_check_modules(FFTW REQUIRED fftw3)
+        pkg_check_modules(FFTWF REQUIRED fftw3f)
+        #execute_process(COMMAND git clone https://github.com/davisking/dlib)
+        include_directories(build/dlib) 
+        include_directories(${FFTW_INCLUDE_DIRS})
+        include_directories(${GTK4_INCLUDE_DIRS})
+        link_directories(${FFTW_LIBRARY_DIRS})
+        link_directories(${GTK4_LIBRARY_DIRS})
+        
+        
+        include(FetchContent)
+        FetchContent_Declare(fmt
+            GIT_REPOSITORY fmt/
+            GIT_TAG        9.1.0
+        )
+        FetchContent_MakeAvailable(fmt)
+
+        add_compile_options(-std=c++20 -O3 -fopenmp -D CPUONLY -w)
+        execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
+        add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp  LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer OpenMP::OpenMP_CXX)
+        target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
+        target_link_libraries(LightwaveExplorer ${FFTWF_LIBRARIES})
+        target_link_libraries(LightwaveExplorer fmt::fmt)
+
+        install(TARGETS LightwaveExplorer)
+        install(TARGETS LightwaveExplorer)
+        install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
+        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
 
     else()
         cmake_minimum_required(VERSION 3.16)
@@ -87,7 +124,6 @@ if(UNIX AND NOT APPLE)
         install(TARGETS LightwaveExplorer)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
         install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
-
     endif()
 endif()
 
