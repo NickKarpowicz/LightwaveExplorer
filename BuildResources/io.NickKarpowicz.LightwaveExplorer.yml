@@ -31,5 +31,5 @@ modules:
     sources:
       - type: git
         url: https://github.com/NickKarpowicz/LightwaveExplorer
-      - type: git
-        url: https://github.com/davisking/dlib.git
+      - type: dir
+        path: dlib
