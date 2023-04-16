@@ -25,7 +25,7 @@ modules:
       - type: git
         url: https://github.com/fmtlib/fmt.git
   - name: dlib
-    buildsystem: cmake
+    buildsystem: simple
     sources:
       - type: git
         url: https://github.com/davisking/dlib.git
