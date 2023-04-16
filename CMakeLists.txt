@@ -14,7 +14,6 @@ if(UNIX AND NOT APPLE)
         find_package(PkgConfig REQUIRED)
         
         find_package(CUDAToolkit)
-        find_package(IntelDPCPP)
         find_package(fmt REQUIRED)
         pkg_check_modules(GTK4 gtk4)
         pkg_check_modules(LIOMP5 openmp)
@@ -45,7 +44,10 @@ if(UNIX AND NOT APPLE)
         )
         target_link_libraries(LightwaveExplorer ${LIOMP5_LIBRARIES})
         target_link_libraries(LightwaveExplorer ${TBB_LIBRARIES})
+        
         install(TARGETS LightwaveExplorer)
+        install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
+        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
 
     else()
         cmake_minimum_required(VERSION 3.16)
@@ -83,6 +85,9 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer fmt::fmt)
 
         install(TARGETS LightwaveExplorer)
+        install(TARGETS LightwaveExplorer)
+        install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
+        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
 
     endif()
 endif()

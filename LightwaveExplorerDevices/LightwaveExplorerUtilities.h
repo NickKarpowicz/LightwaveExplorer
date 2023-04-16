@@ -9,6 +9,10 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
+#ifdef __linux__
+#include <unistd.h>
+#endif
+
 static const unsigned int threadsPerBlock = 32;
 static const unsigned int minGridDimension = 8;
 
@@ -175,7 +179,15 @@ public:
             fs.open("CrystalDatabase.txt");
         }
 #elif defined __linux__
-        std::ifstream fs("/usr/share/LightwaveExplorer/CrystalDatabase.txt");
+        char pBuf[256];
+        size_t len = sizeof(pBuf); 
+        int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
+        if(bytes >= 0)
+            pBuf[bytes] = '\0';
+        std::string binPath(pBuf);
+        size_t posPath = binPath.find_last_of("/");
+        std::string databasePath = binPath.substr(0, posPath).append("/../share/LightwaveExplorer/CrystalDatabase.txt");
+        std::ifstream fs(databasePath);
         if (!fs.is_open()) {
             fs.open("CrystalDatabase.txt");
         }

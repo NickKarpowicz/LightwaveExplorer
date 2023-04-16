@@ -76,7 +76,39 @@ A native version for the new Arm-based Macs is technically possible (and has bee
 
   ---
 
-### Compiling the GUI app on Linux
+### Compiling the GUI app on Linux (Easy CPU-only version)
+The easiest version to compile on Linux is the GPL3 version, which doesn't include the CUDA or OneAPI propagators. This means it will _only_ run on CPU, but if you don't have a compatible GPU anyway, it makes use of FFTW for the FFTs, which may be faster on your hardware anyway.
+
+The prerequisite packages are: gcc, cmake, GTK4, and FFTW (plus git to download the repo). Their exact names in your package manager may vary; if you are on an Ubuntu-based distro, you can use:
+
+```
+sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3
+```
+
+Once you have that, type the following into the terminal:
+
+```
+git clone https://github.com/NickKarpowicz/LightwaveExplorer
+cd LightwaveExplorer
+mkdir build
+cd build
+cmake ..
+make
+```
+
+It should then spend a bit of time building and finally produce a LightwaveExplorer executable in the build directory.
+
+You can install the application in your default location (probably /usr/local) with the command:
+
+```
+sudo cmake --install .
+```
+
+If you want to install it somewhere else, append --prefix "/where/you/want/it/to/go"
+
+Installing will also place the CrystalDatabase.txt and DefaultValues.ini text files in the /share folder alongside the /bin folder where the binary ends up. You can edit these freely to add crystals or changes the values that populate the program's interface when it starts.
+
+### Compiling the GUI app on Linux (CUDA and SYCL version)
 
   First, you'll need to install some stuff.
 
@@ -109,20 +141,7 @@ A native version for the new Arm-based Macs is technically possible (and has bee
   ```
   (Note: I have the full path to the nvcc compiler there because my distro only has ancient versions of CUDA in apt, so I installed it manually. You'll have to change it to wherever CUDA is installed on your system, or if you can use the version of nvcc on your path (lucky you), just to "nvcc".)
   
-  If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder.
-
-  You can alternatively build the GPL v3.0 version, which only runs on CPU and requires the FFTW library to be installed (e.g. sudo apt get fftw3). This version does _not_ require CUDA or OneAPI to be installed, because it doesn't include them. To do this, enter:
-
-  ```
-  git clone https://github.com/NickKarpowicz/LightwaveExplorer
-  git clone https://github.com/davisking/dlib
-  cd LightwaveExplorer
-  mkdir build
-  cd build
-  cmake ..
-  make
-  ```
-  This will also make a binary named LightwaveExplorer in the build folder.
+  If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
 
 ---
 
