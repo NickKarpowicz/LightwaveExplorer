@@ -1,7 +1,7 @@
 ## <p style="text-align: center;">Lightwave Explorer</p>
 
 <p style="text-align: center;">Nick Karpowicz</p>
-<p style="text-align: center;">Max Planck Institute of Quantum optics</p>
+<p style="text-align: center;">Max Planck Institute of Quantum Optics</p>
 
 <p style="text-align: center;"><img src="BuildResources/AppImage/ico512.png" width="256" height="256"></p>
 
@@ -106,7 +106,7 @@ sudo cmake --install .
 
 If you want to install it somewhere else, append --prefix "/where/you/want/it/to/go"
 
-Installing will also place the CrystalDatabase.txt and DefaultValues.ini text files in the /share folder alongside the /bin folder where the binary ends up. You can edit these freely to add crystals or changes the values that populate the program's interface when it starts.
+Installing will also place the CrystalDatabase.txt and DefaultValues.ini text files in the /share/LightwaveExplorer folder alongside the /bin folder where the binary ends up. You can edit these freely to add crystals or changes the values that populate the program's interface when it starts.
 
 ### Compiling the GUI app on Linux (CUDA and SYCL version)
 
