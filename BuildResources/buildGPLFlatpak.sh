@@ -1,7 +1,7 @@
 rm -rf build
 mkdir build
 cd build
-git clone https://github.com/davisking/dlib
+git clone https://github.com/davisking/dlib --branch v19.24
 mkdir dlibtmp
 cp -rf dlib/dlib dlibtmp/dlib
 rm -rf dlib
