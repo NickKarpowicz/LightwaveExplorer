@@ -51,6 +51,58 @@ if(UNIX AND NOT APPLE)
         install(TARGETS LightwaveExplorer)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
         install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+    elseif(DEFINED FLATPAKONEAPI)
+        cmake_minimum_required(VERSION 3.23.0)
+        execute_process(COMMAND . ${FLATPAKONEAPI}/setvars.sh)
+        set(SYCL_INCLUDE_DIR "${FLATPAKONEAPI}/compiler/latest/linux/include/sycl")
+        set(SYCL_LIBRARY_DIR "${FLATPAKONEAPI}/compiler/latest/linux/lib")
+        set(CMAKE_CUDA_ARCHITECTURES 75)
+        set(MKLROOT "${FLATPAKONEAPI}/mkl/latest")
+        #project(LightwaveExplorer LANGUAGES CXX CUDA)
+        execute_process(COMMAND git clone https://github.com/davisking/dlib)
+        include_directories(build/dlib ../LightwaveExplorer ${MKLROOT}/include/fftw)
+        #find_package(CUDA REQUIRED)
+        #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode=arch=compute_75,code=\"sm_75,compute_75\" -O3 -ccbin g++ -D NOCUDAMAIN)
+        #cuda_compile(LightwaveExplorerCudaObjects LightwaveExplorerCore.cu LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
+
+        find_package(PkgConfig REQUIRED)
+        #find_package(CUDAToolkit)
+        find_package(IntelDPCPP)
+        find_package(fmt REQUIRED)
+        pkg_check_modules(GTK4 gtk4)
+        pkg_check_modules(LIOMP5 openmp)
+        pkg_check_modules(TBB tbb)
+        include_directories(../LightwaveExplorer)
+        #include_directories(${CUDA_INCLUDE_DIRS})
+        include_directories(${GTK4_INCLUDE_DIRS})
+        #link_directories(${CUDA_LIBRARY_DIRS})
+        #link_directories(${CUDATookit_LIBRARY_DIRS})
+        link_directories(${LIOMP5_LIBRARY_DIRS})
+        link_directories(${TBB_LIBRARY_DIRS})
+        link_directories(${SYCL_LIBRARY_DIR})
+        link_directories(${GTK4_LIBRARY_DIRS})
+
+        add_compile_options(-std=c++20 -fp-model=precise -O3 -D NOCUDA -fopenmp -fsycl -w)
+        add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerGTK/LightwaveExplorerDPCPPlibFP32.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer fmt::fmt)
+        target_link_libraries(LightwaveExplorer -lm)
+        target_link_libraries(LightwaveExplorer
+            ${MKLROOT}/lib/intel64/libmkl_sycl.a 
+            -Wl,--start-group 
+            ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a 
+            ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a 
+            ${MKLROOT}/lib/intel64/libmkl_core.a 
+            -Wl,--end-group
+            -lsycl
+            -lOpenCL
+        )
+        target_link_libraries(LightwaveExplorer ${LIOMP5_LIBRARIES})
+        target_link_libraries(LightwaveExplorer ${TBB_LIBRARIES})
+        
+        install(TARGETS LightwaveExplorer)
+        install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
+        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
     elseif(DEFINED GPLFLATPAK)
         cmake_minimum_required(VERSION 3.16)
         project(LightwaveExplorer)
