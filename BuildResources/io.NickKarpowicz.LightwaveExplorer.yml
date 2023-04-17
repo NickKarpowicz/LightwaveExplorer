@@ -8,7 +8,7 @@ finish-args:
   - --socket=x11
   - --socket=session-bus
   - --device=dri  # for opengl
-  - --share=network
+  - --filesystem=host
 modules:
   - name: fftw3f
     buildsystem: autotools
