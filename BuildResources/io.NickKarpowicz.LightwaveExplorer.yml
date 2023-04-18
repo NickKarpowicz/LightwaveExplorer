@@ -9,14 +9,6 @@ finish-args:
   - --socket=session-bus
   - --device=dri  # for opengl
   - --filesystem=host
-modules:
-  - name: oneapi-base-toolkit
-    buildsystem: simple
-    build-commands:
-      - sudo sh ./l_BaseKit_p_2023.1.0.46401_offline.sh -a --silent --eula accept
-    sources:
-      - type: file
-        path: l_BaseKit_p_2023.1.0.46401_offline.sh
   - name: fftw3f
     buildsystem: autotools
     config-opts:

@@ -8,4 +8,4 @@ rm -rf dlib
 mv dlibtmp dlib
 cp ../BuildResources/io.NickKarpowicz.LightwaveExplorerGPL.yml ./
 flatpak-builder build-dir io.NickKarpowicz.LightwaveExplorerGPL.yml --force-clean
-flatpak-builder --user --install --force-clean build-dir  io.NickKarpowicz.LightwaveExplorerGPL.yml
+#flatpak-builder --user --install --force-clean build-dir  io.NickKarpowicz.LightwaveExplorerGPL.yml
