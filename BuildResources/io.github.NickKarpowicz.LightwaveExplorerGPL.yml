@@ -1,8 +1,8 @@
-app-id: io.NickKarpowicz.LightwaveExplorerGPL
+app-id: io.github.NickKarpowicz.LightwaveExplorerGPL
 runtime: org.gnome.Platform
 runtime-version: '44'
 sdk: org.gnome.Sdk
-command: LightwaveExplorerGPL
+command: LightwaveExplorer
 finish-args:
   - --share=ipc
   - --socket=x11
@@ -14,23 +14,15 @@ modules:
     buildsystem: autotools
     config-opts:
       - --enable-float
+      - --enable-shared
     sources:
       - type: archive
         url: http://fftw.org/fftw-3.3.10.tar.gz
         md5: 8ccbf6a5ea78a16dbc3e1306e234cc5c
-  - name: fmt
-    buildsystem: cmake
-    config-opts:
-      - -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE
-    sources:
-      - type: git
-        url: https://github.com/fmtlib/fmt.git
   - name: LightwaveExplorer
-    buildsystem: cmake
-    config-opts:
-      - -DGPLFLATPAK=1
+    buildsystem: simple
+    build-commands:
+      - cp -r appdir/* /app/
     sources:
-      - type: git
-        url: https://github.com/NickKarpowicz/LightwaveExplorer
       - type: dir
-        path: dlib
+        path: appdir

@@ -1,11 +1,10 @@
 rm -rf build
 mkdir build
 cd build
-git clone https://github.com/davisking/dlib --branch v19.24
-mkdir dlibtmp
-cp -rf dlib/dlib dlibtmp/dlib
-rm -rf dlib
-mv dlibtmp dlib
-cp ../BuildResources/io.NickKarpowicz.LightwaveExplorerGPL.yml ./
-flatpak-builder build-dir io.NickKarpowicz.LightwaveExplorerGPL.yml --force-clean
-#flatpak-builder --user --install --force-clean build-dir  io.NickKarpowicz.LightwaveExplorerGPL.yml
+cp ../BuildResources/io.github.NickKarpowicz.LightwaveExplorerGPL.yml ./
+cmake ..
+make
+mkdir -p appdir/appdir
+cmake --install . --prefix=appdir/appdir
+flatpak-builder build-dir io.github.NickKarpowicz.LightwaveExplorerGPL.yml --force-clean
+flatpak-builder --user --install build-dir --force-clean io.github.NickKarpowicz.LightwaveExplorerGPL.yml
