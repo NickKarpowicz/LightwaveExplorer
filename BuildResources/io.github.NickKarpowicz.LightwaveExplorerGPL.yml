@@ -15,6 +15,7 @@ modules:
     config-opts:
       - --enable-float
       - --enable-shared
+      - --silent
     sources:
       - type: archive
         url: http://fftw.org/fftw-3.3.10.tar.gz

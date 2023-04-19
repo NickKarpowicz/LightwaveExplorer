@@ -1,22 +1,30 @@
 app-id: io.github.NickKarpowicz.LightwaveExplorer
 runtime: org.gnome.Platform
-runtime-version: '44'
+runtime-version: '43'
 sdk: org.gnome.Sdk
-command: LightwaveExplorer
+sdk-extensions: 
+  - org.freedesktop.Sdk.Extension.llvm11
+command: LWELauncher.sh
 finish-args:
   - --share=ipc
   - --socket=x11
-  - --socket=session-bus
-  - --device=dri  # for opengl
-  - --filesystem=host
-  - name: fftw3f
-    buildsystem: autotools
-    config-opts:
-      - --enable-float
+  - --device=dri
+build-options:
+    append-path: /usr/lib/sdk/llvm11/bin
+    prepend-ld-library-path: /usr/lib/sdk/llvm11/lib
+modules:
+  - name: Intel-graphics-compiler
+    buildsystem: cmake
     sources:
-      - type: archive
-        url: http://fftw.org/fftw-3.3.10.tar.gz
-        md5: 8ccbf6a5ea78a16dbc3e1306e234cc5c
+      - type: git
+        url: https://github.com/intel/intel-graphics-compiler
+        tag: igc-1.0.13230.7
+  - name: Intel-compute-runtime
+    buildsystem: cmake
+    sources:
+      - type: git
+        url: https://github.com/intel/compute-runtime
+        tag: 23.05.25593.11
   - name: LightwaveExplorer
     buildsystem: simple
     build-commands:
