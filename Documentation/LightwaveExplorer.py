@@ -676,3 +676,24 @@ def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements: np.arr
     print("Resulting coefficients:")
     printSellmeier(expandCoeffs(res.x))
     return expandCoeffs(res.x), fun_nforx(res.x)
+
+#Get the plasma density associated with a field using the ionization model in the simulation
+def getPlasmaDensity(E, dt, pulseFrequency, scoeffs, bandGap, effectiveMass, NLabsorption):
+    f = np.fft.fftfreq(E.size,dt)
+    lam = np.array(f)
+    for i in range(0,lam.size):
+        if f[i] != 0:
+            lam[i] = np.abs(2.99792458e8/f[i])
+        else:
+            lam[i] = 0.0
+    n = np.real(sellmeier(lam*1e6, scoeffs, 0))
+    chi1 = n**2 - 1.0
+    chi1[chi1<0.0] = 0
+    chi1[np.isnan(chi1)]=0.0
+    plasmaParam2 = 2.817832e-8 / (1.6022e-19 * bandGap * effectiveMass)
+    pMax = np.ceil(bandGap * 241.79893e12 / pulseFrequency) - 2
+    fieldFactor = 1.0/(chi1 + 1)**0.25
+    P1 = np.real(np.fft.ifft(fieldFactor*chi1*np.fft.fft(E)))
+    Esquared = NLabsorption* (P1**2)
+    Jx = P1 * (Esquared**(pMax))
+    return dt * np.cumsum(plasmaParam2 * Jx * P1)
