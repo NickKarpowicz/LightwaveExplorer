@@ -13,7 +13,7 @@
 #include <unistd.h>
 #endif
 
-static const unsigned int threadsPerBlock = 32;
+static const unsigned int threadsPerBlock = 64;
 static const unsigned int minGridDimension = 8;
 
 
