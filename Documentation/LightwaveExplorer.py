@@ -112,6 +112,7 @@ def printSellmeier(sc):
 
 
 def sellmeier(wavelengthMicrons, a, equationType: int):
+    np.seterr(divide='ignore', invalid='ignore')
     w = 2 * np.pi * 2.99792458e8 / (1e-6*wavelengthMicrons)
     ls = wavelengthMicrons**2
     k = 3182.607353999257
@@ -678,7 +679,9 @@ def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements: np.arr
     return expandCoeffs(res.x), fun_nforx(res.x)
 
 #Get the plasma density associated with a field using the ionization model in the simulation
-def getPlasmaDensity(E, dt, pulseFrequency, scoeffs, bandGap, effectiveMass, NLabsorption):
+def getPlasmaDensityAndCurrent(E, dt, pulseFrequency, scoeffs, bandGap, effectiveMass, NLabsorption, gamma):
+
+    #get the refractive index of the crystal
     f = np.fft.fftfreq(E.size,dt)
     lam = np.array(f)
     for i in range(0,lam.size):
@@ -687,13 +690,35 @@ def getPlasmaDensity(E, dt, pulseFrequency, scoeffs, bandGap, effectiveMass, NLa
         else:
             lam[i] = 0.0
     n = np.real(sellmeier(lam*1e6, scoeffs, 0))
+    
+    #calculate chi1
     chi1 = n**2 - 1.0
     chi1[chi1<0.0] = 0
     chi1[np.isnan(chi1)]=0.0
+
+    #plasma generation constants
     plasmaParam2 = 2.817832e-8 / (1.6022e-19 * bandGap * effectiveMass)
     pMax = np.ceil(bandGap * 241.79893e12 / pulseFrequency) - 2
     fieldFactor = 1.0/(chi1 + 1)**0.25
-    P1 = np.real(np.fft.ifft(fieldFactor*chi1*np.fft.fft(E)))
-    Esquared = NLabsorption* (P1**2)
-    Jx = P1 * (Esquared**(pMax))
-    return dt * np.cumsum(plasmaParam2 * Jx * P1)
+
+    #get the linear polarization for applying millers rule to the dispersion of the absorption cross section
+    Pol1 = np.real(np.fft.ifft(fieldFactor*chi1*np.fft.fft(E)))
+    Esquared = NLabsorption* (Pol1**2)
+
+    #Jx starts at the absorption current; e.g. the one responsible for the removal of energy from the field
+    #as carriers are generated
+    Jx = Pol1 * (Esquared**(pMax))
+
+    #number of carriers is assumed to be equal to the energy removed from the field/bandgap
+    #Rate of power loss of the field is E*J
+    Ncarriers =  dt * np.cumsum(plasmaParam2 * Jx * Pol1)
+
+    #integrate damped drude response to fill in the rest of the current
+    integralx = 0.0
+    for i in range(0, E.size):
+        expGammaT = np.exp(dt * i * gamma)
+        expMinusGammaT = np.exp(-dt * i * gamma)
+        integralx += Ncarriers[i] * expGammaT * E[i]
+        Jx[i] += expMinusGammaT * integralx
+
+    return Ncarriers, dt*Jx
