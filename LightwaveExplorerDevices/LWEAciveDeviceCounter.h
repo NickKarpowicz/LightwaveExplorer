@@ -71,14 +71,14 @@ public:
 	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, T functor) {
 	}
 
-	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) {
+	int deviceCalloc(void** ptr, const int64_t N, const int64_t elementSize) {
 		return 0;
 	}
 
-	void deviceMemset(void* ptr, const int value, const size_t count) {
+	void deviceMemset(void* ptr, const int value, const int64_t count) {
 	}
 
-	void deviceMemcpy(void* dst, const void* src, const size_t count, const copyType kind) {
+	void deviceMemcpy(void* dst, const void* src, const int64_t count, const copyType kind) {
 	}
 
 	void deviceFree(const void* block) {

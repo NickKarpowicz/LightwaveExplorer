@@ -117,12 +117,12 @@ public:
     bool isNonLinear = 0;
     bool isUsingMillersRule = 0;
     bool forceLinear = 0;
-    size_t Ntime = 0;
-    size_t Nfreq = 0;
-    size_t Nspace = 0;
-    size_t Nspace2 = 0;
-    size_t Ngrid = 0;
-    size_t NgridC = 0;
+    int64_t Ntime = 0;
+    int64_t Nfreq = 0;
+    int64_t Nspace = 0;
+    int64_t Nspace2 = 0;
+    int64_t Ngrid = 0;
+    int64_t NgridC = 0;
     deviceFP fftNorm = 0;
     int axesNumber = 0;
     int sellmeierType = 0;
@@ -135,7 +135,7 @@ public:
     deviceFP dk1 = 0;
     deviceFP dk2 = 0;
     deviceFP h = 0;
-    size_t Nsteps = 0;
+    int64_t Nsteps = 0;
     int Nthread = 0;
     int NblockC = 0;
     int Nblock = 0;
@@ -172,7 +172,7 @@ public:
         char sysPath[1024] = { 0 };
         _NSGetExecutablePath(sysPath, &bufferSize);
         std::string macPath(sysPath);
-        size_t posPath = macPath.find_last_of("/");
+        int64_t posPath = macPath.find_last_of("/");
         std::string databasePath = macPath.substr(0, posPath).append("/../Resources/CrystalDatabase.txt");
         std::ifstream fs(databasePath);
         if (!fs.is_open()) {
@@ -180,12 +180,12 @@ public:
         }
 #elif defined __linux__
         char pBuf[256];
-        size_t len = sizeof(pBuf); 
+        int64_t len = sizeof(pBuf); 
         int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
         if(bytes >= 0)
             pBuf[bytes] = '\0';
         std::string binPath(pBuf);
-        size_t posPath = binPath.find_last_of("/");
+        int64_t posPath = binPath.find_last_of("/");
         std::string databasePath = binPath.substr(0, posPath).append("/../share/LightwaveExplorer/CrystalDatabase.txt");
         std::ifstream fs(databasePath);
         if (!fs.is_open()) {
@@ -395,17 +395,17 @@ public:
     double fStep = 0;
     double kStep = 0;
     double propagationStep = 0;
-    size_t Npropagation = 0;
-    size_t Ntime = 0;
-    size_t Nfreq = 0;
-    size_t Nspace = 0;
-    size_t Nspace2 = 0;
-    size_t Ngrid = 0;
-    size_t NgridC = 0;
-    size_t Nsims = 0;
-    size_t Nsims2 = 0;
+    int64_t Npropagation = 0;
+    int64_t Ntime = 0;
+    int64_t Nfreq = 0;
+    int64_t Nspace = 0;
+    int64_t Nspace2 = 0;
+    int64_t Ngrid = 0;
+    int64_t NgridC = 0;
+    int64_t Nsims = 0;
+    int64_t Nsims2 = 0;
     std::atomic_uint32_t* progressCounter = 0;
-    size_t NsimsCPU = 0;
+    int64_t NsimsCPU = 0;
     pulse<double> pulse1;
     pulse<double> pulse2;
     double spatialWidth = 0;
@@ -464,8 +464,8 @@ public:
     bool forceLinear = 0;
     std::string sequenceString;
     double i37 = 0.0;
-    size_t batchLoc1 = 0;
-    size_t batchLoc2 = 0;
+    int64_t batchLoc1 = 0;
+    int64_t batchLoc2 = 0;
 
     //fitting
     bool isInFittingMode = false;
@@ -476,9 +476,9 @@ public:
     int Nfitting = 0;
     int fittingMode = 0;
     int fittingMaxIterations = 0;
-    size_t fittingROIstart = 0;
-    size_t fittingROIstop = 0;
-    size_t fittingROIsize = 0;
+    int64_t fittingROIstart = 0;
+    int64_t fittingROIstop = 0;
+    int64_t fittingROIsize = 0;
     std::array<double, 64> fittingResult = {};
     std::array<double, 64> fittingError = {};
 
@@ -590,13 +590,13 @@ public:
             return 0.0;
         };
     }
-    void setByNumber(const size_t index, const double value);
+    void setByNumber(const int64_t index, const double value);
     void setByNumberWithMultiplier(const size_t index, const double value);
     int loadSavedFields(const std::string& outputBase);
     int loadReferenceSpectrum();
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
     int saveSettingsFile();
-    double saveSlurmScript(int gpuType, int gpuCount, size_t totalSteps);
+    double saveSlurmScript(int gpuType, int gpuCount, int64_t totalSteps);
     int readFittingString();
 
 
@@ -615,7 +615,7 @@ public:
         (*s).dk1 = (deviceFP)(twoPi<double>() / (Nspace * rStep));
         (*s).dk2 = (deviceFP)(twoPi<double>() / (Nspace2 * rStep));
         (*s).fStep = (deviceFP)fStep;
-        (*s).Nsteps = (size_t)round(crystalThickness / propagationStep);
+        (*s).Nsteps = (int64_t)round(crystalThickness / propagationStep);
         (*s).h = (deviceFP)crystalThickness / ((*s).Nsteps); //adjust step size so that thickness can be varied continuously by fitting
         (*s).axesNumber = axesNumber;
         (*s).sellmeierType = sellmeierType;
@@ -657,7 +657,7 @@ public:
         double backward[9] =
         { cosT * cosP, -sinP * cosT, sinT, sinP, cosP, 0, -sinT * cosP, sinP * sinT, cosT };
 
-        for (size_t i = 0; i < 9; i++) {
+        for (int64_t i = 0; i < 9; i++) {
             (*s).rotationForward[i] = (deviceFP)forward[i];
             (*s).rotationBackward[i] = (deviceFP)backward[i];
         }
@@ -665,7 +665,7 @@ public:
 
     template<typename deviceFP, typename C>
     void finishConfiguration(deviceParameterSet<deviceFP,C>* s) {
-        size_t beamExpansionFactor = 1;
+        int64_t beamExpansionFactor = 1;
         if ((*s).isCylindric) {
             beamExpansionFactor = 2;
         }
@@ -687,7 +687,7 @@ public:
         (*s).gridEFrequency2 = (*s).gridEFrequency1 + (*s).NgridC;
 
         double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
-        for (size_t i = 0; i < 6; ++i) {
+        for (int64_t i = 0; i < 6; ++i) {
             firstDerivativeOperation[i] *= (-2.0 / ((*s).dx));
         }
 
@@ -715,19 +715,19 @@ public:
             (*s).nonlinearSwitches[i] = nonlinearSwitches[i];
         }
 
-        for (size_t i = 0; i < 81; i++) {
+        for (int64_t i = 0; i < 81; i++) {
             (*s).chi3Tensor[i] = (deviceFP)chi3Tensor[i];
         }
 
-        for (size_t i = 0; i < 6; i++) {
+        for (int64_t i = 0; i < 6; i++) {
             (*s).absorptionParameters[i] = (deviceFP)absorptionParameters[i];
         }
 
-        for (size_t i = 0; i < 6; i++) {
+        for (int64_t i = 0; i < 6; i++) {
             (*s).plasmaParameters[i] = (deviceFP)plasmaParametersCPU[i];
         }
 
-        for (size_t i = 0; i < 6; i++) {
+        for (int64_t i = 0; i < 6; i++) {
             (*s).firstDerivativeOperation[i] = (deviceFP)firstDerivativeOperation[i];
         }
     }
@@ -740,12 +740,12 @@ class simulationBatch {
     std::vector<std::complex<double>> loadedField2;
     std::vector<double> fitReference;
     std::vector<double> totalSpectrum;
-    size_t Nsimstotal = 0;
-    size_t Nsims = 0;
-    size_t Nsims2 = 0;
-    size_t Nfreq = 0;
-    size_t Ngrid = 0;
-    size_t NgridC = 0;
+    int64_t Nsimstotal = 0;
+    int64_t Nsims = 0;
+    int64_t Nsims2 = 0;
+    int64_t Nfreq = 0;
+    int64_t Ngrid = 0;
+    int64_t NgridC = 0;
     std::vector<simulationParameterSet> parameters;
 public:
     simulationBatch() {
@@ -754,13 +754,13 @@ public:
     void configure();
     void loadPulseFiles();
     int saveDataSet();
-    [[nodiscard]] double* getExt(size_t i) {
+    [[nodiscard]] double* getExt(int64_t i) {
         return &Ext.data()[i * Ngrid * 2];
     }
-    [[nodiscard]] std::complex<double>* getEkw(size_t i) {
+    [[nodiscard]] std::complex<double>* getEkw(int64_t i) {
         return &Ekw.data()[i * NgridC * 2];
     }
-    [[nodiscard]] double* getTotalSpectrum(size_t i) {
+    [[nodiscard]] double* getTotalSpectrum(int64_t i) {
         return &totalSpectrum.data()[i * 3 * Nfreq];
     }
     [[nodiscard]] std::vector<simulationParameterSet>& getParameterVector() {

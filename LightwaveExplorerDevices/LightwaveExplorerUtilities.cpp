@@ -34,7 +34,7 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase) {
 		fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, ExtOut, NULL, 1, (int)Ngrid, (fftw_complex*)EkwOut, NULL, 1, (int)NgridC, FFTW_MEASURE);
 	}
 
-	for (size_t i = 0; i < (Nsims * Nsims2); i++) {
+	for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
 		fftw_execute_dft_r2c(fftwPlanD2Z, &ExtOut[2 * i * Ngrid], (fftw_complex*) & EkwOut[2 * i * NgridC]);
 	}
 	fftw_destroy_plan(fftwPlanD2Z);
@@ -49,8 +49,8 @@ int simulationParameterSet::loadReferenceSpectrum() {
 	if (fs.fail()) {
 		return 1;
 	}
-	size_t maxFileSize = 16384;
-	size_t currentRow = 0;
+	int64_t maxFileSize = 16384;
+	int64_t currentRow = 0;
 	constexpr double c = 1e9 * lightC<double>();
 	std::vector<double> loadedWavelengths(1);
 	loadedWavelengths.reserve(8192);
@@ -80,8 +80,8 @@ int simulationParameterSet::loadReferenceSpectrum() {
 		loadedFrequencies.push_back(c / loadedWavelengths[currentRow]);
 		currentRow++;
 	}
-	size_t sizeData = currentRow - 1;
-	size_t i, j;
+	int64_t sizeData = currentRow - 1;
+	int64_t i, j;
 
 	double maxFrequency = c / minWavelength;
 	double minFrequency = c / maxWavelength;
@@ -105,7 +105,7 @@ int simulationParameterSet::loadReferenceSpectrum() {
 	return 0;
 }
 
-double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, size_t totalSteps) {
+double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_t totalSteps) {
 	std::string outputFile=outputBasePath;
 	outputFile.append(".slurmScript");
 	std::ofstream fs(outputFile, std::ios::binary);
@@ -281,7 +281,7 @@ int simulationParameterSet::saveSettingsFile() {
 	return 0;
 }
 
-void simulationParameterSet::setByNumber(const size_t index, const double value) {
+void simulationParameterSet::setByNumber(const int64_t index, const double value) {
 	switch (index) {
 	case 0:
 		return;
@@ -557,15 +557,15 @@ int simulationParameterSet::readInputParametersFile(crystalEntry* crystalDatabas
 	//derived parameters and cleanup:
 	sellmeierType = 0;
 	axesNumber = 0;
-	Ntime = (size_t)(minGridDimension * round(timeSpan / (minGridDimension * tStep)));
+	Ntime = (int64_t)(minGridDimension * round(timeSpan / (minGridDimension * tStep)));
 	Nfreq = Ntime / 2 + 1;
-	Nspace = (size_t)(minGridDimension * round(spatialWidth / (minGridDimension * rStep)));
-	Nspace2 = (size_t)(minGridDimension * round(spatialHeight / (minGridDimension * rStep)));
+	Nspace = (int64_t)(minGridDimension * round(spatialWidth / (minGridDimension * rStep)));
+	Nspace2 = (int64_t)(minGridDimension * round(spatialHeight / (minGridDimension * rStep)));
 	Ngrid = Ntime * Nspace;
 	NgridC = Nfreq * Nspace;
 	kStep = twoPi<double>() / (Nspace * rStep);
 	fStep = 1.0 / (Ntime * tStep);
-	Npropagation = (size_t)round(crystalThickness / propagationStep);
+	Npropagation = (int64_t)round(crystalThickness / propagationStep);
 
 	isCylindric = symmetryType == 1;
 	is3D = symmetryType == 2;
@@ -646,8 +646,8 @@ void simulationBatch::configure() {
 	parameters[0].isGridAllocated = true;
 	loadPulseFiles();
 
-	for (size_t i = 0; i < Nsims2; i++) {
-		size_t currentRow = i * Nsims;
+	for (int64_t i = 0; i < Nsims2; i++) {
+		int64_t currentRow = i * Nsims;
 
 		if (currentRow > 0) {
 			parameters[currentRow] = parameters[0];
@@ -656,7 +656,7 @@ void simulationBatch::configure() {
 			parameters[currentRow].setByNumberWithMultiplier(parameters[0].batchIndex2, parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2) + i * step2);
 		}
 
-		for (size_t j = 0; j < Nsims; j++) {
+		for (int64_t j = 0; j < Nsims; j++) {
 
 			if (j > 0) {
 				parameters[j + currentRow] = parameters[currentRow];
@@ -716,8 +716,8 @@ int simulationParameterSet::readFittingString() {
 	ss >> ROIbegin >> ROIend >> maxIterations;
 	ss.ignore(fittingString.length(), ';');
 
-	fittingROIstart = (size_t)(ROIbegin / fStep);
-	fittingROIstop = (size_t)minN(ROIend / fStep, Ntime / 2);
+	fittingROIstart = (int64_t)(ROIbegin / fStep);
+	fittingROIstop = (int64_t)minN(ROIend / fStep, Ntime / 2);
 	fittingROIsize = minN(maxN(fittingROIstop - fittingROIstart, 1u), Ntime / 2);
 	fittingMaxIterations = maxIterations;
 
@@ -740,7 +740,7 @@ int simulationParameterSet::readFittingString() {
 
 int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, char startChar, char endChar) {
 	bool removing = true;
-	for (size_t i = 0; i < s.length(); ++i) {
+	for (auto i = 0; i < s.length(); ++i) {
 		if (s[i] == removedChar && removing) {
 			s.erase(i,1);
 			--i;
@@ -917,7 +917,7 @@ double parameterStringToDouble(const std::string& ss, const double* iBlock, cons
 
 std::string getBasename(const std::string& fullPath) {
 	std::string pathString = fullPath;
-	std::size_t positionOfName = pathString.find_last_of("/\\");
+	std::int64_t positionOfName = pathString.find_last_of("/\\");
 	if (positionOfName == std::string::npos) return pathString;
 	return pathString.substr(positionOfName + 1);
 }

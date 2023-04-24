@@ -69,7 +69,7 @@ public:
     int dataType = 0;
     double dx = 1.0;
     double x0 = 0.0;
-    size_t Npts = 0;
+    int64_t Npts = 0;
     double unitY = 1.0;
     bool forceYmin = false;
     double forcedYmin = 0.0;
@@ -92,8 +92,8 @@ public:
     int plot(cairo_t* cr) {
         if (Npts == 0) return 1;
         if (SVGPath.length() > 5) makeSVG = true;
-        size_t iMin = 0;
-        size_t iMax = Npts;
+        int64_t iMin = 0;
+        int64_t iMax = Npts;
         cairo_font_extents_t fe{};
         cairo_text_extents_t te{};
         double fontSize = 14.0;
@@ -141,7 +141,7 @@ public:
             minX = minN(currentX, minX);
         }
         if (iMin >= iMax || iMin >= Npts) return -1;
-        for (size_t i = iMin; i < iMax; ++i) {
+        for (int64_t i = iMin; i < iMax; ++i) {
             if (logScale) { currentY = (double)log10(data[i]); }
             else { currentY = (double)data[i]; }
             maxY = maxN(currentY, maxY);
@@ -328,7 +328,7 @@ public:
         //x-axis tick labels
         for (int i = 0; i < 3; ++i) {
             messageBuffer.assign(Sformat("{}", (int)round(xTicks1[i])));
-            layoutLeft = (double)(axisSpaceX + 0.25 * width * ((size_t)(i)+1) - axisSpaceX / 2);
+            layoutLeft = (double)(axisSpaceX + 0.25 * width * ((int64_t)(i)+1) - axisSpaceX / 2);
             layoutTop = height + 3;
             layoutBottom = height + axisSpaceY;
             layoutRight = layoutLeft + axisSpaceX;
@@ -393,7 +393,7 @@ public:
 
         auto plotCairoDots = [&](double* y) {
             currentColor.setCairo(cr);
-            for (size_t i = iMin; i < iMax; ++i) {
+            for (int64_t i = iMin; i < iMax; ++i) {
                 if (scaledY[i] <= height) {
                     cairo_arc(cr, scaledX[i], scaledY[i], radius, 0, twoPi<double>());
                     cairo_fill(cr);
@@ -404,7 +404,7 @@ public:
         auto plotCairoPolyline = [&](double* y) {
             currentColor.setCairo(cr);
             cairo_move_to(cr, scaledX[iMin], scaledY[iMin]);
-            for (size_t i = iMin + 1; i < iMax; ++i) {
+            for (int64_t i = iMin + 1; i < iMax; ++i) {
                 if (scaledY[i - 1] <= height) {
                     if (scaledY[i] <= height) {
                         cairo_line_to(cr, scaledX[i], scaledY[i]);
@@ -436,7 +436,7 @@ public:
                 SVGaddXYtoPolyLine(x2, y2);
                 lineOn = true;
             }
-            for (size_t i = iMin + 1; i < iMax; ++i) {
+            for (int64_t i = iMin + 1; i < iMax; ++i) {
                 x1 = x2;
                 x2 = scaleX * (xValues[i] - minX);
                 y1 = y2;
@@ -485,7 +485,7 @@ public:
 
         auto plotSVGDots = [&](double* y) {
             SVGstartgroup();
-            for (size_t i = iMin; i < iMax - 1; ++i) {
+            for (int64_t i = iMin; i < iMax - 1; ++i) {
                 x1 = scaleX * (xValues[i] - minX) + axisSpaceX;
                 if (logScale) {
                     y1 = height - scaleY * ((double)log10(y[i]) - (double)minY);
@@ -556,8 +556,8 @@ public:
     int width = 0;
     int height = 0;
     double* data = nullptr;
-    size_t dataXdim = 0;
-    size_t dataYdim = 0;
+    int64_t dataXdim = 0;
+    int64_t dataYdim = 0;
     std::complex<double>* complexData = nullptr;
     int colorMap = 4;
     bool logScale = false;
@@ -569,7 +569,7 @@ public:
         int dx = width;
         int dy = height;
 
-        size_t plotSize = (size_t)dx * (size_t)dy;
+        int64_t plotSize = (int64_t)dx * (int64_t)dy;
         float* plotarr2 = new float[plotSize];
         switch (dataType) {
         case 0:
@@ -696,7 +696,7 @@ public:
         if (Nx * Ny == 0) return;
 
         // creating input
-        const size_t Ntot = Nx * Ny;
+        const int64_t Ntot = Nx * Ny;
         unsigned char* pixels = new unsigned char[4 * Ntot]();
         if (pixels == nullptr) return;
 
@@ -705,7 +705,7 @@ public:
         //Find the image maximum and minimum
         float imin = data[0];
         float imax = data[0];
-        for (size_t i = 1; i < Ntot; ++i) {
+        for (int64_t i = 1; i < Ntot; ++i) {
             if (data[i] > imax) imax = data[i];
             if (data[i] < imin) imin = data[i];
         }
@@ -846,7 +846,7 @@ public:
         }
     }
 
-    void valueToPointer(size_t* sdata) {
+    void valueToPointer(int64_t* sdata) {
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
         if (len > 0) {
@@ -918,7 +918,7 @@ public:
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
 
-    void copyBuffer(char* destination, size_t maxLength) {
+    void copyBuffer(char* destination, int64_t maxLength) {
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         std::string s(gtk_entry_buffer_get_text(buf));
         if (s.length() > 0) {
@@ -953,7 +953,7 @@ gboolean scrollTextViewToEndHandler(gpointer data) {
 }
 
 void formatSequenceEscapeAngleBrackets(std::string& s) {
-    for (size_t i = 0; i < s.length(); ++i) {
+    for (auto i = 0; i < s.length(); ++i) {
         //find angle brackets signifying comments and escape
         //with &lt; or &gt; so they're not interpreted as
         //pango markup
@@ -1027,7 +1027,7 @@ gboolean formatSequenceBuffer(gpointer data) {
             //another function, comment, or beginning of the buffer, check if the string
             //spanning that is in the functions list.
             //color it if it is.
-            for (size_t j = i; j > 0; --j) {
+            for (auto j = i; j > 0; --j) {
                 if (j - 1 == 0 || s[j - 1] == ' ' || s[j - 1] == '\n' || s[j - 1] == ')' || s[j - 1] == '>') {
                     nameStart = j - ((j - 1) == 0);
                     if (std::find(
@@ -1184,7 +1184,7 @@ public:
         scrollToEnd();
     }
 
-    void copyBuffer(char* destination, size_t maxLength) {
+    void copyBuffer(char* destination, int64_t maxLength) {
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);

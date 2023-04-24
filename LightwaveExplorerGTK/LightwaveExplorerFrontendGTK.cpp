@@ -33,7 +33,7 @@ public:
     LweSlider plotSlider;
     LweWindow window;
     LweSpacer spacers[2];
-    size_t pathTarget;
+    int64_t pathTarget;
     int saveSVG = 0;
     bool loadedDefaults = false;
     unsigned int timeoutID;
@@ -420,12 +420,12 @@ public:
         // working directory
 #ifdef __linux__
                 char pBuf[256];
-        size_t len = sizeof(pBuf); 
+        int64_t len = sizeof(pBuf); 
         int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
         if(bytes >= 0)
             pBuf[bytes] = '\0';
         std::string binPath(pBuf);
-        size_t posPath = binPath.find_last_of("/");
+        int64_t posPath = binPath.find_last_of("/");
         std::string defaultsPath = binPath.substr(0, posPath).append("/../share/LightwaveExplorer/DefaultValues.ini");
 
 		if (1 == theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), defaultsPath)) {
@@ -618,25 +618,25 @@ void readParametersFromInterface() {
     //derived parameters and cleanup:
     theSim.base().sellmeierType = 0;
     theSim.base().axesNumber = 0;
-    theSim.base().Ntime = (size_t)(minGridDimension * round(theSim.base().timeSpan / (minGridDimension * theSim.base().tStep)));
+    theSim.base().Ntime = (int64_t)(minGridDimension * round(theSim.base().timeSpan / (minGridDimension * theSim.base().tStep)));
     if (theSim.base().symmetryType == 2) {
         theSim.base().is3D = true;
         theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
-        theSim.base().Nspace = (size_t)round(theSim.base().spatialWidth / theSim.base().rStep);
+        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
         if (theSim.base().spatialHeight > 0) {
             theSim.base().spatialHeight = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialHeight / (theSim.base().rStep * minGridDimension)));
         }
         else {
             theSim.base().spatialHeight = theSim.base().spatialWidth;
         }
-        theSim.base().Nspace2 = (size_t)round(theSim.base().spatialHeight / theSim.base().rStep);
+        theSim.base().Nspace2 = (int64_t)round(theSim.base().spatialHeight / theSim.base().rStep);
     }
     else {
         theSim.base().is3D = false;
         theSim.base().Nspace2 = 1;
         theSim.base().spatialHeight = 0;
         theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
-        theSim.base().Nspace = (size_t)round(theSim.base().spatialWidth / theSim.base().rStep);
+        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
     }
 
     theSim.base().Nfreq = theSim.base().Ntime / 2 + 1;
@@ -644,7 +644,7 @@ void readParametersFromInterface() {
     theSim.base().Ngrid = theSim.base().Ntime * theSim.base().Nspace * theSim.base().Nspace2;
     theSim.base().kStep = twoPi<double>() / (theSim.base().Nspace * theSim.base().rStep);
     theSim.base().fStep = 1.0 / (theSim.base().Ntime * theSim.base().tStep);
-    theSim.base().Npropagation = (size_t)round(theSim.base().crystalThickness / theSim.base().propagationStep);
+    theSim.base().Npropagation = (int64_t)round(theSim.base().crystalThickness / theSim.base().propagationStep);
 
     theSim.base().isCylindric = theSim.base().symmetryType == 1;
     if (theSim.base().isCylindric) {
@@ -714,14 +714,14 @@ int insertAfterCharacterExcept(std::string& s, char target, std::string appended
 }
 
 int indentForDepth(std::string& s){
-    size_t depth = 0;
+    int depth = 0;
     std::string indent("   ");
-    for(size_t i = 0; i<s.length()-1; ++i){
-        if(s[i]=='{') ++depth;
-        if(s[i]=='}' && depth != 0) --depth;
-        if(s[i]=='\n' && s[i+1] != '}'){
-            for(size_t j = 0; j<depth; j++){
-                s.insert(i+1,indent);
+    for (size_t i = 0; i < s.length() - 1; ++i) {
+        if (s[i] == '{') ++depth;
+        if (s[i] == '}' && depth != 0) --depth;
+        if (s[i] == '\n' && s[i + 1] != '}') {
+            for (size_t j = 0; j < depth; j++) {
+                s.insert(i + 1, indent);
                 i += indent.length();
             }
         }
@@ -794,11 +794,11 @@ void checkLibraryAvailability() {
     if (isIntelRuntimeInstalled) {
         theSim.base().SYCLavailable = true;
         char syclDeviceList[1024] = { 0 };
-        size_t syclDevices = 0;
+        int64_t syclDevices = 0;
         char counts[2] = { 0 };
         readSYCLDevices(counts, syclDeviceList);
         theSim.base().syclGPUCount = (int)counts[1];
-        syclDevices = (size_t)counts[0] + (size_t)counts[1];
+        syclDevices = (int64_t)counts[0] + (int64_t)counts[1];
         if (syclDevices != 0) {
             theGui.console.cPrint("{}", syclDeviceList);
         }
@@ -828,7 +828,7 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
     g_object_unref(dialog);
 }
 
-void openFileDialog(size_t pathTarget) {
+void openFileDialog(int64_t pathTarget) {
     theGui.pathTarget = pathTarget;
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Open File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
     g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
@@ -836,15 +836,15 @@ void openFileDialog(size_t pathTarget) {
 }
 
 void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
-    theGui.pathTarget = (size_t)pathTarget;
+    theGui.pathTarget = (int64_t)pathTarget;
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Open File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
     g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
 }
 
-void changeToBaseNamePath(char* str, size_t maxSize) {
+void changeToBaseNamePath(char* str, int64_t maxSize) {
     std::string s(str, maxSize);
-    size_t extension = s.find_last_of(".");
+    int64_t extension = s.find_last_of(".");
     if (extension != std::string::npos) {
         std::string baseName = s.substr(0, extension);
         baseName.append("\0");
@@ -862,7 +862,7 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         int readParameters = theSim.base().readInputParametersFile(theDatabase.db.data(), path);
         theSim.configure();
         if (readParameters == 61) {
-            size_t extensionLoc = path.find_last_of(".");
+            int64_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
             theSim.base().loadSavedFields(basePath);
 
@@ -875,7 +875,7 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
 }
 
 void loadCallback(GtkWidget* widget, gpointer pathTarget) {
-    theGui.pathTarget = (size_t)pathTarget;
+    theGui.pathTarget = (int64_t)pathTarget;
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Open File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
     g_signal_connect(fileC, "response", G_CALLBACK(loadFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
@@ -887,7 +887,7 @@ void svgCallback() {
 }
 
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
-    theGui.pathTarget = (size_t)pathTarget;
+    theGui.pathTarget = (int64_t)pathTarget;
     //get around bug in GTK4 by opening dialog box directly in cocoa on mac
 #ifdef __APPLE__
     NSString *filePath;
@@ -916,7 +916,7 @@ void createRunFile() {
 
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     totalSteps = 0;
-    for (size_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
+    for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         if (theSim.base().isInSequence) {
             counterVector[j].progressCounter = &totalSteps;
             counterVector[j].runType = -1;
@@ -1080,7 +1080,7 @@ void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     black.setCairo(cr);
     cairo_fill(cr);
 
-    size_t lengthEstimate = 0;
+    int64_t lengthEstimate = 0;
     if (!theSim.base().isInFittingMode) {
         lengthEstimate = totalSteps;
     }
@@ -1115,13 +1115,13 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         theGui.saveSVG--;
     }
 
-    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
 
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
         simIndex = 0;
     }
 
-    size_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
+    int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
     if (saveSVG) {
         std::string svgPath;
@@ -1160,13 +1160,13 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         theGui.saveSVG--;
     }
 
-    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
 
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
         simIndex = 0;
     }
 
-    size_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
+    int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
     if (saveSVG) {
         std::string svgPath;
@@ -1211,7 +1211,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = true;
     }
-    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1287,7 +1287,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.checkBoxes[1].isChecked()) {
         logPlot = true;
     }
-    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1352,12 +1352,12 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         return;
     }
     LweImage sPlot;
-    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
         simIndex = 0;
     }
 
-    size_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
+    int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
     sPlot.data =
         &theSim.base().ExtOut[simIndex * theSim.base().Ngrid * 2 + cubeMiddle];
@@ -1379,12 +1379,12 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         return;
     }
     LweImage sPlot;
-    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
         simIndex = 0;
     }
 
-    size_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
+    int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
     sPlot.data =
     &theSim.base().ExtOut[theSim.base().Ngrid + simIndex * theSim.base().Ngrid * 2 + cubeMiddle];
@@ -1406,7 +1406,7 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         return;
     }
     LweImage sPlot;
-    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1437,7 +1437,7 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     LweImage sPlot;
 
-    size_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1582,7 +1582,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     totalSteps = 0;
     progressCounter = 0;
-    for (size_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
+    for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         if (theSim.base().isInSequence) {
             counterVector[j].progressCounter = &totalSteps;
             counterVector[j].runType = -1;

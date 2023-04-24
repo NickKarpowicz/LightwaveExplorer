@@ -6,13 +6,13 @@ namespace deviceFunctions {
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details
 	template<typename T, typename U>
-	deviceFunction static void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, const size_t i, T* expandedBeam1, const T* sourceBeam1, const T* sourceBeam2) {
-		const size_t j = i / (*s).Ntime; //spatial coordinate
-		const size_t k = i % (*s).Ntime; //temporal coordinate
+	deviceFunction static void expandCylindricalBeamDevice(const deviceParameterSet<T,U>* s, const int64_t i, T* expandedBeam1, const T* sourceBeam1, const T* sourceBeam2) {
+		const int64_t j = i / (*s).Ntime; //spatial coordinate
+		const int64_t k = i % (*s).Ntime; //temporal coordinate
 
 		//positions on the expanded grid corresponding the the current index
-		const size_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
-		const size_t pos2 = (2 * j + 1) * (*s).Ntime + k;
+		const int64_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
+		const int64_t pos2 = (2 * j + 1) * (*s).Ntime + k;
 		T* expandedBeam2 = expandedBeam1 + 2 * (*s).Ngrid;
 		expandedBeam1[pos1] = sourceBeam1[i];
 		expandedBeam1[pos2] = sourceBeam1[i];
@@ -237,7 +237,7 @@ namespace deviceFunctions {
 	// returns rho at the given index j
 	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static deviceFP resolveNeighborsInOffsetRadialSymmetry(
-		size_t* neighbors, const deviceParameterSet<deviceFP, deviceComplex>* s, const size_t j, const size_t h) {
+		int64_t* neighbors, const deviceParameterSet<deviceFP, deviceComplex>* s, const int64_t j, const int64_t h) {
 		if (j < (*s).Nspace / 2) {
 			neighbors[0] = ((*s).Nspace - j - 2) * (*s).Ntime + h;
 			neighbors[1] = (j + 1) * (*s).Ntime + h;
@@ -262,7 +262,7 @@ namespace deviceFunctions {
 	//the neighbors aren't required
 	template<typename deviceFP>
 	deviceFunction static deviceFP rhoInRadialSymmetry(
-		const size_t N, const size_t j, const deviceFP dr) {
+		const int64_t N, const int64_t j, const deviceFP dr) {
 		if (j < N / 2) {
 			return deviceFPLib::abs((dr * (N / 2 - j) - 0.25f * dr));
 		}
@@ -294,10 +294,10 @@ namespace deviceFunctions {
 	// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
 	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients, const int64_t i, deviceComplex* n1, deviceComplex* n2) {
-		size_t h = 1 + i % ((*s).Nfreq - 1);
-		size_t col = i / ((*s).Nfreq - 1);
-		size_t j = col % (*s).Nspace;
-		size_t k = col / (*s).Nspace;
+		int64_t h = 1 + i % ((*s).Nfreq - 1);
+		int64_t col = i / ((*s).Nfreq - 1);
+		int64_t j = col % (*s).Nspace;
+		int64_t k = col / (*s).Nspace;
 
 		deviceFP f = (*s).fStep * h;
 		deviceFP kx1 = (lightC<deviceFP>() / (twoPi<deviceFP>() * f)) * (j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace));
@@ -451,7 +451,7 @@ namespace kernelNamespace{
 	class totalSpectrumKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			deviceFP beamCenter1{};
 			deviceFP beamCenter2{};
 			deviceFP beamTotal1{};
@@ -503,7 +503,7 @@ namespace kernelNamespace{
 	//height in the non-resolved direction is == the grid width (i.e. square grid)
 	//More quantitative than the mapping to round beams, but rather specific
 	// DISABLED IN FAVOR OF ROUND-BEAM APPROXIMATION
-	//	size_t j;
+	//	int64_t j;
 	//	deviceFP beamTotal1 = 0.0f;
 	//	deviceFP beamTotal2 = 0.0f;
 	//	//Integrate total beam power
@@ -525,11 +525,11 @@ namespace kernelNamespace{
 	class totalSpectrum3DKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			deviceFP beamTotal1{};
 			deviceFP beamTotal2{};
 			//Integrate total beam power
-			for (size_t j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
+			for (int64_t j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
 				beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
 				beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
@@ -556,15 +556,15 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP* in;
 		deviceFP* out;
-		deviceFunction void operator()(const size_t i) const {
-			size_t col = i / (*s).Ntime; //spatial coordinate
+		deviceFunction void operator()(const int64_t i) const {
+			int64_t col = i / (*s).Ntime; //spatial coordinate
 			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2) / ((*s).dx * (*s).Nspace);
 			out[i] = {};
 			out[i + (*s).Ngrid] = {};
 			deviceFP r0;
 			deviceFP J0 = 1.0f;
 			deviceFP k0 = col * dk;
-			for (size_t r = 0; r < (*s).Nspace; ++r) {
+			for (int64_t r = 0; r < (*s).Nspace; ++r) {
 				r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
 				J0 = r0 * j0Device(r0 * k0);
 				out[i] += J0 * in[r * (*s).Ntime + i % (*s).Ntime];
@@ -581,15 +581,15 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP* in;
 		deviceFP* out;
-		deviceFunction void operator()(const size_t i) const {
-			size_t col = i / (*s).Ntime; //spatial coordinate
+		deviceFunction void operator()(const int64_t i) const {
+			int64_t col = i / (*s).Ntime; //spatial coordinate
 			deviceFP dk = constProd((deviceFP)(1.0 / vPi<deviceFP>()), 2.0) / ((*s).dx * (*s).Nspace);
 			out[i] = {};
 			out[i + (*s).Ngrid] = {};
 			deviceFP r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
 			deviceFP J0 = 1.0f;
 			deviceFP k0 = col * dk;
-			for (size_t k = 0; k < (*s).Nspace; ++k) {
+			for (int64_t k = 0; k < (*s).Nspace; ++k) {
 				k0 = k * dk;
 				J0 = k0 * j0Device(r0 * k0);
 				out[i] += J0 * in[k * (*s).Ntime + i % (*s).Ntime];
@@ -608,7 +608,7 @@ namespace kernelNamespace{
 		deviceComplex* Eout1;
 		deviceComplex* Eout2;
 		const deviceFP rotationAngle;
-		deviceFunction void operator()(const size_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			Eout1[i] = deviceFPLib::cos(rotationAngle) * Ein1[i] - deviceFPLib::sin(rotationAngle) * Ein2[i];
 			Eout2[i] = deviceFPLib::sin(rotationAngle) * Ein1[i] + deviceFPLib::cos(rotationAngle) * Ein2[i];
 		}
@@ -618,15 +618,15 @@ namespace kernelNamespace{
 	class radialLaplacianKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(const size_t i) const {
-			const size_t j = i / (*s).Ntime; //spatial coordinate
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t j = i / (*s).Ntime; //spatial coordinate
 			//zero at edges of grid
 			[[unlikely]] if (j < 3 || j > ((*s).Nspace - 4)) {
 				(*s).gridRadialLaplacian1[i] = {};
 				(*s).gridRadialLaplacian2[i] = {};
 			}
 			else {
-				size_t neighbors[6];
+				int64_t neighbors[6];
 				const deviceFP oneOverRho  = -1.0 / resolveNeighborsInOffsetRadialSymmetry(neighbors, s, j, i % (*s).Ntime);
 				(*s).gridRadialLaplacian1[i] = oneOverRho * ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
 					+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
@@ -651,7 +651,7 @@ namespace kernelNamespace{
 		const deviceFP activationParameter;
 		const deviceFP xOffset;
 		const deviceFP yOffset;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
 			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
@@ -693,7 +693,7 @@ namespace kernelNamespace{
 		const deviceFP activationParameter; 
 		const deviceFP xOffset;
 		const deviceFP yOffset;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
 			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
@@ -728,7 +728,7 @@ namespace kernelNamespace{
 		const deviceFP bandwidth; 
 		const int order; const deviceFP inBandAmplitude;
 		const deviceFP outOfBandAmplitude;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
 			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
@@ -757,7 +757,7 @@ namespace kernelNamespace{
 		const deviceFP gamma;
 		const deviceFP radius;
 		const deviceFP order;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			int64_t col = i / ((*s).Nfreq - 1);
 			int64_t j = col % (*s).Nspace;
 			int64_t k = col / (*s).Nspace;
@@ -799,7 +799,7 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP radius;
 		const deviceFP activationParameter;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			const int64_t col = i / (*s).Ntime;
 			const int64_t j = col % (*s).Nspace;
 			const int64_t k = col / (*s).Nspace;
@@ -824,7 +824,7 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP focus;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			const int64_t h = 1 + i % ((*s).Nfreq - 1);
 			const int64_t col = i / ((*s).Nfreq - 1);
 			i = h + col * (*s).Nfreq;
@@ -855,7 +855,7 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFP ROC_in;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			const int64_t h = 1 + i % ((*s).Nfreq - 1);
 			const int64_t col = i / ((*s).Nfreq - 1);
 			i = h + col * (*s).Nfreq;
@@ -907,16 +907,16 @@ namespace kernelNamespace{
 		const deviceFP* sellmeierCoefficients;
 		const deviceFP thickness;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(const size_t localIndex) const {
-			size_t i = localIndex;
+		deviceFunction void operator()(const int64_t localIndex) const {
+			int64_t i = localIndex;
 			const int axesNumber = (*s).axesNumber;
 			const int sellmeierType = (*s).sellmeierType;
 			deviceComplex ne, no, n0, n0o;
-			const size_t h = 1 + i % ((*s).Nfreq - 1);
-			const size_t col = i / ((*s).Nfreq - 1);
+			const int64_t h = 1 + i % ((*s).Nfreq - 1);
+			const int64_t col = i / ((*s).Nfreq - 1);
 			i = h + col * ((*s).Nfreq);
-			const size_t j = col % (*s).Nspace;
-			const size_t k = col / (*s).Nspace;
+			const int64_t j = col % (*s).Nspace;
+			const int64_t k = col / (*s).Nspace;
 			const deviceFP crystalTheta = (*s).crystalTheta;
 			const deviceFP crystalPhi = (*s).crystalPhi;
 
@@ -967,11 +967,11 @@ namespace kernelNamespace{
 	public:
 		const deviceFP* sellmeierCoefficients;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(const size_t localIndex) const {
-			size_t i = localIndex;
+		deviceFunction void operator()(const int64_t localIndex) const {
+			int64_t i = localIndex;
 			deviceComplex ne, no;
-			const size_t j = i / ((*s).Nfreq - 1); //spatial coordinate
-			const size_t k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
+			const int64_t j = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
 			i = k + j * (*s).Nfreq;
 			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
 
@@ -1038,14 +1038,14 @@ namespace kernelNamespace{
 	public:
 		const deviceFP* sellmeierCoefficients;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(const size_t localIndex) const {
-			size_t i = localIndex;
+		deviceFunction void operator()(const int64_t localIndex) const {
+			int64_t i = localIndex;
 			deviceComplex ne, no;
-			const size_t col = i / ((*s).Nfreq - 1); //spatial coordinate
-			const size_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			const size_t k = col % (*s).Nspace;
-			const size_t l = col / (*s).Nspace;
+			const int64_t k = col % (*s).Nspace;
+			const int64_t l = col / (*s).Nspace;
 
 			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
 
@@ -1120,7 +1120,7 @@ namespace kernelNamespace{
 	public:
 		deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP* sellmeierCoefficients;
-		deviceFunction void operator()(const size_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			//frequency being resolved by current thread
 			const deviceFP f = i * (*s).fStep;
 			deviceComplex ne, no;
@@ -1198,9 +1198,9 @@ namespace kernelNamespace{
 	public:
 		deviceFP* sellmeierCoefficients;
 		deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
-			const size_t j = i / ((*s).Nfreq - 1); //spatial coordinate
-			const size_t k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t j = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
 			i = k + j * (*s).Nfreq;
 			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
 			//frequency being resolved by current thread
@@ -1298,12 +1298,12 @@ namespace kernelNamespace{
 	class materialPhaseKernel { 
 	public:
 		const deviceFP df;
-		const size_t Ntime;
+		const int64_t Ntime;
 		const deviceFP* a;
 		const deviceFP f0;
 		const deviceFP thickness;
 		deviceFP* phase1;
-		deviceFunction void operator()(const size_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			//frequency being resolved by current thread
 			const deviceFP f = i * df;
 			//give phase shift relative to group velocity (approximated 
@@ -1323,7 +1323,7 @@ namespace kernelNamespace{
 	class nonlinearPolarizationKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(size_t i) const {
+		deviceFunction void operator()(int64_t i) const {
 			const deviceFP Ex = (*s).gridETime1[i];
 			const deviceFP Ey = (*s).gridETime2[i];
 
@@ -1405,7 +1405,7 @@ namespace kernelNamespace{
 	class plasmaCurrentKernel_twoStage_A {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(const size_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			const int pMax = static_cast<int>((*s).nonlinearSwitches[3]);
 
 			//save values in workspaces, casting to deviceFP
@@ -1428,8 +1428,8 @@ namespace kernelNamespace{
 	class plasmaCurrentKernel_twoStage_B {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(const size_t i) const {
-			const size_t j = (i) * (*s).Ntime;
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t j = (i) * (*s).Ntime;
 			deviceFP N{};
 			deviceFP integralx{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
@@ -1447,9 +1447,9 @@ namespace kernelNamespace{
 	class updateKwithPolarizationKernelCylindric {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t i) const {
-			size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-			const size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		deviceFunction void operator()(int64_t i) const {
+			int64_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+			const int64_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
 			i = h + j * ((*sP).Nfreq);
 			h += (j + ((j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 			(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
@@ -1460,9 +1460,9 @@ namespace kernelNamespace{
 	class updateKwithPlasmaKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t i) const {
-			size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-			const size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		deviceFunction void operator()(int64_t i) const {
+			int64_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+			const int64_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
 			const deviceComplex jfac = deviceComplex(0.0f, -1.0f / (h * (*sP).fStep));
 			h += j * (*sP).Nfreq;
 			(*sP).k1[h] += jfac * (*sP).gridPolarizationFactor1[h] * (*sP).workspace1[h] * (*sP).inverseChiLinear1[h % ((*sP).Nfreq)];
@@ -1473,9 +1473,9 @@ namespace kernelNamespace{
 	class updateKwithPlasmaKernelCylindric {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t i) const {
-			size_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-			const size_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
+		deviceFunction void operator()(int64_t i) const {
+			int64_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
+			const int64_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
 			i = h + j * ((*sP).Nfreq);
 			const deviceComplex jfac = deviceComplex(0.0f, -1.0f / (h * (*sP).fStep));
 			h += (j + ((j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
@@ -1493,8 +1493,8 @@ namespace kernelNamespace{
 	class rkKernel0 {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t iC) const {
-			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		deviceFunction void operator()(int64_t iC) const {
+			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1) (*sP).workspace1[iC - 1] = {};
@@ -1509,8 +1509,8 @@ namespace kernelNamespace{
 	class rkKernel1 {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t iC) const {
-			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		deviceFunction void operator()(int64_t iC) const {
+			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
@@ -1525,8 +1525,8 @@ namespace kernelNamespace{
 	class rkKernel2 {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t iC) const {
-			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		deviceFunction void operator()(int64_t iC) const {
+			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
@@ -1541,8 +1541,8 @@ namespace kernelNamespace{
 	class rkKernel3 {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t iC) const {
-			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		deviceFunction void operator()(int64_t iC) const {
+			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
@@ -1559,8 +1559,8 @@ namespace kernelNamespace{
 	class rkKernel0Cylindric {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t iC) const {
-			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		deviceFunction void operator()(int64_t iC) const {
+			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
 			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1) (*sP).workspace1[iC - 1] = {};
@@ -1575,8 +1575,8 @@ namespace kernelNamespace{
 	class rkKernel1Cylindric {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t iC) const {
-			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		deviceFunction void operator()(int64_t iC) const {
+			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
 			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
@@ -1591,8 +1591,8 @@ namespace kernelNamespace{
 	class rkKernel2Cylindric {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t iC) const {
-			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		deviceFunction void operator()(int64_t iC) const {
+			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
 			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
@@ -1607,8 +1607,8 @@ namespace kernelNamespace{
 	class rkKernel3Cylindric {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(size_t iC) const {
-			const size_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
+		deviceFunction void operator()(int64_t iC) const {
+			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
 			iC = h + (iC / ((unsigned int)(*sP).Nfreq - 1)) * ((unsigned int)(*sP).Nfreq);
 			(*sP).k1[iC] = (*sP).k1[iC] + (*sP).gridPropagationFactor1Rho1[iC] * (*sP).workspace1[iC];
 			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
@@ -1626,7 +1626,7 @@ namespace kernelNamespace{
 		const deviceFP* rawSum;
 		deviceFP* field;
 		const deviceFP pulseEnergy;
-		deviceFunction void operator()(const size_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			field[i] *= deviceFPLib::sqrt(pulseEnergy / ((deviceFP)(*s).Ntime * (*rawSum)));
 		}
 	};
@@ -1635,7 +1635,7 @@ namespace kernelNamespace{
 	public:
 		deviceFP* A;
 		deviceFP* B;
-		deviceFunction void operator()(const size_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			A[i] += B[i];
 		}
 	};
@@ -1652,9 +1652,9 @@ namespace kernelNamespace{
 		const deviceComplex* loadedField;
 		const deviceFP* materialPhase;
 		const deviceFP* sellmeierCoefficients;
-		deviceFunction void operator()(size_t i) const {
-			const size_t h = 1 + i % ((*s).Nfreq - 1);
-			const size_t j = i / ((*s).Nfreq - 1);
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t h = 1 + i % ((*s).Nfreq - 1);
+			const int64_t j = i / ((*s).Nfreq - 1);
 			i = h + j * ((*s).Nfreq);
 			const deviceFP f = h * (*s).fStep;
 			const deviceFP w = twoPi<deviceFP>() * (f - (*p).frequency);
@@ -1712,12 +1712,12 @@ namespace kernelNamespace{
 		const deviceComplex* loadedField;
 		const deviceFP* materialPhase;
 		const deviceFP* sellmeierCoefficients;
-		deviceFunction void operator()(size_t i) const {
-			const size_t h = 1 + i % ((*s).Nfreq - 1);
-			const size_t col = i / ((*s).Nfreq - 1);
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t h = 1 + i % ((*s).Nfreq - 1);
+			const int64_t col = i / ((*s).Nfreq - 1);
 			i = h + col * ((*s).Nfreq);
-			const size_t j = col % (*s).Nspace;
-			const size_t k = col / (*s).Nspace;
+			const int64_t j = col % (*s).Nspace;
+			const int64_t k = col / (*s).Nspace;
 			const deviceFP f = h * (*s).fStep;
 			const deviceFP w = twoPi<deviceFP>() * (f - (*p).frequency);
 
@@ -1777,7 +1777,7 @@ namespace kernelNamespace{
 	public:
 		deviceFP* A;
 		const deviceFP val;
-		deviceFunction void operator()(const size_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			A[i] = val * A[i];
 		}
 	};
@@ -1786,7 +1786,7 @@ namespace kernelNamespace{
 	public:
 		deviceComplex* A;
 		const deviceFP val;
-		deviceFunction void operator()(const size_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			A[i] = val * A[i];
 		}
 	};
@@ -1797,8 +1797,8 @@ namespace kernelNamespace{
 		const deviceComplex* B;
 		deviceComplex* C;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(const size_t i) const {
-			const size_t h = i % (*s).Nfreq; //temporal coordinate
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t h = i % (*s).Nfreq; //temporal coordinate
 			C[i] = A[h] * B[i];
 		}
 	};
@@ -1819,13 +1819,13 @@ namespace kernelNamespace{
 	class expandCylindricalBeam {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(const size_t i) const {
-			const size_t j = i / (*s).Ntime; //spatial coordinate
-			const size_t k = i % (*s).Ntime; //temporal coordinate
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t j = i / (*s).Ntime; //spatial coordinate
+			const int64_t k = i % (*s).Ntime; //temporal coordinate
 
 			//positions on the expanded grid corresponding the the current index
-			const size_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
-			const size_t pos2 = (2 * j + 1) * (*s).Ntime + k;
+			const int64_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
+			const int64_t pos2 = (2 * j + 1) * (*s).Ntime + k;
 
 			//reuse memory allocated for the radial Laplacian, casting complex double
 			//to a 2x larger double real grid
@@ -2358,7 +2358,7 @@ namespace hostFunctions{
 
 		deviceFP* canaryPointer = &d.deviceStruct.gridETime1[d.deviceStruct.Ntime / 2 + d.deviceStruct.Ntime * (d.deviceStruct.Nspace / 2 + d.deviceStruct.Nspace * (d.deviceStruct.Nspace2 / 2))];
 		//Core propagation loop
-		for (size_t i = 0; i < d.deviceStruct.Nsteps; ++i) {
+		for (int64_t i = 0; i < d.deviceStruct.Nsteps; ++i) {
 
 			//RK4
 			runRK4Step(d, 0);
@@ -2466,7 +2466,7 @@ namespace hostFunctions{
 		case funHash("save"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			{
-				size_t saveLoc = (size_t)parameters[0];
+				int64_t saveLoc = (int64_t)parameters[0];
 				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != -1) {
 					memcpy(&(*sCPU).ExtOut[saveLoc * (*sCPU).Ngrid * 2], (*sCPU).ExtOut, 2 * (*sCPU).Ngrid * sizeof(double));
 					memcpy(&(*sCPU).EkwOut[saveLoc * (*sCPU).NgridC * 2], (*sCPU).EkwOut, 2 * (*sCPU).NgridC * sizeof(std::complex<double>));
@@ -2743,7 +2743,7 @@ namespace hostFunctions{
 	static double getResidual(const dlib::matrix<double, 0, 1>& x) {
 		double result = 0.0;
 		for (int i = 0; i < (*fittingSet).Nfitting; ++i) {
-			(*fittingSet).setByNumberWithMultiplier((size_t)(*fittingSet).fittingArray[3 * i], x(i));
+			(*fittingSet).setByNumberWithMultiplier((int64_t)(*fittingSet).fittingArray[3 * i], x(i));
 		}
 
 		ActiveDevice& d = *dFit;
@@ -2833,7 +2833,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	dlib::matrix<double, 0, 1> upperBounds;
 	upperBounds.set_size((*sCPU).Nfitting);
 	for (int i = 0; i < (*sCPU).Nfitting; ++i) {
-		parameters(i) = (*sCPU).getByNumber((size_t)round((*sCPU).fittingArray[3 * i]));
+		parameters(i) = (*sCPU).getByNumber((int64_t)round((*sCPU).fittingArray[3 * i]));
 		lowerBounds(i) = (*sCPU).fittingArray[3 * i + 1];
 		upperBounds(i) = (*sCPU).fittingArray[3 * i + 2];
 	}
@@ -2847,7 +2847,7 @@ unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
 	}
 
 	for (int i = 0; i < (*sCPU).Nfitting; ++i) {
-		(*sCPU).setByNumberWithMultiplier((size_t)round((*sCPU).fittingArray[3 * i]), result.x(i));
+		(*sCPU).setByNumberWithMultiplier((int64_t)round((*sCPU).fittingArray[3 * i]), result.x(i));
 		(*sCPU).fittingResult[i] = result.x(i);
 	}
 

@@ -172,47 +172,47 @@ public:
 
 	template <typename T>
 	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) {
-		size_t i = static_cast<size_t>(Nblock) * static_cast<size_t>(Nthread);
+		int64_t i = static_cast<int64_t>(Nblock) * static_cast<int64_t>(Nthread);
 		stream.submit([&](sycl::handler& h) {
 			h.parallel_for(i, functor);
 			});
 }
 
-	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) {
+	int deviceCalloc(void** ptr, const int64_t N, const int64_t elementSize) {
 		(*ptr) = sycl::aligned_alloc_device(2 * sizeof(deviceFP), N * elementSize, stream.get_device(), stream.get_context());
 		stream.memset((*ptr), 0, N * elementSize);
 		stream.wait();
 		return 0;
 	}
 
-	void deviceMemset(void* ptr, int value, size_t count) {
+	void deviceMemset(void* ptr, int value, int64_t count) {
 		stream.wait();
 		stream.memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(void* dst, const void* src, const size_t count, const copyType kind) {
+	void deviceMemcpy(void* dst, const void* src, const int64_t count, const copyType kind) {
 		stream.wait();
 		stream.memcpy(dst, src, count);
 		stream.wait();
 	}
 
-	void deviceMemcpy(double* dst, const float* src, const size_t count, const copyType kind) {
+	void deviceMemcpy(double* dst, const float* src, const int64_t count, const copyType kind) {
 		stream.wait();
 		float* copyBuffer = new float[count / sizeof(double)]();
 		stream.memcpy(copyBuffer, src, count/2);
 		stream.wait();
-		for (size_t i = 0; i < count / sizeof(double); i++) {
+		for (int64_t i = 0; i < count / sizeof(double); i++) {
 			dst[i] = static_cast<double>(copyBuffer[i]);
 		}
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(std::complex<double>* dst, const oneapi::dpl::complex<float>* src, size_t count, copyType kind) {
+	void deviceMemcpy(std::complex<double>* dst, const oneapi::dpl::complex<float>* src, int64_t count, copyType kind) {
 		stream.wait();
 		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
 		stream.memcpy(copyBuffer, src, count/2);
 		stream.wait();
-		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+		for (int64_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<double>(
 				static_cast<float>(copyBuffer[i].real()), 
 				static_cast<float>(copyBuffer[i].imag()));
@@ -220,10 +220,10 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(oneapi::dpl::complex<float>* dst, const std::complex<double>* src, const size_t count, const copyType kind) {
+	void deviceMemcpy(oneapi::dpl::complex<float>* dst, const std::complex<double>* src, const int64_t count, const copyType kind) {
 		stream.wait();
 		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
-		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+		for (int64_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			copyBuffer[i] = std::complex<float>(
 				static_cast<float>(src[i].real()), 
 				static_cast<float>(src[i].imag()));
@@ -233,10 +233,10 @@ public:
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(float* dst, const double* src, const size_t count, const copyType kind) {
+	void deviceMemcpy(float* dst, const double* src, const int64_t count, const copyType kind) {
 		stream.wait();
 		float* copyBuffer = new float[count / sizeof(double)]();
-		for (size_t i = 0; i < count / sizeof(double); i++) {
+		for (int64_t i = 0; i < count / sizeof(double); i++) {
 			copyBuffer[i] = static_cast<float>(src[i]);
 		}
 		stream.memcpy(dst, copyBuffer, count / 2);
@@ -255,7 +255,7 @@ public:
 		}
 		isCylindric = 0;
 		hasPlasma = (*s).hasPlasma;
-		size_t workSize;
+		int64_t workSize;
 		int Ntime = (*s).Ntime;
 		int Nspace = (*s).Nspace;
 		int Nspace2 = (*s).Nspace2;
@@ -388,7 +388,7 @@ public:
 			hasPlasma = s->hasPlasma;
 		}
 		sCPU->fillRotationMatricies(s);
-		size_t beamExpansionFactor = 1;
+		int64_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
@@ -415,7 +415,7 @@ public:
 		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
-		for (size_t i = 0; i < (*s).Ntime; ++i) {
+		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
@@ -461,7 +461,7 @@ public:
 		int memErrors = 0;
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
 
-		size_t beamExpansionFactor = 1;
+		int64_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
 			beamExpansionFactor = 2;
 			if ((*s).hasPlasma) beamExpansionFactor = 4;
@@ -493,7 +493,7 @@ public:
 		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(deviceComplex));
 		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
 		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
-		for (size_t i = 0; i < (*s).Ntime; ++i) {
+		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
