@@ -953,7 +953,7 @@ gboolean scrollTextViewToEndHandler(gpointer data) {
 }
 
 void formatSequenceEscapeAngleBrackets(std::string& s) {
-    for (auto i = 0; i < s.length(); ++i) {
+    for (size_t i = 0; i < s.length(); ++i) {
         //find angle brackets signifying comments and escape
         //with &lt; or &gt; so they're not interpreted as
         //pango markup

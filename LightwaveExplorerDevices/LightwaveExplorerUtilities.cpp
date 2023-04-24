@@ -740,7 +740,7 @@ int simulationParameterSet::readFittingString() {
 
 int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, char startChar, char endChar) {
 	bool removing = true;
-	for (auto i = 0; i < s.length(); ++i) {
+	for (size_t i = 0; i < s.length(); ++i) {
 		if (s[i] == removedChar && removing) {
 			s.erase(i,1);
 			--i;
