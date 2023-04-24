@@ -564,7 +564,7 @@ namespace kernelNamespace{
 			deviceFP r0;
 			deviceFP J0 = 1.0f;
 			deviceFP k0 = col * dk;
-			for (int64_t r = 0; r < (*s).Nspace; ++r) {
+			for (auto r = 0; r < (*s).Nspace; ++r) {
 				r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
 				J0 = r0 * j0Device(r0 * k0);
 				out[i] += J0 * in[r * (*s).Ntime + i % (*s).Ntime];
@@ -589,7 +589,7 @@ namespace kernelNamespace{
 			deviceFP r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
 			deviceFP J0 = 1.0f;
 			deviceFP k0 = col * dk;
-			for (int64_t k = 0; k < (*s).Nspace; ++k) {
+			for (auto k = 0; k < (*s).Nspace; ++k) {
 				k0 = k * dk;
 				J0 = k0 * j0Device(r0 * k0);
 				out[i] += J0 * in[k * (*s).Ntime + i % (*s).Ntime];
