@@ -927,7 +927,7 @@ double cModulusSquared(const std::complex<double>& x) {
 	return x.real()*x.real() + x.imag()*x.imag();
 }
 
-int loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const long long Ntime, const double fStep, const double gateLevel) {
+int loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel) {
 	std::string line;
 	std::ifstream fs(frogFilePath);
 	if (fs.fail()) return -1;

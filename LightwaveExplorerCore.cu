@@ -293,7 +293,7 @@ namespace deviceFunctions {
 	// If biaxial, solve 2D problem
 	// Use OGM1; D. Kim, J.A. Fessler, Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients, const long long i, deviceComplex* n1, deviceComplex* n2) {
+	deviceFunction static void findBirefringentCrystalIndex(const deviceParameterSet<deviceFP, deviceComplex>* s, const deviceFP* sellmeierCoefficients, const int64_t i, deviceComplex* n1, deviceComplex* n2) {
 		size_t h = 1 + i % ((*s).Nfreq - 1);
 		size_t col = i / ((*s).Nfreq - 1);
 		size_t j = col % (*s).Nspace;
@@ -652,19 +652,19 @@ namespace kernelNamespace{
 		const deviceFP xOffset;
 		const deviceFP yOffset;
 		deviceFunction void operator()(size_t i) const {
-			const long long col = i / ((*s).Nfreq - 1); //spatial coordinate
-			const long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			const long long k = col % (*s).Nspace;
-			const long long l = col / (*s).Nspace;
+			const int64_t k = col % (*s).Nspace;
+			const int64_t l = col / (*s).Nspace;
 
 			//magnitude of k vector
 			const deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
 
 			//transverse wavevector being resolved
-			const deviceFP dk1 = k * (*s).dk1 - (k >= ((long long)(*s).Nspace / 2)) * ((*s).dk1 * (long long)(*s).Nspace); //frequency grid in x direction
+			const deviceFP dk1 = k * (*s).dk1 - (k >= ((int64_t)(*s).Nspace / 2)) * ((*s).dk1 * (int64_t)(*s).Nspace); //frequency grid in x direction
 			deviceFP dk2 = {};
-			if ((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((long long)(*s).Nspace2 / 2)) * ((*s).dk2 * (long long)(*s).Nspace2); //frequency grid in y direction
+			if ((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((int64_t)(*s).Nspace2 / 2)) * ((*s).dk2 * (int64_t)(*s).Nspace2); //frequency grid in y direction
 
 			//light that won't go the the farfield is immediately zero
 			if (dk1 * dk1 > ko * ko || dk2 * dk2 > ko * ko) {
@@ -694,10 +694,10 @@ namespace kernelNamespace{
 		const deviceFP xOffset;
 		const deviceFP yOffset;
 		deviceFunction void operator()(size_t i) const {
-			const long long col = i / ((*s).Nfreq - 1); //spatial coordinate
-			const long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			const long long k = col % (*s).Nspace;
+			const int64_t k = col % (*s).Nspace;
 
 			//magnitude of k vector
 			deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
@@ -729,8 +729,8 @@ namespace kernelNamespace{
 		const int order; const deviceFP inBandAmplitude;
 		const deviceFP outOfBandAmplitude;
 		deviceFunction void operator()(size_t i) const {
-			const long long col = i / ((*s).Nfreq - 1); //spatial coordinate
-			const long long j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
 
 			deviceFP f = ((*s).fStep * j - f0) / bandwidth;
@@ -758,10 +758,10 @@ namespace kernelNamespace{
 		const deviceFP radius;
 		const deviceFP order;
 		deviceFunction void operator()(size_t i) const {
-			long long col = i / ((*s).Nfreq - 1);
-			long long j = col % (*s).Nspace;
-			long long k = col / (*s).Nspace;
-			long long h = 1 + i % ((*s).Nfreq - 1);
+			int64_t col = i / ((*s).Nfreq - 1);
+			int64_t j = col % (*s).Nspace;
+			int64_t k = col / (*s).Nspace;
+			int64_t h = 1 + i % ((*s).Nfreq - 1);
 			deviceFP r, f, x, y;
 			if ((*s).is3D) {
 				col = i / ((*s).Nfreq - 1);
@@ -800,9 +800,9 @@ namespace kernelNamespace{
 		const deviceFP radius;
 		const deviceFP activationParameter;
 		deviceFunction void operator()(size_t i) const {
-			const long long col = i / (*s).Ntime;
-			const long long j = col % (*s).Nspace;
-			const long long k = col / (*s).Nspace;
+			const int64_t col = i / (*s).Ntime;
+			const int64_t j = col % (*s).Nspace;
+			const int64_t k = col / (*s).Nspace;
 			deviceFP r;
 			if ((*s).is3D) {
 				const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
@@ -825,11 +825,11 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		const deviceFP focus;
 		deviceFunction void operator()(size_t i) const {
-			const long long h = 1 + i % ((*s).Nfreq - 1);
-			const long long col = i / ((*s).Nfreq - 1);
+			const int64_t h = 1 + i % ((*s).Nfreq - 1);
+			const int64_t col = i / ((*s).Nfreq - 1);
 			i = h + col * (*s).Nfreq;
-			const long long j = col % (*s).Nspace;
-			const long long k = col / (*s).Nspace;
+			const int64_t j = col % (*s).Nspace;
+			const int64_t k = col / (*s).Nspace;
 
 			const deviceFP w = twoPi<deviceFP>() * h * (*s).fStep;
 			deviceFP r;
@@ -856,11 +856,11 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFP ROC_in;
 		deviceFunction void operator()(size_t i) const {
-			const long long h = 1 + i % ((*s).Nfreq - 1);
-			const long long col = i / ((*s).Nfreq - 1);
+			const int64_t h = 1 + i % ((*s).Nfreq - 1);
+			const int64_t col = i / ((*s).Nfreq - 1);
 			i = h + col * (*s).Nfreq;
-			const long long j = col % (*s).Nspace;
-			const long long k = col / (*s).Nspace;
+			const int64_t j = col % (*s).Nspace;
+			const int64_t k = col / (*s).Nspace;
 
 			const deviceFP w = twoPi<deviceFP>() * h * (*s).fStep;
 			deviceFP r;

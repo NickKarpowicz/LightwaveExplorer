@@ -18,7 +18,7 @@ static const unsigned int minGridDimension = 8;
 
 
 std::string     getBasename(const std::string& fullPath);
-int				loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const long long Ntime, const double fStep, const double gateLevel);
+int				loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
 double          cModulusSquared(const std::complex<double>& x);
 void            applyOp(const char op, double* result, const double* readout);
 double          parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock);
