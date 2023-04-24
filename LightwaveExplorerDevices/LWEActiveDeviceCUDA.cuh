@@ -75,6 +75,9 @@ namespace deviceLibCUDAFP32{
 	__device__ static thrust::complex<float> sqrt(const thrust::complex<float> x){
 		return thrust::sqrt(x);
 	}
+	__device__ static float hypot(const float x, const float y) {
+		return hypotf(x, y);
+	}
 };
 
 namespace deviceLib = deviceLibCUDAFP32;

@@ -38,6 +38,10 @@ hostOrDevice static constexpr T twoPi() {
     return (T)(2.0 * vPi<T>());
 }
 template <typename T>
+hostOrDevice static constexpr T sqrtTwo() {
+    return (T)(1.4142135623730951);
+}
+template <typename T>
 hostOrDevice static constexpr T invSqrtPi() {
     return (T)(1.0 / sqrt(vPi<T>()));
 }

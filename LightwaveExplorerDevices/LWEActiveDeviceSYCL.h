@@ -49,7 +49,9 @@ namespace deviceLibSYCLFP32{
 	static constexpr inline float atan2(const float x, const float y) {
 		return atan2f(x, y);
 	}
-
+	static inline float hypot(const float x, const float y) {
+		return hypotf(x, y);
+	}
 	static oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
 		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
 		float theta = atan2f(x.imag(), x.real());

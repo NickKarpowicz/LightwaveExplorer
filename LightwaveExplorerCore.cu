@@ -138,7 +138,7 @@ namespace deviceFunctions {
 			compPart = deviceComplex(a[0], 0.0f);
 			for (int i = 0; i < 7; ++i) {
 				if (a[3 * i + 1] != 0.0f){
-					scaledF = (omega - a[1 + 3 * i]) / (deviceFPLib::sqrt(2.0f) * a[2 + 3 * i]);
+					scaledF = (omega - a[1 + 3 * i]) / (sqrtTwo<deviceFP>() * a[2 + 3 * i]);
 					compPart += a[3 + 3 * i] * deviceComplex(-invSqrtPi<deviceFP>() * deviceDawson(scaledF), -deviceFPLib::exp(-scaledF * scaledF));
 				}
 
@@ -679,7 +679,7 @@ namespace kernelNamespace{
 			theta1 -= (!(*s).isCylindric) * xOffset;
 			theta2 -= (*s).is3D * yOffset;
 
-			const deviceFP r = deviceFPLib::sqrt(theta1 * theta1 + theta2 * theta2);
+			const deviceFP r = deviceFPLib::hypot(theta1, theta2);
 			const deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
 			(*s).gridEFrequency1[i] *= a;
 			(*s).gridEFrequency2[i] *= a;
@@ -771,7 +771,7 @@ namespace kernelNamespace{
 				f = h * (*s).fStep;
 				x = ((*s).dx * (j - (*s).Nspace / 2.0f));
 				y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
-				r = deviceFPLib::sqrt(x * x + y * y);
+				r = deviceFPLib::hypot(x, y);
 			}
 			else {
 				j = i / ((*s).Nfreq - 1);
@@ -807,7 +807,7 @@ namespace kernelNamespace{
 			if ((*s).is3D) {
 				const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
 				const deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
-				r = deviceFPLib::sqrt(x * x + y * y);
+				r = deviceFPLib::hypot(x, y);
 			}
 			else {
 				r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
@@ -836,7 +836,7 @@ namespace kernelNamespace{
 			if ((*s).is3D) {
 				const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
 				const deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
-				r = deviceFPLib::sqrt(x * x + y * y);
+				r = deviceFPLib::hypot(x, y);
 			}
 			else {
 				r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
@@ -867,7 +867,7 @@ namespace kernelNamespace{
 			if ((*s).is3D) {
 				const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
 				const deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
-				r = deviceFPLib::sqrt(x * x + y * y);
+				r = deviceFPLib::hypot(x, y);
 			}
 			else {
 				r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) + 0.25f * (*s).dx);
@@ -1406,21 +1406,21 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const size_t i) const {
-			const unsigned char pMax = (unsigned char)(*s).nonlinearSwitches[3];
+			const int pMax = static_cast<int>((*s).nonlinearSwitches[3]);
 
 			//save values in workspaces, casting to deviceFP
 			deviceFP* dN = (deviceFP*)(*s).workspace1;
 			deviceFP* dN2 = dN + (*s).Ngrid;
-			deviceFP* Jx = (*s).gridPolarizationTime1;
-			deviceFP* Jy = (*s).gridPolarizationTime2;
 			const deviceFP Esquared = (*s).plasmaParameters[0] * ((*s).gridETime1[i] * (*s).gridETime1[i] + (*s).gridETime2[i] * (*s).gridETime2[i]);
 			deviceFP EtoThe2N = Esquared;
-			for (unsigned char p = 0; p < pMax; ++p) {
+			for (int p = 0; p < pMax; ++p) {
 				EtoThe2N *= Esquared;
 			}
-			Jx[i] = EtoThe2N * (*s).gridETime1[i];
-			Jy[i] = EtoThe2N * (*s).gridETime2[i];
-			dN[i] = (*s).plasmaParameters[2] * (Jx[i] * (*s).gridETime1[i] + Jy[i] * (*s).gridETime2[i]);
+			(*s).gridPolarizationTime1[i] = EtoThe2N * (*s).gridETime1[i];
+			(*s).gridPolarizationTime2[i] = EtoThe2N * (*s).gridETime2[i];
+			dN[i] = (*s).plasmaParameters[2] * (
+				(*s).gridPolarizationTime1[i] * (*s).gridETime1[i] 
+				+ (*s).gridPolarizationTime2[i] * (*s).gridETime2[i]);
 			dN2[i] = dN[i];
 		}
 	};
@@ -1751,7 +1751,7 @@ namespace kernelNamespace{
 			const deviceFP x = cB * xo + sA * sB * yo + sA * sB * zo;
 			const deviceFP y = cA * yo - sA * zo;
 			const deviceFP z = -sB * xo + sA * cB * yo + cA * cB * zo;
-			const deviceFP r = deviceFPLib::sqrt(x * x + y * y);
+			const deviceFP r = deviceFPLib::hypot(x, y);
 
 			const deviceFP wz = (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
 			const deviceFP Rz = (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;

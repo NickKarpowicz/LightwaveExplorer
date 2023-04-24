@@ -63,6 +63,9 @@ namespace deviceLibCPUFP32{
 	inline float acos(const float x) {
 		return acosf(x);
 	}
+	inline float hypot(const float x, const float y) {
+		return hypotf(x, y);
+	}
 	inline std::complex<float> pow(const std::complex<float> x, const float y){
 		return std::pow(x,y);
 	}
