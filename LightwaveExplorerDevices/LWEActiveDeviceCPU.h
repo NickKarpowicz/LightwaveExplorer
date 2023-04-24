@@ -205,14 +205,14 @@ public:
 	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
 #pragma omp parallel for num_threads(LWEThreadCount)
 		for (int i = 0; i < static_cast<int>(Nblock); i++) {
-			const auto offset = i * Nthread;
-			for(auto j = offset; j<offset+Nthread; functor(j++)){}
+			const int64_t offset = i * static_cast<int64_t>(Nthread);
+			for(int64_t j = offset; j < static_cast<int64_t>(offset+Nthread); functor(j++)){}
 		}
 	}
 
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize){
-		(*ptr) = calloc(N, elementSize);
-		return static_cast<int>((*ptr) == NULL);
+		*ptr = calloc(N, elementSize);
+		return static_cast<int>(*ptr == nullptr);
 	}
 
 	void deviceMemset(void* ptr, int value, size_t count){
@@ -257,7 +257,7 @@ public:
 	}
 
 	inline bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
-		return(isnan(*canaryPointer));
+		return isnan(*canaryPointer);
 	}
 	void fft(void* input, void* output, deviceFFT type) const {
 		if (!configuredFFT) return;
