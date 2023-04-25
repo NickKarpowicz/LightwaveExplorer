@@ -2557,6 +2557,7 @@ namespace hostFunctions{
 				int64_t saveLoc = (int64_t)parameters[0];
 				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != -1) savePlasma(d, saveLoc);
 			}
+			break;
 		case funHash("init"):
 			(*sCPU).materialIndex = 0;
 			(*sCPU).crystalTheta = 0.0;
