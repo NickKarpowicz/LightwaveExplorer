@@ -1444,6 +1444,51 @@ namespace kernelNamespace{
 		}
 	};
 
+	class plasmaCurrentKernel_twoStage_B_simultaneous {
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t j = (i) * (*s).Ntime;
+			deviceFP N{};
+			deviceFP integralx{};
+			deviceFP integraly{};
+			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
+			const deviceFP* dN = j + (deviceFP*)(*s).workspace1;
+			const deviceFP* E = &(*s).gridETime1[j];
+			const deviceFP* Ey = E + (*s).Ngrid;
+			deviceFP* P = &(*s).gridPolarizationTime1[j];
+			deviceFP* P2 = P + (*s).Ngrid;
+			for (auto k = 0; k < (*s).Ntime; ++k) {
+				N += dN[k];
+				integralx += N * (*s).expGammaT[k] * E[k];
+				integraly += N * (*s).expGammaT[k] * Ey[k];
+				P[k] += expMinusGammaT[k] * integralx;
+				P2[k] += expMinusGammaT[k] * integraly;
+			}
+		}
+	};
+
+	class plasmaCurrentKernel_SaveOutput {
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t j = (i) * (*s).Ntime;
+			deviceFP N{};
+			deviceFP integralx{};
+			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
+			const deviceFP* dN = j + (deviceFP*)(*s).workspace1;
+			const deviceFP* E = &(*s).gridETime1[j];
+			deviceFP* P = &(*s).gridPolarizationTime1[j];
+			deviceFP* Ndest = (deviceFP*)&(*s).gridEFrequency1;
+			for (auto k = 0; k < (*s).Ntime; ++k) {
+				N += dN[k];
+				integralx += N * (*s).expGammaT[k] * E[k];
+				P[k] += expMinusGammaT[k] * integralx;
+				Ndest[k] = N;
+			}
+		}
+	};
+
 	class updateKwithPolarizationKernelCylindric {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
@@ -2262,6 +2307,14 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	static int calculatePlasma(ActiveDevice& d){
+		const deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
+		const deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
+		preparePropagationGrids(d);
+		prepareElectricFieldArrays(d);
+		d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A{ sD });
+		d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_SaveOutput{ sD });
+	}
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
 	static int runRK4Step(ActiveDevice& d, const uint8_t stepNumber) {
@@ -2283,7 +2336,8 @@ namespace hostFunctions{
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel{ sD });
 				if((*sH).hasPlasma){
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A{ sD });
-					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B{ sD });
+					//d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B{ sD });
+					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_twoStage_B_simultaneous{ sD });
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam{ sD });
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFT::D2Z_Polarization);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernelCylindric{ sD });
