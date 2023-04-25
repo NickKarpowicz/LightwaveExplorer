@@ -2314,6 +2314,8 @@ namespace hostFunctions{
 		prepareElectricFieldArrays(d);
 		d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A{ sD });
 		d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_SaveOutput{ sD });
+
+
 	}
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
@@ -2385,11 +2387,7 @@ namespace hostFunctions{
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A{ sD });
-				//CUDA and other platforms perform very differently for different versions of this kernel, use optimum per platform
-				#ifdef __CUDACC__
-					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B{ sD });
-				#else
-					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_twoStage_B_simultaneous{ sD });
+				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_twoStage_B_simultaneous{ sD });
 				#endif
 				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
 				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel{ sD });
