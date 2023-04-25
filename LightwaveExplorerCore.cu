@@ -1475,15 +1475,21 @@ namespace kernelNamespace{
 			const int64_t j = (i) * (*s).Ntime;
 			deviceFP N{};
 			deviceFP integralx{};
+			deviceFP integraly{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
 			const deviceFP* dN = j + (deviceFP*)(*s).workspace1;
 			const deviceFP* E = &(*s).gridETime1[j];
+			const deviceFP* Ey = E + (*s).Ngrid;
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
-			deviceFP* Ndest = (deviceFP*)&(*s).gridEFrequency1;
+			deviceFP* P2 = P + (*s).Ngrid;
+			deviceFP* Ndest = (deviceFP*)(*s).gridEFrequency1;
+			Ndest += j;
 			for (auto k = 0; k < (*s).Ntime; ++k) {
 				N += dN[k];
 				integralx += N * (*s).expGammaT[k] * E[k];
+				integraly += N * (*s).expGammaT[k] * Ey[k];
 				P[k] += expMinusGammaT[k] * integralx;
+				P2[k] += expMinusGammaT[k] * integraly;
 				Ndest[k] = N;
 			}
 		}
@@ -2307,15 +2313,23 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int savePlasma(ActiveDevice& d, int JxDestination, int JyDestination, int NeDestination){
+	static void savePlasma(ActiveDevice& d, int64_t saveloc){
 		const deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
 		const deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
+		//prepare the grids
 		preparePropagationGrids(d);
 		prepareElectricFieldArrays(d);
+
+		//Clear out the memory to which the data will be saved
+		d.deviceMemset(d.deviceStruct.gridEFrequency1,0,4*sizeof(deviceFP)*d.cParams->NgridC);
+
+		//run the plasma kernels
 		d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A{ sD });
 		d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_SaveOutput{ sD });
 
-
+		//save to memory
+		d.deviceMemcpy(d.cParams->ExtOut + 2*d.cParams->Ngrid*saveloc, d.deviceStruct.gridPolarizationTime1, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
+		d.deviceMemcpy(((double*)(d.cParams->EkwOut)) + 4 * saveloc *d.cParams->NgridC, (double*)d.deviceStruct.gridEFrequency1, d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
 	}
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
@@ -2388,7 +2402,6 @@ namespace hostFunctions{
 			if ((*sH).hasPlasma) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A{ sD });
 				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_twoStage_B_simultaneous{ sD });
-				#endif
 				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
 				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel{ sD });
 			}
@@ -2538,6 +2551,12 @@ namespace hostFunctions{
 				}
 			}
 			break;
+		case funHash("savePlasma"):
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			{
+				int64_t saveLoc = (int64_t)parameters[0];
+				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != -1) savePlasma(d, saveLoc);
+			}
 		case funHash("init"):
 			(*sCPU).materialIndex = 0;
 			(*sCPU).crystalTheta = 0.0;

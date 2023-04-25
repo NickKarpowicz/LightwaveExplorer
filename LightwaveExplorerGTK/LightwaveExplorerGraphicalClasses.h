@@ -992,6 +992,7 @@ gboolean formatSequenceBuffer(gpointer data) {
         "set",
         "plasmaReinject",
         "save",
+        "savePlasma",
         "fresnelLoss",
         "aperture",
         "farFieldAperture",
