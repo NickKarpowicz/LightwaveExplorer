@@ -2307,7 +2307,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static int calculatePlasma(ActiveDevice& d){
+	static int savePlasma(ActiveDevice& d, int JxDestination, int JyDestination, int NeDestination){
 		const deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
 		const deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
 		preparePropagationGrids(d);
@@ -2336,8 +2336,15 @@ namespace hostFunctions{
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, nonlinearPolarizationKernel{ sD });
 				if((*sH).hasPlasma){
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A{ sD });
-					//d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B{ sD });
+					
+					//CUDA and other platforms perform very differently for different versions of this kernel, use optimum per platform
+					#ifdef __CUDACC__
+					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B{ sD });
+					#else
 					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_twoStage_B_simultaneous{ sD });
+					#endif
+					
+					
 					d.deviceLaunch((*sH).Nblock, (*sH).Nthread, expandCylindricalBeam{ sD });
 					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFT::D2Z_Polarization);
 					d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernelCylindric{ sD });
@@ -2378,7 +2385,12 @@ namespace hostFunctions{
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
 				d.deviceLaunch((*sH).Nblock, (*sH).Nthread, plasmaCurrentKernel_twoStage_A{ sD });
-				d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B{ sD });
+				//CUDA and other platforms perform very differently for different versions of this kernel, use optimum per platform
+				#ifdef __CUDACC__
+					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 2 * minGridDimension, plasmaCurrentKernel_twoStage_B{ sD });
+				#else
+					d.deviceLaunch((unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), minGridDimension, plasmaCurrentKernel_twoStage_B_simultaneous{ sD });
+				#endif
 				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
 				d.deviceLaunch((*sH).Nblock / 2, (*sH).Nthread, updateKwithPlasmaKernel{ sD });
 			}
