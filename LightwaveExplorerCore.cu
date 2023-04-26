@@ -1477,12 +1477,12 @@ namespace kernelNamespace{
 			deviceFP integralx{};
 			deviceFP integraly{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-			const deviceFP* dN = j + (deviceFP*)(*s).workspace1;
+			const deviceFP* dN = j + reinterpret_cast<deviceFP*>((*s).workspace1);
 			const deviceFP* E = &(*s).gridETime1[j];
 			const deviceFP* Ey = E + (*s).Ngrid;
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
 			deviceFP* P2 = P + (*s).Ngrid;
-			deviceFP* Ndest = (deviceFP*)(*s).gridEFrequency1;
+			deviceFP* Ndest = reinterpret_cast<deviceFP*>((*s).gridEFrequency1);
 			Ndest += j;
 			for (auto k = 0; k < (*s).Ntime; ++k) {
 				N += dN[k];
@@ -1490,7 +1490,7 @@ namespace kernelNamespace{
 				integraly += N * (*s).expGammaT[k] * Ey[k];
 				P[k] += expMinusGammaT[k] * integralx;
 				P2[k] += expMinusGammaT[k] * integraly;
-				Ndest[k] = N;
+				Ndest[k] = N/(*s).dt;
 			}
 		}
 	};
@@ -2313,7 +2313,7 @@ namespace hostFunctions{
 		return 0;
 	}
 
-	static void savePlasma(ActiveDevice& d, int64_t saveloc){
+	static void savePlasma(ActiveDevice& d, int64_t saveloc, int densityLoc){
 		const deviceParameterSet<deviceFP, deviceComplex>* sH = d.s; 
 		const deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
 		//prepare the grids
@@ -2329,7 +2329,14 @@ namespace hostFunctions{
 
 		//save to memory
 		d.deviceMemcpy(d.cParams->ExtOut + 2*d.cParams->Ngrid*saveloc, d.deviceStruct.gridPolarizationTime1, 2 * d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
-		d.deviceMemcpy(((double*)(d.cParams->EkwOut)) + 4 * saveloc *d.cParams->NgridC, (double*)d.deviceStruct.gridEFrequency1, d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
+
+		if (densityLoc == 1) {
+			d.deviceMemcpy(d.cParams->ExtOut + 2 * d.cParams->Ngrid * saveloc, reinterpret_cast<deviceFP*>(d.deviceStruct.gridEFrequency1), d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
+		}
+		else if (densityLoc == 2) {
+			d.deviceMemcpy(d.cParams->ExtOut + 2 * d.cParams->Ngrid * saveloc + d.cParams->Ngrid, reinterpret_cast<deviceFP*>(d.deviceStruct.gridEFrequency1), d.deviceStruct.Ngrid * sizeof(double), copyType::ToHost);
+		}
+		
 	}
 //function to run a RK4 time step
 //stepNumber is the sub-step index, from 0 to 3
@@ -2552,10 +2559,11 @@ namespace hostFunctions{
 			}
 			break;
 		case funHash("savePlasma"):
-			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
-				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != -1) savePlasma(d, saveLoc);
+				int64_t plasmaLoc = (int)parameters[1];
+				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != -1) savePlasma(d, saveLoc, plasmaLoc);
 			}
 			break;
 		case funHash("init"):
