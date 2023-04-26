@@ -2828,6 +2828,7 @@ namespace hostFunctions{
 			backupSet.isFollowerInSequence = (*sCPU).isFollowerInSequence;
 			*sCPU = backupSet;
 		}
+		*sCPU = backupSet;
 		return error;
 	}
 
