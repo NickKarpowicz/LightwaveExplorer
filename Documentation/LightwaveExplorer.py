@@ -130,7 +130,12 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         if width == 0.0 or height == 0:
             return 0 + 1j*0
         scaledF = (w-w0)/(np.sqrt(2.0) * width)
-        realPart = -dawsn(scaledF)/np.sqrt(np.pi)
+        realPart = np.zeros(np.shape(scaledF))
+        if isinstance(scaledF, np.ndarray):
+            dawsonArr = np.vectorize(deviceDawson)
+            realPart = -dawsonArr(scaledF)/np.sqrt(np.pi)
+        else:
+            realPart = -deviceDawson(scaledF)/np.sqrt(np.pi)
         imagPart = np.exp(-scaledF*scaledF)
         return np.abs(height) * (realPart - 1j * imagPart)
 
@@ -722,3 +727,27 @@ def getPlasmaDensityAndCurrent(E, dt, pulseFrequency, scoeffs, bandGap, effectiv
         Jx[i] += expMinusGammaT * integralx
 
     return Ncarriers, dt*Jx
+
+def deviceDawson(x):
+		#parameters determining accuracy (higher n, smaller h -> more accurate but slower)
+		n = 15
+		h = 0.3
+
+		#series expansion for small x
+		if abs(x) < 0.2:
+			x2 = x * x;
+			x4 = x2 * x2;
+			return x * (1.0 - 2.0 * x2 / 3.0 + 4.0 * x4 / 15.0 - 8.0 * x2 * x4 / 105.0 + (16.0 / 945) * x4 * x4 - (32.0 / 10395) * x4 * x4 * x2);
+		
+
+		n0 = 2 * (int)(round(0.5 * x / h));
+		x0 = h * n0;
+		xp = x - x0;
+		d = 0.0;
+		for i in range (-n,n):
+			if (i % 2 != 0):
+				d += np.exp(-(xp - i * h) * (xp - i * h)) / (i + n0);
+			
+		
+		return d/np.sqrt(np.pi)
+	
