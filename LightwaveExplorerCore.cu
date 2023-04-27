@@ -683,6 +683,10 @@ namespace kernelNamespace{
 			const deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
 			(*s).gridEFrequency1[i] *= a;
 			(*s).gridEFrequency2[i] *= a;
+			if (j == 1) {
+				(*s).gridEFrequency1[i - 1] = deviceComplex{};
+				(*s).gridEFrequency2[i - 1] = deviceComplex{};
+			}
 		}
 	};
 
@@ -716,6 +720,10 @@ namespace kernelNamespace{
 			const deviceFP a = 1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
 			(*s).gridEFrequency1[i] *= a;
 			(*s).gridEFrequency2[i] *= a;
+			if (j == 1) {
+				(*s).gridEFrequency1[i - 1] = deviceComplex{};
+				(*s).gridEFrequency2[i - 1] = deviceComplex{};
+			}
 		}
 	};
 
@@ -2617,9 +2625,11 @@ namespace hostFunctions{
 				if (d.hasPlasma) {
 					(*sCPU).nonlinearAbsorptionStrength = 0.0;
 					(*sCPU).forceLinear = true;
-					d.reset(sCPU);
 				}
-
+				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
+				(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
+				(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
+				d.reset(sCPU);
 				applyLinearPropagation(d, sCPU, (*sCPU).materialIndex, (*sCPU).crystalThickness);
 				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			}
@@ -2657,6 +2667,10 @@ namespace hostFunctions{
 			break;
 		case funHash("farFieldAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			(*sCPU).materialIndex = 0;
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
+			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
+			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 			d.reset(sCPU);
 			applyAperatureFarField(d, sCPU,
 				parameters[0],
