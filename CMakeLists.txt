@@ -119,9 +119,8 @@ if(APPLE)
 
     link_directories(${FFTW_LIBRARY_DIRS})
     link_directories(${GTK4_LIBRARY_DIRS})
-    
-    add_compile_options(-std=c++20 -O3 -fexperimental-library -stdlib=libc++ -fopenmp -D CPUONLY -Wall -Wno-deprecated-declarations)
-    add_executable(LightwaveExplorer MACOSX_BUNDLE LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+    add_compile_options(-std=c++20 -O3 -fexperimental-library -stdlib=libc++ -fopenmp -D CPUONLY -Wall -Wno-deprecated-declarations -x objective-c++)
+    add_executable(LightwaveExplorer MACOSX_BUNDLE LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
     set_target_properties(LightwaveExplorer  PROPERTIES
         BUNDLE True
         MACOSX_BUNDLE_BUNDLE_NAME LightwaveExplorer

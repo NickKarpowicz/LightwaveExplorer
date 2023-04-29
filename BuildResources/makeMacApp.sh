@@ -9,8 +9,6 @@ brew install --quiet cmake make llvm fftw gtk4 pkgconfig libomp
 #Homebrew libraries location
 LIBS="$(brew --prefix)"
 LLVM="$(brew --prefix llvm)"
-#use .mm extension for the interface to use objective-c++; allows direct calls to Cocoa for file dialogs
-mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm
 
 #build executable
 rm -rf build
@@ -19,8 +17,6 @@ cd build
 cmake .. -DCMAKE_CXX_COMPILER=${LLVM}/bin/clang++ -DCMAKE_C_COMPILER=${LLVM}/bin/clang
 make
 cd ..
-
-mv LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.mm LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp
 
 #restore the original source and clean up
 cp BuildResources/AppImage/AppImageCPU/COPYING COPYING
