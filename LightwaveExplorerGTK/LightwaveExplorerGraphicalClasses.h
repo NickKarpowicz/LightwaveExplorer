@@ -1106,7 +1106,7 @@ public:
         gtk_text_buffer_create_tag(buf, "delegate", "foreground", "#FF8800FF", NULL);
         gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
         gtk_text_buffer_create_tag(buf, "error", "foreground", "#FF0000FF", NULL);
-        gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#660088FF", NULL);
+        gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#9900CCFF", NULL);
     }
     void init(GtkWidget* grid, int x, int y, int width, int height, int minWidth, int minHeight) {
         consoleText = gtk_text_view_new();
@@ -1122,7 +1122,7 @@ public:
         gtk_text_buffer_create_tag(buf, "delegate", "foreground", "#FF8800FF", NULL);
         gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
         gtk_text_buffer_create_tag(buf, "error", "foreground", "#FF0000FF", NULL);
-        gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#660088FF", NULL);
+        gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#9900CCFF", NULL);
     }
 
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
