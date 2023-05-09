@@ -19,6 +19,8 @@ static const unsigned int minGridDimension = 8;
 
 std::string     getBasename(const std::string& fullPath);
 int				loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
+int             loadSavedGridFile(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid);
+int             loadSavedGridFileMultiple(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid, int64_t Nsims);
 int             loadWaveformFile(const std::string& filePath, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);
 double          cModulusSquared(const std::complex<double>& x);
 void            applyOp(const char op, double* result, const double* readout);
@@ -26,6 +28,7 @@ double          parameterStringToDouble(const std::string& ss, const double* iBl
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
 int             interpretParameters(const std::string& cc, const int n, const double *iBlock, const double *vBlock, double *parameters, bool* defaultMask);
+
 
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)

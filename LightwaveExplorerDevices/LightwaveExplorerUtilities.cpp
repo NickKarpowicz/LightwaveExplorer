@@ -683,13 +683,12 @@ void simulationBatch::configure() {
 
 void simulationBatch::loadPulseFiles() {
 	//pulse type specifies if something has to be loaded to describe the pulses, or if they should be
-	//synthesized later. 1: FROG .speck format; 2: EOS (not implemented yet)
+	//synthesized later. 1: FROG .speck format; 2: Time-domain waveform; 3: Previous LWE result
 	int frogLines = 0;
 	if (parameters[0].pulse1FileType == 1) {
 		frogLines = loadFrogSpeck(parameters[0].field1FilePath, loadedField1.data(), parameters[0].Ntime, parameters[0].fStep, 0.0);
 		parameters[0].field1IsAllocated = (frogLines > 1);
 	}
-
 	if (parameters[0].pulse2FileType == 1) {
 		frogLines = loadFrogSpeck(parameters[0].field2FilePath, loadedField2.data(), parameters[0].Ntime, parameters[0].fStep, 0.0);
 		parameters[0].field1IsAllocated = (frogLines > 1);
@@ -699,10 +698,16 @@ void simulationBatch::loadPulseFiles() {
 		frogLines = loadWaveformFile(parameters[0].field1FilePath, loadedField1.data(), parameters[0].Ntime, parameters[0].fStep);
 		parameters[0].field1IsAllocated = (frogLines > 1);
 	}
-
 	if (parameters[0].pulse2FileType == 2) {
 		frogLines = loadWaveformFile(parameters[0].field2FilePath, loadedField2.data(), parameters[0].Ntime, parameters[0].fStep);
 		parameters[0].field2IsAllocated = (frogLines > 1);
+	}
+
+	if (parameters[0].pulse1FileType == 3) {
+		parameters[0].field1IsAllocated = loadSavedGridFile(parameters[0].field1FilePath, loadedFullGrid1, parameters[0].Ngrid);
+	}
+	if (parameters[0].pulse2FileType == 3) {
+		parameters[0].field2IsAllocated = loadSavedGridFile(parameters[0].field2FilePath, loadedFullGrid2, parameters[0].Ngrid);
 	}
 }
 
@@ -1076,4 +1081,24 @@ int loadWaveformFile(const std::string& filePath, std::complex<double>* outputGr
 	}
 
 	return lineCount;
+}
+
+int loadSavedGridFile(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid) {
+	std::ifstream Efile(filePath, std::ios::binary);
+	outputGrid.resize(Ngrid);
+	if (Efile.is_open()) {
+		Efile.read(reinterpret_cast<char*>(outputGrid.data()), 2 * Ngrid * sizeof(double));
+		return 0;
+	}
+	else return 1;
+}
+
+int loadSavedGridFileMultiple(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid, int64_t Nsims) {
+	outputGrid.resize(Ngrid * Nsims);
+	std::ifstream Efile(filePath, std::ios::binary);
+	if (Efile.is_open()) {
+		Efile.read(reinterpret_cast<char*>(outputGrid.data()), 2 * Ngrid * Nsims * sizeof(double));
+		return 0;
+	}
+	else return 1;
 }

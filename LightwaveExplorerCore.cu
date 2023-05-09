@@ -2003,6 +2003,20 @@ namespace hostFunctions{
 		d.deviceFree(p);
 		return 0;
 	}
+
+	static int addPreviousGridToFieldArrays(ActiveDevice& d, double* loadedField) {
+		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
+		
+		d.deviceMemcpy((deviceFP*)(*sc).gridPolarizationTime1, loadedField, (*sc).Ngrid * 2 * sizeof(double), copyType::ToDevice);
+
+		//add the pulses
+		d.deviceLaunch(2 * (*sc).Nblock, (*sc).Nthread, addDoubleArraysKernel{ (*sc).gridETime1, (deviceFP*)(*sc).gridPolarizationTime1 });
+
+		//fft onto frequency grid
+		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
+
+		return 0;
+	}
 	
 	static int prepareElectricFieldArrays(ActiveDevice& d) {
 
@@ -2021,8 +2035,20 @@ namespace hostFunctions{
 				d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
 			}
 			
-			addPulseToFieldArrays(d, d.cParams->pulse1, d.cParams->field1IsAllocated, d.cParams->loadedField1);
-			addPulseToFieldArrays(d, d.cParams->pulse2, d.cParams->field2IsAllocated, d.cParams->loadedField2);
+			if (d.cParams->pulse1FileType == 3) {
+				addPreviousGridToFieldArrays(d, d.cParams->loadedFullGrid1);
+			}
+			else {
+				addPulseToFieldArrays(d, d.cParams->pulse1, d.cParams->field1IsAllocated, d.cParams->loadedField1);
+			}
+			
+			if (d.cParams->pulse2FileType == 3) {
+				addPreviousGridToFieldArrays(d, d.cParams->loadedFullGrid2);
+			}
+			else {
+				addPulseToFieldArrays(d, d.cParams->pulse2, d.cParams->field2IsAllocated, d.cParams->loadedField2);
+			}
+			
 		}
 		else {
 			d.deviceMemcpy((*sc).gridETime1, (*s).ExtOut, 2 * (*s).Ngrid * sizeof(double), copyType::ToDevice);
