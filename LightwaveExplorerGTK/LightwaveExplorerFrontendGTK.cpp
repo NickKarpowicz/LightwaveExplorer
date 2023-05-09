@@ -123,7 +123,7 @@ public:
         filePaths[0].setMaxCharacters(pathChars);
         pulldowns[0].addElement(("Synthetic"));
         pulldowns[0].addElement(("FROG"));
-        pulldowns[0].addElement(("EOS"));
+        pulldowns[0].addElement(("Waveform"));
         pulldowns[0].init(parentHandle, labelWidth, 16, 2 * textWidth, 1);
         filePaths[0].setLabel(0, -1, ("Data 1:"));
 
@@ -132,7 +132,7 @@ public:
         filePaths[1].setLabel(0, -1, ("Data 2:"));
         pulldowns[1].addElement(("Synthetic"));
         pulldowns[1].addElement(("FROG"));
-        pulldowns[1].addElement(("EOS"));
+        pulldowns[1].addElement(("Waveform"));
         pulldowns[1].init(parentHandle, labelWidth, 18, 2 * textWidth, 1);
 
         filePaths[2].init(parentHandle, 0, 21, colWidth, 1);

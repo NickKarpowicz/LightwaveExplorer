@@ -620,11 +620,17 @@ void simulationBatch::configure() {
 	Ekw = std::vector<std::complex<double>>(Nsimstotal * NgridC * 2, std::complex<double>(0.0, 0.0));
 	totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
 
-	if (parameters[0].pulse1FileType) {
+	if (parameters[0].pulse1FileType == 1 || parameters[0].pulse1FileType == 2) {
 		loadedField1 = std::vector<std::complex<double>>(Nfreq, std::complex<double>(0.0, 0.0));
 	}
-	if (parameters[0].pulse2FileType) {
+	if (parameters[0].pulse2FileType == 1 || parameters[0].pulse2FileType == 2) {
 		loadedField2 = std::vector<std::complex<double>>(Nfreq, std::complex<double>(0.0, 0.0));
+	}
+	if (parameters[0].pulse1FileType == 3) {
+		loadedFullGrid1 = std::vector<double>(2 * Ngrid, 0.0);
+	}
+	if (parameters[0].pulse2FileType == 3) {
+		loadedFullGrid2 = std::vector<double>(2 * Ngrid, 0.0);
 	}
 	if (parameters[0].fittingMode > 2) {
 		fitReference = std::vector<double>(Nfreq, 0.0);
@@ -642,6 +648,8 @@ void simulationBatch::configure() {
 	parameters[0].totalSpectrum = totalSpectrum.data();
 	parameters[0].loadedField1 = loadedField1.data();
 	parameters[0].loadedField2 = loadedField2.data();
+	parameters[0].loadedFullGrid1 = loadedFullGrid1.data();
+	parameters[0].loadedFullGrid2 = loadedFullGrid2.data();
 	parameters[0].fittingReference = fitReference.data();
 	parameters[0].isGridAllocated = true;
 	loadPulseFiles();
@@ -685,6 +693,16 @@ void simulationBatch::loadPulseFiles() {
 	if (parameters[0].pulse2FileType == 1) {
 		frogLines = loadFrogSpeck(parameters[0].field2FilePath, loadedField2.data(), parameters[0].Ntime, parameters[0].fStep, 0.0);
 		parameters[0].field1IsAllocated = (frogLines > 1);
+	}
+
+	if (parameters[0].pulse1FileType == 2) {
+		frogLines = loadWaveformFile(parameters[0].field1FilePath, loadedField1.data(), parameters[0].Ntime, parameters[0].fStep);
+		parameters[0].field1IsAllocated = (frogLines > 1);
+	}
+
+	if (parameters[0].pulse2FileType == 2) {
+		frogLines = loadWaveformFile(parameters[0].field2FilePath, loadedField2.data(), parameters[0].Ntime, parameters[0].fStep);
+		parameters[0].field2IsAllocated = (frogLines > 1);
 	}
 }
 
@@ -992,4 +1010,70 @@ int loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, 
 		}
 	}
 	return currentRow;
+}
+
+int loadWaveformFile(const std::string& filePath, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep) {
+	std::vector<double> Ein;
+	Ein.reserve(8192);
+	std::ifstream fs(filePath);
+	std::string line;
+
+	//read the waveform file: assumption is that the first column is time and second is the waveform.
+	double dataT;
+	double dataE;
+	double dataDeltaT;
+	double maxE2 = 0.0;
+	int maxLoc = 0;
+	int lineCount = 0;
+	while (fs.good()) {
+		fs >> dataT;
+		fs >> dataE;
+		if (dataE * dataE > maxE2) {
+			maxE2 = dataE * dataE;
+			maxLoc = lineCount;
+		}
+		std::getline(fs, line);
+		if (lineCount == 0) dataDeltaT = dataT;
+		if (lineCount == 1) dataDeltaT = dataT - dataDeltaT;
+		Ein.push_back(dataE);
+		lineCount++;
+	}
+	if (lineCount == 0) return 0;
+
+	//frequency grid of the data
+	const double df = 1.0 / (dataDeltaT * lineCount);
+	const int64_t NfreqData = lineCount / 2 + 1;
+
+	//FFT the waveform onto a frequency grid
+	std::vector<std::complex<double>> fftOfEin(NfreqData + 1, 0.0);
+	fftw_plan fftwPlanD2Z = fftw_plan_dft_r2c_1d(lineCount, Ein.data(), reinterpret_cast<fftw_complex*>(fftOfEin.data()), FFTW_ESTIMATE);
+	fftw_execute_dft_r2c(fftwPlanD2Z, Ein.data(), reinterpret_cast<fftw_complex*>(fftOfEin.data()));
+	fftw_destroy_plan(fftwPlanD2Z);
+
+	//apply a time shift so that the frequency-domain solution oscillates slowly (will be undone after interpolation)
+	const std::complex<double> timeShift = std::complex<double>(0.0, 1.0) * twoPi<double>() * df * static_cast<double>(maxLoc) * dataDeltaT;
+	const std::complex<double> timeShiftResult = std::complex<double>(0.0, -1.0) * twoPi<double>() * static_cast<double>(maxLoc - lineCount/2) * dataDeltaT;
+	for (int i = 0; i < NfreqData; i++) {
+		fftOfEin[i] *= std::exp(timeShift * static_cast<double>(i));
+	}
+
+	//Interpolate in the frequency domain
+	for (int i = 0; i < Ntime / 2 + 1; i++) {
+		//frequency grid used in the simulation
+		double f = i * fStep;
+
+		int k0 = (int)floor(f / df);
+		int k1 = (int)ceil(f / df);
+		if (k0 < 0 || k1 >= NfreqData) {
+			outputGrid[i] = {}; //field is zero outside of data range
+		}
+		else {
+			double f0 = k0 * df;
+			double f1 = k1 * df;
+			outputGrid[i] = (fftOfEin[k0] * (f1 - f) + fftOfEin[k1] * (f - f0)) / df; //linear interpolation
+			outputGrid[i] *= std::exp(timeShiftResult * f);
+		}
+	}
+
+	return lineCount;
 }

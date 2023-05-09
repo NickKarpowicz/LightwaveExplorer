@@ -19,6 +19,7 @@ static const unsigned int minGridDimension = 8;
 
 std::string     getBasename(const std::string& fullPath);
 int				loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
+int             loadWaveformFile(const std::string& filePath, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);
 double          cModulusSquared(const std::complex<double>& x);
 void            applyOp(const char op, double* result, const double* readout);
 double          parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock);
@@ -434,6 +435,8 @@ public:
     //loaded FROG/EOS fields
     std::complex<double>* loadedField1 = 0;
     std::complex<double>* loadedField2 = 0;
+    double* loadedFullGrid1 = 0;
+    double* loadedFullGrid2 = 0;
     bool field1IsAllocated = 0;
     bool field2IsAllocated = 0;
     int pulse1FileType = 0;
@@ -738,6 +741,8 @@ class simulationBatch {
     std::vector<std::complex<double>> Ekw;
     std::vector<std::complex<double>> loadedField1;
     std::vector<std::complex<double>> loadedField2;
+    std::vector<double> loadedFullGrid1;
+    std::vector<double> loadedFullGrid2;
     std::vector<double> fitReference;
     std::vector<double> totalSpectrum;
     int64_t Nsimstotal = 0;
