@@ -1132,35 +1132,38 @@ namespace kernelNamespace{
 			//frequency being resolved by current thread
 			const deviceFP f = i * (*s).fStep;
 			deviceComplex ne, no;
-			sellmeierCuda(&ne, &no, sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
+			if (i < (*s).Ntime / 2) {
+				sellmeierCuda(&ne, &no, sellmeierCoefficients, f, (*s).crystalTheta, (*s).crystalPhi, (*s).axesNumber, (*s).sellmeierType);
 
-			(*s).chiLinear1[i] = ne * ne - 1.0f;
-			(*s).chiLinear2[i] = no * no - 1.0f;
-			if ((*s).chiLinear1[i].real() != 0.0f && (*s).chiLinear2[i].real() != 0.0f) {
-				(*s).inverseChiLinear1[i] = 1.0f / (*s).chiLinear1[i].real();
-				(*s).inverseChiLinear2[i] = 1.0f / (*s).chiLinear2[i].real();
-			}
-			else {
-				(*s).inverseChiLinear1[i] = {};
-				(*s).inverseChiLinear2[i] = {};
-			}
+				(*s).chiLinear1[i] = ne * ne - 1.0f;
+				(*s).chiLinear2[i] = no * no - 1.0f;
+				if ((*s).chiLinear1[i].real() != 0.0f && (*s).chiLinear2[i].real() != 0.0f) {
+					(*s).inverseChiLinear1[i] = 1.0f / (*s).chiLinear1[i].real();
+					(*s).inverseChiLinear2[i] = 1.0f / (*s).chiLinear2[i].real();
+				}
+				else {
+					(*s).inverseChiLinear1[i] = {};
+					(*s).inverseChiLinear2[i] = {};
+				}
 
-			(*s).fieldFactor1[i] = 1.0f / deviceFPLib::pow((*s).chiLinear1[i].real() + 1.0f, 0.25f); //account for the effective field strength in the medium (1/n)
-			(*s).fieldFactor2[i] = 1.0f / deviceFPLib::pow((*s).chiLinear2[i].real() + 1.0f, 0.25f);
-			if ((*s).isUsingMillersRule) {
-				(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
-				(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
+				(*s).fieldFactor1[i] = 1.0f / deviceFPLib::pow((*s).chiLinear1[i].real() + 1.0f, 0.25f); //account for the effective field strength in the medium (1/n)
+				(*s).fieldFactor2[i] = 1.0f / deviceFPLib::pow((*s).chiLinear2[i].real() + 1.0f, 0.25f);
+				if ((*s).isUsingMillersRule) {
+					(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
+					(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
+				}
+				(*s).fieldFactor1[i] *= (*s).fftNorm;
+				(*s).fieldFactor2[i] *= (*s).fftNorm;
+				if (isnan(ne.real()) || isnan(no.real()) || ne.real() < 0.9f || no.real() < 0.9f || ne.imag() > 0.0f || no.imag() > 0.0f) {
+					ne = cOne<deviceComplex>();
+					no = ne;
+					(*s).fieldFactor1[i] = {};
+					(*s).fieldFactor2[i] = {};
+					(*s).inverseChiLinear1[i] = {};
+					(*s).inverseChiLinear2[i] = {};
+				}
 			}
-			(*s).fieldFactor1[i] *= (*s).fftNorm;
-			(*s).fieldFactor2[i] *= (*s).fftNorm;
-			if (isnan(ne.real()) || isnan(no.real()) || ne.real() < 0.9f || no.real() < 0.9f || ne.imag() > 0.0f || no.imag() > 0.0f) {
-				ne = cOne<deviceComplex>();
-				no = ne;
-				(*s).fieldFactor1[i] = {};
-				(*s).fieldFactor2[i] = {};
-				(*s).inverseChiLinear1[i] = {};
-				(*s).inverseChiLinear2[i] = {};
-			}
+			
 
 			if (i == 81) {
 				deviceComplex n0;
@@ -2307,7 +2310,7 @@ namespace hostFunctions{
 		//prepare the propagation grids
 		deviceParameterSet<deviceFP, deviceComplex>* sD = d.dParamsDevice;
 		d.deviceMemcpy(sD, sc, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
-		d.deviceLaunch((unsigned int)(*sc).Ntime / (2 * minGridDimension), minGridDimension, getChiLinearKernel{ sD, sellmeierCoefficients });
+		d.deviceLaunch((unsigned int)maxN((*sc).Ntime / 2, 82), 1, getChiLinearKernel{ sD, sellmeierCoefficients });
 		if ((*s).is3D) {
 			d.deviceLaunch((unsigned int)(*sc).Nblock / 2u, (unsigned int)(*sc).Nthread, prepare3DGridsKernel{ sellmeierCoefficients, sD });
 		}
