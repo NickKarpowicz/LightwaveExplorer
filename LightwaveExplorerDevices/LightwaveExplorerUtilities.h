@@ -59,6 +59,37 @@ enum class copyType : int {
     OnDevice = 3
 };
 
+template <typename deviceFP>
+class maxwellPoint {
+public:
+    deviceFP Ex{};
+    deviceFP Ey{};
+    deviceFP Ez{};
+    deviceFP Bx{};
+    deviceFP By{};
+    deviceFP Bz{};
+};
+
+template <typename deviceFP>
+class maxwellCurrentPoint {
+public:
+    deviceFP Jx{};
+    deviceFP Jy{};
+    deviceFP Jz{};
+};
+
+template <typename deviceFP>
+class maxwellCalculation {
+public:
+    maxwellPoint* grid;
+    maxwellCurrentPoint* current;
+    deviceFP* materialGrid;
+    deviceFP* inOutEx;
+    deviceFP* inOutEy;
+    deviceFP xStep;
+    deviceFP tStep;
+    int64_t observationPoint;
+};
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
 //with all of the platforms involved, and because it is transferred

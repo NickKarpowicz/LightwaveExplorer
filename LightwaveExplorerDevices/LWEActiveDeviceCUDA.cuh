@@ -169,7 +169,6 @@ public:
 	simulationParameterSet* cParams;
 	int memoryStatus;
 	bool hasPlasma;
-
 	CUDADevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memoryStatus = -1;
@@ -188,6 +187,16 @@ public:
 		cudaStreamDestroy(stream);
 	}
 
+	void startMaxwell(simulationParameterSet* sCPU, deviceFP lengthZ, deviceFP startZ, deviceFP endZ, deviceFP observationPlane, int64_t timeStepDivisor, int64_t zStepDivisor) {
+		fftDestroy();
+		deallocateSet();
+
+		//allocate space grids
+		
+	}
+	void endMaxwell() {
+
+	}
 	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
 		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(deviceFP), cudaMemcpyDeviceToHost);
 		return(isnan(canaryPixel));
