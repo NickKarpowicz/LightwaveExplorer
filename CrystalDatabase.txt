@@ -437,21 +437,21 @@ chi2 type:
 d:
 0 0 0 0 -4.64 -2.46
 -2.46 2.46 0 -4.64 0 0
--4.64 -4.64 -25 0 0 0
+-4.64 -4.64 -26 0 0 0
 d reference:
-Nikogosian, Nonlinear Optical Crystals - A Complete Survey, values from stoichimetric, except for d33, reduced to 25
+Nikogosian, Nonlinear Optical Crystals - A Complete Survey, values from stoichimetric, except for d33, reduced to 26, based on https://arxiv.org/abs/2111.13796
 chi3 type:
 2
 chi3:
-1.6e-21
+3.417e-21
 0
 0
 chi3 reference:
-Nikogosian
+https://arxiv.org/abs/2111.13796
 Spectral file:
 None
 Nonlinear reference frequencies:
-2.85e14 2.85e14 5.7e14 2.85e14 2.85e14 2.85e14 2.85e14
+1.934e14 1.934e14 3.868e14 1.934e14 1.934e14 1.934e14 1.934e14
 ~~~crystal end~~~
 Name:
 LGS
