@@ -431,7 +431,7 @@ Sellmeier equation:
 3rd axis coefficients:
 5.7484 0.098175 0 -0.0407384 188.917 0 -156.75 0 0 0 0 0 0 -0.0132 0 0 0 0 0 0 0 0
 Sellmeier reference:
-O. Gayer, et al., Appl. Phys. B 91, 343–348 (2008)
+O. Gayer, et al., Appl. Phys. B 91, 343-348 (2008)
 chi2 type:
 1
 d:
