@@ -114,34 +114,29 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
 
 ### Compiling the GUI app on Linux (CUDA and SYCL version)
 
-  First, you'll need to install some stuff.
+  You'll need everything required to build the GPL3 version above, except for FFTW, which isn't used in this version. I'd recommend building the one above first to make sure it works. Next, install the prerequisites for this version:
 
-  - [GTK 4](https://www.gtk.org/docs/installations/linux/) - on my distro, I could just do: sudo apt install libgtk-4-1 libgtk-4-dev
-  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) if building the full version (not required for GPL 3.0 version)
-  - [NVIDIA CUDA](https://developer.nvidia.com/cuda-downloads) if building the full version (not required for GPL 3.0 version)
-  - [fmt](https://github.com/fmtlib/fmt) - I had to build this from source on linux since the one installed from repos wasn't compiled with fPIC. When compiling from the repo, use "cmake -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE ..." instead of "cmake ..". You only need this because g++ and clang++ don't have std::format yet (although they will soon-ish).
-
-  You'll also need your basic compilation stuff, which I assume you already installed at some point (e.g. sudo apt install build-essential git g++).
+  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) - I recommend using the online installer so you can choose what to install (the full thing is quite large). You'll at least need the DPC++ compiler, the Math Kernel Library, and Thread Building Blocks (and their prerequisites).
+  - [NVIDIA CUDA](https://developer.nvidia.com/cuda-downloads) - this might already be in your package manager, but I'd recommend at least version 11.6.
 
   Now that you have everything, in order to build the full version, first you have to set the OneAPI environment variables, typically with:
   ```
   . ~/intel/oneapi/setvars.sh
   ```
-  or
+  if you installed OneAPI as a normal user or
   ```
   . /opt/intel/oneapi/setvars.sh
   ```
-  depending on where it was installed on your system.
+  if you installed as root.
 
   Then, build the executable with:
   ```
   git clone https://github.com/NickKarpowicz/LightwaveExplorer
   mkdir LightwaveExplorer/build
   cd LightwaveExplorer/build
-  cmake -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.0/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
+  cmake -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
   make
   ```
-  (Note: I have the full path to the nvcc compiler there because my distro only has ancient versions of CUDA in apt, so I installed it manually. You'll have to change it to wherever CUDA is installed on your system, or if you can use the version of nvcc on your path (lucky you), just to "nvcc".)
   
   If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
 
