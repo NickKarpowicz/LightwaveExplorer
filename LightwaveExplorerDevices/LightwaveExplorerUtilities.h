@@ -76,19 +76,24 @@ public:
     deviceFP Jx{};
     deviceFP Jy{};
     deviceFP Jz{};
+    deviceFP propFacE{};
+    deviceFP propFacH{};
 };
 
 template <typename deviceFP>
 class maxwellCalculation {
 public:
-    maxwellPoint* grid;
-    maxwellCurrentPoint* current;
-    deviceFP* materialGrid;
-    deviceFP* inOutEx;
-    deviceFP* inOutEy;
-    deviceFP xStep;
-    deviceFP tStep;
-    int64_t observationPoint;
+    maxwellPoint<deviceFP>* grid{};
+    maxwellCurrentPoint<deviceFP>* current{};
+    deviceFP* materialGrid{};
+    deviceFP* inOutEx{};
+    deviceFP* inOutEy{};
+    deviceFP xStep{};
+    deviceFP tStep{};
+    int64_t observationPoint{};
+    int64_t Nx{};
+    int64_t Ny{};
+    int64_t Nz{};
 };
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
