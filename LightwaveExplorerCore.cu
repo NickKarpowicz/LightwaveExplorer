@@ -19,6 +19,21 @@ namespace deviceFunctions {
 		expandedBeam2[pos1] = sourceBeam2[i];
 		expandedBeam2[pos2] = sourceBeam2[i];
 	}
+
+	template<typename T>
+	deviceFunction static T cubicSpline(T yMinus1, T y0, T y1, T y2, T h, T x) {
+		T oneOverH = 1.0f / h;
+		T frac = x * oneOverH;
+
+		T dMinus1 = oneOverH * (y0 - yMinus1);
+		T d0 = 0.5f * oneOverH * (y1 - yMinus1);
+		T dh = 0.5f * oneOverH * (y2 - y0);
+
+		T c2 = 3.0f * (y1 - y0) - 2.0f * d0 - dh;
+		T c3 = 2.0f * (y0 - y1) + d0 + dh;
+
+		return y0 + frac * (d0 + frac * (c2 + c3 * frac));
+	}
 	
 	//Calculate the fourier optics propagator (e^ik_z*d) for a given set of values of the maknitude of k, transverse k (dk1, dk2)
 	//a reference k0 which defines the speed of the moving frame, and distance d over which to propagate
