@@ -68,6 +68,23 @@ public:
     deviceFP Bx{};
     deviceFP By{};
     deviceFP Bz{};
+
+    maxwellPoint<deviceFP> operator+(const maxwellPoint<deviceFP>& other) const {
+        return maxwellPoint<deviceFP>{ Ex + other.Ex, Ey + other.Ey, Ez + other.Ez, Bx + other.Bz, By + other.By, Bz + other.Bz };
+    }
+
+    void operator+=(const maxwellPoint<deviceFP>& other) const {
+        Ex += other.Ex;
+        Ey += other.Ey;
+        Ez += other.Ez;
+        Bx += other.Bx;
+        By += other.By;
+        Bz += other.Bz;
+    }
+
+    maxwellPoint<deviceFP> operator*(const deviceFP other) const {
+        return maxwellPoint<deviceFP>{Ex* other, Ey* other, Ez* other, Bx* other, By* other, Bz* other};
+    }
 };
 
 template <typename deviceFP>
@@ -76,20 +93,25 @@ public:
     deviceFP Jx{};
     deviceFP Jy{};
     deviceFP Jz{};
-    deviceFP propFacE{};
-    deviceFP propFacH{};
 };
 
 template <typename deviceFP>
 class maxwellCalculation {
 public:
     maxwellPoint<deviceFP>* grid{};
+    maxwellPoint<deviceFP>* gridNext{};
+    maxwellPoint<deviceFP>* gridEstimate;
     maxwellCurrentPoint<deviceFP>* current{};
     deviceFP* materialGrid{};
+    deviceFP* propFacE{};
+    deviceFP* propFacH{};
     deviceFP* inOutEx{};
     deviceFP* inOutEy{};
-    deviceFP xStep{};
+    deviceFP xyStep{};
+    deviceFP zStep{};
     deviceFP tStep{};
+    deviceFP inverseXyStep{};
+    deviceFP inverseZStep{};
     int64_t observationPoint{};
     int64_t Nx{};
     int64_t Ny{};

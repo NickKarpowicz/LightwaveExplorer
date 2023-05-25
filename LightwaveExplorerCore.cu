@@ -1697,6 +1697,83 @@ namespace kernelNamespace{
 		}
 	};
 
+	template<typename T>
+	deviceFunction T firstDerivativeSixthOrder(T M3, T M2, T M1, T P1, T P2, T P3) {
+		return -M3 / 60.0f + 0.15f * M2 - 0.75f * M1 + 0.75f * P1 - 0.15f * P2 + P3 / 60.0f;
+	}
+	deviceFunction maxwellPoint<deviceFP> maxwellDerivativeTerms(maxwellCalculation<deviceFP>* s, int64_t i, maxwellPoint<deviceFP>* gridIn) {
+		maxwellPoint<deviceFP> result{};
+		
+		//x derivative
+		int64_t xPage = s->Nz * s->Ny;
+		int64_t iM1 = i - xPage;
+		int64_t iM2 = iM1 - xPage;
+		int64_t iM3 = iM2 - xPage;
+		int64_t iP1 = i + xPage;
+		int64_t iP2 = iP1 + xPage;
+		int64_t iP3 = iP2 + xPage;
+		result.Ez =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].By, gridIn[iM2].By, gridIn[iM1].By, gridIn[iP1].By, gridIn[iP2].By, gridIn[iP3].By);
+		result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Bz, gridIn[iM2].Bz, gridIn[iM1].Bz, gridIn[iP1].Bz, gridIn[iP2].Bz, gridIn[iP3].Bz);
+		result.Bz = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
+		result.By =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
+		
+		//y derivative
+		// implement later for 3D
+		
+		//z derivative
+		//this can be optimized a lot but I'm making it function first.
+		iM1 = i - 1;
+		iM2 = i - 2;
+		iM3 = i - 3;
+		iP1 = i + 1;
+		iP2 = i + 2;
+		iP3 = i + 3;
+		result.Ex += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].By, gridIn[iM2].By, gridIn[iM1].By, gridIn[iP1].By, gridIn[iP2].By, gridIn[iP3].By);
+		result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Bx, gridIn[iM2].Bx, gridIn[iM1].Bx, gridIn[iP1].Bx, gridIn[iP2].Bx, gridIn[iP3].Bx);
+		result.Bx +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
+		result.By +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ex, gridIn[iM2].Ex, gridIn[iM1].Ex, gridIn[iP1].Ex, gridIn[iP2].Ex, gridIn[iP3].Ex);
+
+		return result;
+	}
+
+
+	class maxwellRKkernel0 {
+	public:
+		maxwellCalculation<deviceFP>* s;
+		deviceFunction void operator()(int64_t i) const {
+			maxwellPoint<deviceFP> k = maxwellDerivativeTerms(s, i, s->grid);
+			s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
+			s->gridNext[i] = s->grid[i] + k * (sixth<deviceFP>() * s->tStep);
+		}
+	};
+	class maxwellRKkernel1 {
+	public:
+		maxwellCalculation<deviceFP>* s;
+		deviceFunction void operator()(int64_t i) const {
+			maxwellPoint<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
+			s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
+			s->gridNext[i] = s->grid[i] + k * (third<deviceFP>() * s->tStep);
+		}
+	};
+	class maxwellRKkernel2 {
+	public:
+		maxwellCalculation<deviceFP>* s;
+		deviceFunction void operator()(int64_t i) const {
+			maxwellPoint<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
+			s->gridEstimate[i] = s->grid[i] + k * s->tStep;
+			s->gridNext[i] = s->grid[i] + k * (third<deviceFP>() * s->tStep);
+		}
+	};
+	class maxwellRKkernel3 {
+	public:
+		maxwellCalculation<deviceFP>* s;
+		deviceFunction void operator()(int64_t i) const {
+			maxwellPoint<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
+			s->gridNext[i] = s->grid[i] + k * (sixth<deviceFP>() * s->tStep);
+		}
+	};
+
+
 	class beamNormalizeKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
