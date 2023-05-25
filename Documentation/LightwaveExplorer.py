@@ -105,6 +105,12 @@ def fwhm(x: np.ndarray, y: np.ndarray, height: float = 0.5) -> float:
 def norma(v: np.ndarray):
     return v/v.max()
 
+def normaM(v: np.ndarray):
+    out = np.zeros(np.shape(v))
+    for i in range(0,np.shape(out)[0]):
+        out[i,:] = norma(v[i,:])
+    return out
+
 def printSellmeier(sc):
     s = np.array2string(sc, formatter={'float_kind': '{0:.6g}'.format}).replace('\n','').replace('[','').replace(']','')
     print(s)

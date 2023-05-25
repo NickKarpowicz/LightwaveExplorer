@@ -246,6 +246,7 @@ public:
 
         int mbRow = 22;
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
+
 #ifdef __APPLE__
         miniButtons[0].init(("="), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
         miniButtons[1].init(("d"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
