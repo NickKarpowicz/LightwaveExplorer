@@ -116,6 +116,10 @@ public:
     int64_t Nx{};
     int64_t Ny{};
     int64_t Nz{};
+    int64_t Nt{};
+    int64_t NtIO{};
+    int64_t xGridFactor;
+    int64_t tGridFactor;
 };
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility

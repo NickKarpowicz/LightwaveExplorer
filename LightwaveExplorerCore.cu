@@ -21,6 +21,11 @@ namespace deviceFunctions {
 	}
 
 	template<typename T>
+	deviceFunction static T firstDerivativeSixthOrder(T M3, T M2, T M1, T P1, T P2, T P3) {
+		return -M3 / 60.0f + 0.15f * M2 - 0.75f * M1 + 0.75f * P1 - 0.15f * P2 + P3 / 60.0f;
+	}
+
+	template<typename T>
 	deviceFunction static T cubicSpline(T yMinus1, T y0, T y1, T y2, T h, T x) {
 		T oneOverH = 1.0f / h;
 		T frac = x * oneOverH;
@@ -1697,10 +1702,7 @@ namespace kernelNamespace{
 		}
 	};
 
-	template<typename T>
-	deviceFunction T firstDerivativeSixthOrder(T M3, T M2, T M1, T P1, T P2, T P3) {
-		return -M3 / 60.0f + 0.15f * M2 - 0.75f * M1 + 0.75f * P1 - 0.15f * P2 + P3 / 60.0f;
-	}
+
 	deviceFunction maxwellPoint<deviceFP> maxwellDerivativeTerms(maxwellCalculation<deviceFP>* s, int64_t i, maxwellPoint<deviceFP>* gridIn) {
 		maxwellPoint<deviceFP> result{};
 		
@@ -1773,6 +1775,17 @@ namespace kernelNamespace{
 		}
 	};
 
+	//store the field in the observation plane in the in/out Ex and Ey arrays
+	class maxwellSampleGrid {
+	public:
+		maxwellCalculation<deviceFP>* s;
+		int64_t time;
+		deviceFunction void operator()(int64_t i) const {
+			int64_t gridIndex = (i * s->xGridFactor) * s->Nz + s->observationPoint;
+			s->inOutEx[i * s->NtIO + time] = s->grid[gridIndex].Ex;
+			s->inOutEy[i * s->NtIO + time] = s->grid[gridIndex].Ey;
+		}
+	};
 
 	class beamNormalizeKernel {
 	public:
