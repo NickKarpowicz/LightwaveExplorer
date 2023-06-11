@@ -84,10 +84,17 @@ A native version for the new Arm-based Macs is technically possible (and has bee
 ### Compiling the GUI app on Linux (Easy CPU-only version)
 The easiest version to compile on Linux is the GPL3 version, which doesn't include the CUDA or OneAPI propagators. This means it will _only_ run on CPU, but if you don't have a compatible GPU anyway, it makes use of FFTW for the FFTs, which may be faster on your hardware in any case.
 
-The prerequisite packages are: gcc, cmake, GTK4, and FFTW (plus git to download the repo). Their exact names in your package manager may vary; if you are on an Ubuntu-based distro, you can use this to grab everything:
+The prerequisite packages are: gcc, cmake, GTK4, and FFTW (plus git to download the repo). Their exact names in your package manager may vary... 
+
+If you are on an Ubuntu-based distro, you can use this to grab everything:
 
 ```
 sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3
+```
+
+One OpenSUSE Tumbleweed, I needed:
+```
+sudo zypper install git gcc-c++ cmake gtk4-devel fftw-devel
 ```
 
 Once you have that, type the following into the terminal:
