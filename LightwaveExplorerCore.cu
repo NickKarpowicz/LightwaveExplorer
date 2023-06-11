@@ -20,9 +20,11 @@ namespace deviceFunctions {
 		expandedBeam2[pos2] = sourceBeam2[i];
 	}
 
-	template<typename T>
-	deviceFunction static T firstDerivativeSixthOrder(T M3, T M2, T M1, T P1, T P2, T P3) {
-		return -M3 / 60.0f + 0.15f * M2 - 0.75f * M1 + 0.75f * P1 - 0.15f * P2 + P3 / 60.0f;
+	[[maybe_unused]] deviceFunction static inline float firstDerivativeSixthOrder(float M3, float M2, float M1, float P1, float P2, float P3) {
+		return -sixtieth<float>() * M3 + 0.15f * M2 - 0.75f * M1 + 0.75f * P1 - 0.15f * P2 + sixtieth<float>() * P3;
+	}
+	[[maybe_unused]] deviceFunction static inline double firstDerivativeSixthOrder(double M3, double M2, double M1, double P1, double P2, double P3) {
+		return -sixtieth<double>() * M3 + 0.15 * M2 - 0.75 * M1 + 0.75 * P1 - 0.15 * P2 + sixtieth<double>() * P3;
 	}
 
 	template<typename T>
@@ -1705,31 +1707,48 @@ namespace kernelNamespace{
 
 	deviceFunction maxwellPoint<deviceFP> maxwellDerivativeTerms(maxwellCalculation<deviceFP>* s, int64_t i, maxwellPoint<deviceFP>* gridIn) {
 		maxwellPoint<deviceFP> result{};
-		
-		//x derivative
-		int64_t xPage = s->Nz * s->Ny;
-		int64_t iM1 = i - xPage;
-		int64_t iM2 = iM1 - xPage;
-		int64_t iM3 = iM2 - xPage;
-		int64_t iP1 = i + xPage;
-		int64_t iP2 = iP1 + xPage;
-		int64_t iP3 = iP2 + xPage;
+		int64_t zIndex = i % s->Nz;
+		int64_t xIndex = (i / s->Nz) % s->Nx;
+		int64_t yIndex = i / (s->Nz * s->Nx);
+
+		//x derivative (periodic boundary)
+		int64_t b = zIndex + yIndex * (s->Nz * s->Nx);
+		int64_t iM1 = b + s->Nz * ((xIndex > 0) ? xIndex - 1 : s->Nx - 1);
+		int64_t iM2 = b + s->Nz * ((xIndex > 1) ? xIndex - 2 : xIndex + s->Nx - 2);
+		int64_t iM3 = b + s->Nz * ((xIndex > 2) ? xIndex - 3 : xIndex + s->Nx - 3);
+		int64_t iP1 = b + s->Nz * ((xIndex + 1) % s->Nx);
+		int64_t iP2 = b + s->Nz * ((xIndex + 2) % s->Nx);
+		int64_t iP3 = b + s->Nz * ((xIndex + 3) % s->Nx);
 		result.Ez =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].By, gridIn[iM2].By, gridIn[iM1].By, gridIn[iP1].By, gridIn[iP2].By, gridIn[iP3].By);
 		result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Bz, gridIn[iM2].Bz, gridIn[iM1].Bz, gridIn[iP1].Bz, gridIn[iP2].Bz, gridIn[iP3].Bz);
 		result.Bz = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
 		result.By =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
 		
 		//y derivative
-		// implement later for 3D
+		if (s->Ny > 1) {
+			b = zIndex + xIndex * s->Nz;
+			int64_t c = (s->Nz * s->Nx);
+			iM1 = b + c * ((yIndex > 0) ? yIndex - 1 : s->Ny - 1);
+			iM2 = b + c * ((yIndex > 1) ? yIndex - 2 : yIndex + s->Ny - 2);
+			iM3 = b + c * ((yIndex > 1) ? yIndex - 3 : yIndex + s->Ny - 3);
+			iP1 = b + c * ((yIndex + 1) % s->Ny);
+			iP2 = b + c * ((yIndex + 2) % s->Ny);
+			iP3 = b + c * ((yIndex + 3) % s->Ny);
+			//REMEMBER TO FIX THE MINUS SIGNS HERE
+			result.Ex += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Bz, gridIn[iM2].Bz, gridIn[iM1].Bz, gridIn[iP1].Bz, gridIn[iP2].Bz, gridIn[iP3].Bz);
+			result.Ez += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Bx, gridIn[iM2].Bx, gridIn[iM1].Bx, gridIn[iP1].Bx, gridIn[iP2].Bx, gridIn[iP3].Bx);
+			result.Bx += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
+			result.Bz += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ex, gridIn[iM2].Ex, gridIn[iM1].Ex, gridIn[iP1].Ex, gridIn[iP2].Ex, gridIn[iP3].Ex);
+		}
 		
 		//z derivative
-		//this can be optimized a lot but I'm making it function first.
-		iM1 = i - 1;
-		iM2 = i - 2;
-		iM3 = i - 3;
-		iP1 = i + 1;
-		iP2 = i + 2;
-		iP3 = i + 3;
+		b = yIndex * (s->Nz * s->Nx) + xIndex * s->Nz;
+		iM1 = b + ((zIndex > 0) ? zIndex - 1 : s->Nz - 1);
+		iM2 = b + ((zIndex > 1) ? zIndex - 2 : zIndex + s->Nz - 2);
+		iM3 = b + ((zIndex > 2) ? zIndex - 3 : zIndex + s->Nz - 3);
+		iP1 = b + ((zIndex + 1) % s->Nz);
+		iP2 = b + ((zIndex + 2) % s->Nz);
+		iP3 = b + ((zIndex + 3) % s->Nz);
 		result.Ex += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].By, gridIn[iM2].By, gridIn[iM1].By, gridIn[iP1].By, gridIn[iP2].By, gridIn[iP3].By);
 		result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Bx, gridIn[iM2].Bx, gridIn[iM1].Bx, gridIn[iP1].Bx, gridIn[iP2].Bx, gridIn[iP3].Bx);
 		result.Bx +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);

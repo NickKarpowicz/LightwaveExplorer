@@ -66,6 +66,10 @@ hostOrDevice static constexpr T sixth() {
     return (T)((T)1.0 / 6.0);
 }
 template <typename T>
+hostOrDevice static constexpr T sixtieth() {
+    return (T)((T)1.0 / 60.0);
+}
+template <typename T>
 hostOrDevice static constexpr T third() {
     return (T)((T)1.0 / 3.0);
 }
