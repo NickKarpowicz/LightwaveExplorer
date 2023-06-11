@@ -940,7 +940,7 @@ double parameterStringToDouble(const std::string& ss, const double* iBlock, cons
 
 std::string getBasename(const std::string& fullPath) {
 	std::string pathString = fullPath;
-	std::int64_t positionOfName = pathString.find_last_of("/\\");
+	int64_t positionOfName = pathString.find_last_of("/\\");
 	if (positionOfName == std::string::npos) return pathString;
 	return pathString.substr(positionOfName + 1);
 }
