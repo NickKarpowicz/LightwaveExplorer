@@ -1719,10 +1719,10 @@ namespace kernelNamespace{
 		int64_t iP1 = b + s->Nz * ((xIndex + 1) % s->Nx);
 		int64_t iP2 = b + s->Nz * ((xIndex + 2) % s->Nx);
 		int64_t iP3 = b + s->Nz * ((xIndex + 3) % s->Nx);
-		result.Ez =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].By, gridIn[iM2].By, gridIn[iM1].By, gridIn[iP1].By, gridIn[iP2].By, gridIn[iP3].By);
-		result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Bz, gridIn[iM2].Bz, gridIn[iM1].Bz, gridIn[iP1].Bz, gridIn[iP2].Bz, gridIn[iP3].Bz);
-		result.Bz = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
-		result.By =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
+		result.Ez =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hy, gridIn[iM2].Hy, gridIn[iM1].Hy, gridIn[iP1].Hy, gridIn[iP2].Hy, gridIn[iP3].Hy);
+		result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hz, gridIn[iM2].Hz, gridIn[iM1].Hz, gridIn[iP1].Hz, gridIn[iP2].Hz, gridIn[iP3].Hz);
+		result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
+		result.Hy =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
 		
 		//y derivative
 		if (s->Ny > 1) {
@@ -1735,10 +1735,10 @@ namespace kernelNamespace{
 			iP2 = b + c * ((yIndex + 2) % s->Ny);
 			iP3 = b + c * ((yIndex + 3) % s->Ny);
 			//REMEMBER TO FIX THE MINUS SIGNS HERE
-			result.Ex += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Bz, gridIn[iM2].Bz, gridIn[iM1].Bz, gridIn[iP1].Bz, gridIn[iP2].Bz, gridIn[iP3].Bz);
-			result.Ez += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Bx, gridIn[iM2].Bx, gridIn[iM1].Bx, gridIn[iP1].Bx, gridIn[iP2].Bx, gridIn[iP3].Bx);
-			result.Bx += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
-			result.Bz += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ex, gridIn[iM2].Ex, gridIn[iM1].Ex, gridIn[iP1].Ex, gridIn[iP2].Ex, gridIn[iP3].Ex);
+			result.Ex += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hz, gridIn[iM2].Hz, gridIn[iM1].Hz, gridIn[iP1].Hz, gridIn[iP2].Hz, gridIn[iP3].Hz);
+			result.Ez += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hx, gridIn[iM2].Hx, gridIn[iM1].Hx, gridIn[iP1].Hx, gridIn[iP2].Hx, gridIn[iP3].Hx);
+			result.Hx += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
+			result.Hz += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ex, gridIn[iM2].Ex, gridIn[iM1].Ex, gridIn[iP1].Ex, gridIn[iP2].Ex, gridIn[iP3].Ex);
 		}
 		
 		//z derivative
@@ -1749,13 +1749,45 @@ namespace kernelNamespace{
 		iP1 = b + ((zIndex + 1) % s->Nz);
 		iP2 = b + ((zIndex + 2) % s->Nz);
 		iP3 = b + ((zIndex + 3) % s->Nz);
-		result.Ex += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].By, gridIn[iM2].By, gridIn[iM1].By, gridIn[iP1].By, gridIn[iP2].By, gridIn[iP3].By);
-		result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Bx, gridIn[iM2].Bx, gridIn[iM1].Bx, gridIn[iP1].Bx, gridIn[iP2].Bx, gridIn[iP3].Bx);
-		result.Bx +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
-		result.By +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ex, gridIn[iM2].Ex, gridIn[iM1].Ex, gridIn[iP1].Ex, gridIn[iP2].Ex, gridIn[iP3].Ex);
+		result.Ex += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Hy, gridIn[iM2].Hy, gridIn[iM1].Hy, gridIn[iP1].Hy, gridIn[iP2].Hy, gridIn[iP3].Hy);
+		result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Hx, gridIn[iM2].Hx, gridIn[iM1].Hx, gridIn[iP1].Hx, gridIn[iP2].Hx, gridIn[iP3].Hx);
+		result.Hx +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
+		result.Hy +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ex, gridIn[iM2].Ex, gridIn[iM1].Ex, gridIn[iP1].Ex, gridIn[iP2].Ex, gridIn[iP3].Ex);
 
 		return result;
 	}
+
+	deviceFunction maxwellPoint2D<deviceFP> maxwellDerivativeTerms(maxwellCalculation<deviceFP>* s, int64_t i, maxwellPoint2D<deviceFP>* gridIn) {
+		maxwellPoint2D<deviceFP> result{};
+		int64_t zIndex = i % s->Nz;
+		int64_t xIndex = (i / s->Nz) % s->Nx;
+
+		//x derivative (periodic boundary)
+		int64_t b = zIndex;
+		int64_t iM1 = b + s->Nz * ((xIndex > 0) ? xIndex - 1 : s->Nx - 1);
+		int64_t iM2 = b + s->Nz * ((xIndex > 1) ? xIndex - 2 : xIndex + s->Nx - 2);
+		int64_t iM3 = b + s->Nz * ((xIndex > 2) ? xIndex - 3 : xIndex + s->Nx - 3);
+		int64_t iP1 = b + s->Nz * ((xIndex + 1) % s->Nx);
+		int64_t iP2 = b + s->Nz * ((xIndex + 2) % s->Nx);
+		int64_t iP3 = b + s->Nz * ((xIndex + 3) % s->Nx);
+		
+		result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hz, gridIn[iM2].Hz, gridIn[iM1].Hz, gridIn[iP1].Hz, gridIn[iP2].Hz, gridIn[iP3].Hz);
+		result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
+
+		//z derivative
+		b = xIndex * s->Nz;
+		iM1 = b + ((zIndex > 0) ? zIndex - 1 : s->Nz - 1);
+		iM2 = b + ((zIndex > 1) ? zIndex - 2 : zIndex + s->Nz - 2);
+		iM3 = b + ((zIndex > 2) ? zIndex - 3 : zIndex + s->Nz - 3);
+		iP1 = b + ((zIndex + 1) % s->Nz);
+		iP2 = b + ((zIndex + 2) % s->Nz);
+		iP3 = b + ((zIndex + 3) % s->Nz);
+		result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Hx, gridIn[iM2].Hx, gridIn[iM1].Hx, gridIn[iP1].Hx, gridIn[iP2].Hx, gridIn[iP3].Hx);
+		result.Hx += s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
+		
+		return result;
+	}
+
 
 
 	class maxwellRKkernel0 {
@@ -2005,6 +2037,7 @@ namespace kernelNamespace{
 	class expandCylindricalBeam {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		
 		deviceFunction void operator()(const int64_t i) const {
 			const int64_t j = i / (*s).Ntime; //spatial coordinate
 			const int64_t k = i % (*s).Ntime; //temporal coordinate

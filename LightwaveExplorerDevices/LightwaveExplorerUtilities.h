@@ -65,34 +65,66 @@ public:
     deviceFP Ex{};
     deviceFP Ey{};
     deviceFP Ez{};
-    deviceFP Bx{};
-    deviceFP By{};
-    deviceFP Bz{};
+    deviceFP Hx{};
+    deviceFP Hy{};
+    deviceFP Hz{};
 
     maxwellPoint<deviceFP> operator+(const maxwellPoint<deviceFP>& other) const {
-        return maxwellPoint<deviceFP>{ Ex + other.Ex, Ey + other.Ey, Ez + other.Ez, Bx + other.Bz, By + other.By, Bz + other.Bz };
+        return maxwellPoint<deviceFP>{ Ex + other.Ex, Ey + other.Ey, Ez + other.Ez, Hx + other.Hx, Hy + other.Hy, Hz + other.Hz };
     }
 
     void operator+=(const maxwellPoint<deviceFP>& other) const {
         Ex += other.Ex;
         Ey += other.Ey;
         Ez += other.Ez;
-        Bx += other.Bx;
-        By += other.By;
-        Bz += other.Bz;
+        Hx += other.Hx;
+        Hy += other.Hy;
+        Hz += other.Hz;
     }
 
     maxwellPoint<deviceFP> operator*(const deviceFP other) const {
-        return maxwellPoint<deviceFP>{Ex* other, Ey* other, Ez* other, Bx* other, By* other, Bz* other};
+        return maxwellPoint<deviceFP>{Ex* other, Ey* other, Ez* other, Hx* other, Hy* other, Hz* other};
     }
 };
 
 template <typename deviceFP>
-class maxwellCurrentPoint {
+class maxwellPoint2D {
+public:
+    deviceFP Ey{};
+    deviceFP Hx{};
+    deviceFP Hz{};
+
+    maxwellPoint2D<deviceFP> operator+(const maxwellPoint<deviceFP>& other) const {
+        return maxwellPoint<deviceFP>{ Ey + other.Ey, Hx + other.Hx, Hz + other.Hz };
+    }
+
+    void operator+=(const maxwellPoint<deviceFP>& other) const {
+        Ey += other.Ey;
+        Hx += other.Hx;
+        Hz += other.Hz;
+    }
+
+    maxwellPoint<deviceFP> operator*(const deviceFP other) const {
+        return maxwellPoint<deviceFP>{Ey* other, Hx* other, Hz* other};
+    }
+};
+
+template <typename deviceFP>
+class oscillator {
 public:
     deviceFP Jx{};
     deviceFP Jy{};
     deviceFP Jz{};
+    deviceFP Px{};
+    deviceFP Py{};
+    deviceFP Pz{};
+};
+
+template <typename deviceFP>
+class oscillator2D {
+public:
+    deviceFP Jy{};
+    deviceFP Py{};
 };
 
 template <typename deviceFP>
@@ -100,11 +132,10 @@ class maxwellCalculation {
 public:
     maxwellPoint<deviceFP>* grid{};
     maxwellPoint<deviceFP>* gridNext{};
-    maxwellPoint<deviceFP>* gridEstimate;
-    maxwellCurrentPoint<deviceFP>* current{};
-    deviceFP* materialGrid{};
-    deviceFP* propFacE{};
-    deviceFP* propFacH{};
+    maxwellPoint<deviceFP>* gridEstimate{};
+    oscillator<deviceFP>* materialGrid{};
+    oscillator<deviceFP>* materialGridNext{};
+    oscillator<deviceFP>* materialGridEstimate{};
     deviceFP* inOutEx{};
     deviceFP* inOutEy{};
     deviceFP xyStep{};
