@@ -20,11 +20,17 @@ namespace deviceFunctions {
 		expandedBeam2[pos2] = sourceBeam2[i];
 	}
 
-	[[maybe_unused]] deviceFunction static inline float firstDerivativeSixthOrder(float M3, float M2, float M1, float P1, float P2, float P3) {
+	/*[[maybe_unused]] deviceFunction static inline float firstDerivativeSixthOrder(float M3, float M2, float M1, float P1, float P2, float P3) {
 		return -sixtieth<float>() * M3 + 0.15f * M2 - 0.75f * M1 + 0.75f * P1 - 0.15f * P2 + sixtieth<float>() * P3;
 	}
 	[[maybe_unused]] deviceFunction static inline double firstDerivativeSixthOrder(double M3, double M2, double M1, double P1, double P2, double P3) {
 		return -sixtieth<double>() * M3 + 0.15 * M2 - 0.75 * M1 + 0.75 * P1 - 0.15 * P2 + sixtieth<double>() * P3;
+	}*/
+	[[maybe_unused]] deviceFunction static inline float firstDerivativeSixthOrder(const float M3, const float M2, const float M1, const float P1, const float P2, const float P3) {
+		return -0.0046875f * M3 + 0.065104166666666667f * M2 - 1.171875f * M1 + 1.171875f * P1 - 0.065104166666666667f * P2 + 0.0046875f * P3;
+	}
+	[[maybe_unused]] deviceFunction static inline double firstDerivativeSixthOrder(const double M3, const double M2, const double M1, const double P1, const double P2, const double P3) {
+		return -0.0046875 * M3 + 0.065104166666666667 * M2 - 1.171875 * M1 + 1.171875 * P1 - 0.065104166666666667 * P2 + 0.0046875 * P3;
 	}
 
 	template<typename T>
@@ -1770,21 +1776,32 @@ namespace kernelNamespace{
 		int64_t iP1 = b + s->Nz * ((xIndex + 1) % s->Nx);
 		int64_t iP2 = b + s->Nz * ((xIndex + 2) % s->Nx);
 		int64_t iP3 = b + s->Nz * ((xIndex + 3) % s->Nx);
-		
 		result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hz, gridIn[iM2].Hz, gridIn[iM1].Hz, gridIn[iP1].Hz, gridIn[iP2].Hz, gridIn[iP3].Hz);
 		result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
 
 		//z derivative
-		b = xIndex * s->Nz;
-		iM1 = b + ((zIndex > 0) ? zIndex - 1 : s->Nz - 1);
-		iM2 = b + ((zIndex > 1) ? zIndex - 2 : zIndex + s->Nz - 2);
-		iM3 = b + ((zIndex > 2) ? zIndex - 3 : zIndex + s->Nz - 3);
-		iP1 = b + ((zIndex + 1) % s->Nz);
-		iP2 = b + ((zIndex + 2) % s->Nz);
-		iP3 = b + ((zIndex + 3) % s->Nz);
-		result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Hx, gridIn[iM2].Hx, gridIn[iM1].Hx, gridIn[iP1].Hx, gridIn[iP2].Hx, gridIn[iP3].Hx);
-		result.Hx += s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
-		
+		switch ((zIndex - (s->Nz) > 0) ? zIndex - (s->Nz) : zIndex) {
+		case 0:
+			break;
+		case 1:
+			break;
+		case 2:
+			break;
+		case 3:
+			break;
+		case -1:
+			break;
+		case -2:
+			break;
+		case -3:
+			break;
+		case -4:
+			break;
+		default:
+			result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[i-3].Hx, gridIn[i-2].Hx, gridIn[i-1].Hx, gridIn[i].Hx, gridIn[i+1].Hx, gridIn[i+2].Hx);
+			result.Hx += s->inverseZStep * firstDerivativeSixthOrder(gridIn[i-2].Ey, gridIn[i-1].Ey, gridIn[i].Ey, gridIn[i+1].Ey, gridIn[i+2].Ey, gridIn[i+3].Ey);
+			break;
+		}
 		return result;
 	}
 
