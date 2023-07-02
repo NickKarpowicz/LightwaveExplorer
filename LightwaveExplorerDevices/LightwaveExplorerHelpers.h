@@ -62,6 +62,14 @@ hostOrDevice static constexpr T eps0() {
     return (T)8.8541878128e-12;
 }
 template <typename T>
+hostOrDevice static constexpr T mu0() {
+    return (T)1.2566370614e-6;
+}
+template <typename T>
+hostOrDevice static constexpr T Zo() {
+    return (T)376.730313668;
+}
+template <typename T>
 hostOrDevice static constexpr T sixth() {
     return (T)((T)1.0 / 6.0);
 }
