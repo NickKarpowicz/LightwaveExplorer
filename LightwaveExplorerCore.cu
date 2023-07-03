@@ -1765,21 +1765,11 @@ namespace kernelNamespace{
 	deviceFunction int64_t boundaryFinder(int64_t i, int64_t N) {
 		//normal points
 		if (i < (N - 4) && i > 2) return 5;
+		//LHS
 		else if (i < 3) return i;
+		//RHS
 		else return i - N;
 	}
-	/*M0 = np.array([-2.928968253968253, 10., -22.5, 40., -52.5, 50.40000000000001, -34.99999999999999, 17.142857142857142, -5.625, 1.1111111111111112, -0.1])
-	M1 = np.array([-0.7517466711619544, -0.4695846315414186, 4.22831798735119, -7.892969912574405, 10.470316569010416, -10.08553466796875, 7.012410481770833, -3.436110723586309, 1.127578880673363, -0.22271970718625989, 0.02004239521329365])
-	M2 = np.array([0.02004239521329365, -0.9722130185081846, 0.6327471051897322, 0.9213227771577381, -1.2789794921875, 1.21072998046875, -0.8259480794270833, 0.3984200613839286, -0.12911551339285712, 0.025247143942212297, -0.0022533598400297614])
-	Mm1 = np.array([0.1, -1.1111111111111112, 5.625, -17.142857142857142, 35., -50.4, 52.5, -40., 22.5, -10., 2.9289682539682538])
-	Mm2 = np.array([-0.02004239521329365, 0.22271970718625994, -1.1275788806733629, 3.4361107235863093, -7.012410481770833, 10.08553466796875, -10.470316569010418, 7.892969912574405, -4.22831798735119, 0.46958463154141805, 0.7517466711619543])
-	Mm3 = np.array([0.002253359840029762, -0.025247143942212318, 0.12911551339285715, -0.39842006138392855, 0.8259480794270834, -1.21072998046875, 1.2789794921875002, -0.9213227771577381, -0.6327471051897321, 0.9722130185081845, -0.02004239521329365])
-	Eselfm2 = np.array([-0.01111111111111111, 0.125, -0.6428571428571429, 2., -4.2, 6.3, -7., 6., -4.5, 1.8289682539682532, 0.1])
-	Eselfm3 = np.array([0.0027777777777777775, -0.031746031746031744, 0.16666666666666669, -0.5333333333333333, 1.1666666666666667, -1.8666666666666667, 2.3333333333333335, -2.6666666666666665, 1.2178571428571425, 0.2222222222222222, -0.011111111111111112])
-	Eselfm4 = np.array([-1.1904761904761904e-03, 1.3888888888888888e-02, -7.5000000000000011e-02, 2.5000000000000000e-01, -5.8333333333333326e-01, 1.0500000000000000e+00, -1.7500000000000000e+00, 7.5952380952380916e-01, 3.7500000000000000e-01, -4.1666666666666664e-02, 2.7777777777777779e-03])
-	Eself2 = np.array([-0.1, -1.8289682539682544, 4.5, -6., 7., -6.3, 4.2, -2., 0.6428571428571428, -0.125, 0.011111111111111112])
-	Eself3 = np.array([0.01111111111111111, -0.2222222222222222, -1.2178571428571427, 2.666666666666667, -2.3333333333333335, 1.8666666666666665, -1.1666666666666667, 0.5333333333333332, -0.16666666666666666, 0.031746031746031744, -0.002777777777777778])
-	Eself4 = np.array([-2.7777777777777775e-03, 4.1666666666666664e-02, -3.7500000000000000e-01, -7.5952380952380949e-01, 1.7500000000000000e+00, -1.0500000000000003e+00, 5.8333333333333326e-01, -2.5000000000000000e-01, 7.4999999999999997e-02, -1.3888888888888888e-02, 1.1904761904761906e-03])*/
 
 	deviceFunction inline double resolveMaxwellEndpoints(int64_t type, double in00, double in01, double in02, double in03, double in04, double in05, double in06, double in07, double in08, double in09, double in10){
 		switch (type) {
@@ -1858,9 +1848,8 @@ namespace kernelNamespace{
 				- 1.38888888888888889e-02 * in09
 				+ 1.1904761904761906e-03 * in10);
 		}
-		
-
 	}
+
 	deviceFunction maxwellPoint2D<deviceFP> maxwellDerivativeTerms(maxwellCalculation<deviceFP>* s, int64_t i, maxwellPoint2D<deviceFP>* gridIn) {
 		maxwellPoint2D<deviceFP> result{};
 		int64_t zIndex = i % s->Nz;
@@ -1884,27 +1873,139 @@ namespace kernelNamespace{
 				gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
 			break;
 		case 0:
+			//xIndex=0
+			result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
+				gridIn[zIndex + 0].Hz,
+				gridIn[zIndex + (s->Nz)].Hz,
+				gridIn[zIndex + 2 * (s->Nz)].Hz);
+			result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey,
+				gridIn[zIndex + 2 * (s->Nz)].Ey,
+				gridIn[zIndex + 3 * (s->Nz)].Ey);
 			break;
 		case 1:
+			result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx-2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx-1) * (s->Nz)].Hz,
+				gridIn[zIndex].Hz,
+				gridIn[zIndex + (s->Nz)].Hz,
+				gridIn[zIndex + 2 * (s->Nz)].Hz,
+				gridIn[zIndex + 3 * (s->Nz)].Hz);
+			result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx-1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey,
+				gridIn[zIndex + 2 * (s->Nz)].Ey,
+				gridIn[zIndex + 3 * (s->Nz)].Ey,
+				gridIn[zIndex + 4 * (s->Nz)].Ey);
 			break;
 		case 2:
+			result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx-1) * (s->Nz)].Hz,
+				gridIn[zIndex].Hz,
+				gridIn[zIndex + (s->Nz)].Hz,
+				gridIn[zIndex + 2 * (s->Nz)].Hz,
+				gridIn[zIndex + 3 * (s->Nz)].Hz,
+				gridIn[zIndex + 4 * (s->Nz)].Hz);
+			result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey,
+				gridIn[zIndex + 2 * (s->Nz)].Ey,
+				gridIn[zIndex + 3 * (s->Nz)].Ey,
+				gridIn[zIndex + 4 * (s->Nz)].Ey,
+				gridIn[zIndex + 5 * (s->Nz)].Ey);
 			break;
 		case 3:
+			result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
+			result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
 			break;
 		case -1:
+			//xIndex = Nx-1
+			result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
+				gridIn[zIndex].Hz,
+				gridIn[zIndex + (s->Nz)].Hz);
+			result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey,
+				gridIn[zIndex + 2 * (s->Nz)].Ey);
 			break;
 		case -2:
+			result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
+				gridIn[zIndex].Hz);
+			result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey);
 			break;
 		case -3:
+			result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 6) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz);
+			result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey);
 			break;
 		case -4:
+			result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
+			result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
 			break;
 		default:
 			break;
 		}
-		//z derivative
-		//Interior = np.array( [-0.0046875, 0.06510416666666666, -1.171875, 1.171875, -0.06510416666666664, 0.004687499999999997] )
-
+		
 		switch ((zIndex - (s->Nz/2) > 0) ? zIndex - (s->Nz) : zIndex) {
 		[[likely]] case 5:
 			result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(
