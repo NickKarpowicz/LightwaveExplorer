@@ -94,8 +94,8 @@ public:
     deviceFP Hx{};
     deviceFP Hz{};
 
-    maxwellPoint2D<deviceFP> operator+(const maxwellPoint<deviceFP>& other) const {
-        return maxwellPoint<deviceFP>{ Ey + other.Ey, Hx + other.Hx, Hz + other.Hz };
+    maxwellPoint2D<deviceFP> operator+(const maxwellPoint2D<deviceFP>& other) const {
+        return maxwellPoint2D<deviceFP>{ Ey + other.Ey, Hx + other.Hx, Hz + other.Hz };
     }
 
     void operator+=(const maxwellPoint<deviceFP>& other) const {
@@ -104,10 +104,11 @@ public:
         Hz += other.Hz;
     }
 
-    maxwellPoint<deviceFP> operator*(const deviceFP other) const {
-        return maxwellPoint<deviceFP>{Ey* other, Hx* other, Hz* other};
+    maxwellPoint2D<deviceFP> operator*(const deviceFP other) const {
+        return maxwellPoint2D<deviceFP>{Ey* other, Hx* other, Hz* other};
     }
 };
+
 
 template <typename deviceFP>
 class oscillator {
@@ -127,31 +128,7 @@ public:
     deviceFP Py{};
 };
 
-template <typename deviceFP>
-class maxwellCalculation {
-public:
-    maxwellPoint<deviceFP>* grid{};
-    maxwellPoint<deviceFP>* gridNext{};
-    maxwellPoint<deviceFP>* gridEstimate{};
-    oscillator<deviceFP>* materialGrid{};
-    oscillator<deviceFP>* materialGridNext{};
-    oscillator<deviceFP>* materialGridEstimate{};
-    deviceFP* inOutEx{};
-    deviceFP* inOutEy{};
-    deviceFP xyStep{};
-    deviceFP zStep{};
-    deviceFP tStep{};
-    deviceFP inverseXyStep{};
-    deviceFP inverseZStep{};
-    int64_t observationPoint{};
-    int64_t Nx{};
-    int64_t Ny{};
-    int64_t Nz{};
-    int64_t Nt{};
-    int64_t NtIO{};
-    int64_t xGridFactor;
-    int64_t tGridFactor;
-};
+
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
 //with all of the platforms involved, and because it is transferred
@@ -873,5 +850,80 @@ public:
 
     [[nodiscard]] simulationParameterSet& base() {
         return parameters[0];
+    }
+};
+
+template <typename deviceFP>
+class maxwellCalculation {
+public:
+    maxwellPoint<deviceFP>* grid{};
+    maxwellPoint<deviceFP>* gridNext{};
+    maxwellPoint<deviceFP>* gridEstimate{};
+    oscillator<deviceFP>* materialGrid{};
+    oscillator<deviceFP>* materialGridNext{};
+    oscillator<deviceFP>* materialGridEstimate{};
+    deviceFP* inOutEx{};
+    deviceFP* inOutEy{};
+    deviceFP xyStep{};
+    deviceFP zStep{};
+    deviceFP tStep{};
+    deviceFP inverseXyStep{};
+    deviceFP inverseZStep{};
+    int64_t observationPoint{};
+    int64_t Nx{};
+    int64_t Ny{};
+    int64_t Nz{};
+    int64_t Nt{};
+    int64_t NtIO{};
+    int64_t xGridFactor;
+    int64_t tGridFactor;
+};
+
+template <typename deviceFP>
+class maxwellCalculation2D {
+public:
+    maxwellPoint2D<deviceFP>* grid{};
+    maxwellPoint2D<deviceFP>* gridNext{};
+    maxwellPoint2D<deviceFP>* gridEstimate{};
+    oscillator2D<deviceFP>* materialGrid{};
+    oscillator2D<deviceFP>* materialGridNext{};
+    oscillator2D<deviceFP>* materialGridEstimate{};
+    deviceFP* inOutEy{};
+    deviceFP xyStep{};
+    deviceFP zStep{};
+    deviceFP tStep{};
+    deviceFP frontBuffer;
+    deviceFP backBuffer;
+    deviceFP crystalThickness;
+    deviceFP inverseXyStep{};
+    deviceFP inverseZStep{};
+    int64_t observationPoint{};
+    int64_t Nx{};
+    int64_t Nz{};
+    int64_t Nt{};
+    int64_t Ngrid{};
+    int64_t NtIO{};
+    int64_t xGridFactor=1;
+    int64_t tGridFactor=1;
+    int64_t materialStart{};
+    int64_t materialStop{};
+    
+    maxwellCalculation2D(simulationParameterSet* s, int64_t xFactor, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in, deviceFP propagationTime) {
+        frontBuffer = frontBuffer_in;
+        backBuffer = backBuffer_in;
+        crystalThickness = (*s).crystalThickness;
+        zStep = zStep_in;
+        Nx = (*s).Nspace * xFactor;
+        Nz = (frontBuffer + backBuffer + crystalThickness) / zStep;
+        NtIO = (*s).Ntime;
+        xyStep = (*s).rStep / xFactor;
+        tStep = (*s).tStep / timeFactor;
+        Nt = propagationTime / tStep;
+        inverseXyStep = 1.0 / xyStep;
+        inverseZStep = 1.0 / zStep;
+        observationPoint = (frontBuffer + crystalThickness + 16);
+        xGridFactor = xFactor;
+        tGridFactor = timeFactor;
+        Ngrid = Nz * Nx;
     }
 };
