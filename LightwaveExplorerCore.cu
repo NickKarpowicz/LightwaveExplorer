@@ -2376,7 +2376,7 @@ namespace kernelNamespace{
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
 			maxwellCurrentTerms(s, i, t, true, s->gridEstimate, s->materialGridEstimate, k);
-			s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
+			s->gridEstimate2[i] = s->grid[i] + k * (s->tStep * 0.5f);//race condition
 			s->gridNext[i] += k * (third<deviceFP>() * s->tStep);
 		}
 	};
@@ -2385,11 +2385,11 @@ namespace kernelNamespace{
 		const maxwellCalculation2D<deviceFP>* s;
 		const int64_t t;
 		deviceFunction void operator()(int64_t i) const {
-			maxwellPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
+			maxwellPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate2);
 			k.Ey /= -eps0<deviceFP>();
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
-			maxwellCurrentTerms(s, i, t, true, s->gridEstimate, s->materialGridEstimate, k);
+			maxwellCurrentTerms(s, i, t, true, s->gridEstimate2, s->materialGridEstimate, k);
 			s->gridEstimate[i] = s->grid[i] + k * s->tStep;
 			s->gridNext[i] += k * (third<deviceFP>() * s->tStep);
 		}
@@ -3254,7 +3254,7 @@ namespace hostFunctions{
 		d.deviceCalloc((void**) &(maxCalc.grid), maxCalc.Nx*maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**) &(maxCalc.gridEstimate), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**) &(maxCalc.gridNext), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
-
+		d.deviceCalloc((void**)&(maxCalc.gridEstimate2), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		maxwellCalculation2D<deviceFP>* maxCalcDevice{};
 		d.deviceCalloc((void**) &maxCalcDevice, 1, sizeof(maxwellCalculation2D<deviceFP>));
 		d.deviceMemcpy((void*)maxCalcDevice, (void*)&maxCalc, sizeof(maxwellCalculation2D<deviceFP>), copyType::ToDevice);
@@ -3279,6 +3279,7 @@ namespace hostFunctions{
 		//switch device back
 		d.deviceFree(maxCalc.grid);
 		d.deviceFree(maxCalc.gridEstimate);
+		d.deviceFree(maxCalc.gridEstimate2);
 		d.deviceFree(maxCalc.gridNext);
 		d.deviceFree(maxCalcDevice);
 		return 0;

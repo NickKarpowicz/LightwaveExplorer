@@ -885,6 +885,7 @@ public:
     maxwellPoint2D<deviceFP>* grid{};
     maxwellPoint2D<deviceFP>* gridNext{};
     maxwellPoint2D<deviceFP>* gridEstimate{};
+    maxwellPoint2D<deviceFP>* gridEstimate2{};
     oscillator2D<deviceFP>* materialGrid{};
     oscillator2D<deviceFP>* materialGridNext{};
     oscillator2D<deviceFP>* materialGridEstimate{};
