@@ -915,13 +915,16 @@ public:
         zStep = zStep_in;
         Nx = (*s).Nspace * xFactor;
         Nz = (frontBuffer + backBuffer + crystalThickness) / zStep;
+        Nz = 8 * (Nz / 8 + (Nz % 8 > 0));
         NtIO = (*s).Ntime;
         xyStep = (*s).rStep / xFactor;
         tStep = (*s).tStep / timeFactor;
         Nt = propagationTime / tStep;
         inverseXyStep = 1.0 / xyStep;
         inverseZStep = 1.0 / zStep;
-        observationPoint = (frontBuffer + crystalThickness + 16);
+        materialStart = frontBuffer / zStep;
+        materialStop = materialStart + (crystalThickness / zStep);
+        observationPoint = materialStop + 16;
         xGridFactor = xFactor;
         tGridFactor = timeFactor;
         Ngrid = Nz * Nx;
