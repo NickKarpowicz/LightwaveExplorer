@@ -2376,7 +2376,7 @@ namespace kernelNamespace{
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
 			maxwellCurrentTerms(s, i, t, true, s->gridEstimate, s->materialGridEstimate, k);
-			s->gridEstimate2[i] = s->grid[i] + k * (s->tStep * 0.5f);
+			s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
 			s->gridNext[i] += k * (third<deviceFP>() * s->tStep);
 		}
 	};
