@@ -889,6 +889,8 @@ public:
     oscillator2D<deviceFP>* materialGridNext{};
     oscillator2D<deviceFP>* materialGridEstimate{};
     deviceFP* inOutEy{};
+    deviceFP* inputEyFFT{};
+    deviceFP omegaStep{};
     deviceFP xyStep{};
     deviceFP zStep{};
     deviceFP tStep{};
