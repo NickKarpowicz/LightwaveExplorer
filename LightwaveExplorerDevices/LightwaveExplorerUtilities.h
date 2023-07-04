@@ -900,12 +900,14 @@ public:
     deviceFP crystalThickness;
     deviceFP inverseXyStep{};
     deviceFP inverseZStep{};
+    deviceFP omegaMax{};
     int64_t observationPoint{};
     int64_t Nx{};
     int64_t Nz{};
     int64_t Nt{};
     int64_t Ngrid{};
     int64_t NtIO{};
+    int64_t frequencyLimit{};
     int64_t xGridFactor=1;
     int64_t tGridFactor=1;
     int64_t materialStart{};
@@ -922,6 +924,9 @@ public:
         NtIO = (*s).Ntime;
         xyStep = (*s).rStep / xFactor;
         tStep = (*s).tStep / timeFactor;
+        omegaMax = 0.1 * twoPi<deviceFP>()*lightC<deviceFP>() / zStep;
+        omegaStep = twoPi<deviceFP>() * s->fStep;
+        frequencyLimit = omegaMax / omegaStep;
         Nt = propagationTime / tStep;
         inverseXyStep = 1.0 / xyStep;
         inverseZStep = 1.0 / zStep;

@@ -62,15 +62,15 @@ namespace deviceFunctions {
 
 
 	template<typename real_t, typename complex_t>
-	deviceFunction static real_t fourierInterpolation(real_t timeShift, complex_t* fourierData, int64_t dataSize, real_t dOmega) {
+	deviceFunction static real_t fourierInterpolation(real_t timeShift, complex_t* fourierData, int64_t dataSize, real_t dOmega, int64_t frequencyLimit) {
 		real_t result{};
-		for (int i = 0; i < dataSize; i++) {
+		for (int i = 0; i < frequencyLimit; i++) {
 			real_t w = i * dOmega;
-			complex_t expFactor = deviceLib::exp(complex_t(0.0f, w * timeShift));
-			result += expFactor.real() * fourierData[i].real() - expFactor.imag() * fourierData[i].imag(); //can be sped up be precalculating factor
-			//result = w*(expFactor.real() * fourierData[i].imag() + expFactor.imag() * fourierData[i].real()); // fold in derivative
+			complex_t expFactor = complex_t(0.0f, w)*deviceLib::exp(complex_t(0.0f, w * timeShift));
+			result += (expFactor.real() * fourierData[i].real() - expFactor.imag() * fourierData[i].imag()); //can be sped up be precalculating factor
+			//result = -w*(expFactor.real() * fourierData[i].imag() + expFactor.imag() * fourierData[i].real()); // fold in derivative
 		}
-		return result / (dataSize - 1);
+		return result / (dataSize+1);
 	}
 
 	//Calculate the fourier optics propagator (e^ik_z*d) for a given set of values of the maknitude of k, transverse k (dk1, dk2)
@@ -2345,7 +2345,7 @@ namespace kernelNamespace{
 			deviceFP tCurrent = s->tStep * t + 0.5 * isAtMidpoint * s->tStep;
 			deviceComplex* fftData = (deviceComplex*)s->inputEyFFT;
 			int64_t fftSize = s->NtIO / 2 + 1;
-			deviceFP Ecurrent = fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep);
+			deviceFP Ecurrent = fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
 			k.Ey += Ecurrent;
 			k.Hx += Ecurrent / Zo<deviceFP>();
 		}
@@ -3250,7 +3250,6 @@ namespace hostFunctions{
 		maxCalc.inOutEy = d.s->gridETime1;
 		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
 		maxCalc.inputEyFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1);
-		maxCalc.omegaStep = twoPi<deviceFP>()*(*sCPU).fStep;
 		d.deviceCalloc((void**) &(maxCalc.grid), maxCalc.Nx*maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**) &(maxCalc.gridEstimate), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**) &(maxCalc.gridNext), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
@@ -3261,10 +3260,10 @@ namespace hostFunctions{
 		//d.deviceLaunch(maxCalc.Ngrid, 1, maxwellGridInit{ maxCalcDevice });
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {
-			d.deviceLaunch(maxCalc.Ngrid/32, 32, maxwellRKkernel02D{maxCalcDevice, i});
-			d.deviceLaunch(maxCalc.Ngrid/32, 32, maxwellRKkernel12D{maxCalcDevice, i});
-			d.deviceLaunch(maxCalc.Ngrid/32, 32, maxwellRKkernel22D{maxCalcDevice, i});
-			d.deviceLaunch(maxCalc.Ngrid/32, 32, maxwellRKkernel32D{maxCalcDevice, i});
+			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel02D{maxCalcDevice, i});
+			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel12D{maxCalcDevice, i});
+			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel22D{maxCalcDevice, i});
+			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel32D{maxCalcDevice, i});
 			d.deviceMemcpy(maxCalc.grid, maxCalc.gridNext, maxCalc.Ngrid * sizeof(maxwellPoint2D<deviceFP>), copyType::OnDevice);
 			if (i % maxCalc.tGridFactor == 0 && (i/maxCalc.tGridFactor)<(*sCPU).Ntime-1) {
 				//d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalcDevice, i / maxCalc.tGridFactor, (*sCPU).Ntime});
