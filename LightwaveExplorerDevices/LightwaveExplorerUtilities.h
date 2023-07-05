@@ -892,6 +892,7 @@ public:
     oscillator2D<deviceFP>* materialGridEstimate2{};
     int64_t* materialIndexMap{};
     crystalEntry crystalProperties[8]{};
+    deviceFP epsilonInfinity[8]{};
     deviceFP sellmeierEquations[66][8]{};
     deviceFP chi3[81][8]{};
     deviceFP chi2[18][8]{};
@@ -913,6 +914,7 @@ public:
     int64_t Nz{};
     int64_t Nt{};
     int64_t Ngrid{};
+    int Noscillators{};
     int64_t NtIO{};
     int64_t frequencyLimit{};
     int64_t xGridFactor=1;

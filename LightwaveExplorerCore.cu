@@ -9,15 +9,34 @@ namespace deviceFunctions {
 		a.Hx += other.Hx;
 		a.Hz += other.Hz;
 	}
+
 	template<typename deviceFP>
 	deviceFunction maxwellPoint2D<deviceFP> operator*(maxwellPoint2D<deviceFP>& a, const deviceFP other) {
 		return maxwellPoint2D<deviceFP>{a.Ey* other, a.Hx* other, a.Hz* other};
 	}
+
 	template<typename deviceFP>
 	deviceFunction maxwellPoint2D<deviceFP> operator+(maxwellPoint2D<deviceFP>& a, const maxwellPoint2D<deviceFP>& other) {
 		return maxwellPoint2D<deviceFP>{a.Ey + other.Ey, a.Hx + other.Hx, a.Hz + other.Hz};
 	}
 
+	template<typename deviceFP>
+	deviceFunction void operator+=(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& other) {
+		a.Jy += other.Jy;
+		a.Py += other.Py;
+	}
+	template<typename deviceFP>
+	deviceFunction oscillator2D<deviceFP> operator*(oscillator2D<deviceFP>& a, const deviceFP b) {
+		return oscillator2D<deviceFP>{a.Jy* b, a.Py* b};
+	}
+	template<typename deviceFP>
+	deviceFunction oscillator2D<deviceFP> operator*(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& b) {
+		return oscillator2D<deviceFP>{a.Jy* b.Jy, a.Py* b.Py};
+	}
+	template<typename deviceFP>
+	deviceFunction oscillator2D<deviceFP> operator+(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& b) {
+		return oscillator2D<deviceFP>{a.Jy + b.Jy, a.Py + b.Py};
+	}
 	//determine if the current grid location is close to the boundary
 	//5 means its a normal point
 	// 0..3 first points in the grid
@@ -2337,12 +2356,43 @@ namespace kernelNamespace{
 		}
 	};
 	
-	deviceFunction void maxwellCurrentTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const int64_t t, bool isAtMidpoint, const maxwellPoint2D<deviceFP>* gridIn, const oscillator2D<deviceFP>* currentGridIn, maxwellPoint2D<deviceFP>& k) {
+	deviceFunction void maxwellCurrentTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const int64_t t, bool isAtMidpoint, const maxwellPoint2D<deviceFP>* gridIn, const oscillator2D<deviceFP>* currentGridIn, maxwellPoint2D<deviceFP>& k, int rkIndex) {
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
-		if (zIndex >= s->materialStart && zIndex <= s->materialStop) {
+		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
+			const int64_t oscillatorIndex = (zIndex - s->materialStart) * s->Noscillators + xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
 			//apply epsilon_infinity
-			k.Ey /= s->sellmeierEquations[0][1] + 1.0;
+			k.Ey /= s->sellmeierEquations[0][0];
+
+			for (int j = 0; j < s->Noscillators; j++) {
+				k.Ey -= currentGridIn[oscillatorIndex + j].Jy; //in the future, rotate current from crystal coordinates to field coordinates
+				oscillator2D<deviceFP> kOsc{
+					kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] * gridIn[i].Ey
+						+ s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].Py
+						+ s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].Jy,
+						currentGridIn[oscillatorIndex + j].Jy};
+				switch (rkIndex) {
+				case 0:
+					s->materialGridEstimate[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
+					s->materialGridNext[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (sixth<deviceFP>() * s->tStep);
+					break;
+				case 1:
+					s->materialGridEstimate2[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
+					s->materialGridNext[oscillatorIndex + j] += kOsc * (third<deviceFP>() * s->tStep);
+					break;
+				case 2:
+					s->materialGridEstimate[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep);
+					s->materialGridNext[oscillatorIndex + j] += kOsc * (third<deviceFP>() * s->tStep);
+					break;
+				case 3:
+					s->materialGridNext[oscillatorIndex + j] += kOsc * (sixth<deviceFP>() * s->tStep);
+					break;
+				}
+				
+			}
+
+
+
 			return;
 		}
 		else if (zIndex == 5) {
@@ -2352,7 +2402,9 @@ namespace kernelNamespace{
 			deviceFP Ecurrent = fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
 			k.Ey += Ecurrent;
 			k.Hx += Ecurrent / Zo<deviceFP>();
+			return;
 		}
+		return;
 	}
 
 
@@ -2361,11 +2413,14 @@ namespace kernelNamespace{
 		const maxwellCalculation2D<deviceFP>* s;
 		const int64_t t;
 		deviceFunction void operator()(int64_t i) const {
+			//calculate field derivative
 			maxwellPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->grid);
 			k.Ey /= -eps0<deviceFP>();
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
-			maxwellCurrentTerms(s, i, t, false, s->grid, s->materialGrid, k);
+			maxwellCurrentTerms(s, i, t, false, s->grid, s->materialGrid, k, 0);
+			
+			//calculate current derivative
 			s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
 			s->gridNext[i] = s->grid[i] + k * (sixth<deviceFP>() * s->tStep);
 		}
@@ -2379,7 +2434,7 @@ namespace kernelNamespace{
 			k.Ey /= -eps0<deviceFP>();
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
-			maxwellCurrentTerms(s, i, t, true, s->gridEstimate, s->materialGridEstimate, k);
+			maxwellCurrentTerms(s, i, t, true, s->gridEstimate, s->materialGridEstimate, k, 1);
 			s->gridEstimate2[i] = s->grid[i] + k * (s->tStep * 0.5f);
 			s->gridNext[i] += k * (third<deviceFP>() * s->tStep);
 		}
@@ -2393,7 +2448,7 @@ namespace kernelNamespace{
 			k.Ey /= -eps0<deviceFP>();
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
-			maxwellCurrentTerms(s, i, t, true, s->gridEstimate2, s->materialGridEstimate, k);
+			maxwellCurrentTerms(s, i, t, true, s->gridEstimate2, s->materialGridEstimate2, k, 2);
 			s->gridEstimate[i] = s->grid[i] + k * s->tStep;
 			s->gridNext[i] += k * (third<deviceFP>() * s->tStep);
 		}
@@ -2407,7 +2462,7 @@ namespace kernelNamespace{
 			k.Ey /= -eps0<deviceFP>();
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
-			maxwellCurrentTerms(s, i, t + 1, false, s->gridEstimate, s->materialGridEstimate, k);
+			maxwellCurrentTerms(s, i, t + 1, false, s->gridEstimate, s->materialGridEstimate, k, 3);
 			s->gridNext[i] += k * (sixth<deviceFP>() * s->tStep);
 		}
 	};
@@ -3252,11 +3307,17 @@ namespace hostFunctions{
 		//calculate the recording delay and the time to run (this OVERRIDES the input propagationTime)
 		int64_t waitFrames = ((maxCalc.observationPoint-5) * maxCalc.zStep)/(lightC<double>() * (*sCPU).tStep);
 		maxCalc.Nt = (waitFrames + (*sCPU).Ntime) * maxCalc.tGridFactor;
-
+		maxCalc.Noscillators = 0;
 		//copy the crystal info
 		for (int i = 0; i < 66; i++) {
-			maxCalc.sellmeierEquations[i][1] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
+			maxCalc.sellmeierEquations[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
 		}
+		//count the nonzero oscillators
+		for (int i = 0; i < 7; i++) {
+			if (maxCalc.sellmeierEquations[1 + i*3][0] > 0.0) maxCalc.Noscillators++;
+			else break;
+		}
+		int64_t materialGridSize = (maxCalc.materialStop - maxCalc.materialStart) * maxCalc.Nx * maxCalc.Noscillators;
 
 		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
 		//make both grids available through the maxCalc class
@@ -3271,6 +3332,11 @@ namespace hostFunctions{
 		d.deviceCalloc((void**) &(maxCalc.gridEstimate), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**) &(maxCalc.gridNext), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**)&(maxCalc.gridEstimate2), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
+		d.deviceCalloc((void**)&(maxCalc.materialGrid), materialGridSize, sizeof(oscillator2D<deviceFP>));
+		d.deviceCalloc((void**)&(maxCalc.materialGridEstimate), materialGridSize, sizeof(oscillator2D<deviceFP>));
+		d.deviceCalloc((void**)&(maxCalc.materialGridEstimate2), materialGridSize, sizeof(oscillator2D<deviceFP>));
+		d.deviceCalloc((void**)&(maxCalc.materialGridNext), materialGridSize, sizeof(oscillator2D<deviceFP>));
+
 
 		//make a device copy of the maxCalc class
 		maxwellCalculation2D<deviceFP>* maxCalcDevice{};
@@ -3284,6 +3350,7 @@ namespace hostFunctions{
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel22D{maxCalcDevice, i});
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel32D{maxCalcDevice, i});
 			d.deviceMemcpy(maxCalc.grid, maxCalc.gridNext, maxCalc.Ngrid * sizeof(maxwellPoint2D<deviceFP>), copyType::OnDevice);
+			d.deviceMemcpy(maxCalc.materialGrid, maxCalc.materialGridNext, materialGridSize * sizeof(maxwellPoint2D<deviceFP>), copyType::OnDevice);
 			if (i % maxCalc.tGridFactor == 0 && (i/maxCalc.tGridFactor - waitFrames)<(*sCPU).Ntime-1) {
 				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalcDevice, i / maxCalc.tGridFactor - waitFrames});
 			}
@@ -3301,6 +3368,10 @@ namespace hostFunctions{
 		d.deviceFree(maxCalc.gridEstimate);
 		d.deviceFree(maxCalc.gridEstimate2);
 		d.deviceFree(maxCalc.gridNext);
+		d.deviceFree(maxCalc.materialGrid);
+		d.deviceFree(maxCalc.materialGridNext);
+		d.deviceFree(maxCalc.materialGridEstimate);
+		d.deviceFree(maxCalc.materialGridEstimate2);
 		d.deviceFree(maxCalcDevice);
 		return 0;
 	}
