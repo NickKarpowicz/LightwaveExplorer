@@ -247,7 +247,6 @@ namespace deviceFunctions {
 			real_t w = i * dOmega;
 			complex_t expFactor = complex_t(0.0f, -2.0f*w)*deviceLib::exp(complex_t(0.0f, w * timeShift));
 			result += (expFactor.real() * fourierData[i].real() - expFactor.imag() * fourierData[i].imag()); //can be sped up be precalculating factor
-			//result = -w*(expFactor.real() * fourierData[i].imag() + expFactor.imag() * fourierData[i].real()); // fold in derivative
 		}
 		return result / (dataSize+1);
 	}
@@ -2341,7 +2340,8 @@ namespace kernelNamespace{
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
 		if (zIndex >= s->materialStart && zIndex <= s->materialStop) {
-			//material
+			//apply epsilon_infinity
+			k.Ey /= s->sellmeierEquations[0][1] + 1.0;
 			return;
 		}
 		else if (zIndex == 5) {
@@ -3245,12 +3245,17 @@ namespace hostFunctions{
 		return 13 * d.isTheCanaryPixelNaN(canaryPointer);
 	}
 
-	static unsigned long int solveFDTD2D(ActiveDevice& d, simulationParameterSet* sCPU, int64_t xFactor, int64_t tFactor, deviceFP dz, deviceFP frontBuffer, deviceFP backBuffer, deviceFP propagationTime) {
-		maxwellCalculation2D<deviceFP> maxCalc = maxwellCalculation2D<deviceFP>(sCPU, xFactor, tFactor, dz, frontBuffer, backBuffer, propagationTime);
+	static unsigned long int solveFDTD2D(ActiveDevice& d, simulationParameterSet* sCPU, int64_t xFactor, int64_t tFactor, deviceFP dz, deviceFP frontBuffer, deviceFP backBuffer) {
+		maxwellCalculation2D<deviceFP> maxCalc = maxwellCalculation2D<deviceFP>(sCPU, xFactor, tFactor, dz, frontBuffer, backBuffer,0);
 		
 		//calculate the recording delay and the time to run (this OVERRIDES the input propagationTime)
 		int64_t waitFrames = ((maxCalc.observationPoint-5) * maxCalc.zStep)/(lightC<double>() * (*sCPU).tStep);
 		maxCalc.Nt = (waitFrames + (*sCPU).Ntime) * maxCalc.tGridFactor;
+
+		//copy the crystal info
+		for (int i = 0; i < 66; i++) {
+			maxCalc.sellmeierEquations[i][1] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
+		}
 
 		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
 		//make both grids available through the maxCalc class
@@ -3377,7 +3382,7 @@ namespace hostFunctions{
 			break;
 		case funHash("fdtd"):
 			interpretParameters(cc, 6, iBlock, vBlock, parameters, defaultMask);
-			solveFDTD2D(d, sCPU, static_cast<int64_t>(parameters[0]), static_cast<int64_t>(parameters[1]), parameters[2], parameters[3], parameters[4],parameters[5]);
+			solveFDTD2D(d, sCPU, static_cast<int64_t>(parameters[0]), static_cast<int64_t>(parameters[1]), parameters[2], parameters[3], parameters[4]);
 			break;
 		case funHash("default"):
 			d.reset(sCPU);
