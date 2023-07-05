@@ -245,7 +245,7 @@ namespace deviceFunctions {
 		real_t result{};
 		for (int i = 0; i < frequencyLimit; i++) {
 			real_t w = i * dOmega;
-			complex_t expFactor = complex_t(0.0f, w)*deviceLib::exp(complex_t(0.0f, w * timeShift));
+			complex_t expFactor = complex_t(0.0f, -2.0f*w)*deviceLib::exp(complex_t(0.0f, w * timeShift));
 			result += (expFactor.real() * fourierData[i].real() - expFactor.imag() * fourierData[i].imag()); //can be sped up be precalculating factor
 			//result = -w*(expFactor.real() * fourierData[i].imag() + expFactor.imag() * fourierData[i].real()); // fold in derivative
 		}
@@ -2379,7 +2379,7 @@ namespace kernelNamespace{
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
 			maxwellCurrentTerms(s, i, t, true, s->gridEstimate, s->materialGridEstimate, k);
-			s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
+			s->gridEstimate2[i] = s->grid[i] + k * (s->tStep * 0.5f);
 			s->gridNext[i] += k * (third<deviceFP>() * s->tStep);
 		}
 	};

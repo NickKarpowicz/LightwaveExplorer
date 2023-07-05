@@ -932,7 +932,7 @@ public:
         inverseZStep = 1.0 / zStep;
         materialStart = frontBuffer / zStep;
         materialStop = materialStart + (crystalThickness / zStep);
-        observationPoint = materialStop + 16;
+        observationPoint = materialStop + 10;
         xGridFactor = xFactor;
         tGridFactor = timeFactor;
         Ngrid = Nz * Nx;
