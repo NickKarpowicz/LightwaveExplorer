@@ -2365,11 +2365,11 @@ namespace kernelNamespace{
 			k.Ey /= s->sellmeierEquations[0][0];
 
 			for (int j = 0; j < s->Noscillators; j++) {
-				k.Ey -= currentGridIn[oscillatorIndex + j].Jy; //in the future, rotate current from crystal coordinates to field coordinates
+				k.Ey += currentGridIn[oscillatorIndex + j].Jy/eps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
 				oscillator2D<deviceFP> kOsc{
-					kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] * gridIn[i].Ey
-						+ s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].Py
-						+ s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].Jy,
+					- eps0<deviceFP>()*kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] * gridIn[i].Ey
+						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].Py
+						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy};
 				switch (rkIndex) {
 				case 0:
@@ -2385,14 +2385,10 @@ namespace kernelNamespace{
 					s->materialGridNext[oscillatorIndex + j] += kOsc * (third<deviceFP>() * s->tStep);
 					break;
 				case 3:
-					s->materialGridNext[oscillatorIndex + j] += kOsc * (sixth<deviceFP>() * s->tStep);
+					s->materialGrid[oscillatorIndex + j] = s->materialGridNext[oscillatorIndex + j] +  kOsc * (sixth<deviceFP>() * s->tStep);
 					break;
 				}
-				
 			}
-
-
-
 			return;
 		}
 		else if (zIndex == 5) {
@@ -2406,7 +2402,6 @@ namespace kernelNamespace{
 		}
 		return;
 	}
-
 
 	class maxwellRKkernel02D {
 	public:
@@ -2463,7 +2458,7 @@ namespace kernelNamespace{
 			k.Hx /= -mu0<deviceFP>();
 			k.Hz /= -mu0<deviceFP>();
 			maxwellCurrentTerms(s, i, t + 1, false, s->gridEstimate, s->materialGridEstimate, k, 3);
-			s->gridNext[i] += k * (sixth<deviceFP>() * s->tStep);
+			s->grid[i] = s->gridNext[i] +  k * (sixth<deviceFP>() * s->tStep);
 		}
 	};
 
@@ -3349,8 +3344,8 @@ namespace hostFunctions{
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel12D{maxCalcDevice, i});
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel22D{maxCalcDevice, i});
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel32D{maxCalcDevice, i});
-			d.deviceMemcpy(maxCalc.grid, maxCalc.gridNext, maxCalc.Ngrid * sizeof(maxwellPoint2D<deviceFP>), copyType::OnDevice);
-			d.deviceMemcpy(maxCalc.materialGrid, maxCalc.materialGridNext, materialGridSize * sizeof(maxwellPoint2D<deviceFP>), copyType::OnDevice);
+			//d.deviceMemcpy(maxCalc.grid, maxCalc.gridNext, maxCalc.Ngrid * sizeof(maxwellPoint2D<deviceFP>), copyType::OnDevice);
+			//d.deviceMemcpy(maxCalc.materialGrid, maxCalc.materialGridNext, materialGridSize * sizeof(oscillator2D<deviceFP>), copyType::OnDevice);
 			if (i % maxCalc.tGridFactor == 0 && (i/maxCalc.tGridFactor - waitFrames)<(*sCPU).Ntime-1) {
 				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalcDevice, i / maxCalc.tGridFactor - waitFrames});
 			}
