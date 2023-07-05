@@ -698,3 +698,38 @@ None
 Nonlinear reference frequencies:
 2.82e13 2.82e13 2.82e13 236e12 236e12 236e12 236e12
 ~~~crystal end~~~
+Name:
+Fused silica (L)
+Type:
+0
+Sellmeier equation:
+1
+1st axis coefficients:
+1.69301 2.64e+28 2.05225e+32 -7.94417e+07 9e+24 4.07297e+28 1.25664e+11 7e+23 2.27396e+28 1.25664e+11 0 0 0 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1.69301 2.64e+28 2.05225e+32 -7.94417e+07 9e+24 4.07297e+28 1.25664e+11 7e+23 2.27396e+28 1.25664e+11 0 0 0 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1.69301 2.64e+28 2.05225e+32 -7.94417e+07 9e+24 4.07297e+28 1.25664e+11 7e+23 2.27396e+28 1.25664e+11 0 0 0 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+I. H. Malitson, JOSA 55, 1205-1208 (1965), and Popova 1972, fit with Lorentzians, narrowed to reduce wing absorption
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+none
+chi3 type:
+2
+chi3:
+2.5e-22
+0
+0
+chi3 reference:
+single value
+Spectral file:
+None
+Nonlinear reference frequencies:
+281.7e12 281.7e12 563e12 281.7e12 281.7e12 281.7e12 281.7e12
+~~~crystal end~~~

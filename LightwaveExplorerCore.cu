@@ -352,15 +352,16 @@ namespace deviceFunctions {
 			return deviceLib::sqrt(maxN(realPart, 0.9f) + compPart);
 		case 1:
 			//up to 7 Lorentzian lines
-			compPart = a[0] / deviceComplex(a[1] - omega2, a[2] * omega)
-				+ a[3] / deviceComplex(a[4] - omega2, a[5] * omega)
-				+ a[6] / deviceComplex(a[7] - omega2, a[8] * omega)
-				+ a[9] / deviceComplex(a[10] - omega2, a[11] * omega)
-				+ a[12] / deviceComplex(a[13] - omega2, a[14] * omega)
-				+ a[15] / deviceComplex(a[16] - omega2, a[17] * omega)
-				+ a[18] / deviceComplex(a[19] - omega2, a[20] * omega);
+			compPart = a[1] / deviceComplex(a[2] - omega2, a[3] * omega)
+				+ a[4] / deviceComplex(a[5] - omega2, a[6] * omega)
+				+ a[7] / deviceComplex(a[8] - omega2, a[9] * omega)
+				+ a[10] / deviceComplex(a[11] - omega2, a[12] * omega)
+				+ a[13] / deviceComplex(a[14] - omega2, a[15] * omega)
+				+ a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
+				+ a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
 			compPart *= kLorentzian<deviceFP>();
-			return deviceLib::sqrt(1.0f + compPart);
+			compPart += a[0];
+			return deviceComplex((deviceLib::sqrt(compPart)).real(), -deviceFPLib::abs((deviceLib::sqrt(compPart)).imag()));
 		case 2:
 		{
 			//Up to 7 complex Gaussian functions
