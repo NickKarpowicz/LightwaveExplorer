@@ -2,6 +2,7 @@
 #include <dlib/global_optimization.h>
 
 namespace deviceFunctions {
+	//define math operators for maxwell grid points
 	template<typename deviceFP>
 	deviceFunction void operator+=(maxwellPoint2D<deviceFP>& a, const maxwellPoint2D<deviceFP>& other) {
 		a.Ey += other.Ey;
@@ -15,6 +16,184 @@ namespace deviceFunctions {
 	template<typename deviceFP>
 	deviceFunction maxwellPoint2D<deviceFP> operator+(maxwellPoint2D<deviceFP>& a, const maxwellPoint2D<deviceFP>& other) {
 		return maxwellPoint2D<deviceFP>{a.Ey + other.Ey, a.Hx + other.Hx, a.Hz + other.Hz};
+	}
+
+	//determine if the current grid location is close to the boundary
+	//5 means its a normal point
+	// 0..3 first points in the grid
+	// -4..-1 last points in grid
+	deviceFunction static inline int64_t boundaryFinder(int64_t i, int64_t N) {
+		//normal points
+		if (i < (N - 5) && i > 3) return 5;
+		//LHS
+		else if (i < 4) return i;
+		//RHS
+		else return i - N;
+	}
+	//apply special boundary conditions to the end of a FDTD grid
+	//they are derived from the finite difference generator of Fornberg
+	//and depend only on interior points. They thus allow a "one-way" boundary
+	//that has low reflection.
+	// cases 0..2: solve for dE/dz at z[0..2] for mapping onto the E grid locations
+	//   for the other end of the grid, reverse the order of the inputs and negate.
+	// cases 11..13: solve for dH/dz but substitute the associated E into the inputs.
+	//   the resulting quantity should additionally be divided by Zo.
+	deviceFunction inline double resolveMaxwellEndpoints(int64_t type, double in00, double in01, double in02, double in03, double in04, double in05, double in06, double in07, double in08, double in09, double in10) {
+		switch (type) {
+		case 0: //reverse and negate for +z end
+			return (-2.928968253968253 * in00
+				+ 10. * in01
+				- 22.5 * in02
+				+ 40. * in03
+				- 52.5 * in04
+				+ 50.4 * in05
+				- 35 * in06
+				+ 17.142857142857142 * in07
+				- 5.625 * in08
+				+ 1.1111111111111111 * in09
+				- 0.1 * in10);
+		case 1:
+			return (-0.7517466711619544 * in00
+				- 0.4695846315414186 * in01
+				+ 4.22831798735119 * in02
+				- 7.892969912574405 * in03
+				+ 10.470316569010416 * in04
+				- 10.08553466796875 * in05
+				+ 7.012410481770833 * in06
+				- 3.436110723586309 * in07
+				+ 1.127578880673363 * in08
+				- 0.22271970718625989 * in09
+				+ 0.02004239521329365 * in10);
+		case 2:
+			return (0.02004239521329365 * in00
+				- 0.9722130185081846 * in01
+				+ 0.6327471051897322 * in02
+				+ 0.9213227771577381 * in03
+				- 1.2789794921875 * in04
+				+ 1.21072998046875 * in05
+				- 0.8259480794270833 * in06
+				+ 0.3984200613839286 * in07
+				- 0.12911551339285712 * in08
+				+ 0.025247143942212297 * in09
+				- 0.0022533598400297614 * in10);
+
+			//field derivative onto field grid
+		case 11:
+			return (-0.1 * in00
+				- 1.8289682539682544 * in01
+				+ 4.5 * in02
+				- 6. * in03
+				+ 7. * in04
+				- 6.3 * in05
+				+ 4.2 * in06
+				- 2. * in07
+				+ 0.6428571428571428 * in08
+				- 0.125 * in09
+				+ 0.011111111111111111 * in10);
+		case 12:
+			return (0.01111111111111111 * in00
+				- 0.2222222222222222 * in01
+				- 1.2178571428571427 * in02
+				+ 2.666666666666667 * in03
+				- 2.3333333333333333 * in04
+				+ 1.8666666666666667 * in05
+				- 1.1666666666666667 * in06
+				+ 0.5333333333333333 * in07
+				- 0.166666666666666667 * in08
+				+ 0.031746031746031744 * in09
+				- 0.002777777777777778 * in10);
+		case 13:
+			return (-2.7777777777777778e-03 * in00
+				+ 4.16666666666666667e-02 * in01
+				- 3.7500000000000000e-01 * in02
+				- 7.5952380952380949e-01 * in03
+				+ 1.7500000000000000e+00 * in04
+				- 1.0500000000000000e+00 * in05
+				+ 5.8333333333333333e-01 * in06
+				- 2.5000000000000000e-01 * in07
+				+ 7.5e-02 * in08
+				- 1.38888888888888889e-02 * in09
+				+ 1.1904761904761906e-03 * in10);
+		}
+	}
+
+	deviceFunction inline float resolveMaxwellEndpoints(int64_t type, float in00, float in01, float in02, float in03, float in04, float in05, float in06, float in07, float in08, float in09, float in10) {
+		switch (type) {
+		case 0: //reverse and negate for +z end
+			return (-2.928968253968253f * in00
+				+ 10.f * in01
+				- 22.5f * in02
+				+ 40.f * in03
+				- 52.5f * in04
+				+ 50.4f * in05
+				- 35.0f * in06
+				+ 17.142857142857142f * in07
+				- 5.625f * in08
+				+ 1.1111111111111111f * in09
+				- 0.1f * in10);
+		case 1:
+			return (-0.7517466711619544f * in00
+				- 0.4695846315414186f * in01
+				+ 4.22831798735119f * in02
+				- 7.892969912574405f * in03
+				+ 10.470316569010416f * in04
+				- 10.08553466796875f * in05
+				+ 7.012410481770833f * in06
+				- 3.436110723586309f * in07
+				+ 1.127578880673363f * in08
+				- 0.22271970718625989f * in09
+				+ 0.02004239521329365f * in10);
+		case 2:
+			return (0.02004239521329365f * in00
+				- 0.9722130185081846f * in01
+				+ 0.6327471051897322f * in02
+				+ 0.9213227771577381f * in03
+				- 1.2789794921875f * in04
+				+ 1.21072998046875f * in05
+				- 0.8259480794270833f * in06
+				+ 0.3984200613839286f * in07
+				- 0.12911551339285712f * in08
+				+ 0.025247143942212297f * in09
+				- 0.0022533598400297614f * in10);
+
+			//field derivative onto field grid
+		case 11:
+			return (-0.1f * in00
+				- 1.8289682539682544f * in01
+				+ 4.5f * in02
+				- 6.f * in03
+				+ 7.f * in04
+				- 6.3f * in05
+				+ 4.2f * in06
+				- 2.f * in07
+				+ 0.6428571428571428f * in08
+				- 0.125f * in09
+				+ 0.011111111111111111f * in10);
+		case 12:
+			return (0.01111111111111111f * in00
+				- 0.2222222222222222f * in01
+				- 1.2178571428571427f * in02
+				+ 2.666666666666667f * in03
+				- 2.3333333333333333f * in04
+				+ 1.8666666666666667f * in05
+				- 1.1666666666666667f * in06
+				+ 0.5333333333333333f * in07
+				- 0.166666666666666667f * in08
+				+ 0.031746031746031744f * in09
+				- 0.002777777777777778f * in10);
+		case 13:
+			return (-2.7777777777777778e-03f * in00
+				+ 4.16666666666666667e-02f * in01
+				- 3.7500000000000000e-01f * in02
+				- 7.5952380952380949e-01f * in03
+				+ 1.7500000000000000e+00f * in04
+				- 1.0500000000000000e+00f * in05
+				+ 5.8333333333333326e-01f * in06
+				- 2.5000000000000000e-01f * in07
+				+ 7.5e-02f * in08
+				- 1.38888888888888889e-02f * in09
+				+ 1.1904761904761906e-03f * in10);
+		}
 	}
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
@@ -1735,146 +1914,6 @@ namespace kernelNamespace{
 		}
 	};
 
-
-	deviceFunction maxwellPoint<deviceFP> maxwellDerivativeTerms(maxwellCalculation<deviceFP>* s, int64_t i, maxwellPoint<deviceFP>* gridIn) {
-		maxwellPoint<deviceFP> result{};
-		int64_t zIndex = i % s->Nz;
-		int64_t xIndex = (i / s->Nz) % s->Nx;
-		int64_t yIndex = i / (s->Nz * s->Nx);
-
-		//x derivative (periodic boundary)
-		int64_t b = zIndex + yIndex * (s->Nz * s->Nx);
-		int64_t iM1 = b + s->Nz * ((xIndex > 0) ? xIndex - 1 : s->Nx - 1);
-		int64_t iM2 = b + s->Nz * ((xIndex > 1) ? xIndex - 2 : xIndex + s->Nx - 2);
-		int64_t iM3 = b + s->Nz * ((xIndex > 2) ? xIndex - 3 : xIndex + s->Nx - 3);
-		int64_t iP1 = b + s->Nz * ((xIndex + 1) % s->Nx);
-		int64_t iP2 = b + s->Nz * ((xIndex + 2) % s->Nx);
-		int64_t iP3 = b + s->Nz * ((xIndex + 3) % s->Nx);
-		result.Ez =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hy, gridIn[iM2].Hy, gridIn[iM1].Hy, gridIn[iP1].Hy, gridIn[iP2].Hy, gridIn[iP3].Hy);
-		result.Ey = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hz, gridIn[iM2].Hz, gridIn[iM1].Hz, gridIn[iP1].Hz, gridIn[iP2].Hz, gridIn[iP3].Hz);
-		result.Hz = -s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
-		result.Hy =  s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
-		
-		//y derivative
-		if (s->Ny > 1) {
-			b = zIndex + xIndex * s->Nz;
-			int64_t c = (s->Nz * s->Nx);
-			iM1 = b + c * ((yIndex > 0) ? yIndex - 1 : s->Ny - 1);
-			iM2 = b + c * ((yIndex > 1) ? yIndex - 2 : yIndex + s->Ny - 2);
-			iM3 = b + c * ((yIndex > 1) ? yIndex - 3 : yIndex + s->Ny - 3);
-			iP1 = b + c * ((yIndex + 1) % s->Ny);
-			iP2 = b + c * ((yIndex + 2) % s->Ny);
-			iP3 = b + c * ((yIndex + 3) % s->Ny);
-			//REMEMBER TO FIX THE MINUS SIGNS HERE
-			result.Ex += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hz, gridIn[iM2].Hz, gridIn[iM1].Hz, gridIn[iP1].Hz, gridIn[iP2].Hz, gridIn[iP3].Hz);
-			result.Ez += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Hx, gridIn[iM2].Hx, gridIn[iM1].Hx, gridIn[iP1].Hx, gridIn[iP2].Hx, gridIn[iP3].Hx);
-			result.Hx += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ez, gridIn[iM2].Ez, gridIn[iM1].Ez, gridIn[iP1].Ez, gridIn[iP2].Ez, gridIn[iP3].Ez);
-			result.Hz += s->inverseXyStep * firstDerivativeSixthOrder(gridIn[iM3].Ex, gridIn[iM2].Ex, gridIn[iM1].Ex, gridIn[iP1].Ex, gridIn[iP2].Ex, gridIn[iP3].Ex);
-		}
-		
-		//z derivative
-		b = yIndex * (s->Nz * s->Nx) + xIndex * s->Nz;
-		iM1 = b + ((zIndex > 0) ? zIndex - 1 : s->Nz - 1);
-		iM2 = b + ((zIndex > 1) ? zIndex - 2 : zIndex + s->Nz - 2);
-		iM3 = b + ((zIndex > 2) ? zIndex - 3 : zIndex + s->Nz - 3);
-		iP1 = b + ((zIndex + 1) % s->Nz);
-		iP2 = b + ((zIndex + 2) % s->Nz);
-		iP3 = b + ((zIndex + 3) % s->Nz);
-		result.Ex += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Hy, gridIn[iM2].Hy, gridIn[iM1].Hy, gridIn[iP1].Hy, gridIn[iP2].Hy, gridIn[iP3].Hy);
-		result.Ey += -s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Hx, gridIn[iM2].Hx, gridIn[iM1].Hx, gridIn[iP1].Hx, gridIn[iP2].Hx, gridIn[iP3].Hx);
-		result.Hx +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ey, gridIn[iM2].Ey, gridIn[iM1].Ey, gridIn[iP1].Ey, gridIn[iP2].Ey, gridIn[iP3].Ey);
-		result.Hy +=  s->inverseZStep * firstDerivativeSixthOrder(gridIn[iM3].Ex, gridIn[iM2].Ex, gridIn[iM1].Ex, gridIn[iP1].Ex, gridIn[iP2].Ex, gridIn[iP3].Ex);
-
-		return result;
-	}
-	deviceFunction int64_t boundaryFinder(int64_t i, int64_t N) {
-		//normal points
-		if (i < (N - 5) && i > 3) return 5;
-		//LHS
-		else if (i < 4) return i;
-		//RHS
-		else return i - N;
-	}
-
-	deviceFunction inline double resolveMaxwellEndpoints(int64_t type, double in00, double in01, double in02, double in03, double in04, double in05, double in06, double in07, double in08, double in09, double in10){
-		switch (type) {
-		case 0: //reverse and negate for +z end
-			return (-2.928968253968253*in00
-				+ 10. * in01
-				- 22.5 * in02
-				+ 40. * in03
-				- 52.5 * in04
-				+ 50.4 * in05
-				- 35 * in06
-				+ 17.142857142857142 * in07
-				-5.625 * in08
-				+ 1.1111111111111111 * in09
-				-0.1 * in10);
-		case 1:
-			return (-0.7517466711619544 * in00
-				- 0.4695846315414186 * in01
-				+ 4.22831798735119 * in02
-				- 7.892969912574405 * in03
-				+ 10.470316569010416 * in04
-				- 10.08553466796875 * in05
-				+ 7.012410481770833 * in06
-				- 3.436110723586309 * in07
-				+ 1.127578880673363 * in08
-				- 0.22271970718625989 * in09
-				+ 0.02004239521329365 * in10);
-		case 2:
-			return (0.02004239521329365 * in00
-				- 0.9722130185081846 * in01
-				+ 0.6327471051897322 * in02
-				+ 0.9213227771577381 * in03
-				- 1.2789794921875 * in04
-				+ 1.21072998046875 * in05
-				- 0.8259480794270833 * in06
-				+ 0.3984200613839286 * in07
-				- 0.12911551339285712 * in08
-				+ 0.025247143942212297 * in09
-				- 0.0022533598400297614 * in10);
-
-		//field derivative onto field grid
-		case 11:
-			return (-0.1 * in00
-				- 1.8289682539682544 * in01
-				+ 4.5 * in02
-				- 6. * in03
-				+ 7. * in04
-				- 6.3 * in05
-				+ 4.2 * in06
-				- 2. * in07
-				+ 0.6428571428571428 * in08
-				- 0.125 * in09
-				+ 0.011111111111111111 * in10);
-		case 12:
-			return (0.01111111111111111 * in00
-				- 0.2222222222222222 * in01
-				- 1.2178571428571427 * in02
-				+ 2.666666666666667 * in03
-				- 2.3333333333333333 * in04
-				+ 1.8666666666666667 * in05
-				- 1.1666666666666667 * in06
-				+ 0.5333333333333333 * in07
-				- 0.166666666666666667 * in08
-				+ 0.031746031746031744 * in09
-				- 0.002777777777777778 * in10);
-		case 13:
-			return (-2.7777777777777775e-03 * in00
-				+ 4.1666666666666664e-02 * in01
-				- 3.7500000000000000e-01 * in02
-				- 7.5952380952380949e-01 * in03
-				+ 1.7500000000000000e+00 * in04
-				- 1.0500000000000003e+00 * in05
-				+ 5.8333333333333326e-01 * in06
-				- 2.5000000000000000e-01 * in07
-				+ 7.5e-02 * in08
-				- 1.38888888888888889e-02 * in09
-				+ 1.1904761904761906e-03 * in10);
-		}
-	}
-
 	deviceFunction maxwellPoint2D<deviceFP> maxwellDerivativeTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const maxwellPoint2D<deviceFP>* gridIn) {
 		maxwellPoint2D<deviceFP> result{};
 		const int64_t zIndex = i % s->Nz;
@@ -1886,172 +1925,172 @@ namespace kernelNamespace{
 		deviceFP dEyDz{};
 		deviceFP dEyDx{};
 
-		//switch (boundaryFinder(xIndex, s->Nx)) {
-		//[[likely]] case 5:
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
-		//	break;
-		//case 0:
-		//	//xIndex=0
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + 0].Hz,
-		//		gridIn[zIndex + (s->Nz)].Hz,
-		//		gridIn[zIndex + 2 * (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex].Ey,
-		//		gridIn[zIndex + (s->Nz)].Ey,
-		//		gridIn[zIndex + 2 * (s->Nz)].Ey,
-		//		gridIn[zIndex + 3 * (s->Nz)].Ey);
-		//	break;
-		//case 1:
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx-2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx-1) * (s->Nz)].Hz,
-		//		gridIn[zIndex].Hz,
-		//		gridIn[zIndex + (s->Nz)].Hz,
-		//		gridIn[zIndex + 2 * (s->Nz)].Hz,
-		//		gridIn[zIndex + 3 * (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx-1) * (s->Nz)].Ey,
-		//		gridIn[zIndex].Ey,
-		//		gridIn[zIndex + (s->Nz)].Ey,
-		//		gridIn[zIndex + 2 * (s->Nz)].Ey,
-		//		gridIn[zIndex + 3 * (s->Nz)].Ey,
-		//		gridIn[zIndex + 4 * (s->Nz)].Ey);
-		//	break;
-		//case 2:
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx-1) * (s->Nz)].Hz,
-		//		gridIn[zIndex].Hz,
-		//		gridIn[zIndex + (s->Nz)].Hz,
-		//		gridIn[zIndex + 2 * (s->Nz)].Hz,
-		//		gridIn[zIndex + 3 * (s->Nz)].Hz,
-		//		gridIn[zIndex + 4 * (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex].Ey,
-		//		gridIn[zIndex + (s->Nz)].Ey,
-		//		gridIn[zIndex + 2 * (s->Nz)].Ey,
-		//		gridIn[zIndex + 3 * (s->Nz)].Ey,
-		//		gridIn[zIndex + 4 * (s->Nz)].Ey,
-		//		gridIn[zIndex + 5 * (s->Nz)].Ey);
-		//	break;
-		//case 3:
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
-		//	break;
-		//case -1:
-		//	//xIndex = Nx-1
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex].Hz,
-		//		gridIn[zIndex + (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex].Ey,
-		//		gridIn[zIndex + (s->Nz)].Ey,
-		//		gridIn[zIndex + 2 * (s->Nz)].Ey);
-		//	break;
-		//case -2:
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex].Ey,
-		//		gridIn[zIndex + (s->Nz)].Ey);
-		//	break;
-		//case -3:
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx - 6) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex].Ey);
-		//	break;
-		//case -4:
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
-		//	break;
-		//case -5:
-		//	dHzDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
-		//		gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
-		//	dEyDx = firstDerivativeSixthOrder(
-		//		gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
-		//		gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
-		//	break;
-		//default:
-		//	break;
-		//}
+		switch (boundaryFinder(xIndex, s->Nx)) {
+		[[likely]] case 5:
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
+			break;
+		case 0:
+			//xIndex=0
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
+				gridIn[zIndex + 0].Hz,
+				gridIn[zIndex + (s->Nz)].Hz,
+				gridIn[zIndex + 2 * (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey,
+				gridIn[zIndex + 2 * (s->Nz)].Ey,
+				gridIn[zIndex + 3 * (s->Nz)].Ey);
+			break;
+		case 1:
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx-2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx-1) * (s->Nz)].Hz,
+				gridIn[zIndex].Hz,
+				gridIn[zIndex + (s->Nz)].Hz,
+				gridIn[zIndex + 2 * (s->Nz)].Hz,
+				gridIn[zIndex + 3 * (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx-1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey,
+				gridIn[zIndex + 2 * (s->Nz)].Ey,
+				gridIn[zIndex + 3 * (s->Nz)].Ey,
+				gridIn[zIndex + 4 * (s->Nz)].Ey);
+			break;
+		case 2:
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx-1) * (s->Nz)].Hz,
+				gridIn[zIndex].Hz,
+				gridIn[zIndex + (s->Nz)].Hz,
+				gridIn[zIndex + 2 * (s->Nz)].Hz,
+				gridIn[zIndex + 3 * (s->Nz)].Hz,
+				gridIn[zIndex + 4 * (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey,
+				gridIn[zIndex + 2 * (s->Nz)].Ey,
+				gridIn[zIndex + 3 * (s->Nz)].Ey,
+				gridIn[zIndex + 4 * (s->Nz)].Ey,
+				gridIn[zIndex + 5 * (s->Nz)].Ey);
+			break;
+		case 3:
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
+			break;
+		case -1:
+			//xIndex = Nx-1
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
+				gridIn[zIndex].Hz,
+				gridIn[zIndex + (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey,
+				gridIn[zIndex + 2 * (s->Nz)].Ey);
+			break;
+		case -2:
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz,
+				gridIn[zIndex].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey,
+				gridIn[zIndex + (s->Nz)].Ey);
+			break;
+		case -3:
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 6) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (s->Nx - 5) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 4) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 3) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (s->Nx - 1) * (s->Nz)].Ey,
+				gridIn[zIndex].Ey);
+			break;
+		case -4:
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
+			break;
+		case -5:
+			dHzDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 3) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Hz,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Hz);
+			dEyDx = firstDerivativeSixthOrder(
+				gridIn[zIndex + (xIndex - 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex - 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 1) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 2) * (s->Nz)].Ey,
+				gridIn[zIndex + (xIndex + 3) * (s->Nz)].Ey);
+			break;
+		default:
+			break;
+		}
 		
 		switch (boundaryFinder(zIndex,s->Nz)) {
 		[[likely]] case 5:
@@ -2083,7 +2122,7 @@ namespace kernelNamespace{
 				gridIn[zStart + 8].Ey,
 				gridIn[zStart + 9].Ey,
 				gridIn[zStart + 10].Ey);
-			dHxDz = -(1.0 / Zo<double>()) * dEyDz;
+			dHxDz = -inverseZo<deviceFP>() * dEyDz;
 			break;
 		case 1:
 			dEyDz = resolveMaxwellEndpoints(1,
@@ -2098,7 +2137,7 @@ namespace kernelNamespace{
 				gridIn[zStart + 8].Ey,
 				gridIn[zStart + 9].Ey,
 				gridIn[zStart + 10].Ey);
-			dHxDz = -(1.0 / Zo<double>()) * resolveMaxwellEndpoints(11,
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(11,
 				gridIn[zStart].Ey,
 				gridIn[zStart + 1].Ey,
 				gridIn[zStart + 2].Ey,
@@ -2124,7 +2163,7 @@ namespace kernelNamespace{
 				gridIn[zStart + 8].Ey,
 				gridIn[zStart + 9].Ey,
 				gridIn[zStart + 10].Ey);
-			dHxDz = -(1.0 / Zo<double>()) * resolveMaxwellEndpoints(12,
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(12,
 				gridIn[zStart].Ey,
 				gridIn[zStart + 1].Ey,
 				gridIn[zStart + 2].Ey,
@@ -2146,7 +2185,7 @@ namespace kernelNamespace{
 				gridIn[zStart + 3].Ey,
 				gridIn[zStart + 4].Ey,
 				gridIn[zStart + 5].Ey);
-			dHxDz = -(1.0/Zo<double>()) * resolveMaxwellEndpoints(13,
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(13,
 				gridIn[zStart].Ey,
 				gridIn[zStart + 1].Ey,
 				gridIn[zStart + 2].Ey,
@@ -2188,7 +2227,7 @@ namespace kernelNamespace{
 				gridIn[zEnd - 10].Ey,
 				gridIn[zEnd - 11].Ey,
 				gridIn[zEnd - 12].Ey);
-			dHxDz = -(1.0/Zo<double>()) * resolveMaxwellEndpoints(0,
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(0,
 				gridIn[zEnd - 2].Ey,
 				gridIn[zEnd - 3].Ey,
 				gridIn[zEnd - 4].Ey,
@@ -2214,7 +2253,7 @@ namespace kernelNamespace{
 				gridIn[zEnd - 10].Ey,
 				gridIn[zEnd - 11].Ey,
 				gridIn[zEnd - 12].Ey);
-			dHxDz = -(1.0 / Zo<double>()) * resolveMaxwellEndpoints(11,
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(11,
 				gridIn[zEnd - 2].Ey,
 				gridIn[zEnd - 3].Ey,
 				gridIn[zEnd - 4].Ey,
@@ -2235,7 +2274,7 @@ namespace kernelNamespace{
 				gridIn[i].Ey,
 				gridIn[i + 1].Ey,
 				gridIn[i + 2].Ey);
-			dHxDz = -(1.0 / Zo<double>()) * resolveMaxwellEndpoints(12,
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(12,
 				gridIn[zEnd - 2].Ey,
 				gridIn[zEnd - 3].Ey,
 				gridIn[zEnd - 4].Ey,
@@ -2256,7 +2295,7 @@ namespace kernelNamespace{
 				gridIn[i].Ey,
 				gridIn[i + 1].Ey,
 				gridIn[i + 2].Ey);
-			dHxDz = -(1.0 / Zo<double>()) * resolveMaxwellEndpoints(13,
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(13,
 				gridIn[zEnd - 2].Ey,
 				gridIn[zEnd - 3].Ey,
 				gridIn[zEnd - 4].Ey,
@@ -2286,7 +2325,7 @@ namespace kernelNamespace{
 			const int64_t zIndex = i % s->Nz;
 			//const int64_t xIndex = (i / s->Nz) % s->Nx;
 			deviceFP z0 = zIndex * s->zStep - (s->Nz * s->zStep / 2.0f);
-			s->grid[i].Ey = deviceFPLib::exp(-z0*z0/(1e-6*1e-6))*deviceFPLib::cos(twoPi<deviceFP>()*z0/800e-9);
+			s->grid[i].Ey = deviceFPLib::exp(-z0*z0/(1e-12f))*deviceFPLib::cos(twoPi<deviceFP>()*z0/800e-9f);
 		}
 	};
 
@@ -2297,42 +2336,7 @@ namespace kernelNamespace{
 			s->inOutEy[i] = s->grid[i].Ey;
 		}
 	};
-	//class maxwellRKkernel0 {
-	//public:
-	//	maxwellCalculation<deviceFP>* s;
-	//	deviceFunction void operator()(int64_t i) const {
-	//		maxwellPoint<deviceFP> k = maxwellDerivativeTerms(s, i, s->grid);
-	//		s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
-	//		s->gridNext[i] = s->grid[i] + k * (sixth<deviceFP>() * s->tStep);
-	//	}
-	//};
-	//class maxwellRKkernel1 {
-	//public:
-	//	maxwellCalculation<deviceFP>* s;
-	//	deviceFunction void operator()(int64_t i) const {
-	//		maxwellPoint<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
-	//		s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
-	//		s->gridNext[i] = s->grid[i] + k * (third<deviceFP>() * s->tStep);
-	//	}
-	//};
-	//class maxwellRKkernel2 {
-	//public:
-	//	maxwellCalculation<deviceFP>* s;
-	//	deviceFunction void operator()(int64_t i) const {
-	//		maxwellPoint<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
-	//		s->gridEstimate[i] = s->grid[i] + k * s->tStep;
-	//		s->gridNext[i] = s->grid[i] + k * (third<deviceFP>() * s->tStep);
-	//	}
-	//};
-	//class maxwellRKkernel3 {
-	//public:
-	//	maxwellCalculation<deviceFP>* s;
-	//	deviceFunction void operator()(int64_t i) const {
-	//		maxwellPoint<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
-	//		s->gridNext[i] = s->grid[i] + k * (sixth<deviceFP>() * s->tStep);
-	//	}
-	//};
-
+	
 	deviceFunction void maxwellCurrentTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const int64_t t, bool isAtMidpoint, const maxwellPoint2D<deviceFP>* gridIn, const oscillator2D<deviceFP>* currentGridIn, maxwellPoint2D<deviceFP>& k) {
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
@@ -2342,7 +2346,7 @@ namespace kernelNamespace{
 			return;
 		}
 		else if (zIndex == 5 && t0 < s->NtIO - 4 && t0 > 1) {
-			deviceFP tCurrent = s->tStep * t + 0.5 * isAtMidpoint * s->tStep;
+			deviceFP tCurrent = s->tStep * t + 0.5f * isAtMidpoint * s->tStep;
 			deviceComplex* fftData = (deviceComplex*)s->inputEyFFT;
 			int64_t fftSize = s->NtIO / 2 + 1;
 			deviceFP Ecurrent = fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);

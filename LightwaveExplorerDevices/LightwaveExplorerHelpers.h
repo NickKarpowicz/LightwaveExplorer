@@ -70,6 +70,10 @@ hostOrDevice static constexpr T Zo() {
     return (T)376.730313668;
 }
 template <typename T>
+hostOrDevice static constexpr T inverseZo() {
+    return 0.0026544187287534486;
+}
+template <typename T>
 hostOrDevice static constexpr T sixth() {
     return (T)((T)1.0 / 6.0);
 }
