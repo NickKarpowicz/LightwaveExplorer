@@ -920,7 +920,7 @@ public:
         zStep = zStep_in;
         Nx = (*s).Nspace * xFactor;
         Nz = (frontBuffer + backBuffer + crystalThickness) / zStep;
-        Nz = 8 * (Nz / 8 + (Nz % 8 > 0));
+        Nz = minGridDimension * (Nz / minGridDimension + (Nz % minGridDimension > 0));
         NtIO = (*s).Ntime;
         xyStep = (*s).rStep / xFactor;
         tStep = (*s).tStep / timeFactor;

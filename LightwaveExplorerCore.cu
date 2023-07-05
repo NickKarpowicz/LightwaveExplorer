@@ -2340,12 +2340,11 @@ namespace kernelNamespace{
 	deviceFunction void maxwellCurrentTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const int64_t t, bool isAtMidpoint, const maxwellPoint2D<deviceFP>* gridIn, const oscillator2D<deviceFP>* currentGridIn, maxwellPoint2D<deviceFP>& k) {
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
-		int64_t t0 = (2 * t + isAtMidpoint) / (2 * s->tGridFactor);
 		if (zIndex >= s->materialStart && zIndex <= s->materialStop) {
 			//material
 			return;
 		}
-		else if (zIndex == 5 && t0 < s->NtIO - 4 && t0 > 1) {
+		else if (zIndex == 5) {
 			deviceFP tCurrent = s->tStep * t + 0.5f * isAtMidpoint * s->tStep;
 			deviceComplex* fftData = (deviceComplex*)s->inputEyFFT;
 			int64_t fftSize = s->NtIO / 2 + 1;
@@ -2417,11 +2416,9 @@ namespace kernelNamespace{
 	public:
 		maxwellCalculation2D<deviceFP>* s;
 		int64_t time;
-		int64_t outputStride;
 		deviceFunction void operator()(int64_t i) const {
-			int64_t gridIndex = (i * s->xGridFactor) * s->Nz;
+			int64_t gridIndex = (i * s->xGridFactor) * s->Nz + s->observationPoint;
 			s->inOutEy[i * s->NtIO + time] = s->grid[gridIndex].Ey;
-			//if(time>2)s->inOutEy[i * outputStride + time-2] = s->grid[gridIndex].Ey;
 		}
 	};
 
@@ -3250,18 +3247,30 @@ namespace hostFunctions{
 
 	static unsigned long int solveFDTD2D(ActiveDevice& d, simulationParameterSet* sCPU, int64_t xFactor, int64_t tFactor, deviceFP dz, deviceFP frontBuffer, deviceFP backBuffer, deviceFP propagationTime) {
 		maxwellCalculation2D<deviceFP> maxCalc = maxwellCalculation2D<deviceFP>(sCPU, xFactor, tFactor, dz, frontBuffer, backBuffer, propagationTime);
+		
+		//calculate the recording delay and the time to run (this OVERRIDES the input propagationTime)
+		int64_t waitFrames = ((maxCalc.observationPoint-5) * maxCalc.zStep)/(lightC<double>() * (*sCPU).tStep);
+		maxCalc.Nt = (waitFrames + (*sCPU).Ntime) * maxCalc.tGridFactor;
+
+		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
+		//make both grids available through the maxCalc class
 		d.deviceMemcpy(d.s->gridETime1, (*sCPU).ExtOut, 2*(*sCPU).Ngrid * sizeof(double), copyType::ToDevice);
 		maxCalc.inOutEy = d.s->gridETime1;
 		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
 		maxCalc.inputEyFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1);
+		d.deviceMemset(maxCalc.inOutEy, 0, (*sCPU).Ngrid * sizeof(deviceFP));
+
+		//allocate the new memory needed for the maxwell calculation
 		d.deviceCalloc((void**) &(maxCalc.grid), maxCalc.Nx*maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**) &(maxCalc.gridEstimate), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**) &(maxCalc.gridNext), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
 		d.deviceCalloc((void**)&(maxCalc.gridEstimate2), maxCalc.Nx * maxCalc.Nz, sizeof(maxwellPoint2D<deviceFP>));
+
+		//make a device copy of the maxCalc class
 		maxwellCalculation2D<deviceFP>* maxCalcDevice{};
 		d.deviceCalloc((void**) &maxCalcDevice, 1, sizeof(maxwellCalculation2D<deviceFP>));
 		d.deviceMemcpy((void*)maxCalcDevice, (void*)&maxCalc, sizeof(maxwellCalculation2D<deviceFP>), copyType::ToDevice);
-		//d.deviceLaunch(maxCalc.Ngrid, 1, maxwellGridInit{ maxCalcDevice });
+
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel02D{maxCalcDevice, i});
@@ -3269,15 +3278,17 @@ namespace hostFunctions{
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel22D{maxCalcDevice, i});
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel32D{maxCalcDevice, i});
 			d.deviceMemcpy(maxCalc.grid, maxCalc.gridNext, maxCalc.Ngrid * sizeof(maxwellPoint2D<deviceFP>), copyType::OnDevice);
-			if (i % maxCalc.tGridFactor == 0 && (i/maxCalc.tGridFactor)<(*sCPU).Ntime-1) {
-				//d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalcDevice, i / maxCalc.tGridFactor, (*sCPU).Ntime});
+			if (i % maxCalc.tGridFactor == 0 && (i/maxCalc.tGridFactor - waitFrames)<(*sCPU).Ntime-1) {
+				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalcDevice, i / maxCalc.tGridFactor - waitFrames});
 			}
 		}
-		
-		memset((*sCPU).ExtOut, 0, (*sCPU).Ngrid * sizeof(double));
-		d.deviceLaunch(minN(maxCalc.Ngrid,(*sCPU).Ngrid), 1, maxwellSpaceToTime{maxCalcDevice});
 		d.deviceMemcpy((*sCPU).ExtOut, maxCalc.inOutEy, (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 		
+		//take spectra, repopulate usual grids
+		d.fft(maxCalc.inOutEy, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
+		getTotalSpectrum(d);
+
 		//d.deviceMemcpy((*sCPU).ExtOut, (float*)maxCalc.grid, minN((*sCPU).Ngrid,maxCalc.Nz*maxCalc.Nx) * sizeof(double), copyType::ToHost);
 		//switch device back
 		d.deviceFree(maxCalc.grid);
