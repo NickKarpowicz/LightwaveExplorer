@@ -2383,7 +2383,7 @@ namespace kernelNamespace{
 				 //in the future, rotate current from crystal coordinates to field coordinates
 				oscillator2D<deviceFP> kOsc{
 					-eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
-						(gridIn[i].Ey - nonlinearDriver)
+						(gridIn[i].Ey + nonlinearDriver)
 						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].Py
 						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy
