@@ -897,6 +897,10 @@ public:
     deviceFP chi3[81][8]{};
     deviceFP chi2[18][8]{};
     deviceFP plasmaParameters[6][8]{};
+    bool hasChi2[8]{};
+    bool hasFullChi3[8]{};
+    bool hasSingleChi3[8]{};
+    bool hasPlasma[8]{};
     deviceFP* inOutEy{};
     deviceFP* inputEyFFT{};
     deviceFP omegaStep{};

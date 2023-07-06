@@ -27,15 +27,19 @@ namespace deviceFunctions {
 	}
 	template<typename deviceFP>
 	deviceFunction oscillator2D<deviceFP> operator*(oscillator2D<deviceFP>& a, const deviceFP b) {
-		return oscillator2D<deviceFP>{a.Jy* b, a.Py* b};
+		return oscillator2D<deviceFP>{
+				a.Jy * b, 
+				a.Py * b};
 	}
-	template<typename deviceFP>
+	/*template<typename deviceFP>
 	deviceFunction oscillator2D<deviceFP> operator*(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& b) {
 		return oscillator2D<deviceFP>{a.Jy* b.Jy, a.Py* b.Py};
-	}
+	}*/
 	template<typename deviceFP>
 	deviceFunction oscillator2D<deviceFP> operator+(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& b) {
-		return oscillator2D<deviceFP>{a.Jy + b.Jy, a.Py + b.Py};
+		return oscillator2D<deviceFP>{
+				a.Jy + b.Jy, 
+				a.Py + b.Py};
 	}
 	//determine if the current grid location is close to the boundary
 	//5 means its a normal point
@@ -2363,14 +2367,27 @@ namespace kernelNamespace{
 			const int64_t oscillatorIndex = (zIndex - s->materialStart) * s->Noscillators + xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
 			//apply epsilon_infinity
 			k.Ey /= s->sellmeierEquations[0][0];
+			deviceFP Jy{};
+			deviceFP Py = (s->sellmeierEquations[0][0] - 1.0f) * gridIn[i].Ey;
+			deviceFP nonlinearDriver{};
+			for (int j = 0; j < s->Noscillators; j++) {
+				Jy += currentGridIn[oscillatorIndex + j].Jy;
+				Py += currentGridIn[oscillatorIndex + j].Py;
+			}
+			if (s->hasSingleChi3[0]) {
+				nonlinearDriver += s->chi3[0][0] * Py * Py * Py;
+			}
+			k.Ey += Jy/eps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
 
 			for (int j = 0; j < s->Noscillators; j++) {
-				k.Ey += currentGridIn[oscillatorIndex + j].Jy/eps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
+				 //in the future, rotate current from crystal coordinates to field coordinates
 				oscillator2D<deviceFP> kOsc{
-					- eps0<deviceFP>()*kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] * gridIn[i].Ey
+					-eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
+						(gridIn[i].Ey + nonlinearDriver)
 						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].Py
 						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].Jy,
-						currentGridIn[oscillatorIndex + j].Jy};
+						currentGridIn[oscillatorIndex + j].Jy
+					};
 				switch (rkIndex) {
 				case 0:
 					s->materialGridEstimate[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
@@ -2389,6 +2406,8 @@ namespace kernelNamespace{
 					break;
 				}
 			}
+			
+			
 			return;
 		}
 		else if (zIndex == 5) {
@@ -3307,6 +3326,16 @@ namespace hostFunctions{
 		for (int i = 0; i < 66; i++) {
 			maxCalc.sellmeierEquations[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
 		}
+		for (int i = 0; i < 18; i++) {
+			maxCalc.chi2[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].d[i]);
+		}
+		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[0]) maxCalc.hasChi2[0] = true;
+		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1]==1) maxCalc.hasFullChi3[0] = true;
+		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1]==2) maxCalc.hasSingleChi3[0] = true;
+
+		for (int i = 0; i < 81; i++) {
+			maxCalc.chi3[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i]);
+		}
 		//count the nonzero oscillators
 		for (int i = 0; i < 7; i++) {
 			if (maxCalc.sellmeierEquations[1 + i*3][0] > 0.0) maxCalc.Noscillators++;
@@ -3344,8 +3373,6 @@ namespace hostFunctions{
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel12D{maxCalcDevice, i});
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel22D{maxCalcDevice, i});
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel32D{maxCalcDevice, i});
-			//d.deviceMemcpy(maxCalc.grid, maxCalc.gridNext, maxCalc.Ngrid * sizeof(maxwellPoint2D<deviceFP>), copyType::OnDevice);
-			//d.deviceMemcpy(maxCalc.materialGrid, maxCalc.materialGridNext, materialGridSize * sizeof(oscillator2D<deviceFP>), copyType::OnDevice);
 			if (i % maxCalc.tGridFactor == 0 && (i/maxCalc.tGridFactor - waitFrames)<(*sCPU).Ntime-1) {
 				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalcDevice, i / maxCalc.tGridFactor - waitFrames});
 			}
