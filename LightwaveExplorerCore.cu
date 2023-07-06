@@ -266,7 +266,7 @@ namespace deviceFunctions {
 	template<typename real_t, typename complex_t>
 	deviceFunction static real_t fourierInterpolation(real_t timeShift, complex_t* fourierData, int64_t dataSize, real_t dOmega, int64_t frequencyLimit) {
 		real_t result{};
-		for (int i = 0; i < frequencyLimit; i++) {
+		for (int i = 1; i < frequencyLimit; i++) {
 			real_t w = i * dOmega;
 			complex_t expFactor = complex_t(0.0f, -2.0f*w)*deviceLib::exp(complex_t(0.0f, w * timeShift));
 			result += (expFactor.real() * fourierData[i].real() - expFactor.imag() * fourierData[i].imag()); //can be sped up be precalculating factor
@@ -2368,7 +2368,7 @@ namespace kernelNamespace{
 			//apply epsilon_infinity
 			k.Ey /= s->sellmeierEquations[0][0];
 			deviceFP Jy{};
-			deviceFP Py = (s->sellmeierEquations[0][0] - 1.0f) * gridIn[i].Ey;
+			deviceFP Py = (s->sellmeierEquations[0][0]) * gridIn[i].Ey;
 			deviceFP nonlinearDriver{};
 			for (int j = 0; j < s->Noscillators; j++) {
 				Jy += currentGridIn[oscillatorIndex + j].Jy;
@@ -2383,7 +2383,7 @@ namespace kernelNamespace{
 				 //in the future, rotate current from crystal coordinates to field coordinates
 				oscillator2D<deviceFP> kOsc{
 					-eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
-						(gridIn[i].Ey + nonlinearDriver)
+						(gridIn[i].Ey - nonlinearDriver)
 						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].Py
 						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy
@@ -2410,11 +2410,11 @@ namespace kernelNamespace{
 			
 			return;
 		}
-		else if (zIndex == 5) {
+		else if (zIndex == 0) {
 			deviceFP tCurrent = s->tStep * t + 0.5f * isAtMidpoint * s->tStep;
 			deviceComplex* fftData = (deviceComplex*)s->inputEyFFT;
 			int64_t fftSize = s->NtIO / 2 + 1;
-			deviceFP Ecurrent = fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
+			deviceFP Ecurrent = 230.38f *fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
 			k.Ey += Ecurrent;
 			k.Hx += Ecurrent / Zo<deviceFP>();
 			return;
@@ -2718,6 +2718,54 @@ namespace hostFunctions{
 	static simulationParameterSet* fittingSet;
 	static ActiveDevice* dFit;
 
+	static std::complex<double> hostSellmeierFunc(double ls, const double omega, const double* a, const int eqn) {
+		const double omega2 = omega * omega;
+		double realPart;
+		std::complex<double> compPart;
+		switch (eqn) {
+		case 0:
+			if (ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return std::complex<double>{};
+			realPart = a[0]
+				+ (a[1] + a[2] * ls) / (ls + a[3])
+				+ (a[4] + a[5] * ls) / (ls + a[6])
+				+ (a[7] + a[8] * ls) / (ls + a[9])
+				+ (a[10] + a[11] * ls) / (ls + a[12])
+				+ a[13] * ls
+				+ a[14] * ls * ls
+				+ a[15] * ls * ls * ls;
+			compPart = kLorentzian<double>() * a[16] / std::complex<double>(a[17] - omega2, a[18] * omega)
+				+ kLorentzian<double>() * a[19] / std::complex<double>(a[20] - omega2, a[21] * omega);
+			return std::sqrt(maxN(realPart, 0.9f) + compPart);
+		case 1:
+			//up to 7 Lorentzian lines
+			compPart = a[1] / std::complex<double>(a[2] - omega2, a[3] * omega)
+				+ a[4] / std::complex<double>(a[5] - omega2, a[6] * omega)
+				+ a[7] / std::complex<double>(a[8] - omega2, a[9] * omega)
+				+ a[10] / std::complex<double>(a[11] - omega2, a[12] * omega)
+				+ a[13] / std::complex<double>(a[14] - omega2, a[15] * omega)
+				+ a[16] / std::complex<double>(a[17] - omega2, a[18] * omega)
+				+ a[19] / std::complex<double>(a[20] - omega2, a[21] * omega);
+			compPart *= kLorentzian<double>();
+			compPart += a[0];
+			return std::complex<double>((std::sqrt(compPart)).real(), -std::abs((std::sqrt(compPart)).imag()));
+
+		case 100:
+		{
+			if (ls == -a[3] || ls == -a[6] || ls == -a[9] || ls == -a[12]) return std::complex<double>{};
+		}
+		realPart = a[0]
+			+ (a[1] + a[2] * ls) / (ls + a[3])
+			+ (a[4] + a[5] * ls) / (ls + a[6])
+			+ (a[7] + a[8] * ls) / (ls + a[9])
+			+ (a[10] + a[11] * ls) / (ls + a[12])
+			+ a[13] * ls
+			+ a[14] * ls * ls
+			+ a[15] * ls * ls * ls;
+		//"real-valued equation has no business being < 1" - causality
+		return std::complex<double>(std::sqrt(maxN(realPart, 0.9f)), 0.0f);
+		}
+		return std::complex<double>(1.0,0.0);
+	};
 	static int getTotalSpectrum(ActiveDevice& d) {
 		simulationParameterSet* sCPU = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
@@ -3326,15 +3374,41 @@ namespace hostFunctions{
 		for (int i = 0; i < 66; i++) {
 			maxCalc.sellmeierEquations[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
 		}
-		for (int i = 0; i < 18; i++) {
-			maxCalc.chi2[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].d[i]);
-		}
+		
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[0]) maxCalc.hasChi2[0] = true;
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1]==1) maxCalc.hasFullChi3[0] = true;
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1]==2) maxCalc.hasSingleChi3[0] = true;
-
+		
+		double millersRuleFactorChi2 = 1.0;
+		double millersRuleFactorChi3 = 1.0;
+		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) {
+			double wRef = twoPi<double>()*(*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0];
+			double nRef = hostSellmeierFunc(0, wRef, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+			millersRuleFactorChi2 /= nRef * nRef - 1.0;
+			wRef = twoPi<double>() * (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[1];
+			nRef = hostSellmeierFunc(0, wRef, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+			millersRuleFactorChi2 /= nRef * nRef - 1.0;
+			wRef = twoPi<double>() * (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[2];
+			nRef = hostSellmeierFunc(0, wRef, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+			millersRuleFactorChi2 /= nRef * nRef - 1.0;
+			wRef = twoPi<double>() * (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[3];
+			nRef = hostSellmeierFunc(0, wRef, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+			millersRuleFactorChi3 /= nRef * nRef - 1.0;
+			wRef = twoPi<double>() * (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[4];
+			nRef = hostSellmeierFunc(0, wRef, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+			millersRuleFactorChi3 /= nRef * nRef - 1.0;
+			wRef = twoPi<double>() * (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[5];
+			nRef = hostSellmeierFunc(0, wRef, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+			millersRuleFactorChi3 /= nRef * nRef - 1.0;
+			wRef = twoPi<double>() * (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[6];
+			nRef = hostSellmeierFunc(0, wRef, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+			millersRuleFactorChi3 /= nRef * nRef - 1.0;
+		}
+		for (int i = 0; i < 18; i++) {
+			maxCalc.chi2[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].d[i]*millersRuleFactorChi2);
+		}
 		for (int i = 0; i < 81; i++) {
-			maxCalc.chi3[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i]);
+			maxCalc.chi3[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i]*millersRuleFactorChi3);
 		}
 		//count the nonzero oscillators
 		for (int i = 0; i < 7; i++) {
