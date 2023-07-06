@@ -97,6 +97,22 @@ template <typename T>
 hostOrDevice static constexpr T cOne() {
     return T(1.0, 0.0);
 }
+template <typename T>
+hostOrDevice static constexpr T elCharge() {
+    return (T)1.602176634e-19;
+}
+template <typename T>
+hostOrDevice static constexpr T elMass() {
+    return (T)9.1093837015e-31;
+}
+template <typename T>
+hostOrDevice static constexpr T planckConstant() {
+    return (T)6.62607015e-34;
+}
+template <typename T>
+hostOrDevice static constexpr T eVtoHz() {
+    return elCharge<T>() / planckConstant<T>();
+}
 
 //this is a job for std::erase, but when running the code on the cluster, everything
 //is done with nvcc, with only an old version of cmake available. This means I can't

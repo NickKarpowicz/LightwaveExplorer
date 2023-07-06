@@ -2368,26 +2368,46 @@ namespace kernelNamespace{
 			//apply epsilon_infinity
 			k.Ey /= s->sellmeierEquations[0][0];
 			deviceFP Jy{};
-			deviceFP Py = (s->sellmeierEquations[0][0]) * gridIn[i].Ey;
+			deviceFP Py = (s->sellmeierEquations[0][0]-1.0f) * gridIn[i].Ey;
 			deviceFP nonlinearDriver{};
-			for (int j = 0; j < s->Noscillators; j++) {
+			
+			for (int j = 0; j < s->Noscillators - s->hasPlasma[0]; j++) {
 				Jy += currentGridIn[oscillatorIndex + j].Jy;
 				Py += currentGridIn[oscillatorIndex + j].Py;
 			}
 			if (s->hasSingleChi3[0]) {
 				nonlinearDriver += s->chi3[0][0] * Py * Py * Py;
+				Jy += eps0<deviceFP>()*(s->sellmeierEquations[0][0]-1) * s->chi3[0][0] * Jy * Jy * Jy;
 			}
-			k.Ey += Jy/eps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
 
+			deviceFP absorptionCurrent = (s->hasPlasma[0]) ? Py * Py * s->kNonlinearAbsorption[0] : 0.0f;
+			if (s->hasPlasma[0]) {
+				for (int j = 0; j < s->nonlinearAbsorptionOrder[0]-2; j++) {
+					absorptionCurrent *= Py * Py * s->kNonlinearAbsorption[0];
+				}
+				absorptionCurrent *= Py;
+				Jy += eps0<deviceFP>() * absorptionCurrent;
+				Jy += eps0<deviceFP>() * currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
+			}
+			
+			k.Ey += Jy/eps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
+			
 			for (int j = 0; j < s->Noscillators; j++) {
+				oscillator2D<deviceFP> kOsc = (j < s->Noscillators - s->hasPlasma[0]) ? 
+					oscillator2D<deviceFP>{
+						-eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
+							(gridIn[i].Ey + nonlinearDriver)
+							- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Py
+							- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
+						currentGridIn[oscillatorIndex + j].Jy} : 
+					oscillator2D<deviceFP>{
+						currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * Py,
+						absorptionCurrent * Py * s->kCarrierGeneration[0]};
+
+
 				 //in the future, rotate current from crystal coordinates to field coordinates
-				oscillator2D<deviceFP> kOsc{
-					-eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
-						(gridIn[i].Ey + nonlinearDriver)
-						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].Py
-						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].Jy,
-						currentGridIn[oscillatorIndex + j].Jy
-					};
+
+				
 				switch (rkIndex) {
 				case 0:
 					s->materialGridEstimate[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
@@ -2406,7 +2426,6 @@ namespace kernelNamespace{
 					break;
 				}
 			}
-			
 			
 			return;
 		}
@@ -3415,6 +3434,14 @@ namespace hostFunctions{
 			if (maxCalc.sellmeierEquations[1 + i*3][0] > 0.0) maxCalc.Noscillators++;
 			else break;
 		}
+
+		if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
+			maxCalc.hasPlasma[0] = true;
+			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts * elCharge<double>());
+			maxCalc.kDrude[0] = -elCharge<double>() * elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
+			maxCalc.kNonlinearAbsorption[0] = (*sCPU).nonlinearAbsorptionStrength;
+			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(std::ceil((*sCPU).bandGapElectronVolts / ((*sCPU).pulse1.frequency / eVtoHz<double>())));
+		}
 		int64_t materialGridSize = (maxCalc.materialStop - maxCalc.materialStart) * maxCalc.Nx * maxCalc.Noscillators;
 
 		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
@@ -3450,6 +3477,7 @@ namespace hostFunctions{
 			if (i % maxCalc.tGridFactor == 0 && (i/maxCalc.tGridFactor - waitFrames)<(*sCPU).Ntime-1) {
 				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalcDevice, i / maxCalc.tGridFactor - waitFrames});
 			}
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 		}
 		d.deviceMemcpy((*sCPU).ExtOut, maxCalc.inOutEy, (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 		

@@ -896,7 +896,10 @@ public:
     deviceFP sellmeierEquations[66][8]{};
     deviceFP chi3[81][8]{};
     deviceFP chi2[18][8]{};
-    deviceFP plasmaParameters[6][8]{};
+    int nonlinearAbsorptionOrder[8]{};
+    deviceFP kNonlinearAbsorption[8]{};
+    deviceFP kDrude[8]{};
+    deviceFP kCarrierGeneration[8]{};
     bool hasChi2[8]{};
     bool hasFullChi3[8]{};
     bool hasSingleChi3[8]{};
@@ -913,6 +916,9 @@ public:
     deviceFP inverseXyStep{};
     deviceFP inverseZStep{};
     deviceFP omegaMax{};
+    
+
+    
     int64_t observationPoint{};
     int64_t Nx{};
     int64_t Nz{};
