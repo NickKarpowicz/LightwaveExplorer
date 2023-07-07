@@ -2367,6 +2367,7 @@ namespace kernelNamespace{
 			const int64_t oscillatorIndex = (zIndex - s->materialStart) * s->Noscillators + xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
 			//apply epsilon_infinity
 			k.Ey /= s->sellmeierEquations[0][0];
+
 			deviceFP Jy{};
 			deviceFP Py = (s->sellmeierEquations[0][0]-1.0f) * gridIn[i].Ey;
 			deviceFP nonlinearDriver{};
@@ -2377,7 +2378,7 @@ namespace kernelNamespace{
 			}
 			if (s->hasSingleChi3[0]) {
 				nonlinearDriver += s->chi3[0][0] * Py * Py * Py;
-				Jy += eps0<deviceFP>()*(s->sellmeierEquations[0][0]-1) * s->chi3[0][0] * Jy * Jy * Jy;
+				Jy -= eps0<deviceFP>()*(s->sellmeierEquations[0][0]-1) * s->chi3[0][0] * (k.Ey * k.Ey * k.Ey);
 			}
 
 			deviceFP absorptionCurrent = (s->hasPlasma[0]) ? Py * Py * s->kNonlinearAbsorption[0] : 0.0f;
@@ -2386,12 +2387,11 @@ namespace kernelNamespace{
 					absorptionCurrent *= Py * Py * s->kNonlinearAbsorption[0];
 				}
 				absorptionCurrent *= Py;
-				Jy += eps0<deviceFP>() * absorptionCurrent;
-				Jy += eps0<deviceFP>() * currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
+				k.Ey -= absorptionCurrent;
+				//Jy += eps0<deviceFP>() * currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
 			}
 			
 			k.Ey += Jy/eps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
-			
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator2D<deviceFP> kOsc = (j < s->Noscillators - s->hasPlasma[0]) ? 
 					oscillator2D<deviceFP>{
@@ -3436,11 +3436,12 @@ namespace hostFunctions{
 		}
 
 		if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
+			maxCalc.Noscillators++;
 			maxCalc.hasPlasma[0] = true;
 			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts * elCharge<double>());
 			maxCalc.kDrude[0] = -elCharge<double>() * elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
 			maxCalc.kNonlinearAbsorption[0] = (*sCPU).nonlinearAbsorptionStrength;
-			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(std::ceil((*sCPU).bandGapElectronVolts / ((*sCPU).pulse1.frequency / eVtoHz<double>())));
+			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(std::ceil(eVtoHz<double>()*(*sCPU).bandGapElectronVolts / (*sCPU).pulse1.frequency));
 		}
 		int64_t materialGridSize = (maxCalc.materialStop - maxCalc.materialStart) * maxCalc.Nx * maxCalc.Noscillators;
 
