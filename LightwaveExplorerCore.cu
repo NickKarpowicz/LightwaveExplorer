@@ -2366,8 +2366,8 @@ namespace kernelNamespace{
 		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
 			const int64_t oscillatorIndex = (zIndex - s->materialStart) * s->Noscillators + xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
 			//apply epsilon_infinity
-			k.Ey /= s->sellmeierEquations[0][0];
-
+			//k.Ey /= s->sellmeierEquations[0][0];
+			deviceFP epsilonInstant = s->sellmeierEquations[0][0];
 			deviceFP Jy{};
 			deviceFP Py = (s->sellmeierEquations[0][0]-1.0f) * gridIn[i].Ey;
 			deviceFP nonlinearDriver{};
@@ -2378,9 +2378,11 @@ namespace kernelNamespace{
 			}
 			if (s->hasSingleChi3[0]) {
 				nonlinearDriver += s->chi3[0][0] * Py * Py * Py;
-				Jy -= eps0<deviceFP>()*(s->sellmeierEquations[0][0]-1) * s->chi3[0][0] * (k.Ey * k.Ey * k.Ey);
+				epsilonInstant += s->sellmeierEquations[0][0] * s->chi3[0][0] * gridIn[i].Ey * gridIn[i].Ey;
 			}
 
+			//note that the absorption strength will differ by a factor chi(1) from the unidirectional case,
+			//can apply a correction in prep phase.
 			deviceFP absorptionCurrent = (s->hasPlasma[0]) ? Py * Py * s->kNonlinearAbsorption[0] : 0.0f;
 			if (s->hasPlasma[0]) {
 				for (int j = 0; j < s->nonlinearAbsorptionOrder[0]-2; j++) {
@@ -2388,12 +2390,12 @@ namespace kernelNamespace{
 				}
 				absorptionCurrent *= Py;
 				k.Ey -= absorptionCurrent;
-				//Jy += eps0<deviceFP>() * currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
+				Jy += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
 			}
-			
+			k.Ey /= epsilonInstant;
 			k.Ey += Jy/eps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
 			for (int j = 0; j < s->Noscillators; j++) {
-				oscillator2D<deviceFP> kOsc = (j < s->Noscillators - s->hasPlasma[0]) ? 
+				oscillator2D<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ? 
 					oscillator2D<deviceFP>{
 						-eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
 							(gridIn[i].Ey + nonlinearDriver)
@@ -2401,8 +2403,8 @@ namespace kernelNamespace{
 							- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy} : 
 					oscillator2D<deviceFP>{
-						currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * Py,
-						absorptionCurrent * Py * s->kCarrierGeneration[0]};
+						eps0<deviceFP>()*currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * Py - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
+						deviceFPLib::abs(absorptionCurrent * gridIn[i].Ey) * s->kCarrierGeneration[0]}; //note that Py is used to store the carrier density
 
 
 				 //in the future, rotate current from crystal coordinates to field coordinates
@@ -3438,8 +3440,9 @@ namespace hostFunctions{
 		if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
 			maxCalc.Noscillators++;
 			maxCalc.hasPlasma[0] = true;
-			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts * elCharge<double>());
-			maxCalc.kDrude[0] = -elCharge<double>() * elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
+			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts);
+			maxCalc.kDrude[0] = -elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
+			maxCalc.gammaDrude[0] = (*sCPU).drudeGamma;
 			maxCalc.kNonlinearAbsorption[0] = (*sCPU).nonlinearAbsorptionStrength;
 			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(std::ceil(eVtoHz<double>()*(*sCPU).bandGapElectronVolts / (*sCPU).pulse1.frequency));
 		}

@@ -899,6 +899,7 @@ public:
     int nonlinearAbsorptionOrder[8]{};
     deviceFP kNonlinearAbsorption[8]{};
     deviceFP kDrude[8]{};
+    deviceFP gammaDrude[8]{};
     deviceFP kCarrierGeneration[8]{};
     bool hasChi2[8]{};
     bool hasFullChi3[8]{};
