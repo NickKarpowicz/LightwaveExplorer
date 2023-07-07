@@ -62,8 +62,16 @@ hostOrDevice static constexpr T eps0() {
     return (T)8.8541878128e-12;
 }
 template <typename T>
+hostOrDevice static constexpr T inverseEps0() {
+    return (T)(1.0/8.8541878128e-12);
+}
+template <typename T>
 hostOrDevice static constexpr T mu0() {
     return (T)1.2566370614e-6;
+}
+template <typename T>
+hostOrDevice static constexpr T inverseMu0() {
+    return (T)(1.0/1.2566370614e-6);
 }
 template <typename T>
 hostOrDevice static constexpr T Zo() {

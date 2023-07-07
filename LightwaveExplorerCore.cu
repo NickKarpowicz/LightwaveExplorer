@@ -45,7 +45,7 @@ namespace deviceFunctions {
 	//5 means its a normal point
 	// 0..3 first points in the grid
 	// -4..-1 last points in grid
-	deviceFunction static inline int64_t boundaryFinder(int64_t i, int64_t N) {
+	deviceFunction static inline int64_t boundaryFinder(const int64_t i, const int64_t N) {
 		//normal points
 		if (i < (N - 5) && i > 3) return 5;
 		//LHS
@@ -61,7 +61,7 @@ namespace deviceFunctions {
 	//   for the other end of the grid, reverse the order of the inputs and negate.
 	// cases 11..13: solve for dH/dz but substitute the associated E into the inputs.
 	//   the resulting quantity should additionally be divided by Zo.
-	deviceFunction inline double resolveMaxwellEndpoints(int64_t type, double in00, double in01, double in02, double in03, double in04, double in05, double in06, double in07, double in08, double in09, double in10) {
+	[[maybe_unused]] deviceFunction static inline double resolveMaxwellEndpoints(const int64_t type, const double in00, const double in01, const double in02, const double in03, const double in04, const double in05, const double in06, const double in07, const double in08, const double in09, const double in10) {
 		switch (type) {
 		case 0: //reverse and negate for +z end
 			return (-2.928968253968253 * in00
@@ -140,7 +140,7 @@ namespace deviceFunctions {
 		}
 	}
 
-	deviceFunction inline float resolveMaxwellEndpoints(int64_t type, float in00, float in01, float in02, float in03, float in04, float in05, float in06, float in07, float in08, float in09, float in10) {
+	[[maybe_unused]] deviceFunction static inline float resolveMaxwellEndpoints(const int64_t type, const float in00, const float in01, const float in02, const float in03, const float in04, const float in05, const float in06, const float in07, const float in08, const float in09, const float in10) {
 		switch (type) {
 		case 0: //reverse and negate for +z end
 			return (-2.928968253968253f * in00
@@ -264,7 +264,7 @@ namespace deviceFunctions {
 
 
 	template<typename real_t, typename complex_t>
-	deviceFunction static real_t fourierInterpolation(real_t timeShift, complex_t* fourierData, int64_t dataSize, real_t dOmega, int64_t frequencyLimit) {
+	deviceFunction static real_t fourierInterpolation(const real_t timeShift, const complex_t* fourierData, const int64_t dataSize, const real_t dOmega, const int64_t frequencyLimit) {
 		real_t result{};
 		for (int i = 1; i < frequencyLimit; i++) {
 			real_t w = i * dOmega;
@@ -2334,9 +2334,9 @@ namespace kernelNamespace{
 		default:
 			break;
 		}
-		result.Ey = - s->inverseXyStep * dHzDx + s->inverseZStep * dHxDz;
-		result.Hx = s->inverseZStep * dEyDz;
-		result.Hz = - s->inverseXyStep * dEyDx;
+		result.Ey = inverseEps0<deviceFP>() * (s->inverseXyStep * dHzDx - s->inverseZStep * dHxDz);
+		result.Hx = - inverseMu0<deviceFP>() * s->inverseZStep * dEyDz;
+		result.Hz = inverseMu0<deviceFP>() * s->inverseXyStep * dEyDx;
 		return result;
 	}
 
@@ -2360,7 +2360,7 @@ namespace kernelNamespace{
 		}
 	};
 	
-	deviceFunction void maxwellCurrentTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const int64_t t, bool isAtMidpoint, const maxwellPoint2D<deviceFP>* gridIn, const oscillator2D<deviceFP>* currentGridIn, maxwellPoint2D<deviceFP>& k, int rkIndex) {
+	deviceFunction void maxwellCurrentTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const int64_t t, const bool isAtMidpoint, const maxwellPoint2D<deviceFP>* gridIn, const oscillator2D<deviceFP>* currentGridIn, maxwellPoint2D<deviceFP>& k, const int rkIndex) {
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
 		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
@@ -2391,7 +2391,7 @@ namespace kernelNamespace{
 				Jy += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
 			}
 			k.Ey /= epsilonInstant;
-			k.Ey += Jy/eps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
+			k.Ey += Jy * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator2D<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ? 
 					oscillator2D<deviceFP>{
@@ -2445,15 +2445,9 @@ namespace kernelNamespace{
 	public:
 		const maxwellCalculation2D<deviceFP>* s;
 		const int64_t t;
-		deviceFunction void operator()(int64_t i) const {
-			//calculate field derivative
+		deviceFunction void operator()(const int64_t i) const {
 			maxwellPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->grid);
-			k.Ey /= -eps0<deviceFP>();
-			k.Hx /= -mu0<deviceFP>();
-			k.Hz /= -mu0<deviceFP>();
 			maxwellCurrentTerms(s, i, t, false, s->grid, s->materialGrid, k, 0);
-			
-			//calculate current derivative
 			s->gridEstimate[i] = s->grid[i] + k * (s->tStep * 0.5f);
 			s->gridNext[i] = s->grid[i] + k * (sixth<deviceFP>() * s->tStep);
 		}
@@ -2462,11 +2456,8 @@ namespace kernelNamespace{
 	public:
 		const maxwellCalculation2D<deviceFP>* s;
 		const int64_t t;
-		deviceFunction void operator()(int64_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			maxwellPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
-			k.Ey /= -eps0<deviceFP>();
-			k.Hx /= -mu0<deviceFP>();
-			k.Hz /= -mu0<deviceFP>();
 			maxwellCurrentTerms(s, i, t, true, s->gridEstimate, s->materialGridEstimate, k, 1);
 			s->gridEstimate2[i] = s->grid[i] + k * (s->tStep * 0.5f);
 			s->gridNext[i] += k * (third<deviceFP>() * s->tStep);
@@ -2476,11 +2467,8 @@ namespace kernelNamespace{
 	public:
 		const maxwellCalculation2D<deviceFP>* s;
 		const int64_t t;
-		deviceFunction void operator()(int64_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			maxwellPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate2);
-			k.Ey /= -eps0<deviceFP>();
-			k.Hx /= -mu0<deviceFP>();
-			k.Hz /= -mu0<deviceFP>();
 			maxwellCurrentTerms(s, i, t, true, s->gridEstimate2, s->materialGridEstimate2, k, 2);
 			s->gridEstimate[i] = s->grid[i] + k * s->tStep;
 			s->gridNext[i] += k * (third<deviceFP>() * s->tStep);
@@ -2490,11 +2478,8 @@ namespace kernelNamespace{
 	public:
 		const maxwellCalculation2D<deviceFP>* s;
 		const int64_t t;
-		deviceFunction void operator()(int64_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			maxwellPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->gridEstimate);
-			k.Ey /= -eps0<deviceFP>();
-			k.Hx /= -mu0<deviceFP>();
-			k.Hz /= -mu0<deviceFP>();
 			maxwellCurrentTerms(s, i, t + 1, false, s->gridEstimate, s->materialGridEstimate, k, 3);
 			s->grid[i] = s->gridNext[i] +  k * (sixth<deviceFP>() * s->tStep);
 		}
@@ -3382,7 +3367,8 @@ namespace hostFunctions{
 		return 13 * d.isTheCanaryPixelNaN(canaryPointer);
 	}
 
-	static void free2DFDTD(ActiveDevice& d,maxwellCalculation2D<deviceFP>& maxCalc) {
+	static unsigned int free2DFDTD(ActiveDevice& d,maxwellCalculation2D<deviceFP>& maxCalc) {
+		unsigned int errorValue = 13 * d.isTheCanaryPixelNaN(&(maxCalc.grid[0].Ey));
 		d.deviceFree(maxCalc.grid);
 		d.deviceFree(maxCalc.gridEstimate);
 		d.deviceFree(maxCalc.gridEstimate2);
@@ -3392,6 +3378,7 @@ namespace hostFunctions{
 		d.deviceFree(maxCalc.materialGridEstimate);
 		d.deviceFree(maxCalc.materialGridEstimate2);
 		d.deviceFree(maxCalc.deviceCopy);
+		return errorValue;
 	}
 
 	static void prepare2DFDTD(ActiveDevice& d, const simulationParameterSet* sCPU, maxwellCalculation2D<deviceFP>& maxCalc) {
@@ -3496,6 +3483,7 @@ namespace hostFunctions{
 				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalc.deviceCopy, i / maxCalc.tGridFactor - maxCalc.waitFrames});
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.grid[0].Ey))) break;
 		}
 		d.deviceMemcpy((*sCPU).ExtOut, maxCalc.inOutEy, (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 		
@@ -3504,9 +3492,8 @@ namespace hostFunctions{
 		d.deviceMemcpy((*sCPU).EkwOut, d.deviceStruct.gridEFrequency1, 2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), copyType::ToHost);
 		getTotalSpectrum(d);
 
-		//free device memory
-		free2DFDTD(d, maxCalc);
-		return 0;
+		//free device memory		
+		return free2DFDTD(d, maxCalc);
 	}
 
 	static constexpr unsigned int funHash(const char* s, const int off = 0) {
@@ -3587,7 +3574,7 @@ namespace hostFunctions{
 			break;
 		case funHash("fdtd"):
 			interpretParameters(cc, 6, iBlock, vBlock, parameters, defaultMask);
-			solveFDTD2D(d, sCPU, static_cast<int64_t>(parameters[0]), static_cast<int64_t>(parameters[1]), parameters[2], parameters[3], parameters[4]);
+			error = solveFDTD2D(d, sCPU, static_cast<int64_t>(parameters[0]), static_cast<int64_t>(parameters[1]), parameters[2], parameters[3], parameters[4]);
 			break;
 		case funHash("default"):
 			d.reset(sCPU);
