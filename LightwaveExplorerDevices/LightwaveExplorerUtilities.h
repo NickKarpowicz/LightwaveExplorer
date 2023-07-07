@@ -921,6 +921,7 @@ public:
 
     
     int64_t observationPoint{};
+    int64_t waitFrames{};
     int64_t Nx{};
     int64_t Nz{};
     int64_t Nt{};
@@ -932,7 +933,8 @@ public:
     int64_t tGridFactor=1;
     int64_t materialStart{};
     int64_t materialStop{};
-    
+    maxwellCalculation2D<deviceFP>* deviceCopy;
+
     maxwellCalculation2D(simulationParameterSet* s, int64_t xFactor, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in, deviceFP propagationTime) {
         frontBuffer = frontBuffer_in;
         backBuffer = backBuffer_in;
@@ -956,5 +958,7 @@ public:
         xGridFactor = xFactor;
         tGridFactor = timeFactor;
         Ngrid = Nz * Nx;
+
+
     }
 };
