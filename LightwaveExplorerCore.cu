@@ -266,12 +266,16 @@ namespace deviceFunctions {
 	template<typename real_t, typename complex_t>
 	deviceFunction static real_t fourierInterpolation(const real_t timeShift, const complex_t* fourierData, const int64_t dataSize, const real_t dOmega, const int64_t frequencyLimit) {
 		real_t result{};
+		real_t dOmegaT = dOmega * timeShift;
 		for (int i = 1; i < frequencyLimit; i++) {
-			real_t w = i * dOmega;
-			complex_t expFactor = complex_t(0.0f, -2.0f*w)*deviceLib::exp(complex_t(0.0f, w * timeShift));
-			result += (expFactor.real() * fourierData[i].real() - expFactor.imag() * fourierData[i].imag()); //can be sped up be precalculating factor
+			real_t w = i * dOmegaT;
+			//complex_t expFactor = complex_t(0.0f, -2.0f*w)*deviceLib::exp(complex_t(0.0f, w * timeShift));
+			//result += (expFactor.real() * fourierData[i].real() - expFactor.imag() * fourierData[i].imag()); //can be sped up be precalculating factor
+			//complex_t expFactor = deviceLib::exp(complex_t(0.0f, w * timeShift));
+			//complex_t expFactor(cos(w * timeShift), sin(w * timeShift));
+			result += i * (cos(w) * fourierData[i].imag() + sin(w) * fourierData[i].real());
 		}
-		return result / (dataSize+1);
+		return (2.0f * dOmega * result) / (dataSize+1);
 	}
 
 	//Calculate the fourier optics propagator (e^ik_z*d) for a given set of values of the maknitude of k, transverse k (dk1, dk2)
