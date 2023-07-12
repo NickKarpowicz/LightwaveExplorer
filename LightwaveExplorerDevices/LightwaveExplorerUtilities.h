@@ -62,29 +62,9 @@ enum class copyType : int {
 template <typename deviceFP>
 class maxwellPoint {
 public:
-    deviceFP Ex{};
-    deviceFP Ey{};
-    deviceFP Ez{};
-    deviceFP Hx{};
-    deviceFP Hy{};
-    deviceFP Hz{};
-
-    maxwellPoint<deviceFP> operator+(const maxwellPoint<deviceFP>& other) const {
-        return maxwellPoint<deviceFP>{ Ex + other.Ex, Ey + other.Ey, Ez + other.Ez, Hx + other.Hx, Hy + other.Hy, Hz + other.Hz };
-    }
-
-    void operator+=(const maxwellPoint<deviceFP>& other) const {
-        Ex += other.Ex;
-        Ey += other.Ey;
-        Ez += other.Ez;
-        Hx += other.Hx;
-        Hy += other.Hy;
-        Hz += other.Hz;
-    }
-
-    maxwellPoint<deviceFP> operator*(const deviceFP other) const {
-        return maxwellPoint<deviceFP>{Ex* other, Ey* other, Ez* other, Hx* other, Hy* other, Hz* other};
-    }
+    deviceFP x{};
+    deviceFP y{};
+    deviceFP z{};
 };
 
 template <typename deviceFP>
@@ -93,22 +73,27 @@ public:
     deviceFP Ey{};
     deviceFP Hx{};
     deviceFP Hz{};
-
-    maxwellPoint2D<deviceFP> operator+(const maxwellPoint2D<deviceFP>& other) const {
-        return maxwellPoint2D<deviceFP>{ Ey + other.Ey, Hx + other.Hx, Hz + other.Hz };
-    }
-
-    void operator+=(const maxwellPoint<deviceFP>& other) const {
-        Ey += other.Ey;
-        Hx += other.Hx;
-        Hz += other.Hz;
-    }
-
-    maxwellPoint2D<deviceFP> operator*(const deviceFP other) const {
-        return maxwellPoint2D<deviceFP>{Ey* other, Hx* other, Hz* other};
-    }
 };
 
+template <typename deviceFP>
+class maxwellEPoint2D {
+public:
+    deviceFP y{};
+};
+
+template <typename deviceFP>
+class maxwellHPoint2D {
+public:
+    deviceFP x{};
+    deviceFP z{};
+};
+
+template <typename deviceFP>
+class maxwellKPoint2D {
+public:
+    maxwellEPoint2D<deviceFP> kE;
+    maxwellHPoint2D<deviceFP> kH;
+};
 
 template <typename deviceFP>
 class oscillator {
@@ -882,17 +867,20 @@ public:
 template <typename deviceFP>
 class maxwellCalculation2D {
 public:
-    maxwellPoint2D<deviceFP>* grid{};
-    maxwellPoint2D<deviceFP>* gridNext{};
-    maxwellPoint2D<deviceFP>* gridEstimate{};
-    maxwellPoint2D<deviceFP>* gridEstimate2{};
+    maxwellEPoint2D<deviceFP>* Egrid{};
+    maxwellEPoint2D<deviceFP>* EgridNext{};
+    maxwellEPoint2D<deviceFP>* EgridEstimate{};
+    maxwellEPoint2D<deviceFP>* EgridEstimate2{};
+    maxwellHPoint2D<deviceFP>* Hgrid{};
+    maxwellHPoint2D<deviceFP>* HgridNext{};
+    maxwellHPoint2D<deviceFP>* HgridEstimate{};
+    maxwellHPoint2D<deviceFP>* HgridEstimate2{};
     oscillator2D<deviceFP>* materialGrid{};
     oscillator2D<deviceFP>* materialGridNext{};
     oscillator2D<deviceFP>* materialGridEstimate{};
     oscillator2D<deviceFP>* materialGridEstimate2{};
     int64_t* materialIndexMap{};
     crystalEntry crystalProperties[8]{};
-    deviceFP epsilonInfinity[8]{};
     deviceFP sellmeierEquations[66][8]{};
     deviceFP chi3[81][8]{};
     deviceFP chi2[18][8]{};
