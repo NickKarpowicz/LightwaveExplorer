@@ -917,9 +917,6 @@ public:
     deviceFP inverseXyStep{};
     deviceFP inverseZStep{};
     deviceFP omegaMax{};
-    
-
-    
     int64_t observationPoint{};
     int64_t waitFrames{};
     int64_t Nx{};
@@ -933,7 +930,7 @@ public:
     int64_t tGridFactor=1;
     int64_t materialStart{};
     int64_t materialStop{};
-    maxwellCalculation2D<deviceFP>* deviceCopy;
+    maxwellCalculation2D<deviceFP>* deviceCopy = nullptr;
 
     maxwellCalculation2D(simulationParameterSet* s, int64_t xFactor, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in, deviceFP propagationTime) {
         frontBuffer = frontBuffer_in;
@@ -948,7 +945,7 @@ public:
         tStep = (*s).tStep / timeFactor;
         omegaMax = 0.1 * twoPi<deviceFP>()*lightC<deviceFP>() / zStep;
         omegaStep = twoPi<deviceFP>() * s->fStep;
-        frequencyLimit = omegaMax / omegaStep;
+        frequencyLimit = minN(static_cast<int64_t>(omegaMax / omegaStep),s->Nfreq);
         Nt = propagationTime / tStep;
         inverseXyStep = 1.0 / xyStep;
         inverseZStep = 1.0 / zStep;
@@ -958,7 +955,5 @@ public:
         xGridFactor = xFactor;
         tGridFactor = timeFactor;
         Ngrid = Nz * Nx;
-
-
     }
 };

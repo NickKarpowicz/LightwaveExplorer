@@ -269,10 +269,6 @@ namespace deviceFunctions {
 		real_t dOmegaT = dOmega * timeShift;
 		for (int i = 1; i < frequencyLimit; i++) {
 			real_t w = i * dOmegaT;
-			//complex_t expFactor = complex_t(0.0f, -2.0f*w)*deviceLib::exp(complex_t(0.0f, w * timeShift));
-			//result += (expFactor.real() * fourierData[i].real() - expFactor.imag() * fourierData[i].imag()); //can be sped up be precalculating factor
-			//complex_t expFactor = deviceLib::exp(complex_t(0.0f, w * timeShift));
-			//complex_t expFactor(cos(w * timeShift), sin(w * timeShift));
 			result += i * (cos(w) * fourierData[i].imag() + sin(w) * fourierData[i].real());
 		}
 		return (2.0f * dOmega * result) / (dataSize+1);
@@ -1286,7 +1282,11 @@ namespace kernelNamespace{
 					(*s).gridPropagationFactor2[i] = {};
 				}
 
-				(*s).gridPolarizationFactor1[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + (deviceFP)1.0f, (deviceFP)0.25f) * chi11 * ((deviceFP)twoPi<deviceFP>() * (deviceFP)twoPi<deviceFP>() * f * f) / ((2.0f * (deviceFP)lightC<deviceFP>() * (deviceFP)lightC<deviceFP>() * kz1)) * (*s).h;
+				(*s).gridPolarizationFactor1[i] = -ii * 
+					deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + (deviceFP)1.0f, (deviceFP)0.25f) 
+					* chi11 
+					* ((deviceFP)twoPi<deviceFP>() * (deviceFP)twoPi<deviceFP>() * f * f) 
+					/ ((2.0f * (deviceFP)lightC<deviceFP>() * (deviceFP)lightC<deviceFP>() * kz1)) * (*s).h;
 				(*s).gridPolarizationFactor2[i] = -ii * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + (deviceFP)1.0f, (deviceFP)0.25f) * chi12 * ((deviceFP)twoPi<deviceFP>() * (deviceFP)twoPi<deviceFP>() * f * f) / ((2.0f * (deviceFP)lightC<deviceFP>() * (deviceFP)lightC<deviceFP>() * kz2)) * (*s).h;
 			}
 			else {
@@ -1497,7 +1497,6 @@ namespace kernelNamespace{
 			const deviceComplex chi11 = ((*s).isUsingMillersRule) ? (*s).chiLinear1[k] : cOne<deviceComplex>();
 			const deviceComplex chi12 = ((*s).isUsingMillersRule) ? (*s).chiLinear2[k] : cOne<deviceComplex>();
 
-			//fine to here
 			if ((dk * dk < minN(ke.real() * ke.real() + ke.imag() * ke.imag(), ko.real() * ko.real() + ko.imag() * ko.imag()))
 				&& (*s).fieldFactor1[k] > 0.0f
 				&& (*s).fieldFactor2[k] > 0.0f) {
@@ -1515,7 +1514,7 @@ namespace kernelNamespace{
 					(*s).gridPropagationFactor1Rho2[i] = {};
 				}
 
-				//factor of 0.5 comes from deviceFPd grid size in cylindrical symmetry mode after expanding the beam
+				//factor of 0.5 comes from doubledd grid size in cylindrical symmetry mode after expanding the beam
 				(*s).gridPolarizationFactor1[i] = 0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + 1.0f, 0.25f) * chi11 * ii * (twoPi<deviceFP>() * f) / (2.0f * ne.real() * lightC<deviceFP>()) * (*s).h;
 				(*s).gridPolarizationFactor2[i] = 0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + 1.0f, 0.25f) * chi12 * ii * (twoPi<deviceFP>() * f) / (2.0f * no.real() * lightC<deviceFP>()) * (*s).h;
 				if (isnan((*s).gridPolarizationFactor1[i].real()) || isnan((*s).gridPolarizationFactor1[i].imag()) || isnan((*s).gridPolarizationFactor2[i].real()) || isnan((*s).gridPolarizationFactor2[i].imag())) {
@@ -1572,6 +1571,7 @@ namespace kernelNamespace{
 		const deviceFP* a;
 		const deviceFP f0;
 		const deviceFP thickness;
+		const int sellmeierEquation;
 		deviceFP* phase1;
 		deviceFunction void operator()(const int64_t i) const {
 			//frequency being resolved by current thread
@@ -1579,10 +1579,10 @@ namespace kernelNamespace{
 			//give phase shift relative to group velocity (approximated 
 			// with low-order finite difference) so the pulse doesn't move
 			deviceComplex ne, no, no0, n0p, n0m;
-			sellmeierCuda<deviceFP, deviceComplex>(&ne, &no, a, f, {}, {}, 0, 0);
-			sellmeierCuda<deviceFP, deviceComplex>(&ne, &no0, a, f0, {}, {}, 0, 0);
-			sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0p, a, f0 + 1.0e11f, {}, {}, 0, 0);
-			sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0m, a, f0 - 1.0e11f, {}, {}, 0, 0);
+			sellmeierCuda<deviceFP, deviceComplex>(&ne, &no, a, f, {}, {}, 0, sellmeierEquation);
+			sellmeierCuda<deviceFP, deviceComplex>(&ne, &no0, a, f0, {}, {}, 0, sellmeierEquation);
+			sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0p, a, f0 + 1.0e11f, {}, {}, 0, sellmeierEquation);
+			sellmeierCuda<deviceFP, deviceComplex>(&ne, &n0m, a, f0 - 1.0e11f, {}, {}, 0, sellmeierEquation);
 			no0 = no0 + f0 * (n0p - n0m) / 2.0e11f;
 			phase1[i] = thickness * twoPi<deviceFP>() * f * (no.real() - no0.real()) / lightC<deviceFP>();
 		}
@@ -2374,39 +2374,37 @@ namespace kernelNamespace{
 			deviceFP Py = (s->sellmeierEquations[0][0]-1.0f) * gridIn[i].Ey;
 			deviceFP nonlinearDriver{};
 			
-			for (int j = 0; j < s->Noscillators - s->hasPlasma[0]; j++) {
+			for (int j = 0; j < (s->Noscillators - s->hasPlasma[0]); j++) {
 				Jy += currentGridIn[oscillatorIndex + j].Jy;
 				Py += currentGridIn[oscillatorIndex + j].Py;
 			}
+			Py *= 2.0f; //I do not know why this 2 has to be here
 			if (s->hasSingleChi3[0]) {
 				nonlinearDriver += s->chi3[0][0] * Py * Py * Py;
-				epsilonInstant += s->sellmeierEquations[0][0] * s->chi3[0][0] * gridIn[i].Ey * gridIn[i].Ey;
-			}
-
-			//note that the absorption strength will differ by a factor chi(1) from the unidirectional case,
-			//can apply a correction in prep phase.
-			deviceFP absorptionCurrent = (s->hasPlasma[0]) ? Py * Py * s->kNonlinearAbsorption[0] : 0.0f;
-			if (s->hasPlasma[0]) {
-				for (int j = 0; j < s->nonlinearAbsorptionOrder[0]-2; j++) {
-					absorptionCurrent *= Py * Py * s->kNonlinearAbsorption[0];
-				}
-				absorptionCurrent *= Py;
-				k.Ey -= absorptionCurrent;
-				Jy += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
+				epsilonInstant += (s->sellmeierEquations[0][0]-1.0f) * s->chi3[0][0] * Py * Py;
 			}
 			k.Ey /= epsilonInstant;
+			
+			deviceFP absorptionCurrent = (s->hasPlasma[0]) ? 
+				deviceFPLib::pow(Py * Py * s->kNonlinearAbsorption[0], s->nonlinearAbsorptionOrder[0]) 
+				: 0.0f;
+			if (s->hasPlasma[0]) {
+				k.Ey -= twoPi<deviceFP>()*absorptionCurrent* gridIn[i].Ey;
+				Jy += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
+			}
+			
 			k.Ey += Jy * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator2D<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ? 
 					oscillator2D<deviceFP>{
-						-eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
+					-0.5f*eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
 							(gridIn[i].Ey + nonlinearDriver)
 							- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Py
 							- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy} : 
 					oscillator2D<deviceFP>{
-						eps0<deviceFP>()*currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * Py - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
-						deviceFPLib::abs(absorptionCurrent * gridIn[i].Ey) * s->kCarrierGeneration[0]}; //note that Py is used to store the carrier density
+						currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * gridIn[i].Ey - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
+						absorptionCurrent * Py * s->kCarrierGeneration[0]}; //note that k.Py is used to store the carrier density
 
 
 				 //in the future, rotate current from crystal coordinates to field coordinates
@@ -2439,7 +2437,7 @@ namespace kernelNamespace{
 			int64_t fftSize = s->NtIO / 2 + 1;
 			deviceFP Ecurrent = 230.38f *fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
 			k.Ey += Ecurrent;
-			k.Hx += Ecurrent / Zo<deviceFP>();
+			k.Hx += inverseZo<deviceFP>() * Ecurrent;
 			return;
 		}
 		return;
@@ -2834,7 +2832,7 @@ namespace hostFunctions{
 		d.deviceMemcpy(materialCoefficients, (*s).crystalDatabase[pCPU.phaseMaterial].sellmeierCoefficients.data(), 66 * sizeof(double), copyType::ToDevice);
 		d.deviceMemcpy(sellmeierPropagationMedium, (*s).crystalDatabase[(*s).materialIndex].sellmeierCoefficients.data(), 66 * sizeof(double), copyType::ToDevice);
 		d.deviceLaunch((unsigned int)(*s).Nfreq, 1, materialPhaseKernel { (deviceFP)(*s).fStep,
-			(*s).Ntime, materialCoefficients, (deviceFP)pCPU.frequency, (deviceFP)pCPU.phaseMaterialThickness,
+			(*s).Ntime, materialCoefficients, (deviceFP)pCPU.frequency, (deviceFP)pCPU.phaseMaterialThickness,(*s).crystalDatabase[pCPU.phaseMaterial].sellmeierType,
 			materialPhase });
 
 		deviceFP* pulseSum = &materialCoefficients[0];
@@ -3386,13 +3384,16 @@ namespace hostFunctions{
 	}
 
 	static void prepare2DFDTD(ActiveDevice& d, const simulationParameterSet* sCPU, maxwellCalculation2D<deviceFP>& maxCalc) {
-		maxCalc.waitFrames = ((maxCalc.observationPoint - 5) * maxCalc.zStep) / (lightC<double>() * (*sCPU).tStep);
+
+		double n0 = hostSellmeierFunc(0, std::pow(twoPi<double>() * sCPU->pulse1.frequency, 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+		maxCalc.waitFrames = (maxCalc.frontBuffer + n0*maxCalc.crystalThickness + 10*maxCalc.zStep) / (lightC<double>() * (*sCPU).tStep);
 		maxCalc.Nt = (maxCalc.waitFrames + (*sCPU).Ntime) * maxCalc.tGridFactor;
 		maxCalc.Noscillators = 0;
 		//copy the crystal info
 		for (int i = 0; i < 66; i++) {
 			maxCalc.sellmeierEquations[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-		}
+			//if (((i - 1) % 3 == 0)) maxCalc.sellmeierEquations[1][0] *= -eps0<deviceFP>() * kLorentzian<deviceFP>();
+		}	
 
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[0]) maxCalc.hasChi2[0] = true;
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 1) maxCalc.hasFullChi3[0] = true;
@@ -3439,10 +3440,11 @@ namespace hostFunctions{
 			maxCalc.Noscillators++;
 			maxCalc.hasPlasma[0] = true;
 			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts);
-			maxCalc.kDrude[0] = -elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
+			maxCalc.kDrude[0] = -eps0<deviceFP>() * elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
 			maxCalc.gammaDrude[0] = (*sCPU).drudeGamma;
 			maxCalc.kNonlinearAbsorption[0] = (*sCPU).nonlinearAbsorptionStrength * (std::pow(hostSellmeierFunc(0, std::pow(twoPi<double>() * (*sCPU).pulse1.frequency, 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real(), 2) - 1.0);
-			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts / (*sCPU).pulse1.frequency));
+			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts / (*sCPU).pulse1.frequency))-1;
+			//maxCalc.nonlinearAbsorptionOrder[0] = (int)ceil(sCPU->bandGapElectronVolts * 241.79893e12 / sCPU->pulse1.frequency) - 2;
 		}
 		int64_t materialGridSize = (maxCalc.materialStop - maxCalc.materialStart) * maxCalc.Nx * maxCalc.Noscillators;
 

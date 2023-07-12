@@ -1417,7 +1417,6 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theSim.base().is3D) {
         logPlotOffset = (double)(1e-4 / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
     }
-
     sPlot.complexData =
         &theSim.base().EkwOut[simIndex * theSim.base().NgridC * 2];
     sPlot.dataXdim = theSim.base().Nfreq;
