@@ -2407,13 +2407,13 @@ namespace kernelNamespace{
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator2D<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ? 
 					oscillator2D<deviceFP>{
-					-0.5f*eps0<deviceFP>() * kLorentzian<deviceFP>() * s->sellmeierEquations[1 + j * 3][0] *
+					(-0.5f * eps0<deviceFP>() * kLorentzian<deviceFP>()) * s->sellmeierEquations[1 + j * 3][0] *
 							(gridIn[i].y + nonlinearDriver)
 							- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Py
 							- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy} : 
 					oscillator2D<deviceFP>{
-						-currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * gridIn[i].y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
+						-0.5f*currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * gridIn[i].y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
 						absorptionCurrent * gridIn[i].y * s->kCarrierGeneration[0]}; //note that k.Py is used to store the carrier density
 
 
@@ -3406,12 +3406,13 @@ namespace hostFunctions{
 
 	static void prepare2DFDTD(ActiveDevice& d, const simulationParameterSet* sCPU, maxwellCalculation2D<deviceFP>& maxCalc) {
 
-		double n0 = hostSellmeierFunc(0, std::pow(twoPi<double>() * sCPU->pulse1.frequency, 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double nm1 = hostSellmeierFunc(0, std::pow(twoPi<double>() * (-1e11+sCPU->pulse1.frequency), 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double np1 = hostSellmeierFunc(0, std::pow(twoPi<double>() * (1e11+sCPU->pulse1.frequency), 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double nGroup = n0 + sCPU->pulse1.frequency * (np1 - nm1) / 2.0e11;
-		maxCalc.waitFrames = (maxCalc.frontBuffer + nGroup*maxCalc.crystalThickness + 10*maxCalc.zStep) / (lightC<double>() * (*sCPU).tStep);
-		maxCalc.Nt = (maxCalc.waitFrames + (*sCPU).Ntime) * maxCalc.tGridFactor;
+		double n0 = hostSellmeierFunc(0, twoPi<double>() * sCPU->pulse1.frequency, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+		double nm1 = hostSellmeierFunc(0, twoPi<double>() * (-2e11+sCPU->pulse1.frequency), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+		double np1 = hostSellmeierFunc(0, twoPi<double>() * (2e11+sCPU->pulse1.frequency), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+		double nGroup = n0 + sCPU->pulse1.frequency * (np1 - nm1) / 4.0e11;
+		maxCalc.waitFrames = (maxCalc.frontBuffer + nGroup*maxCalc.crystalThickness + 10*maxCalc.zStep) / (lightC<double>() * maxCalc.tStep);
+		maxCalc.waitFrames = maxCalc.tGridFactor * (maxCalc.waitFrames / maxCalc.tGridFactor);
+		maxCalc.Nt = maxCalc.waitFrames + (*sCPU).Ntime * maxCalc.tGridFactor;
 
 		//copy the crystal info
 		for (int i = 0; i < 66; i++) {
@@ -3514,8 +3515,8 @@ namespace hostFunctions{
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel12D{maxCalc.deviceCopy, i});
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel22D{maxCalc.deviceCopy, i});
 			d.deviceLaunch(maxCalc.Ngrid/64, 64, maxwellRKkernel32D{maxCalc.deviceCopy, i});
-			if (i % maxCalc.tGridFactor == 0 && (i / maxCalc.tGridFactor - maxCalc.waitFrames) >= 0) {
-				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalc.deviceCopy, i / maxCalc.tGridFactor - maxCalc.waitFrames});
+			if (i % maxCalc.tGridFactor == 0 && (i >= maxCalc.waitFrames)) {
+				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid2D{ maxCalc.deviceCopy, (i-maxCalc.waitFrames)/maxCalc.tGridFactor});
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;
