@@ -880,7 +880,6 @@ public:
     oscillator2D<deviceFP>* materialGridEstimate{};
     oscillator2D<deviceFP>* materialGridEstimate2{};
     int64_t* materialIndexMap{};
-    crystalEntry crystalProperties[8]{};
     deviceFP sellmeierEquations[66][8]{};
     deviceFP chi3[81][8]{};
     deviceFP chi2[18][8]{};
@@ -914,33 +913,30 @@ public:
     int Noscillators{};
     int64_t NtIO{};
     int64_t frequencyLimit{};
-    int64_t xGridFactor=1;
     int64_t tGridFactor=1;
     int64_t materialStart{};
     int64_t materialStop{};
     maxwellCalculation2D<deviceFP>* deviceCopy = nullptr;
 
-    maxwellCalculation2D(simulationParameterSet* s, int64_t xFactor, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in, deviceFP propagationTime) {
+    maxwellCalculation2D(simulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
         frontBuffer = frontBuffer_in;
         backBuffer = backBuffer_in;
         crystalThickness = (*s).crystalThickness;
         zStep = zStep_in;
-        Nx = (*s).Nspace * xFactor;
+        Nx = (*s).Nspace;
         Nz = (frontBuffer + backBuffer + crystalThickness) / zStep;
         Nz = minGridDimension * (Nz / minGridDimension + (Nz % minGridDimension > 0));
         NtIO = (*s).Ntime;
-        xyStep = (*s).rStep / xFactor;
+        xyStep = (*s).rStep;
         tStep = (*s).tStep / timeFactor;
         omegaMax = 0.1 * twoPi<deviceFP>()*lightC<deviceFP>() / zStep;
         omegaStep = twoPi<deviceFP>() * s->fStep;
         frequencyLimit = minN(static_cast<int64_t>(omegaMax / omegaStep),s->Nfreq);
-        Nt = propagationTime / tStep;
         inverseXyStep = 1.0 / xyStep;
         inverseZStep = 1.0 / zStep;
         materialStart = frontBuffer / zStep;
         materialStop = materialStart + (crystalThickness / zStep);
         observationPoint = materialStop + 10;
-        xGridFactor = xFactor;
         tGridFactor = timeFactor;
         Ngrid = Nz * Nx;
     }

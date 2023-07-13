@@ -2413,8 +2413,8 @@ namespace kernelNamespace{
 							- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy} : 
 					oscillator2D<deviceFP>{
-						currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * gridIn[i].y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
-						absorptionCurrent * Py * s->kCarrierGeneration[0]}; //note that k.Py is used to store the carrier density
+						-currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * gridIn[i].y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
+						absorptionCurrent * gridIn[i].y * s->kCarrierGeneration[0]}; //note that k.Py is used to store the carrier density
 
 
 				 //in the future, rotate current from crystal coordinates to field coordinates
@@ -2510,7 +2510,7 @@ namespace kernelNamespace{
 		maxwellCalculation2D<deviceFP>* s;
 		int64_t time;
 		deviceFunction void operator()(int64_t i) const {
-			int64_t gridIndex = (i * s->xGridFactor) * s->Nz + s->observationPoint;
+			int64_t gridIndex = i * s->Nz + s->observationPoint;
 			s->inOutEy[i * s->NtIO + time] = s->Egrid[gridIndex].y;
 		}
 	};
@@ -3407,19 +3407,21 @@ namespace hostFunctions{
 	static void prepare2DFDTD(ActiveDevice& d, const simulationParameterSet* sCPU, maxwellCalculation2D<deviceFP>& maxCalc) {
 
 		double n0 = hostSellmeierFunc(0, std::pow(twoPi<double>() * sCPU->pulse1.frequency, 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		maxCalc.waitFrames = (maxCalc.frontBuffer + n0*maxCalc.crystalThickness + 10*maxCalc.zStep) / (lightC<double>() * (*sCPU).tStep);
+		double nm1 = hostSellmeierFunc(0, std::pow(twoPi<double>() * (-1e11+sCPU->pulse1.frequency), 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+		double np1 = hostSellmeierFunc(0, std::pow(twoPi<double>() * (1e11+sCPU->pulse1.frequency), 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+		double nGroup = n0 + sCPU->pulse1.frequency * (np1 - nm1) / 2.0e11;
+		maxCalc.waitFrames = (maxCalc.frontBuffer + nGroup*maxCalc.crystalThickness + 10*maxCalc.zStep) / (lightC<double>() * (*sCPU).tStep);
 		maxCalc.Nt = (maxCalc.waitFrames + (*sCPU).Ntime) * maxCalc.tGridFactor;
-		maxCalc.Noscillators = 0;
+
 		//copy the crystal info
 		for (int i = 0; i < 66; i++) {
 			maxCalc.sellmeierEquations[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-			//if (((i - 1) % 3 == 0)) maxCalc.sellmeierEquations[1][0] *= -eps0<deviceFP>() * kLorentzian<deviceFP>();
 		}	
-
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[0]) maxCalc.hasChi2[0] = true;
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 1) maxCalc.hasFullChi3[0] = true;
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 2) maxCalc.hasSingleChi3[0] = true;
 
+		//perform millers rule normalization on the nonlinear coefficients while copying the values
 		double millersRuleFactorChi2 = 1.0;
 		double millersRuleFactorChi3 = 1.0;
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) {
@@ -3451,22 +3453,25 @@ namespace hostFunctions{
 		for (int i = 0; i < 81; i++) {
 			maxCalc.chi3[i][0] = static_cast<deviceFP>((*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i] * millersRuleFactorChi3);
 		}
+
 		//count the nonzero oscillators
 		for (int i = 0; i < 7; i++) {
 			if (maxCalc.sellmeierEquations[1 + i * 3][0] > 0.0) maxCalc.Noscillators++;
 			else break;
 		}
 
+		//collect plasma properties
 		if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
 			maxCalc.Noscillators++;
 			maxCalc.hasPlasma[0] = true;
 			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts);
-			maxCalc.kDrude[0] = -eps0<deviceFP>() * elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
+			maxCalc.kDrude[0] = -elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
 			maxCalc.gammaDrude[0] = (*sCPU).drudeGamma;
-			maxCalc.kNonlinearAbsorption[0] = (*sCPU).nonlinearAbsorptionStrength * (std::pow(hostSellmeierFunc(0, std::pow(twoPi<double>() * (*sCPU).pulse1.frequency, 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real(), 2) - 1.0);
+			//maxCalc.kNonlinearAbsorption[0] = (*sCPU).nonlinearAbsorptionStrength * (std::pow(hostSellmeierFunc(0, std::pow(twoPi<double>() * (*sCPU).pulse1.frequency, 2), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real(), 2) - 1.0);
+			maxCalc.kNonlinearAbsorption[0] = 0.5*(*sCPU).nonlinearAbsorptionStrength;
 			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts / (*sCPU).pulse1.frequency))-1;
-			//maxCalc.nonlinearAbsorptionOrder[0] = (int)ceil(sCPU->bandGapElectronVolts * 241.79893e12 / sCPU->pulse1.frequency) - 2;
 		}
+
 		int64_t materialGridSize = (maxCalc.materialStop - maxCalc.materialStart) * maxCalc.Nx * maxCalc.Noscillators;
 
 		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
@@ -3491,7 +3496,6 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&(maxCalc.materialGridEstimate2), materialGridSize, sizeof(oscillator2D<deviceFP>));
 		d.deviceCalloc((void**)&(maxCalc.materialGridNext), materialGridSize, sizeof(oscillator2D<deviceFP>));
 
-
 		//make a device copy of the maxCalc class
 		maxwellCalculation2D<deviceFP>* maxCalcDevice{};
 		d.deviceCalloc((void**)&maxCalcDevice, 1, sizeof(maxwellCalculation2D<deviceFP>));
@@ -3499,9 +3503,9 @@ namespace hostFunctions{
 		maxCalc.deviceCopy = maxCalcDevice;
 	}
 
-	static unsigned long int solveFDTD2D(ActiveDevice& d, simulationParameterSet* sCPU, int64_t xFactor, int64_t tFactor, deviceFP dz, deviceFP frontBuffer, deviceFP backBuffer) {
+	static unsigned long int solveFDTD2D(ActiveDevice& d, simulationParameterSet* sCPU, int64_t tFactor, deviceFP dz, deviceFP frontBuffer, deviceFP backBuffer) {
 		//generate the FDTD data structure and prepare the device
-		maxwellCalculation2D<deviceFP> maxCalc = maxwellCalculation2D<deviceFP>(sCPU, xFactor, tFactor, dz, frontBuffer, backBuffer,0);
+		maxwellCalculation2D<deviceFP> maxCalc = maxwellCalculation2D<deviceFP>(sCPU, tFactor, dz, frontBuffer, backBuffer);
 		prepare2DFDTD(d, sCPU, maxCalc);
 		
 		//RK loop
@@ -3515,6 +3519,7 @@ namespace hostFunctions{
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;
+			if ((*sCPU).cancellationCalled) break;
 		}
 		d.deviceMemcpy((*sCPU).ExtOut, maxCalc.inOutEy, (*sCPU).Ngrid * sizeof(double), copyType::ToHost);
 		
@@ -3604,8 +3609,8 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 			break;
 		case funHash("fdtd"):
-			interpretParameters(cc, 6, iBlock, vBlock, parameters, defaultMask);
-			error = solveFDTD2D(d, sCPU, static_cast<int64_t>(parameters[0]), static_cast<int64_t>(parameters[1]), parameters[2], parameters[3], parameters[4]);
+			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			error = solveFDTD2D(d, sCPU, static_cast<int64_t>(parameters[0]), parameters[1], parameters[2], parameters[3]);
 			break;
 		case funHash("default"):
 			d.reset(sCPU);
