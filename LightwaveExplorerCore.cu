@@ -2388,12 +2388,11 @@ namespace kernelNamespace{
 				Jy += currentGridIn[oscillatorIndex + j].Jy;
 				Py += currentGridIn[oscillatorIndex + j].Py;
 			}
-			Py *= 2.0f; //I do not know why this 2 has to be here
+			Py *= 2.0f;
 			if (s->hasSingleChi3[0]) {
 				nonlinearDriver += s->chi3[0][0] * Py * Py * Py;
 				epsilonInstant += (s->sellmeierEquations[0][0]-1.0f) * s->chi3[0][0] * Py * Py;
 			}
-			k.kE.y /= epsilonInstant;
 			
 			deviceFP absorptionCurrent = (s->hasPlasma[0]) ? 
 				deviceFPLib::pow(Py * Py * s->kNonlinearAbsorption[0], s->nonlinearAbsorptionOrder[0]) 
@@ -2404,16 +2403,18 @@ namespace kernelNamespace{
 			}
 			
 			k.kE.y += Jy * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
+			k.kE.y /= epsilonInstant;
+			
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator2D<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ? 
 					oscillator2D<deviceFP>{
-					(-0.5f * eps0<deviceFP>() * kLorentzian<deviceFP>()) * s->sellmeierEquations[1 + j * 3][0] *
+					(-eps0<deviceFP>() * kLorentzian<deviceFP>()) * s->sellmeierEquations[1 + j * 3][0] *
 							(gridIn[i].y + nonlinearDriver)
 							- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Py
 							- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy} : 
 					oscillator2D<deviceFP>{
-						-0.5f*currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * gridIn[i].y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
+						-currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * gridIn[i].y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
 						absorptionCurrent * gridIn[i].y * s->kCarrierGeneration[0]}; //note that k.Py is used to store the carrier density
 
 
