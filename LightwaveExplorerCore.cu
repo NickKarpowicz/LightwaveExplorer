@@ -2379,48 +2379,44 @@ namespace kernelNamespace{
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
 		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
 			const int64_t oscillatorIndex = (zIndex - s->materialStart) * s->Noscillators + xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
-			deviceFP epsilonInstant = s->sellmeierEquations[0][0];
-			deviceFP Jy{};
-			deviceFP Py = (s->sellmeierEquations[0][0]-1.0f) * gridIn[i].y;
-			deviceFP nonlinearDriver{};
-			
+			maxwellEPoint2D<deviceFP> epsilonInstant{s->sellmeierEquations[0][0]};
+			maxwellEPoint2D<deviceFP> J{};
+			maxwellEPoint2D<deviceFP> P{(s->sellmeierEquations[0][0] - 1.0f)* gridIn[i].y};
+			maxwellEPoint2D<deviceFP> nonlinearDriver{};
+			maxwellEPoint2D<deviceFP> crystalField = gridIn[i]; //in future, apply rotation
 			for (int j = 0; j < (s->Noscillators - s->hasPlasma[0]); j++) {
-				Jy += currentGridIn[oscillatorIndex + j].Jy;
-				Py += currentGridIn[oscillatorIndex + j].Py;
+				J.y += currentGridIn[oscillatorIndex + j].Jy;
+				P.y += currentGridIn[oscillatorIndex + j].Py;
 			}
-			Py *= 2.0f;
+			P.y *= 2.0f;
 			if (s->hasSingleChi3[0]) {
-				nonlinearDriver += s->chi3[0][0] * Py * Py * Py;
-				epsilonInstant += (s->sellmeierEquations[0][0]-1.0f) * s->chi3[0][0] * Py * Py;
+				nonlinearDriver.y += s->chi3[0][0] * (P.y * P.y * P.y);
+				epsilonInstant.y += (s->sellmeierEquations[0][0]-1.0f) * s->chi3[0][0] * P.y * P.y;
 			}
 			
 			deviceFP absorptionCurrent = (s->hasPlasma[0]) ? 
-				deviceFPLib::pow(Py * Py * s->kNonlinearAbsorption[0], s->nonlinearAbsorptionOrder[0]) 
+				deviceFPLib::pow(P.y * P.y * s->kNonlinearAbsorption[0], s->nonlinearAbsorptionOrder[0]) 
 				: 0.0f;
 			if (s->hasPlasma[0]) {
-				k.kE.y -= twoPi<deviceFP>()*absorptionCurrent* gridIn[i].y;
-				Jy += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
+				k.kE.y -= twoPi<deviceFP>()*absorptionCurrent* crystalField.y;
+				J.y += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
 			}
 			
-			k.kE.y += Jy * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
-			k.kE.y /= epsilonInstant;
+			k.kE.y += J.y * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
+			k.kE.y /= epsilonInstant.y;
 			
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator2D<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ? 
 					oscillator2D<deviceFP>{
 					(-eps0<deviceFP>() * kLorentzian<deviceFP>()) * s->sellmeierEquations[1 + j * 3][0] *
-							(gridIn[i].y + nonlinearDriver)
+							(crystalField.y + nonlinearDriver.y)
 							- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Py
 							- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
 						currentGridIn[oscillatorIndex + j].Jy} : 
 					oscillator2D<deviceFP>{
-						-currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * gridIn[i].y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
-						absorptionCurrent * gridIn[i].y * s->kCarrierGeneration[0]}; //note that k.Py is used to store the carrier density
+						-currentGridIn[oscillatorIndex + j].Py * s->kDrude[0] * crystalField.y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
+						absorptionCurrent * crystalField.y * s->kCarrierGeneration[0]}; //note that k.Py is used to store the carrier density
 
-
-				 //in the future, rotate current from crystal coordinates to field coordinates
-
-				
 				switch (rkIndex) {
 				case 0:
 					s->materialGridEstimate[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
