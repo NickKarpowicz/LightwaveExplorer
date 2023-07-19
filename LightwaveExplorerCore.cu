@@ -1971,7 +1971,7 @@ namespace kernelNamespace{
 		}
 	};
 
-	deviceFunction maxwellKPoint2D<deviceFP> maxwellDerivativeTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const maxwellEPoint2D<deviceFP>* EgridIn, const maxwellHPoint2D<deviceFP>* HgridIn) {
+	deviceFunction maxwellKPoint2D<deviceFP> maxwellDerivativeTerms(const maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP> >* s, const int64_t i, const maxwellEPoint2D<deviceFP>* EgridIn, const maxwellHPoint2D<deviceFP>* HgridIn) {
 		maxwellKPoint2D<deviceFP> result{};
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = i / s->Nz;
@@ -2374,7 +2374,7 @@ namespace kernelNamespace{
 		return result;
 	}
 	
-	deviceFunction void maxwellCurrentTerms(const maxwellCalculation2D<deviceFP>* s, const int64_t i, const int64_t t, const bool isAtMidpoint, const maxwellEPoint2D<deviceFP>* gridIn, const oscillator2D<deviceFP>* currentGridIn, maxwellKPoint2D<deviceFP>& k, const int rkIndex) {
+	deviceFunction void maxwellCurrentTerms(const maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>* s, const int64_t i, const int64_t t, const bool isAtMidpoint, const maxwellEPoint2D<deviceFP>* gridIn, const oscillator2D<deviceFP>* currentGridIn, maxwellKPoint2D<deviceFP>& k, const int rkIndex) {
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
 		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
@@ -2452,7 +2452,7 @@ namespace kernelNamespace{
 
 	class maxwellRKkernel02D {
 	public:
-		const maxwellCalculation2D<deviceFP>* s;
+		const maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>* s;
 		const int64_t t;
 		deviceFunction void operator()(const int64_t i) const {
 			maxwellKPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->Egrid, s->Hgrid);
@@ -2465,7 +2465,7 @@ namespace kernelNamespace{
 	};
 	class maxwellRKkernel12D {
 	public:
-		const maxwellCalculation2D<deviceFP>* s;
+		const maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>* s;
 		const int64_t t;
 		deviceFunction void operator()(const int64_t i) const {
 			maxwellKPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->EgridEstimate,s->HgridEstimate);
@@ -2478,7 +2478,7 @@ namespace kernelNamespace{
 	};
 	class maxwellRKkernel22D {
 	public:
-		const maxwellCalculation2D<deviceFP>* s;
+		const maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>* s;
 		const int64_t t;
 		deviceFunction void operator()(const int64_t i) const {
 			maxwellKPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->EgridEstimate2, s->HgridEstimate2);
@@ -2491,7 +2491,7 @@ namespace kernelNamespace{
 	};
 	class maxwellRKkernel32D {
 	public:
-		const maxwellCalculation2D<deviceFP>* s;
+		const maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>* s;
 		const int64_t t;
 		deviceFunction void operator()(const int64_t i) const {
 			maxwellKPoint2D<deviceFP> k = maxwellDerivativeTerms(s, i, s->EgridEstimate,s->HgridEstimate);
@@ -2504,7 +2504,7 @@ namespace kernelNamespace{
 	//store the field in the observation plane in the in/out Ex and Ey arrays
 	class maxwellSampleGrid2D {
 	public:
-		maxwellCalculation2D<deviceFP>* s;
+		maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>* s;
 		int64_t time;
 		deviceFunction void operator()(int64_t i) const {
 			int64_t gridIndex = i * s->Nz + s->observationPoint;
@@ -3383,7 +3383,7 @@ namespace hostFunctions{
 		return 13 * d.isTheCanaryPixelNaN(canaryPointer);
 	}
 
-	static unsigned int free2DFDTD(ActiveDevice& d,maxwellCalculation2D<deviceFP>& maxCalc) {
+	static unsigned int free2DFDTD(ActiveDevice& d, maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>& maxCalc) {
 		unsigned int errorValue = 13 * d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y));
 		d.deviceFree(maxCalc.Egrid);
 		d.deviceFree(maxCalc.EgridEstimate);
@@ -3401,7 +3401,7 @@ namespace hostFunctions{
 		return errorValue;
 	}
 
-	static void prepare2DFDTD(ActiveDevice& d, const simulationParameterSet* sCPU, maxwellCalculation2D<deviceFP>& maxCalc) {
+	static void prepare2DFDTD(ActiveDevice& d, const simulationParameterSet* sCPU, maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>& maxCalc) {
 
 		double n0 = hostSellmeierFunc(0, twoPi<double>() * sCPU->pulse1.frequency, (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
 		double nm1 = hostSellmeierFunc(0, twoPi<double>() * (-2e11+sCPU->pulse1.frequency), (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
@@ -3495,15 +3495,15 @@ namespace hostFunctions{
 		d.deviceCalloc((void**)&(maxCalc.materialGridNext), materialGridSize, sizeof(oscillator2D<deviceFP>));
 
 		//make a device copy of the maxCalc class
-		maxwellCalculation2D<deviceFP>* maxCalcDevice{};
-		d.deviceCalloc((void**)&maxCalcDevice, 1, sizeof(maxwellCalculation2D<deviceFP>));
-		d.deviceMemcpy((void*)maxCalcDevice, (void*)&maxCalc, sizeof(maxwellCalculation2D<deviceFP>), copyType::ToDevice);
+		maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>* maxCalcDevice{};
+		d.deviceCalloc((void**)&maxCalcDevice, 1, sizeof(maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>));
+		d.deviceMemcpy((void*)maxCalcDevice, (void*)&maxCalc, sizeof(maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>), copyType::ToDevice);
 		maxCalc.deviceCopy = maxCalcDevice;
 	}
 
 	static unsigned long int solveFDTD2D(ActiveDevice& d, simulationParameterSet* sCPU, int64_t tFactor, deviceFP dz, deviceFP frontBuffer, deviceFP backBuffer) {
 		//generate the FDTD data structure and prepare the device
-		maxwellCalculation2D<deviceFP> maxCalc = maxwellCalculation2D<deviceFP>(sCPU, tFactor, dz, frontBuffer, backBuffer);
+		maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>> maxCalc = maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>(sCPU, tFactor, dz, frontBuffer, backBuffer);
 		prepare2DFDTD(d, sCPU, maxCalc);
 		
 		//RK loop

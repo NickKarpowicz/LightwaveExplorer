@@ -838,47 +838,21 @@ public:
     }
 };
 
-template <typename deviceFP>
+template <typename deviceFP, typename E, typename H, typename O>
 class maxwellCalculation {
 public:
-    maxwellPoint<deviceFP>* grid{};
-    maxwellPoint<deviceFP>* gridNext{};
-    maxwellPoint<deviceFP>* gridEstimate{};
-    oscillator<deviceFP>* materialGrid{};
-    oscillator<deviceFP>* materialGridNext{};
-    oscillator<deviceFP>* materialGridEstimate{};
-    deviceFP* inOutEx{};
-    deviceFP* inOutEy{};
-    deviceFP xyStep{};
-    deviceFP zStep{};
-    deviceFP tStep{};
-    deviceFP inverseXyStep{};
-    deviceFP inverseZStep{};
-    int64_t observationPoint{};
-    int64_t Nx{};
-    int64_t Ny{};
-    int64_t Nz{};
-    int64_t Nt{};
-    int64_t NtIO{};
-    int64_t xGridFactor;
-    int64_t tGridFactor;
-};
-
-template <typename deviceFP>
-class maxwellCalculation2D {
-public:
-    maxwellEPoint2D<deviceFP>* Egrid{};
-    maxwellEPoint2D<deviceFP>* EgridNext{};
-    maxwellEPoint2D<deviceFP>* EgridEstimate{};
-    maxwellEPoint2D<deviceFP>* EgridEstimate2{};
-    maxwellHPoint2D<deviceFP>* Hgrid{};
-    maxwellHPoint2D<deviceFP>* HgridNext{};
-    maxwellHPoint2D<deviceFP>* HgridEstimate{};
-    maxwellHPoint2D<deviceFP>* HgridEstimate2{};
-    oscillator2D<deviceFP>* materialGrid{};
-    oscillator2D<deviceFP>* materialGridNext{};
-    oscillator2D<deviceFP>* materialGridEstimate{};
-    oscillator2D<deviceFP>* materialGridEstimate2{};
+    E* Egrid{};
+    E* EgridNext{};
+    E* EgridEstimate{};
+    E* EgridEstimate2{};
+    H* Hgrid{};
+    H* HgridNext{};
+    H* HgridEstimate{};
+    H* HgridEstimate2{};
+    O* materialGrid{};
+    O* materialGridNext{};
+    O* materialGridEstimate{};
+    O* materialGridEstimate2{};
     int64_t* materialIndexMap{};
     deviceFP sellmeierEquations[66][8]{};
     deviceFP chi3[81][8]{};
@@ -916,9 +890,9 @@ public:
     int64_t tGridFactor=1;
     int64_t materialStart{};
     int64_t materialStop{};
-    maxwellCalculation2D<deviceFP>* deviceCopy = nullptr;
+    maxwellCalculation<deviceFP, E, H, O>* deviceCopy = nullptr;
 
-    maxwellCalculation2D(simulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
+    maxwellCalculation(simulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
         frontBuffer = frontBuffer_in;
         backBuffer = backBuffer_in;
         crystalThickness = (*s).crystalThickness;
