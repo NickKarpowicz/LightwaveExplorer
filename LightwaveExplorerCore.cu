@@ -53,6 +53,34 @@ namespace deviceFunctions {
 			a.y + b.y, 
 			a.z + b.z};
 	}
+	deviceFunction static void operator+=(oscillator<deviceFP>& a, const oscillator<deviceFP>& other) {
+		a.Jx += other.Jx;
+		a.Jy += other.Jy;
+		a.Jz += other.Jz;
+		a.Px += other.Px;
+		a.Py += other.Py;
+		a.Pz += other.Pz;
+	}
+	deviceFunction static oscillator<deviceFP> operator*(const oscillator<deviceFP>& a, const deviceFP b) {
+		return oscillator<deviceFP>{
+				a.Jx * b,
+				a.Jy * b,
+				a.Jz * b,
+				a.Px * b,
+				a.Py * b,
+				a.Pz * b
+		};
+	}
+	deviceFunction static oscillator<deviceFP> operator+(const oscillator<deviceFP>& a, const oscillator<deviceFP>& b) {
+		return oscillator<deviceFP>{
+				a.Jx + b.Jx,
+				a.Jy + b.Jy,
+				a.Jz + b.Jz,
+				a.Px + b.Px,
+				a.Py + b.Py,
+				a.Pz + b.Pz
+		};
+	}
 	//determine if the current grid location is close to the boundary
 	//5 means its a normal point
 	// 0..3 first points in the grid
@@ -3181,6 +3209,124 @@ namespace kernelNamespace{
 			deviceComplex* fftData = (deviceComplex*)s->inputEyFFT;
 			int64_t fftSize = s->NtIO / 2 + 1;
 			deviceFP Ecurrent = 230.38f *fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
+			k.kE.y += Ecurrent;
+			k.kH.x += inverseZo<deviceFP>() * Ecurrent;
+			return;
+		}
+		return;
+	}
+
+	deviceFunction void maxwellCurrentTerms(
+		const maxwellCalculation<deviceFP, maxwellPoint<deviceFP>, maxwellPoint<deviceFP>, oscillator<deviceFP>>* s, 
+		const int64_t i, 
+		const int64_t t, 
+		const bool isAtMidpoint, 
+		const maxwellPoint<deviceFP>* gridIn, 
+		const oscillator<deviceFP>* currentGridIn, 
+		maxwellKPoint<deviceFP>& k, 
+		const int rkIndex) {
+		const int64_t zIndex = i % s->Nz;
+		const int64_t xIndex = (i / s->Nz) % s->Nx;
+		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
+			const int64_t oscillatorIndex = (zIndex - s->materialStart) * s->Noscillators + xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
+			maxwellPoint<deviceFP> epsilonInstant{s->sellmeierEquations[0][0],s->sellmeierEquations[22][0],s->sellmeierEquations[44][0]};
+			maxwellPoint<deviceFP> J{};
+			maxwellPoint<deviceFP> P{(s->sellmeierEquations[0][0] - 1.0f)* gridIn[i].y};
+			maxwellPoint<deviceFP> nonlinearDriver{};
+			maxwellPoint<deviceFP> crystalField = gridIn[i]; //in future, apply rotation
+			for (int j = 0; j < (s->Noscillators - s->hasPlasma[0]); j++) {
+				J.x += currentGridIn[oscillatorIndex + j].Jx;
+				P.x += currentGridIn[oscillatorIndex + j].Px;
+				J.y += currentGridIn[oscillatorIndex + j].Jy;
+				P.y += currentGridIn[oscillatorIndex + j].Py;
+				J.z += currentGridIn[oscillatorIndex + j].Jz;
+				P.z += currentGridIn[oscillatorIndex + j].Pz;
+			}
+			P.x *= 2.0f;
+			P.y *= 2.0f;
+			P.z *= 2.0f;
+
+			if (s->hasSingleChi3[0]) {
+				deviceFP fieldSquaredSum = P.x * P.x + P.y * P.y + P.z * P.z;
+				nonlinearDriver.x += s->chi3[0][0] * (P.x * fieldSquaredSum);
+				epsilonInstant.x += (s->sellmeierEquations[0][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
+				nonlinearDriver.y += s->chi3[0][0] * (P.y * fieldSquaredSum);
+				epsilonInstant.y += (s->sellmeierEquations[0][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
+				nonlinearDriver.z += s->chi3[0][0] * (P.z * fieldSquaredSum);
+				epsilonInstant.z += (s->sellmeierEquations[0][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
+			}
+
+			deviceFP absorptionCurrent = (s->hasPlasma[0]) ?
+				deviceFPLib::pow(P.x * P.x + P.y * P.y + P.z * P.z * s->kNonlinearAbsorption[0], s->nonlinearAbsorptionOrder[0])
+				: 0.0f;
+			if (s->hasPlasma[0]) {
+				k.kE.x -= twoPi<deviceFP>() * absorptionCurrent * crystalField.x;
+				k.kE.y -= twoPi<deviceFP>() * absorptionCurrent * crystalField.y;
+				k.kE.z -= twoPi<deviceFP>() * absorptionCurrent * crystalField.z;
+				J.x += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jx;
+				J.y += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
+				J.z += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jz;
+			}
+
+			k.kE.x += J.x * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
+			k.kE.x /= epsilonInstant.x;
+			k.kE.y += J.y * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
+			k.kE.y /= epsilonInstant.y;
+			k.kE.z += J.z * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
+			k.kE.z /= epsilonInstant.z;
+
+			for (int j = 0; j < s->Noscillators; j++) {
+				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ?
+					oscillator<deviceFP>{
+					(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[1 + j * 3][0] *
+						(crystalField.x + nonlinearDriver.x)
+						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Px
+						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jx,
+					(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[1 + j * 3][0] *
+						(crystalField.y + nonlinearDriver.y)
+						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Py
+						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
+					(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[1 + j * 3][0] *
+						(crystalField.z + nonlinearDriver.z)
+						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Pz
+						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jz,
+						currentGridIn[oscillatorIndex + j].Jx,
+						currentGridIn[oscillatorIndex + j].Jy,
+						currentGridIn[oscillatorIndex + j].Jz} :
+				oscillator<deviceFP>{
+					-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.x - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jx,
+					-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
+					-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.z - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jz,
+					absorptionCurrent * crystalField.y * s->kCarrierGeneration[0],
+					deviceFP{},
+					deviceFP{} }; //note that k.Px is used to store the carrier density
+
+				switch (rkIndex) {
+				case 0:
+					s->materialGridEstimate[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
+					s->materialGridNext[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (sixth<deviceFP>() * s->tStep);
+					break;
+				case 1:
+					s->materialGridEstimate2[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
+					s->materialGridNext[oscillatorIndex + j] += kOsc * (third<deviceFP>() * s->tStep);
+					break;
+				case 2:
+					s->materialGridEstimate[oscillatorIndex + j] = s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep);
+					s->materialGridNext[oscillatorIndex + j] += kOsc * (third<deviceFP>() * s->tStep);
+					break;
+				case 3:
+					s->materialGrid[oscillatorIndex + j] = s->materialGridNext[oscillatorIndex + j] + kOsc * (sixth<deviceFP>() * s->tStep);
+					break;
+				}
+			}
+
+			return;
+		}
+		else if (zIndex == 0) {
+			deviceFP tCurrent = s->tStep * t + 0.5f * isAtMidpoint * s->tStep;
+			deviceComplex* fftData = (deviceComplex*)s->inputEyFFT;
+			int64_t fftSize = s->NtIO / 2 + 1;
+			deviceFP Ecurrent = 230.38f * fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
 			k.kE.y += Ecurrent;
 			k.kH.x += inverseZo<deviceFP>() * Ecurrent;
 			return;
