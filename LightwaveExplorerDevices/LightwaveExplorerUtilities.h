@@ -68,14 +68,6 @@ public:
 };
 
 template <typename deviceFP>
-class maxwellPoint2D {
-public:
-    deviceFP Ey{};
-    deviceFP Hx{};
-    deviceFP Hz{};
-};
-
-template <typename deviceFP>
 class maxwellEPoint2D {
 public:
     deviceFP y{};
@@ -93,6 +85,13 @@ class maxwellKPoint2D {
 public:
     maxwellEPoint2D<deviceFP> kE;
     maxwellHPoint2D<deviceFP> kH;
+};
+
+template <typename deviceFP>
+class maxwellKPoint {
+public:
+    maxwellPoint<deviceFP> kE;
+    maxwellPoint<deviceFP> kH;
 };
 
 template <typename deviceFP>
@@ -891,7 +890,7 @@ public:
     int64_t materialStart{};
     int64_t materialStop{};
     maxwellCalculation<deviceFP, E, H, O>* deviceCopy = nullptr;
-
+    
     maxwellCalculation(simulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
         frontBuffer = frontBuffer_in;
         backBuffer = backBuffer_in;

@@ -3,73 +3,55 @@
 
 namespace deviceFunctions {
 	//define math operators for maxwell grid points
-	template<typename deviceFP>
-	deviceFunction void operator+=(maxwellPoint2D<deviceFP>& a, const maxwellPoint2D<deviceFP>& other) {
-		a.Ey += other.Ey;
-		a.Hx += other.Hx;
-		a.Hz += other.Hz;
-	}
-	template<typename deviceFP>
-	deviceFunction void operator+=(maxwellEPoint2D<deviceFP>& a, const maxwellEPoint2D<deviceFP>& other) {
+	deviceFunction static void operator+=(maxwellEPoint2D<deviceFP>& a, const maxwellEPoint2D<deviceFP>& other) {
 		a.y += other.y;
 	}
-
-	template<typename deviceFP>
-	deviceFunction void operator+=(maxwellHPoint2D<deviceFP>& a, const maxwellHPoint2D<deviceFP>& other) {
+	deviceFunction static void operator+=(maxwellHPoint2D<deviceFP>& a, const maxwellHPoint2D<deviceFP>& other) {
 		a.x += other.x;
 		a.z += other.z;
 	}
-
-	template<typename deviceFP>
-	deviceFunction maxwellPoint2D<deviceFP> operator*(maxwellPoint2D<deviceFP>& a, const deviceFP other) {
-		return maxwellPoint2D<deviceFP>{a.Ey* other, a.Hx* other, a.Hz* other};
-	}
-
-	template<typename deviceFP>
-	deviceFunction maxwellEPoint2D<deviceFP> operator*(maxwellEPoint2D<deviceFP>& a, const deviceFP other) {
+	deviceFunction static maxwellEPoint2D<deviceFP> operator*(maxwellEPoint2D<deviceFP>& a, const deviceFP other) {
 		return maxwellEPoint2D<deviceFP>{a.y * other};
 	}
-
-	template<typename deviceFP>
-	deviceFunction maxwellHPoint2D<deviceFP> operator*(maxwellHPoint2D<deviceFP>& a, const deviceFP other) {
+	deviceFunction static maxwellHPoint2D<deviceFP> operator*(maxwellHPoint2D<deviceFP>& a, const deviceFP other) {
 		return maxwellHPoint2D<deviceFP>{a.x* other, a.z* other};
 	}
-
-	template<typename deviceFP>
-	deviceFunction maxwellPoint2D<deviceFP> operator+(maxwellPoint2D<deviceFP>& a, const maxwellPoint2D<deviceFP>& other) {
-		return maxwellPoint2D<deviceFP>{a.Ey + other.Ey, a.Hx + other.Hx, a.Hz + other.Hz};
-	}
-
-	template<typename deviceFP>
-	deviceFunction maxwellEPoint2D<deviceFP> operator+(maxwellEPoint2D<deviceFP>& a, const maxwellEPoint2D<deviceFP>& other) {
+	deviceFunction static maxwellEPoint2D<deviceFP> operator+(maxwellEPoint2D<deviceFP>& a, const maxwellEPoint2D<deviceFP>& other) {
 		return maxwellEPoint2D<deviceFP>{a.y + other.y};
 	}
-	template<typename deviceFP>
-	deviceFunction maxwellHPoint2D<deviceFP> operator+(maxwellHPoint2D<deviceFP>& a, const maxwellHPoint2D<deviceFP>& other) {
+	deviceFunction static maxwellHPoint2D<deviceFP> operator+(maxwellHPoint2D<deviceFP>& a, const maxwellHPoint2D<deviceFP>& other) {
 		return maxwellHPoint2D<deviceFP>{a.x + other.x, a.z + other.z};
 	}
-	
-
-	template<typename deviceFP>
-	deviceFunction void operator+=(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& other) {
+	deviceFunction static void operator+=(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& other) {
 		a.Jy += other.Jy;
 		a.Py += other.Py;
 	}
-	template<typename deviceFP>
-	deviceFunction oscillator2D<deviceFP> operator*(oscillator2D<deviceFP>& a, const deviceFP b) {
+	deviceFunction static oscillator2D<deviceFP> operator*(oscillator2D<deviceFP>& a, const deviceFP b) {
 		return oscillator2D<deviceFP>{
 				a.Jy * b, 
 				a.Py * b};
 	}
-	/*template<typename deviceFP>
-	deviceFunction oscillator2D<deviceFP> operator*(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& b) {
-		return oscillator2D<deviceFP>{a.Jy* b.Jy, a.Py* b.Py};
-	}*/
-	template<typename deviceFP>
-	deviceFunction oscillator2D<deviceFP> operator+(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& b) {
+	deviceFunction static oscillator2D<deviceFP> operator+(oscillator2D<deviceFP>& a, const oscillator2D<deviceFP>& b) {
 		return oscillator2D<deviceFP>{
 				a.Jy + b.Jy, 
 				a.Py + b.Py};
+	}
+	deviceFunction static void operator+=(maxwellPoint<deviceFP>& a, const maxwellPoint<deviceFP>& other) {
+		a.x += other.x;
+		a.y += other.y;
+		a.z += other.z;
+	}
+	deviceFunction static maxwellPoint<deviceFP> operator*(const maxwellPoint<deviceFP>& a, const deviceFP other) {
+		return maxwellPoint<deviceFP>{
+			a.x * other, 
+			a.y * other, 
+			a.z * other};
+	}
+	deviceFunction static maxwellPoint<deviceFP> operator+(const maxwellPoint<deviceFP>& a, const maxwellPoint<deviceFP>& b) {
+		return maxwellPoint<deviceFP>{
+			a.x + b.x, 
+			a.y + b.y, 
+			a.z + b.z};
 	}
 	//determine if the current grid location is close to the boundary
 	//5 means its a normal point
@@ -1971,7 +1953,12 @@ namespace kernelNamespace{
 		}
 	};
 
-	deviceFunction maxwellKPoint2D<deviceFP> maxwellDerivativeTerms(const maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP> >* s, const int64_t i, const maxwellEPoint2D<deviceFP>* EgridIn, const maxwellHPoint2D<deviceFP>* HgridIn) {
+	deviceFunction maxwellKPoint2D<deviceFP> maxwellDerivativeTerms(
+		const maxwellCalculation<deviceFP, maxwellEPoint2D<deviceFP>, maxwellHPoint2D<deviceFP>, oscillator2D<deviceFP>>* s, 
+		const int64_t i, 
+		const maxwellEPoint2D<deviceFP>* EgridIn, 
+		const maxwellHPoint2D<deviceFP>* HgridIn) {
+
 		maxwellKPoint2D<deviceFP> result{};
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = i / s->Nz;
@@ -2371,6 +2358,757 @@ namespace kernelNamespace{
 		result.kE.y= inverseEps0<deviceFP>() * (s->inverseXyStep * dHzDx - s->inverseZStep * dHxDz);
 		result.kH.x = - inverseMu0<deviceFP>() * s->inverseZStep * dEyDz;
 		result.kH.z = inverseMu0<deviceFP>() * s->inverseXyStep * dEyDx;
+		return result;
+	}
+
+	deviceFunction maxwellKPoint<deviceFP> maxwellDerivativeTerms(
+		const maxwellCalculation<deviceFP, maxwellPoint<deviceFP>, maxwellPoint<deviceFP>, oscillator<deviceFP>>* s,
+		const int64_t i,
+		const maxwellPoint<deviceFP>* EgridIn,
+		const maxwellPoint<deviceFP>* HgridIn) {
+
+		maxwellKPoint<deviceFP> result{};
+		const int64_t zIndex = i % s->Nz;
+		const int64_t xIndex = i / s->Nz;
+		const int64_t zEnd = (s->Nz) * (xIndex + 1);
+		const int64_t zStart = (s->Nz) * xIndex;
+		deviceFP dExDy{};
+		deviceFP dExDz{};
+		deviceFP dEyDx{};
+		deviceFP dEyDz{};
+		deviceFP dEzDx{};
+		deviceFP dEzDy{};
+		deviceFP dHxDy{};
+		deviceFP dHxDz{};
+		deviceFP dHyDx{};
+		deviceFP dHyDz{};
+		deviceFP dHzDx{};
+		deviceFP dHzDy{};
+		
+
+		switch (boundaryFinder(xIndex, s->Nx)) {
+		[[likely]] case 5:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (xIndex - 2) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex - 1) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 1) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 2) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 3) * (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (xIndex - 2) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex - 1) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 1) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 2) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 3) * (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (xIndex - 3) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex - 1) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex + 1) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex + 2) * (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (xIndex - 3) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex - 1) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex + 1) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex + 2) * (s->Nz)].z);
+			break;
+		case 0:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				EgridIn[zIndex].y,
+				EgridIn[zIndex + (s->Nz)].y,
+				EgridIn[zIndex + 2 * (s->Nz)].y,
+				EgridIn[zIndex + 3 * (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				EgridIn[zIndex].z,
+				EgridIn[zIndex + (s->Nz)].z,
+				EgridIn[zIndex + 2 * (s->Nz)].z,
+				EgridIn[zIndex + 3 * (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 3) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				HgridIn[zIndex + 0].y,
+				HgridIn[zIndex + (s->Nz)].y,
+				HgridIn[zIndex + 2 * (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 3) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				HgridIn[zIndex + 0].z,
+				HgridIn[zIndex + (s->Nz)].z,
+				HgridIn[zIndex + 2 * (s->Nz)].z);
+			break;
+		case 1:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				EgridIn[zIndex].y,
+				EgridIn[zIndex + (s->Nz)].y,
+				EgridIn[zIndex + 2 * (s->Nz)].y,
+				EgridIn[zIndex + 3 * (s->Nz)].y,
+				EgridIn[zIndex + 4 * (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				EgridIn[zIndex].z,
+				EgridIn[zIndex + (s->Nz)].z,
+				EgridIn[zIndex + 2 * (s->Nz)].z,
+				EgridIn[zIndex + 3 * (s->Nz)].z,
+				EgridIn[zIndex + 4 * (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				HgridIn[zIndex].y,
+				HgridIn[zIndex + (s->Nz)].y,
+				HgridIn[zIndex + 2 * (s->Nz)].y,
+				HgridIn[zIndex + 3 * (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				HgridIn[zIndex].z,
+				HgridIn[zIndex + (s->Nz)].z,
+				HgridIn[zIndex + 2 * (s->Nz)].z,
+				HgridIn[zIndex + 3 * (s->Nz)].z);
+			break;
+		case 2:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex].y,
+				EgridIn[zIndex + (s->Nz)].y,
+				EgridIn[zIndex + 2 * (s->Nz)].y,
+				EgridIn[zIndex + 3 * (s->Nz)].y,
+				EgridIn[zIndex + 4 * (s->Nz)].y,
+				EgridIn[zIndex + 5 * (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex].z,
+				EgridIn[zIndex + (s->Nz)].z,
+				EgridIn[zIndex + 2 * (s->Nz)].z,
+				EgridIn[zIndex + 3 * (s->Nz)].z,
+				EgridIn[zIndex + 4 * (s->Nz)].z,
+				EgridIn[zIndex + 5 * (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				HgridIn[zIndex].y,
+				HgridIn[zIndex + (s->Nz)].y,
+				HgridIn[zIndex + 2 * (s->Nz)].y,
+				HgridIn[zIndex + 3 * (s->Nz)].y,
+				HgridIn[zIndex + 4 * (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				HgridIn[zIndex].z,
+				HgridIn[zIndex + (s->Nz)].z,
+				HgridIn[zIndex + 2 * (s->Nz)].z,
+				HgridIn[zIndex + 3 * (s->Nz)].z,
+				HgridIn[zIndex + 4 * (s->Nz)].z);
+			break;
+		case 3:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (xIndex - 2) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex - 1) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 1) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 2) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 3) * (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (xIndex - 2) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex - 1) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 1) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 2) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 3) * (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (xIndex - 3) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex - 1) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex + 1) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex + 2) * (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (xIndex - 3) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex - 1) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex + 1) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex + 2) * (s->Nz)].z);
+			break;
+		case -1:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 3) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				EgridIn[zIndex].y,
+				EgridIn[zIndex + (s->Nz)].y,
+				EgridIn[zIndex + 2 * (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 3) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				EgridIn[zIndex].z,
+				EgridIn[zIndex + (s->Nz)].z,
+				EgridIn[zIndex + 2 * (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 4) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 3) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				HgridIn[zIndex].y,
+				HgridIn[zIndex + (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 4) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 3) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				HgridIn[zIndex].z,
+				HgridIn[zIndex + (s->Nz)].z);
+			break;
+		case -2:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 4) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 3) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				EgridIn[zIndex].y,
+				EgridIn[zIndex + (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 4) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 3) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				EgridIn[zIndex].z,
+				EgridIn[zIndex + (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 5) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 4) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 3) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				HgridIn[zIndex].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 5) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 4) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 3) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				HgridIn[zIndex].z);
+			break;
+		case -3:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 5) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 4) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 3) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y,
+				EgridIn[zIndex].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (s->Nx - 5) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 4) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 3) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				EgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z,
+				EgridIn[zIndex].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 6) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 5) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 4) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 3) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (s->Nx - 6) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 5) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 4) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 3) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (s->Nx - 1) * (s->Nz)].z);
+			break;
+		case -4:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (xIndex - 2) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex - 1) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 1) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 2) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 3) * (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (xIndex - 2) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex - 1) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 1) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 2) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 3) * (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (xIndex - 3) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex - 1) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex + 1) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex + 2) * (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (xIndex - 3) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex - 1) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex + 1) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex + 2) * (s->Nz)].z);
+			break;
+		case -5:
+			dEyDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (xIndex - 2) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex - 1) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 1) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 2) * (s->Nz)].y,
+				EgridIn[zIndex + (xIndex + 3) * (s->Nz)].y);
+			dEzDx = firstDerivativeSixthOrder(
+				EgridIn[zIndex + (xIndex - 2) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex - 1) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 1) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 2) * (s->Nz)].z,
+				EgridIn[zIndex + (xIndex + 3) * (s->Nz)].z);
+			dHyDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (xIndex - 3) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex - 2) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex - 1) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex + 1) * (s->Nz)].y,
+				HgridIn[zIndex + (xIndex + 2) * (s->Nz)].y);
+			dHzDx = firstDerivativeSixthOrder(
+				HgridIn[zIndex + (xIndex - 3) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex - 2) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex - 1) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex + 1) * (s->Nz)].z,
+				HgridIn[zIndex + (xIndex + 2) * (s->Nz)].z);
+			break;
+		default:
+			break;
+		}
+
+		switch (boundaryFinder(zIndex, s->Nz)) {
+		[[likely]] case 5:
+			dExDz = firstDerivativeSixthOrder(
+				EgridIn[i - 3].x,
+				EgridIn[i - 2].x,
+				EgridIn[i - 1].x,
+				EgridIn[i].x,
+				EgridIn[i + 1].x,
+				EgridIn[i + 2].x);
+			dEyDz = firstDerivativeSixthOrder(
+				EgridIn[i - 3].y,
+				EgridIn[i - 2].y,
+				EgridIn[i - 1].y,
+				EgridIn[i].y,
+				EgridIn[i + 1].y,
+				EgridIn[i + 2].y);
+			dHxDz = firstDerivativeSixthOrder(
+				HgridIn[i - 2].x,
+				HgridIn[i - 1].x,
+				HgridIn[i].x,
+				HgridIn[i + 1].x,
+				HgridIn[i + 2].x,
+				HgridIn[i + 3].x);
+			dHyDz = firstDerivativeSixthOrder(
+				HgridIn[i - 2].y,
+				HgridIn[i - 1].y,
+				HgridIn[i].y,
+				HgridIn[i + 1].y,
+				HgridIn[i + 2].y,
+				HgridIn[i + 3].y);
+			break;
+		case 0:
+			dExDz = resolveMaxwellEndpoints(0,
+				EgridIn[zStart].x,
+				EgridIn[zStart + 1].x,
+				EgridIn[zStart + 2].x,
+				EgridIn[zStart + 3].x,
+				EgridIn[zStart + 4].x,
+				EgridIn[zStart + 5].x,
+				EgridIn[zStart + 6].x,
+				EgridIn[zStart + 7].x,
+				EgridIn[zStart + 8].x,
+				EgridIn[zStart + 9].x,
+				EgridIn[zStart + 10].x);
+			dEyDz = resolveMaxwellEndpoints(0,
+				EgridIn[zStart].y,
+				EgridIn[zStart + 1].y,
+				EgridIn[zStart + 2].y,
+				EgridIn[zStart + 3].y,
+				EgridIn[zStart + 4].y,
+				EgridIn[zStart + 5].y,
+				EgridIn[zStart + 6].y,
+				EgridIn[zStart + 7].y,
+				EgridIn[zStart + 8].y,
+				EgridIn[zStart + 9].y,
+				EgridIn[zStart + 10].y);
+			dHxDz = -inverseZo<deviceFP>() * dEyDz;
+			dHyDz = -inverseZo<deviceFP>() * dExDz;
+			break;
+		case 1:
+			dExDz = resolveMaxwellEndpoints(1,
+				EgridIn[zStart].x,
+				EgridIn[zStart + 1].x,
+				EgridIn[zStart + 2].x,
+				EgridIn[zStart + 3].x,
+				EgridIn[zStart + 4].x,
+				EgridIn[zStart + 5].x,
+				EgridIn[zStart + 6].x,
+				EgridIn[zStart + 7].x,
+				EgridIn[zStart + 8].x,
+				EgridIn[zStart + 9].x,
+				EgridIn[zStart + 10].x);
+			dEyDz = resolveMaxwellEndpoints(1,
+				EgridIn[zStart].y,
+				EgridIn[zStart + 1].y,
+				EgridIn[zStart + 2].y,
+				EgridIn[zStart + 3].y,
+				EgridIn[zStart + 4].y,
+				EgridIn[zStart + 5].y,
+				EgridIn[zStart + 6].y,
+				EgridIn[zStart + 7].y,
+				EgridIn[zStart + 8].y,
+				EgridIn[zStart + 9].y,
+				EgridIn[zStart + 10].y);
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(11,
+				EgridIn[zStart].y,
+				EgridIn[zStart + 1].y,
+				EgridIn[zStart + 2].y,
+				EgridIn[zStart + 3].y,
+				EgridIn[zStart + 4].y,
+				EgridIn[zStart + 5].y,
+				EgridIn[zStart + 6].y,
+				EgridIn[zStart + 7].y,
+				EgridIn[zStart + 8].y,
+				EgridIn[zStart + 9].y,
+				EgridIn[zStart + 10].y);
+			dHyDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(11,
+				EgridIn[zStart].x,
+				EgridIn[zStart + 1].x,
+				EgridIn[zStart + 2].x,
+				EgridIn[zStart + 3].x,
+				EgridIn[zStart + 4].x,
+				EgridIn[zStart + 5].x,
+				EgridIn[zStart + 6].x,
+				EgridIn[zStart + 7].x,
+				EgridIn[zStart + 8].x,
+				EgridIn[zStart + 9].x,
+				EgridIn[zStart + 10].x);
+			break;
+		case 2:
+			dExDz = resolveMaxwellEndpoints(2,
+				EgridIn[zStart].x,
+				EgridIn[zStart + 1].x,
+				EgridIn[zStart + 2].x,
+				EgridIn[zStart + 3].x,
+				EgridIn[zStart + 4].x,
+				EgridIn[zStart + 5].x,
+				EgridIn[zStart + 6].x,
+				EgridIn[zStart + 7].x,
+				EgridIn[zStart + 8].x,
+				EgridIn[zStart + 9].x,
+				EgridIn[zStart + 10].x);
+			dEyDz = resolveMaxwellEndpoints(2,
+				EgridIn[zStart].y,
+				EgridIn[zStart + 1].y,
+				EgridIn[zStart + 2].y,
+				EgridIn[zStart + 3].y,
+				EgridIn[zStart + 4].y,
+				EgridIn[zStart + 5].y,
+				EgridIn[zStart + 6].y,
+				EgridIn[zStart + 7].y,
+				EgridIn[zStart + 8].y,
+				EgridIn[zStart + 9].y,
+				EgridIn[zStart + 10].y);
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(12,
+				EgridIn[zStart].y,
+				EgridIn[zStart + 1].y,
+				EgridIn[zStart + 2].y,
+				EgridIn[zStart + 3].y,
+				EgridIn[zStart + 4].y,
+				EgridIn[zStart + 5].y,
+				EgridIn[zStart + 6].y,
+				EgridIn[zStart + 7].y,
+				EgridIn[zStart + 8].y,
+				EgridIn[zStart + 9].y,
+				EgridIn[zStart + 10].y);
+			dHyDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(12,
+				EgridIn[zStart].x,
+				EgridIn[zStart + 1].x,
+				EgridIn[zStart + 2].x,
+				EgridIn[zStart + 3].x,
+				EgridIn[zStart + 4].x,
+				EgridIn[zStart + 5].x,
+				EgridIn[zStart + 6].x,
+				EgridIn[zStart + 7].x,
+				EgridIn[zStart + 8].x,
+				EgridIn[zStart + 9].x,
+				EgridIn[zStart + 10].x);
+			break;
+		case 3:
+			dExDz = firstDerivativeSixthOrder(
+				EgridIn[zStart].x,
+				EgridIn[zStart + 1].x,
+				EgridIn[zStart + 2].x,
+				EgridIn[zStart + 3].x,
+				EgridIn[zStart + 4].x,
+				EgridIn[zStart + 5].x);
+			dEyDz = firstDerivativeSixthOrder(
+				EgridIn[zStart].y,
+				EgridIn[zStart + 1].y,
+				EgridIn[zStart + 2].y,
+				EgridIn[zStart + 3].y,
+				EgridIn[zStart + 4].y,
+				EgridIn[zStart + 5].y);
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(13,
+				EgridIn[zStart].y,
+				EgridIn[zStart + 1].y,
+				EgridIn[zStart + 2].y,
+				EgridIn[zStart + 3].y,
+				EgridIn[zStart + 4].y,
+				EgridIn[zStart + 5].y,
+				EgridIn[zStart + 6].y,
+				EgridIn[zStart + 7].y,
+				EgridIn[zStart + 8].y,
+				EgridIn[zStart + 9].y,
+				EgridIn[zStart + 10].y);
+			dHyDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(13,
+				EgridIn[zStart].x,
+				EgridIn[zStart + 1].x,
+				EgridIn[zStart + 2].x,
+				EgridIn[zStart + 3].x,
+				EgridIn[zStart + 4].x,
+				EgridIn[zStart + 5].x,
+				EgridIn[zStart + 6].x,
+				EgridIn[zStart + 7].x,
+				EgridIn[zStart + 8].x,
+				EgridIn[zStart + 9].x,
+				EgridIn[zStart + 10].x);
+			break;
+		case -1:
+			//note: last point in E grid excluded from calculation, don't touch it!
+			dExDz = -resolveMaxwellEndpoints(0,
+				EgridIn[zEnd - 2].x,
+				EgridIn[zEnd - 3].x,
+				EgridIn[zEnd - 4].x,
+				EgridIn[zEnd - 5].x,
+				EgridIn[zEnd - 6].x,
+				EgridIn[zEnd - 7].x,
+				EgridIn[zEnd - 8].x,
+				EgridIn[zEnd - 9].x,
+				EgridIn[zEnd - 10].x,
+				EgridIn[zEnd - 11].x,
+				EgridIn[zEnd - 12].x);
+			dEyDz = -resolveMaxwellEndpoints(0,
+				EgridIn[zEnd - 2].y,
+				EgridIn[zEnd - 3].y,
+				EgridIn[zEnd - 4].y,
+				EgridIn[zEnd - 5].y,
+				EgridIn[zEnd - 6].y,
+				EgridIn[zEnd - 7].y,
+				EgridIn[zEnd - 8].y,
+				EgridIn[zEnd - 9].y,
+				EgridIn[zEnd - 10].y,
+				EgridIn[zEnd - 11].y,
+				EgridIn[zEnd - 12].y);
+			break;
+		case -2:
+			dExDz = -resolveMaxwellEndpoints(1,
+				EgridIn[zEnd - 2].x,
+				EgridIn[zEnd - 3].x,
+				EgridIn[zEnd - 4].x,
+				EgridIn[zEnd - 5].x,
+				EgridIn[zEnd - 6].x,
+				EgridIn[zEnd - 7].x,
+				EgridIn[zEnd - 8].x,
+				EgridIn[zEnd - 9].x,
+				EgridIn[zEnd - 10].x,
+				EgridIn[zEnd - 11].x,
+				EgridIn[zEnd - 12].x);
+			dEyDz = -resolveMaxwellEndpoints(1,
+				EgridIn[zEnd - 2].y,
+				EgridIn[zEnd - 3].y,
+				EgridIn[zEnd - 4].y,
+				EgridIn[zEnd - 5].y,
+				EgridIn[zEnd - 6].y,
+				EgridIn[zEnd - 7].y,
+				EgridIn[zEnd - 8].y,
+				EgridIn[zEnd - 9].y,
+				EgridIn[zEnd - 10].y,
+				EgridIn[zEnd - 11].y,
+				EgridIn[zEnd - 12].y);
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(0,
+				EgridIn[zEnd - 2].y,
+				EgridIn[zEnd - 3].y,
+				EgridIn[zEnd - 4].y,
+				EgridIn[zEnd - 5].y,
+				EgridIn[zEnd - 6].y,
+				EgridIn[zEnd - 7].y,
+				EgridIn[zEnd - 8].y,
+				EgridIn[zEnd - 9].y,
+				EgridIn[zEnd - 10].y,
+				EgridIn[zEnd - 11].y,
+				EgridIn[zEnd - 12].y);
+			dHyDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(0,
+				EgridIn[zEnd - 2].x,
+				EgridIn[zEnd - 3].x,
+				EgridIn[zEnd - 4].x,
+				EgridIn[zEnd - 5].x,
+				EgridIn[zEnd - 6].x,
+				EgridIn[zEnd - 7].x,
+				EgridIn[zEnd - 8].x,
+				EgridIn[zEnd - 9].x,
+				EgridIn[zEnd - 10].x,
+				EgridIn[zEnd - 11].x,
+				EgridIn[zEnd - 12].x);
+			break;
+		case -3:
+			dExDz = -resolveMaxwellEndpoints(2,
+				EgridIn[zEnd - 2].x,
+				EgridIn[zEnd - 3].x,
+				EgridIn[zEnd - 4].x,
+				EgridIn[zEnd - 5].x,
+				EgridIn[zEnd - 6].x,
+				EgridIn[zEnd - 7].x,
+				EgridIn[zEnd - 8].x,
+				EgridIn[zEnd - 9].x,
+				EgridIn[zEnd - 10].x,
+				EgridIn[zEnd - 11].x,
+				EgridIn[zEnd - 12].x);
+			dEyDz = -resolveMaxwellEndpoints(2,
+				EgridIn[zEnd - 2].y,
+				EgridIn[zEnd - 3].y,
+				EgridIn[zEnd - 4].y,
+				EgridIn[zEnd - 5].y,
+				EgridIn[zEnd - 6].y,
+				EgridIn[zEnd - 7].y,
+				EgridIn[zEnd - 8].y,
+				EgridIn[zEnd - 9].y,
+				EgridIn[zEnd - 10].y,
+				EgridIn[zEnd - 11].y,
+				EgridIn[zEnd - 12].y);
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(11,
+				EgridIn[zEnd - 2].y,
+				EgridIn[zEnd - 3].y,
+				EgridIn[zEnd - 4].y,
+				EgridIn[zEnd - 5].y,
+				EgridIn[zEnd - 6].y,
+				EgridIn[zEnd - 7].y,
+				EgridIn[zEnd - 8].y,
+				EgridIn[zEnd - 9].y,
+				EgridIn[zEnd - 10].y,
+				EgridIn[zEnd - 11].y,
+				EgridIn[zEnd - 12].y);
+			dHyDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(11,
+				EgridIn[zEnd - 2].x,
+				EgridIn[zEnd - 3].x,
+				EgridIn[zEnd - 4].x,
+				EgridIn[zEnd - 5].x,
+				EgridIn[zEnd - 6].x,
+				EgridIn[zEnd - 7].x,
+				EgridIn[zEnd - 8].x,
+				EgridIn[zEnd - 9].x,
+				EgridIn[zEnd - 10].x,
+				EgridIn[zEnd - 11].x,
+				EgridIn[zEnd - 12].x);
+			break;
+		case -4:
+			dExDz = firstDerivativeSixthOrder(
+				EgridIn[i - 3].x,
+				EgridIn[i - 2].x,
+				EgridIn[i - 1].x,
+				EgridIn[i].x,
+				EgridIn[i + 1].x,
+				EgridIn[i + 2].x);
+			dEyDz = firstDerivativeSixthOrder(
+				EgridIn[i - 3].y,
+				EgridIn[i - 2].y,
+				EgridIn[i - 1].y,
+				EgridIn[i].y,
+				EgridIn[i + 1].y,
+				EgridIn[i + 2].y);
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(12,
+				EgridIn[zEnd - 2].y,
+				EgridIn[zEnd - 3].y,
+				EgridIn[zEnd - 4].y,
+				EgridIn[zEnd - 5].y,
+				EgridIn[zEnd - 6].y,
+				EgridIn[zEnd - 7].y,
+				EgridIn[zEnd - 8].y,
+				EgridIn[zEnd - 9].y,
+				EgridIn[zEnd - 10].y,
+				EgridIn[zEnd - 11].y,
+				EgridIn[zEnd - 12].y);
+			dHyDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(12,
+				EgridIn[zEnd - 2].x,
+				EgridIn[zEnd - 3].x,
+				EgridIn[zEnd - 4].x,
+				EgridIn[zEnd - 5].x,
+				EgridIn[zEnd - 6].x,
+				EgridIn[zEnd - 7].x,
+				EgridIn[zEnd - 8].x,
+				EgridIn[zEnd - 9].x,
+				EgridIn[zEnd - 10].x,
+				EgridIn[zEnd - 11].x,
+				EgridIn[zEnd - 12].x);
+			break;
+		case -5:
+			dExDz = firstDerivativeSixthOrder(
+				EgridIn[i - 3].x,
+				EgridIn[i - 2].x,
+				EgridIn[i - 1].x,
+				EgridIn[i].x,
+				EgridIn[i + 1].x,
+				EgridIn[i + 2].x);
+			dEyDz = firstDerivativeSixthOrder(
+				EgridIn[i - 3].y,
+				EgridIn[i - 2].y,
+				EgridIn[i - 1].y,
+				EgridIn[i].y,
+				EgridIn[i + 1].y,
+				EgridIn[i + 2].y);
+			dHxDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(13,
+				EgridIn[zEnd - 2].y,
+				EgridIn[zEnd - 3].y,
+				EgridIn[zEnd - 4].y,
+				EgridIn[zEnd - 5].y,
+				EgridIn[zEnd - 6].y,
+				EgridIn[zEnd - 7].y,
+				EgridIn[zEnd - 8].y,
+				EgridIn[zEnd - 9].y,
+				EgridIn[zEnd - 10].y,
+				EgridIn[zEnd - 11].y,
+				EgridIn[zEnd - 12].y);
+			dHyDz = -inverseZo<deviceFP>() * resolveMaxwellEndpoints(13,
+				EgridIn[zEnd - 2].x,
+				EgridIn[zEnd - 3].x,
+				EgridIn[zEnd - 4].x,
+				EgridIn[zEnd - 5].x,
+				EgridIn[zEnd - 6].x,
+				EgridIn[zEnd - 7].x,
+				EgridIn[zEnd - 8].x,
+				EgridIn[zEnd - 9].x,
+				EgridIn[zEnd - 10].x,
+				EgridIn[zEnd - 11].x,
+				EgridIn[zEnd - 12].x);
+			break;
+		default:
+			break;
+		}
+		
+		//note: will need the y-derivative here when doing full 3D
+
+		result.kE.x = inverseEps0<deviceFP>() * (s->inverseXyStep * dHzDy - s->inverseZStep * dHyDz);
+		result.kE.y = inverseEps0<deviceFP>() * (s->inverseXyStep * dHzDx - s->inverseZStep * dHxDz);
+		result.kE.z = inverseEps0<deviceFP>() * s->inverseXyStep * (dHyDx - dHxDy);
+		result.kH.x = inverseMu0<deviceFP>() * (s->inverseXyStep * dEzDy - s->inverseZStep * dEyDz);
+		result.kH.y = inverseMu0<deviceFP>() * (-s->inverseXyStep * dEzDx + s->inverseZStep * dExDz);
+		result.kH.z = inverseMu0<deviceFP>() * s->inverseXyStep * (dEyDx - dExDy);
 		return result;
 	}
 	
