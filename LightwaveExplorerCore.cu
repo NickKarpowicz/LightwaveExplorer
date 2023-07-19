@@ -3293,13 +3293,14 @@ namespace kernelNamespace{
 						currentGridIn[oscillatorIndex + j].Jx,
 						currentGridIn[oscillatorIndex + j].Jy,
 						currentGridIn[oscillatorIndex + j].Jz} :
-				oscillator<deviceFP>{
-					-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.x - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jx,
-					-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
-					-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.z - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jz,
-					absorptionCurrent * crystalField.y * s->kCarrierGeneration[0],
-					deviceFP{},
-					deviceFP{} }; //note that k.Px is used to store the carrier density
+					oscillator<deviceFP>{
+						-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.x - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jx,
+						-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
+						-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.z - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jz,
+						absorptionCurrent * crystalField.y * s->kCarrierGeneration[0],
+						deviceFP{},
+						deviceFP{} }; 
+					//note that k.Px is used to store the carrier density
 
 				switch (rkIndex) {
 				case 0:
