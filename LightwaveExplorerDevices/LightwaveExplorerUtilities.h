@@ -866,6 +866,8 @@ public:
     bool hasSingleChi3[8]{};
     bool hasPlasma[8]{};
     deviceFP* inOutEy{};
+    deviceFP* inOutEx{};
+    deviceFP* inputExFFT{};
     deviceFP* inputEyFFT{};
     deviceFP omegaStep{};
     deviceFP xyStep{};
@@ -880,9 +882,11 @@ public:
     int64_t observationPoint{};
     int64_t waitFrames{};
     int64_t Nx{};
+    int64_t Ny{};
     int64_t Nz{};
     int64_t Nt{};
     int64_t Ngrid{};
+    int64_t NMaterialGrid{};
     int Noscillators{};
     int64_t NtIO{};
     int64_t frequencyLimit{};
@@ -897,6 +901,7 @@ public:
         crystalThickness = (*s).crystalThickness;
         zStep = zStep_in;
         Nx = (*s).Nspace;
+        Ny = ((*s).is3D) ? (*s).Nspace2 : 1;
         Nz = (frontBuffer + backBuffer + crystalThickness) / zStep;
         Nz = minGridDimension * (Nz / minGridDimension + (Nz % minGridDimension > 0));
         NtIO = (*s).Ntime;
@@ -911,6 +916,6 @@ public:
         materialStop = materialStart + (crystalThickness / zStep);
         observationPoint = materialStop + 10;
         tGridFactor = timeFactor;
-        Ngrid = Nz * Nx;
+        Ngrid = Nz * Ny * Nx;
     }
 };
