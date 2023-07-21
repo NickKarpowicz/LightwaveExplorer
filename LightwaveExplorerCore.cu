@@ -317,6 +317,26 @@ namespace deviceFunctions {
 		return (2.0f * dOmega * result) / (dataSize+1);
 	}
 
+	template<typename real_t, typename complex_t>
+	deviceFunction static void fourierInterpolation(const real_t timeShift, const complex_t* fourierData1, const complex_t* fourierData2, const int64_t dataSize, const real_t dOmega, const int64_t frequencyLimit, maxwellKPoint<real_t>& k) {
+		real_t result1{};
+		real_t result2{};
+		real_t dOmegaT = dOmega * timeShift;
+		for (int i = 1; i < frequencyLimit; i++) {
+			real_t w = i * dOmegaT;
+			real_t sinw = sin(w);
+			real_t cosw = cos(w);
+			result1 += i * (cosw * fourierData1[i].imag() + sinw * fourierData1[i].real());
+			result2 += i * (cosw * fourierData2[i].imag() + sinw * fourierData2[i].real());
+		}
+		result1 = 230.38f * (2.0f * dOmega * result1) / (dataSize + 1);
+		result2 = 230.38f * (2.0f * dOmega * result2) / (dataSize + 1);
+		k.kE.x += result1;
+		k.kH.y -= inverseZo<real_t>() * result1;
+		k.kE.y += result2;
+		k.kH.x += inverseZo<real_t>() * result2;
+	}
+
 	//Calculate the fourier optics propagator (e^ik_z*d) for a given set of values of the maknitude of k, transverse k (dk1, dk2)
 	//a reference k0 which defines the speed of the moving frame, and distance d over which to propagate
 	template<typename real_t, typename complex_t>
@@ -3329,16 +3349,10 @@ namespace kernelNamespace{
 		}
 		else if (zIndex == 0) {
 			deviceFP tCurrent = s->tStep * t + 0.5f * isAtMidpoint * s->tStep;
-			deviceComplex* fftData = (deviceComplex*)s->inputEyFFT;
+			deviceComplex* fftDataY = (deviceComplex*)s->inputEyFFT;
+			deviceComplex* fftDataX = (deviceComplex*)s->inputExFFT;
 			int64_t fftSize = s->NtIO / 2 + 1;
-			deviceFP Ecurrent = 230.38f * fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
-			k.kE.y += Ecurrent;
-			k.kH.x += inverseZo<deviceFP>() * Ecurrent;
-
-			fftData = (deviceComplex*)s->inputExFFT;
-			Ecurrent = 230.38f * fourierInterpolation(tCurrent, &fftData[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit);
-			k.kE.x += Ecurrent;
-			k.kH.y -= inverseZo<deviceFP>() * Ecurrent;
+			fourierInterpolation(tCurrent, &fftDataX[xIndex * fftSize], &fftDataY[xIndex * fftSize], fftSize, s->omegaStep, s->frequencyLimit, k);
 			return;
 		}
 		return;
