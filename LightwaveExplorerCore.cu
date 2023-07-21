@@ -3297,7 +3297,7 @@ namespace kernelNamespace{
 						-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.x - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jx,
 						-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.y - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
 						-currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.z - s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jz,
-						absorptionCurrent * crystalField.y * s->kCarrierGeneration[0],
+						absorptionCurrent * (P.x * gridIn[i].x + P.y * gridIn[i].y + P.z * gridIn[i].z) * s->kCarrierGeneration[0],
 						deviceFP{},
 						deviceFP{} }; 
 					//note that k.Px is used to store the carrier density
