@@ -150,6 +150,7 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         n = n + k * a[16] / ((a[17] - w ** 2) +  (a[18] * w) * 1j)
         n += k * a[19] / ((a[20] - w ** 2) +  (a[21] * w) * 1j)
     elif equationType == 1:
+        a = np.abs(a)
         n = a[0] + k * a[1] / ((a[2] - w ** 2) +  (a[3] * w) * 1j)
         n += k * a[4] / ((a[5] - w ** 2) +  (a[6] * w) * 1j)
         n += k * a[7] / ((a[8] - w ** 2) +  (a[9] * w) * 1j)
@@ -158,6 +159,7 @@ def sellmeier(wavelengthMicrons, a, equationType: int):
         n += k * a[16] / ((a[17] - w ** 2) +  (a[18] * w) * 1j)
         n += k * a[19] / ((a[20] - w ** 2) +  (a[21] * w) * 1j)
     elif equationType == 2:
+        a = np.abs(a)
         n = a[0]
         for i in range(0,7):
             n += gaussianBand(w,a[i*3+1],a[2 + i*3],a[3+i*3])
