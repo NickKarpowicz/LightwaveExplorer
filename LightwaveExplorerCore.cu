@@ -44,6 +44,11 @@ namespace deviceFunctions {
 		a.y += other.y;
 		a.z += other.z;
 	}
+	deviceFunction static void operator/=(maxwellPoint<deviceFP>& a, const maxwellPoint<deviceFP>& other) {
+		a.x /= other.x;
+		a.y /= other.y;
+		a.z /= other.z;
+	}
 	deviceFunction static maxwellPoint<deviceFP> operator*(const maxwellPoint<deviceFP>& a, const deviceFP other) {
 		return maxwellPoint<deviceFP>{
 			a.x * other, 
@@ -83,6 +88,20 @@ namespace deviceFunctions {
 				a.Py + b.Py,
 				a.Pz + b.Pz
 		};
+	}
+
+	deviceFunction static maxwellPoint<deviceFP> rotateMaxwellPoint(const maxwell3D* s, const maxwellPoint<deviceFP>& in, const bool backwards) {
+		if (backwards) {
+			return maxwellPoint<deviceFP>{
+				(*s).rotateBackward[0][0] * in.x + (*s).rotateBackward[1][0] * in.y + (*s).rotateBackward[2][0] * in.z,
+				(*s).rotateBackward[3][0] * in.x + (*s).rotateBackward[4][0] * in.y + (*s).rotateBackward[5][0] * in.z,
+				(*s).rotateBackward[6][0] * in.x + (*s).rotateBackward[7][0] * in.y + (*s).rotateBackward[8][0] * in.z};
+		}
+
+		return maxwellPoint<deviceFP>{
+			(*s).rotateForward[0][0] * in.x + (*s).rotateForward[1][0] * in.y + (*s).rotateForward[2][0] * in.z,
+			(*s).rotateForward[3][0] * in.x + (*s).rotateForward[4][0] * in.y + (*s).rotateForward[5][0] * in.z,
+			(*s).rotateForward[6][0] * in.x + (*s).rotateForward[7][0] * in.y + (*s).rotateForward[8][0] * in.z};
 	}
 	//determine if the current grid location is close to the boundary
 	//5 means its a normal point
@@ -3253,11 +3272,17 @@ namespace kernelNamespace{
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
 		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
 			const int64_t oscillatorIndex = (zIndex - s->materialStart) * s->Noscillators + xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
-			maxwellPoint<deviceFP> epsilonInstant{s->sellmeierEquations[0][0],s->sellmeierEquations[0][0],s->sellmeierEquations[0][0]};
+
+			//rotate the field and the currently-active derivative term into the crystal coordinates
+			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
+			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
+			
+			maxwellPoint<deviceFP> epsilonInstant{s->sellmeierEquations[0][0],s->sellmeierEquations[22][0],s->sellmeierEquations[44][0]};
 			maxwellPoint<deviceFP> J{};
-			maxwellPoint<deviceFP> P{(s->sellmeierEquations[0][0] - 1.0f)* gridIn[i].x, (s->sellmeierEquations[22][0] - 1.0f)* gridIn[i].y, (s->sellmeierEquations[44][0] - 1.0f)* gridIn[i].z};
+			maxwellPoint<deviceFP> P{(s->sellmeierEquations[0][0] - 1.0f)* crystalField.x, (s->sellmeierEquations[22][0] - 1.0f)* crystalField.y, (s->sellmeierEquations[44][0] - 1.0f)* crystalField.z};
 			maxwellPoint<deviceFP> nonlinearDriver{};
-			maxwellPoint<deviceFP> crystalField = gridIn[i]; //in future, apply rotation
+			
+			//get the total dipole current and polarization of the oscillators
 			for (int j = 0; j < (s->Noscillators - s->hasPlasma[0]); j++) {
 				J.x += currentGridIn[oscillatorIndex + j].Jx;
 				P.x += currentGridIn[oscillatorIndex + j].Px;
@@ -3270,34 +3295,84 @@ namespace kernelNamespace{
 			P.y *= 2.0f;
 			P.z *= 2.0f;
 
+
+
+			//calculate kerr nonlinearity for scalar chi3
 			if (s->hasSingleChi3[0]) {
 				deviceFP fieldSquaredSum = P.x * P.x + P.y * P.y + P.z * P.z;
 				nonlinearDriver.x += s->chi3[0][0] * (P.x * fieldSquaredSum);
 				epsilonInstant.x += (s->sellmeierEquations[0][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
 				nonlinearDriver.y += s->chi3[0][0] * (P.y * fieldSquaredSum);
-				epsilonInstant.y += (s->sellmeierEquations[0][0] - 1.0f) * s->chi3[22][0] * fieldSquaredSum;
+				epsilonInstant.y += (s->sellmeierEquations[22][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
 				nonlinearDriver.z += s->chi3[0][0] * (P.z * fieldSquaredSum);
-				epsilonInstant.z += (s->sellmeierEquations[0][0] - 1.0f) * s->chi3[44][0] * fieldSquaredSum;
+				epsilonInstant.z += (s->sellmeierEquations[44][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
 			}
 
 			deviceFP absorptionCurrent = (s->hasPlasma[0]) ?
 				deviceFPLib::pow(P.x * P.x + P.y * P.y + P.z * P.z * s->kNonlinearAbsorption[0], s->nonlinearAbsorptionOrder[0])
 				: 0.0f;
+			
 			if (s->hasPlasma[0]) {
-				k.kE.x -= twoPi<deviceFP>() * absorptionCurrent * crystalField.x;
-				k.kE.y -= twoPi<deviceFP>() * absorptionCurrent * crystalField.y;
-				k.kE.z -= twoPi<deviceFP>() * absorptionCurrent * crystalField.z;
+				maxwellPoint<deviceFP> absorption{-twoPi<deviceFP>()* absorptionCurrent* crystalField.x,
+					-twoPi<deviceFP>()* absorptionCurrent* crystalField.y,
+					-twoPi<deviceFP>()* absorptionCurrent* crystalField.z
+				};
+				kE += absorption;
+
 				J.x += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jx;
 				J.y += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
 				J.z += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jz;
 			}
 
-			k.kE.x += J.x * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
-			k.kE.x /= epsilonInstant.x;
-			k.kE.y += J.y * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
-			k.kE.y /= epsilonInstant.y;
-			k.kE.z += J.z * inverseEps0<deviceFP>(); //in the future, rotate current from crystal coordinates to field coordinates
-			k.kE.z /= epsilonInstant.z;
+			kE += J * inverseEps0<deviceFP>();
+			kE /= epsilonInstant;
+
+			maxwellPoint<deviceFP> instDriver = kE * eps0<deviceFP>();
+			maxwellPoint<deviceFP> instNonlin{};
+			instDriver.x *= -(s->sellmeierEquations[0][0] - 1.0);
+			instDriver.y *= -(s->sellmeierEquations[22][0] - 1.0);
+			instDriver.z *= -(s->sellmeierEquations[44][0] - 1.0);
+			//calculate the chi2 nonlinearity
+			if (s->hasChi2) {
+				deviceFP currentTerm = P.x * P.x;
+				deviceFP instTerm = instDriver.x * instDriver.x;
+				maxwellPoint<deviceFP> chi2Block{s->chi2[0][0], s->chi2[1][0], s->chi2[2][0]};
+				//nonlinearDriver += chi2Block * currentTerm;
+				instNonlin += chi2Block * instTerm;
+
+				currentTerm = P.y * P.y;
+				instTerm = instDriver.y * instDriver.y;
+				chi2Block = { s->chi2[3][0], s->chi2[4][0], s->chi2[5][0] };
+				//nonlinearDriver += chi2Block * currentTerm;
+				instNonlin += chi2Block * instTerm;
+
+				currentTerm = P.z * P.z;
+				instTerm = instDriver.z * instDriver.z;
+				chi2Block = { s->chi2[6][0], s->chi2[7][0], s->chi2[8][0] };
+				//nonlinearDriver += chi2Block * currentTerm;
+				instNonlin += chi2Block * instTerm;
+
+				currentTerm = P.y * P.z;
+				instTerm = instDriver.y * instDriver.z;
+				chi2Block = { s->chi2[9][0], s->chi2[10][0], s->chi2[11][0] };
+				//nonlinearDriver += chi2Block * currentTerm;
+				instNonlin += chi2Block * instTerm;
+
+				currentTerm = P.x * P.z;
+				instTerm = instDriver.x * instDriver.z;
+				chi2Block = { s->chi2[12][0], s->chi2[13][0], s->chi2[14][0] };
+				//nonlinearDriver += chi2Block * currentTerm;
+				instNonlin += chi2Block * instTerm;
+
+				currentTerm = P.x * P.y;
+				instTerm = instDriver.x * instDriver.y;
+				chi2Block = { s->chi2[15][0], s->chi2[16][0], s->chi2[17][0] };
+				//nonlinearDriver += chi2Block * currentTerm;
+				instNonlin += chi2Block * instTerm;
+			}
+			
+			kE += instNonlin;
+			k.kE = rotateMaxwellPoint(s, kE, true);
 
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ?
@@ -4414,7 +4489,7 @@ namespace hostFunctions{
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 2) maxCalc.hasSingleChi3[0] = true;
 
 		//perform millers rule normalization on the nonlinear coefficients while copying the values
-		double millersRuleFactorChi2 = 1.0;
+		double millersRuleFactorChi2 = eps0<double>();
 		double millersRuleFactorChi3 = 1.0;
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) {
 			double wRef = twoPi<double>() * (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0];

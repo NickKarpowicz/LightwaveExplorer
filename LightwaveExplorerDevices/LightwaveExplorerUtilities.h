@@ -861,6 +861,8 @@ public:
     deviceFP kDrude[8]{};
     deviceFP gammaDrude[8]{};
     deviceFP kCarrierGeneration[8]{};
+    deviceFP rotateForward[9][8]{};
+    deviceFP rotateBackward[9][8]{};
     bool hasChi2[8]{};
     bool hasFullChi3[8]{};
     bool hasSingleChi3[8]{};
@@ -895,6 +897,27 @@ public:
     int64_t materialStop{};
     maxwellCalculation<deviceFP, E, H, O>* deviceCopy = nullptr;
     
+    void fillRotationMatricies(double crystalTheta, double crystalPhi, int64_t crystalNumber) {
+        double cosT = cos(crystalTheta);
+        double sinT = sin(crystalTheta);
+        double cosP = cos(crystalPhi);
+        double sinP = sin(crystalPhi);
+        double forward[9] =
+        { cosT * cosP, sinP, -sinT * cosP, 
+            -sinP * cosT, cosP, sinP * sinT, 
+            sinT, 0.0, cosT };
+
+        //reverse direction (different order of operations)
+        double backward[9] =
+        { cosT * cosP, -sinP * cosT, sinT, 
+            sinP, cosP, 0.0, 
+            -sinT * cosP, sinP * sinT, cosT };
+
+        for (int64_t i = 0; i < 9; i++) {
+            rotateForward[i][crystalNumber] = static_cast<deviceFP>(forward[i]);
+            rotateBackward[i][crystalNumber] = static_cast<deviceFP>(backward[i]);
+        }
+    }
     maxwellCalculation(simulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
         frontBuffer = frontBuffer_in;
         backBuffer = backBuffer_in;
@@ -917,5 +940,8 @@ public:
         observationPoint = materialStop + 10;
         tGridFactor = timeFactor;
         Ngrid = Nz * Ny * Nx;
+        fillRotationMatricies((*s).crystalTheta, (*s).crystalPhi, 0);
     }
+
+    
 };
