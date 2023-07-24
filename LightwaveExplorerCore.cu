@@ -49,11 +49,23 @@ namespace deviceFunctions {
 		a.y /= other.y;
 		a.z /= other.z;
 	}
+	deviceFunction static void operator*=(maxwellPoint<deviceFP>& a, const deviceFP other) {
+		a.x *= other;
+		a.y *= other;
+		a.z *= other;
+	}
+
 	deviceFunction static maxwellPoint<deviceFP> operator*(const maxwellPoint<deviceFP>& a, const deviceFP other) {
 		return maxwellPoint<deviceFP>{
 			a.x * other, 
 			a.y * other, 
 			a.z * other};
+	}
+	deviceFunction static maxwellPoint<deviceFP> operator*(const maxwellPoint<deviceFP>& a, const maxwellPoint<deviceFP>& other) {
+		return maxwellPoint<deviceFP>{
+			a.x* other.x,
+				a.y* other.x,
+				a.z* other.x};
 	}
 	deviceFunction static maxwellPoint<deviceFP> operator+(const maxwellPoint<deviceFP>& a, const maxwellPoint<deviceFP>& b) {
 		return maxwellPoint<deviceFP>{
@@ -97,7 +109,9 @@ namespace deviceFunctions {
 				(*s).rotateBackward[3][0] * in.x + (*s).rotateBackward[4][0] * in.y + (*s).rotateBackward[5][0] * in.z,
 				(*s).rotateBackward[6][0] * in.x + (*s).rotateBackward[7][0] * in.y + (*s).rotateBackward[8][0] * in.z};
 		}
-
+		//{ cosT* cosP, sinP, -sinT * cosP,
+		//	-sinP * cosT, cosP, sinP* sinT,
+		//	sinT, 0.0, cosT };
 		return maxwellPoint<deviceFP>{
 			(*s).rotateForward[0][0] * in.x + (*s).rotateForward[1][0] * in.y + (*s).rotateForward[2][0] * in.z,
 			(*s).rotateForward[3][0] * in.x + (*s).rotateForward[4][0] * in.y + (*s).rotateForward[5][0] * in.z,
@@ -3276,7 +3290,7 @@ namespace kernelNamespace{
 			//rotate the field and the currently-active derivative term into the crystal coordinates
 			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
 			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
-			
+			maxwellPoint<deviceFP> instNonlin{};
 			maxwellPoint<deviceFP> epsilonInstant{s->sellmeierEquations[0][0],s->sellmeierEquations[22][0],s->sellmeierEquations[44][0]};
 			maxwellPoint<deviceFP> J{};
 			maxwellPoint<deviceFP> P{(s->sellmeierEquations[0][0] - 1.0f)* crystalField.x, (s->sellmeierEquations[22][0] - 1.0f)* crystalField.y, (s->sellmeierEquations[44][0] - 1.0f)* crystalField.z};
@@ -3291,11 +3305,7 @@ namespace kernelNamespace{
 				J.z += currentGridIn[oscillatorIndex + j].Jz;
 				P.z += currentGridIn[oscillatorIndex + j].Pz;
 			}
-			P.x *= 2.0f;
-			P.y *= 2.0f;
-			P.z *= 2.0f;
-
-
+			P *= 2.0f;
 
 			//calculate kerr nonlinearity for scalar chi3
 			if (s->hasSingleChi3[0]) {
@@ -3326,52 +3336,54 @@ namespace kernelNamespace{
 
 			kE += J * inverseEps0<deviceFP>();
 			kE /= epsilonInstant;
-
-			maxwellPoint<deviceFP> instDriver = kE * eps0<deviceFP>();
-			maxwellPoint<deviceFP> instNonlin{};
+			maxwellPoint<deviceFP> instDriver = kE * (eps0<deviceFP>());
+			
 			instDriver.x *= -(s->sellmeierEquations[0][0] - 1.0);
 			instDriver.y *= -(s->sellmeierEquations[22][0] - 1.0);
 			instDriver.z *= -(s->sellmeierEquations[44][0] - 1.0);
+			instDriver += J;
+
 			//calculate the chi2 nonlinearity
 			if (s->hasChi2) {
+
 				deviceFP currentTerm = P.x * P.x;
-				deviceFP instTerm = instDriver.x * instDriver.x;
+				deviceFP instTerm = 2.0f * instDriver.x * P.x;
 				maxwellPoint<deviceFP> chi2Block{s->chi2[0][0], s->chi2[1][0], s->chi2[2][0]};
-				//nonlinearDriver += chi2Block * currentTerm;
+				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.y * P.y;
-				instTerm = instDriver.y * instDriver.y;
-				chi2Block = { s->chi2[3][0], s->chi2[4][0], s->chi2[5][0] };
-				//nonlinearDriver += chi2Block * currentTerm;
+				instTerm = 2.0f * instDriver.y * P.y;
+				chi2Block = maxwellPoint<deviceFP>{ s->chi2[3][0], s->chi2[4][0], s->chi2[5][0] };
+				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.z * P.z;
-				instTerm = instDriver.z * instDriver.z;
-				chi2Block = { s->chi2[6][0], s->chi2[7][0], s->chi2[8][0] };
-				//nonlinearDriver += chi2Block * currentTerm;
+				instTerm = 2.0f * P.z * instDriver.z;
+				chi2Block = maxwellPoint<deviceFP>{ s->chi2[6][0], s->chi2[7][0], s->chi2[8][0] };
+				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.y * P.z;
-				instTerm = instDriver.y * instDriver.z;
-				chi2Block = { s->chi2[9][0], s->chi2[10][0], s->chi2[11][0] };
-				//nonlinearDriver += chi2Block * currentTerm;
+				instTerm = P.y * instDriver.z + instDriver.y * P.z;
+				chi2Block = maxwellPoint<deviceFP>{ s->chi2[9][0], s->chi2[10][0], s->chi2[11][0] } * 2.0f;
+				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.x * P.z;
-				instTerm = instDriver.x * instDriver.z;
-				chi2Block = { s->chi2[12][0], s->chi2[13][0], s->chi2[14][0] };
-				//nonlinearDriver += chi2Block * currentTerm;
+				instTerm = P.x * instDriver.z + instDriver.x * P.z;
+				chi2Block = maxwellPoint<deviceFP>{ s->chi2[12][0], s->chi2[13][0], s->chi2[14][0] } * 2.0f;
+				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.x * P.y;
-				instTerm = instDriver.x * instDriver.y;
-				chi2Block = { s->chi2[15][0], s->chi2[16][0], s->chi2[17][0] };
-				//nonlinearDriver += chi2Block * currentTerm;
+				instTerm = P.x * instDriver.y + instDriver.x * P.y;
+				chi2Block = maxwellPoint<deviceFP>{ s->chi2[15][0], s->chi2[16][0], s->chi2[17][0] } * 2.0f;
+				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 			}
-			
-			kE += instNonlin;
+
+			kE += (instNonlin * maxwellPoint<deviceFP>{s->sellmeierEquations[0][0] - 1.0f, s->sellmeierEquations[22][0] - 1.0f, s->sellmeierEquations[44][0] - 1.0f})* (inverseEps0<deviceFP>());
 			k.kE = rotateMaxwellPoint(s, kE, true);
 
 			for (int j = 0; j < s->Noscillators; j++) {
@@ -4489,7 +4501,7 @@ namespace hostFunctions{
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 2) maxCalc.hasSingleChi3[0] = true;
 
 		//perform millers rule normalization on the nonlinear coefficients while copying the values
-		double millersRuleFactorChi2 = eps0<double>();
+		double millersRuleFactorChi2 = 2e-12;
 		double millersRuleFactorChi3 = 1.0;
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) {
 			double wRef = twoPi<double>() * (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0];
