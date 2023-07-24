@@ -64,8 +64,8 @@ namespace deviceFunctions {
 	deviceFunction static maxwellPoint<deviceFP> operator*(const maxwellPoint<deviceFP>& a, const maxwellPoint<deviceFP>& other) {
 		return maxwellPoint<deviceFP>{
 			a.x* other.x,
-				a.y* other.x,
-				a.z* other.x};
+			a.y* other.y,
+			a.z* other.z};
 	}
 	deviceFunction static maxwellPoint<deviceFP> operator+(const maxwellPoint<deviceFP>& a, const maxwellPoint<deviceFP>& b) {
 		return maxwellPoint<deviceFP>{
@@ -3292,8 +3292,9 @@ namespace kernelNamespace{
 			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
 			maxwellPoint<deviceFP> instNonlin{};
 			maxwellPoint<deviceFP> epsilonInstant{s->sellmeierEquations[0][0],s->sellmeierEquations[22][0],s->sellmeierEquations[44][0]};
+			maxwellPoint<deviceFP> chiInstant{s->sellmeierEquations[0][0] - 1.0f, s->sellmeierEquations[22][0] - 1.0f, s->sellmeierEquations[44][0] - 1.0f};
 			maxwellPoint<deviceFP> J{};
-			maxwellPoint<deviceFP> P{(s->sellmeierEquations[0][0] - 1.0f)* crystalField.x, (s->sellmeierEquations[22][0] - 1.0f)* crystalField.y, (s->sellmeierEquations[44][0] - 1.0f)* crystalField.z};
+			maxwellPoint<deviceFP> P = chiInstant * crystalField;
 			maxwellPoint<deviceFP> nonlinearDriver{};
 			
 			//get the total dipole current and polarization of the oscillators
@@ -3305,87 +3306,88 @@ namespace kernelNamespace{
 				J.z += currentGridIn[oscillatorIndex + j].Jz;
 				P.z += currentGridIn[oscillatorIndex + j].Pz;
 			}
-			P *= 2.0f;
-
-			//calculate kerr nonlinearity for scalar chi3
-			if (s->hasSingleChi3[0]) {
-				deviceFP fieldSquaredSum = P.x * P.x + P.y * P.y + P.z * P.z;
-				nonlinearDriver.x += s->chi3[0][0] * (P.x * fieldSquaredSum);
-				epsilonInstant.x += (s->sellmeierEquations[0][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
-				nonlinearDriver.y += s->chi3[0][0] * (P.y * fieldSquaredSum);
-				epsilonInstant.y += (s->sellmeierEquations[22][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
-				nonlinearDriver.z += s->chi3[0][0] * (P.z * fieldSquaredSum);
-				epsilonInstant.z += (s->sellmeierEquations[44][0] - 1.0f) * s->chi3[0][0] * fieldSquaredSum;
-			}
-
-			deviceFP absorptionCurrent = (s->hasPlasma[0]) ?
-				deviceFPLib::pow(P.x * P.x + P.y * P.y + P.z * P.z * s->kNonlinearAbsorption[0], s->nonlinearAbsorptionOrder[0])
-				: 0.0f;
-			
-			if (s->hasPlasma[0]) {
-				maxwellPoint<deviceFP> absorption{-twoPi<deviceFP>()* absorptionCurrent* crystalField.x,
-					-twoPi<deviceFP>()* absorptionCurrent* crystalField.y,
-					-twoPi<deviceFP>()* absorptionCurrent* crystalField.z
-				};
-				kE += absorption;
-
-				J.x += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jx;
-				J.y += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy;
-				J.z += currentGridIn[oscillatorIndex + s->Noscillators - 1].Jz;
-			}
-
+			//update dEdt (kE) with the dipole current and divide by the instantaneous part of the dielectric constant
 			kE += J * inverseEps0<deviceFP>();
 			kE /= epsilonInstant;
-			maxwellPoint<deviceFP> instDriver = kE * (eps0<deviceFP>());
-			
-			instDriver.x *= -(s->sellmeierEquations[0][0] - 1.0);
-			instDriver.y *= -(s->sellmeierEquations[22][0] - 1.0);
-			instDriver.z *= -(s->sellmeierEquations[44][0] - 1.0);
-			instDriver += J;
+
+			//Use dEdt to calculate dPdt
+			maxwellPoint<deviceFP> dPdt = (kE *chiInstant) * (eps0<deviceFP>());
+			dPdt += J;
+
+			//Multiply by 2 (I do not know why)
+			//dPdt *= 2.0f;
+			//P *= 2.0f;
 
 			//calculate the chi2 nonlinearity
-			if (s->hasChi2) {
-
+			if (s->hasChi2[0]) {
 				deviceFP currentTerm = P.x * P.x;
-				deviceFP instTerm = 2.0f * instDriver.x * P.x;
+				deviceFP instTerm = 2.0f * dPdt.x * P.x;
 				maxwellPoint<deviceFP> chi2Block{s->chi2[0][0], s->chi2[1][0], s->chi2[2][0]};
 				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.y * P.y;
-				instTerm = 2.0f * instDriver.y * P.y;
+				instTerm = 2.0f * dPdt.y * P.y;
 				chi2Block = maxwellPoint<deviceFP>{ s->chi2[3][0], s->chi2[4][0], s->chi2[5][0] };
 				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.z * P.z;
-				instTerm = 2.0f * P.z * instDriver.z;
+				instTerm = 2.0f * P.z * dPdt.z;
 				chi2Block = maxwellPoint<deviceFP>{ s->chi2[6][0], s->chi2[7][0], s->chi2[8][0] };
 				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.y * P.z;
-				instTerm = P.y * instDriver.z + instDriver.y * P.z;
+				instTerm = P.y * dPdt.z + dPdt.y * P.z;
 				chi2Block = maxwellPoint<deviceFP>{ s->chi2[9][0], s->chi2[10][0], s->chi2[11][0] } * 2.0f;
 				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.x * P.z;
-				instTerm = P.x * instDriver.z + instDriver.x * P.z;
+				instTerm = P.x * dPdt.z + dPdt.x * P.z;
 				chi2Block = maxwellPoint<deviceFP>{ s->chi2[12][0], s->chi2[13][0], s->chi2[14][0] } * 2.0f;
 				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 
 				currentTerm = P.x * P.y;
-				instTerm = P.x * instDriver.y + instDriver.x * P.y;
+				instTerm = P.x * dPdt.y + dPdt.x * P.y;
 				chi2Block = maxwellPoint<deviceFP>{ s->chi2[15][0], s->chi2[16][0], s->chi2[17][0] } * 2.0f;
 				nonlinearDriver += chi2Block * currentTerm;
 				instNonlin += chi2Block * instTerm;
 			}
 
-			kE += (instNonlin * maxwellPoint<deviceFP>{s->sellmeierEquations[0][0] - 1.0f, s->sellmeierEquations[22][0] - 1.0f, s->sellmeierEquations[44][0] - 1.0f})* (inverseEps0<deviceFP>());
+			//calculate kerr nonlinearity for scalar chi3
+			if (s->hasSingleChi3[0]) {
+				deviceFP fieldSquaredSum = P.x * P.x + P.y * P.y + P.z * P.z;
+				deviceFP dByDtfieldSquaredSum = 2.0f * (dPdt.x * P.x + dPdt.y * P.y + dPdt.z * P.z);
+				nonlinearDriver += P * (s->chi3[0][0] * fieldSquaredSum);
+				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum)*(s->chi3[0][0]);
+			}
+			instNonlin /= epsilonInstant;
+			kE += (instNonlin * chiInstant)* (inverseEps0<deviceFP>());
+			
+			//resolve the plasma nonlinearity
+			deviceFP absorptionCurrent = (s->hasPlasma[0]) ?
+				deviceFPLib::pow((P.x * P.x + P.y * P.y + P.z * P.z) * s->kNonlinearAbsorption[0], s->nonlinearAbsorptionOrder[0])
+				: 0.0f;
+			if (s->hasPlasma[0]) {
+				maxwellPoint<deviceFP> absorption{-twoPi<deviceFP>() * absorptionCurrent * crystalField.x,
+					-twoPi<deviceFP>() * absorptionCurrent * crystalField.y,
+					-twoPi<deviceFP>() * absorptionCurrent * crystalField.z
+				};
+				absorption += maxwellPoint<deviceFP>{currentGridIn[oscillatorIndex + s->Noscillators - 1].Jx,
+					currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy,
+					currentGridIn[oscillatorIndex + s->Noscillators - 1].Jz
+				} * inverseEps0<deviceFP>();
+				absorption /= epsilonInstant;
+				kE += absorption;
+			}
+			
+			//rotate the updated dEdt back to the beam coordinates
 			k.kE = rotateMaxwellPoint(s, kE, true);
 
+			//Update and advance the material oscillators
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ?
 					oscillator<deviceFP>{
@@ -3434,6 +3436,7 @@ namespace kernelNamespace{
 
 			return;
 		}
+		//at the front of the grid, run the injection routine
 		else if (zIndex == 0) {
 			deviceFP tCurrent = s->tStep * t + 0.5f * isAtMidpoint * s->tStep;
 			deviceComplex* fftDataY = (deviceComplex*)s->inputEyFFT;
