@@ -645,7 +645,7 @@ void readParametersFromInterface() {
         theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
         theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
     }
-    if (theSim.base().symmetryType == 4) {
+    else if (theSim.base().symmetryType == 4) {
         theSim.base().is3D = true;
         theSim.base().isFDTD = true;
         theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
