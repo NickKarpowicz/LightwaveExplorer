@@ -2059,7 +2059,7 @@ namespace kernelNamespace{
 		deviceFP dHzDx{};
 		deviceFP dHzDy{};
 		
-
+		//y-derivatives (only done in 3D mode)
 		if (s->Ny > 1) {
 			const int64_t zxOffset = zIndex + xIndex * s->Nz;
 			const int64_t pageSize = s->Nz * s->Nx;
@@ -2369,6 +2369,7 @@ namespace kernelNamespace{
 			}
 		}
 		
+		//x-derivatives
 		switch (boundaryFinder(xIndex, s->Nx)) {
 		[[likely]] case 5:
 			dEyDx = firstDerivativeSixthOrder(
@@ -2674,6 +2675,7 @@ namespace kernelNamespace{
 			break;
 		}
 
+		//z-derivatives
 		switch (boundaryFinder(zIndex, s->Nz)) {
 		[[likely]] case 5:
 			dExDz = firstDerivativeSixthOrder(
@@ -3192,12 +3194,34 @@ namespace kernelNamespace{
 				instNonlin += chi2Block * instTerm;
 			}
 
-			//calculate kerr nonlinearity for scalar chi3
+			//calculate kerr nonlinearity for scalar chi3 (assuming centrosymmetry)
 			if (s->hasSingleChi3[0]) {
 				deviceFP fieldSquaredSum = dotProduct(P,P);
 				deviceFP dByDtfieldSquaredSum = 2.0f * dotProduct(dPdt, P);
 				nonlinearDriver += P * (s->chi3[0][0] * fieldSquaredSum);
 				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum)*(s->chi3[0][0]);
+			}
+
+			//calculate Chi3 nonlinearity with full tensor
+			//resort to pointers to not have to write too many pages of code
+			if (s->hasFullChi3[0]) {
+				deviceFP* nonlinearDriverArr = (deviceFP*)&nonlinearDriver;
+				deviceFP* Parr = (deviceFP*)&P;
+				deviceFP* dPdtarr = (deviceFP*)&dPdt;
+				deviceFP* instNonlinArr = (deviceFP*)&instNonlin;
+				for (auto a = 0; a < 3; ++a) {
+					for (auto b = 0; b < 3; ++b) {
+						for (auto c = 0; c < 3; ++c) {
+							for (auto d = 0; d < 3; ++d) {
+								nonlinearDriverArr[d] += s->chi3[a + 3 * b + 9 * c + 27 * d][0] * Parr[a] * Parr[b] * Parr[c];
+								instNonlinArr[d] += s->chi3[a + 3 * b + 9 * c + 27 * d][0] * 
+									(dPdtarr[a] * Parr[b] * Parr[c]
+										+ Parr[a] * dPdtarr[b] * Parr[c]
+										+ Parr[a] * Parr[b] * dPdtarr[c]);
+							}
+						}
+					}
+				}
 			}
 			nonlinearDriver *= 2.0f;
 			instNonlin /= epsilonInstant;
