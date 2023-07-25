@@ -4216,7 +4216,7 @@ namespace hostFunctions{
 
 	static unsigned long int solveNonlinearWaveEquationWithDevice(ActiveDevice& d, simulationParameterSet* sCPU) {
 		if (sCPU->isFDTD) {
-			return solveFDTD(d, sCPU, 8, 25e-9, 1e-6, 1e-6);
+			return solveFDTD(d, sCPU, 5, 0, 1e-6, 1e-6);
 		}
 		//prepare the propagation arrays
 		preparePropagationGrids(d);
@@ -4424,7 +4424,7 @@ namespace hostFunctions{
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			(*sCPU).isFollowerInSequence = true;
 		}
-
+		if (dz == 0.0) dz = (*sCPU).propagationStep;
 		//generate the FDTD data structure and prepare the device
 		maxwell3D maxCalc = maxwell3D(sCPU, tFactor, dz, frontBuffer, backBuffer);
 		prepareFDTD(d, sCPU, maxCalc);
