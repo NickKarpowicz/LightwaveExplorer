@@ -62,8 +62,32 @@ hostOrDevice static constexpr T eps0() {
     return (T)8.8541878128e-12;
 }
 template <typename T>
+hostOrDevice static constexpr T inverseEps0() {
+    return (T)(1.0/8.8541878128e-12);
+}
+template <typename T>
+hostOrDevice static constexpr T mu0() {
+    return (T)1.2566370614e-6;
+}
+template <typename T>
+hostOrDevice static constexpr T inverseMu0() {
+    return (T)(1.0/1.2566370614e-6);
+}
+template <typename T>
+hostOrDevice static constexpr T Zo() {
+    return (T)376.730313668;
+}
+template <typename T>
+hostOrDevice static constexpr T inverseZo() {
+    return 0.0026544187287534486;
+}
+template <typename T>
 hostOrDevice static constexpr T sixth() {
     return (T)((T)1.0 / 6.0);
+}
+template <typename T>
+hostOrDevice static constexpr T sixtieth() {
+    return (T)((T)1.0 / 60.0);
 }
 template <typename T>
 hostOrDevice static constexpr T third() {
@@ -80,6 +104,22 @@ hostOrDevice static constexpr T cZero() {
 template <typename T>
 hostOrDevice static constexpr T cOne() {
     return T(1.0, 0.0);
+}
+template <typename T>
+hostOrDevice static constexpr T elCharge() {
+    return (T)1.602176634e-19;
+}
+template <typename T>
+hostOrDevice static constexpr T elMass() {
+    return (T)9.1093837015e-31;
+}
+template <typename T>
+hostOrDevice static constexpr T planckConstant() {
+    return (T)6.62607015e-34;
+}
+template <typename T>
+hostOrDevice static constexpr T eVtoHz() {
+    return elCharge<T>() / planckConstant<T>();
 }
 
 //this is a job for std::erase, but when running the code on the cluster, everything

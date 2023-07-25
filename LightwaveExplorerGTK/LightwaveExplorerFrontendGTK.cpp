@@ -192,6 +192,8 @@ public:
         pulldowns[4].addElement(("2D Cartesian"));
         pulldowns[4].addElement(("3D radial symm."));
         pulldowns[4].addElement(("3D"));
+        pulldowns[4].addElement(("FDTD 2D"));
+        pulldowns[4].addElement(("FDTD 3D"));
         pulldowns[4].init(parentHandle, textCol2a, 7, 2 * textWidth, 1);
 
         char batchModeNames[38][64] = {
@@ -624,6 +626,28 @@ void readParametersFromInterface() {
     theSim.base().Ntime = (int64_t)(minGridDimension * round(theSim.base().timeSpan / (minGridDimension * theSim.base().tStep)));
     if (theSim.base().symmetryType == 2) {
         theSim.base().is3D = true;
+        theSim.base().isFDTD = false;
+        theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
+        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
+        if (theSim.base().spatialHeight > 0) {
+            theSim.base().spatialHeight = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialHeight / (theSim.base().rStep * minGridDimension)));
+        }
+        else {
+            theSim.base().spatialHeight = theSim.base().spatialWidth;
+        }
+        theSim.base().Nspace2 = (int64_t)round(theSim.base().spatialHeight / theSim.base().rStep);
+    }
+    else if (theSim.base().symmetryType == 3) {
+        theSim.base().is3D = false;
+        theSim.base().isFDTD = true;
+        theSim.base().Nspace2 = 1;
+        theSim.base().spatialHeight = 0;
+        theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
+        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
+    }
+    else if (theSim.base().symmetryType == 4) {
+        theSim.base().is3D = true;
+        theSim.base().isFDTD = true;
         theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
         theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
         if (theSim.base().spatialHeight > 0) {
@@ -636,6 +660,7 @@ void readParametersFromInterface() {
     }
     else {
         theSim.base().is3D = false;
+        theSim.base().isFDTD = false;
         theSim.base().Nspace2 = 1;
         theSim.base().spatialHeight = 0;
         theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
@@ -1417,7 +1442,6 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theSim.base().is3D) {
         logPlotOffset = (double)(1e-4 / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
     }
-
     sPlot.complexData =
         &theSim.base().EkwOut[simIndex * theSim.base().NgridC * 2];
     sPlot.dataXdim = theSim.base().Nfreq;

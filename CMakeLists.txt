@@ -1,21 +1,20 @@
 if(UNIX AND NOT APPLE)
     if(DEFINED ONEAPI_ROOT)
+    #Linux build; typical usage:
+    #cmake --fresh -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_HOST_COMPILER=clang++-15 -DCMAKE_CUDA_ARCHITECTURES=75 -DCUDA_NVCC_FLAGS="-gencode=arch=compute_75,code=\"sm_75,compute_75\" -ccbin clang++-15 -O3 -D NOCUDAMAIN" ..
         cmake_minimum_required(VERSION 3.23.0)
         set(SYCL_INCLUDE_DIR "${ONEAPI_ROOT}/compiler/latest/linux/include/sycl")
         set(SYCL_LIBRARY_DIR "${ONEAPI_ROOT}/compiler/latest/linux/lib")
-        set(CMAKE_CUDA_ARCHITECTURES 75)
         set(MKLROOT "${ONEAPI_ROOT}/mkl/latest")
         project(LightwaveExplorer LANGUAGES CXX CUDA)
         configure_file(${CMAKE_SOURCE_DIR}/BuildResources/makeLinuxIcons.sh ${CMAKE_BINARY_DIR}/makeLinuxIcons.sh COPYONLY)
         execute_process(COMMAND git clone https://github.com/davisking/dlib)
         include_directories(build/dlib ../LightwaveExplorer ${MKLROOT}/include/fftw)
         find_package(CUDA REQUIRED)
-        set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode=arch=compute_75,code=\"sm_75,compute_75\" -O3 -ccbin g++ -D NOCUDAMAIN)
         cuda_compile(LightwaveExplorerCudaObjects LightwaveExplorerCore.cu LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
 
         find_package(PkgConfig REQUIRED)
         find_package(CUDAToolkit)
-        find_package(IntelDPCPP)
         find_package(fmt REQUIRED)
         pkg_check_modules(GTK4 gtk4)
         pkg_check_modules(LIOMP5 openmp)

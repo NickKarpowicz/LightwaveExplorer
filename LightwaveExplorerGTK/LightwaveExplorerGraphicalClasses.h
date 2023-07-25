@@ -999,7 +999,10 @@ gboolean formatSequenceBuffer(gpointer data) {
         "energy",
         "filter",
         "lorentzian",
-        "addPulse" };
+        "addPulse",
+        "fdtd2d",
+        "fdtd"
+    };
 
     auto applyTag = [&](const char* tag, size_t a, size_t b) {
         current = start;

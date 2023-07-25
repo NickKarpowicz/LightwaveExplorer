@@ -62,39 +62,29 @@ enum class copyType : int {
 template <typename deviceFP>
 class maxwellPoint {
 public:
-    deviceFP Ex{};
-    deviceFP Ey{};
-    deviceFP Ez{};
-    deviceFP Bx{};
-    deviceFP By{};
-    deviceFP Bz{};
+    deviceFP x{};
+    deviceFP y{};
+    deviceFP z{};
 };
 
 template <typename deviceFP>
-class maxwellCurrentPoint {
+class maxwellKPoint {
+public:
+    maxwellPoint<deviceFP> kE;
+    maxwellPoint<deviceFP> kH;
+};
+
+template <typename deviceFP>
+class oscillator {
 public:
     deviceFP Jx{};
     deviceFP Jy{};
     deviceFP Jz{};
-    deviceFP propFacE{};
-    deviceFP propFacH{};
+    deviceFP Px{};
+    deviceFP Py{};
+    deviceFP Pz{};
 };
 
-template <typename deviceFP>
-class maxwellCalculation {
-public:
-    maxwellPoint<deviceFP>* grid{};
-    maxwellCurrentPoint<deviceFP>* current{};
-    deviceFP* materialGrid{};
-    deviceFP* inOutEx{};
-    deviceFP* inOutEy{};
-    deviceFP xStep{};
-    deviceFP tStep{};
-    int64_t observationPoint{};
-    int64_t Nx{};
-    int64_t Ny{};
-    int64_t Nz{};
-};
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
 //with all of the platforms involved, and because it is transferred
@@ -469,6 +459,7 @@ public:
     int* nonlinearSwitches = 0;
     bool isCylindric = 0;
     bool is3D = 0;
+    bool isFDTD = 0;
     int symmetryType = 0;
 
     //loaded FROG/EOS fields
@@ -817,4 +808,113 @@ public:
     [[nodiscard]] simulationParameterSet& base() {
         return parameters[0];
     }
+};
+
+template <typename deviceFP, typename E, typename H, typename O>
+class maxwellCalculation {
+public:
+    E* Egrid{};
+    E* EgridNext{};
+    E* EgridEstimate{};
+    E* EgridEstimate2{};
+    H* Hgrid{};
+    H* HgridNext{};
+    H* HgridEstimate{};
+    H* HgridEstimate2{};
+    O* materialGrid{};
+    O* materialGridNext{};
+    O* materialGridEstimate{};
+    O* materialGridEstimate2{};
+    int64_t* materialIndexMap{};
+    deviceFP sellmeierEquations[66][8]{};
+    deviceFP chi3[81][8]{};
+    deviceFP chi2[18][8]{};
+    int nonlinearAbsorptionOrder[8]{};
+    deviceFP kNonlinearAbsorption[8]{};
+    deviceFP kDrude[8]{};
+    deviceFP gammaDrude[8]{};
+    deviceFP kCarrierGeneration[8]{};
+    deviceFP rotateForward[9][8]{};
+    deviceFP rotateBackward[9][8]{};
+    bool hasChi2[8]{};
+    bool hasFullChi3[8]{};
+    bool hasSingleChi3[8]{};
+    bool hasPlasma[8]{};
+    deviceFP* inOutEy{};
+    deviceFP* inOutEx{};
+    deviceFP* inputExFFT{};
+    deviceFP* inputEyFFT{};
+    deviceFP omegaStep{};
+    deviceFP xyStep{};
+    deviceFP zStep{};
+    deviceFP tStep{};
+    deviceFP frontBuffer{};
+    deviceFP backBuffer{};
+    deviceFP crystalThickness{};
+    deviceFP inverseXyStep{};
+    deviceFP inverseZStep{};
+    deviceFP omegaMax{};
+    int64_t observationPoint{};
+    int64_t waitFrames{};
+    int64_t Nx{};
+    int64_t Ny{};
+    int64_t Nz{};
+    int64_t Nt{};
+    int64_t Ngrid{};
+    int64_t NMaterialGrid{};
+    int Noscillators{};
+    int64_t NtIO{};
+    int64_t frequencyLimit{};
+    int64_t tGridFactor=1;
+    int64_t materialStart{};
+    int64_t materialStop{};
+    maxwellCalculation<deviceFP, E, H, O>* deviceCopy = nullptr;
+    
+    void fillRotationMatricies(double crystalTheta, double crystalPhi, int64_t crystalNumber) {
+        double cosT = cos(crystalTheta);
+        double sinT = sin(crystalTheta);
+        double cosP = cos(crystalPhi);
+        double sinP = sin(crystalPhi);
+        double forward[9] =
+        { cosT * cosP, sinP, -sinT * cosP, 
+            -sinP * cosT, cosP, sinP * sinT, 
+            sinT, 0.0, cosT };
+
+        //reverse direction (different order of operations)
+        double backward[9] =
+        { cosT * cosP, -sinP * cosT, sinT, 
+            sinP, cosP, 0.0, 
+            -sinT * cosP, sinP * sinT, cosT };
+
+        for (int64_t i = 0; i < 9; i++) {
+            rotateForward[i][crystalNumber] = static_cast<deviceFP>(forward[i]);
+            rotateBackward[i][crystalNumber] = static_cast<deviceFP>(backward[i]);
+        }
+    }
+    maxwellCalculation(simulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
+        frontBuffer = frontBuffer_in;
+        backBuffer = backBuffer_in;
+        crystalThickness = (*s).crystalThickness;
+        zStep = zStep_in;
+        Nx = (*s).Nspace;
+        Ny = ((*s).is3D) ? (*s).Nspace2 : 1;
+        Nz = (frontBuffer + backBuffer + crystalThickness) / zStep;
+        Nz = minGridDimension * (Nz / minGridDimension + (Nz % minGridDimension > 0));
+        NtIO = (*s).Ntime;
+        xyStep = (*s).rStep;
+        tStep = (*s).tStep / timeFactor;
+        omegaMax = 0.1 * twoPi<deviceFP>()*lightC<deviceFP>() / zStep;
+        omegaStep = twoPi<deviceFP>() * s->fStep;
+        frequencyLimit = minN(static_cast<int64_t>(omegaMax / omegaStep),s->Nfreq);
+        inverseXyStep = 1.0 / xyStep;
+        inverseZStep = 1.0 / zStep;
+        materialStart = frontBuffer / zStep;
+        materialStop = materialStart + (crystalThickness / zStep);
+        observationPoint = materialStop + 10;
+        tGridFactor = timeFactor;
+        Ngrid = Nz * Ny * Nx;
+        fillRotationMatricies((*s).crystalTheta, (*s).crystalPhi, 0);
+    }
+
+    
 };

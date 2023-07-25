@@ -2,38 +2,38 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="LightwaveExplorerFrontendGTK.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPUFP32.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
       <UniqueIdentifier>{1ae7ad27-6173-4a45-9249-2e39217b1c0d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{36e6f35f-c3d4-4943-b640-99944bc6f6f1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{da350c9e-e3af-4d67-b3b6-6aedb3d183cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Source Files">
+      <UniqueIdentifier>{36e6f35f-c3d4-4943-b640-99944bc6f6f1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\LightwaveExplorerCore.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files\Source Files</Filter>
     </CudaCompile>
     <CudaCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files\Source Files</Filter>
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
