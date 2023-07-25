@@ -68,26 +68,6 @@ public:
 };
 
 template <typename deviceFP>
-class maxwellEPoint2D {
-public:
-    deviceFP y{};
-};
-
-template <typename deviceFP>
-class maxwellHPoint2D {
-public:
-    deviceFP x{};
-    deviceFP z{};
-};
-
-template <typename deviceFP>
-class maxwellKPoint2D {
-public:
-    maxwellEPoint2D<deviceFP> kE;
-    maxwellHPoint2D<deviceFP> kH;
-};
-
-template <typename deviceFP>
 class maxwellKPoint {
 public:
     maxwellPoint<deviceFP> kE;
@@ -104,14 +84,6 @@ public:
     deviceFP Py{};
     deviceFP Pz{};
 };
-
-template <typename deviceFP>
-class oscillator2D {
-public:
-    deviceFP Jy{};
-    deviceFP Py{};
-};
-
 
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
@@ -487,6 +459,7 @@ public:
     int* nonlinearSwitches = 0;
     bool isCylindric = 0;
     bool is3D = 0;
+    bool isFDTD = 0;
     int symmetryType = 0;
 
     //loaded FROG/EOS fields

@@ -568,7 +568,8 @@ int simulationParameterSet::readInputParametersFile(crystalEntry* crystalDatabas
 	Npropagation = (int64_t)round(crystalThickness / propagationStep);
 
 	isCylindric = symmetryType == 1;
-	is3D = symmetryType == 2;
+	is3D = symmetryType == 2 || symmetryType == 4;
+	isFDTD = symmetryType == 3 || symmetryType == 4;
 	if (isCylindric) {
 		pulse1.x0 = 0;
 		pulse2.x0 = 0;

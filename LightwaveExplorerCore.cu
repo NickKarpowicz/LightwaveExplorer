@@ -3596,6 +3596,9 @@ namespace hostFunctions{
 	static simulationParameterSet* fittingSet;
 	static ActiveDevice* dFit;
 
+	//forward declarations when useful
+	static unsigned long int solveFDTD(ActiveDevice& d, simulationParameterSet* sCPU, int64_t tFactor, deviceFP dz, deviceFP frontBuffer, deviceFP backBuffer);
+
 	static std::complex<double> hostSellmeierFunc(double ls, const double omega, const double* a, const int eqn) {
 		const double omega2 = omega * omega;
 		double realPart;
@@ -4210,6 +4213,9 @@ namespace hostFunctions{
 	}
 
 	static unsigned long int solveNonlinearWaveEquationWithDevice(ActiveDevice& d, simulationParameterSet* sCPU) {
+		if (sCPU->isFDTD) {
+			return solveFDTD(d, sCPU, 8, 25e-9, 1e-6, 1e-6);
+		}
 		//prepare the propagation arrays
 		preparePropagationGrids(d);
 		prepareElectricFieldArrays(d);
@@ -4388,9 +4394,39 @@ namespace hostFunctions{
 	}
 
 	static unsigned long int solveFDTD(ActiveDevice& d, simulationParameterSet* sCPU, int64_t tFactor, deviceFP dz, deviceFP frontBuffer, deviceFP backBuffer) {
+		
+
+		//initialize the grid if necessary
+		if (!sCPU->isFollowerInSequence) {
+			simulationParameterSet sCPUbackup = *sCPU;
+
+			(*sCPU).materialIndex = 0;
+			(*sCPU).crystalTheta = 0.0;
+			(*sCPU).crystalPhi = 0.0;
+			(*sCPU).crystalThickness = 0;
+			(*sCPU).propagationStep = 1e-9;
+
+			(*sCPU).nonlinearAbsorptionStrength = 0.0;
+			(*sCPU).chi2Tensor = (*sCPU).crystalDatabase[(*sCPU).materialIndex].d.data();
+			(*sCPU).chi3Tensor = (*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3.data();
+			(*sCPU).nonlinearSwitches = (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).absorptionParameters = (*sCPU).crystalDatabase[(*sCPU).materialIndex].absorptionParameters.data();
+			(*sCPU).sellmeierCoefficients = (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data();
+
+			(*sCPU).sellmeierType = (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierType;
+			(*sCPU).axesNumber = (*sCPU).crystalDatabase[(*sCPU).materialIndex].axisType;
+			(*sCPU).isFDTD = false;
+			d.reset(sCPU);
+			solveNonlinearWaveEquationWithDevice(d, sCPU);
+			*sCPU = sCPUbackup;
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			(*sCPU).isFollowerInSequence = true;
+		}
+
 		//generate the FDTD data structure and prepare the device
 		maxwell3D maxCalc = maxwell3D(sCPU, tFactor, dz, frontBuffer, backBuffer);
 		prepareFDTD(d, sCPU, maxCalc);
+
 
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {
