@@ -275,7 +275,7 @@ int simulationParameterSet::saveSettingsFile() {
 		}
 		fs << '\x0A';
 	}
-	fs << "Code version: 0.8,  April 21, 2023";
+	fs << "Code version: 2023.07";
 	fs << '\x0A';
 
 	return 0;
