@@ -2045,7 +2045,7 @@ namespace kernelNamespace{
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
 		const int64_t yIndex = (i / (s->Nz * s->Nx));
-		const int64_t zEnd = (s->Nz) * (xIndex + 1);
+		const int64_t zEnd = (s->Nz) * (xIndex + 1) + (s->Nz * s->Nx) * yIndex;
 		const int64_t zStart = (s->Nz) * xIndex + (s->Nz * s->Nx)*yIndex;
 		const int64_t zyOffset = zIndex + yIndex * (s->Nz * s->Nx);
 		deviceFP dExDy{};
@@ -2100,73 +2100,73 @@ namespace kernelNamespace{
 				dExDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 2) * pageSize].x,
 					EgridIn[zxOffset + (s->Ny - 1) * pageSize].x,
-					EgridIn[zxOffset + s->Ny * pageSize].x,
 					EgridIn[zxOffset].x,
-					EgridIn[zxOffset + 1 * pageSize].x,
-					EgridIn[zxOffset + 2 * pageSize].x);
+					EgridIn[zxOffset + pageSize].x,
+					EgridIn[zxOffset + 2 * pageSize].x,
+					EgridIn[zxOffset + 3 * pageSize].x);//HRRER
 				dEzDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 2) * pageSize].z,
 					EgridIn[zxOffset + (s->Ny - 1) * pageSize].z,
-					EgridIn[zxOffset + s->Ny * pageSize].z,
 					EgridIn[zxOffset].z,
-					EgridIn[zxOffset + 1 * pageSize].z,
-					EgridIn[zxOffset + 2 * pageSize].z);
+					EgridIn[zxOffset + pageSize].z,
+					EgridIn[zxOffset + 2 * pageSize].z,
+					EgridIn[zxOffset + 3 * pageSize].z);
 				dHxDy = firstDerivativeSixthOrder(
 					HgridIn[zxOffset + (s->Ny - 3) * pageSize].x,
 					HgridIn[zxOffset + (s->Ny - 2) * pageSize].x,
 					HgridIn[zxOffset + (s->Ny - 1) * pageSize].x,
-					HgridIn[zxOffset + s->Ny *pageSize].x,
 					HgridIn[zxOffset].x,
-					HgridIn[zxOffset + 1 * pageSize].x);
+					HgridIn[zxOffset + pageSize].x,
+					HgridIn[zxOffset + 2 * pageSize].x);
 				dHzDy = firstDerivativeSixthOrder(
 					HgridIn[zxOffset + (s->Ny - 3) * pageSize].z,
 					HgridIn[zxOffset + (s->Ny - 2) * pageSize].z,
 					HgridIn[zxOffset + (s->Ny - 1) * pageSize].z,
-					HgridIn[zxOffset + s->Ny * pageSize].z,
 					HgridIn[zxOffset].z,
-					HgridIn[zxOffset + pageSize].z);
+					HgridIn[zxOffset + pageSize].z,
+					HgridIn[zxOffset + 2 * pageSize].z);
 				break;
 			case 1:
-				dExDy = firstDerivativeSixthOrder(
+				dEyDx = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 1) * pageSize].x,
-					EgridIn[zxOffset + s->Ny *pageSize].x,
 					EgridIn[zxOffset].x,
-					EgridIn[zxOffset + 1 * pageSize].x,
-					EgridIn[zxOffset + 2 * pageSize].x,
-					EgridIn[zxOffset + 3 * pageSize].x);
-				dEzDy = firstDerivativeSixthOrder(
+					EgridIn[zxOffset + 1 * (pageSize)].x,
+					EgridIn[zxOffset + 2 * (pageSize)].x,
+					EgridIn[zxOffset + 3 * (pageSize)].x,
+					EgridIn[zxOffset + 4 * (pageSize)].x);
+				dEzDx = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 1) * pageSize].z,
-					EgridIn[zxOffset + s->Ny * pageSize].z,
 					EgridIn[zxOffset].z,
-					EgridIn[zxOffset + 1 * pageSize].z,
-					EgridIn[zxOffset + 2 * pageSize].z,
-					EgridIn[zxOffset + 3 * pageSize].z);
+					EgridIn[zxOffset + 1 * (pageSize)].z,
+					EgridIn[zxOffset + 2 * (pageSize)].z,
+					EgridIn[zxOffset + 3 * (pageSize)].z,
+					EgridIn[zxOffset + 4 * (pageSize)].z);
 				dHxDy = firstDerivativeSixthOrder(
 					HgridIn[zxOffset + (s->Ny - 2) * (pageSize)].x,
 					HgridIn[zxOffset + (s->Ny - 1) * (pageSize)].x,
 					HgridIn[zxOffset].x,
-					HgridIn[zxOffset + (pageSize)].x,
+					HgridIn[zxOffset + 1 * (pageSize)].x,
 					HgridIn[zxOffset + 2 * (pageSize)].x,
 					HgridIn[zxOffset + 3 * (pageSize)].x);
 				dHzDy = firstDerivativeSixthOrder(
 					HgridIn[zxOffset + (s->Ny - 2) * (pageSize)].z,
 					HgridIn[zxOffset + (s->Ny - 1) * (pageSize)].z,
 					HgridIn[zxOffset].z,
-					HgridIn[zxOffset + (pageSize)].z,
+					HgridIn[zxOffset + 1 * (pageSize)].z,
 					HgridIn[zxOffset + 2 * (pageSize)].z,
 					HgridIn[zxOffset + 3 * (pageSize)].z);
 				break;
 			case 2:
 				dEyDx = firstDerivativeSixthOrder(
 					EgridIn[zxOffset].x,
-					EgridIn[zxOffset + (pageSize)].x,
+					EgridIn[zxOffset + 1 * pageSize].x,
 					EgridIn[zxOffset + 2 * (pageSize)].x,
 					EgridIn[zxOffset + 3 * (pageSize)].x,
 					EgridIn[zxOffset + 4 * (pageSize)].x,
 					EgridIn[zxOffset + 5 * (pageSize)].x);
 				dEzDx = firstDerivativeSixthOrder(
 					EgridIn[zxOffset].z,
-					EgridIn[zxOffset + (pageSize)].z,
+					EgridIn[zxOffset + pageSize].z,
 					EgridIn[zxOffset + 2 * (pageSize)].z,
 					EgridIn[zxOffset + 3 * (pageSize)].z,
 					EgridIn[zxOffset + 4 * (pageSize)].z,
@@ -2174,47 +2174,47 @@ namespace kernelNamespace{
 				dHxDy = firstDerivativeSixthOrder(
 					HgridIn[zxOffset + (s->Ny - 1) * (pageSize)].x,
 					HgridIn[zxOffset].x,
-					HgridIn[zxOffset + (pageSize)].x,
+					HgridIn[zxOffset + pageSize].x,
 					HgridIn[zxOffset + 2 * (pageSize)].x,
 					HgridIn[zxOffset + 3 * (pageSize)].x,
 					HgridIn[zxOffset + 4 * (pageSize)].x);
 				dHzDy = firstDerivativeSixthOrder(
 					HgridIn[zxOffset + (s->Ny - 1) * (pageSize)].z,
 					HgridIn[zxOffset].z,
-					HgridIn[zxOffset + (pageSize)].z,
+					HgridIn[zxOffset + pageSize].z,
 					HgridIn[zxOffset + 2 * (pageSize)].z,
 					HgridIn[zxOffset + 3 * (pageSize)].z,
 					HgridIn[zxOffset + 4 * (pageSize)].z);
 				break;
 			case 3:
-				dEyDx = firstDerivativeSixthOrder(
-					EgridIn[zxOffset + (xIndex - 2) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex - 1) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 1) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 2) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 3) * (pageSize)].x);
-				dEzDx = firstDerivativeSixthOrder(
-					EgridIn[zxOffset + (xIndex - 2) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex - 1) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 1) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 2) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 3) * (pageSize)].z);
+				dExDy = firstDerivativeSixthOrder(
+					EgridIn[zxOffset + (yIndex - 2) * pageSize].x,
+					EgridIn[zxOffset + (yIndex - 1) * pageSize].x,
+					EgridIn[zxOffset + (yIndex)*pageSize].x,
+					EgridIn[zxOffset + (yIndex + 1) * pageSize].x,
+					EgridIn[zxOffset + (yIndex + 2) * pageSize].x,
+					EgridIn[zxOffset + (yIndex + 3) * pageSize].x);
+				dEzDy = firstDerivativeSixthOrder(
+					EgridIn[zxOffset + (yIndex - 2) * pageSize].z,
+					EgridIn[zxOffset + (yIndex - 1) * pageSize].z,
+					EgridIn[zxOffset + (yIndex)*pageSize].z,
+					EgridIn[zxOffset + (yIndex + 1) * pageSize].z,
+					EgridIn[zxOffset + (yIndex + 2) * pageSize].z,
+					EgridIn[zxOffset + (yIndex + 3) * pageSize].z);
 				dHxDy = firstDerivativeSixthOrder(
-					HgridIn[zxOffset + (xIndex - 3) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex - 2) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex - 1) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex + 1) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex + 2) * (pageSize)].x);
+					HgridIn[zxOffset + (yIndex - 3) * pageSize].x,
+					HgridIn[zxOffset + (yIndex - 2) * pageSize].x,
+					HgridIn[zxOffset + (yIndex - 1) * pageSize].x,
+					HgridIn[zxOffset + (yIndex)*pageSize].x,
+					HgridIn[zxOffset + (yIndex + 1) * pageSize].x,
+					HgridIn[zxOffset + (yIndex + 2) * pageSize].x);
 				dHzDy = firstDerivativeSixthOrder(
-					HgridIn[zxOffset + (xIndex - 3) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex - 2) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex - 1) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex + 1) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex + 2) * (pageSize)].z);
+					HgridIn[zxOffset + (yIndex - 3) * pageSize].z,
+					HgridIn[zxOffset + (yIndex - 2) * pageSize].z,
+					HgridIn[zxOffset + (yIndex - 1) * pageSize].z,
+					HgridIn[zxOffset + (yIndex)*pageSize].z,
+					HgridIn[zxOffset + (yIndex + 1) * pageSize].z,
+					HgridIn[zxOffset + (yIndex + 2) * pageSize].z);
 				break;
 			case -1:
 				dEyDx = firstDerivativeSixthOrder(
@@ -2307,64 +2307,64 @@ namespace kernelNamespace{
 					HgridIn[zxOffset + (s->Ny - 1) * (pageSize)].z);
 				break;
 			case -4:
-				dEyDx = firstDerivativeSixthOrder(
-					EgridIn[zxOffset + (xIndex - 2) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex - 1) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 1) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 2) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 3) * (pageSize)].x);
-				dEzDx = firstDerivativeSixthOrder(
-					EgridIn[zxOffset + (xIndex - 2) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex - 1) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 1) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 2) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 3) * (pageSize)].z);
+				dExDy = firstDerivativeSixthOrder(
+					EgridIn[zxOffset + (yIndex - 2) * pageSize].x,
+					EgridIn[zxOffset + (yIndex - 1) * pageSize].x,
+					EgridIn[zxOffset + (yIndex)*pageSize].x,
+					EgridIn[zxOffset + (yIndex + 1) * pageSize].x,
+					EgridIn[zxOffset + (yIndex + 2) * pageSize].x,
+					EgridIn[zxOffset + (yIndex + 3) * pageSize].x);
+				dEzDy = firstDerivativeSixthOrder(
+					EgridIn[zxOffset + (yIndex - 2) * pageSize].z,
+					EgridIn[zxOffset + (yIndex - 1) * pageSize].z,
+					EgridIn[zxOffset + (yIndex)*pageSize].z,
+					EgridIn[zxOffset + (yIndex + 1) * pageSize].z,
+					EgridIn[zxOffset + (yIndex + 2) * pageSize].z,
+					EgridIn[zxOffset + (yIndex + 3) * pageSize].z);
 				dHxDy = firstDerivativeSixthOrder(
-					HgridIn[zxOffset + (xIndex - 3) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex - 2) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex - 1) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex + 1) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex + 2) * (pageSize)].x);
+					HgridIn[zxOffset + (yIndex - 3) * pageSize].x,
+					HgridIn[zxOffset + (yIndex - 2) * pageSize].x,
+					HgridIn[zxOffset + (yIndex - 1) * pageSize].x,
+					HgridIn[zxOffset + (yIndex)*pageSize].x,
+					HgridIn[zxOffset + (yIndex + 1) * pageSize].x,
+					HgridIn[zxOffset + (yIndex + 2) * pageSize].x);
 				dHzDy = firstDerivativeSixthOrder(
-					HgridIn[zxOffset + (xIndex - 3) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex - 2) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex - 1) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex + 1) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex + 2) * (pageSize)].z);
+					HgridIn[zxOffset + (yIndex - 3) * pageSize].z,
+					HgridIn[zxOffset + (yIndex - 2) * pageSize].z,
+					HgridIn[zxOffset + (yIndex - 1) * pageSize].z,
+					HgridIn[zxOffset + (yIndex)*pageSize].z,
+					HgridIn[zxOffset + (yIndex + 1) * pageSize].z,
+					HgridIn[zxOffset + (yIndex + 2) * pageSize].z);
 				break;
 			case -5:
-				dEyDx = firstDerivativeSixthOrder(
-					EgridIn[zxOffset + (xIndex - 2) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex - 1) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 1) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 2) * (pageSize)].x,
-					EgridIn[zxOffset + (xIndex + 3) * (pageSize)].x);
-				dEzDx = firstDerivativeSixthOrder(
-					EgridIn[zxOffset + (xIndex - 2) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex - 1) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 1) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 2) * (pageSize)].z,
-					EgridIn[zxOffset + (xIndex + 3) * (pageSize)].z);
+				dExDy = firstDerivativeSixthOrder(
+					EgridIn[zxOffset + (yIndex - 2) * pageSize].x,
+					EgridIn[zxOffset + (yIndex - 1) * pageSize].x,
+					EgridIn[zxOffset + (yIndex)*pageSize].x,
+					EgridIn[zxOffset + (yIndex + 1) * pageSize].x,
+					EgridIn[zxOffset + (yIndex + 2) * pageSize].x,
+					EgridIn[zxOffset + (yIndex + 3) * pageSize].x);
+				dEzDy = firstDerivativeSixthOrder(
+					EgridIn[zxOffset + (yIndex - 2) * pageSize].z,
+					EgridIn[zxOffset + (yIndex - 1) * pageSize].z,
+					EgridIn[zxOffset + (yIndex)*pageSize].z,
+					EgridIn[zxOffset + (yIndex + 1) * pageSize].z,
+					EgridIn[zxOffset + (yIndex + 2) * pageSize].z,
+					EgridIn[zxOffset + (yIndex + 3) * pageSize].z);
 				dHxDy = firstDerivativeSixthOrder(
-					HgridIn[zxOffset + (xIndex - 3) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex - 2) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex - 1) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex + 1) * (pageSize)].x,
-					HgridIn[zxOffset + (xIndex + 2) * (pageSize)].x);
+					HgridIn[zxOffset + (yIndex - 3) * pageSize].x,
+					HgridIn[zxOffset + (yIndex - 2) * pageSize].x,
+					HgridIn[zxOffset + (yIndex - 1) * pageSize].x,
+					HgridIn[zxOffset + (yIndex)*pageSize].x,
+					HgridIn[zxOffset + (yIndex + 1) * pageSize].x,
+					HgridIn[zxOffset + (yIndex + 2) * pageSize].x);
 				dHzDy = firstDerivativeSixthOrder(
-					HgridIn[zxOffset + (xIndex - 3) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex - 2) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex - 1) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex + 1) * (pageSize)].z,
-					HgridIn[zxOffset + (xIndex + 2) * (pageSize)].z);
+					HgridIn[zxOffset + (yIndex - 3) * pageSize].z,
+					HgridIn[zxOffset + (yIndex - 2) * pageSize].z,
+					HgridIn[zxOffset + (yIndex - 1) * pageSize].z,
+					HgridIn[zxOffset + (yIndex)*pageSize].z,
+					HgridIn[zxOffset + (yIndex + 1) * pageSize].z,
+					HgridIn[zxOffset + (yIndex + 2) * pageSize].z);
 				break;
 			default:
 				break;
@@ -3112,7 +3112,7 @@ namespace kernelNamespace{
 		const int rkIndex) {
 
 		const int64_t zIndex = i % s->Nz;
-		const int64_t xIndex = (i / s->Nz) % s->Nx;
+		const int64_t xIndex = (i / s->Nz);
 		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
 			const int64_t oscillatorIndex = (zIndex - s->materialStart) * s->Noscillators + xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
 
@@ -4357,7 +4357,7 @@ namespace hostFunctions{
 			maxCalc.kNonlinearAbsorption[0] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;
 			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts / (*sCPU).pulse1.frequency)) - 1;
 		}
-		maxCalc.NMaterialGrid = (maxCalc.materialStop - maxCalc.materialStart) * maxCalc.Nx * maxCalc.Noscillators;
+		maxCalc.NMaterialGrid = (maxCalc.materialStop - maxCalc.materialStart) * maxCalc.Nx * maxCalc.Ny * maxCalc.Noscillators;
 	}
 
 
@@ -4429,7 +4429,6 @@ namespace hostFunctions{
 		maxwell3D maxCalc = maxwell3D(sCPU, tFactor, dz, frontBuffer, backBuffer);
 		prepareFDTD(d, sCPU, maxCalc);
 
-
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {
 			d.deviceLaunch(maxCalc.Ngrid / 64, 64, maxwellRKkernel0{ maxCalc.deviceCopy, i });
@@ -4437,7 +4436,7 @@ namespace hostFunctions{
 			d.deviceLaunch(maxCalc.Ngrid / 64, 64, maxwellRKkernel2{ maxCalc.deviceCopy, i });
 			d.deviceLaunch(maxCalc.Ngrid / 64, 64, maxwellRKkernel3{ maxCalc.deviceCopy, i });
 			if (i % maxCalc.tGridFactor == 0 && (i >= maxCalc.waitFrames)) {
-				d.deviceLaunch((*sCPU).Nspace / minGridDimension, minGridDimension, maxwellSampleGrid{ maxCalc.deviceCopy, (i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+				d.deviceLaunch((maxCalc.Nx * maxCalc.Ny) / minGridDimension, minGridDimension, maxwellSampleGrid{ maxCalc.deviceCopy, (i - maxCalc.waitFrames) / maxCalc.tGridFactor });
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;
