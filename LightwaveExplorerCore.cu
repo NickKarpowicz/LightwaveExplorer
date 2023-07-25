@@ -211,6 +211,7 @@ namespace deviceFunctions {
 				- 1.38888888888888889e-02 * in09
 				+ 1.1904761904761906e-03 * in10);
 		}
+		return 0.0;
 	}
 
 	[[maybe_unused]] deviceFunction static inline float resolveMaxwellEndpoints(const int64_t type, const float in00, const float in01, const float in02, const float in03, const float in04, const float in05, const float in06, const float in07, const float in08, const float in09, const float in10) {
@@ -290,6 +291,7 @@ namespace deviceFunctions {
 				- 1.38888888888888889e-02f * in09
 				+ 1.1904761904761906e-03f * in10);
 		}
+		return 0.0f;
 	}
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
