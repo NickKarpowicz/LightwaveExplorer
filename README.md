@@ -22,6 +22,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
 #### Main goals:
  - _Easily extensible database of materials:_ Eveything the program knows about nonlinear materials comes from a human-readable text file giving the appropriate coefficients and tensors. If you want to use a new material, or you've done a measurement in a new range where typical extrapolations from older data isn't relevant, it's easy to add and correct. There are places for references for the key parameters, and these references are stored in the saved simulation results for future reference. Especially if you have simulations that you checked against experiments, I'd be very happy for you to add your crystal definitions to the central database in the project Github.
+ - Accurate modeling of nonlinear optics using multiple, user-selectable physical models, including the unidirectional nonlinear wave equation and finite-difference time-domain approaches. This allows calculations that accommodate large systems where forward-propagation is an appropriate assumption, but also of etalon effects in thin crystals where reflections cannot be neglected.
  - _Efficient code so that complicated systems can be simulated in 3D:_ Real laser pulses can be messy, and if they weren't so before a nonlinear crystal, there's a good chance they are after (but not always). If things are slow, it's hard to go beyond one dimension on tolerable time scales, and then you miss out on the whole weird world of spatiotemporal couplings. Here you have options for rather fast simulations when there's a symmetry to apply (e.g. cylindrical or along one Cartesian dimension), alongside fully 3D propagation. Runs natively on both GPU and CPU to make use of whatever you have to work with.
  - _A graphical interface that lets you see what you're doing:_ A lot of us think in visual terms. Being able to adjust and scan parameters and immediately see what happens can really make it easier to understand what you're looking at. 
  - _A flexible sequence mode:_ By stringing together elements, not just nonlinear crystals but also spherical or parabolic mirrors, apertures, filters, free space propagation and other elements, simulate how  one interaction affects another. Sequences of events can be scripted and even programmed with loop functions to see how things change over the course of repeated interactions.
@@ -32,6 +33,12 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
 ---
 
+  ### Publications
+  Lightwave Explorer has been used to perform the nonlinear optics simulations in the following papers!
+  - Maciej Kowalczyk, *et al.*, Ultra-CEP-stable single-cycle pulses at 2.2 µm. [*Optica* **10**, 801-811 (2023).](https://opg.optica.org/optica/fulltext.cfm?uri=optica-10-6-801)
+  - Najd Altwaijry, *et al.*, Broadband Photoconductive Sampling in Gallium Phosphide. [*Advanced Optical Materials* **11**, 2202994 (2023).](https://onlinelibrary.wiley.com/doi/full/10.1002/adom.202202994)
+  - Hadil Kassab, *et al.*, In-line synthesis of multi-octave phase-stable infrared light, [*Optics Express* **31**, 24862 (2023).](https://opg.optica.org/oe/fulltext.cfm?uri=oe-31-15-24862)
+---
   ### Installation on a Windows PC
   Download and extract either LightwaveExplorerWin64.zip or LightwaveExplorerWin64.7z from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP). The LighwaveExplorer.exe application should just work.
 
@@ -47,6 +54,8 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   The appimage should be in the same directory as the files CrystalDatabase.txt and DefaultValues.ini - you can also put them into /usr/share/LightwaveExplorer - I can make other options possible, not sure where the modern Linux user prefers.
 
   There is also a subfolder named CPUonly. This contains an appimage for a version released under the terms of the GNU Public License v3. This makes use of the FFTW library for performing Fourier transforms, instead of NVIDIA cuFFT or Intel MKL as used in the other version. If you are running it on an AMD CPU, this may give you a significant speedup (or if you perfer to only use GPL software, it's an option).
+
+  Note that the appimage is slightly out of date at the moment, since my Linux install is a bit broken and I can't update it right now. If you want the latest version, follow the steps below to compile it locally! It's actually not too hard to do...
 
 ---
 
@@ -92,7 +101,7 @@ If you are on an Ubuntu-based distro, you can use this to grab everything:
 sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3
 ```
 
-One OpenSUSE Tumbleweed, I needed:
+On OpenSUSE Tumbleweed, I needed:
 ```
 sudo zypper install git gcc-c++ cmake gtk4-devel fftw-devel
 ```
