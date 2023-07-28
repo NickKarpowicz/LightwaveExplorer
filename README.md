@@ -1,5 +1,5 @@
 ## <p style="text-align: center;">Lightwave Explorer</p>
-
+<p style="text-align: center;">New! <a href="https://youtu.be/J1-dh6V5flQ">YouTube tutorials!</a></p>
 <p style="text-align: center;">Nick Karpowicz</p>
 <p style="text-align: center;">Max Planck Institute of Quantum Optics</p>
 
@@ -13,8 +13,6 @@
 ### What and why
 
 Lightwave explorer is an open source nonlinear optics simulator, intended to be fast, visual, and flexible for students and researchers to play with ultrashort laser pulses and nonlinear optics without having to buy a laser first.
-
-New! I started making [YouTube tutorials](https://youtu.be/J1-dh6V5flQ) to describe how to use it!
 
 <p style="text-align: center;"><img src="Documentation/Images/Interface_screenshot.png"></p>
 
