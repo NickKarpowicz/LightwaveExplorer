@@ -518,14 +518,14 @@ namespace deviceFunctions {
 					HgridIn[zxOffset + 2 * pageSize].z);
 				break;
 			case 1:
-				dEyDx = firstDerivativeSixthOrder(
+				dExDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 1) * pageSize].x,
 					EgridIn[zxOffset].x,
 					EgridIn[zxOffset + 1 * (pageSize)].x,
 					EgridIn[zxOffset + 2 * (pageSize)].x,
 					EgridIn[zxOffset + 3 * (pageSize)].x,
 					EgridIn[zxOffset + 4 * (pageSize)].x);
-				dEzDx = firstDerivativeSixthOrder(
+				dEzDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 1) * pageSize].z,
 					EgridIn[zxOffset].z,
 					EgridIn[zxOffset + 1 * (pageSize)].z,
@@ -548,7 +548,7 @@ namespace deviceFunctions {
 					HgridIn[zxOffset + 3 * (pageSize)].z);
 				break;
 			case 2:
-				dEyDx = firstDerivativeSixthOrder(
+				dExDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset].x,
 					EgridIn[zxOffset + 1 * pageSize].x,
 					EgridIn[zxOffset + 2 * (pageSize)].x,
@@ -608,7 +608,7 @@ namespace deviceFunctions {
 					HgridIn[zxOffset + (yIndex + 2) * pageSize].z);
 				break;
 			case -1:
-				dEyDx = firstDerivativeSixthOrder(
+				dExDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 3) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 2) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 1) * (pageSize)].x,
@@ -638,14 +638,14 @@ namespace deviceFunctions {
 					HgridIn[zxOffset + (pageSize)].z);
 				break;
 			case -2:
-				dEyDx = firstDerivativeSixthOrder(
+				dExDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 4) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 3) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 2) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 1) * (pageSize)].x,
 					EgridIn[zxOffset].x,
 					EgridIn[zxOffset + (pageSize)].x);
-				dEzDx = firstDerivativeSixthOrder(
+				dEzDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 4) * (pageSize)].z,
 					EgridIn[zxOffset + (s->Ny - 3) * (pageSize)].z,
 					EgridIn[zxOffset + (s->Ny - 2) * (pageSize)].z,
@@ -668,14 +668,14 @@ namespace deviceFunctions {
 					HgridIn[zxOffset].z);
 				break;
 			case -3:
-				dEyDx = firstDerivativeSixthOrder(
+				dExDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 5) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 4) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 3) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 2) * (pageSize)].x,
 					EgridIn[zxOffset + (s->Ny - 1) * (pageSize)].x,
 					EgridIn[zxOffset].x);
-				dEzDx = firstDerivativeSixthOrder(
+				dEzDy = firstDerivativeSixthOrder(
 					EgridIn[zxOffset + (s->Ny - 5) * (pageSize)].z,
 					EgridIn[zxOffset + (s->Ny - 4) * (pageSize)].z,
 					EgridIn[zxOffset + (s->Ny - 3) * (pageSize)].z,
