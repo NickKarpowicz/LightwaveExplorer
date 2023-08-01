@@ -22,20 +22,49 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase) {
 	std::string Spath = outputBase;
 	Spath.append("_spectrum.dat");
 	std::ifstream Sfile(Spath, std::ios::binary);
-	if (Sfile.is_open()) Sfile.read(reinterpret_cast<char*>(totalSpectrum), Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
+	if (Sfile.is_open()) Sfile.read(
+		reinterpret_cast<char*>(totalSpectrum), 
+		Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
 
 	fftw_plan fftwPlanD2Z;
 	if (is3D) {
 		const int fftwSizes[] = { (int)Nspace2, (int)Nspace, (int)Ntime };
-		fftwPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, ExtOut, NULL, 1, (int)Ngrid, (fftw_complex*)EkwOut, NULL, 1, (int)NgridC, FFTW_MEASURE);
+		fftwPlanD2Z = fftw_plan_many_dft_r2c(
+			3, 
+			fftwSizes, 
+			2, 
+			ExtOut, 
+			NULL, 
+			1, 
+			(int)Ngrid, 
+			(fftw_complex*)EkwOut, 
+			NULL, 
+			1, 
+			(int)NgridC, 
+			FFTW_MEASURE);
 	}
 	else {
 		const int fftwSizes[] = { (int)Nspace, (int)Ntime };
-		fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, ExtOut, NULL, 1, (int)Ngrid, (fftw_complex*)EkwOut, NULL, 1, (int)NgridC, FFTW_MEASURE);
+		fftwPlanD2Z = fftw_plan_many_dft_r2c(
+			2, 
+			fftwSizes, 
+			2, 
+			ExtOut, 
+			NULL, 
+			1, 
+			(int)Ngrid, 
+			(fftw_complex*)EkwOut, 
+			NULL, 
+			1, 
+			(int)NgridC, 
+			FFTW_MEASURE);
 	}
 
 	for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
-		fftw_execute_dft_r2c(fftwPlanD2Z, &ExtOut[2 * i * Ngrid], (fftw_complex*) & EkwOut[2 * i * NgridC]);
+		fftw_execute_dft_r2c(
+			fftwPlanD2Z, 
+			&ExtOut[2 * i * Ngrid], 
+			(fftw_complex*) &EkwOut[2 * i * NgridC]);
 	}
 	fftw_destroy_plan(fftwPlanD2Z);
 
@@ -76,7 +105,8 @@ int simulationParameterSet::loadReferenceSpectrum() {
 			minWavelength = minN(minWavelength, loadedWavelengths[currentRow]);
 		}
 		//rescale to frequency spacing
-		loadedIntensities[currentRow] *= loadedWavelengths[currentRow] * loadedWavelengths[currentRow];
+		loadedIntensities[currentRow] *= 
+			loadedWavelengths[currentRow] * loadedWavelengths[currentRow];
 		loadedFrequencies.push_back(c / loadedWavelengths[currentRow]);
 		currentRow++;
 	}
@@ -99,7 +129,9 @@ int simulationParameterSet::loadReferenceSpectrum() {
 			df = loadedFrequencies[j] - loadedFrequencies[j - 1];
 			fittingReference[i] =
 				(loadedIntensities[j - 1] * (loadedFrequencies[j] - currentFrequency)
-					+ loadedIntensities[j] * (currentFrequency - loadedFrequencies[j - 1])) / df; //linear interpolation
+					+ loadedIntensities[j] * (currentFrequency - loadedFrequencies[j - 1]))
+				/ df; 
+			//linear interpolation
 		}
 	}
 	return 0;
@@ -148,7 +180,8 @@ double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_
 		fs << "#SBATCH --gres=gpu:a100:" << minN(gpuCount, 4) << '\x0A';
 		fs << "#SBATCH --cpus-per-task=" << 2 * minN(gpuCount, 4) << '\x0A';
 	}
-	fs << "#SBATCH --mem=" << 8192 + (18 * sizeof(double) * Ngrid * maxN(Nsims, 1u)) / 1048576 << "M\x0A";
+	fs << "#SBATCH --mem=" << 
+		8192 + (18 * sizeof(double) * Ngrid * maxN(Nsims, 1u)) / 1048576 << "M\x0A";
 	fs << "#SBATCH --nodes=1" << '\x0A';
 	fs << "#SBATCH --ntasks-per-node=1" << '\x0A';
 	fs << "#SBATCH --time=" << (int)ceil(1.5 * timeEstimate) << ":00:00" << '\x0A';
@@ -364,13 +397,17 @@ void simulationParameterSet::setByNumber(const int64_t index, const double value
 	}
 }
 
-void simulationParameterSet::setByNumberWithMultiplier(const size_t index, const double value) {
+void simulationParameterSet::setByNumberWithMultiplier(
+	const size_t index, 
+	const double value) {
 	if (index > multipliers.size()) return;
 	setByNumber(index, value * multipliers[index]);
 }
 
 
-int simulationParameterSet::readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath) {
+int simulationParameterSet::readInputParametersFile(
+	crystalEntry* crystalDatabasePtr, 
+	const std::string filePath) {
 	std::ifstream fs(filePath);
 	std::string line;
 
@@ -618,7 +655,9 @@ void simulationBatch::configure() {
 	parameters.resize(Nsimstotal, base);
 
 	Ext = std::vector<double>(Nsimstotal * Ngrid * 2, 0.0);
-	Ekw = std::vector<std::complex<double>>(Nsimstotal * NgridC * 2, std::complex<double>(0.0, 0.0));
+	Ekw = std::vector<std::complex<double>>(
+		Nsimstotal * NgridC * 2, 
+		std::complex<double>(0.0, 0.0));
 	totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
 
 	if (parameters[0].pulse1FileType == 1 || parameters[0].pulse1FileType == 2) {
@@ -638,10 +677,14 @@ void simulationBatch::configure() {
 	}
 
 	//configure
-	double step1 = (parameters[0].batchDestination - parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex)) / (Nsims - 1);
+	double step1 = (parameters[0].batchDestination 
+		- parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex)) 
+		/ (Nsims - 1);
 	double step2 = 0.0;
 	if (Nsims2 > 0) {
-		step2 = (parameters[0].batchDestination2 - parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2)) / (Nsims2 - 1);
+		step2 = (parameters[0].batchDestination2 
+			- parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2)) 
+			/ (Nsims2 - 1);
 	}
 	
 	parameters[0].ExtOut = Ext.data();
@@ -662,7 +705,10 @@ void simulationBatch::configure() {
 			parameters[currentRow] = parameters[0];
 		}
 		if (Nsims2 > 1) {
-			parameters[currentRow].setByNumberWithMultiplier(parameters[0].batchIndex2, parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2) + i * step2);
+			parameters[currentRow].setByNumberWithMultiplier(
+				parameters[0].batchIndex2, 
+				parameters[0].getByNumberWithMultiplier(
+					parameters[0].batchIndex2) + i * step2);
 		}
 
 		for (int64_t j = 0; j < Nsims; j++) {
@@ -677,7 +723,10 @@ void simulationBatch::configure() {
 			parameters[j + currentRow].EkwOut = getEkw((j + currentRow));
 			parameters[j + currentRow].totalSpectrum = getTotalSpectrum((j + currentRow));
 			parameters[j + currentRow].isFollowerInSequence = false;
-			parameters[j + currentRow].setByNumberWithMultiplier(parameters[0].batchIndex, parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex) + j * step1);
+			parameters[j + currentRow].setByNumberWithMultiplier(
+				parameters[0].batchIndex, 
+				parameters[0].getByNumberWithMultiplier(
+					parameters[0].batchIndex) + j * step1);
 		}
 	}
 }
@@ -687,28 +736,52 @@ void simulationBatch::loadPulseFiles() {
 	//synthesized later. 1: FROG .speck format; 2: Time-domain waveform; 3: Previous LWE result
 	int frogLines = 0;
 	if (parameters[0].pulse1FileType == 1) {
-		frogLines = loadFrogSpeck(parameters[0].field1FilePath, loadedField1.data(), parameters[0].Ntime, parameters[0].fStep, 0.0);
+		frogLines = loadFrogSpeck(
+			parameters[0].field1FilePath, 
+			loadedField1.data(), 
+			parameters[0].Ntime, 
+			parameters[0].fStep, 
+			0.0);
 		parameters[0].field1IsAllocated = (frogLines > 1);
 	}
 	if (parameters[0].pulse2FileType == 1) {
-		frogLines = loadFrogSpeck(parameters[0].field2FilePath, loadedField2.data(), parameters[0].Ntime, parameters[0].fStep, 0.0);
+		frogLines = loadFrogSpeck(
+			parameters[0].field2FilePath, 
+			loadedField2.data(), 
+			parameters[0].Ntime, 
+			parameters[0].fStep, 
+			0.0);
 		parameters[0].field1IsAllocated = (frogLines > 1);
 	}
 
 	if (parameters[0].pulse1FileType == 2) {
-		frogLines = loadWaveformFile(parameters[0].field1FilePath, loadedField1.data(), parameters[0].Ntime, parameters[0].fStep);
+		frogLines = loadWaveformFile(
+			parameters[0].field1FilePath, 
+			loadedField1.data(), 
+			parameters[0].Ntime, 
+			parameters[0].fStep);
 		parameters[0].field1IsAllocated = (frogLines > 1);
 	}
 	if (parameters[0].pulse2FileType == 2) {
-		frogLines = loadWaveformFile(parameters[0].field2FilePath, loadedField2.data(), parameters[0].Ntime, parameters[0].fStep);
+		frogLines = loadWaveformFile(
+			parameters[0].field2FilePath, 
+			loadedField2.data(), 
+			parameters[0].Ntime, 
+			parameters[0].fStep);
 		parameters[0].field2IsAllocated = (frogLines > 1);
 	}
 
 	if (parameters[0].pulse1FileType == 3) {
-		parameters[0].field1IsAllocated = loadSavedGridFile(parameters[0].field1FilePath, loadedFullGrid1, parameters[0].Ngrid);
+		parameters[0].field1IsAllocated = loadSavedGridFile(
+			parameters[0].field1FilePath, 
+			loadedFullGrid1, 
+			parameters[0].Ngrid);
 	}
 	if (parameters[0].pulse2FileType == 3) {
-		parameters[0].field2IsAllocated = loadSavedGridFile(parameters[0].field2FilePath, loadedFullGrid2, parameters[0].Ngrid);
+		parameters[0].field2IsAllocated = loadSavedGridFile(
+			parameters[0].field2FilePath, 
+			loadedFullGrid2, 
+			parameters[0].Ngrid);
 	}
 }
 
@@ -718,12 +791,16 @@ int simulationBatch::saveDataSet() {
 	std::string Epath=parameters[0].outputBasePath;
 	Epath.append("_Ext.dat");
 	std::ofstream Efile(Epath, std::ios::binary);
-	if (Efile.is_open()) Efile.write(reinterpret_cast<char*>(Ext.data()), Ext.size() * sizeof(double));
+	if (Efile.is_open()) Efile.write(
+		reinterpret_cast<char*>(Ext.data()), 
+		Ext.size() * sizeof(double));
 
 	std::string Spath=parameters[0].outputBasePath;
 	Spath.append("_spectrum.dat");
 	std::ofstream Sfile(Spath, std::ios::binary);
-	if (Sfile.is_open()) Sfile.write(reinterpret_cast<char*>(totalSpectrum.data()), totalSpectrum.size() * sizeof(double));
+	if (Sfile.is_open()) Sfile.write(
+		reinterpret_cast<char*>(totalSpectrum.data()), 
+		totalSpectrum.size() * sizeof(double));
 	
 	return 0;
 }
@@ -746,7 +823,10 @@ int simulationParameterSet::readFittingString() {
 	fittingMaxIterations = maxIterations;
 
 	while (ss.good()) {
-		ss >> fittingArray[fittingCount] >> fittingArray[fittingCount + 1] >> fittingArray[fittingCount + 2];
+		ss >> 
+			fittingArray[fittingCount] >> 
+			fittingArray[fittingCount + 1] >> 
+			fittingArray[fittingCount + 2];
 		if (ss.good()) fittingCount += 3;
 		ss.ignore(fittingString.length(), ';');
 	}
@@ -762,7 +842,11 @@ int simulationParameterSet::readFittingString() {
 	return 0;
 }
 
-int removeCharacterFromStringSkippingChars(std::string& s, char removedChar, char startChar, char endChar) {
+int removeCharacterFromStringSkippingChars(
+	std::string& s, 
+	char removedChar, 
+	char startChar, 
+	char endChar) {
 	bool removing = true;
 	for (size_t i = 0; i < s.length(); ++i) {
 		if (s[i] == removedChar && removing) {
@@ -787,7 +871,13 @@ void stripLineBreaks(std::string& s) {
 	removeCharacterFromString(s, '\n');
 }
 
-int interpretParameters(const std::string& cc, const int n, const double *iBlock, const double *vBlock, double *parameters, bool* defaultMask){
+int interpretParameters(
+	const std::string& cc, 
+	const int n, 
+	const double *iBlock, 
+	const double *vBlock, 
+	double *parameters, 
+	bool* defaultMask){
 	std::string ccSegment = cc.substr(cc.find_first_of('(')+1, std::string::npos);
 
 	std::stringstream ss(ccSegment);
@@ -832,7 +922,10 @@ void applyOp(const char op, double* result, const double* readout) {
 	}
 }
 
-double parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock) {
+double parameterStringToDouble(
+	const std::string& ss, 
+	const double* iBlock, 
+	const double* vBlock) {
 	auto nextInt = [&](const std::string& iStr, int location) {
 		std::stringstream s(iStr.substr(location));
 		int a;
@@ -951,7 +1044,12 @@ double cModulusSquared(const std::complex<double>& x) {
 	return x.real()*x.real() + x.imag()*x.imag();
 }
 
-int loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel) {
+int loadFrogSpeck(
+	const std::string& frogFilePath, 
+	std::complex<double>* Egrid, 
+	const int64_t Ntime, 
+	const double fStep, 
+	const double gateLevel) {
 	std::string line;
 	std::ifstream fs(frogFilePath);
 	if (fs.fail()) return -1;
@@ -959,7 +1057,7 @@ int loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, 
 	double wavelength, R, phi, complexX, complexY, f, f0, f1;
 	double fmax{};
 
-	constexpr double c = 1e9 * lightC<double>(); //for conversion of wavelength in nm to frequency
+	constexpr double cNanometers = 1e9 * lightC<double>(); 
 	double df{};
 	double fmin{};
 	int currentRow{};
@@ -976,11 +1074,12 @@ int loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, 
 
 		//get the complex field from the data
 		E.push_back(std::complex<double>(complexX, complexY));
-		//keep track of the frequency step of the grid (running sum, divide by number of rows at end to get average)
-		if (currentRow > 0) df += c / wavelength - fmax;
+		//keep track of the frequency step of the grid 
+		//(running sum, divide by number of rows at end to get average)
+		if (currentRow > 0) df += cNanometers / wavelength - fmax;
 
 		//keep track of the highest frequency in the data
-		fmax = c / wavelength;
+		fmax = cNanometers / wavelength;
 
 		//store the lowest frequency in the data
 		if (currentRow == 0) fmin = fmax;
@@ -1018,13 +1117,18 @@ int loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, 
 	return currentRow;
 }
 
-int loadWaveformFile(const std::string& filePath, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep) {
+int loadWaveformFile(
+	const std::string& filePath, 
+	std::complex<double>* outputGrid,
+	const int64_t Ntime, 
+	const double fStep) {
 	std::vector<double> Ein;
 	Ein.reserve(8192);
 	std::ifstream fs(filePath);
 	std::string line;
 
-	//read the waveform file: assumption is that the first column is time and second is the waveform.
+	//read the waveform file: assumption is that the first column 
+	//is time and second is the waveform.
 	double dataT;
 	double dataE;
 	double dataDeltaT;
@@ -1052,13 +1156,24 @@ int loadWaveformFile(const std::string& filePath, std::complex<double>* outputGr
 
 	//FFT the waveform onto a frequency grid
 	std::vector<std::complex<double>> fftOfEin(NfreqData + 1, 0.0);
-	fftw_plan fftwPlanD2Z = fftw_plan_dft_r2c_1d(lineCount, Ein.data(), reinterpret_cast<fftw_complex*>(fftOfEin.data()), FFTW_ESTIMATE);
-	fftw_execute_dft_r2c(fftwPlanD2Z, Ein.data(), reinterpret_cast<fftw_complex*>(fftOfEin.data()));
+	fftw_plan fftwPlanD2Z = fftw_plan_dft_r2c_1d(
+		lineCount, Ein.data(), 
+		reinterpret_cast<fftw_complex*>(fftOfEin.data()), 
+		FFTW_ESTIMATE);
+	fftw_execute_dft_r2c(
+		fftwPlanD2Z, 
+		Ein.data(), 
+		reinterpret_cast<fftw_complex*>(fftOfEin.data()));
 	fftw_destroy_plan(fftwPlanD2Z);
 
-	//apply a time shift so that the frequency-domain solution oscillates slowly (will be undone after interpolation)
-	const std::complex<double> timeShift = std::complex<double>(0.0, 1.0) * twoPi<double>() * df * static_cast<double>(maxLoc) * dataDeltaT;
-	const std::complex<double> timeShiftResult = std::complex<double>(0.0, -1.0) * twoPi<double>() * static_cast<double>(maxLoc - lineCount/2) * dataDeltaT;
+	//apply a time shift so that the frequency-domain solution 
+	//oscillates slowly (will be undone after interpolation)
+	const std::complex<double> timeShift = 
+		std::complex<double>(0.0, 1.0) * twoPi<double>() 
+		* df * static_cast<double>(maxLoc) * dataDeltaT;
+	const std::complex<double> timeShiftResult = 
+		std::complex<double>(0.0, -1.0) * twoPi<double>() 
+		* static_cast<double>(maxLoc - lineCount/2) * dataDeltaT;
 	for (int i = 0; i < NfreqData; i++) {
 		fftOfEin[i] *= std::exp(timeShift * static_cast<double>(i));
 	}
@@ -1076,7 +1191,8 @@ int loadWaveformFile(const std::string& filePath, std::complex<double>* outputGr
 		else {
 			double f0 = k0 * df;
 			double f1 = k1 * df;
-			outputGrid[i] = (fftOfEin[k0] * (f1 - f) + fftOfEin[k1] * (f - f0)) / df; //linear interpolation
+			//linear interpolation
+			outputGrid[i] = (fftOfEin[k0] * (f1 - f) + fftOfEin[k1] * (f - f0)) / df; 
 			outputGrid[i] *= std::exp(timeShiftResult * f);
 		}
 	}
@@ -1084,17 +1200,26 @@ int loadWaveformFile(const std::string& filePath, std::complex<double>* outputGr
 	return lineCount;
 }
 
-int loadSavedGridFile(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid) {
+int loadSavedGridFile(
+	const std::string& filePath, 
+	std::vector<double>& outputGrid, 
+	int64_t Ngrid) {
 	std::ifstream Efile(filePath, std::ios::binary);
 	outputGrid.resize(Ngrid);
 	if (Efile.is_open()) {
-		Efile.read(reinterpret_cast<char*>(outputGrid.data()), 2 * Ngrid * sizeof(double));
+		Efile.read(
+			reinterpret_cast<char*>(outputGrid.data()), 
+			2 * Ngrid * sizeof(double));
 		return 0;
 	}
 	else return 1;
 }
 
-int loadSavedGridFileMultiple(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid, int64_t Nsims) {
+int loadSavedGridFileMultiple(
+	const std::string& filePath, 
+	std::vector<double>& outputGrid, 
+	int64_t Ngrid, 
+	int64_t Nsims) {
 	outputGrid.resize(Ngrid * Nsims);
 	std::ifstream Efile(filePath, std::ios::binary);
 	if (Efile.is_open()) {
