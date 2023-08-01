@@ -10,7 +10,8 @@
 #include <cmath>
 #include <cstring>
 
-static const int LWEThreadCount = maxN(static_cast<int>(std::thread::hardware_concurrency() / 2), 2);
+static const int LWEThreadCount = 
+	maxN(static_cast<int>(std::thread::hardware_concurrency() / 2), 2);
 #if defined __APPLE__ || defined __linux__
 template<typename deviceFP>
 [[maybe_unused]] void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
@@ -80,17 +81,33 @@ namespace deviceLibCPUFP32{
 	}
 };
 
-[[maybe_unused]] static std::complex<double> operator+(const float f, const std::complex<double> x) { return std::complex<double>(x.real() + f, x.imag()); }
-
-[[maybe_unused]] static std::complex<double> operator+(const std::complex<double> x, const float f) { return std::complex<double>(x.real() + f, x.imag()); }
-
-[[maybe_unused]] static std::complex<double> operator-(const std::complex<double> x, const float f) { return std::complex<double>(x.real() - f, x.imag()); }
-
-[[maybe_unused]] static std::complex<double> operator*(const float f, const std::complex<double> x) { return std::complex<double>(x.real() * f, x.imag() * f); }
-
-[[maybe_unused]] static std::complex<double> operator*(const std::complex<double> x, const float f) { return std::complex<double>(x.real() * f, x.imag() * f); }
-
-[[maybe_unused]] static std::complex<double> operator/(const std::complex<double> x, const float f) { return std::complex<double>(x.real() / f, x.imag() / f); }
+[[maybe_unused]] static std::complex<double> operator+(
+	const float f, 
+	const std::complex<double> x) { 
+	return std::complex<double>(x.real() + f, x.imag()); 
+}
+[[maybe_unused]] static std::complex<double> operator+(
+	const std::complex<double> x, 
+	const float f) { 
+	return std::complex<double>(x.real() + f, x.imag()); 
+}
+[[maybe_unused]] static std::complex<double> operator-(
+	const std::complex<double> x, 
+	const float f) { 
+	return std::complex<double>(x.real() - f, x.imag()); }
+[[maybe_unused]] static std::complex<double> operator*(
+	const float f, 
+	const std::complex<double> x) { 
+	return std::complex<double>(x.real() * f, x.imag() * f); 
+}
+[[maybe_unused]] static std::complex<double> operator*(
+	const std::complex<double> x, const float f) { 
+	return std::complex<double>(x.real() * f, x.imag() * f); 
+}
+[[maybe_unused]] static std::complex<double> operator/(
+	const std::complex<double> x, const float f) { 
+	return std::complex<double>(x.real() / f, x.imag() / f); 
+}
 
 [[maybe_unused]] static double j0Device(double x) {
 	if (x < 8.0) {
@@ -202,35 +219,45 @@ public:
 	}
 
 	template<typename T>
-	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
+	void deviceLaunch(
+		const unsigned int Nblock, 
+		const unsigned int Nthread, 
+		const T& functor) const {
 #pragma omp parallel for num_threads(LWEThreadCount)
 		for (int i = 0; i < static_cast<int>(Nblock); i++) {
 			const int64_t offset = i * static_cast<int64_t>(Nthread);
 			for(int64_t j = offset; j < static_cast<int64_t>(offset+Nthread); functor(j++)){}
 		}
 	}
-
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize){
 		*ptr = calloc(N, elementSize);
 		return static_cast<int>(*ptr == nullptr);
 	}
-
 	void deviceMemset(void* ptr, int value, size_t count){
 		memset(ptr, value, count);
 	}
-
 	template <typename T>
-	void deviceMemcpy(T* dst, const T* src, size_t count, copyType kind) {
+	void deviceMemcpy(
+		T* dst, 
+		const T* src, 
+		size_t count, 
+		copyType kind) {
 		std::memcpy(dst, src, count);
 	}
-
-	void deviceMemcpy(double* dst, const float* src, size_t count, copyType kind) {
+	void deviceMemcpy(
+		double* dst, 
+		const float* src, 
+		size_t count, 
+		copyType kind) {
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			dst[i] = static_cast<double>(src[i]);
 		}
 	}
-
-	void deviceMemcpy(std::complex<double>* dst, const std::complex<float>* src, size_t count, copyType kind) {
+	void deviceMemcpy(
+		std::complex<double>* dst, 
+		const std::complex<float>* src, 
+		size_t count, 
+		copyType kind) {
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<double>(
 				static_cast<double>(src[i].real()), 
@@ -238,7 +265,11 @@ public:
 		}
 	}
 
-	void deviceMemcpy(std::complex<float>* dst, const std::complex<double>* src, size_t count, copyType kind) {
+	void deviceMemcpy(
+		std::complex<float>* dst, 
+		const std::complex<double>* src, 
+		size_t count, 
+		copyType kind) {
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<float>(
 				static_cast<float>(src[i].real()), 
@@ -246,7 +277,11 @@ public:
 		}
 	}
 
-	void deviceMemcpy(float* dst, const double* src, size_t count, copyType kind) {
+	void deviceMemcpy(
+		float* dst, 
+		const double* src, 
+		size_t count, 
+		copyType kind) {
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			dst[i] = static_cast<float>(src[i]);
 		}
@@ -303,21 +338,103 @@ public:
 			std::vector<double> setupWorkD((*s).Ngrid * (2 + 2 * (*s).isCylindric));
 			std::vector<std::complex<double>> setupWorkC((*s).NgridC * (2 + 2 * (*s).isCylindric));
 			const int fftw1[1] = { (int)(*s).Ntime };
-			fftPlan1DD2Z = fftw_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD.data(), fftw1, 1, (int)(*s).Ntime, (fftw_complex*)setupWorkC.data(), fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
-			fftPlan1DZ2D = fftw_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftw_complex*)setupWorkC.data(), fftw1, 1, (int)(*s).Nfreq, setupWorkD.data(), fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
+			fftPlan1DD2Z = fftw_plan_many_dft_r2c(
+				1, 
+				fftw1, 
+				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
+				setupWorkD.data(), 
+				fftw1, 
+				1, 
+				(int)(*s).Ntime, (fftw_complex*)setupWorkC.data(), 
+				fftw1, 
+				1, 
+				(int)(*s).Nfreq, 
+				FFTW_ESTIMATE);
+			fftPlan1DZ2D = fftw_plan_many_dft_c2r(
+				1, 
+				fftw1, 
+				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
+				(fftw_complex*)setupWorkC.data(), 
+				fftw1, 
+				1, 
+				(int)(*s).Nfreq, 
+				setupWorkD.data(), 
+				fftw1, 
+				1, 
+				(int)(*s).Ntime, 
+				FFTW_ESTIMATE);
 			if ((*s).is3D) {
 				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-				fftPlanZ2D = fftw_plan_many_dft_c2r(3, fftwSizes, 2, (fftw_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+				fftPlanD2Z = fftw_plan_many_dft_r2c(
+					3, 
+					fftwSizes, 
+					2, 
+					setupWorkD.data(), 
+					NULL, 
+					1, 
+					(int)(*s).Ngrid, 
+					(fftw_complex*)setupWorkC.data(), 
+					NULL, 1, 
+					(int)(*s).NgridC, 
+					FFTW_MEASURE);
+				fftPlanZ2D = fftw_plan_many_dft_c2r(
+					3, 
+					fftwSizes, 
+					2, 
+					(fftw_complex*)setupWorkC.data(), 
+					NULL, 
+					1, 
+					(int)(*s).NgridC, 
+					setupWorkD.data(), 
+					NULL, 
+					1, 
+					(int)(*s).Ngrid, 
+					FFTW_MEASURE);
 			}
 			else {
 				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, (fftw_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-				fftPlanZ2D = fftw_plan_many_dft_c2r(2, fftwSizes, 2, (fftw_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+				fftPlanD2Z = fftw_plan_many_dft_r2c(
+					2, 
+					fftwSizes, 
+					2, 
+					setupWorkD.data(), 
+					NULL, 
+					1, 
+					(int)(*s).Ngrid, 
+					(fftw_complex*)setupWorkC.data(), 
+					NULL, 
+					1, 
+					(int)(*s).NgridC, 
+					FFTW_MEASURE);
+				fftPlanZ2D = fftw_plan_many_dft_c2r(
+					2, 
+					fftwSizes, 
+					2, 
+					(fftw_complex*)setupWorkC.data(), 
+					NULL, 
+					1, 
+					(int)(*s).NgridC, 
+					setupWorkD.data(), 
+					NULL, 
+					1, 
+					(int)(*s).Ngrid, 
+					FFTW_MEASURE);
 
 				if ((*s).isCylindric) {
 					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
-					doublePolfftPlan = fftw_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD.data(), NULL, 1, 2 * (int)(*s).Ngrid, (fftw_complex*)setupWorkC.data(), NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
+					doublePolfftPlan = fftw_plan_many_dft_r2c(
+						2, 
+						fftwSizesCyl, 
+						2 + 2 * (*s).hasPlasma, 
+						setupWorkD.data(), 
+						NULL, 
+						1, 
+						2 * (int)(*s).Ngrid, 
+						(fftw_complex*)setupWorkC.data(), 
+						NULL, 
+						1, 
+						2 * (int)(*s).NgridC, 
+						FFTW_MEASURE);
 				}
 			}
 		}
@@ -325,21 +442,105 @@ public:
 			std::vector<float> setupWorkD((*s).Ngrid * (2 + 2 * (*s).isCylindric));
 			std::vector<std::complex<float>> setupWorkC((*s).NgridC * (2 + 2 * (*s).isCylindric));
 			const int fftw1[1] = { (int)(*s).Ntime };
-			fftPlan1DD2Z32 = fftwf_plan_many_dft_r2c(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, setupWorkD.data(), fftw1, 1, (int)(*s).Ntime, (fftwf_complex*)setupWorkC.data(), fftw1, 1, (int)(*s).Nfreq, FFTW_ESTIMATE);
-			fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(1, fftw1, (int)(*s).Nspace * (int)(*s).Nspace2 * 2, (fftwf_complex*)setupWorkC.data(), fftw1, 1, (int)(*s).Nfreq, setupWorkD.data(), fftw1, 1, (int)(*s).Ntime, FFTW_ESTIMATE);
+			fftPlan1DD2Z32 = fftwf_plan_many_dft_r2c(
+				1, 
+				fftw1, 
+				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
+				setupWorkD.data(), 
+				fftw1, 
+				1, 
+				(int)(*s).Ntime, 
+				(fftwf_complex*)setupWorkC.data(), 
+				fftw1, 
+				1, 
+				(int)(*s).Nfreq, 
+				FFTW_ESTIMATE);
+			fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(
+				1, 
+				fftw1, 
+				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
+				(fftwf_complex*)setupWorkC.data(), 
+				fftw1, 
+				1, 
+				(int)(*s).Nfreq, 
+				setupWorkD.data(), 
+				fftw1, 
+				1, 
+				(int)(*s).Ntime, 
+				FFTW_ESTIMATE);
 			if ((*s).is3D) {
 				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(3, fftwSizes, 2, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, (fftwf_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(3, fftwSizes, 2, (fftwf_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
+					3, 
+					fftwSizes, 
+					2, 
+					setupWorkD.data(), 
+					NULL, 
+					1, 
+					(int)(*s).Ngrid, 
+					(fftwf_complex*)setupWorkC.data(), 
+					NULL, 
+					1, 
+					(int)(*s).NgridC, 
+					FFTW_MEASURE);
+				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(
+					3, 
+					fftwSizes, 
+					2, 
+					(fftwf_complex*)setupWorkC.data(), 
+					NULL, 
+					1, 
+					(int)(*s).NgridC, 
+					setupWorkD.data(), 
+					NULL, 
+					1, 
+					(int)(*s).Ngrid, 
+					FFTW_MEASURE);
 			}
 			else {
 				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(2, fftwSizes, 2, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, (fftwf_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, FFTW_MEASURE);
-				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(2, fftwSizes, 2, (fftwf_complex*)setupWorkC.data(), NULL, 1, (int)(*s).NgridC, setupWorkD.data(), NULL, 1, (int)(*s).Ngrid, FFTW_MEASURE);
+				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
+					2, 
+					fftwSizes, 
+					2, 
+					setupWorkD.data(), 
+					NULL, 
+					1, 
+					(int)(*s).Ngrid, 
+					(fftwf_complex*)setupWorkC.data(), 
+					NULL, 
+					1, 
+					(int)(*s).NgridC, 
+					FFTW_MEASURE);
+				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(
+					2, 
+					fftwSizes, 
+					2, 
+					(fftwf_complex*)setupWorkC.data(), 
+					NULL, 
+					1, 
+					(int)(*s).NgridC, 
+					setupWorkD.data(), 
+					NULL, 
+					1, 
+					(int)(*s).Ngrid, 
+					FFTW_MEASURE);
 
 				if ((*s).isCylindric) {
 					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
-					doublePolfftPlan32 = fftwf_plan_many_dft_r2c(2, fftwSizesCyl, 2 + 2 * (*s).hasPlasma, setupWorkD.data(), NULL, 1, 2 * (int)(*s).Ngrid, (fftwf_complex*)setupWorkC.data(), NULL, 1, 2 * (int)(*s).NgridC, FFTW_MEASURE);
+					doublePolfftPlan32 = fftwf_plan_many_dft_r2c(
+						2, 
+						fftwSizesCyl, 
+						2 + 2 * (*s).hasPlasma, 
+						setupWorkD.data(), 
+						NULL, 
+						1, 
+						2 * (int)(*s).Ngrid, 
+						(fftwf_complex*)setupWorkC.data(), 
+						NULL, 
+						1, 
+						2 * (int)(*s).NgridC, 
+						FFTW_MEASURE);
 				}
 			}
 		}
@@ -385,7 +586,9 @@ public:
 		}
 		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
 		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
-		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
+		deviceMemset(
+			(*s).workspace1, 0, 
+			beamExpansionFactor * 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
 		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
 		deviceMemset((*s).gridPropagationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
 		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(std::complex<deviceFP>));
@@ -395,7 +598,8 @@ public:
 		//cylindric sym grids
 		if ((*s).isCylindric) {
 			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(std::complex<deviceFP>));
-			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(std::complex<deviceFP>));
+			deviceMemset((*s).gridRadialLaplacian1, 0, 
+				2 * beamExpansionFactor * (*s).Ngrid * sizeof(std::complex<deviceFP>));
 		}
 
 		//smaller helper grids
@@ -435,26 +639,41 @@ public:
 		// currently 8 large grids, meaning memory use is approximately
 		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
 		// plus a little bit for additional constants/workspaces/etc
-		memErrors += deviceCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
-		memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
-		memErrors += deviceCalloc((void**)&(*s).k1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)
+			&(*s).k1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(std::complex<deviceFP>));
-			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(std::complex<deviceFP>));
+			memErrors += deviceCalloc((void**)
+				&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(std::complex<deviceFP>));
+			memErrors += deviceCalloc((void**)
+				&(*s).gridRadialLaplacian1, 
+				2 * beamExpansionFactor * (*s).Ngrid, sizeof(std::complex<deviceFP>));
 		}
 
 		//smaller helper grids
-		memErrors += deviceCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<deviceFP>));
-		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).expGammaT, 2 * (*s).Ntime, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(std::complex<deviceFP>));
+		memErrors += deviceCalloc((void**)
+			&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
 		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);

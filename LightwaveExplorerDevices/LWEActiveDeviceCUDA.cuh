@@ -13,16 +13,40 @@ __device__ static thrust::complex<double> operator/(const double& a, const thrus
 	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
 	return thrust::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
 }
-__device__ static thrust::complex<double> operator/(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() / b, a.imag() / b); }
-
-__device__ static thrust::complex<double> operator*(const double& b, const thrust::complex<double>& a) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
-__device__ static thrust::complex<double> operator*(thrust::complex<double> a, double b) { return thrust::complex<double>(a.real() * b, a.imag() * b); }
-
-__device__ static thrust::complex<double> operator+(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(b.real() + a, b.imag()); }
-__device__ static thrust::complex<double> operator+(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() + b, a.imag()); }
-
-__device__ static thrust::complex<double> operator-(const double& a, const thrust::complex<double>& b) { return thrust::complex<double>(a - b.real(), -b.imag()); }
-__device__ static thrust::complex<double> operator-(const thrust::complex<double>& a, const double& b) { return thrust::complex<double>(a.real() - b, a.imag()); }
+__device__ static thrust::complex<double> operator/(
+	const thrust::complex<double>& a, 
+	const double& b) { 
+	return thrust::complex<double>(a.real() / b, a.imag() / b); 
+}
+__device__ static thrust::complex<double> operator*(
+	const double& b, 
+	const thrust::complex<double>& a) { 
+	return thrust::complex<double>(a.real() * b, a.imag() * b); }
+__device__ static thrust::complex<double> operator*(
+	thrust::complex<double> a, 
+	double b) { 
+	return thrust::complex<double>(a.real() * b, a.imag() * b); 
+}
+__device__ static thrust::complex<double> operator+(
+	const double& a, 
+	const thrust::complex<double>& b) { 
+	return thrust::complex<double>(b.real() + a, b.imag()); 
+}
+__device__ static thrust::complex<double> operator+(
+	const thrust::complex<double>& a, 
+	const double& b) { 
+	return thrust::complex<double>(a.real() + b, a.imag()); 
+}
+__device__ static thrust::complex<double> operator-(
+	const double& a, 
+	const thrust::complex<double>& b) { 
+	return thrust::complex<double>(a - b.real(), -b.imag()); 
+}
+__device__ static thrust::complex<double> operator-(
+	const thrust::complex<double>& a, 
+	const double& b) { 
+	return thrust::complex<double>(a.real() - b, a.imag()); 
+}
 
 namespace deviceLib = thrust;
 #define deviceFPLib
@@ -142,7 +166,12 @@ private:
 		nvmlInit_v2();
 		nvmlDeviceGetHandleByIndex_v2((*sCPU).assignedGPU, &nvmlDevice);
 		nvmlDeviceGetMemoryInfo(nvmlDevice, &nvmlMemoryInfo);
-		size_t memoryEstimate = sizeof(deviceFP) * ((*s).Ngrid * 2 * 2 + 2 * (*s).NgridC * 6 * 2 + 2 * (*s).isCylindric * 5 * 2 + 2 * (*s).Ntime + 2 * (*s).Nfreq + 81 + 65536);
+		size_t memoryEstimate = sizeof(deviceFP) * 
+			((*s).Ngrid * 2 * 2 
+				+ 2 * (*s).NgridC * 6 * 2 
+				+ 2 * (*s).isCylindric * 5 * 2 
+				+ 2 * (*s).Ntime 
+				+ 2 * (*s).Nfreq + 81 + 65536);
 		nvmlShutdown();
 		if (nvmlMemoryInfo.free < memoryEstimate) {
 			(*sCPU).memoryError = -1;
@@ -187,7 +216,14 @@ public:
 		cudaStreamDestroy(stream);
 	}
 
-	void startMaxwell(simulationParameterSet* sCPU, deviceFP lengthZ, deviceFP startZ, deviceFP endZ, deviceFP observationPlane, int64_t timeStepDivisor, int64_t zStepDivisor) {
+	void startMaxwell(
+		simulationParameterSet* sCPU, 
+		deviceFP lengthZ, 
+		deviceFP startZ, 
+		deviceFP endZ, 
+		deviceFP observationPlane, 
+		int64_t timeStepDivisor, 
+		int64_t zStepDivisor) {
 		fftDestroy();
 		deallocateSet();
 
@@ -203,7 +239,10 @@ public:
 	}
 
 	template <typename T>
-	void deviceLaunch (const unsigned int Nblock, const unsigned int Nthread, const T& functor) const {
+	void deviceLaunch (
+		const unsigned int Nblock, 
+		const unsigned int Nthread, 
+		const T& functor) const {
 		deviceLaunchFunctorWrapper<<<Nblock, Nthread, 0, stream>>>(functor);
 	}
 
@@ -217,11 +256,18 @@ public:
 	void deviceMemset(void* ptr, int value, size_t count) {
 		cudaMemset(ptr, value, count);
 	}
-
-	void deviceMemcpy(void* dst, const void* src, size_t count, copyType kind) {
+	void deviceMemcpy(
+		void* dst, 
+		const void* src, 
+		size_t count, 
+		copyType kind) {
 		cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 	}
-	void deviceMemcpy(double* dst, const float* src, size_t count, copyType kind) {
+	void deviceMemcpy(
+		double* dst, 
+		const float* src, 
+		size_t count, 
+		copyType kind) {
 		float* copyBuffer = new float[count / sizeof(double)];
 		cudaMemcpy(copyBuffer, src, count/2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		for (size_t i = 0; i < count / sizeof(double); i++) {
@@ -229,32 +275,56 @@ public:
 		}
 		delete[] copyBuffer;
 	}
-
-	void deviceMemcpy(std::complex<double>* dst, const thrust::complex<float>* src, size_t count, copyType kind) {
-		thrust::complex<float>* copyBuffer = new thrust::complex<float>[count / sizeof(std::complex<double>)];
-		cudaMemcpy(copyBuffer, src, count/2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
+	void deviceMemcpy(
+		std::complex<double>* dst, 
+		const thrust::complex<float>* src, 
+		size_t count, 
+		copyType kind) {
+		thrust::complex<float>* copyBuffer = 
+			new thrust::complex<float>[count / sizeof(std::complex<double>)];
+		cudaMemcpy(
+			copyBuffer, 
+			src, 
+			count/2, 
+			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
 		}
 		delete[] copyBuffer;
 	}
 
-	void deviceMemcpy(thrust::complex<float>* dst, const std::complex<double>* src, size_t count, copyType kind) {
-		thrust::complex<float>* copyBuffer = new thrust::complex<float>[count / sizeof(std::complex<double>)];
+	void deviceMemcpy(
+		thrust::complex<float>* dst, 
+		const std::complex<double>* src, 
+		size_t count, 
+		copyType kind) {
+		thrust::complex<float>* copyBuffer = 
+			new thrust::complex<float>[count / sizeof(std::complex<double>)];
 		
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			copyBuffer[i] = thrust::complex<float>((float)src[i].real(), (float)src[i].imag());
+			copyBuffer[i] = 
+				thrust::complex<float>((float)src[i].real(), (float)src[i].imag());
 		}
-		cudaMemcpy(dst, copyBuffer, count / 2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
+		cudaMemcpy(
+			dst, 
+			copyBuffer, 
+			count / 2, 
+			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		delete[] copyBuffer;
 	}
-
-	void deviceMemcpy(float* dst, const double* src, size_t count, copyType kind) {
+	void deviceMemcpy(
+		float* dst, 
+		const double* src, 
+		size_t count, 
+		copyType kind) {
 		float* copyBuffer = new float[count / sizeof(double)];
 		for (size_t i = 0; i < count / sizeof(double); i++) {
 			copyBuffer[i] = (float)src[i];
 		}
-		cudaMemcpy(dst, copyBuffer, count / 2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
+		cudaMemcpy(dst, 
+			copyBuffer, 
+			count / 2, 
+			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		delete[] copyBuffer;
 	}
 
@@ -299,8 +369,12 @@ public:
 				isCylindric = 1;
 				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
 				cufftCreate(&doublePolfftPlan);
-				cufftGetSizeMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_fwd, 2 + 2 * (*s).hasPlasma, &workSize);
-				cufftMakePlanMany(doublePolfftPlan, 2, cufftSizes2, NULL, 0, 0, 0, 0, 0, CUFFT_fwd, 2 + 2 * (*s).hasPlasma, &workSize);
+				cufftGetSizeMany(
+					doublePolfftPlan, 2, cufftSizes2, NULL, 
+					0, 0, 0, 0, 0, CUFFT_fwd, 2 + 2 * (*s).hasPlasma, &workSize);
+				cufftMakePlanMany(
+					doublePolfftPlan, 2, cufftSizes2, NULL, 
+					0, 0, 0, 0, 0, CUFFT_fwd, 2 + 2 * (*s).hasPlasma, &workSize);
 				cufftSetStream(doublePolfftPlan, stream);
 			}
 		}
@@ -388,7 +462,8 @@ public:
 		//cylindric sym grids
 		if ((*s).isCylindric) {
 			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(deviceComplex));
-			deviceMemset((*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(deviceComplex));
+			deviceMemset(
+				(*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(deviceComplex));
 		}
 
 		//smaller helper grids
@@ -406,7 +481,10 @@ public:
 		delete[] expGammaTCPU;
 
 		sCPU->finishConfiguration(s);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
+		deviceMemcpy(dParamsDevice, 
+			s, 
+			sizeof(deviceParameterSet<deviceFP, deviceComplex>), 
+			copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
@@ -435,33 +513,51 @@ public:
 		// currently 8 large grids, meaning memory use is approximately
 		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
 		// plus a little bit for additional constants/workspaces/etc
-		memErrors += deviceCalloc((void**)&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)&(*s).k1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)
+			&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)
+			&(*s).k1, 2 * (*s).NgridC, sizeof(deviceComplex));
 
 		//cylindric sym grids
 		if ((*s).isCylindric) {
-			memErrors += deviceCalloc((void**)&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(deviceComplex));
-			memErrors += deviceCalloc((void**)&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(deviceComplex));
+			memErrors += deviceCalloc((void**)
+				&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(deviceComplex));
+			memErrors += deviceCalloc((void**)
+				&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(deviceComplex));
 		}
 
 		//smaller helper grids
-		memErrors += deviceCalloc((void**)&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
-		memErrors += deviceCalloc((void**)&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
+		memErrors += deviceCalloc((void**)
+			&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(deviceComplex));
+		memErrors += deviceCalloc((void**)
+			&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		memErrors += deviceCalloc((void**)
+			&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
 
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
 		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
+		deviceMemcpy(
+			(*s).expGammaT, 
+			expGammaTCPU, 
+			2 * sizeof(double) * (*s).Ntime, 
+			copyType::ToDevice);
 		delete[] expGammaTCPU;
 
 		(*sCPU).memoryError = memErrors;
@@ -469,7 +565,11 @@ public:
 			return memErrors;
 		}
 		sCPU->finishConfiguration(s);
-		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
+		deviceMemcpy(
+			dParamsDevice, 
+			s, 
+			sizeof(deviceParameterSet<deviceFP, deviceComplex>), 
+			copyType::ToDevice);
 		return 0;
 	}
 
