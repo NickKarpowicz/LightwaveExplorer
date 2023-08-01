@@ -7,8 +7,8 @@ simulationBatch theSim;
 crystalDatabase theDatabase;
 
 //Counter atomics
-std::atomic_uint32_t progressCounter;
-std::atomic_uint32_t totalSteps;
+std::atomic_uint32_t progressCounter{};
+std::atomic_uint32_t totalSteps{};
 
 //Main class for controlling the interface
 class mainGui {
