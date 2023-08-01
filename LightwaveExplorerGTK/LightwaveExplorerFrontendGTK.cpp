@@ -2034,12 +2034,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             (double)(std::chrono::duration_cast<std::chrono::microseconds>
                 (simulationTimerEnd - simulationTimerBegin).count()));
     }
-    else {
-        theGui.console.tPrint(
-            "<span color=\"#FF88FF\">Unhandled error! \nPlease let me know what you \n"
-            "were doing when this happened: \nnicholas.karpowicz@mpq.mpg.de</span>");
-    }
-
     theSim.saveDataSet();
     theSim.base().isRunning = false;
 }
