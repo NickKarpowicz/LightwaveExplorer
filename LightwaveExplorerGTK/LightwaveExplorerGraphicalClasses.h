@@ -24,7 +24,8 @@
 #endif
 
 //Limit the number of threads used to draw the interface if the processor supports a lot
-const int interfaceThreads = maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
+const int interfaceThreads = 
+maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
 
 class LweColor {
 public:
@@ -177,17 +178,25 @@ public:
         int NyTicks = 3;
         std::string messageBuffer;
         double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
-        double xTicks1[3] = { minX + 0.25 * (maxX - minX), minX + 0.5 * (maxX - minX), minX + 0.75 * (maxX - minX) };
+        double xTicks1[3] = { 
+            minX + 0.25 * (maxX - minX), 
+            minX + 0.5 * (maxX - minX), 
+            minX + 0.75 * (maxX - minX) };
 
         //Start SVG file if building one
         auto SVGh = [&](double x) {
             return (int)(15 * x);
         };
         if (makeSVG) {
-            SVGString.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
-            SVGString.append(Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
+            SVGString.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+                "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" "
+                "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
+            SVGString.append(Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+                "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
+                "\"http://www.w3.org/1999/xlink\">\n",
                 width, height, width, height));
-            SVGString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke=\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
+            SVGString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke="
+                "\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
                 SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
         }
 
@@ -203,7 +212,10 @@ public:
 
         //lambdas for writing components of SVG file
         auto SVGstdline = [&]() {
-            if (makeSVG)SVGString.append(Sformat("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", x1, y1, x2, y2, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
+            if (makeSVG)SVGString.append(Sformat("<line x1=\"{}\" y1=\"{}\" "
+                "x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", 
+                x1, y1, x2, y2, 
+                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
         };
 
         auto SVGstartPolyLine = [&]() {
@@ -211,7 +223,9 @@ public:
         };
 
         auto SVGendPolyLine = [&]() {
-            SVGString.append(Sformat("\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\" fill=\"none\"/>\n", currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
+            SVGString.append(Sformat("\" stroke=\"#{:x}{:x}{:x}\" stroke-width="
+                "\"{}\" fill=\"none\"/>\n", 
+                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
         };
 
         auto SVGaddXYtoPolyLine = [&](double& a, double& b) {
@@ -219,7 +233,10 @@ public:
         };
 
         auto SVGstdcircle = [&]() {
-            if (makeSVG)SVGString.append(Sformat("<circle cx=\"{}\" cy=\"{}\" r=\"{}\" stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n", x1, y1, radius, currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
+            if (makeSVG)SVGString.append(Sformat("<circle cx=\"{}\" cy=\"{}\" r=\"{}\""
+                " stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n", 
+                x1, y1, radius, 
+                currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
         };
 
         auto SVGstartgroup = [&]() {
@@ -231,11 +248,24 @@ public:
         };
 
         auto SVGcentertext = [&]() {
-            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\">\n{}\n</text>\n", fontSize - 1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), 0.5 * (layoutBottom + layoutTop - te.height), messageBuffer));
+            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}"
+                "\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" "
+                "text-anchor=\"middle\">\n{}\n</text>\n", 
+                fontSize - 1, 
+                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
+                0.5 * (layoutLeft + layoutRight), 
+                0.5 * (layoutBottom + layoutTop - te.height), 
+                messageBuffer));
         };
 
         auto SVGlefttext = [&]() {
-            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\">\n{}\n</text>\n", fontSize - 1, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), layoutLeft, layoutTop + fontSize, std::string(messageBuffer)));
+            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" "
+                "font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" "
+                "y=\"{}\">\n{}\n</text>\n", 
+                fontSize - 1, 
+                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
+                layoutLeft, layoutTop + fontSize, 
+                messageBuffer));
         };
 
         cairo_set_line_width(cr, lineWidth);
@@ -248,13 +278,16 @@ public:
         auto cairoRightText = [&]() {
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
-            cairo_move_to(cr, layoutRight - te.width - 3, 0.5 * (layoutBottom + layoutTop - te.height));
+            cairo_move_to(cr, layoutRight - te.width - 3, 
+                0.5 * (layoutBottom + layoutTop - te.height));
             cairo_show_text(cr, messageBuffer.c_str());
         };
         auto cairoCenterText = [&]() {
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
-            cairo_move_to(cr, 0.5 * (layoutLeft + layoutRight - te.width), 0.5 * (layoutBottom + layoutTop - te.height));
+            cairo_move_to(cr, 
+                0.5 * (layoutLeft + layoutRight - te.width), 
+                0.5 * (layoutBottom + layoutTop - te.height));
             cairo_show_text(cr, messageBuffer.c_str());
         };
 
@@ -311,7 +344,15 @@ public:
             layoutRight = height;
 
             cairoVerticalText();
-            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor=\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n", fontSize, currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 0.5 * (layoutLeft + layoutRight), layoutTop + fontSize, -(layoutLeft + layoutRight), height, messageBuffer));
+            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size"
+                "=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor="
+                "\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n", 
+                fontSize, 
+                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
+                0.5 * (layoutLeft + layoutRight), 
+                layoutTop + fontSize, 
+                -(layoutLeft + layoutRight), 
+                height, messageBuffer));
         }
 
         //x-axis name
@@ -371,8 +412,10 @@ public:
         SVGendgroup();
 
         //Lambdas for plotting a line
-        //currently dots are always there but has been refactored to make it easier to turn them off if I want.
-        //I would think it would be faster to only call cairo_fill() at the end, but this requires calling cairo_cloase_path()
+        //currently dots are always there but has been refactored to make 
+        //it easier to turn them off if I want.
+        //I would think it would be faster to only call cairo_fill() 
+        //at the end, but this requires calling cairo_cloase_path()
         //in the loop, which seems to be even slower....
 
         std::vector<double> scaledX(Npts);
@@ -410,11 +453,20 @@ public:
                         cairo_line_to(cr, scaledX[i], scaledY[i]);
                     }
                     else {
-                        cairo_line_to(cr, scaledX[i - 1] + (height - scaledY[i - 1]) / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i - 1])), height);
+                        cairo_line_to(cr, 
+                            scaledX[i - 1] + 
+                            (height - scaledY[i - 1]) 
+                            / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i - 1])), 
+                            height);
                     }
                 }
                 else if (scaledY[i] <= height) {
-                    cairo_move_to(cr, scaledX[i - 1] + (height - scaledY[i - 1]) / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i - 1])), height);
+                    cairo_move_to(cr, 
+                        scaledX[i - 1] + 
+                        (height - scaledY[i - 1]) 
+                        / ((scaledY[i] - scaledY[i - 1]) 
+                            / (scaledX[i] - scaledX[i - 1])), 
+                        height);
                     cairo_line_to(cr, scaledX[i], scaledY[i]);
                 }
             }
@@ -574,12 +626,25 @@ public:
         switch (dataType) {
         case 0:
             if (data == nullptr) break;
-            linearRemapDoubleToFloat(data, (int)dataYdim, (int)dataXdim, plotarr2, (int)dy, (int)dx);
+            linearRemapDoubleToFloat(
+                data, 
+                (int)dataYdim, 
+                (int)dataXdim, 
+                plotarr2, 
+                (int)dy, 
+                (int)dx);
             drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
             break;
         case 1:
             if (complexData == nullptr) break;
-            linearRemapZToLogFloatShift(complexData, (int)dataYdim, (int)dataXdim, plotarr2, (int)dy, (int)dx, logMin);
+            linearRemapZToLogFloatShift(
+                complexData, 
+                (int)dataYdim, 
+                (int)dataXdim, 
+                plotarr2, 
+                (int)dy, 
+                (int)dx, 
+                logMin);
             drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
             break;
         }
@@ -591,7 +656,14 @@ public:
         return x.real() * x.real() + x.imag() * x.imag();
     }
 
-    void linearRemapZToLogFloatShift(const std::complex<double>* A, const int nax, const int nay, float* B, const int nbx, const int nby, const double logMin) {
+    void linearRemapZToLogFloatShift(
+        const std::complex<double>* A, 
+        const int nax, 
+        const int nay, 
+        float* B, 
+        const int nbx, 
+        const int nby, 
+        const double logMin) {
         const int div2 = nax / 2;
 #pragma omp parallel for num_threads(interfaceThreads)
         for (int i = 0; i < nbx; ++i) {
@@ -607,7 +679,14 @@ public:
         }
     }
 
-    void linearRemapZToLogFloat(const std::complex<double>* A, const int nax, const int nay, float* B, const int nbx, const int nby, const double logMin) {
+    void linearRemapZToLogFloat(
+        const std::complex<double>* A, 
+        const int nax, 
+        const int nay, 
+        float* B, 
+        const int nbx, 
+        const int nby, 
+        const double logMin) {
 #pragma omp parallel for num_threads(interfaceThreads)
         for (int i = 0; i < nbx; ++i) {
             float f = i * (nax / (float)nbx);
@@ -622,7 +701,13 @@ public:
         }
     }
 
-    void linearRemapDoubleToFloat(const double* A, const int nax, const int nay, float* B, const int nbx, const int nby) {
+    void linearRemapDoubleToFloat(
+        const double* A, 
+        const int nax, 
+        const int nay, 
+        float* B, 
+        const int nbx, 
+        const int nby) {
 #pragma omp parallel for num_threads(interfaceThreads)
         for (int i = 0; i < nbx; ++i) {
             int Ni = (int)(i * (nax / (float)nbx));
@@ -686,13 +771,19 @@ public:
                 colorMap[j][0] = (unsigned char)(255. * (1.0 * exp(-pow(4.5 * (nval - 0.05), 2))
                     + 1.00 * exp(-pow(3.5 * (nval - 1.05), 2))));
                 colorMap[j][1] = (unsigned char)(255. * (0.95 * exp(-pow(3.5 * (nval - 1.05), 2))));
-                colorMap[j][2] = (unsigned char)(255. * (0.9 * exp(-pow(4.5 * (nval - 0.05), 2)) + 0.2 * exp(-pow(3.5 * (nval - 1.05), 2))));
+                colorMap[j][2] = (unsigned char)(255. * (0.9 * exp(-pow(4.5 * (nval - 0.05), 2)) 
+                    + 0.2 * exp(-pow(3.5 * (nval - 1.05), 2))));
             }
         }
         return colorMap;
     }
 
-    void drawArrayAsBitmap(cairo_t* cr, const int Nx, const int Ny, const float* data, const int cm) {
+    void drawArrayAsBitmap(
+        cairo_t* cr, 
+        const int Nx, 
+        const int Ny, 
+        const float* data, 
+        const int cm) {
         if (Nx * Ny == 0) return;
 
         // creating input
@@ -717,14 +808,19 @@ public:
         if (imin != imax) {
 #pragma omp parallel for num_threads(interfaceThreads)
             for (int p = 0; p < Ntot; p++) {
-                unsigned char currentValue = (unsigned char)(255 * (data[p] - imin) / (imax - imin));
+                unsigned char currentValue = 
+                    (unsigned char)(255 * (data[p] - imin) / (imax - imin));
                 pixels[stride * p + 0] = colorMap[currentValue][0];
                 pixels[stride * p + 1] = colorMap[currentValue][1];
                 pixels[stride * p + 2] = colorMap[currentValue][2];
             }
         }
         const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
-        cairo_surface_t* cSurface = cairo_image_surface_create_for_data(pixels, CAIRO_FORMAT_RGB24, Nx, Ny, caiStride);
+        cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
+            pixels, 
+            CAIRO_FORMAT_RGB24, 
+            Nx, Ny, 
+            caiStride);
         cairo_set_source_surface(cr, cSurface, 0, 0);
         cairo_paint(cr);
         cairo_surface_finish(cSurface);
@@ -735,17 +831,15 @@ public:
 
 class LweGuiElement {
 public:
-    GtkWidget* label;
-    GtkWidget* elementHandle;
-    int _x;
-    int _y;
-    int _width;
-    int _height;
-    bool isAttached;
-    GtkWidget* _grid;
-    LweGuiElement() : label(0), elementHandle(0), _x(0), _y(0), _width(0), _height(0), isAttached(false), _grid(0) {
-    }
-    ~LweGuiElement() {}
+    GtkWidget* label{};
+    GtkWidget* elementHandle{};
+    int _x{};
+    int _y{};
+    int _width{};
+    int _height{};
+    bool isAttached=false;
+    GtkWidget* _grid{};
+
     void setPosition(GtkWidget* grid, int x, int y, int width, int height) {
         if (_grid)gtk_grid_remove(GTK_GRID(_grid), elementHandle);
         _grid = grid;
@@ -796,8 +890,6 @@ class LweTextBox : public LweGuiElement {
         return maxN(0, digits - logValue);
     }
 public:
-    LweTextBox() {}
-    ~LweTextBox() {}
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         elementHandle = gtk_entry_new();
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
@@ -1032,7 +1124,11 @@ gboolean formatSequenceBuffer(gpointer data) {
             //spanning that is in the functions list.
             //color it if it is.
             for (auto j = i; j > 0; --j) {
-                if (j - 1 == 0 || s[j - 1] == ' ' || s[j - 1] == '\n' || s[j - 1] == ')' || s[j - 1] == '>') {
+                if (j - 1 == 0 
+                    || s[j - 1] == ' ' 
+                    || s[j - 1] == '\n' 
+                    || s[j - 1] == ')' 
+                    || s[j - 1] == '>') {
                     nameStart = j - ((j - 1) == 0);
                     if (std::find(
                         std::begin(functionList),
@@ -1079,19 +1175,12 @@ gboolean formatSequenceBuffer(gpointer data) {
 }
 
 class LweConsole : public LweGuiElement {
-    GtkWidget* consoleText;
-    bool hasNewText;
-    int previousBufferSize;
-    GtkTextBuffer* buf;
+    GtkWidget* consoleText{};
+    bool hasNewText{};
+    int previousBufferSize{};
+    GtkTextBuffer* buf{};
 public:
     std::string textBuffer;
-    LweConsole() :
-        consoleText(0), hasNewText(0), previousBufferSize(0) {
-        _grid = NULL;
-        buf = NULL;
-    }
-    ~LweConsole() {
-    }
     void init(GtkWidget* grid, int x, int y, int width, int height) {
         consoleText = gtk_text_view_new();
         gtk_text_view_set_accepts_tab(GTK_TEXT_VIEW(consoleText), false);
@@ -1111,7 +1200,14 @@ public:
         gtk_text_buffer_create_tag(buf, "error", "foreground", "#FF0000FF", NULL);
         gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#9900CCFF", NULL);
     }
-    void init(GtkWidget* grid, int x, int y, int width, int height, int minWidth, int minHeight) {
+    void init(
+        GtkWidget* grid, 
+        int x, 
+        int y, 
+        int width, 
+        int height, 
+        int minWidth, 
+        int minHeight) {
         consoleText = gtk_text_view_new();
         elementHandle = gtk_scrolled_window_new();
         gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(elementHandle), minHeight);
@@ -1144,16 +1240,17 @@ public:
         hasNewText = true;
     }
     void scrollToEnd() {
-        g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, scrollTextViewToEndHandler, elementHandle, NULL);
+        g_idle_add_full(
+            G_PRIORITY_DEFAULT_IDLE, 
+            scrollTextViewToEndHandler, 
+            elementHandle, 
+            NULL);
     }
     void updateFromBuffer() {
         if (hasNewText) {
             hasNewText = false;
-            //GtkTextIter start;
             GtkTextIter end;
-            //gtk_text_buffer_get_start_iter(buf, &start);
             gtk_text_buffer_get_end_iter(buf, &end);
-            //gtk_text_buffer_delete(buf, &start, &end);
             gtk_text_buffer_insert_markup(buf, &end, textBuffer.c_str(), -1);
             textBuffer.clear();
             scrollToEnd();
@@ -1225,7 +1322,14 @@ public:
 
 class LweButton : public LweGuiElement {
 public:
-    void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height, auto buttonFunction) {
+    void init(
+        const char* buttonName, 
+        GtkWidget* grid, 
+        int x, 
+        int y, 
+        int width, 
+        int height, 
+        auto buttonFunction) {
         elementHandle = gtk_button_new_with_label(buttonName);
         gtk_widget_set_hexpand(elementHandle, false);
         gtk_widget_set_vexpand(elementHandle, false);
@@ -1233,7 +1337,15 @@ public:
         setPosition(grid, x, y, width, height);
         setFunction(buttonFunction);
     }
-    void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height, auto buttonFunction, gpointer functionData) {
+    void init(
+        const char* buttonName, 
+        GtkWidget* grid, 
+        int x, 
+        int y, 
+        int width, 
+        int height, 
+        auto buttonFunction, 
+        gpointer functionData) {
         elementHandle = gtk_button_new_with_label(buttonName);
         gtk_widget_set_hexpand(elementHandle, false);
         gtk_widget_set_vexpand(elementHandle, false);
@@ -1250,7 +1362,13 @@ public:
 
 class LweCheckBox : public LweGuiElement {
 public:
-    void init(const char* buttonName, GtkWidget* grid, int x, int y, int width, int height) {
+    void init(
+        const char* buttonName, 
+        GtkWidget* grid, 
+        int x, 
+        int y, 
+        int width, 
+        int height) {
         elementHandle = gtk_check_button_new_with_label(buttonName);
         setPosition(grid, x, y, width, height);
     }
@@ -1343,7 +1461,11 @@ public:
         plotControlsSubgrid2(0),
         window(0) {}
     ~LweWindow() {};
-    void init(GtkApplication* appHandle, const char* windowName, int width, int height) {
+    void init(
+        GtkApplication* appHandle, 
+        const char* windowName, 
+        int width, 
+        int height) {
         window = gtk_application_window_new(appHandle);
         gtk_window_set_title(GTK_WINDOW(window), windowName);
         gtk_window_set_default_size(GTK_WINDOW(window), width, height);

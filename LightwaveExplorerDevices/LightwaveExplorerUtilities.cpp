@@ -844,9 +844,9 @@ int simulationParameterSet::readFittingString() {
 
 int removeCharacterFromStringSkippingChars(
 	std::string& s, 
-	char removedChar, 
-	char startChar, 
-	char endChar) {
+	const char removedChar, 
+	const char startChar, 
+	const char endChar) {
 	bool removing = true;
 	for (size_t i = 0; i < s.length(); ++i) {
 		if (s[i] == removedChar && removing) {
@@ -1040,7 +1040,7 @@ std::string getBasename(const std::string& fullPath) {
 }
 
 //calculates the squared modulus of a complex number
-double cModulusSquared(const std::complex<double>& x) {
+inline double cModulusSquared(const std::complex<double>& x) {
 	return x.real()*x.real() + x.imag()*x.imag();
 }
 
@@ -1203,7 +1203,7 @@ int loadWaveformFile(
 int loadSavedGridFile(
 	const std::string& filePath, 
 	std::vector<double>& outputGrid, 
-	int64_t Ngrid) {
+	const int64_t Ngrid) {
 	std::ifstream Efile(filePath, std::ios::binary);
 	outputGrid.resize(Ngrid);
 	if (Efile.is_open()) {
@@ -1218,8 +1218,8 @@ int loadSavedGridFile(
 int loadSavedGridFileMultiple(
 	const std::string& filePath, 
 	std::vector<double>& outputGrid, 
-	int64_t Ngrid, 
-	int64_t Nsims) {
+	const int64_t Ngrid, 
+	const int64_t Nsims) {
 	outputGrid.resize(Ngrid * Nsims);
 	std::ifstream Efile(filePath, std::ios::binary);
 	if (Efile.is_open()) {
