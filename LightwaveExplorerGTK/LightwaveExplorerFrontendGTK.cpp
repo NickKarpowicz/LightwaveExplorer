@@ -152,10 +152,15 @@ public:
 
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawTimeImage1);
-        drawBoxes[0].setTooltip("Image of the electric field grid: presents a slice of Ex(x,y=0,t), there the horizontal axis is time, and the vertical axis is position");
+        drawBoxes[0].setTooltip(
+            "Image of the electric field grid: presents a slice of Ex(x,y=0,t), "
+            "there the horizontal axis is time, and the vertical axis is position"
+        );
         drawBoxes[1].init(window.parentHandle(2), 0, plotHeight, plotWidth, plotHeight);
         drawBoxes[1].setDrawingFunction(drawTimeImage2);
-        drawBoxes[1].setTooltip("Image of the electric field grid: presents a slice of Ey(x,y=0,t), there the horizontal axis is time, and the vertical axis is position");
+        drawBoxes[1].setTooltip(
+            "Image of the electric field grid: presents a slice of Ey(x,y=0,t), "
+            "there the horizontal axis is time, and the vertical axis is position");
         drawBoxes[2].init(window.parentHandle(2), 0, 2 * plotHeight, plotWidth, plotHeight);
         drawBoxes[2].setDrawingFunction(drawField1Plot);
         drawBoxes[2].setTooltip("Plot of the on-axis electric field in the x polarization");
@@ -164,10 +169,15 @@ public:
         drawBoxes[3].setTooltip("Plot of the on-axis electric field in the y polarization");
         drawBoxes[4].init(window.parentHandle(2), plotWidth, 0, plotWidth, plotHeight);
         drawBoxes[4].setDrawingFunction(drawFourierImage1);
-        drawBoxes[4].setTooltip("Plot of the electric field grid in momentum-frequency space: Ex(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, and horizontal axis is frequency f.");
+        drawBoxes[4].setTooltip(
+            "Plot of the electric field grid in momentum-frequency space: Ex(kx,ky=0,f). "
+            "Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, "
+            "and horizontal axis is frequency f.");
         drawBoxes[5].init(window.parentHandle(2), plotWidth, plotHeight, plotWidth, plotHeight);
         drawBoxes[5].setDrawingFunction(drawFourierImage2);
-        drawBoxes[5].setTooltip("Plot of the electric field grid in momentum-frequency space: Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx, and horizontal axis is frequency f.");
+        drawBoxes[5].setTooltip("Plot of the electric field grid in momentum-frequency space: "
+            "Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum "
+            "kx, and horizontal axis is frequency f.");
         drawBoxes[6].init(window.parentHandle(2), plotWidth, 2 * plotHeight, plotWidth, plotHeight);
         drawBoxes[6].setDrawingFunction(drawSpectrum1Plot);
         drawBoxes[6].setTooltip("Plot of the energy spectrum of the result, x-polarization.");
@@ -184,11 +194,13 @@ public:
         textBoxes[51].init(window.parentHandle(4), 10, 0, 2, 1);
 
         checkBoxes[0].init(("Total"), window.parentHandle(4), 12, 0, 1, 1);
-        checkBoxes[0].setTooltip("Overlay a plot of the integrated energy spectrum over the two polarization-resolved spectra");
+        checkBoxes[0].setTooltip("Overlay a plot of the integrated energy spectrum over the two "
+            "polarization-resolved spectra");
         checkBoxes[1].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
         checkBoxes[1].setTooltip("Plot spectra on a log10 scale");
         checkBoxes[3].init("FP64", window.parentHandle(6), buttonWidth-2, 0, 1, 1);
-        checkBoxes[3].setTooltip("Select whether the simulation is performed with 32-bit (unchecked) or 64-bit (checked) floating point numbers");
+        checkBoxes[3].setTooltip("Select whether the simulation is performed with 32-bit "
+            "(unchecked) or 64-bit (checked) floating point numbers");
         pulldowns[4].addElement(("2D Cartesian"));
         pulldowns[4].addElement(("3D radial symm."));
         pulldowns[4].addElement(("3D"));
@@ -243,8 +255,13 @@ public:
         }
         pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
         pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
-        pulldowns[5].setTooltip("Primary batch mode selector: the selected value from the interface will be scanned in a series of simulations, starting from the value entered on the interface, and ending with the batch target set below. The number of simulations is set by the batch steps parameter.");
-        pulldowns[6].setTooltip("Secondary batch mode selector - allows a 2D parameter scan. Works in the same way as the primary batch, but uses the values in the right-hand column.");
+        pulldowns[5].setTooltip("Primary batch mode selector: the selected value "
+            "from the interface will be scanned in a series of simulations, starting "
+            "from the value entered on the interface, and ending with the batch target "
+            "set below. The number of simulations is set by the batch steps parameter.");
+        pulldowns[6].setTooltip("Secondary batch mode selector - allows a 2D parameter "
+            "scan. Works in the same way as the primary batch, but uses the values in "
+            "the right-hand column.");
 
         int mbRow = 22;
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
@@ -274,40 +291,66 @@ public:
 
 #endif
         miniButtons[0].setTooltip("Make a copy of the crystal currently entered in the interface");
-        miniButtons[1].setTooltip("Insert a crystal that will change with the values set on the interface, or modified during a batch calculation");
+        miniButtons[1].setTooltip("Insert a crystal that will change with the values set on the "
+            "interface, or modified during a batch calculation");
         miniButtons[2].setTooltip("Rotate the polarization by a specified angle in degrees");
-        miniButtons[3].setTooltip("Add a new pulse to the grid; values will be set to duplicate pulse 1 as entered above");
-        miniButtons[4].setTooltip("Add a spherical mirror to the beam path, with radius of curvature in meters");
-        miniButtons[5].setTooltip("Add a spectral filter to the beam path. Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   in-band amplitude\n   out-of-band amplitude\n");
+        miniButtons[3].setTooltip("Add a new pulse to the grid; values will be set to duplicate "
+            "pulse 1 as entered above");
+        miniButtons[4].setTooltip("Add a spherical mirror to the beam path, with radius "
+            "of curvature in meters");
+        miniButtons[5].setTooltip("Add a spectral filter to the beam path. "
+            "Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   "
+            "in-band amplitude\n   out-of-band amplitude\n");
         miniButtons[6].setTooltip("Add a linear propagation through the crystal entered on the interface");
-        miniButtons[7].setTooltip("Add an aperture to the beam. Parameters:\n   diameter (m)\n   activation parameter\n");
-        miniButtons[8].setTooltip("Filter the beam with a far-field aperture. Parameters:\n   opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ");
-        miniButtons[9].setTooltip("Add an empty for loop. Parameters:\n   Number of times to execute\n   Variable number in which to put the counter");
+        miniButtons[7].setTooltip("Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
+            "activation parameter\n");
+        miniButtons[8].setTooltip("Filter the beam with a far-field aperture. Parameters:\n   "
+            "opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ");
+        miniButtons[9].setTooltip("Add an empty for loop. Parameters:\n   "
+            "Number of times to execute\n   Variable number in which to put the counter");
         buttons[0].init(("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
-        buttons[0].setTooltip("Run the simulation as currently entered on the interface. If a sequence is entered in the sequence box below, that will execute, otherwise, a simulation on the input parameters above and to the left in a single medium will be performed.");
+        buttons[0].setTooltip("Run the simulation as currently entered on the "
+            "interface. If a sequence is entered in the sequence box below, "
+            "that will execute, otherwise, a simulation on the input parameters "
+            "above and to the left in a single medium will be performed.");
         buttons[1].init(("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
-        buttons[1].setTooltip("Tell a currently-running simulation to stop. It might not stop right away; it will only happen once it reaches a break point");
-        buttons[2].init(("Script"), parentHandle, 2 * buttonWidth + 1+buttonCol1, 17, textWidth, 1, createRunFile);
-        buttons[2].setTooltip("Generate an input file and SLURM script for running the simulation as entered on the selected cluster");
+        buttons[1].setTooltip("Tell a currently-running simulation to stop. "
+            "It might not stop right away; it will only happen once it reaches a break point");
+        buttons[2].init(
+            ("Script"), parentHandle, 2 * buttonWidth + 1+buttonCol1, 17, textWidth, 1, createRunFile);
+        buttons[2].setTooltip("Generate an input file and SLURM script for running "
+            "the simulation as entered on the selected cluster");
         buttons[3].init(("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
-        buttons[3].setTooltip("Run the fitting routine with the above parameters. The mode is set in the pulldown next to the (optional) fitting input data file path.");
+        buttons[3].setTooltip("Run the fitting routine with the above parameters. "
+            "The mode is set in the pulldown next to the (optional) fitting input data file path.");
         buttons[4].init(("Load"), parentHandle, buttonCol1, 15, buttonWidth, 1, loadCallback);
-        buttons[4].setTooltip("Load the results of a previous simulation run. You should select the associated .txt file. The parameters will be loaded into the interface, and the data (if it exists) will be plotted.");
-        buttons[6].init(("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
-        buttons[7].init(("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
-        buttons[8].init(("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
-        buttons[9].init(("Path"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
+        buttons[4].setTooltip("Load the results of a previous simulation run. "
+            "You should select the associated .txt file. The parameters will be "
+            "loaded into the interface, and the data (if it exists) will be plotted.");
+        buttons[6].init(
+            ("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
+        buttons[7].init(
+            ("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
+        buttons[8].init(
+            ("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
+        buttons[9].init(
+            ("Path"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
         buttons[9].setTooltip("Sets the base path for the output files");
         buttons[10].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
-        buttons[10].setTooltip("Apply the entered x limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
+        buttons[10].setTooltip("Apply the entered x limits to the plot. The two text "
+            "boxes are for the upper and lower limits applied to the frequency axis. "
+            "If they are empty, the range will include the whole grid.");
         buttons[10].squeeze();
         buttons[11].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
-        buttons[11].setTooltip("Apply the entered y limits to the plot. The two text boxes are for the upper and lower limits applied to the frequency axis. If they are empty, the range will include the whole grid.");
+        buttons[11].setTooltip("Apply the entered y limits to the plot. The two "
+            "text boxes are for the upper and lower limits applied to the frequency "
+            "axis. If they are empty, the range will include the whole grid.");
         buttons[11].squeeze();
         checkBoxes[0].setFunction(independentPlotQueue);
         checkBoxes[1].setFunction(independentPlotQueue);
         buttons[12].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
-        buttons[12].setTooltip("Generate SVG files of the four line plots, with filenames based on the base path set above");
+        buttons[12].setTooltip("Generate SVG files of the four line plots, with "
+            "filenames based on the base path set above");
         buttons[12].squeeze();
         plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
         plotSlider.setRange(0.0, 10.0);
@@ -345,11 +388,17 @@ public:
         pulldowns[7].addElement("OpenMP");
         pulldowns[8].addElement("OpenMP");
 
+        
         pulldowns[7].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
         pulldowns[8].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);
         textBoxes[52].init(window.parentHandle(6), 4 + 3 * buttonWidth, 0, 1, 1);
-        pulldowns[7].setTooltip("Select the primary method of calculation. The algorithm is the same, but you can run it either on a GPU or CPU depending on your machine");
-        pulldowns[8].setTooltip("Select a secondary mode of calculation for offloading jobs from a batch. For example, if the pulldown to the left is set to CUDA and this one is OpenMP, and the number to the right is 2, 2 of the simulations from the batch will be performed on the CPU");
+        pulldowns[7].setTooltip("Select the primary method of calculation. "
+            "The algorithm is the same, but you can run it either on a "
+            "GPU or CPU depending on your machine");
+        pulldowns[8].setTooltip("Select a secondary mode of calculation for "
+            "offloading jobs from a batch. For example, if the pulldown to the "
+            "left is set to CUDA and this one is OpenMP, and the number to "
+            "the right is 2, 2 of the simulations from the batch will be performed on the CPU");
 
         //pulldowns[7].setLabel(-2, 0, ("Config:"), 8, 2);
         textBoxes[0].setLabel(-labelWidth, 0, ("Pulse energy (J)"));
@@ -387,18 +436,28 @@ public:
 
         GtkCssProvider* textProvider = gtk_css_provider_new();
         gtk_css_provider_load_from_data(textProvider,
-            "label, scale { font-family: Arial; font-weight: bold; }\n button, entry, textview { font-family: Arial; font-weight: bold; color: #EEEEEE; background-color: #191919; }", -1);
-        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(textProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+            "label, scale { font-family: Arial; font-weight: bold; }\n "
+            "button, entry, textview { font-family: Arial; font-weight: "
+            "bold; color: #EEEEEE; background-color: #191919; }", -1);
+        gtk_style_context_add_provider_for_display(
+            gdk_display_get_default(), 
+            GTK_STYLE_PROVIDER(textProvider), 
+            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
         
         GtkCssProvider* buttonShrinker = gtk_css_provider_new();
         gtk_css_provider_load_from_data(buttonShrinker,
-            "label, scale, range, button, entry, textview { min-height: 10px; min-width: 10px; }", -1);
-        gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(buttonShrinker), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+            "label, scale, range, button, entry, textview "
+            "{ min-height: 10px; min-width: 10px; }", -1);
+        gtk_style_context_add_provider_for_display(
+            gdk_display_get_default(), 
+            GTK_STYLE_PROVIDER(buttonShrinker), 
+            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         //read the crystal database
         std::string materialString;
         for (int i = 0; i < theDatabase.db.size(); ++i) {
-            materialString = Sformat("{:2}: {}", i, std::string(theDatabase.db[i].crystalName.c_str()));
+            materialString = Sformat(
+                "{:2}: {}", i, std::string(theDatabase.db[i].crystalName.c_str()));
             pulldowns[3].addElement(materialString.c_str());
         }
         
@@ -414,7 +473,8 @@ public:
         pulldowns[9].addElement(("Raven 4x A100"));
         pulldowns[9].init(parentHandle, 1+buttonCol1, 17, 2 * buttonWidth, 1);
         pulldowns[9].squeeze();
-        pulldowns[9].setTooltip("Select the cluster and GPU configuration for generating a SLURM script");
+        pulldowns[9].setTooltip(
+            "Select the cluster and GPU configuration for generating a SLURM script");
         
         //Linux search order:
         // ../share/LightwaveExplorer
@@ -431,7 +491,8 @@ public:
             pBuf[bytes] = '\0';
         std::string binPath(pBuf);
         int64_t posPath = binPath.find_last_of("/");
-        std::string defaultsPath = binPath.substr(0, posPath).append("/../share/LightwaveExplorer/DefaultValues.ini");
+        std::string defaultsPath = 
+            binPath.substr(0, posPath).append("/../share/LightwaveExplorer/DefaultValues.ini");
 
 		if (1 == theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), defaultsPath)) {
 			theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
@@ -453,6 +514,13 @@ public:
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
         g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
         window.present();
+
+        //if the only options are SYCL on the CPU and openMP, make the default openMP
+        if (!theSim.base().CUDAavailable 
+            && theSim.base().SYCLavailable 
+            && theSim.base().syclGPUCount == 0) {
+            pulldowns[7].setValue(1);
+        }
     }
 };
 mainGui theGui;
@@ -512,7 +580,9 @@ void setInterfaceValuesToActiveValues(){
         theGui.textBoxes[i++].setToDouble(1e6 * theSim.base().spatialWidth);
     }
     else {
-        theGui.textBoxes[i++].overwritePrint("{};{}", (int)(1e6 * theSim.base().spatialWidth), (int)(1e6 * theSim.base().spatialHeight));
+        theGui.textBoxes[i++].overwritePrint(
+            "{};{}", (int)(1e6 * theSim.base().spatialWidth), 
+            (int)(1e6 * theSim.base().spatialHeight));
     }
     theGui.textBoxes[i++].setToDouble(1e6*theSim.base().rStep);
     theGui.textBoxes[i++].setToDouble(1e15 * theSim.base().timeSpan);
@@ -533,9 +603,12 @@ void setInterfaceValuesToActiveValues(){
         theGui.sequence.directOverwritePrintSequence(formattedSequence.c_str());
     }
     stripLineBreaks(theSim.base().field1FilePath);
-    if (std::string(theSim.base().field1FilePath).compare("None") != 0) theGui.filePaths[0].overwritePrint(theSim.base().field1FilePath);
-    if (std::string(theSim.base().field2FilePath).compare("None") != 0) theGui.filePaths[1].overwritePrint(theSim.base().field2FilePath);
-    if (std::string(theSim.base().fittingPath).compare("None") != 0) theGui.filePaths[2].overwritePrint(theSim.base().fittingPath);
+    if (std::string(theSim.base().field1FilePath).compare("None") != 0) 
+        theGui.filePaths[0].overwritePrint(theSim.base().field1FilePath);
+    if (std::string(theSim.base().field2FilePath).compare("None") != 0) 
+        theGui.filePaths[1].overwritePrint(theSim.base().field2FilePath);
+    if (std::string(theSim.base().fittingPath).compare("None") != 0) 
+        theGui.filePaths[2].overwritePrint(theSim.base().fittingPath);
     theGui.fitCommand.clear();
     if (!(theSim.base().fittingString[0] == 'N')) {
         std::string formattedFit=theSim.base().fittingString;
@@ -543,7 +616,8 @@ void setInterfaceValuesToActiveValues(){
         theGui.fitCommand.overwritePrint(formattedFit.c_str());
     }
 
-    if(!theGui.loadedDefaults) theGui.filePaths[3].overwritePrint(theSim.base().outputBasePath);
+    if(!theGui.loadedDefaults) 
+        theGui.filePaths[3].overwritePrint(theSim.base().outputBasePath);
     theGui.loadedDefaults = true;
 }
 
@@ -582,7 +656,8 @@ void readParametersFromInterface() {
     theGui.textBoxes[i++].valueToPointer(1e12, &theSim.base().drudeGamma);
     theGui.textBoxes[i++].valueToPointer(&theSim.base().effectiveMass);
 
-    theGui.textBoxes[i++].valueToTwoPointers(1e-6, &theSim.base().spatialWidth, &theSim.base().spatialHeight);
+    theGui.textBoxes[i++].valueToTwoPointers(
+        1e-6, &theSim.base().spatialWidth, &theSim.base().spatialHeight);
 
     theGui.textBoxes[i++].valueToPointer(1e-6, &theSim.base().rStep);
     theGui.textBoxes[i++].valueToPointer(1e-15, &theSim.base().timeSpan);
@@ -602,7 +677,9 @@ void readParametersFromInterface() {
     theSim.base().isInSequence = false;
     theGui.sequence.copyBuffer(theSim.base().sequenceString);
     stripWhiteSpace(theSim.base().sequenceString);
-    if (theSim.base().sequenceString[0] != 'N' && theSim.base().sequenceString.length() > 5) theSim.base().isInSequence = true;
+    if (theSim.base().sequenceString[0] != 'N' 
+        && theSim.base().sequenceString.length() > 5) 
+        theSim.base().isInSequence = true;
 
     theSim.base().isInFittingMode = false;
     theGui.fitCommand.copyBuffer(theSim.base().fittingString);
@@ -623,48 +700,67 @@ void readParametersFromInterface() {
     //derived parameters and cleanup:
     theSim.base().sellmeierType = 0;
     theSim.base().axesNumber = 0;
-    theSim.base().Ntime = (int64_t)(minGridDimension * round(theSim.base().timeSpan / (minGridDimension * theSim.base().tStep)));
+    theSim.base().Ntime = (int64_t)(minGridDimension * round(theSim.base().timeSpan 
+        / (minGridDimension * theSim.base().tStep)));
     if (theSim.base().symmetryType == 2) {
         theSim.base().is3D = true;
         theSim.base().isFDTD = false;
-        theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
-        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
+        theSim.base().spatialWidth = theSim.base().rStep 
+            * (minGridDimension * round(theSim.base().spatialWidth 
+                / (theSim.base().rStep * minGridDimension)));
+        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth 
+            / theSim.base().rStep);
         if (theSim.base().spatialHeight > 0) {
-            theSim.base().spatialHeight = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialHeight / (theSim.base().rStep * minGridDimension)));
+            theSim.base().spatialHeight = theSim.base().rStep 
+                * (minGridDimension * round(theSim.base().spatialHeight 
+                    / (theSim.base().rStep * minGridDimension)));
         }
         else {
             theSim.base().spatialHeight = theSim.base().spatialWidth;
         }
-        theSim.base().Nspace2 = (int64_t)round(theSim.base().spatialHeight / theSim.base().rStep);
+        theSim.base().Nspace2 = (int64_t)round(theSim.base().spatialHeight 
+            / theSim.base().rStep);
     }
     else if (theSim.base().symmetryType == 3) {
         theSim.base().is3D = false;
         theSim.base().isFDTD = true;
         theSim.base().Nspace2 = 1;
         theSim.base().spatialHeight = 0;
-        theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
-        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
+        theSim.base().spatialWidth = theSim.base().rStep 
+            * (minGridDimension * round(theSim.base().spatialWidth 
+                / (theSim.base().rStep * minGridDimension)));
+        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth 
+            / theSim.base().rStep);
     }
     else if (theSim.base().symmetryType == 4) {
         theSim.base().is3D = true;
         theSim.base().isFDTD = true;
-        theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
-        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
+        theSim.base().spatialWidth = theSim.base().rStep 
+            * (minGridDimension * round(theSim.base().spatialWidth 
+                / (theSim.base().rStep * minGridDimension)));
+        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth 
+            / theSim.base().rStep);
         if (theSim.base().spatialHeight > 0) {
-            theSim.base().spatialHeight = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialHeight / (theSim.base().rStep * minGridDimension)));
+            theSim.base().spatialHeight = theSim.base().rStep 
+                * (minGridDimension * round(theSim.base().spatialHeight 
+                    / (theSim.base().rStep * minGridDimension)));
         }
         else {
             theSim.base().spatialHeight = theSim.base().spatialWidth;
         }
-        theSim.base().Nspace2 = (int64_t)round(theSim.base().spatialHeight / theSim.base().rStep);
+        theSim.base().Nspace2 = (int64_t)round(theSim.base().spatialHeight 
+            / theSim.base().rStep);
     }
     else {
         theSim.base().is3D = false;
         theSim.base().isFDTD = false;
         theSim.base().Nspace2 = 1;
         theSim.base().spatialHeight = 0;
-        theSim.base().spatialWidth = theSim.base().rStep * (minGridDimension * round(theSim.base().spatialWidth / (theSim.base().rStep * minGridDimension)));
-        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth / theSim.base().rStep);
+        theSim.base().spatialWidth = theSim.base().rStep 
+            * (minGridDimension * round(theSim.base().spatialWidth 
+                / (theSim.base().rStep * minGridDimension)));
+        theSim.base().Nspace = (int64_t)round(theSim.base().spatialWidth 
+            / theSim.base().rStep);
     }
 
     theSim.base().Nfreq = theSim.base().Ntime / 2 + 1;
@@ -672,7 +768,8 @@ void readParametersFromInterface() {
     theSim.base().Ngrid = theSim.base().Ntime * theSim.base().Nspace * theSim.base().Nspace2;
     theSim.base().kStep = twoPi<double>() / (theSim.base().Nspace * theSim.base().rStep);
     theSim.base().fStep = 1.0 / (theSim.base().Ntime * theSim.base().tStep);
-    theSim.base().Npropagation = (int64_t)round(theSim.base().crystalThickness / theSim.base().propagationStep);
+    theSim.base().Npropagation = (int64_t)round(theSim.base().crystalThickness 
+        / theSim.base().propagationStep);
 
     theSim.base().isCylindric = theSim.base().symmetryType == 1;
     if (theSim.base().isCylindric) {
@@ -688,20 +785,28 @@ void readParametersFromInterface() {
     if (theSim.base().batchIndex2 == 0 || theSim.base().Nsims2 < 1) {
         theSim.base().Nsims2 = 1;
     }
-    theSim.base().NsimsCPU = minN(theSim.base().NsimsCPU, theSim.base().Nsims * theSim.base().Nsims2);
+    theSim.base().NsimsCPU = minN(theSim.base().NsimsCPU, 
+        theSim.base().Nsims * theSim.base().Nsims2);
 
     theSim.base().field1IsAllocated = false;
     theSim.base().field2IsAllocated = false;
 
     //crystal from database (database must be loaded!)
     theSim.base().crystalDatabase = theDatabase.db.data();
-    theSim.base().chi2Tensor = theDatabase.db[theSim.base().materialIndex].d.data();
-    theSim.base().chi3Tensor = theDatabase.db[theSim.base().materialIndex].chi3.data();
-    theSim.base().nonlinearSwitches = theDatabase.db[theSim.base().materialIndex].nonlinearSwitches.data();
-    theSim.base().absorptionParameters = theDatabase.db[theSim.base().materialIndex].absorptionParameters.data();
-    theSim.base().sellmeierCoefficients = theDatabase.db[theSim.base().materialIndex].sellmeierCoefficients.data();
-    theSim.base().sellmeierType = theDatabase.db[theSim.base().materialIndex].sellmeierType;
-    theSim.base().axesNumber = theDatabase.db[theSim.base().materialIndex].axisType;
+    theSim.base().chi2Tensor = 
+        theDatabase.db[theSim.base().materialIndex].d.data();
+    theSim.base().chi3Tensor = 
+        theDatabase.db[theSim.base().materialIndex].chi3.data();
+    theSim.base().nonlinearSwitches = 
+        theDatabase.db[theSim.base().materialIndex].nonlinearSwitches.data();
+    theSim.base().absorptionParameters = 
+        theDatabase.db[theSim.base().materialIndex].absorptionParameters.data();
+    theSim.base().sellmeierCoefficients = 
+        theDatabase.db[theSim.base().materialIndex].sellmeierCoefficients.data();
+    theSim.base().sellmeierType = 
+        theDatabase.db[theSim.base().materialIndex].sellmeierType;
+    theSim.base().axesNumber = 
+        theDatabase.db[theSim.base().materialIndex].axisType;
     theSim.base().progressCounter = &progressCounter;
 
     theSim.base().runType = 0;
@@ -719,7 +824,11 @@ int insertAfterCharacter(std::string& s, char target, std::string appended){
     return 0;
 }
 
-int insertAfterCharacterExcept(std::string& s, char target, std::string appended, std::string exclude){
+int insertAfterCharacterExcept(
+    std::string& s, 
+    char target, 
+    std::string appended, 
+    std::string exclude){
     bool match = false;
     for(size_t i = 0; i < s.length()-1; ++i){
         if(s[i] == target){
@@ -799,7 +908,8 @@ void checkLibraryAvailability() {
         }
         for (i = 0; i < theSim.base().cudaGPUCount; ++i) {
             cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-            theGui.console.cPrint("<span color=\"#66FFFFFF\">   {}\n      Memory: {} MB\n      Multiprocessors: {}</span>\n", 
+            theGui.console.cPrint("<span color=\"#66FFFFFF\">   {}\n      "
+                "Memory: {} MB\n      Multiprocessors: {}</span>\n", 
                 activeCUDADeviceProp.name, 
                 (int)ceil(((float)activeCUDADeviceProp.totalGlobalMem) / 1048576), 
                 activeCUDADeviceProp.multiProcessorCount);
@@ -832,7 +942,8 @@ void checkLibraryAvailability() {
         }
     }
     else {
-        theGui.console.cPrint("Not using SYCL because the Intel DPC++\nCompiler Runtime is not installed.\n");
+        theGui.console.cPrint("Not using SYCL because the Intel DPC++\n"
+            "Compiler Runtime is not installed.\n");
         theSim.base().SYCLavailable = false;
     }
 #endif
@@ -846,7 +957,8 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
         std::string s(g_file_get_path(file));
-        if (s.substr(s.length() - 4, std::string::npos) == std::string(".txt") && theGui.pathTarget == 3) {
+        if (s.substr(s.length() - 4, std::string::npos) == std::string(".txt") 
+            && theGui.pathTarget == 3) {
             theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s.substr(0,s.length()-4));
         }
         else {
@@ -858,14 +970,22 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
 
 void openFileDialog(int64_t pathTarget) {
     theGui.pathTarget = pathTarget;
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Open File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
+    GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
+        "Open File", 
+        theGui.window.windowHandle(), 
+        GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
     g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
 }
 
 void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     theGui.pathTarget = (int64_t)pathTarget;
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Open File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
+    GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
+        "Open File", 
+        theGui.window.windowHandle(), 
+        GTK_FILE_CHOOSER_ACTION_OPEN, 
+        "Ok", 
+        "Cancel");
     g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
 }
@@ -887,7 +1007,8 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         std::string path(g_file_get_path(file));
         theGui.sequence.clear();
         theGui.fitCommand.clear();
-        int readParameters = theSim.base().readInputParametersFile(theDatabase.db.data(), path);
+        int readParameters = 
+            theSim.base().readInputParametersFile(theDatabase.db.data(), path);
         theSim.configure();
         if (readParameters == 61) {
             int64_t extensionLoc = path.find_last_of(".");
@@ -904,7 +1025,12 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
 
 void loadCallback(GtkWidget* widget, gpointer pathTarget) {
     theGui.pathTarget = (int64_t)pathTarget;
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Open File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
+    GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
+        "Open File", 
+        theGui.window.windowHandle(), 
+        GTK_FILE_CHOOSER_ACTION_OPEN, 
+        "Ok", 
+        "Cancel");
     g_signal_connect(fileC, "response", G_CALLBACK(loadFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
 }
@@ -926,7 +1052,12 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     }
     return;
 #else
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new("Save File", theGui.window.windowHandle(), GTK_FILE_CHOOSER_ACTION_SAVE, "Ok", "Cancel");
+    GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
+        "Save File", 
+        theGui.window.windowHandle(), 
+        GTK_FILE_CHOOSER_ACTION_SAVE, 
+        "Ok", 
+        "Cancel");
     g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
 #endif
@@ -999,7 +1130,11 @@ void createRunFile() {
     theGui.console.tPrint(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
         getBasename(theSim.base().outputBasePath), getBasename(theSim.base().outputBasePath));
-    theGui.console.tPrint("Estimated time to complete: {:.2} hours\n", timeEstimate, (double)totalSteps * theSim.base().Ntime * theSim.base().Nspace * theSim.base().Nspace2, theSim.base().runType);
+    theGui.console.tPrint(
+        "Estimated time to complete: {:.2} hours\n", 
+        timeEstimate, 
+        (double)totalSteps * theSim.base().Ntime * theSim.base().Nspace * theSim.base().Nspace2, 
+        theSim.base().runType);
     theSim.base().isRunning = false;
     theSim.base().isGridAllocated = false;
 }
@@ -1117,7 +1252,8 @@ void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpoi
     }
 
     double newFraction =  0.0;
-    if(lengthEstimate) newFraction = minN(1.0, ((double)progressCounter) / (double)lengthEstimate);
+    if(lengthEstimate) newFraction = 
+        minN(1.0, ((double)progressCounter) / (double)lengthEstimate);
     LweColor magenta(1, 0, 1, 0.0);
     LweColor cyan(0, 1, 1, 0);
     cairo_rectangle(cr, x0, height / 3, round(width*newFraction), height / 2);
@@ -1162,7 +1298,8 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.width = width;
     sPlot.dx = theSim.base().tStep / 1e-15;
     sPlot.x0 = -((sPlot.dx * theSim.base().Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = &theSim.base().ExtOut[simIndex * theSim.base().Ngrid * 2 + cubeMiddle + theSim.base().Ntime * theSim.base().Nspace / 2];
+    sPlot.data = &theSim.base().ExtOut[
+        simIndex * theSim.base().Ngrid * 2 + cubeMiddle + theSim.base().Ntime * theSim.base().Nspace / 2];
     sPlot.Npts = theSim.base().Ntime;
     sPlot.color = LweColor(0, 1, 1, 1);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
@@ -1194,7 +1331,8 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         simIndex = 0;
     }
 
-    int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
+    int64_t cubeMiddle = 
+        theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
     if (saveSVG) {
         std::string svgPath;
@@ -1208,7 +1346,10 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.width = width;
     sPlot.dx = theSim.base().tStep / 1e-15;
     sPlot.x0 = -((sPlot.dx * theSim.base().Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = &theSim.base().ExtOut[theSim.base().Ngrid + simIndex * theSim.base().Ngrid * 2 + cubeMiddle + theSim.base().Ntime * theSim.base().Nspace / 2];
+    sPlot.data = 
+        &theSim.base().ExtOut[
+        theSim.base().Ngrid + simIndex * theSim.base().Ngrid * 2 
+            + cubeMiddle + theSim.base().Ntime * theSim.base().Nspace / 2];
     sPlot.Npts = theSim.base().Ntime;
     sPlot.color = LweColor(1, 0, 1, 1);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
@@ -1440,7 +1581,9 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     double logPlotOffset = (double)(1e-4 / (theSim.base().spatialWidth * theSim.base().timeSpan));
     if (theSim.base().is3D) {
-        logPlotOffset = (double)(1e-4 / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
+        logPlotOffset = 
+            (double)(1e-4 
+                / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
     }
     sPlot.complexData =
         &theSim.base().EkwOut[simIndex * theSim.base().NgridC * 2];
@@ -1471,7 +1614,8 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
     double logPlotOffset = (double)(1e-4 / (theSim.base().spatialWidth * theSim.base().timeSpan));
     if (theSim.base().is3D) {
-        logPlotOffset = (double)(1e-4 / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
+        logPlotOffset = (double)(1e-4 
+            / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
     }
 
     sPlot.complexData =
@@ -1488,11 +1632,22 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
 void launchRunThread() {
     theSim.base().NsimsCPU = theGui.textBoxes[52].valueInt();
-    if(!theSim.base().isRunning) std::thread(mainSimThread, theGui.pulldowns[7].getValue(), theGui.pulldowns[8].getValue(), theGui.checkBoxes[3].isChecked()).detach();
+    if(!theSim.base().isRunning) 
+        std::thread(
+            mainSimThread, 
+            theGui.pulldowns[7].getValue(), 
+            theGui.pulldowns[8].getValue(), 
+            theGui.checkBoxes[3].isChecked()
+        ).detach();
 }
 
 void launchFitThread() {
-    if (!theSim.base().isRunning) std::thread(fittingThread, theGui.pulldowns[7].getValue(), theGui.checkBoxes[3].isChecked()).detach();
+    if (!theSim.base().isRunning) 
+        std::thread(
+            fittingThread, 
+            theGui.pulldowns[7].getValue(), 
+            theGui.checkBoxes[3].isChecked()
+        ).detach();
 }
 
 void stopButtonCallback() {
@@ -1509,7 +1664,11 @@ void independentPlotQueue(){
     theGui.applyUpdate();
 }
 
-void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int pulldownSelectionPrimary, bool use64bitFloatingPoint) {
+void secondaryQueue(
+    simulationParameterSet* cpuSims, 
+    int pulldownSelection, 
+    int pulldownSelectionPrimary, 
+    bool use64bitFloatingPoint) {
     if (theSim.base().NsimsCPU < 1) return;
     auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
     auto normalFunction = &solveNonlinearWaveEquationCPU;
@@ -1532,7 +1691,8 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     //launch on SYCL, but if the primary queue matches, default to openMP
     else if (pulldownSelection == theSim.base().cudaGPUCount && SYCLitems > 0) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
+                "\n- defaulting to OpenMP for the secondary queue.\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -1543,7 +1703,8 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
+                "\n- defaulting to OpenMP for the secondary queue.\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -1555,7 +1716,8 @@ void secondaryQueue(simulationParameterSet* cpuSims, int pulldownSelection, int 
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.tPrint("Sorry, can't run two identical SYCL queues\r\n- defaulting to OpenMP for the secondary queue.\r\n");
+            theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
+                "\n- defaulting to OpenMP for the secondary queue.\n");
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
@@ -1712,14 +1874,20 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
                 std::erase(errorString,';');
                 std::erase(errorString,'{');
                 std::erase(errorString,'}');
-                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", errorString);
+                theGui.console.tPrint(
+                    "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", 
+                    errorString);
             }
             if (theSim.sCPU()[j].memoryError != 0) {
                 if (theSim.sCPU()[j].memoryError == -1) {
-                    theGui.console.tPrint(("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), theSim.sCPU()[j].memoryError);
+                    theGui.console.tPrint((
+                        "<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), 
+                        theSim.sCPU()[j].memoryError);
                 }
                 else {
-                    theGui.console.tPrint(("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n"), theSim.sCPU()[j].memoryError);
+                    theGui.console.tPrint((
+                        "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n"), 
+                        theSim.sCPU()[j].memoryError);
                 }
             }
             if (error) break;
@@ -1737,21 +1905,29 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
                 std::erase(errorString,';');
                 std::erase(errorString,'{');
                 std::erase(errorString,'}');
-                theGui.console.tPrint("<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", errorString);
+                theGui.console.tPrint(
+                    "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", 
+                    errorString);
             }
             
             if (theSim.sCPU()[j].memoryError != 0) {
                 if (theSim.sCPU()[j].memoryError == -1) {
-                    theGui.console.tPrint(("<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), theSim.sCPU()[j].memoryError);
+                    theGui.console.tPrint((
+                        "<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), 
+                        theSim.sCPU()[j].memoryError);
                 }
                 else {
-                    theGui.console.tPrint(("<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\r\n"), theSim.sCPU()[j].memoryError);
+                    theGui.console.tPrint((
+                        "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\r\n"), 
+                        theSim.sCPU()[j].memoryError);
                 }
             }
             if (error) break;
         }
         if (theSim.base().cancellationCalled) {
-            theGui.console.tPrint(("<span color=\"#FF88FF\">Warning: series cancelled, stopping after {} simulations.</span>\r\n"), j + 1);
+            theGui.console.tPrint((
+                "<span color=\"#FF88FF\">Warning: series cancelled, "
+                "stopping after {} simulations.</span>\r\n"), j + 1);
             break;
         }
         theGui.requestSliderMove(j);
@@ -1762,19 +1938,26 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error == 13) {
         theGui.console.tPrint(
-            "<span color=\"#FF88FF\">NaN detected in grid!\nTry using a larger spatial/temporal step\nor smaller propagation step.\nSimulation was cancelled.\n</span>");
+            "<span color=\"#FF88FF\">NaN detected in grid!\n"
+            "Try using a larger spatial/temporal step\nor smaller propagation step.\n"
+            "Simulation was cancelled.\n</span>");
     }
     else if (error == 15) {
         theGui.console.tPrint(
-            "<span color=\"#FF88FF\">Sorry, that sequence mode has been \nreplaced by the new one. Look in the \ndocumentation for more info. It is a lot \neasier to use now, and hopefully \nit won't take long to set it up. \nSorry about that!\n</span>");
+            "<span color=\"#FF88FF\">Sorry, that sequence mode has been \n"
+            "replaced by the new one. Look in the \ndocumentation for more info. "
+            "It is a lot \neasier to use now, and hopefully \n"
+            "it won't take long to set it up. \nSorry about that!\n</span>");
     }
     else if(!error){
         theGui.console.tPrint("<span color=\"#88FFFF\">Finished after {:.4} s. </span>\n", 1e-6 *
-            (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+            (double)(std::chrono::duration_cast<std::chrono::microseconds>
+                (simulationTimerEnd - simulationTimerBegin).count()));
     }
     else {
         theGui.console.tPrint(
-            "<span color=\"#FF88FF\">Unhandled error! \nPlease let me know what you \nwere doing when this happened: \nnicholas.karpowicz@mpq.mpg.de</span>");
+            "<span color=\"#FF88FF\">Unhandled error! \nPlease let me know what you \n"
+            "were doing when this happened: \nnicholas.karpowicz@mpq.mpg.de</span>");
     }
 
     theSim.saveDataSet();
@@ -1804,8 +1987,12 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
         }
     }
 
-    theGui.console.tPrint("Fitting {} values in mode {} over {} iterations.\nRegion of interest contains {} elements\n",
-        theSim.base().Nfitting, theSim.base().fittingMode, theSim.base().fittingMaxIterations, theSim.base().fittingROIsize);
+    theGui.console.tPrint("Fitting {} values in mode {} over {} iterations.\n"
+        "Region of interest contains {} elements\n",
+        theSim.base().Nfitting, 
+        theSim.base().fittingMode, 
+        theSim.base().fittingMaxIterations, 
+        theSim.base().fittingROIsize);
 
     int assignedGPU = 0;
     bool forceCPU = 0;
@@ -1852,7 +2039,8 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     theGui.requestInterfaceValuesUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     theGui.console.tPrint(("Finished fitting after {:.4} s.\n"), 1e-6 *
-        (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count()));
+        (double)(std::chrono::duration_cast<std::chrono::microseconds>
+            (simulationTimerEnd - simulationTimerBegin).count()));
     theGui.console.tPrint("Fitting result:\n (index, value)\n");
     for (int i = 0; i < theSim.base().Nfitting; ++i) {
         theGui.console.tPrint("{},  {}\n", i, theSim.base().fittingResult[i]);
