@@ -267,10 +267,10 @@ public:
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
 
 #ifdef __APPLE__
-        miniButtons[0].init(("="), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(("d"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
-        miniButtons[2].init(("r"), parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
-        miniButtons[3].init(("p"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
+        miniButtons[0].init("=", parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
+        miniButtons[1].init("d", parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
+        miniButtons[2].init("r", parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
+        miniButtons[3].init("p", parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
         miniButtons[4].init("(", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
         miniButtons[5].init("f", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
         miniButtons[6].init("l", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
@@ -278,35 +278,115 @@ public:
         miniButtons[8].init("ff", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
         miniButtons[9].init("f", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
 #else
-        miniButtons[0].init(("\xf0\x9f\x93\xb8"), parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init(("\xe2\x99\x8a"), parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
-        miniButtons[2].init(("\xf0\x9f\x92\xab"), parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
-        miniButtons[3].init(("\xf0\x9f\x92\xa1"), parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
-        miniButtons[4].init("\xf0\x9f\x94\x8e", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
-        miniButtons[5].init("\xf0\x9f\x98\x8e", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
-        miniButtons[6].init("\xf0\x9f\x93\x8f", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
-        miniButtons[7].init("\xf0\x9f\x8e\xaf", parentHandle, textWidth + 15, mbRow, 2, 1, buttonAddAperture);
-        miniButtons[8].init("\xe2\x9b\xb3", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
-        miniButtons[9].init("\xf0\x9f\x94\x81", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
+        miniButtons[0].init(
+            "\xf0\x9f\x93\xb8", 
+            parentHandle, 
+            textWidth + 1, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddSameCrystal);
+        miniButtons[1].init(
+            "\xe2\x99\x8a", 
+            parentHandle, 
+            textWidth + 3, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddDefault);
+        miniButtons[2].init(
+            "\xf0\x9f\x92\xab", 
+            parentHandle, 
+            textWidth + 5, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddRotation);
+        miniButtons[3].init(
+            "\xf0\x9f\x92\xa1", 
+            parentHandle, 
+            textWidth + 7, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddPulse);
+        miniButtons[4].init(
+            "\xf0\x9f\x94\x8e", 
+            parentHandle, 
+            textWidth + 9, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddMirror);
+        miniButtons[5].init(
+            "\xf0\x9f\x98\x8e", 
+            parentHandle, 
+            textWidth + 11, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddFilter);
+        miniButtons[6].init(
+            "\xf0\x9f\x93\x8f", 
+            parentHandle, 
+            textWidth + 13, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddLinear);
+        miniButtons[7].init(
+            "\xf0\x9f\x8e\xaf", 
+            parentHandle, 
+            textWidth + 15, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddAperture);
+        miniButtons[8].init(
+            "\xe2\x9b\xb3", 
+            parentHandle, 
+            textWidth + 17, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddFarFieldAperture);
+        miniButtons[9].init(
+            "\xf0\x9f\x94\x81", 
+            parentHandle, 
+            textWidth + 19, 
+            mbRow, 
+            2, 
+            1, 
+            buttonAddForLoop);
 
 #endif
-        miniButtons[0].setTooltip("Make a copy of the crystal currently entered in the interface");
-        miniButtons[1].setTooltip("Insert a crystal that will change with the values set on the "
+        miniButtons[0].setTooltip(
+            "Make a copy of the crystal currently entered in the interface");
+        miniButtons[1].setTooltip(
+            "Insert a crystal that will change with the values set on the "
             "interface, or modified during a batch calculation");
-        miniButtons[2].setTooltip("Rotate the polarization by a specified angle in degrees");
-        miniButtons[3].setTooltip("Add a new pulse to the grid; values will be set to duplicate "
+        miniButtons[2].setTooltip(
+            "Rotate the polarization by a specified angle in degrees");
+        miniButtons[3].setTooltip(
+            "Add a new pulse to the grid; values will be set to duplicate "
             "pulse 1 as entered above");
-        miniButtons[4].setTooltip("Add a spherical mirror to the beam path, with radius "
+        miniButtons[4].setTooltip(
+            "Add a spherical mirror to the beam path, with radius "
             "of curvature in meters");
-        miniButtons[5].setTooltip("Add a spectral filter to the beam path. "
+        miniButtons[5].setTooltip(
+            "Add a spectral filter to the beam path. "
             "Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   "
             "in-band amplitude\n   out-of-band amplitude\n");
-        miniButtons[6].setTooltip("Add a linear propagation through the crystal entered on the interface");
-        miniButtons[7].setTooltip("Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
+        miniButtons[6].setTooltip(
+            "Add a linear propagation through the crystal entered on the interface");
+        miniButtons[7].setTooltip(
+            "Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
             "activation parameter\n");
-        miniButtons[8].setTooltip("Filter the beam with a far-field aperture. Parameters:\n   "
+        miniButtons[8].setTooltip(
+            "Filter the beam with a far-field aperture. Parameters:\n   "
             "opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ");
-        miniButtons[9].setTooltip("Add an empty for loop. Parameters:\n   "
+        miniButtons[9].setTooltip(
+            "Add an empty for loop. Parameters:\n   "
             "Number of times to execute\n   Variable number in which to put the counter");
         buttons[0].init(("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
         buttons[0].setTooltip("Run the simulation as currently entered on the "

@@ -31,7 +31,9 @@
 	#include <oneapi/dpl/cmath>
 	#include <oneapi/mkl/dfti.hpp>
 	#include <sycl/sycl.hpp>
-	const auto dftPrecision = (LWEFLOATINGPOINT == 32) ? oneapi::mkl::dft::precision::SINGLE : oneapi::mkl::dft::precision::DOUBLE;
+	const auto dftPrecision = (LWEFLOATINGPOINT == 32) ? 
+		oneapi::mkl::dft::precision::SINGLE 
+		: oneapi::mkl::dft::precision::DOUBLE;
 	#include "LWEActiveDeviceSYCL.h"
 	#define deviceFunction 
 	#if LWEFLOATINGPOINT == 64
