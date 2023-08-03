@@ -297,7 +297,7 @@ def load(filePath: str, loadFieldArray=True):
     s.Nfreq = int(s.Ntime/2 + 1)
     s.fStep = 1.0/(s.Ntime * s.tStep)
     s.Nspace = int(MIN_GRIDDIM * np.round(s.spatialWidth / (MIN_GRIDDIM * s.rStep)))
-    if s.symmetryType == 2:
+    if s.symmetryType == 2 or s.symmetryType == 4:
         s.Nspace2 = int(MIN_GRIDDIM * np.round(s.spatialHeight / (MIN_GRIDDIM * s.rStep)))
     else:
         s.Nspace2 = 1
@@ -307,7 +307,7 @@ def load(filePath: str, loadFieldArray=True):
     #now load the output data from binary format. Note that this will fail if you're using wrong-endian CPUs
     fileBase = os.path.splitext(filePath)
     if loadFieldArray: 
-        if s.symmetryType == 2:
+        if s.symmetryType == 2 or s.symmetryType == 4:
             s.Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*s.Ngrid*s.Nsims*s.Nsims2)],(s.Ntime,s.Nspace,s.Nspace2, 2*s.Nsims,s.Nsims2),order='F')
             s.Ext_x = np.squeeze(s.Ext[:,:,:,0:(2*s.Nsims):2,:])
             s.Ext_y = np.squeeze(s.Ext[:,:,:,1:(2*s.Nsims + 1):2,:])
