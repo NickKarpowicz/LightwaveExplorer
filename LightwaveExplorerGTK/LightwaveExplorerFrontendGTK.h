@@ -60,6 +60,7 @@
 #endif
 
 
+
 void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);

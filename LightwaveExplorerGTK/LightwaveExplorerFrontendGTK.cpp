@@ -18,6 +18,7 @@ class mainGui {
     bool queueInterfaceValuesUpdate;
     int sliderTarget;
     std::thread threadPoolSim[3];
+    std::mutex mutex;
 public:
     LweTextBox textBoxes[54];
     LweButton buttons[16];
@@ -48,9 +49,11 @@ public:
     timeoutID(0){}
     ~mainGui() {}
     void requestPlotUpdate() {
+        std::unique_lock<std::mutex> lock(mutex);
         queueUpdate = true;
     }
     void applyUpdate() {
+        std::unique_lock<std::mutex> lock(mutex);
         if (queueUpdate) {
             queueUpdate = false;
             for (int i = 0; i < 8; ++i) {
@@ -65,17 +68,21 @@ public:
         }
     }
     void requestSliderUpdate() {
+        std::unique_lock<std::mutex> lock(mutex);
         queueSliderUpdate = true;
     }
     void requestSliderMove(int target) {
+        std::unique_lock<std::mutex> lock(mutex);
         queueSliderMove = true;
         sliderTarget = target;
     }
     void requestInterfaceValuesUpdate(){
+        std::unique_lock<std::mutex> lock(mutex);
         queueInterfaceValuesUpdate = true;
     }
 
     void updateSlider() {
+        std::unique_lock<std::mutex> lock(mutex);
         if (queueSliderUpdate) {
             plotSlider.setRange(0, (double)((theSim.base().Nsims * maxN(theSim.base().Nsims2, 1u) - 1)));
             queueSliderUpdate = false;
@@ -101,7 +108,9 @@ public:
         int buttonCol1 = textCol2a - labelWidth;
         int buttonCol2 = buttonCol1 + buttonWidth;
         int buttonCol3 = buttonCol2 + buttonWidth;
+        std::unique_lock GTKlock(GTKmutex);
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
+        GTKlock.unlock();
         window.init(app, "Lightwave Explorer", 1400, 800);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
@@ -513,7 +522,7 @@ public:
         fitCommand.setLabel(0, -1, ("Fitting:"));
 
         filePaths[3].overwritePrint("TestFile");
-
+        GTKlock.lock();
         GtkCssProvider* textProvider = gtk_css_provider_new();
         gtk_css_provider_load_from_data(textProvider,
             "label, scale { font-family: Arial; font-weight: bold; }\n "
@@ -532,7 +541,7 @@ public:
             gdk_display_get_default(), 
             GTK_STYLE_PROVIDER(buttonShrinker), 
             GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-
+        GTKlock.unlock();
         //read the crystal database
         std::string materialString;
         for (int i = 0; i < theDatabase.db.size(); ++i) {
@@ -591,10 +600,12 @@ public:
 		theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
 #endif
         setInterfaceValuesToActiveValues();
+        GTKlock.lock();
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
         g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
+        GTKlock.unlock();
         window.present();
-
+        
         //if the only options are SYCL on the CPU and openMP, make the default openMP
         if (!theSim.base().CUDAavailable 
             && theSim.base().SYCLavailable 
@@ -614,6 +625,7 @@ bool updateDisplay() {
 }
 
 void destroyMainWindowCallback(){
+    std::unique_lock GTKlock(GTKmutex);
     g_source_remove(theGui.timeoutID);
 }
 
@@ -1033,9 +1045,12 @@ void checkLibraryAvailability() {
 
 
 void pathFromDialogBox(GtkDialog* dialog, int response) {
+    std::unique_lock<std::mutex> GTKlock(GTKmutex);
     if (response == GTK_RESPONSE_ACCEPT) {
+        
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
+        GTKlock.unlock();
         std::string s(g_file_get_path(file));
         if (s.substr(s.length() - 4, std::string::npos) == std::string(".txt") 
             && theGui.pathTarget == 3) {
@@ -1045,10 +1060,12 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
             theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s);
         } 
     }
+    GTKlock.unlock();
     g_object_unref(dialog);
 }
 
 void openFileDialog(int64_t pathTarget) {
+    std::unique_lock<std::mutex> GTKlock(GTKmutex);
     theGui.pathTarget = pathTarget;
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
         "Open File", 
@@ -1059,6 +1076,7 @@ void openFileDialog(int64_t pathTarget) {
 }
 
 void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
+    std::unique_lock<std::mutex> GTKlock(GTKmutex);
     theGui.pathTarget = (int64_t)pathTarget;
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
         "Open File", 
@@ -1081,10 +1099,12 @@ void changeToBaseNamePath(char* str, int64_t maxSize) {
 }
 
 void loadFromDialogBox(GtkDialog* dialog, int response) {
+    std::unique_lock<std::mutex> GTKlock(GTKmutex);
     if (response == GTK_RESPONSE_ACCEPT) {
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
         std::string path(g_file_get_path(file));
+        GTKlock.unlock();
         theGui.sequence.clear();
         theGui.fitCommand.clear();
         int readParameters = 
@@ -1099,11 +1119,14 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
             theGui.requestSliderUpdate();
             theGui.requestPlotUpdate();
         }
+        GTKlock.lock();
     }
+
     g_object_unref(dialog);
 }
 
 void loadCallback(GtkWidget* widget, gpointer pathTarget) {
+    std::unique_lock<std::mutex> GTKlock(GTKmutex);
     theGui.pathTarget = (int64_t)pathTarget;
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
         "Open File", 
@@ -1132,6 +1155,7 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     }
     return;
 #else
+    std::unique_lock<std::mutex> GTKlock(GTKmutex);
     GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
         "Save File", 
         theGui.window.windowHandle(), 
@@ -1393,6 +1417,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim.base().isGridAllocated) {
         LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
@@ -1436,16 +1461,14 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
-    
 
     sPlot.plot(cr);
-
-    
 }
 
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim.base().isGridAllocated) {
         LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
@@ -1520,6 +1543,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim.base().isGridAllocated) {
         LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
@@ -1595,6 +1619,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim.base().isGridAllocated) {
         LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
@@ -1622,6 +1647,7 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim.base().isGridAllocated) {
         LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
@@ -1649,6 +1675,7 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim.base().isGridAllocated) {
         LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
@@ -1680,6 +1707,7 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
     if (!theSim.base().isGridAllocated) {
         LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);

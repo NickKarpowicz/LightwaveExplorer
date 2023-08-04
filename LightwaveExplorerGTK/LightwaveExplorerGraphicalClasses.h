@@ -8,8 +8,11 @@
 #include <string>
 #include <algorithm>
 #include <thread>
+#include <mutex>
 #include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
 
+//GLOBAL VARIABLE: GTK MUTEX
+std::mutex GTKmutex;
 //temporary set of macros until std::format is on all platforms
 #if defined __linux__
 #include<fmt/format.h>
@@ -92,6 +95,7 @@ public:
 
     int plot(cairo_t* cr) {
         if (Npts == 0) return 1;
+        std::unique_lock GTKlock(GTKmutex);
         if (SVGPath.length() > 5) makeSVG = true;
         int64_t iMin = 0;
         int64_t iMax = Npts;
@@ -785,7 +789,7 @@ public:
         const float* data, 
         const int cm) {
         if (Nx * Ny == 0) return;
-
+        std::unique_lock GTKlock(GTKmutex);
         // creating input
         const int64_t Ntot = Nx * Ny;
         unsigned char* pixels = new unsigned char[4 * Ntot]();
@@ -841,6 +845,7 @@ public:
     GtkWidget* _grid{};
 
     void setPosition(GtkWidget* grid, int x, int y, int width, int height) {
+        std::unique_lock GTKlock(GTKmutex);
         if (_grid)gtk_grid_remove(GTK_GRID(_grid), elementHandle);
         _grid = grid;
         _x = x;
@@ -850,6 +855,7 @@ public:
         gtk_grid_attach(GTK_GRID(_grid), elementHandle, _x, _y, _width, _height);
     }
     void setLabel(int x, int y, const char* labelText) {
+        std::unique_lock GTKlock(GTKmutex);
         label = gtk_label_new(labelText);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
         gtk_label_set_max_width_chars(GTK_LABEL(label), 45);
@@ -857,6 +863,7 @@ public:
         gtk_grid_attach(GTK_GRID(_grid), label, _x + x, _y + y, 6, 1);
     }
     void setLabel(int x, int y, const char* labelText, int characters, int grids) {
+        std::unique_lock GTKlock(GTKmutex);
         label = gtk_label_new(labelText);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
         gtk_label_set_max_width_chars(GTK_LABEL(label), characters);
@@ -864,10 +871,12 @@ public:
         gtk_grid_attach(GTK_GRID(_grid), label, _x + x, _y + y, grids, 1);
     }
     void squeeze() {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_END);
     }
     void setTooltip(const char* tooltipText) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_widget_set_tooltip_text(elementHandle, tooltipText);
     }
 };
@@ -891,14 +900,17 @@ class LweTextBox : public LweGuiElement {
     }
 public:
     void init(GtkWidget* grid, int x, int y, int width, int height) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_entry_new();
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
         gtk_widget_set_hexpand(elementHandle, false);
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), 7);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
     }
 
     double valueDouble() {
+        std::unique_lock GTKlock(GTKmutex);
         double sdata;
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
@@ -914,6 +926,7 @@ public:
     }
 
     int valueInt() {
+        std::unique_lock GTKlock(GTKmutex);
         int sdata;
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
@@ -929,6 +942,7 @@ public:
     }
 
     void valueToPointer(int* sdata) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
         if (len > 0) {
@@ -939,6 +953,7 @@ public:
     }
 
     void valueToPointer(int64_t* sdata) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
         if (len > 0) {
@@ -949,6 +964,7 @@ public:
     }
 
     void valueToPointer(double* sdata) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
         if (len > 0) {
@@ -959,6 +975,7 @@ public:
     }
 
     void valueToTwoPointers(double* sdata, double* sdata2) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
         char c;
@@ -971,6 +988,7 @@ public:
     }
 
     void valueToTwoPointers(double multiplier, double* sdata, double* sdata2) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
         char c;
@@ -985,6 +1003,7 @@ public:
     }
 
     void valueToPointer(double multiplier, double* sdata) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         int len = gtk_entry_buffer_get_length(buf);
         if (len > 0) {
@@ -996,21 +1015,25 @@ public:
     }
 
     void setMaxCharacters(int charLimit) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), charLimit);
     }
 
     void setToDouble(double in) {
+        std::unique_lock GTKlock(GTKmutex);
         std::string s = Sformat(std::string_view("{:g}"), in);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
+        std::unique_lock GTKlock(GTKmutex);
         std::string s = Svformat(format, Smake_format_args(args...));
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
 
     void copyBuffer(char* destination, int64_t maxLength) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         std::string s(gtk_entry_buffer_get_text(buf));
         if (s.length() > 0) {
@@ -1024,6 +1047,7 @@ public:
     }
 
     void copyBuffer(std::string& destination) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
 
         if (gtk_entry_buffer_get_length(buf) > 0) {
@@ -1039,6 +1063,7 @@ public:
 };
 
 gboolean scrollTextViewToEndHandler(gpointer data) {
+    std::unique_lock GTKlock(GTKmutex);
     GtkAdjustment* adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(data));
     gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment));
     return false;
@@ -1225,21 +1250,25 @@ public:
     }
 
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
         std::string s = Svformat(format, Smake_format_args(args...));
         gtk_text_buffer_insert_markup(buf, &stop, s.c_str(), -1);
+        GTKlock.unlock();
         scrollToEnd();
     }
 
     template<typename... Args> void tPrint(std::string_view format, Args&&... args) {
+        std::unique_lock GTKlock(GTKmutex);
         std::string s = Svformat(format, Smake_format_args(args...));
         textBuffer.append(s);
         hasNewText = true;
     }
     void scrollToEnd() {
+        std::unique_lock GTKlock(GTKmutex);
         g_idle_add_full(
             G_PRIORITY_DEFAULT_IDLE, 
             scrollTextViewToEndHandler, 
@@ -1248,30 +1277,37 @@ public:
     }
     void updateFromBuffer() {
         if (hasNewText) {
+            std::unique_lock GTKlock(GTKmutex);
             hasNewText = false;
             GtkTextIter end;
             gtk_text_buffer_get_end_iter(buf, &end);
             gtk_text_buffer_insert_markup(buf, &end, textBuffer.c_str(), -1);
             textBuffer.clear();
+            GTKlock.unlock();
             scrollToEnd();
         }
     }
 
     void directOverwritePrint(const char* sIn) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_text_buffer_set_text(buf, sIn, -1);
         textBuffer.clear();
+        GTKlock.unlock();
         scrollToEnd();
     }
 
     void directOverwritePrintSequence(const char* sIn) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_text_buffer_set_text(buf, sIn, -1);
         g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, formatSequenceBuffer, buf, NULL);
         textBuffer.clear();
+        GTKlock.unlock();
         scrollToEnd();
     }
 
     void paintSequenceText() {
         if (previousBufferSize != gtk_text_buffer_get_char_count(buf)) {
+            std::unique_lock GTKlock(GTKmutex);
             previousBufferSize = gtk_text_buffer_get_char_count(buf);
             g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, formatSequenceBuffer, buf, NULL);
         }
@@ -1279,13 +1315,16 @@ public:
     }
 
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
+        std::unique_lock GTKlock(GTKmutex);
         std::string s = Svformat(format, Smake_format_args(args...));
         gtk_text_buffer_set_text(buf, s.c_str(), (int)s.length());
         textBuffer.clear();
+        GTKlock.unlock();
         scrollToEnd();
     }
 
     void copyBuffer(char* destination, int64_t maxLength) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkTextIter start;
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
@@ -1296,6 +1335,7 @@ public:
     }
 
     void copyBuffer(std::string& s) {
+        std::unique_lock GTKlock(GTKmutex);
         GtkTextIter start;
         GtkTextIter stop;
         if (gtk_text_buffer_get_char_count(buf) > 0) {
@@ -1312,10 +1352,12 @@ public:
     }
 
     void clear() {
+        std::unique_lock GTKlock(GTKmutex);
         char emptyBuffer[] = "";
         textBuffer.clear();
         GtkTextBuffer* buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
         gtk_text_buffer_set_text(buf, emptyBuffer, 0);
+        GTKlock.unlock();
         scrollToEnd();
     }
 };
@@ -1330,10 +1372,12 @@ public:
         int width, 
         int height, 
         auto buttonFunction) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_button_new_with_label(buttonName);
         gtk_widget_set_hexpand(elementHandle, false);
         gtk_widget_set_vexpand(elementHandle, false);
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
         setFunction(buttonFunction);
     }
@@ -1346,16 +1390,20 @@ public:
         int height, 
         auto buttonFunction, 
         gpointer functionData) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_button_new_with_label(buttonName);
         gtk_widget_set_hexpand(elementHandle, false);
         gtk_widget_set_vexpand(elementHandle, false);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
         setFunction(buttonFunction, functionData);
     }
     void setFunction(auto buttonFunction) {
+        std::unique_lock GTKlock(GTKmutex);
         g_signal_connect(elementHandle, "clicked", G_CALLBACK(buttonFunction), NULL);
     }
     void setFunction(auto buttonFunction, gpointer param) {
+        std::unique_lock GTKlock(GTKmutex);
         g_signal_connect(elementHandle, "clicked", G_CALLBACK(buttonFunction), param);
     }
 };
@@ -1369,13 +1417,17 @@ public:
         int y, 
         int width, 
         int height) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_check_button_new_with_label(buttonName);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
     }
     bool isChecked() {
+        std::unique_lock GTKlock(GTKmutex);
         return (bool)gtk_check_button_get_active(GTK_CHECK_BUTTON(elementHandle));
     }
     void setFunction(auto buttonFunction) {
+        std::unique_lock GTKlock(GTKmutex);
         g_signal_connect_after(elementHandle, "toggled", G_CALLBACK(buttonFunction), NULL);
     }
 };
@@ -1383,12 +1435,15 @@ public:
 class LweProgressBar : public LweGuiElement {
 public:
     void init(GtkWidget* grid, int x, int y, int width, int height) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_progress_bar_new();
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_CENTER);
         gtk_widget_set_hexpand(elementHandle, true);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
     }
     void setValue(double fraction) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(elementHandle), fraction);
     }
 };
@@ -1417,15 +1472,19 @@ public:
         ++Nelements;
     }
     void init(GtkWidget* grid, int x, int y, int width, int height) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_drop_down_new_from_strings(strArray);
         gtk_widget_set_hexpand(elementHandle, false);
         gtk_widget_set_vexpand(elementHandle, false);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
     }
     int getValue() {
+        std::unique_lock GTKlock(GTKmutex);
         return (int)gtk_drop_down_get_selected(GTK_DROP_DOWN(elementHandle));
     }
     void setValue(int target) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_drop_down_set_selected(GTK_DROP_DOWN(elementHandle), target);
     }
 
@@ -1466,6 +1525,7 @@ public:
         const char* windowName, 
         int width, 
         int height) {
+        std::unique_lock GTKlock(GTKmutex);
         window = gtk_application_window_new(appHandle);
         gtk_window_set_title(GTK_WINDOW(window), windowName);
         gtk_window_set_default_size(GTK_WINDOW(window), width, height);
@@ -1518,6 +1578,7 @@ public:
         gtk_grid_attach(GTK_GRID(plotControlsGrid), plotControlsSubgrid2, 1, 0, 1, 1);
     }
     void present() {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_window_present(GTK_WINDOW(window));
     }
 
@@ -1552,31 +1613,39 @@ public:
 class LweDrawBox : public LweGuiElement {
 public:
     void init(GtkWidget* grid, int x, int y, int width, int height) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_drawing_area_new();
         gtk_widget_set_hexpand(elementHandle, true);
         gtk_widget_set_vexpand(elementHandle, true);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
+        GTKlock.lock();
         gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(elementHandle), 12);
         gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(elementHandle), 12);
     }
     void setDrawingFunction(GtkDrawingAreaDrawFunc theFunction) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(elementHandle),
             theFunction,
             NULL, NULL);
     }
     void queueDraw() {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_widget_queue_draw(elementHandle);
     }
     void noVerticalExpantion() {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_widget_set_vexpand(elementHandle, false);
     }
 };
 class LweSpacer : public LweGuiElement {
 public:
     void init(GtkWidget* grid, int x, int y, int width, int height, int spacing) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, spacing);
         gtk_widget_set_hexpand(elementHandle, true);
         gtk_widget_set_vexpand(elementHandle, true);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
     }
 };
@@ -1584,30 +1653,38 @@ public:
 class LweSlider : public LweGuiElement {
 public:
     void init(GtkWidget* grid, int x, int y, int width, int height) {
+        std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
         gtk_scale_set_draw_value(GTK_SCALE(elementHandle), true);
         gtk_scale_set_value_pos(GTK_SCALE(elementHandle), GTK_POS_LEFT);
         gtk_widget_set_hexpand(elementHandle, true);
         gtk_widget_set_margin_top(elementHandle, 0);
         gtk_widget_set_margin_bottom(elementHandle, 0);
+        GTKlock.unlock();
         setPosition(grid, x, y, width, height);
     }
     int getIntValue() {
+        std::unique_lock GTKlock(GTKmutex);
         return (int)gtk_range_get_value(GTK_RANGE(elementHandle));
     }
     double getDoubleValue() {
+        std::unique_lock GTKlock(GTKmutex);
         return gtk_range_get_value(GTK_RANGE(elementHandle));
     }
     void setRange(double minVal, double maxVal) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_range_set_range(GTK_RANGE(elementHandle), minVal, maxVal);
     }
     void setDigits(int digits) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_scale_set_digits(GTK_SCALE(elementHandle), digits);
     }
     void setFunction(auto sliderFunction) {
+        std::unique_lock GTKlock(GTKmutex);
         g_signal_connect_after(elementHandle, "change-value", G_CALLBACK(sliderFunction), NULL);
     }
     void setValue(int value) {
+        std::unique_lock GTKlock(GTKmutex);
         gtk_range_set_value(GTK_RANGE(elementHandle), (double)value);
     }
 };
