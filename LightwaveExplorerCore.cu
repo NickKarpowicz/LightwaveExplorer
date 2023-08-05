@@ -1484,14 +1484,17 @@ namespace deviceFunctions {
 				for (auto a = 0; a < 3; ++a) {
 					for (auto b = 0; b < 3; ++b) {
 						for (auto c = 0; c < 3; ++c) {
+							deviceFP driverTerm = P(a) * P(b) * P(c);
+							deviceFP deviceTerm = (
+								dPdt(a) * P(b) * P(c)
+								+ P(a) * dPdt(b) * P(c)
+								+ P(a) * P(b) * dPdt(c));
 							for (auto d = 0; d < 3; ++d) {
 								nonlinearDriver(d) += 
-									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * P(a) * P(b) * P(c);
-								instNonlin(d) += 
-									s->chi3[a + 3 * b + 9 * c + 27 * d][0] *
-									(dPdt(a) * P(b) * P(c)
-										+ P(a) * dPdt(b) * P(c)
-										+ P(a) * P(b) * dPdt(c));
+									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * driverTerm;
+								instNonlin(d) +=
+									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * deviceTerm;
+									
 							}
 						}
 					}
