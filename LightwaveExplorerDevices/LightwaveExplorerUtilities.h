@@ -73,6 +73,139 @@ public:
         default: return x;
         }
     }
+    hostOrDevice inline void operator+=(
+        const maxwellPoint<deviceFP>& other) {
+        x += other.x;
+        y += other.y;
+        z += other.z;
+    }
+    hostOrDevice inline void operator-=(
+        const maxwellPoint<deviceFP>& other) {
+        x -= other.x;
+        y -= other.y;
+        z -= other.z;
+    }
+    hostOrDevice inline void operator*=(
+        const maxwellPoint<deviceFP>& other) {
+        x *= other.x;
+        y *= other.y;
+        z *= other.z;
+    }
+    hostOrDevice inline void operator/=(
+        const maxwellPoint<deviceFP>& other) {
+        x /= other.x;
+        y /= other.y;
+        z /= other.z;
+    }
+
+    hostOrDevice inline void operator+=(
+        const deviceFP other) {
+        x += other;
+        y += other;
+        z += other;
+    }
+    hostOrDevice inline void operator-=(
+        const deviceFP other) {
+        x -= other;
+        y -= other;
+        z -= other;
+    }
+    hostOrDevice inline void operator*=(
+        const deviceFP other) {
+        x *= other;
+        y *= other;
+        z *= other;
+    }
+    hostOrDevice inline void operator/=(
+        const deviceFP other) {
+        x /= other;
+        y /= other;
+        z /= other;
+    }
+
+    hostOrDevice inline maxwellPoint<deviceFP> operator*(
+        const maxwellPoint<deviceFP>& other) const {
+        return maxwellPoint<deviceFP>{
+                x * other.x,
+                y * other.y,
+                z * other.z};
+    }
+    hostOrDevice inline maxwellPoint<deviceFP> operator*(
+        const deviceFP other) const {
+        return maxwellPoint<deviceFP>{
+                x * other,
+                y * other,
+                z * other};
+    }
+    hostOrDevice inline friend maxwellPoint<deviceFP> operator*(const deviceFP a, const maxwellPoint<deviceFP>& b) {
+        return maxwellPoint<deviceFP>{
+                a * b.x,
+                a * b.y,
+                a * b.z};
+    }
+
+    hostOrDevice inline maxwellPoint<deviceFP> operator/(
+        const maxwellPoint<deviceFP>& other) const {
+        return maxwellPoint<deviceFP>{
+                x / other.x,
+                y / other.y,
+                z / other.z};
+    }
+    hostOrDevice inline maxwellPoint<deviceFP> operator/(
+        const deviceFP other) const {
+        return maxwellPoint<deviceFP>{
+                x / other,
+                y / other,
+                z / other};
+    }
+    hostOrDevice inline friend maxwellPoint<deviceFP> operator/(const deviceFP a, const maxwellPoint<deviceFP>& b) {
+        return maxwellPoint<deviceFP>{
+                a / b.x,
+                a / b.y,
+                a / b.z};
+    }
+
+    hostOrDevice inline maxwellPoint<deviceFP> operator+(
+        const maxwellPoint<deviceFP>& other) const {
+        return maxwellPoint<deviceFP>{
+                x + other.x,
+                y + other.y,
+                z + other.z};
+    }
+    hostOrDevice inline maxwellPoint<deviceFP> operator+(
+        const deviceFP other) const {
+        return maxwellPoint<deviceFP>{
+                x + other,
+                y + other,
+                z + other};
+    }
+    hostOrDevice inline friend maxwellPoint<deviceFP> operator+(const deviceFP a, const maxwellPoint<deviceFP>& b) {
+        return maxwellPoint<deviceFP>{
+                a + b.x,
+                a + b.y,
+                a + b.z};
+    }
+
+    hostOrDevice inline maxwellPoint<deviceFP> operator-(
+        const maxwellPoint<deviceFP>& other) const {
+        return maxwellPoint<deviceFP>{
+                x - other.x,
+                y - other.y,
+                z - other.z};
+    }
+    hostOrDevice inline maxwellPoint<deviceFP> operator-(
+        const deviceFP other) const {
+        return maxwellPoint<deviceFP>{
+                x - other,
+                y - other,
+                z - other};
+    }
+    hostOrDevice inline friend maxwellPoint<deviceFP> operator-(const deviceFP a, const maxwellPoint<deviceFP>& b) {
+        return maxwellPoint<deviceFP>{
+                a - b.x,
+                a - b.y,
+                a - b.z};
+    }
 };
 
 template <typename deviceFP>
@@ -91,6 +224,40 @@ public:
     deviceFP Px{};
     deviceFP Py{};
     deviceFP Pz{};
+
+    //note that I only defined the three operations I need rather than the
+    //full set. Might be worth filling in everything later.
+    hostOrDevice void operator+=(
+        const oscillator<deviceFP>& other) {
+        Jx += other.Jx;
+        Jy += other.Jy;
+        Jz += other.Jz;
+        Px += other.Px;
+        Py += other.Py;
+        Pz += other.Pz;
+    }
+    hostOrDevice inline oscillator<deviceFP> operator*(
+        const deviceFP other) const {
+        return oscillator<deviceFP>{
+                Jx * other,
+                Jy * other,
+                Jz * other,
+                Px * other,
+                Py * other,
+                Pz * other
+        };
+    }
+    hostOrDevice inline oscillator<deviceFP> operator+(
+        const oscillator<deviceFP>& other) const {
+        return oscillator<deviceFP>{
+                Jx + other.Jx,
+                Jy + other.Jy,
+                Jz + other.Jz,
+                Px + other.Px,
+                Py + other.Py,
+                Pz + other.Pz
+        };
+    }
 };
 
 //class holding the device data structures
