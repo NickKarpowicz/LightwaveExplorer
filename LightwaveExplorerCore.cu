@@ -1404,12 +1404,8 @@ namespace deviceFunctions {
 			maxwellPoint<deviceFP> J{};
 			maxwellPoint<deviceFP> P = chiInstant * crystalField;
 			for (int j = 0; j < (s->Noscillators - s->hasPlasma[0]); j++) {
-				J.x += currentGridIn[oscillatorIndex + j].Jx;
-				P.x += currentGridIn[oscillatorIndex + j].Px;
-				J.y += currentGridIn[oscillatorIndex + j].Jy;
-				P.y += currentGridIn[oscillatorIndex + j].Py;
-				J.z += currentGridIn[oscillatorIndex + j].Jz;
-				P.z += currentGridIn[oscillatorIndex + j].Pz;
+				J += currentGridIn[oscillatorIndex + j].J;
+				P += currentGridIn[oscillatorIndex + j].P;
 			}
 			//update dEdt (kE) with the dipole current and divide by the instantaneous
 			//part of the dielectric constant
@@ -1509,14 +1505,8 @@ namespace deviceFunctions {
 					s->nonlinearAbsorptionOrder[0])
 				: 0.0f;
 			if (s->hasPlasma[0]) {
-				maxwellPoint<deviceFP> absorption{-twoPi<deviceFP>() * absorptionCurrent * crystalField.x,
-					-twoPi<deviceFP>() * absorptionCurrent * crystalField.y,
-					-twoPi<deviceFP>() * absorptionCurrent * crystalField.z
-				};
-				absorption += maxwellPoint<deviceFP>{currentGridIn[oscillatorIndex + s->Noscillators - 1].Jx,
-					currentGridIn[oscillatorIndex + s->Noscillators - 1].Jy,
-					currentGridIn[oscillatorIndex + s->Noscillators - 1].Jz
-				} *inverseEps0<deviceFP>();
+				maxwellPoint<deviceFP> absorption = -twoPi<deviceFP>() * absorptionCurrent * crystalField;
+				absorption += currentGridIn[oscillatorIndex + s->Noscillators - 1].J * inverseEps0<deviceFP>();
 				absorption /= epsilonInstant;
 				kE += absorption;
 			}
@@ -1528,31 +1518,25 @@ namespace deviceFunctions {
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ?
 					oscillator<deviceFP>{
-					(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[1 + j * 3][0] *
+					maxwellPoint<deviceFP>{(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[1 + j * 3][0] *
 						(crystalField.x + nonlinearDriver.x)
-						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].Px
-						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jx,
+						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].P.x
+						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].J.x,
 						(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[23 + j * 3][0] *
 						(crystalField.y + nonlinearDriver.y)
-						- s->sellmeierEquations[24 + j * 3][0] * currentGridIn[oscillatorIndex + j].Py
-						- s->sellmeierEquations[25 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jy,
+						- s->sellmeierEquations[24 + j * 3][0] * currentGridIn[oscillatorIndex + j].P.y
+						- s->sellmeierEquations[25 + j * 3][0] * currentGridIn[oscillatorIndex + j].J.y,
 						(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[45 + j * 3][0] *
 						(crystalField.z + nonlinearDriver.z)
-						- s->sellmeierEquations[46 + j * 3][0] * currentGridIn[oscillatorIndex + j].Pz
-						- s->sellmeierEquations[47 + j * 3][0] * currentGridIn[oscillatorIndex + j].Jz,
-						currentGridIn[oscillatorIndex + j].Jx,
-						currentGridIn[oscillatorIndex + j].Jy,
-						currentGridIn[oscillatorIndex + j].Jz} :
+						- s->sellmeierEquations[46 + j * 3][0] * currentGridIn[oscillatorIndex + j].P.z
+						- s->sellmeierEquations[47 + j * 3][0] * currentGridIn[oscillatorIndex + j].J.z},
+						currentGridIn[oscillatorIndex + j].J} :
 				oscillator<deviceFP>{
-					eps0<deviceFP>() * currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.x 
-					- s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jx,
-					eps0<deviceFP>() * currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.y 
-					- s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jy,
-					eps0<deviceFP>() * currentGridIn[oscillatorIndex + j].Px * s->kDrude[0] * crystalField.z 
-					- s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].Jz,
-					absorptionCurrent * dotProduct(P,P) * s->kCarrierGeneration[0],
+					eps0<deviceFP>() * currentGridIn[oscillatorIndex + j].P * s->kDrude[0] * crystalField 
+					- s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].J,
+					maxwellPoint<deviceFP>{absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[0],
 					deviceFP{},
-					deviceFP{} };
+					deviceFP{} } };
 				//note that k.Px is used to store the carrier density
 
 				switch (rkIndex) {
