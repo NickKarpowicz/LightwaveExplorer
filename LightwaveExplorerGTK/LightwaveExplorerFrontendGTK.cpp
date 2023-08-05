@@ -1047,11 +1047,10 @@ void checkLibraryAvailability() {
 void pathFromDialogBox(GtkDialog* dialog, int response) {
     std::unique_lock<std::mutex> GTKlock(GTKmutex);
     if (response == GTK_RESPONSE_ACCEPT) {
-        
         GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
         GFile* file = gtk_file_chooser_get_file(chooser);
-        GTKlock.unlock();
         std::string s(g_file_get_path(file));
+        GTKlock.unlock();
         if (s.substr(s.length() - 4, std::string::npos) == std::string(".txt") 
             && theGui.pathTarget == 3) {
             theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s.substr(0,s.length()-4));
@@ -1059,8 +1058,8 @@ void pathFromDialogBox(GtkDialog* dialog, int response) {
         else {
             theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s);
         } 
+        GTKlock.lock();
     }
-    GTKlock.unlock();
     g_object_unref(dialog);
 }
 
