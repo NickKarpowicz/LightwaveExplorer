@@ -1419,8 +1419,6 @@ namespace deviceFunctions {
 			//Use dEdt to calculate dPdt
 			maxwellPoint<deviceFP> dPdt = (kE * chiInstant) * eps0<deviceFP>();
 			dPdt += J;
-
-			//Multiply by 2 (I do not know why)
 			dPdt *= 2.0f;
 			P *= 2.0f;
 
@@ -1485,7 +1483,7 @@ namespace deviceFunctions {
 					for (auto b = 0; b < 3; ++b) {
 						for (auto c = 0; c < 3; ++c) {
 							deviceFP driverTerm = P(a) * P(b) * P(c);
-							deviceFP deviceTerm = (
+							deviceFP instantTerm = (
 								dPdt(a) * P(b) * P(c)
 								+ P(a) * dPdt(b) * P(c)
 								+ P(a) * P(b) * dPdt(c));
@@ -1493,7 +1491,7 @@ namespace deviceFunctions {
 								nonlinearDriver(d) += 
 									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * driverTerm;
 								instNonlin(d) +=
-									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * deviceTerm;
+									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * instantTerm;
 									
 							}
 						}
