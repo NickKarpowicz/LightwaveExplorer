@@ -65,6 +65,14 @@ public:
     deviceFP x{};
     deviceFP y{};
     deviceFP z{};
+    hostOrDevice inline deviceFP& operator()(const int index) {
+        switch (index) {
+        case 0: return x;
+        case 1: return y;
+        case 2: return z;
+        default: return x;
+        }
+    }
 };
 
 template <typename deviceFP>

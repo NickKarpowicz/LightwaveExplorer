@@ -1598,23 +1598,18 @@ namespace deviceFunctions {
 			}
 
 			//calculate Chi3 nonlinearity with full tensor
-			//resort to pointers to not have to write too many pages of code
 			if (s->hasFullChi3[0]) {
-				deviceFP* nonlinearDriverArr = (deviceFP*)&nonlinearDriver;
-				deviceFP* Parr = (deviceFP*)&P;
-				deviceFP* dPdtarr = (deviceFP*)&dPdt;
-				deviceFP* instNonlinArr = (deviceFP*)&instNonlin;
 				for (auto a = 0; a < 3; ++a) {
 					for (auto b = 0; b < 3; ++b) {
 						for (auto c = 0; c < 3; ++c) {
 							for (auto d = 0; d < 3; ++d) {
-								nonlinearDriverArr[d] += 
-									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * Parr[a] * Parr[b] * Parr[c];
-								instNonlinArr[d] += 
+								nonlinearDriver(d) += 
+									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * P(a) * P(b) * P(c);
+								instNonlin(d) += 
 									s->chi3[a + 3 * b + 9 * c + 27 * d][0] *
-									(dPdtarr[a] * Parr[b] * Parr[c]
-										+ Parr[a] * dPdtarr[b] * Parr[c]
-										+ Parr[a] * Parr[b] * dPdtarr[c]);
+									(dPdt(a) * P(b) * P(c)
+										+ P(a) * dPdt(b) * P(c)
+										+ P(a) * P(b) * dPdt(c));
 							}
 						}
 					}
