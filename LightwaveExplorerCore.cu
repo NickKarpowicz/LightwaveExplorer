@@ -1448,7 +1448,7 @@ namespace deviceFunctions {
 				deviceFP fieldSquaredSum = dotProduct(P, P);
 				deviceFP dByDtfieldSquaredSum = 2.0f * dotProduct(dPdt, P);
 				nonlinearDriver += P * (s->chi3[0][0].x * fieldSquaredSum);
-				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum) * (s->chi3[0][0]);
+				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum) * (s->chi3[0][0].x);
 			}
 
 			//calculate Chi3 nonlinearity with full tensor
