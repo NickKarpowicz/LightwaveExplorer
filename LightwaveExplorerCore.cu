@@ -1394,8 +1394,7 @@ namespace deviceFunctions {
 			//rotate the field and the currently-active derivative term into the crystal coordinates
 			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
 			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
-			maxwellPoint<deviceFP> epsilonInstant = s->sellmeierEquations[0][0];
-			maxwellPoint<deviceFP> chiInstant = epsilonInstant - 1.0f;
+			maxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][0] - 1.0f;
 
 			//get the total dipole current and polarization of the oscillators
 			maxwellPoint<deviceFP> J{};
@@ -1407,7 +1406,7 @@ namespace deviceFunctions {
 			//update dEdt (kE) with the dipole current and divide by the instantaneous
 			//part of the dielectric constant
 			kE += J * inverseEps0<deviceFP>();
-			kE /= epsilonInstant;
+			kE /= s->sellmeierEquations[0][0];
 
 			//Use dEdt to calculate dPdt
 			maxwellPoint<deviceFP> dPdt = (kE * chiInstant) * eps0<deviceFP>();
@@ -1474,7 +1473,7 @@ namespace deviceFunctions {
 				}
 			}
 			nonlinearDriver *= 2.0f;
-			instNonlin /= epsilonInstant;
+			instNonlin /= s->sellmeierEquations[0][0];
 			kE += (instNonlin * chiInstant) * (2.0f * inverseEps0<deviceFP>());
 
 			//resolve the plasma nonlinearity
@@ -1486,7 +1485,7 @@ namespace deviceFunctions {
 			if (s->hasPlasma[0]) {
 				maxwellPoint<deviceFP> absorption = -twoPi<deviceFP>() * absorptionCurrent * crystalField;
 				absorption += currentGridIn[oscillatorIndex + s->Noscillators - 1].J * inverseEps0<deviceFP>();
-				absorption /= epsilonInstant;
+				absorption /= s->sellmeierEquations[0][0];
 				kE += absorption;
 			}
 
