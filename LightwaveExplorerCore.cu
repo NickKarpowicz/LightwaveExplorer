@@ -1425,6 +1425,7 @@ namespace deviceFunctions {
 
 			//calculate the chi2 nonlinearity
 			if (s->hasChi2[0]) {
+<<<<<<< HEAD
 				nonlinearDriver += s->chi2[0][0] * (P.x * P.x);
 				instNonlin += s->chi2[0][0] * (2.0f * dPdt.x * P.x);
 
@@ -1442,6 +1443,37 @@ namespace deviceFunctions {
 
 				nonlinearDriver += s->chi2[5][0] * (P.x * P.y);
 				instNonlin += s->chi2[5][0] * (P.x * dPdt.y + dPdt.x * P.y);
+=======
+				deviceFP currentTerm = P.x * P.x;
+				deviceFP instTerm = 2.0f * dPdt.x * P.x;
+				nonlinearDriver += s->chi2[0][0] * currentTerm;
+				instNonlin += s->chi2[0][0] * instTerm;
+
+				currentTerm = P.y * P.y;
+				instTerm = 2.0f * dPdt.y * P.y;
+				nonlinearDriver += s->chi2[1][0] * currentTerm;
+				instNonlin += s->chi2[1][0] * instTerm;
+
+				currentTerm = P.z * P.z;
+				instTerm = 2.0f * P.z * dPdt.z;
+				nonlinearDriver += s->chi2[2][0] * currentTerm;
+				instNonlin += s->chi2[2][0] * instTerm;
+
+				currentTerm = P.y * P.z;
+				instTerm = P.y * dPdt.z + dPdt.y * P.z;
+				nonlinearDriver += s->chi2[3][0] * currentTerm;
+				instNonlin += s->chi2[3][0] * instTerm;
+
+				currentTerm = P.x * P.z;
+				instTerm = P.x * dPdt.z + dPdt.x * P.z;
+				nonlinearDriver += s->chi2[4][0] * currentTerm;
+				instNonlin += s->chi2[4][0] * instTerm;
+
+				currentTerm = P.x * P.y;
+				instTerm = P.x * dPdt.y + dPdt.x * P.y;
+				nonlinearDriver += s->chi2[5][0] * currentTerm;
+				instNonlin += s->chi2[5][0] * instTerm;
+>>>>>>> 3a4559e1774d26de33603625dd32a6e8f91082c3
 			}
 
 			//calculate kerr nonlinearity for scalar chi3 (assuming centrosymmetry)
