@@ -1532,12 +1532,12 @@ namespace deviceFunctions {
 						- s->sellmeierEquations[47 + j * 3][0] * currentGridIn[oscillatorIndex + j].J.z},
 						currentGridIn[oscillatorIndex + j].J} :
 				oscillator<deviceFP>{
-					eps0<deviceFP>() * currentGridIn[oscillatorIndex + j].P * s->kDrude[0] * crystalField 
+					eps0<deviceFP>() * currentGridIn[oscillatorIndex + j].P.x * s->kDrude[0] * crystalField 
 					- s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].J,
 					maxwellPoint<deviceFP>{absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[0],
 					deviceFP{},
 					deviceFP{} } };
-				//note that k.Px is used to store the carrier density
+				//note that k.P.x is used to store the carrier density
 
 				switch (rkIndex) {
 				case 0:
