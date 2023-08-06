@@ -1447,7 +1447,7 @@ namespace deviceFunctions {
 			if (s->hasSingleChi3[0]) {
 				deviceFP fieldSquaredSum = dotProduct(P, P);
 				deviceFP dByDtfieldSquaredSum = 2.0f * dotProduct(dPdt, P);
-				nonlinearDriver += P * (s->chi3[0][0] * fieldSquaredSum);
+				nonlinearDriver += P * (s->chi3[0][0].x * fieldSquaredSum);
 				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum) * (s->chi3[0][0]);
 			}
 
@@ -1456,18 +1456,12 @@ namespace deviceFunctions {
 				for (auto a = 0; a < 3; ++a) {
 					for (auto b = 0; b < 3; ++b) {
 						for (auto c = 0; c < 3; ++c) {
-							deviceFP driverTerm = P(a) * P(b) * P(c);
-							deviceFP instantTerm = (
+							nonlinearDriver += s->chi3[a + 3 * b + 9 * c][0] 
+								* P(a) * P(b) * P(c);
+							instNonlin += s->chi3[a + 3 * b + 9 * c][0] * (
 								dPdt(a) * P(b) * P(c)
 								+ P(a) * dPdt(b) * P(c)
 								+ P(a) * P(b) * dPdt(c));
-							for (auto d = 0; d < 3; ++d) {
-								nonlinearDriver(d) += 
-									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * driverTerm;
-								instNonlin(d) +=
-									s->chi3[a + 3 * b + 9 * c + 27 * d][0] * instantTerm;
-									
-							}
 						}
 					}
 				}
@@ -5413,9 +5407,13 @@ namespace hostFunctions{
 				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i + 2] * millersRuleFactorChi2) };
 			if (i > 2) maxCalc.chi2[i][0] *= 2.0;
 		}
-		for (int i = 0; i < 81; i++) {
-			maxCalc.chi3[i][0] = static_cast<deviceFP>(
+		for (int i = 0; i < 27; i++) {
+			maxCalc.chi3[i][0].x = static_cast<deviceFP>(
 				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i] * millersRuleFactorChi3);
+			maxCalc.chi3[i][0].y = static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i+27] * millersRuleFactorChi3);
+			maxCalc.chi3[i][0].z = static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i+54] * millersRuleFactorChi3);
 		}
 
 		//count the nonzero oscillators

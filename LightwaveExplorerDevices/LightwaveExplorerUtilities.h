@@ -986,7 +986,7 @@ public:
     O* materialGridEstimate2{};
     int64_t* materialIndexMap{};
     maxwellPoint<deviceFP> sellmeierEquations[22][8]{};
-    deviceFP chi3[81][8]{};
+    maxwellPoint<deviceFP> chi3[27][8]{};
     maxwellPoint<deviceFP> chi2[6][8]{};
     int nonlinearAbsorptionOrder[8]{};
     deviceFP kNonlinearAbsorption[8]{};
