@@ -1394,10 +1394,7 @@ namespace deviceFunctions {
 			//rotate the field and the currently-active derivative term into the crystal coordinates
 			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
 			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
-			maxwellPoint<deviceFP> epsilonInstant{
-				s->sellmeierEquations[0][0],
-					s->sellmeierEquations[22][0],
-					s->sellmeierEquations[44][0]};
+			maxwellPoint<deviceFP> epsilonInstant = s->sellmeierEquations[0][0];
 			maxwellPoint<deviceFP> chiInstant = epsilonInstant - 1.0f;
 
 			//get the total dipole current and polarization of the oscillators
@@ -1430,39 +1427,33 @@ namespace deviceFunctions {
 			if (s->hasChi2[0]) {
 				deviceFP currentTerm = P.x * P.x;
 				deviceFP instTerm = 2.0f * dPdt.x * P.x;
-				maxwellPoint<deviceFP> chi2Block{s->chi2[0][0], s->chi2[1][0], s->chi2[2][0]};
-				nonlinearDriver += chi2Block * currentTerm;
-				instNonlin += chi2Block * instTerm;
+				nonlinearDriver += s->chi2[0][0] * currentTerm;
+				instNonlin += s->chi2[0][0] * instTerm;
 
 				currentTerm = P.y * P.y;
 				instTerm = 2.0f * dPdt.y * P.y;
-				chi2Block = maxwellPoint<deviceFP>{ s->chi2[3][0], s->chi2[4][0], s->chi2[5][0] };
-				nonlinearDriver += chi2Block * currentTerm;
-				instNonlin += chi2Block * instTerm;
+				nonlinearDriver += s->chi2[1][0] * currentTerm;
+				instNonlin += s->chi2[1][0] * instTerm;
 
 				currentTerm = P.z * P.z;
 				instTerm = 2.0f * P.z * dPdt.z;
-				chi2Block = maxwellPoint<deviceFP>{ s->chi2[6][0], s->chi2[7][0], s->chi2[8][0] };
-				nonlinearDriver += chi2Block * currentTerm;
-				instNonlin += chi2Block * instTerm;
+				nonlinearDriver += s->chi2[2][0] * currentTerm;
+				instNonlin += s->chi2[2][0] * instTerm;
 
 				currentTerm = P.y * P.z;
 				instTerm = P.y * dPdt.z + dPdt.y * P.z;
-				chi2Block = maxwellPoint<deviceFP>{ s->chi2[9][0], s->chi2[10][0], s->chi2[11][0] };
-				nonlinearDriver += chi2Block * currentTerm;
-				instNonlin += chi2Block * instTerm;
+				nonlinearDriver += s->chi2[3][0] * currentTerm;
+				instNonlin += s->chi2[3][0] * instTerm;
 
 				currentTerm = P.x * P.z;
 				instTerm = P.x * dPdt.z + dPdt.x * P.z;
-				chi2Block = maxwellPoint<deviceFP>{ s->chi2[12][0], s->chi2[13][0], s->chi2[14][0] };
-				nonlinearDriver += chi2Block * currentTerm;
-				instNonlin += chi2Block * instTerm;
+				nonlinearDriver += s->chi2[4][0] * currentTerm;
+				instNonlin += s->chi2[4][0] * instTerm;
 
 				currentTerm = P.x * P.y;
 				instTerm = P.x * dPdt.y + dPdt.x * P.y;
-				chi2Block = maxwellPoint<deviceFP>{ s->chi2[15][0], s->chi2[16][0], s->chi2[17][0] };
-				nonlinearDriver += chi2Block * currentTerm;
-				instNonlin += chi2Block * instTerm;
+				nonlinearDriver += s->chi2[5][0] * currentTerm;
+				instNonlin += s->chi2[5][0] * instTerm;
 			}
 
 			//calculate kerr nonlinearity for scalar chi3 (assuming centrosymmetry)
@@ -1518,21 +1509,13 @@ namespace deviceFunctions {
 			for (int j = 0; j < s->Noscillators; j++) {
 				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ?
 					oscillator<deviceFP>{
-					maxwellPoint<deviceFP>{(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[1 + j * 3][0] *
-						(crystalField.x + nonlinearDriver.x)
-						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex + j].P.x
-						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex + j].J.x,
-						(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[23 + j * 3][0] *
-						(crystalField.y + nonlinearDriver.y)
-						- s->sellmeierEquations[24 + j * 3][0] * currentGridIn[oscillatorIndex + j].P.y
-						- s->sellmeierEquations[25 + j * 3][0] * currentGridIn[oscillatorIndex + j].J.y,
-						(-eps0<deviceFP>() * kLorentzian<deviceFP>())* s->sellmeierEquations[45 + j * 3][0] *
-						(crystalField.z + nonlinearDriver.z)
-						- s->sellmeierEquations[46 + j * 3][0] * currentGridIn[oscillatorIndex + j].P.z
-						- s->sellmeierEquations[47 + j * 3][0] * currentGridIn[oscillatorIndex + j].J.z},
+					(-eps0<deviceFP>() * kLorentzian<deviceFP>())*
+						s->sellmeierEquations[1 + j * 3][0] * (crystalField+nonlinearDriver)
+						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].P
+						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].J,
 						currentGridIn[oscillatorIndex + j].J} :
 				oscillator<deviceFP>{
-					eps0<deviceFP>() * currentGridIn[oscillatorIndex + j].P.x * s->kDrude[0] * crystalField 
+					currentGridIn[oscillatorIndex + j].P.x * s->kDrude[0] * crystalField 
 					- s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].J,
 					maxwellPoint<deviceFP>{absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[0],
 					deviceFP{},
@@ -5345,13 +5328,13 @@ namespace hostFunctions{
 		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].axisType == 0) {
 			//isotropic
 			for (int i = 0; i < 22; i++) {
-				maxCalc.sellmeierEquations[i][0] = 
+				maxCalc.sellmeierEquations[i][0].x = 
 					static_cast<deviceFP>(
 						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[22 + i][0] = 
+				maxCalc.sellmeierEquations[i][0].y = 
 					static_cast<deviceFP>(
 						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[44 + i][0] = 
+				maxCalc.sellmeierEquations[i][0].z = 
 					static_cast<deviceFP>(
 						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
 			}
@@ -5359,23 +5342,28 @@ namespace hostFunctions{
 		else if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].axisType == 1) {
 			//uniaxial
 			for (int i = 0; i < 22; i++) {
-				maxCalc.sellmeierEquations[i][0] = 
+				maxCalc.sellmeierEquations[i][0].x = 
 					static_cast<deviceFP>(
 						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[22 + i][0] = 
+				maxCalc.sellmeierEquations[i][0].y = 
 					static_cast<deviceFP>(
 						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[44 + i][0] = 
+				maxCalc.sellmeierEquations[i][0].z = 
 					static_cast<deviceFP>(
 						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+22]);
 			}
 		}
 		else {
 			//biaxial
-			for (int i = 0; i < 66; i++) {
-				maxCalc.sellmeierEquations[i][0] = 
+			for (int i = 0; i < 22; i++) {
+				maxCalc.sellmeierEquations[i][0] = maxwellPoint<deviceFP>{
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
+						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]),
+					static_cast<deviceFP>(
+						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+22]),
+					static_cast<deviceFP>(
+						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+44])
+				};
 			}
 		}
 		
@@ -5428,10 +5416,15 @@ namespace hostFunctions{
 				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 		}
-		for (int i = 0; i < 18; i++) {
-			maxCalc.chi2[i][0] = static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[i] * millersRuleFactorChi2);
-			if (i > 8) maxCalc.chi2[i][0] *= 2.0;
+		for (int i = 0; i < 6; i++) {
+			maxCalc.chi2[i][0] = maxwellPoint<deviceFP>{
+				static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i] * millersRuleFactorChi2),
+				static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i + 1] * millersRuleFactorChi2),
+				static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i + 2] * millersRuleFactorChi2) };
+			if (i > 2) maxCalc.chi2[i][0] *= 2.0;
 		}
 		for (int i = 0; i < 81; i++) {
 			maxCalc.chi3[i][0] = static_cast<deviceFP>(
@@ -5440,7 +5433,7 @@ namespace hostFunctions{
 
 		//count the nonzero oscillators
 		for (int i = 0; i < 7; i++) {
-			if (maxCalc.sellmeierEquations[1 + i * 3][0] > 0.0) maxCalc.Noscillators++;
+			if (maxCalc.sellmeierEquations[1 + i * 3][0].x > 0.0) maxCalc.Noscillators++;
 			else break;
 		}
 
@@ -5449,7 +5442,8 @@ namespace hostFunctions{
 			maxCalc.Noscillators++;
 			maxCalc.hasPlasma[0] = true;
 			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts);
-			maxCalc.kDrude[0] = -elCharge<double>() / ((*sCPU).effectiveMass * elMass<double>());
+			maxCalc.kDrude[0] = - eps0<double>() * elCharge<double>() 
+				/ ((*sCPU).effectiveMass * elMass<double>());
 			maxCalc.gammaDrude[0] = (*sCPU).drudeGamma;
 			maxCalc.kNonlinearAbsorption[0] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;
 			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(
