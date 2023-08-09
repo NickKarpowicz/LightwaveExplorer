@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <gcem.hpp>
 #include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
 
 //GLOBAL VARIABLE: GTK MUTEX
@@ -29,6 +30,70 @@ std::mutex GTKmutex;
 //Limit the number of threads used to draw the interface if the processor supports a lot
 const int interfaceThreads = 
 maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
+
+constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
+    std::array<std::array<uint8_t, 3>, 256> colorMap{};
+    const double oneOver255 = 1.0f / 255.0f;
+    for (int j = 0; j < 256; ++j) {
+        double nval;
+        switch (cm) {
+        case 0:
+            colorMap[j][0] = static_cast<uint8_t>(j);
+            colorMap[j][1] = static_cast<uint8_t>(j);
+            colorMap[j][2] = static_cast<uint8_t>(j);
+            break;
+        case 1:
+            nval = j * oneOver255;
+            colorMap[j][0] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * nval / 2.));
+            colorMap[j][1] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
+            colorMap[j][2] = static_cast<uint8_t>(255. * gcem::sin(vPi<double>() * nval / 2.));
+            break;
+        case 2:
+            nval = j * oneOver255;
+            colorMap[j][0] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * nval / 2.));
+            colorMap[j][1] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
+            colorMap[j][2] = static_cast<uint8_t>(255. * gcem::sin(vPi<double>() * nval / 2.));
+            if (nval < 0.02) {
+                colorMap[j][0] = 255;
+                colorMap[j][1] = 128;
+                colorMap[j][2] = 128;
+            }
+            if (nval < 0.01) {
+                colorMap[j][0] = 255;
+                colorMap[j][1] = 255;
+                colorMap[j][2] = 255;
+            }
+            break;
+        case 3:
+            nval = 255 * (j * oneOver255);
+            colorMap[j][0] = static_cast<uint8_t>(255. *
+                (0.998 * gcem::exp(-gcem::pow(7.7469e-03 * (nval - 160.), 6))
+                    + 0.22 * gcem::exp(-gcem::pow(0.016818 * (nval - 305.), 4))));
+            colorMap[j][1] = static_cast<uint8_t>(255. *
+                (0.022 * gcem::exp(-gcem::pow(0.042045 * (nval - 25.), 4))
+                    + 0.11 * gcem::exp(-gcem::pow(0.015289 * (nval - 120.), 4))
+                    + 1 * gcem::exp(-gcem::pow(4.6889e-03 * (nval - 400.), 6))));
+            colorMap[j][2] = static_cast<uint8_t>(255. *
+                (gcem::exp(-gcem::pow(3.1101e-03 * (nval - 415), 10))));
+            break;
+        case 4:
+            nval = j * oneOver255;
+            colorMap[j][0] = static_cast<uint8_t>(255. * (1.0 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
+                + 1.00 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
+            colorMap[j][1] = static_cast<uint8_t>(255. * (0.95 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
+            colorMap[j][2] = static_cast<uint8_t>(255. * (0.9 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
+                + 0.2 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
+        }
+    }
+    return colorMap;
+}
+
+static constexpr std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColorMaps{
+        createColormap(0), 
+        createColormap(1), 
+        createColormap(2), 
+        createColormap(3), 
+        createColormap(4)};
 
 class LweColor {
 public:
@@ -724,64 +789,6 @@ public:
         }
     }
 
-    constexpr std::array<std::array<unsigned char, 3>, 256> createColormap(const int cm) {
-        std::array<std::array<unsigned char, 3>, 256> colorMap{};
-        const float oneOver255 = 1.0f / 255.0f;
-
-        for (int j = 0; j < 256; ++j) {
-            float nval;
-            switch (cm) {
-            case 0:
-                colorMap[j][0] = (unsigned char)j;
-                colorMap[j][1] = (unsigned char)j;
-                colorMap[j][2] = (unsigned char)j;
-                break;
-            case 1:
-                nval = j * oneOver255;
-                colorMap[j][0] = (unsigned char)(255 * cos(vPi<double>() * nval / 2.));
-                colorMap[j][1] = (unsigned char)(255 * cos(vPi<double>() * (nval - 0.5)));
-                colorMap[j][2] = (unsigned char)(255 * sin(vPi<double>() * nval / 2.));
-                break;
-            case 2:
-                nval = j * oneOver255;
-                colorMap[j][0] = (unsigned char)(255 * cos(vPi<double>() * nval / 2.));
-                colorMap[j][1] = (unsigned char)(255 * cos(vPi<double>() * (nval - 0.5)));
-                colorMap[j][2] = (unsigned char)(255 * sin(vPi<double>() * nval / 2.));
-                if (nval < 0.02) {
-                    colorMap[j][0] = 255;
-                    colorMap[j][1] = 128;
-                    colorMap[j][2] = 128;
-                }
-                if (nval < 0.01) {
-                    colorMap[j][0] = 255;
-                    colorMap[j][1] = 255;
-                    colorMap[j][2] = 255;
-                }
-                break;
-            case 3:
-                nval = 255 * (j * oneOver255);
-                colorMap[j][0] = (unsigned char)(255 *
-                    (0.998 * exp(-pow(7.7469e-03 * (nval - 160), 6))
-                        + 0.22 * exp(-pow(0.016818 * (nval - 305), 4))));
-                colorMap[j][1] = (unsigned char)(255 *
-                    (0.022 * exp(-pow(0.042045 * (nval - 25), 4))
-                        + 0.11 * exp(-pow(0.015289 * (nval - 120), 4))
-                        + 1 * exp(-pow(4.6889e-03 * (nval - 400), 6))));
-                colorMap[j][2] = (unsigned char)(255 *
-                    (exp(-pow(3.1101e-03 * (nval - 415), 10))));
-                break;
-            case 4:
-                nval = j * oneOver255;
-                colorMap[j][0] = (unsigned char)(255. * (1.0 * exp(-pow(4.5 * (nval - 0.05), 2))
-                    + 1.00 * exp(-pow(3.5 * (nval - 1.05), 2))));
-                colorMap[j][1] = (unsigned char)(255. * (0.95 * exp(-pow(3.5 * (nval - 1.05), 2))));
-                colorMap[j][2] = (unsigned char)(255. * (0.9 * exp(-pow(4.5 * (nval - 0.05), 2)) 
-                    + 0.2 * exp(-pow(3.5 * (nval - 1.05), 2))));
-            }
-        }
-        return colorMap;
-    }
-
     void drawArrayAsBitmap(
         cairo_t* cr, 
         const int Nx, 
@@ -792,10 +799,10 @@ public:
         std::unique_lock GTKlock(GTKmutex);
         // creating input
         const int64_t Ntot = Nx * Ny;
-        unsigned char* pixels = new unsigned char[4 * Ntot]();
+        uint8_t* pixels = new uint8_t[4 * Ntot]();
         if (pixels == nullptr) return;
 
-        const std::array<std::array<unsigned char, 3>, 256> colorMap = createColormap(cm);
+        const std::array<std::array<uint8_t, 3>, 256> colorMap = LweColorMaps[cm];
         const int stride = 4;
         //Find the image maximum and minimum
         float imin = data[0];
@@ -812,8 +819,8 @@ public:
         if (imin != imax) {
 #pragma omp parallel for num_threads(interfaceThreads)
             for (int p = 0; p < Ntot; p++) {
-                unsigned char currentValue = 
-                    (unsigned char)(255 * (data[p] - imin) / (imax - imin));
+                uint8_t currentValue = 
+                    (uint8_t)(255 * (data[p] - imin) / (imax - imin));
                 pixels[stride * p + 0] = colorMap[currentValue][0];
                 pixels[stride * p + 1] = colorMap[currentValue][1];
                 pixels[stride * p + 2] = colorMap[currentValue][2];
