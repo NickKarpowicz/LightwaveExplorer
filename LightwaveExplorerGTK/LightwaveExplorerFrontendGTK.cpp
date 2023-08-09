@@ -274,19 +274,6 @@ public:
 
         int mbRow = 22;
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
-
-#ifdef __APPLE__
-        miniButtons[0].init("=", parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init("d", parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
-        miniButtons[2].init("r", parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
-        miniButtons[3].init("p", parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
-        miniButtons[4].init("(", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
-        miniButtons[5].init("f", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
-        miniButtons[6].init("l", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
-        miniButtons[7].init("a", parentHandle, textWidth + 15, mbRow, 2, 1, buttonAddAperture);
-        miniButtons[8].init("ff", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
-        miniButtons[9].init("f", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
-#else
         miniButtons[0].init(
             "\xf0\x9f\x93\xb8", 
             parentHandle, 
@@ -367,8 +354,6 @@ public:
             2, 
             1, 
             buttonAddForLoop);
-
-#endif
         miniButtons[0].setTooltip(
             "Make a copy of the crystal currently entered in the interface");
         miniButtons[1].setTooltip(
@@ -1768,7 +1753,6 @@ void stopButtonCallback() {
 
 void independentPlotQueue(){
     theGui.requestPlotUpdate();
-    theGui.applyUpdate();
 }
 
 void secondaryQueue(
@@ -2151,7 +2135,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
 }
 
 int main(int argc, char **argv){
-    GtkApplication* app = gtk_application_new(0, (GApplicationFlags)0);
+    GtkApplication* app = gtk_application_new("io.github.nickkarpowicz.lightwaveexplorer",  G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);
 }

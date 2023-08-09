@@ -3,19 +3,16 @@ BIN=LightwaveExplorer
 APP=build/${BIN}.app
 BINPATH=${APP}/Contents/MacOS/${BIN}
 
-#install the required packages from homebrew
-brew install --quiet cmake make llvm fftw gtk4 pkgconfig libomp
-
 #Homebrew libraries location
-LIBS="$(brew --prefix)"
+LIBS="/Users"
 LLVM="$(brew --prefix llvm)"
 
 #build executable
 rm -rf build
 mkdir build
 cd build
-cmake .. -DCMAKE_CXX_COMPILER=${LLVM}/bin/clang++ -DCMAKE_C_COMPILER=${LLVM}/bin/clang
-make
+cmake -DCMAKE_CXX_COMPILER=${LLVM}/bin/clang++ -DCMAKE_C_COMPILER=${LLVM}/bin/clang -DCMAKE_TOOLCHAIN_FILE=/Users/nick/Desktop/Code/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+cmake --build . --config release
 cd ..
 
 #restore the original source and clean up
@@ -44,7 +41,6 @@ copySharedLibraries(){
     do
         CURRENT=$(otool -L $1 | grep "$LIBS" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$i 'FNR==i')
         cp -n $CURRENT $APP/Contents/Resources/lib
-        echo "$CURRENT"
     done
 }
 
