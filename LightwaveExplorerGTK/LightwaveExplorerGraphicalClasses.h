@@ -489,21 +489,26 @@ public:
 
         std::vector<double> scaledX(Npts);
         std::vector<double> scaledY(Npts);
-        auto getNewScaledXY = [&](std::vector<double>& xValues, double* y) {
+        auto getNewScaledXY = [&](const std::vector<double>& xValues, const double* y) {
+            if (logScale) {
 #pragma omp parallel for num_threads(interfaceThreads)
-            for (int i = 0; i < Npts; i++) {
-                scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
-                if (logScale) {
-                    scaledY[i] = height - scaleY * ((double)log10(y[i]) - (double)minY);
+                for (int i = 0; i < Npts; i++) {
+                    scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
+                    scaledY[i] = height - scaleY * (static_cast<double>(log10(y[i])) - static_cast<double>(minY));
+                    if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
                 }
-                else {
-                    scaledY[i] = height - scaleY * ((double)y[i] - (double)minY);
+            }
+            else {
+#pragma omp parallel for num_threads(interfaceThreads)
+                for (int i = 0; i < Npts; i++) {
+                    scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
+                    scaledY[i] = height - scaleY * (static_cast<double>(y[i]) - static_cast<double>(minY));
+                    if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
                 }
-                if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
             }
         };
 
-        auto plotCairoDots = [&](double* y) {
+        auto plotCairoDots = [&]() {
             currentColor.setCairo(cr);
             for (int64_t i = iMin; i < iMax; ++i) {
                 if (scaledY[i] <= height) {
@@ -513,7 +518,7 @@ public:
             }
         };
 
-        auto plotCairoPolyline = [&](double* y) {
+        auto plotCairoPolyline = [&]() {
             currentColor.setCairo(cr);
             cairo_move_to(cr, scaledX[iMin], scaledY[iMin]);
             for (int64_t i = iMin + 1; i < iMax; ++i) {
@@ -542,16 +547,10 @@ public:
             cairo_stroke(cr);
         };
 
-        auto plotSVGPolyline = [&](double* y) {
+        auto plotSVGPolyline = [&]() {
             bool lineOn = false;
-            x2 = scaleX * (xValues[iMin] - minX) + axisSpaceX;
-            if (logScale) {
-                y2 = height - scaleY * (log10(y[iMin]) - minY);
-            }
-            else {
-                y2 = height - scaleY * (y[iMin] - minY);
-            }
-            if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
+            x2 = scaledX[iMin];
+            y2 = scaledY[iMin];
             if (y2 <= height) {
                 SVGstartPolyLine();
                 SVGaddXYtoPolyLine(x2, y2);
@@ -559,17 +558,9 @@ public:
             }
             for (int64_t i = iMin + 1; i < iMax; ++i) {
                 x1 = x2;
-                x2 = scaleX * (xValues[i] - minX);
+                x2 = scaledX[i];
                 y1 = y2;
-                if (logScale) {
-                    y2 = height - scaleY * (log10(y[i]) - minY);
-                }
-                else {
-                    y2 = height - scaleY * (y[i] - minY);
-                }
-                if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
-                x2 += axisSpaceX;
-
+                y2 = scaledY[i];
                 if (y1 <= height) {
                     if (y2 <= height) {
                         if (!lineOn) {
@@ -604,16 +595,11 @@ public:
             }
         };
 
-        auto plotSVGDots = [&](double* y) {
+        auto plotSVGDots = [&]() {
             SVGstartgroup();
             for (int64_t i = iMin; i < iMax - 1; ++i) {
-                x1 = scaleX * (xValues[i] - minX) + axisSpaceX;
-                if (logScale) {
-                    y1 = height - scaleY * ((double)log10(y[i]) - (double)minY);
-                }
-                else {
-                    y1 = height - scaleY * ((double)y[i] - (double)minY);
-                }
+                x1 = scaledX[i];
+                y1 = scaledY[i];
                 if (y1 <= height && !isnan(y1) && !isinf(y1)) {
                     SVGstdcircle();
                 }
@@ -625,42 +611,42 @@ public:
         if (ExtraLines > 0 && data2 != nullptr) {
             getNewScaledXY(xValues, data2);
             currentColor = color2;
-            plotCairoPolyline(data2);
-            if (markers)plotCairoDots(data2);
+            plotCairoPolyline();
+            if (markers)plotCairoDots();
             if (makeSVG) {
-                plotSVGPolyline(data2);
-                if (markers)plotSVGDots(data2);
+                plotSVGPolyline();
+                if (markers)plotSVGDots();
             }
         }
         if (ExtraLines > 1 && data2 != nullptr) {
             getNewScaledXY(xValues, data3);
             currentColor = color3;
-            plotCairoPolyline(data3);
-            if (markers)plotCairoDots(data3);
+            plotCairoPolyline();
+            if (markers)plotCairoDots();
             if (makeSVG) {
-                plotSVGPolyline(data3);
-                if (markers)plotSVGDots(data3);
+                plotSVGPolyline();
+                if (markers)plotSVGDots();
             }
         }
         if (ExtraLines > 2 && data2 != nullptr) {
             getNewScaledXY(xValues, data4);
             currentColor = color4;
-            plotCairoPolyline(data4);
-            if (markers)plotCairoDots(data4);
+            plotCairoPolyline();
+            if (markers)plotCairoDots();
             if (makeSVG) {
-                plotSVGPolyline(data4);
-                if (markers)plotSVGDots(data4);
+                plotSVGPolyline();
+                if (markers)plotSVGDots();
             }
         }
 
         //Plot the main line
         getNewScaledXY(xValues, data);
         currentColor = color;
-        plotCairoPolyline(data);
-        if (markers)plotCairoDots(data);
+        plotCairoPolyline();
+        if (markers)plotCairoDots();
         if (makeSVG) {
-            plotSVGPolyline(data);
-            if (markers)plotSVGDots(data);
+            plotSVGPolyline();
+            if (markers)plotSVGDots();
         }
 
         if (makeSVG) {
