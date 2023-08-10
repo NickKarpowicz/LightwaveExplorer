@@ -110,10 +110,10 @@ public:
         a = aIn;
     }
     ~LweColor() {};
-    [[nodiscard]] constexpr int rHex() const noexcept { return (int)(15 * r); }
-    [[nodiscard]] constexpr int gHex() const noexcept { return (int)(15 * g); }
-    [[nodiscard]] constexpr int bHex() const noexcept { return (int)(15 * b); }
-    [[nodiscard]] constexpr int aHex() const noexcept { return (int)(15 * a); }
+    [[nodiscard]] constexpr int rHex() const noexcept { return static_cast<int>(15 * r); }
+    [[nodiscard]] constexpr int gHex() const noexcept { return static_cast<int>(15 * g); }
+    [[nodiscard]] constexpr int bHex() const noexcept { return static_cast<int>(15 * b); }
+    [[nodiscard]] constexpr int aHex() const noexcept { return static_cast<int>(15 * a); }
     void setCairo(cairo_t* cr) { cairo_set_source_rgb(cr, r, g, b); }
     void setCairoA(cairo_t* cr) { cairo_set_source_rgba(cr, r, g, b, a); }
 };
@@ -833,7 +833,7 @@ public:
     bool isAttached=false;
     GtkWidget* _grid{};
 
-    void setPosition(GtkWidget* grid, int x, int y, int width, int height) {
+    void setPosition(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         if (_grid)gtk_grid_remove(GTK_GRID(_grid), elementHandle);
         _grid = grid;
@@ -843,7 +843,7 @@ public:
         _height = height;
         gtk_grid_attach(GTK_GRID(_grid), elementHandle, _x, _y, _width, _height);
     }
-    void setLabel(int x, int y, const char* labelText) {
+    void setLabel(const int x, const int y, const char* labelText) {
         std::unique_lock GTKlock(GTKmutex);
         label = gtk_label_new(labelText);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
@@ -851,7 +851,7 @@ public:
         gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
         gtk_grid_attach(GTK_GRID(_grid), label, _x + x, _y + y, 6, 1);
     }
-    void setLabel(int x, int y, const char* labelText, int characters, int grids) {
+    void setLabel(const int x, const int y, const char* labelText, const int characters, const int grids) {
         std::unique_lock GTKlock(GTKmutex);
         label = gtk_label_new(labelText);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
@@ -871,7 +871,7 @@ public:
 };
 
 class LweTextBox : public LweGuiElement {
-    int getNumberOfDecimalsToDisplay(double in, bool isExponential) {
+    int getNumberOfDecimalsToDisplay(double in, const bool isExponential) {
         if (in == 0) return 0;
         in = abs(in);
         int digits = -1;
@@ -888,7 +888,7 @@ class LweTextBox : public LweGuiElement {
         return maxN(0, digits - logValue);
     }
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_entry_new();
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
@@ -1003,12 +1003,12 @@ public:
         }
     }
 
-    void setMaxCharacters(int charLimit) {
+    void setMaxCharacters(const int charLimit) {
         std::unique_lock GTKlock(GTKmutex);
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), charLimit);
     }
 
-    void setToDouble(double in) {
+    void setToDouble(const double in) {
         std::unique_lock GTKlock(GTKmutex);
         std::string s = Sformat(std::string_view("{:g}"), in);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
@@ -1021,7 +1021,7 @@ public:
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
 
-    void copyBuffer(char* destination, int64_t maxLength) {
+    void copyBuffer(char* destination, const int64_t maxLength) {
         std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         std::string s(gtk_entry_buffer_get_text(buf));
@@ -1110,7 +1110,7 @@ gboolean formatSequenceBuffer(gpointer data) {
         "fdtd"
     };
 
-    auto applyTag = [&](const char* tag, size_t a, size_t b) {
+    auto applyTag = [&](const char* tag, const size_t a, const size_t b) {
         current = start;
         currentTarget = start;
         gtk_text_iter_forward_chars(&current, (int)a);
@@ -1195,7 +1195,7 @@ class LweConsole : public LweGuiElement {
     GtkTextBuffer* buf{};
 public:
     std::string textBuffer;
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         consoleText = gtk_text_view_new();
         gtk_text_view_set_accepts_tab(GTK_TEXT_VIEW(consoleText), false);
         elementHandle = gtk_scrolled_window_new();
@@ -1423,7 +1423,7 @@ public:
 
 class LweProgressBar : public LweGuiElement {
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_progress_bar_new();
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_CENTER);
@@ -1460,7 +1460,7 @@ public:
         s.copy(strArray[Nelements], 127);
         ++Nelements;
     }
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_drop_down_new_from_strings(strArray);
         gtk_widget_set_hexpand(elementHandle, false);
@@ -1477,7 +1477,7 @@ public:
         gtk_drop_down_set_selected(GTK_DROP_DOWN(elementHandle), target);
     }
 
-    inline void removeCharacterFromString(std::string& s, char removedChar) {
+    inline void removeCharacterFromString(std::string& s, const char removedChar) {
         std::erase(s, removedChar);
     }
 
@@ -1571,10 +1571,10 @@ public:
         gtk_window_present(GTK_WINDOW(window));
     }
 
-    GtkWidget* parentHandle() {
+    GtkWidget* parentHandle() const {
         return grid;
     }
-    GtkWidget* parentHandle(int index) {
+    GtkWidget* parentHandle(const int index) const {
         switch (index) {
         case 0:
             return grid;
@@ -1601,7 +1601,7 @@ public:
 
 class LweDrawBox : public LweGuiElement {
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_drawing_area_new();
         gtk_widget_set_hexpand(elementHandle, true);
@@ -1629,7 +1629,7 @@ public:
 };
 class LweSpacer : public LweGuiElement {
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height, int spacing) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height, const int spacing) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, spacing);
         gtk_widget_set_hexpand(elementHandle, true);
@@ -1641,7 +1641,7 @@ public:
 
 class LweSlider : public LweGuiElement {
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
         gtk_scale_set_draw_value(GTK_SCALE(elementHandle), true);
