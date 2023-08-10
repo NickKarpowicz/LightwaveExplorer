@@ -1897,8 +1897,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     #endif
     #if !defined(CPUONLY) && !defined(NOCUDA)
     if (pulldownSelection < theSim.base().cudaGPUCount) {
-        theGui.console.tPrint(
-                        "Actually running CUDA\n");
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequence;
             normalFunction = &solveNonlinearWaveEquation;
