@@ -1,4 +1,5 @@
 if(UNIX AND NOT APPLE)
+    # cmake --fresh -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_HOST_COMPILER=clang++-15 -DCMAKE_CUDA_ARCHITECTURES=75 ..
     if(DEFINED CMAKE_CUDA_COMPILER)
         cmake_minimum_required(VERSION 3.23.0)
         project(LightwaveExplorer LANGUAGES CXX CUDA)      
@@ -48,7 +49,7 @@ if(UNIX AND NOT APPLE)
         install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
     elseif(DEFINED ONEAPI_ROOT)
     #Linux build; typical usage:
-    #cmake --fresh -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_HOST_COMPILER=clang++-15 -DCMAKE_CUDA_ARCHITECTURES=75 -DCUDA_NVCC_FLAGS="-gencode=arch=compute_75,code=\"sm_75,compute_75\" -ccbin clang++-15 -O3 -D NOCUDAMAIN" ..
+    #cmake --fresh -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx ..
         cmake_minimum_required(VERSION 3.23.0)
         project(LightwaveExplorer LANGUAGES CXX)
         #set(SYCL_INCLUDE_DIR "${ONEAPI_ROOT}/compiler/latest/linux/include/sycl")
