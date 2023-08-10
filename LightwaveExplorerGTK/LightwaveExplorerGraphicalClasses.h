@@ -35,7 +35,7 @@ constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
     std::array<std::array<uint8_t, 3>, 256> colorMap{};
     const double oneOver255 = 1.0f / 255.0f;
     for (int j = 0; j < 256; ++j) {
-        double nval;
+        double nval = 0.0;
         switch (cm) {
         case 0:
             colorMap[j][0] = static_cast<uint8_t>(j);
@@ -88,7 +88,7 @@ constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
     return colorMap;
 }
 
-static constexpr std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColorMaps{
+static const std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColorMaps{
         createColormap(0), 
         createColormap(1), 
         createColormap(2), 

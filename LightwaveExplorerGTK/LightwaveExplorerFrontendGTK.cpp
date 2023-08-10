@@ -1779,6 +1779,7 @@ void secondaryQueue(
         normalFunction = &solveNonlinearWaveEquation;
         assignedGPU = pulldownSelection;
     }
+    #ifndef NOSYCL
     //launch on SYCL, but if the primary queue matches, default to openMP
     else if (pulldownSelection == theSim.base().cudaGPUCount && SYCLitems > 0) {
         if (pulldownSelection == pulldownSelectionPrimary) {
@@ -1792,6 +1793,7 @@ void secondaryQueue(
             normalFunction = &solveNonlinearWaveEquationSYCL;
         }
     }
+    #endif
     else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
             theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
@@ -1799,11 +1801,13 @@ void secondaryQueue(
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
+    #ifndef NOSYCL
         else {
             forceCPU = 1;
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
         }
+    #endif
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
@@ -1812,11 +1816,13 @@ void secondaryQueue(
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
+        #ifndef NOSYCL
         else {
             assignedGPU = 1;
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
         }
+        #endif
     }
     else {
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
@@ -1881,14 +1887,18 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     int assignedGPU = 0;
     bool forceCPU = 0;
     [[maybe_unused]]int SYCLitems = 0;
-    #ifndef CPUONLY
+    #if !defined(CPUONLY)
     if (theSim.base().syclGPUCount == 0) {
         SYCLitems = (int)theSim.base().SYCLavailable;
     }
     else {
         SYCLitems = 3;
     }
+    #endif
+    #if !defined(CPUONLY) && !defined(NOCUDA)
     if (pulldownSelection < theSim.base().cudaGPUCount) {
+        theGui.console.tPrint(
+                        "Actually running CUDA\n");
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequence;
             normalFunction = &solveNonlinearWaveEquation;
@@ -1900,7 +1910,9 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
 
         assignedGPU = pulldownSelection;
     }
-    else if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
+    #endif
+    #ifndef NOSYCL
+    if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -1933,18 +1945,20 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             normalFunction = &solveNonlinearWaveEquationSYCLFP32;
         }
     }
-    else 
-#endif
-    {
-        if (use64bitFloatingPoint) {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-            normalFunction = &solveNonlinearWaveEquationCPU;
-        }
-        else {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPUFP32;
-            normalFunction = &solveNonlinearWaveEquationCPUFP32;
-        }
-    }
+     
+    #endif
+
+    // else
+    // {
+    //     if (use64bitFloatingPoint) {
+    //         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
+    //         normalFunction = &solveNonlinearWaveEquationCPU;
+    //     }
+    //     else {
+    //         sequenceFunction = &solveNonlinearWaveEquationSequenceCPUFP32;
+    //         normalFunction = &solveNonlinearWaveEquationCPUFP32;
+    //     }
+    // }
 
     std::thread secondQueueThread(secondaryQueue, 
         &theSim.sCPU()[theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU], 
@@ -2093,12 +2107,13 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     if (!use64bitFloatingPoint) {
         fittingFunction = &runDlibFittingCPUFP32;
     }
-#ifndef CPUONLY
+#if !defined(CPUONLY) && !defined(NOCUDA)
     if (pulldownSelection < theSim.base().cudaGPUCount) {
         fittingFunction = &runDlibFitting;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingFP32;
         assignedGPU = pulldownSelection;
     }
+    #ifndef NOSYCL
     else if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
         fittingFunction = &runDlibFittingSYCL;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
@@ -2113,6 +2128,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
         fittingFunction = &runDlibFittingSYCL;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
+    #endif
 #endif
     theSim.base().isRunning = true;
     theSim.base().runningOnCPU = forceCPU;

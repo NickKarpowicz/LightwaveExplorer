@@ -1,43 +1,84 @@
 if(UNIX AND NOT APPLE)
-    if(DEFINED ONEAPI_ROOT)
+    if(DEFINED CMAKE_CUDA_COMPILER)
+        cmake_minimum_required(VERSION 3.23.0)
+        project(LightwaveExplorer LANGUAGES CXX CUDA)      
+        enable_language("CUDA")
+        find_package(PkgConfig REQUIRED)
+        find_package(OpenMP)
+        pkg_check_modules(GTK4 REQUIRED gtk4)
+        find_package(CUDAToolkit)
+        find_package(MKL)
+        include(FetchContent)
+        FetchContent_Declare(fmt
+            GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+            GIT_TAG        9.1.0
+        )
+        FetchContent_MakeAvailable(fmt)
+
+        configure_file(${CMAKE_SOURCE_DIR}/BuildResources/makeLinuxIcons.sh ${CMAKE_BINARY_DIR}/makeLinuxIcons.sh COPYONLY)
+        execute_process(COMMAND git clone https://github.com/davisking/dlib)
+        execute_process(COMMAND git clone https://github.com/kthohr/gcem)
+        include_directories(build/dlib) 
+        include_directories(build/gcem/include)
+        include_directories(../LightwaveExplorer)
+        include_directories(${CUDA_INCLUDE_DIRS})
+        include_directories(${GTK4_INCLUDE_DIRS})
+        include_directories(${MKL_ROOT}/include/fftw)
+        add_library(LightwaveExplorerCuda LightwaveExplorerCore.cu LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
+        add_compile_options(-std=c++20 -O3 -fopenmp -D NOSYCL)
+        add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+        target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
+        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer fmt::fmt -lm -lgomp)
+        target_link_libraries(LightwaveExplorer
+            -Wl,--start-group 
+            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_core.a 
+            -Wl,--end-group
+            )
+        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+        add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND ${CMAKE_BINARY_DIR}/makeLinuxIcons.sh)
+        install(TARGETS LightwaveExplorer)
+        install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
+        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+        install(DIRECTORY ${CMAKE_BINARY_DIR}/icons DESTINATION share FILES_MATCHING PATTERN "*")
+        install(FILES ${CMAKE_BINARY_DIR}/io.github.NickKarpowicz.LightwaveExplorer.desktop DESTINATION share/applications)
+        install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
+    elseif(DEFINED ONEAPI_ROOT)
     #Linux build; typical usage:
     #cmake --fresh -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_HOST_COMPILER=clang++-15 -DCMAKE_CUDA_ARCHITECTURES=75 -DCUDA_NVCC_FLAGS="-gencode=arch=compute_75,code=\"sm_75,compute_75\" -ccbin clang++-15 -O3 -D NOCUDAMAIN" ..
         cmake_minimum_required(VERSION 3.23.0)
-        set(SYCL_INCLUDE_DIR "${ONEAPI_ROOT}/compiler/latest/linux/include/sycl")
-        set(SYCL_LIBRARY_DIR "${ONEAPI_ROOT}/compiler/latest/linux/lib")
+        project(LightwaveExplorer LANGUAGES CXX)
+        #set(SYCL_INCLUDE_DIR "${ONEAPI_ROOT}/compiler/latest/linux/include/sycl")
+        #set(SYCL_LIBRARY_DIR "${ONEAPI_ROOT}/compiler/latest/linux/lib")
         set(MKLROOT "${ONEAPI_ROOT}/mkl/latest")
-        project(LightwaveExplorer LANGUAGES CXX CUDA)
-        enable_language("CUDA")
+
         configure_file(${CMAKE_SOURCE_DIR}/BuildResources/makeLinuxIcons.sh ${CMAKE_BINARY_DIR}/makeLinuxIcons.sh COPYONLY)
         execute_process(COMMAND git clone https://github.com/davisking/dlib)
         execute_process(COMMAND git clone https://github.com/kthohr/gcem)
         include_directories(build/dlib) 
         include_directories(build/gcem/include)
         include_directories(../LightwaveExplorer ${MKLROOT}/include/fftw)
-        add_library(LightwaveExplorerCuda LightwaveExplorerCore.cu LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
 
         find_package(PkgConfig REQUIRED)
-        find_package(CUDAToolkit)
         find_package(fmt REQUIRED)
+        find_package(IntelSYCL REQUIRED)
         pkg_check_modules(GTK4 gtk4)
         pkg_check_modules(LIOMP5 openmp)
         pkg_check_modules(TBB tbb)
         include_directories(../LightwaveExplorer)
-        include_directories(${CUDA_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
-        include_directories(${CUDAToolkit_INCLUDE_DIRS})
-        link_directories(${CUDA_LIBRARY_DIRS})
-        link_directories(${CUDAToolkit_LIBRARY_DIRS})
         link_directories(${LIOMP5_LIBRARY_DIRS})
         link_directories(${TBB_LIBRARY_DIRS})
         link_directories(${SYCL_LIBRARY_DIR})
         link_directories(${GTK4_LIBRARY_DIRS})
 
-        add_compile_options(-std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -w)
+        add_compile_options(-std=c++20 -D NOCUDA -fp-model=precise -O3 -fopenmp -fsycl -fPIC -w)
         add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerGTK/LightwaveExplorerDPCPPlibFP32.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES} ${CUDA_LIBRARIES} ${CUDAToolkit_LIBRARIES})
-        target_link_libraries(LightwaveExplorer fmt::fmt)
-        target_link_libraries(LightwaveExplorer -lcufft -lnvidia-ml -lm)
+        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer fmt::fmt -lm)
         target_link_libraries(LightwaveExplorer
             ${MKLROOT}/lib/intel64/libmkl_sycl.a 
             -Wl,--start-group 
@@ -45,13 +86,10 @@ if(UNIX AND NOT APPLE)
             ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a 
             ${MKLROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group
-            -lsycl
-            -lOpenCL
-        )
-        target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
+            )
+        target_link_libraries(LightwaveExplorer -lsycl ${SYCL_LIBRARY_DIR}/libOpenCL.so)
         target_link_libraries(LightwaveExplorer ${LIOMP5_LIBRARIES})
         target_link_libraries(LightwaveExplorer ${TBB_LIBRARIES})
-        
         add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND ${CMAKE_BINARY_DIR}/makeLinuxIcons.sh)
         install(TARGETS LightwaveExplorer)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
@@ -61,7 +99,7 @@ if(UNIX AND NOT APPLE)
         install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
     else()
         cmake_minimum_required(VERSION 3.16)
-        project(LightwaveExplorer)
+        project(LightwaveExplorer LANGUAGES CXX)
         configure_file(${CMAKE_SOURCE_DIR}/BuildResources/makeLinuxIcons.sh ${CMAKE_BINARY_DIR}/makeLinuxIcons.sh COPYONLY)
         find_package(PkgConfig REQUIRED)
         find_package(OpenMP)
