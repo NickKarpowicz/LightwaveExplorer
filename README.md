@@ -166,7 +166,7 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
 
   The first things you'll need is [Homebrew](https://brew.sh/), and [Vcpkg](https://github.com/microsoft/vcpkg). After installing those, install a few things with homebrew:
   ```
-  brew install cmake pkg-config autoconf libtool fftw git
+  brew install cmake make llvm fftw gtk4 pkgconfig libomp libtool autoconf autotools
   ```
   and get gtk with vcpkg
   ```
