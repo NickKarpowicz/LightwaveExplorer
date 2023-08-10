@@ -295,14 +295,14 @@ namespace deviceFunctions {
 		real_t result2{};
 		real_t dOmegaT = dOmega * timeShift;
 		for (int i = 1; i < frequencyLimit; i++) {
-			real_t w = i * dOmegaT;
-			real_t sinw = sin(w);
-			real_t cosw = cos(w);
-			result1 += i * (cosw * fourierData1[i].imag() + sinw * fourierData1[i].real());
-			result2 += i * (cosw * fourierData2[i].imag() + sinw * fourierData2[i].real());
+			real_t w = static_cast<real_t>(i) * dOmegaT;
+			real_t sinw = deviceFPLib::sin(w);
+			real_t cosw = deviceFPLib::cos(w);
+			result1 += static_cast<real_t>(i) * (cosw * fourierData1[i].imag() + sinw * fourierData1[i].real());
+			result2 += static_cast<real_t>(i) * (cosw * fourierData2[i].imag() + sinw * fourierData2[i].real());
 		}
-		result1 = (460.76f * dOmega * result1) / (dataSize + 1);
-		result2 = (460.76f * dOmega * result2) / (dataSize + 1);
+		result1 = (460.76f * dOmega * result1) / (static_cast<real_t>(dataSize + 1));
+		result2 = (460.76f * dOmega * result2) / (static_cast<real_t>(dataSize + 1));
 		k.kE.x += result1;
 		k.kH.y -= inverseZo<real_t>() * result1;
 		k.kE.y += result2;
