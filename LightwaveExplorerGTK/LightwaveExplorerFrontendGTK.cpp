@@ -37,6 +37,7 @@ public:
     int64_t pathTarget;
     int saveSVG = 0;
     bool loadedDefaults = false;
+    bool firstSYCLsimulation = true;
     unsigned int timeoutID;
     mainGui() : queueUpdate(0),
     queueSliderUpdate(0), 
@@ -1911,6 +1912,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     #endif
     #ifndef NOSYCL
     if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
+            "some time to compile kernels for your device.\n"
+            "Subsequent runs will be faster.\n");
+        theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -1923,6 +1928,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
         forceCPU = 1;
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
+            "some time to compile kernels for your device.\n"
+            "Subsequent runs will be faster.\n");
+        theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -1934,6 +1943,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
         assignedGPU = 1;
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
+            "some time to compile kernels for your device.\n"
+            "Subsequent runs will be faster.\n");
+        theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -1945,18 +1958,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
      
     #endif
-
-    // else
-    // {
-    //     if (use64bitFloatingPoint) {
-    //         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-    //         normalFunction = &solveNonlinearWaveEquationCPU;
-    //     }
-    //     else {
-    //         sequenceFunction = &solveNonlinearWaveEquationSequenceCPUFP32;
-    //         normalFunction = &solveNonlinearWaveEquationCPUFP32;
-    //     }
-    // }
 
     std::thread secondQueueThread(secondaryQueue, 
         &theSim.sCPU()[theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU], 
