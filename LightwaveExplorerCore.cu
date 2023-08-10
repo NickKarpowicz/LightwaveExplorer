@@ -301,8 +301,8 @@ namespace deviceFunctions {
 			result1 += i * (cosw * fourierData1[i].imag() + sinw * fourierData1[i].real());
 			result2 += i * (cosw * fourierData2[i].imag() + sinw * fourierData2[i].real());
 		}
-		result1 = 230.38f * (2.0f * dOmega * result1) / (dataSize + 1);
-		result2 = 230.38f * (2.0f * dOmega * result2) / (dataSize + 1);
+		result1 = (460.76f * dOmega * result1) / (dataSize + 1);
+		result2 = (460.76f * dOmega * result2) / (dataSize + 1);
 		k.kE.x += result1;
 		k.kH.y -= inverseZo<real_t>() * result1;
 		k.kE.y += result2;
