@@ -935,7 +935,7 @@ int indentForDepth(std::string& s){
         if (s[i] == '}' && depth != 0) --depth;
         if (s[i] == '\n' && s[i + 1] != '}') {
             for (size_t j = 0; j < depth; j++) {
-                //s.insert(i + 1, indent);
+                s.insert(i + 1, indent);
                 i += indent.length();
             }
         }
