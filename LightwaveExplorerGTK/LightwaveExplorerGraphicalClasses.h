@@ -481,12 +481,6 @@ public:
         SVGendgroup();
 
         //Lambdas for plotting a line
-        //currently dots are always there but has been refactored to make 
-        //it easier to turn them off if I want.
-        //I would think it would be faster to only call cairo_fill() 
-        //at the end, but this requires calling cairo_cloase_path()
-        //in the loop, which seems to be even slower....
-
         std::vector<double> scaledX(Npts);
         std::vector<double> scaledY(Npts);
         auto getNewScaledXY = [&](const std::vector<double>& xValues, const double* y) {
@@ -517,7 +511,9 @@ public:
                 }
             }
         };
-
+        //I would think it would be faster to only call cairo_fill() 
+        //at the end, but this requires calling cairo_cloase_path()
+        //in the loop, which seems to be even slower....
         auto plotCairoPolyline = [&]() {
             currentColor.setCairo(cr);
             cairo_move_to(cr, scaledX[iMin], scaledY[iMin]);
@@ -618,7 +614,7 @@ public:
                 if (markers)plotSVGDots();
             }
         }
-        if (ExtraLines > 1 && data2 != nullptr) {
+        if (ExtraLines > 1 && data3 != nullptr) {
             getNewScaledXY(xValues, data3);
             currentColor = color3;
             plotCairoPolyline();
@@ -628,7 +624,7 @@ public:
                 if (markers)plotSVGDots();
             }
         }
-        if (ExtraLines > 2 && data2 != nullptr) {
+        if (ExtraLines > 2 && data4 != nullptr) {
             getNewScaledXY(xValues, data4);
             currentColor = color4;
             plotCairoPolyline();
