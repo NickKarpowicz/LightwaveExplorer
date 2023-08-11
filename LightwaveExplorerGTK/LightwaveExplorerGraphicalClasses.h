@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <gcem.hpp>
 #include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
 
 //GLOBAL VARIABLE: GTK MUTEX
@@ -30,6 +31,70 @@ std::mutex GTKmutex;
 const int interfaceThreads = 
 maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
 
+constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
+    std::array<std::array<uint8_t, 3>, 256> colorMap{};
+    const double oneOver255 = 1.0f / 255.0f;
+    for (int j = 0; j < 256; ++j) {
+        double nval = 0.0;
+        switch (cm) {
+        case 0:
+            colorMap[j][0] = static_cast<uint8_t>(j);
+            colorMap[j][1] = static_cast<uint8_t>(j);
+            colorMap[j][2] = static_cast<uint8_t>(j);
+            break;
+        case 1:
+            nval = j * oneOver255;
+            colorMap[j][0] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * nval / 2.));
+            colorMap[j][1] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
+            colorMap[j][2] = static_cast<uint8_t>(255. * gcem::sin(vPi<double>() * nval / 2.));
+            break;
+        case 2:
+            nval = j * oneOver255;
+            colorMap[j][0] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * nval / 2.));
+            colorMap[j][1] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
+            colorMap[j][2] = static_cast<uint8_t>(255. * gcem::sin(vPi<double>() * nval / 2.));
+            if (nval < 0.02) {
+                colorMap[j][0] = 255;
+                colorMap[j][1] = 128;
+                colorMap[j][2] = 128;
+            }
+            if (nval < 0.01) {
+                colorMap[j][0] = 255;
+                colorMap[j][1] = 255;
+                colorMap[j][2] = 255;
+            }
+            break;
+        case 3:
+            nval = 255 * (j * oneOver255);
+            colorMap[j][0] = static_cast<uint8_t>(255. *
+                (0.998 * gcem::exp(-gcem::pow(7.7469e-03 * (nval - 160.), 6))
+                    + 0.22 * gcem::exp(-gcem::pow(0.016818 * (nval - 305.), 4))));
+            colorMap[j][1] = static_cast<uint8_t>(255. *
+                (0.022 * gcem::exp(-gcem::pow(0.042045 * (nval - 25.), 4))
+                    + 0.11 * gcem::exp(-gcem::pow(0.015289 * (nval - 120.), 4))
+                    + 1 * gcem::exp(-gcem::pow(4.6889e-03 * (nval - 400.), 6))));
+            colorMap[j][2] = static_cast<uint8_t>(255. *
+                (gcem::exp(-gcem::pow(3.1101e-03 * (nval - 415), 10))));
+            break;
+        case 4:
+            nval = j * oneOver255;
+            colorMap[j][0] = static_cast<uint8_t>(255. * (1.0 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
+                + 1.00 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
+            colorMap[j][1] = static_cast<uint8_t>(255. * (0.95 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
+            colorMap[j][2] = static_cast<uint8_t>(255. * (0.9 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
+                + 0.2 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
+        }
+    }
+    return colorMap;
+}
+
+static constexpr std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColorMaps{
+        createColormap(0), 
+        createColormap(1), 
+        createColormap(2), 
+        createColormap(3), 
+        createColormap(4)};
+
 class LweColor {
 public:
     double r;
@@ -45,10 +110,10 @@ public:
         a = aIn;
     }
     ~LweColor() {};
-    [[nodiscard]] constexpr int rHex() const noexcept { return (int)(15 * r); }
-    [[nodiscard]] constexpr int gHex() const noexcept { return (int)(15 * g); }
-    [[nodiscard]] constexpr int bHex() const noexcept { return (int)(15 * b); }
-    [[nodiscard]] constexpr int aHex() const noexcept { return (int)(15 * a); }
+    [[nodiscard]] constexpr int rHex() const noexcept { return static_cast<int>(15 * r); }
+    [[nodiscard]] constexpr int gHex() const noexcept { return static_cast<int>(15 * g); }
+    [[nodiscard]] constexpr int bHex() const noexcept { return static_cast<int>(15 * b); }
+    [[nodiscard]] constexpr int aHex() const noexcept { return static_cast<int>(15 * a); }
     void setCairo(cairo_t* cr) { cairo_set_source_rgb(cr, r, g, b); }
     void setCairoA(cairo_t* cr) { cairo_set_source_rgba(cr, r, g, b, a); }
 };
@@ -416,29 +481,28 @@ public:
         SVGendgroup();
 
         //Lambdas for plotting a line
-        //currently dots are always there but has been refactored to make 
-        //it easier to turn them off if I want.
-        //I would think it would be faster to only call cairo_fill() 
-        //at the end, but this requires calling cairo_cloase_path()
-        //in the loop, which seems to be even slower....
-
         std::vector<double> scaledX(Npts);
         std::vector<double> scaledY(Npts);
-        auto getNewScaledXY = [&](std::vector<double>& xValues, double* y) {
+        auto getNewScaledXY = [&](const std::vector<double>& xValues, const double* y) {
+            if (logScale) {
 #pragma omp parallel for num_threads(interfaceThreads)
-            for (int i = 0; i < Npts; i++) {
-                scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
-                if (logScale) {
-                    scaledY[i] = height - scaleY * ((double)log10(y[i]) - (double)minY);
+                for (int i = 0; i < Npts; i++) {
+                    scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
+                    scaledY[i] = height - scaleY * (static_cast<double>(log10(y[i])) - static_cast<double>(minY));
+                    if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
                 }
-                else {
-                    scaledY[i] = height - scaleY * ((double)y[i] - (double)minY);
+            }
+            else {
+#pragma omp parallel for num_threads(interfaceThreads)
+                for (int i = 0; i < Npts; i++) {
+                    scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
+                    scaledY[i] = height - scaleY * (static_cast<double>(y[i]) - static_cast<double>(minY));
+                    if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
                 }
-                if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
             }
         };
 
-        auto plotCairoDots = [&](double* y) {
+        auto plotCairoDots = [&]() {
             currentColor.setCairo(cr);
             for (int64_t i = iMin; i < iMax; ++i) {
                 if (scaledY[i] <= height) {
@@ -447,8 +511,10 @@ public:
                 }
             }
         };
-
-        auto plotCairoPolyline = [&](double* y) {
+        //I would think it would be faster to only call cairo_fill() 
+        //at the end, but this requires calling cairo_cloase_path()
+        //in the loop, which seems to be even slower....
+        auto plotCairoPolyline = [&]() {
             currentColor.setCairo(cr);
             cairo_move_to(cr, scaledX[iMin], scaledY[iMin]);
             for (int64_t i = iMin + 1; i < iMax; ++i) {
@@ -477,16 +543,10 @@ public:
             cairo_stroke(cr);
         };
 
-        auto plotSVGPolyline = [&](double* y) {
+        auto plotSVGPolyline = [&]() {
             bool lineOn = false;
-            x2 = scaleX * (xValues[iMin] - minX) + axisSpaceX;
-            if (logScale) {
-                y2 = height - scaleY * (log10(y[iMin]) - minY);
-            }
-            else {
-                y2 = height - scaleY * (y[iMin] - minY);
-            }
-            if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
+            x2 = scaledX[iMin];
+            y2 = scaledY[iMin];
             if (y2 <= height) {
                 SVGstartPolyLine();
                 SVGaddXYtoPolyLine(x2, y2);
@@ -494,17 +554,9 @@ public:
             }
             for (int64_t i = iMin + 1; i < iMax; ++i) {
                 x1 = x2;
-                x2 = scaleX * (xValues[i] - minX);
+                x2 = scaledX[i];
                 y1 = y2;
-                if (logScale) {
-                    y2 = height - scaleY * (log10(y[i]) - minY);
-                }
-                else {
-                    y2 = height - scaleY * (y[i] - minY);
-                }
-                if (isnan(y2) || isinf(y2)) y2 = maxX * 2;
-                x2 += axisSpaceX;
-
+                y2 = scaledY[i];
                 if (y1 <= height) {
                     if (y2 <= height) {
                         if (!lineOn) {
@@ -539,16 +591,11 @@ public:
             }
         };
 
-        auto plotSVGDots = [&](double* y) {
+        auto plotSVGDots = [&]() {
             SVGstartgroup();
             for (int64_t i = iMin; i < iMax - 1; ++i) {
-                x1 = scaleX * (xValues[i] - minX) + axisSpaceX;
-                if (logScale) {
-                    y1 = height - scaleY * ((double)log10(y[i]) - (double)minY);
-                }
-                else {
-                    y1 = height - scaleY * ((double)y[i] - (double)minY);
-                }
+                x1 = scaledX[i];
+                y1 = scaledY[i];
                 if (y1 <= height && !isnan(y1) && !isinf(y1)) {
                     SVGstdcircle();
                 }
@@ -560,42 +607,42 @@ public:
         if (ExtraLines > 0 && data2 != nullptr) {
             getNewScaledXY(xValues, data2);
             currentColor = color2;
-            plotCairoPolyline(data2);
-            if (markers)plotCairoDots(data2);
+            plotCairoPolyline();
+            if (markers)plotCairoDots();
             if (makeSVG) {
-                plotSVGPolyline(data2);
-                if (markers)plotSVGDots(data2);
+                plotSVGPolyline();
+                if (markers)plotSVGDots();
             }
         }
-        if (ExtraLines > 1 && data2 != nullptr) {
+        if (ExtraLines > 1 && data3 != nullptr) {
             getNewScaledXY(xValues, data3);
             currentColor = color3;
-            plotCairoPolyline(data3);
-            if (markers)plotCairoDots(data3);
+            plotCairoPolyline();
+            if (markers)plotCairoDots();
             if (makeSVG) {
-                plotSVGPolyline(data3);
-                if (markers)plotSVGDots(data3);
+                plotSVGPolyline();
+                if (markers)plotSVGDots();
             }
         }
-        if (ExtraLines > 2 && data2 != nullptr) {
+        if (ExtraLines > 2 && data4 != nullptr) {
             getNewScaledXY(xValues, data4);
             currentColor = color4;
-            plotCairoPolyline(data4);
-            if (markers)plotCairoDots(data4);
+            plotCairoPolyline();
+            if (markers)plotCairoDots();
             if (makeSVG) {
-                plotSVGPolyline(data4);
-                if (markers)plotSVGDots(data4);
+                plotSVGPolyline();
+                if (markers)plotSVGDots();
             }
         }
 
         //Plot the main line
         getNewScaledXY(xValues, data);
         currentColor = color;
-        plotCairoPolyline(data);
-        if (markers)plotCairoDots(data);
+        plotCairoPolyline();
+        if (markers)plotCairoDots();
         if (makeSVG) {
-            plotSVGPolyline(data);
-            if (markers)plotSVGDots(data);
+            plotSVGPolyline();
+            if (markers)plotSVGDots();
         }
 
         if (makeSVG) {
@@ -724,64 +771,6 @@ public:
         }
     }
 
-    constexpr std::array<std::array<unsigned char, 3>, 256> createColormap(const int cm) {
-        std::array<std::array<unsigned char, 3>, 256> colorMap{};
-        const float oneOver255 = 1.0f / 255.0f;
-
-        for (int j = 0; j < 256; ++j) {
-            float nval;
-            switch (cm) {
-            case 0:
-                colorMap[j][0] = (unsigned char)j;
-                colorMap[j][1] = (unsigned char)j;
-                colorMap[j][2] = (unsigned char)j;
-                break;
-            case 1:
-                nval = j * oneOver255;
-                colorMap[j][0] = (unsigned char)(255 * cos(vPi<double>() * nval / 2.));
-                colorMap[j][1] = (unsigned char)(255 * cos(vPi<double>() * (nval - 0.5)));
-                colorMap[j][2] = (unsigned char)(255 * sin(vPi<double>() * nval / 2.));
-                break;
-            case 2:
-                nval = j * oneOver255;
-                colorMap[j][0] = (unsigned char)(255 * cos(vPi<double>() * nval / 2.));
-                colorMap[j][1] = (unsigned char)(255 * cos(vPi<double>() * (nval - 0.5)));
-                colorMap[j][2] = (unsigned char)(255 * sin(vPi<double>() * nval / 2.));
-                if (nval < 0.02) {
-                    colorMap[j][0] = 255;
-                    colorMap[j][1] = 128;
-                    colorMap[j][2] = 128;
-                }
-                if (nval < 0.01) {
-                    colorMap[j][0] = 255;
-                    colorMap[j][1] = 255;
-                    colorMap[j][2] = 255;
-                }
-                break;
-            case 3:
-                nval = 255 * (j * oneOver255);
-                colorMap[j][0] = (unsigned char)(255 *
-                    (0.998 * exp(-pow(7.7469e-03 * (nval - 160), 6))
-                        + 0.22 * exp(-pow(0.016818 * (nval - 305), 4))));
-                colorMap[j][1] = (unsigned char)(255 *
-                    (0.022 * exp(-pow(0.042045 * (nval - 25), 4))
-                        + 0.11 * exp(-pow(0.015289 * (nval - 120), 4))
-                        + 1 * exp(-pow(4.6889e-03 * (nval - 400), 6))));
-                colorMap[j][2] = (unsigned char)(255 *
-                    (exp(-pow(3.1101e-03 * (nval - 415), 10))));
-                break;
-            case 4:
-                nval = j * oneOver255;
-                colorMap[j][0] = (unsigned char)(255. * (1.0 * exp(-pow(4.5 * (nval - 0.05), 2))
-                    + 1.00 * exp(-pow(3.5 * (nval - 1.05), 2))));
-                colorMap[j][1] = (unsigned char)(255. * (0.95 * exp(-pow(3.5 * (nval - 1.05), 2))));
-                colorMap[j][2] = (unsigned char)(255. * (0.9 * exp(-pow(4.5 * (nval - 0.05), 2)) 
-                    + 0.2 * exp(-pow(3.5 * (nval - 1.05), 2))));
-            }
-        }
-        return colorMap;
-    }
-
     void drawArrayAsBitmap(
         cairo_t* cr, 
         const int Nx, 
@@ -792,10 +781,10 @@ public:
         std::unique_lock GTKlock(GTKmutex);
         // creating input
         const int64_t Ntot = Nx * Ny;
-        unsigned char* pixels = new unsigned char[4 * Ntot]();
+        uint8_t* pixels = new uint8_t[4 * Ntot]();
         if (pixels == nullptr) return;
 
-        const std::array<std::array<unsigned char, 3>, 256> colorMap = createColormap(cm);
+        const std::array<std::array<uint8_t, 3>, 256> colorMap = LweColorMaps[cm];
         const int stride = 4;
         //Find the image maximum and minimum
         float imin = data[0];
@@ -812,8 +801,8 @@ public:
         if (imin != imax) {
 #pragma omp parallel for num_threads(interfaceThreads)
             for (int p = 0; p < Ntot; p++) {
-                unsigned char currentValue = 
-                    (unsigned char)(255 * (data[p] - imin) / (imax - imin));
+                uint8_t currentValue = 
+                    (uint8_t)(255 * (data[p] - imin) / (imax - imin));
                 pixels[stride * p + 0] = colorMap[currentValue][0];
                 pixels[stride * p + 1] = colorMap[currentValue][1];
                 pixels[stride * p + 2] = colorMap[currentValue][2];
@@ -844,7 +833,7 @@ public:
     bool isAttached=false;
     GtkWidget* _grid{};
 
-    void setPosition(GtkWidget* grid, int x, int y, int width, int height) {
+    void setPosition(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         if (_grid)gtk_grid_remove(GTK_GRID(_grid), elementHandle);
         _grid = grid;
@@ -854,7 +843,7 @@ public:
         _height = height;
         gtk_grid_attach(GTK_GRID(_grid), elementHandle, _x, _y, _width, _height);
     }
-    void setLabel(int x, int y, const char* labelText) {
+    void setLabel(const int x, const int y, const char* labelText) {
         std::unique_lock GTKlock(GTKmutex);
         label = gtk_label_new(labelText);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
@@ -862,7 +851,7 @@ public:
         gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
         gtk_grid_attach(GTK_GRID(_grid), label, _x + x, _y + y, 6, 1);
     }
-    void setLabel(int x, int y, const char* labelText, int characters, int grids) {
+    void setLabel(const int x, const int y, const char* labelText, const int characters, const int grids) {
         std::unique_lock GTKlock(GTKmutex);
         label = gtk_label_new(labelText);
         gtk_label_set_xalign(GTK_LABEL(label), 0.0);
@@ -882,7 +871,7 @@ public:
 };
 
 class LweTextBox : public LweGuiElement {
-    int getNumberOfDecimalsToDisplay(double in, bool isExponential) {
+    int getNumberOfDecimalsToDisplay(double in, const bool isExponential) {
         if (in == 0) return 0;
         in = abs(in);
         int digits = -1;
@@ -899,7 +888,7 @@ class LweTextBox : public LweGuiElement {
         return maxN(0, digits - logValue);
     }
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_entry_new();
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
@@ -1014,12 +1003,12 @@ public:
         }
     }
 
-    void setMaxCharacters(int charLimit) {
+    void setMaxCharacters(const int charLimit) {
         std::unique_lock GTKlock(GTKmutex);
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), charLimit);
     }
 
-    void setToDouble(double in) {
+    void setToDouble(const double in) {
         std::unique_lock GTKlock(GTKmutex);
         std::string s = Sformat(std::string_view("{:g}"), in);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
@@ -1032,7 +1021,7 @@ public:
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
 
-    void copyBuffer(char* destination, int64_t maxLength) {
+    void copyBuffer(char* destination, const int64_t maxLength) {
         std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         std::string s(gtk_entry_buffer_get_text(buf));
@@ -1121,7 +1110,7 @@ gboolean formatSequenceBuffer(gpointer data) {
         "fdtd"
     };
 
-    auto applyTag = [&](const char* tag, size_t a, size_t b) {
+    auto applyTag = [&](const char* tag, const size_t a, const size_t b) {
         current = start;
         currentTarget = start;
         gtk_text_iter_forward_chars(&current, (int)a);
@@ -1206,7 +1195,7 @@ class LweConsole : public LweGuiElement {
     GtkTextBuffer* buf{};
 public:
     std::string textBuffer;
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         consoleText = gtk_text_view_new();
         gtk_text_view_set_accepts_tab(GTK_TEXT_VIEW(consoleText), false);
         elementHandle = gtk_scrolled_window_new();
@@ -1434,7 +1423,7 @@ public:
 
 class LweProgressBar : public LweGuiElement {
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_progress_bar_new();
         gtk_widget_set_valign(elementHandle, GTK_ALIGN_CENTER);
@@ -1471,7 +1460,7 @@ public:
         s.copy(strArray[Nelements], 127);
         ++Nelements;
     }
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_drop_down_new_from_strings(strArray);
         gtk_widget_set_hexpand(elementHandle, false);
@@ -1488,7 +1477,7 @@ public:
         gtk_drop_down_set_selected(GTK_DROP_DOWN(elementHandle), target);
     }
 
-    inline void removeCharacterFromString(std::string& s, char removedChar) {
+    inline void removeCharacterFromString(std::string& s, const char removedChar) {
         std::erase(s, removedChar);
     }
 
@@ -1582,10 +1571,10 @@ public:
         gtk_window_present(GTK_WINDOW(window));
     }
 
-    GtkWidget* parentHandle() {
+    GtkWidget* parentHandle() const {
         return grid;
     }
-    GtkWidget* parentHandle(int index) {
+    GtkWidget* parentHandle(const int index) const {
         switch (index) {
         case 0:
             return grid;
@@ -1612,7 +1601,7 @@ public:
 
 class LweDrawBox : public LweGuiElement {
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_drawing_area_new();
         gtk_widget_set_hexpand(elementHandle, true);
@@ -1640,7 +1629,7 @@ public:
 };
 class LweSpacer : public LweGuiElement {
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height, int spacing) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height, const int spacing) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, spacing);
         gtk_widget_set_hexpand(elementHandle, true);
@@ -1652,7 +1641,7 @@ public:
 
 class LweSlider : public LweGuiElement {
 public:
-    void init(GtkWidget* grid, int x, int y, int width, int height) {
+    void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
         gtk_scale_set_draw_value(GTK_SCALE(elementHandle), true);

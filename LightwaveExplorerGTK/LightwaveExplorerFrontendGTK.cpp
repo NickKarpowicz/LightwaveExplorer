@@ -37,6 +37,7 @@ public:
     int64_t pathTarget;
     int saveSVG = 0;
     bool loadedDefaults = false;
+    bool firstSYCLsimulation = true;
     unsigned int timeoutID;
     mainGui() : queueUpdate(0),
     queueSliderUpdate(0), 
@@ -274,19 +275,6 @@ public:
 
         int mbRow = 22;
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
-
-#ifdef __APPLE__
-        miniButtons[0].init("=", parentHandle, textWidth + 1, mbRow, 2, 1, buttonAddSameCrystal);
-        miniButtons[1].init("d", parentHandle, textWidth + 3, mbRow, 2, 1, buttonAddDefault);
-        miniButtons[2].init("r", parentHandle, textWidth + 5, mbRow, 2, 1, buttonAddRotation);
-        miniButtons[3].init("p", parentHandle, textWidth + 7, mbRow, 2, 1, buttonAddPulse);
-        miniButtons[4].init("(", parentHandle, textWidth + 9, mbRow, 2, 1, buttonAddMirror);
-        miniButtons[5].init("f", parentHandle, textWidth + 11, mbRow, 2, 1, buttonAddFilter);
-        miniButtons[6].init("l", parentHandle, textWidth + 13, mbRow, 2, 1, buttonAddLinear);
-        miniButtons[7].init("a", parentHandle, textWidth + 15, mbRow, 2, 1, buttonAddAperture);
-        miniButtons[8].init("ff", parentHandle, textWidth + 17, mbRow, 2, 1, buttonAddFarFieldAperture);
-        miniButtons[9].init("f", parentHandle, textWidth + 19, mbRow, 2, 1, buttonAddForLoop);
-#else
         miniButtons[0].init(
             "\xf0\x9f\x93\xb8", 
             parentHandle, 
@@ -367,8 +355,6 @@ public:
             2, 
             1, 
             buttonAddForLoop);
-
-#endif
         miniButtons[0].setTooltip(
             "Make a copy of the crystal currently entered in the interface");
         miniButtons[1].setTooltip(
@@ -1768,7 +1754,6 @@ void stopButtonCallback() {
 
 void independentPlotQueue(){
     theGui.requestPlotUpdate();
-    theGui.applyUpdate();
 }
 
 void secondaryQueue(
@@ -1795,6 +1780,7 @@ void secondaryQueue(
         normalFunction = &solveNonlinearWaveEquation;
         assignedGPU = pulldownSelection;
     }
+    #ifndef NOSYCL
     //launch on SYCL, but if the primary queue matches, default to openMP
     else if (pulldownSelection == theSim.base().cudaGPUCount && SYCLitems > 0) {
         if (pulldownSelection == pulldownSelectionPrimary) {
@@ -1808,6 +1794,7 @@ void secondaryQueue(
             normalFunction = &solveNonlinearWaveEquationSYCL;
         }
     }
+    #endif
     else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
             theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
@@ -1815,11 +1802,13 @@ void secondaryQueue(
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
+    #ifndef NOSYCL
         else {
             forceCPU = 1;
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
         }
+    #endif
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
@@ -1828,11 +1817,13 @@ void secondaryQueue(
             sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
             normalFunction = &solveNonlinearWaveEquationCPU;
         }
+        #ifndef NOSYCL
         else {
             assignedGPU = 1;
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
         }
+        #endif
     }
     else {
         sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
@@ -1897,13 +1888,15 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     int assignedGPU = 0;
     bool forceCPU = 0;
     [[maybe_unused]]int SYCLitems = 0;
-    #ifndef CPUONLY
+    #if !defined(CPUONLY)
     if (theSim.base().syclGPUCount == 0) {
         SYCLitems = (int)theSim.base().SYCLavailable;
     }
     else {
         SYCLitems = 3;
     }
+    #endif
+    #if !defined(CPUONLY) && !defined(NOCUDA)
     if (pulldownSelection < theSim.base().cudaGPUCount) {
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequence;
@@ -1916,7 +1909,13 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
 
         assignedGPU = pulldownSelection;
     }
-    else if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
+    #endif
+    #ifndef NOSYCL
+    if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
+            "some time to compile kernels for your device.\n"
+            "Subsequent runs will be faster.\n");
+        theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -1929,6 +1928,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
         forceCPU = 1;
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
+            "some time to compile kernels for your device.\n"
+            "Subsequent runs will be faster.\n");
+        theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -1940,6 +1943,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
         assignedGPU = 1;
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
+            "some time to compile kernels for your device.\n"
+            "Subsequent runs will be faster.\n");
+        theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
             normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -1949,18 +1956,8 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             normalFunction = &solveNonlinearWaveEquationSYCLFP32;
         }
     }
-    else 
-#endif
-    {
-        if (use64bitFloatingPoint) {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-            normalFunction = &solveNonlinearWaveEquationCPU;
-        }
-        else {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPUFP32;
-            normalFunction = &solveNonlinearWaveEquationCPUFP32;
-        }
-    }
+     
+    #endif
 
     std::thread secondQueueThread(secondaryQueue, 
         &theSim.sCPU()[theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU], 
@@ -2109,12 +2106,13 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     if (!use64bitFloatingPoint) {
         fittingFunction = &runDlibFittingCPUFP32;
     }
-#ifndef CPUONLY
+#if !defined(CPUONLY) && !defined(NOCUDA)
     if (pulldownSelection < theSim.base().cudaGPUCount) {
         fittingFunction = &runDlibFitting;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingFP32;
         assignedGPU = pulldownSelection;
     }
+    #ifndef NOSYCL
     else if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
         fittingFunction = &runDlibFittingSYCL;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
@@ -2129,6 +2127,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
         fittingFunction = &runDlibFittingSYCL;
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
+    #endif
 #endif
     theSim.base().isRunning = true;
     theSim.base().runningOnCPU = forceCPU;
@@ -2151,7 +2150,7 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
 }
 
 int main(int argc, char **argv){
-    GtkApplication* app = gtk_application_new(0, (GApplicationFlags)0);
+    GtkApplication* app = gtk_application_new("io.github.nickkarpowicz.lightwaveexplorer",  G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     return g_application_run(G_APPLICATION(app), argc, argv);
 }

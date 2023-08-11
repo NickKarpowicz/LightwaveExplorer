@@ -49,13 +49,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ---
 
   ### Installation on Linux
-  The easiest way is to use the AppImage located in the same [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP) as the Windows one. You just have to download the image and mark it as executable (either under the properties in your file explorer or by "chmod +x LightwaveExplorer-x86_64.AppImage").
-
-  The appimage should be in the same directory as the files CrystalDatabase.txt and DefaultValues.ini - you can also put them into /usr/share/LightwaveExplorer - I can make other options possible, not sure where the modern Linux user prefers.
-
-  There is also a subfolder named CPUonly. This contains an appimage for a version released under the terms of the GNU Public License v3. This makes use of the FFTW library for performing Fourier transforms, instead of NVIDIA cuFFT or Intel MKL as used in the other version. If you are running it on an AMD CPU, this may give you a significant speedup (or if you perfer to only use GPL software, it's an option).
-
-  Note that the appimage is slightly out of date at the moment, since my Linux install is a bit broken and I can't update it right now. If you want the latest version, follow the steps below to compile it locally! It's actually not too hard to do...
+  Currently the best way to run on Linux is to compile it from source following the instructions below. I've played around with AppImages and Flatpak, but they only work well for the simple version of the code that doesn't use the GPU. That version is a simple copy-paste of a few lines to the terminal to compile and install anyway. Apologies for the inconvenience, but every other solution I tried only seemed to work completely on whatever Linux distribution it was compiled on.
 
 ---
 
@@ -98,7 +92,7 @@ The prerequisite packages are: gcc, cmake, GTK4, and FFTW (plus git to download 
 If you are on an Ubuntu-based distro, you can use this to grab everything:
 
 ```
-sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3
+sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3 libfftw3-dev
 ```
 
 On OpenSUSE Tumbleweed, I needed:
@@ -156,20 +150,36 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
   
   If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
 
+  If you just want to use CUDA and don't need SYCL, you can do a slimmed-down install that doesn't have as many requirements, and only needs the Math Kernel Library (MKL) from OneAPI to be available. You can do this one with:
+  ```
+  git clone https://github.com/NickKarpowicz/LightwaveExplorer
+  mkdir LightwaveExplorer/build
+  cd LightwaveExplorer/build
+  cmake -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 -DNOSYCL ..
+  make
+  ```
+
+
 ---
 
   ### Compiling on Mac
 
-  The first thing you'll need is [Homebrew](https://brew.sh/), which you install by pasting this into the terminal:
+  The first things you'll need is [Homebrew](https://brew.sh/), and [Vcpkg](https://github.com/microsoft/vcpkg). After installing those, install a few things with homebrew:
   ```
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  brew install cmake make llvm fftw gtk4 pkgconfig libomp libtool autoconf autotools
   ```
-
-  Next, run the LWE compile script:
+  and get gtk with vcpkg
   ```
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/compileMacFromRepos.sh)"
+  vcpkg install gtk
   ```
-  If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer/build folder. I think if you are on a M1 or M2 based mac, your computer won't allow you to run the resulting executable unless you pay Apple, but I don't have one to try it out.
+  Once you have all the tools, you can compile like this:
+  ```
+  git clone https://github.com/NickKarpowicz/LightwaveExplorer
+  cd LightwaveExplorer
+  chmod +x BuildResources/makeMacAppVcpkg.sh
+  ./BuildResources/makeMacAppVcpkg.sh
+  ```
+  If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer/build folder. I think if you are on a M1 or M2 based mac, your computer won't allow you to run the resulting executable unless you pay Apple for code signing rights, but I don't have one to try it out.
   
 ---
   ### Compilation on clusters

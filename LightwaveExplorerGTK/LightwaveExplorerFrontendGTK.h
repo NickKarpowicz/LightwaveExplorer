@@ -25,7 +25,6 @@
 #include <locale>
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
 #include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.h"
 
 //conditional includes and definitions
@@ -43,6 +42,7 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <nvml.h>
+#include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
 #include "../LightwaveExplorerCore.cuh"
 #endif
 //if on windows, include the header for the Windows version
@@ -54,8 +54,10 @@
 #include <windows.h>
 #else
 //on Linux, load the Linux versions of the SYCL code
+#ifndef NOSYCL
 #include "LightwaveExplorerDPCPPlib.h"
 #include "LightwaveExplorerDPCPPlibFP32.h"
+#endif
 #endif
 #endif
 

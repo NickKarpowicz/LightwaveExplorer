@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Lightwave Explorer
+Exec=LightwaveExplorer
+Icon=io.github.NickKarpowicz.LightwaveExplorer
+Type=Application
+Categories=Utility
