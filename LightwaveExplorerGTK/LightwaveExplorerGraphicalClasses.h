@@ -88,7 +88,7 @@ constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
     return colorMap;
 }
 
-static const std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColorMaps{
+static constexpr std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColorMaps{
         createColormap(0), 
         createColormap(1), 
         createColormap(2), 
