@@ -803,4 +803,40 @@ None
 Nonlinear reference frequencies:
 31.2e12 31.2e12 62.4e12 136.3e12 136.3e12 136.3e12 136.3e12
 ~~~crystal end~~~
+Name:
+GaAs (L)
+Type:
+0
+Sellmeier equation:
+1
+1st axis coefficients:
+5.3676 3.10694e+28 1.80691e+31 1.84002e+09 3.42121e+25 4.63807e+30 1.13823e+11 1.60036e+24 2.6035e+27 -4.446e-05 0 0 0 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+5.3676 3.10694e+28 1.80691e+31 1.84002e+09 3.42121e+25 4.63807e+30 1.13823e+11 1.60036e+24 2.6035e+27 -4.446e-05 0 0 0 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+5.3676 3.10694e+28 1.80691e+31 1.84002e+09 3.42121e+25 4.63807e+30 1.13823e+11 1.60036e+24 2.6035e+27 -4.446e-05 0 0 0 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+J. Appl. Phys., 94, 6447-6455 (2003), via refractiveindex.info fit to Lorentzians
+chi2 type:
+1
+d:
+0 0 0 83 0 0
+0 0 0 0 83 0
+0 0 0 0 0 83
+d reference:
+IEEE J. Quant. Electr. 28(10), 2057–2074 (1992)
+chi3 type:
+2
+chi3:
+6.35e-19
+0
+0
+chi3 reference:
+Opt. Lett. 18, 194-196 (1993)
+Spectral file:
+None
+Nonlinear reference frequencies:
+28.28e12 28.28e12 56.56e12 281.8e12 281.8e12 281.8e12 281.8e12
+~~~crystal end~~~
+
 
