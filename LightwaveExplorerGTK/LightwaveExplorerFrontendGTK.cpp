@@ -33,7 +33,6 @@ public:
     LweCheckBox checkBoxes[4];
     LweSlider plotSlider;
     LweWindow window;
-    LweSpacer spacers[2];
     int64_t pathTarget;
     int saveSVG = 0;
     bool loadedDefaults = false;
@@ -97,10 +96,11 @@ public:
     void activate(GtkApplication* app) {
         int buttonWidth = 4;
         int textWidth = 3;
+        int pulldownWidth = 6;
         int labelWidth = 6;
-        int plotWidth = 12;
-        int plotHeight = 6;
-        int pathChars = 40;
+        int plotWidth = 1;
+        int plotHeight = 1;
+        int pathChars = 41;
         int colWidth = labelWidth + 2 * textWidth;
         int textCol1a = labelWidth;
         int textCol2a = textCol1a + 2 * textWidth + labelWidth;
@@ -109,9 +109,6 @@ public:
         int buttonCol1 = textCol2a - labelWidth;
         int buttonCol2 = buttonCol1 + buttonWidth;
         int buttonCol3 = buttonCol2 + buttonWidth;
-        std::unique_lock GTKlock(GTKmutex);
-        g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
-        GTKlock.unlock();
         window.init(app, "Lightwave Explorer", 1400, 800);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
@@ -135,7 +132,7 @@ public:
         pulldowns[0].addElement(("FROG"));
         pulldowns[0].addElement(("Waveform"));
         pulldowns[0].addElement("LWE .dat");
-        pulldowns[0].init(parentHandle, labelWidth, 16, 2 * textWidth, 1);
+        pulldowns[0].init(parentHandle, labelWidth, 16, pulldownWidth, 1);
         filePaths[0].setLabel(0, -1, ("Data 1:"));
 
         filePaths[1].init(parentHandle, 0, 19, colWidth, 1);
@@ -145,7 +142,7 @@ public:
         pulldowns[1].addElement(("FROG"));
         pulldowns[1].addElement(("Waveform"));
         pulldowns[1].addElement("LWE .dat");
-        pulldowns[1].init(parentHandle, labelWidth, 18, 2 * textWidth, 1);
+        pulldowns[1].init(parentHandle, labelWidth, 18, pulldownWidth, 1);
 
         filePaths[2].init(parentHandle, 0, 21, colWidth, 1);
         filePaths[2].setMaxCharacters(pathChars);
@@ -155,7 +152,7 @@ public:
         pulldowns[2].addElement(("Maximize Total"));
         pulldowns[2].addElement(("Fit spectrum"));
         pulldowns[2].addElement(("Fit spectrum (log)"));
-        pulldowns[2].init(parentHandle, labelWidth, 20, 2 * textWidth, 1);
+        pulldowns[2].init(parentHandle, labelWidth, 20, pulldownWidth, 1);
 
         filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
         filePaths[3].setMaxCharacters(pathChars);
@@ -216,7 +213,7 @@ public:
         pulldowns[4].addElement(("3D"));
         pulldowns[4].addElement(("FDTD 2D"));
         pulldowns[4].addElement(("FDTD 3D"));
-        pulldowns[4].init(parentHandle, textCol2a, 7, 2 * textWidth, 1);
+        pulldowns[4].init(parentHandle, textCol2a, 7, pulldownWidth, 1);
 
         char batchModeNames[38][64] = {
         "none",
@@ -263,8 +260,8 @@ public:
             pulldowns[5].addElement(batchModeNames[i]);
             pulldowns[6].addElement(batchModeNames[i]);
         }
-        pulldowns[5].init(parentHandle, textCol2a, 8, 2 * textWidth, 1);
-        pulldowns[6].init(parentHandle, textCol2a, 9, 2 * textWidth, 1);
+        pulldowns[5].init(parentHandle, textCol2a, 8, pulldownWidth, 1);
+        pulldowns[6].init(parentHandle, textCol2a, 9, pulldownWidth, 1);
         pulldowns[5].setTooltip("Primary batch mode selector: the selected value "
             "from the interface will be scanned in a series of simulations, starting "
             "from the value entered on the interface, and ending with the batch target "
@@ -355,6 +352,7 @@ public:
             2, 
             1, 
             buttonAddForLoop);
+        
         miniButtons[0].setTooltip(
             "Make a copy of the crystal currently entered in the interface");
         miniButtons[1].setTooltip(
@@ -392,7 +390,7 @@ public:
         buttons[1].setTooltip("Tell a currently-running simulation to stop. "
             "It might not stop right away; it will only happen once it reaches a break point");
         buttons[2].init(
-            ("Script"), parentHandle, 2 * buttonWidth + 1+buttonCol1, 17, textWidth, 1, createRunFile);
+            ("Script"), parentHandle, buttonCol3 + 1, 17, textWidth, 1, createRunFile);
         buttons[2].setTooltip("Generate an input file and SLURM script for running "
             "the simulation as entered on the selected cluster");
         buttons[3].init(("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
@@ -435,7 +433,6 @@ public:
         sequence.init(window.parentHandle(1), 0, 0, 1, 1);
         fitCommand.init(parentHandle, buttonCol1, 13, colWidth, 2);
         console.init(parentHandle, buttonCol1, 18, colWidth, 4);
-
         checkLibraryAvailability();
         
         std::string A;
@@ -508,26 +505,7 @@ public:
         fitCommand.setLabel(0, -1, ("Fitting:"));
 
         filePaths[3].overwritePrint("TestFile");
-        GTKlock.lock();
-        GtkCssProvider* textProvider = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(textProvider,
-            "label, scale { font-family: Arial; font-weight: bold; }\n "
-            "button, entry, textview { font-family: Arial; font-weight: "
-            "bold; color: #EEEEEE; background-color: #191919; }", -1);
-        gtk_style_context_add_provider_for_display(
-            gdk_display_get_default(), 
-            GTK_STYLE_PROVIDER(textProvider), 
-            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-        
-        GtkCssProvider* buttonShrinker = gtk_css_provider_new();
-        gtk_css_provider_load_from_data(buttonShrinker,
-            "label, scale, range, button, entry, textview "
-            "{ min-height: 10px; min-width: 10px; }", -1);
-        gtk_style_context_add_provider_for_display(
-            gdk_display_get_default(), 
-            GTK_STYLE_PROVIDER(buttonShrinker), 
-            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-        GTKlock.unlock();
+
         //read the crystal database
         std::string materialString;
         for (int i = 0; i < theDatabase.db.size(); ++i) {
@@ -536,18 +514,17 @@ public:
             pulldowns[3].addElement(materialString.c_str());
         }
         
-        pulldowns[3].init(parentHandle, textCol2a, 0, 2 * textWidth, 1);
+        pulldowns[3].init(parentHandle, textCol2a, 0, pulldownWidth, 1);
         pulldowns[3].setLabel(-labelWidth, 0, ("Material"));
 
-        pulldowns[9].addElement(("Cobra 1x R5000"));
-        pulldowns[9].addElement(("Cobra 2x R5000"));
-        pulldowns[9].addElement(("Cobra 1x V100"));
-        pulldowns[9].addElement(("Cobra 2x V100"));
-        pulldowns[9].addElement(("Raven 1x A100"));
-        pulldowns[9].addElement(("Raven 2x A100"));
-        pulldowns[9].addElement(("Raven 4x A100"));
-        pulldowns[9].init(parentHandle, 1+buttonCol1, 17, 2 * buttonWidth, 1);
-        pulldowns[9].squeeze();
+        pulldowns[9].addElement(("Cobra 1xR5k"));
+        pulldowns[9].addElement(("Cobra 2xR5k"));
+        pulldowns[9].addElement(("Cobra 1xV100"));
+        pulldowns[9].addElement(("Cobra 2xV100"));
+        pulldowns[9].addElement(("Raven 1xA100"));
+        pulldowns[9].addElement(("Raven 2xA100"));
+        pulldowns[9].addElement(("Raven 4xA100"));
+        pulldowns[9].init(parentHandle, buttonCol2, 17, buttonWidth + 1, 1);
         pulldowns[9].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");
         
@@ -586,12 +563,12 @@ public:
 		theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
 #endif
         setInterfaceValuesToActiveValues();
-        GTKlock.lock();
+        std::unique_lock GTKlock(GTKmutex);
         timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
         g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
         GTKlock.unlock();
         window.present();
-        
+
         //if the only options are SYCL on the CPU and openMP, make the default openMP
         if (!theSim.base().CUDAavailable 
             && theSim.base().SYCLavailable 

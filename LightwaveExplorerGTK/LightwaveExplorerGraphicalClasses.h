@@ -893,7 +893,8 @@ public:
         elementHandle = gtk_entry_new();
         gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
         gtk_widget_set_hexpand(elementHandle, false);
-        gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), 7);
+        gtk_widget_set_vexpand(elementHandle, false);
+        gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), 8);
         GTKlock.unlock();
         setPosition(grid, x, y, width, height);
     }
@@ -1206,6 +1207,7 @@ public:
         gtk_widget_set_hexpand(consoleText, true);
         setPosition(grid, x, y, width, height);
         buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(consoleText));
+
         gtk_text_buffer_create_tag(buf, "function", "foreground", "#00FFFFFF", NULL);
         gtk_text_buffer_create_tag(buf, "comment", "foreground", "#006600FF", NULL);
         gtk_text_buffer_create_tag(buf, "variable", "foreground", "#FF00FFFF", NULL);
@@ -1515,6 +1517,27 @@ public:
         int width, 
         int height) {
         std::unique_lock GTKlock(GTKmutex);
+        
+        g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
+        GtkCssProvider* textProvider = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(textProvider,
+            "label, scale { font-family: Arial; font-weight: bold; }\n "
+            "button, entry, textview { font-family: Arial; font-weight: "
+            "bold; color: #EEEEEE; background-color: #151515; }", -1);
+        gtk_style_context_add_provider_for_display(
+            gdk_display_get_default(),
+            GTK_STYLE_PROVIDER(textProvider),
+            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+
+        GtkCssProvider* buttonShrinker = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(buttonShrinker,
+            "label, scale, range, button, entry, textview "
+            "{ min-height: 4px; min-width: 4px; }", -1);
+        gtk_style_context_add_provider_for_display(
+            gdk_display_get_default(),
+            GTK_STYLE_PROVIDER(buttonShrinker),
+            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+
         window = gtk_application_window_new(appHandle);
         gtk_window_set_title(GTK_WINDOW(window), windowName);
         gtk_window_set_default_size(GTK_WINDOW(window), width, height);
@@ -1541,19 +1564,24 @@ public:
         gtk_grid_set_column_homogeneous(GTK_GRID(plotGrid), true);
         gtk_grid_set_row_homogeneous(GTK_GRID(plotGrid), true);
         gtk_grid_set_row_spacing(GTK_GRID(consoleGrid), 1);
-        gtk_grid_set_column_spacing(GTK_GRID(consoleControlsGrid), 8);
+        gtk_grid_set_column_spacing(GTK_GRID(consoleControlsGrid), 1);
         gtk_grid_set_column_spacing(GTK_GRID(consoleGrid), 1);
+
         gtk_window_set_child(GTK_WINDOW(window), bigGrid);
+        
         gtk_widget_set_hexpand(grid, false);
-        gtk_widget_set_halign(grid, GTK_ALIGN_START);
         gtk_widget_set_vexpand(grid, false);
+        gtk_widget_set_halign(grid, GTK_ALIGN_END);
         gtk_widget_set_valign(grid, GTK_ALIGN_START);
+
         gtk_widget_set_hexpand(consoleGrid, false);
-        gtk_widget_set_hexpand(consoleControlsGrid, false);
         gtk_widget_set_vexpand(consoleGrid, true);
         gtk_widget_set_halign(consoleGrid, GTK_ALIGN_FILL);
-        gtk_widget_set_halign(consoleControlsGrid, GTK_ALIGN_FILL);
         gtk_widget_set_valign(consoleGrid, GTK_ALIGN_FILL);
+
+        gtk_widget_set_hexpand(consoleControlsGrid, false);
+        gtk_widget_set_halign(consoleControlsGrid, GTK_ALIGN_FILL);
+        
         gtk_widget_set_valign(consoleControlsSubgrid1, GTK_ALIGN_CENTER);
         gtk_widget_set_halign(consoleControlsSubgrid2, GTK_ALIGN_END);
         gtk_grid_attach(GTK_GRID(bigGrid), consoleGrid, 0, 1, 1, 1);

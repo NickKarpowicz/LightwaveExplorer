@@ -174,7 +174,7 @@ Nonlinear reference frequencies:
 0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
-alpha Quartz (SiO2)
+a-Quartz
 Type:
 2
 Sellmeier equation:
@@ -419,7 +419,7 @@ Nonlinear reference frequencies:
 0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
-LiNbO3, 5% MgO
+MgO:LiNbO3
 Type:
 1
 Sellmeier equation:
@@ -524,7 +524,7 @@ Nonlinear reference frequencies:
 282e12 282e12 563e12 285e12 285e12 285e12 285e12
 ~~~crystal end~~~
 Name:
-TiO2 (Gauss)
+TiO2 G
 Type:
 1
 Sellmeier equation:
@@ -559,7 +559,7 @@ Nonlinear reference frequencies:
 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14
 ~~~crystal end~~~
 Name:
-BBO (Gauss)
+BBO G
 Type:
 1
 Sellmeier equation:
@@ -699,7 +699,7 @@ Nonlinear reference frequencies:
 2.82e13 2.82e13 2.82e13 236e12 236e12 236e12 236e12
 ~~~crystal end~~~
 Name:
-Fused silica (L)
+Fused silica L
 Type:
 0
 Sellmeier equation:
@@ -734,7 +734,7 @@ Nonlinear reference frequencies:
 281.7e12 281.7e12 563e12 281.7e12 281.7e12 281.7e12 281.7e12
 ~~~crystal end~~~
 Name:
-BBO (L)
+BBO L
 Type:
 1
 Sellmeier equation:
@@ -769,7 +769,7 @@ Nonlinear reference frequencies:
 282e12 282e12 564e12 375e12 375e12 375e12 375e12
 ~~~crystal end~~~
 Name:
-ZGP (L)
+ZGP L
 Type:
 1
 Sellmeier equation:
@@ -804,7 +804,7 @@ Nonlinear reference frequencies:
 31.2e12 31.2e12 62.4e12 136.3e12 136.3e12 136.3e12 136.3e12
 ~~~crystal end~~~
 Name:
-GaAs (L)
+GaAs L
 Type:
 0
 Sellmeier equation:
