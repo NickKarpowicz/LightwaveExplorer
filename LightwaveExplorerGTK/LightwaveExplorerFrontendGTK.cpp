@@ -1397,7 +1397,13 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.unitY = 1e9;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.plot(cr);
-    else theGui.requestPlotUpdate();
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        theGui.requestPlotUpdate();
+    }
 }
 
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1449,7 +1455,13 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.unitY = 1e9;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.plot(cr);
-    else theGui.requestPlotUpdate();
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        theGui.requestPlotUpdate();
+    }
 }
 
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1525,7 +1537,13 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.plot(cr);
-    else theGui.requestPlotUpdate();
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        theGui.requestPlotUpdate();
+    }
 }
 
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1602,7 +1620,13 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.plot(cr);
-    else theGui.requestPlotUpdate();
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        theGui.requestPlotUpdate();
+    }
 }
 
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1632,7 +1656,13 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.dataType = 0;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else theGui.requestPlotUpdate();
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        theGui.requestPlotUpdate();
+    }
 }
 
 void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1662,7 +1692,13 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.dataType = 0;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else theGui.requestPlotUpdate();
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        theGui.requestPlotUpdate();
+    }
 }
 
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1696,7 +1732,13 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.logMin = logPlotOffset;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else theGui.requestPlotUpdate();
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        theGui.requestPlotUpdate();
+    }
 }
 
 void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1731,7 +1773,13 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.logMin = logPlotOffset;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else theGui.requestPlotUpdate();
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        theGui.requestPlotUpdate();
+    }
 }
 
 void launchRunThread() {

@@ -653,7 +653,8 @@ void simulationBatch::configure() {
 	NgridC = parameters[0].NgridC;
 	simulationParameterSet base = parameters[0];
 	parameters.resize(Nsimstotal, base);
-
+	std::for_each(mutexes.begin(), mutexes.end(),
+		[](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
 	Ext = std::vector<double>(Nsimstotal * Ngrid * 2, 0.0);
 	Ekw = std::vector<std::complex<double>>(
 		Nsimstotal * NgridC * 2, 
