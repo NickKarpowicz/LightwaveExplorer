@@ -12,42 +12,31 @@ std::atomic_uint32_t totalSteps{};
 
 //Main class for controlling the interface
 class mainGui {
-    bool queueUpdate;
-    bool queueSliderUpdate;
-    bool queueSliderMove;
-    bool queueInterfaceValuesUpdate;
-    int sliderTarget;
-    std::thread threadPoolSim[3];
+    bool queueUpdate = false;
+    bool queueSliderUpdate = false;
+    bool queueSliderMove = false;
+    bool queueInterfaceValuesUpdate = false;
+    int sliderTarget = 0;
     std::mutex mutex;
 public:
-    LweTextBox textBoxes[54];
-    LweButton buttons[16];
-    LweButton miniButtons[12];
-    LweConsole console;
-    LweConsole sequence;
-    LweConsole fitCommand;
-    LweTextBox filePaths[4];
-    LwePulldown pulldowns[10];
-    LweDrawBox drawBoxes[8];
-    LweDrawBox progressBarBox;
-    LweCheckBox checkBoxes[4];
-    LweSlider plotSlider;
-    LweWindow window;
-    int64_t pathTarget;
+    LweTextBox textBoxes[54]{};
+    LweButton buttons[16]{};
+    LweButton miniButtons[12]{};
+    LweConsole console{};
+    LweConsole sequence{};
+    LweConsole fitCommand{};
+    LweTextBox filePaths[4]{};
+    LwePulldown pulldowns[10]{};
+    LweDrawBox drawBoxes[8]{};
+    LweDrawBox progressBarBox{};
+    LweCheckBox checkBoxes[4]{};
+    LweSlider plotSlider{};
+    LweWindow window{};
+    int64_t pathTarget = 0;
     int saveSVG = 0;
     bool loadedDefaults = false;
     bool firstSYCLsimulation = true;
-    unsigned int timeoutID;
-    mainGui() : queueUpdate(0),
-    queueSliderUpdate(0), 
-    queueSliderMove(0),
-    queueInterfaceValuesUpdate(0),
-    sliderTarget(0),
-    pathTarget(0), 
-    saveSVG(0),
-    loadedDefaults(0),
-    timeoutID(0){}
-    ~mainGui() {}
+    ~mainGui() { std::lock_guard lastLock(mutex); }
     void requestPlotUpdate() {
         std::unique_lock<std::mutex> lock(mutex);
         queueUpdate = true;
@@ -563,10 +552,9 @@ public:
 		theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
 #endif
         setInterfaceValuesToActiveValues();
-        std::unique_lock GTKlock(GTKmutex);
-        timeoutID = g_timeout_add(50, G_SOURCE_FUNC(updateDisplay), NULL);
-        g_signal_connect(window.window, "destroy", G_CALLBACK(destroyMainWindowCallback), NULL);
-        GTKlock.unlock();
+
+        window.connectUpdateFunction(updateDisplay);
+        window.connectDestructionFunction(destroyMainWindowCallback);
         window.present();
 
         //if the only options are SYCL on the CPU and openMP, make the default openMP
@@ -588,8 +576,8 @@ bool updateDisplay() {
 }
 
 void destroyMainWindowCallback(){
-    std::unique_lock GTKlock(GTKmutex);
-    g_source_remove(theGui.timeoutID);
+    theGui.window.removeUpdateFunction();
+   
 }
 
 void setInterfaceValuesToActiveValues(){

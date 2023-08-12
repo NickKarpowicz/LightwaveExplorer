@@ -97,19 +97,16 @@ static constexpr std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColor
 
 class LweColor {
 public:
-    double r;
-    double g;
-    double b;
-    double a;
-    LweColor() : r(0.0), g(0.0), b(0.0), a(0.0) {
-    }
+    double r{};
+    double g{};
+    double b{};
+    double a{};
     LweColor(double rIn, double gIn, double bIn, double aIn) {
         r = rIn;
         g = gIn;
         b = bIn;
         a = aIn;
     }
-    ~LweColor() {};
     [[nodiscard]] constexpr int rHex() const noexcept { return static_cast<int>(15 * r); }
     [[nodiscard]] constexpr int gHex() const noexcept { return static_cast<int>(15 * g); }
     [[nodiscard]] constexpr int bHex() const noexcept { return static_cast<int>(15 * b); }
@@ -1440,31 +1437,24 @@ public:
 };
 
 class LwePulldown : public LweGuiElement {
-    char** strArray;
-    char* strings;
-    int Nelements;
-    int strLength;
+    std::vector<std::string> entryNames;
 public:
-    LwePulldown() : Nelements(0), strLength(128) {
-        strArray = new char* [100]();
-        strings = new char[strLength * 100]();
-    }
-    ~LwePulldown() {
-        delete[] strArray;
-        delete[] strings;
-    }
     void addElement(const char* newelement) {
-        if (Nelements == 99) return;
         std::string s(newelement);
         stripLineBreaks(s);
-        s.append("\0");
-        strArray[Nelements] = &strings[Nelements * strLength];
-        s.copy(strArray[Nelements], 127);
-        ++Nelements;
+        entryNames.push_back(s);
     }
     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
+        //make an array of pointers to c-strings for GTK
+        std::vector<const char*> stringPointersForGTK;
+        stringPointersForGTK.reserve(entryNames.size()+1);
+        std::transform(entryNames.begin(), entryNames.end(), 
+            std::back_inserter(stringPointersForGTK), 
+            [](const std::string& s) {return s.c_str();});
+        stringPointersForGTK.push_back(nullptr);
+
         std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_drop_down_new_from_strings(strArray);
+        elementHandle = gtk_drop_down_new_from_strings(stringPointersForGTK.data());
         gtk_widget_set_hexpand(elementHandle, false);
         gtk_widget_set_vexpand(elementHandle, false);
         GTKlock.unlock();
@@ -1478,11 +1468,9 @@ public:
         std::unique_lock GTKlock(GTKmutex);
         gtk_drop_down_set_selected(GTK_DROP_DOWN(elementHandle), target);
     }
-
     inline void removeCharacterFromString(std::string& s, const char removedChar) {
         std::erase(s, removedChar);
     }
-
     void stripLineBreaks(std::string& s) {
         removeCharacterFromString(s, '\r');
         removeCharacterFromString(s, '\n');
@@ -1490,27 +1478,19 @@ public:
 };
 
 class LweWindow {
-    GtkWidget* grid;
-    GtkWidget* bigGrid;
-    GtkWidget* consoleGrid;
-    GtkWidget* plotGrid;
-    GtkWidget* plotControlsGrid;
-    GtkWidget* consoleControlsGrid;
-    GtkWidget* consoleControlsSubgrid1;
-    GtkWidget* consoleControlsSubgrid2;
-    GtkWidget* plotControlsSubgrid1;
-    GtkWidget* plotControlsSubgrid2;
+    GtkWidget* grid = nullptr;
+    GtkWidget* bigGrid = nullptr;
+    GtkWidget* consoleGrid = nullptr;
+    GtkWidget* plotGrid = nullptr;
+    GtkWidget* plotControlsGrid = nullptr;
+    GtkWidget* consoleControlsGrid = nullptr;
+    GtkWidget* consoleControlsSubgrid1 = nullptr;
+    GtkWidget* consoleControlsSubgrid2 = nullptr;
+    GtkWidget* plotControlsSubgrid1 = nullptr;
+    GtkWidget* plotControlsSubgrid2 = nullptr;
+    unsigned int updaterID = 0;
 public:
-    GtkWidget* window;
-    LweWindow() :grid(0), bigGrid(0), consoleGrid(0), plotGrid(0),
-        plotControlsGrid(0),
-        consoleControlsGrid(0),
-        consoleControlsSubgrid1(0),
-        consoleControlsSubgrid2(0),
-        plotControlsSubgrid1(0),
-        plotControlsSubgrid2(0),
-        window(0) {}
-    ~LweWindow() {};
+    GtkWidget* window = nullptr;
     void init(
         GtkApplication* appHandle, 
         const char* windowName, 
@@ -1625,6 +1605,16 @@ public:
     GtkWindow* windowHandle() {
         return GTK_WINDOW(window);
     }
+    void connectUpdateFunction(auto function) {
+        updaterID = g_timeout_add(50, G_SOURCE_FUNC(function), NULL);
+    }
+    void removeUpdateFunction() {
+        g_source_remove(updaterID);
+    }
+    void connectDestructionFunction(auto function) {
+        std::lock_guard GTKlock(GTKmutex);
+        g_signal_connect(window, "destroy", G_CALLBACK(function), NULL);
+    }
 };
 
 class LweDrawBox : public LweGuiElement {
@@ -1653,17 +1643,6 @@ public:
     void noVerticalExpantion() {
         std::unique_lock GTKlock(GTKmutex);
         gtk_widget_set_vexpand(elementHandle, false);
-    }
-};
-class LweSpacer : public LweGuiElement {
-public:
-    void init(GtkWidget* grid, const int x, const int y, const int width, const int height, const int spacing) {
-        std::unique_lock GTKlock(GTKmutex);
-        elementHandle = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, spacing);
-        gtk_widget_set_hexpand(elementHandle, true);
-        gtk_widget_set_vexpand(elementHandle, true);
-        GTKlock.unlock();
-        setPosition(grid, x, y, width, height);
     }
 };
 
