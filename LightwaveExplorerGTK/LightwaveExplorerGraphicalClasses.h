@@ -431,7 +431,7 @@ public:
         //x-axis tick labels
         for (int i = 0; i < 3; ++i) {
             messageBuffer.assign(Sformat("{}", (int)round(xTicks1[i])));
-            layoutLeft = (double)(axisSpaceX + 0.25 * width * ((int64_t)(i)+1) - axisSpaceX / 2);
+            layoutLeft = axisSpaceX + 0.25 * width * ((int64_t)(i)+1) - 0.5 * axisSpaceX;
             layoutTop = height + 3;
             layoutBottom = height + axisSpaceY;
             layoutRight = layoutLeft + axisSpaceX;
@@ -456,17 +456,17 @@ public:
         cairoLine();
         SVGstdline();
         for (int i = 0; i < 2; ++i) {
-            y1 = (double)(height - scaleY * (yTicks1[i] - minY));
+            y1 = height - scaleY * (yTicks1[i] - minY);
             y2 = y1;
             x1 = axisSpaceX;
-            x2 = x1 + 10;
+            x2 = x1 + 10.;
             cairoLine();
             SVGstdline();
         }
         for (int i = 0; i < 3; ++i) {
             y1 = height;
-            y2 = y1 - 10;
-            x1 = (double)(axisSpaceX + scaleX * (xTicks1[i] - minX));
+            y2 = y1 - 10.;
+            x1 = axisSpaceX + scaleX * (xTicks1[i] - minX);
             x2 = x1;
             cairoLine();
             SVGstdline();
@@ -482,7 +482,7 @@ public:
                 for (int i = 0; i < Npts; i++) {
                     scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
                     scaledY[i] = height - scaleY * (static_cast<double>(log10(y[i])) - static_cast<double>(minY));
-                    if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
+                    if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2.;
                 }
             }
             else {
@@ -490,7 +490,7 @@ public:
                 for (int i = 0; i < Npts; i++) {
                     scaledX[i] = scaleX * (xValues[i] - minX) + axisSpaceX;
                     scaledY[i] = height - scaleY * (static_cast<double>(y[i]) - static_cast<double>(minY));
-                    if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2;
+                    if (isnan(scaledY[i]) || isinf(scaledY[i])) scaledY[i] = maxX * 2.;
                 }
             }
         };
@@ -661,39 +661,33 @@ public:
     int dataType = 0;
 
     void imagePlot(cairo_t* cr) {
-
-        int dx = width;
-        int dy = height;
-
-        int64_t plotSize = (int64_t)dx * (int64_t)dy;
-        float* plotarr2 = new float[plotSize];
+        int64_t plotSize = static_cast<int64_t>(width) * static_cast<int64_t>(height);
+        std::vector<float> plotarr2(plotSize);
         switch (dataType) {
         case 0:
             if (data == nullptr) break;
             linearRemapDoubleToFloat(
                 data, 
-                (int)dataYdim, 
-                (int)dataXdim, 
-                plotarr2, 
-                (int)dy, 
-                (int)dx);
-            drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
+                static_cast<int>(dataYdim), 
+                static_cast<int>(dataXdim),
+                plotarr2.data(),
+                height,
+                width);
+            drawArrayAsBitmap(cr, width, height, plotarr2.data(), colorMap);
             break;
         case 1:
             if (complexData == nullptr) break;
             linearRemapZToLogFloatShift(
                 complexData, 
-                (int)dataYdim, 
-                (int)dataXdim, 
-                plotarr2, 
-                (int)dy, 
-                (int)dx, 
+                static_cast<int>(dataYdim),
+                static_cast<int>(dataXdim),
+                plotarr2.data(),
+                height,
+                width,
                 logMin);
-            drawArrayAsBitmap(cr, width, height, plotarr2, colorMap);
+            drawArrayAsBitmap(cr, width, height, plotarr2.data(), colorMap);
             break;
         }
-
-        delete[] plotarr2;
     }
 
     [[nodiscard]] constexpr double cModulusSquared(const std::complex<double>& x) {
@@ -771,14 +765,13 @@ public:
         const float* data, 
         const int cm) {
         if (Nx * Ny == 0) return;
-        std::unique_lock GTKlock(GTKmutex);
+        
         // creating input
-        const int64_t Ntot = Nx * Ny;
-        uint8_t* pixels = new uint8_t[4 * Ntot]();
-        if (pixels == nullptr) return;
+        const int64_t Ntot = static_cast<int64_t>(Nx) * static_cast<int64_t>(Ny);
+        std::vector<uint8_t> pixels(4 * Ntot, 0);
 
         const std::array<std::array<uint8_t, 3>, 256> colorMap = LweColorMaps[cm];
-        const int stride = 4;
+        constexpr int stride = 4;
         //Find the image maximum and minimum
         float imin = data[0];
         float imax = data[0];
@@ -795,15 +788,16 @@ public:
 #pragma omp parallel for num_threads(interfaceThreads)
             for (int p = 0; p < Ntot; p++) {
                 uint8_t currentValue = 
-                    (uint8_t)(255 * (data[p] - imin) / (imax - imin));
-                pixels[stride * p + 0] = colorMap[currentValue][0];
+                    static_cast<uint8_t>(255.0 * (data[p] - imin) / (imax - imin));
+                pixels[stride * p] = colorMap[currentValue][0];
                 pixels[stride * p + 1] = colorMap[currentValue][1];
                 pixels[stride * p + 2] = colorMap[currentValue][2];
             }
         }
+        std::unique_lock GTKlock(GTKmutex);
         const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
         cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
-            pixels, 
+            pixels.data(),
             CAIRO_FORMAT_RGB24, 
             Nx, Ny, 
             caiStride);
@@ -811,7 +805,6 @@ public:
         cairo_paint(cr);
         cairo_surface_finish(cSurface);
         cairo_surface_destroy(cSurface);
-        delete[] pixels;
     }
 };
 
@@ -864,22 +857,6 @@ public:
 };
 
 class LweTextBox : public LweGuiElement {
-    int getNumberOfDecimalsToDisplay(double in, const bool isExponential) {
-        if (in == 0) return 0;
-        in = abs(in);
-        int digits = -1;
-        int logValue = (int)floor(log10(in));
-        in /= pow((double)10.0, logValue);
-        while (digits < 15 && in > 1e-3 && in < 9.999) {
-            in -= (int)in;
-            in *= 10;
-            digits++;
-        }
-        if (isExponential) {
-            return maxN(0, digits);
-        }
-        return maxN(0, digits - logValue);
-    }
 public:
     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
@@ -1042,7 +1019,6 @@ public:
             destination = s;
         }
     }
-
 };
 
 gboolean scrollTextViewToEndHandler(gpointer data) {
@@ -1643,6 +1619,7 @@ public:
 };
 
 class LweSlider : public LweGuiElement {
+    GtkEventController* eventController;
 public:
     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
@@ -1654,6 +1631,7 @@ public:
         gtk_widget_set_margin_bottom(elementHandle, 0);
         GTKlock.unlock();
         setPosition(grid, x, y, width, height);
+        
     }
     int getIntValue() {
         std::unique_lock GTKlock(GTKmutex);
@@ -1674,6 +1652,12 @@ public:
     void setFunction(auto sliderFunction) {
         std::unique_lock GTKlock(GTKmutex);
         g_signal_connect_after(elementHandle, "change-value", G_CALLBACK(sliderFunction), NULL);
+
+    }
+    void setArrowFunction(auto arrowFunction){
+        eventController = gtk_event_controller_key_new();
+        g_signal_connect_object(eventController, "key-pressed", G_CALLBACK(arrowFunction), elementHandle, G_CONNECT_SWAPPED);
+        gtk_widget_add_controller(GTK_WIDGET(elementHandle), eventController);
     }
     void setValue(int value) {
         std::unique_lock GTKlock(GTKmutex);

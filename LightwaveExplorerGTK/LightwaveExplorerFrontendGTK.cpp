@@ -418,7 +418,7 @@ public:
         plotSlider.setRange(0.0, 10.0);
         plotSlider.setDigits(0);
         plotSlider.setFunction(independentPlotQueue);
-
+        plotSlider.setArrowFunction(sliderResponseToArrows);
         sequence.init(window.parentHandle(1), 0, 0, 1, 1);
         fitCommand.init(parentHandle, buttonCol1, 13, colWidth, 2);
         console.init(parentHandle, buttonCol1, 18, colWidth, 4);
@@ -1778,6 +1778,23 @@ void stopButtonCallback() {
 
 void independentPlotQueue(){
     theGui.requestPlotUpdate();
+}
+
+bool sliderResponseToArrows(GtkWidget* widget, guint keyValue, guint keyCode, GdkModifierType state, GtkEventControllerKey* eventController) {
+    double value = gtk_range_get_value(GTK_RANGE(widget));
+    switch (keyValue) {
+    case GDK_KEY_Left:
+        value -= 1.0;
+        theGui.plotSlider.setValue(static_cast<int>(value));
+        break;
+    case GDK_KEY_Right:
+        value += 1.0;
+        theGui.plotSlider.setValue(static_cast<int>(value));
+        break;
+    default: break;
+    }
+    theGui.requestPlotUpdate();
+    return true;
 }
 
 void secondaryQueue(

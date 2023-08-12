@@ -74,6 +74,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
+bool sliderResponseToArrows(GtkWidget* widget, guint keyValue, guint keyCode, GdkModifierType state, GtkEventControllerKey* eventController);
 void checkLibraryAvailability();
 void setInterfaceValuesToActiveValues();
 int insertAfterCharacter(std::string& s, char target, std::string appended);
