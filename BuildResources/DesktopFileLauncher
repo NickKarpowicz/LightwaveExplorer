@@ -3,4 +3,4 @@ Name=Lightwave Explorer
 Exec=LightwaveExplorerLauncher.sh
 Icon=io.github.NickKarpowicz.LightwaveExplorer
 Type=Application
-Categories=Utility
+Categories=Science
