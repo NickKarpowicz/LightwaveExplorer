@@ -1212,7 +1212,7 @@ public:
         gtk_text_buffer_create_tag(buf, "delegate", "foreground", "#FF8800FF", NULL);
         gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
         gtk_text_buffer_create_tag(buf, "error", "foreground", "#FF0000FF", NULL);
-        gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#9900CCFF", NULL);
+        gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#CC99FFFF", NULL);
     }
     void init(
         GtkWidget* grid, 
