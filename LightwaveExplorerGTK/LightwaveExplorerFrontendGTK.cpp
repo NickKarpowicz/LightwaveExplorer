@@ -1950,9 +1950,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     #endif
     #ifndef NOSYCL
     if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
-        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
-            "some time to compile kernels for your device.\n"
-            "Subsequent runs will be faster.\n");
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint(
+            "Note: the first time you run SYCL, it will\n"
+            "take some time to compile kernels for your\n"
+            "device. Subsequent runs will be faster.\n");
         theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
