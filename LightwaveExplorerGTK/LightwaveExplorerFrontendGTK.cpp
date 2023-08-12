@@ -1396,7 +1396,8 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.yLabel = "Ex (GV/m)";
     sPlot.unitY = 1e9;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex),std::try_to_lock);
-    if(dataLock.owns_lock()) sPlot.plot(cr);
+    if (dataLock.owns_lock()) sPlot.plot(cr);
+    else theGui.requestPlotUpdate();
 }
 
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1448,6 +1449,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.unitY = 1e9;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.plot(cr);
+    else theGui.requestPlotUpdate();
 }
 
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1523,6 +1525,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.plot(cr);
+    else theGui.requestPlotUpdate();
 }
 
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1599,6 +1602,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.plot(cr);
+    else theGui.requestPlotUpdate();
 }
 
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1628,6 +1632,7 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.dataType = 0;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    else theGui.requestPlotUpdate();
 }
 
 void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1657,6 +1662,7 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.dataType = 0;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    else theGui.requestPlotUpdate();
 }
 
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1690,6 +1696,7 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.logMin = logPlotOffset;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    else theGui.requestPlotUpdate();
 }
 
 void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1724,6 +1731,7 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.logMin = logPlotOffset;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    else theGui.requestPlotUpdate();
 }
 
 void launchRunThread() {
@@ -2064,6 +2072,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             (double)(std::chrono::duration_cast<std::chrono::microseconds>
                 (simulationTimerEnd - simulationTimerBegin).count()));
     }
+
     theSim.saveDataSet();
     theSim.base().isRunning = false;
 }

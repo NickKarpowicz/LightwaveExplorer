@@ -788,7 +788,8 @@ void simulationBatch::loadPulseFiles() {
 
 int simulationBatch::saveDataSet() {
 	parameters[0].saveSettingsFile();
-
+	std::for_each(mutexes.begin(), mutexes.end(),
+		[&](std::mutex& m) { m.lock(); });
 	std::string Epath=parameters[0].outputBasePath;
 	Epath.append("_Ext.dat");
 	std::ofstream Efile(Epath, std::ios::binary);
@@ -802,7 +803,8 @@ int simulationBatch::saveDataSet() {
 	if (Sfile.is_open()) Sfile.write(
 		reinterpret_cast<char*>(totalSpectrum.data()), 
 		totalSpectrum.size() * sizeof(double));
-	
+	std::for_each(mutexes.begin(), mutexes.end(),
+		[&](std::mutex& m) { m.unlock(); });
 	return 0;
 }
 
