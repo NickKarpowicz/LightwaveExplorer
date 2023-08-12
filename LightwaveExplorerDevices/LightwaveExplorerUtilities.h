@@ -5,6 +5,8 @@
 #include <string>
 #include <fstream>
 #include <atomic>
+#include <mutex>
+#include <algorithm>
 #include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -942,8 +944,14 @@ class simulationBatch {
     int64_t NgridC = 0;
     std::vector<simulationParameterSet> parameters;
 public:
+    std::vector<std::mutex> mutexes = std::vector<std::mutex>(1);
+
     simulationBatch() {
         parameters = std::vector<simulationParameterSet>(1);
+    }
+    ~simulationBatch() {
+        std::for_each(mutexes.begin(), mutexes.end(), 
+            [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
     }
     void configure();
     void loadPulseFiles();

@@ -658,6 +658,7 @@ void simulationBatch::configure() {
 	Ekw = std::vector<std::complex<double>>(
 		Nsimstotal * NgridC * 2, 
 		std::complex<double>(0.0, 0.0));
+	mutexes = std::vector<std::mutex>(Nsimstotal);
 	totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
 
 	if (parameters[0].pulse1FileType == 1 || parameters[0].pulse1FileType == 2) {

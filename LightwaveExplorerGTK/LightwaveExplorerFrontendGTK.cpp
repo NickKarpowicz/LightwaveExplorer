@@ -1395,8 +1395,8 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ex (GV/m)";
     sPlot.unitY = 1e9;
-
-    sPlot.plot(cr);
+    std::unique_lock dataLock(theSim.mutexes.at(simIndex),std::try_to_lock);
+    if(dataLock.owns_lock()) sPlot.plot(cr);
 }
 
 void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1446,8 +1446,8 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
-
-    sPlot.plot(cr);
+    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.plot(cr);
 }
 
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1521,8 +1521,8 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
-
-    sPlot.plot(cr);
+    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.plot(cr);
 }
 
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1597,8 +1597,8 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
-
-    sPlot.plot(cr);
+    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.plot(cr);
 }
 
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1626,7 +1626,8 @@ void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.width = width;
     sPlot.colorMap = 4;
     sPlot.dataType = 0;
-    sPlot.imagePlot(cr);
+    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
 }
 
 void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1654,7 +1655,8 @@ void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.width = width;
     sPlot.colorMap = 4;
     sPlot.dataType = 0;
-    sPlot.imagePlot(cr);
+    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
 }
 
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1686,7 +1688,8 @@ void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.dataType = 1;
     sPlot.colorMap = 3;
     sPlot.logMin = logPlotOffset;
-    sPlot.imagePlot(cr);
+    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
 }
 
 void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data) {
@@ -1710,7 +1713,6 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         logPlotOffset = (double)(1e-4 
             / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
     }
-
     sPlot.complexData =
         &theSim.base().EkwOut[simIndex * theSim.base().NgridC * 2 + theSim.base().NgridC];
     sPlot.dataXdim = theSim.base().Nfreq;
@@ -1720,7 +1722,8 @@ void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     sPlot.colorMap = 3;
     sPlot.dataType = 1;
     sPlot.logMin = logPlotOffset;
-    sPlot.imagePlot(cr);
+    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
 }
 
 void launchRunThread() {
@@ -1835,6 +1838,7 @@ void secondaryQueue(
         for (unsigned int i = 0; i < theSim.base().NsimsCPU; ++i) {
             cpuSims[i].assignedGPU = assignedGPU;
             cpuSims[i].runningOnCPU = forceCPU;
+            std::lock_guard dataLock(theSim.mutexes.at(i));
             error = sequenceFunction(&cpuSims[i]);
             if (error) break;
         }
@@ -1843,6 +1847,7 @@ void secondaryQueue(
         for (unsigned int i = 0; i < theSim.base().NsimsCPU; ++i) {
             cpuSims[i].assignedGPU = assignedGPU;
             cpuSims[i].runningOnCPU = forceCPU;
+            std::lock_guard dataLock(theSim.mutexes.at(i));
             error = normalFunction(&cpuSims[i]);
             if (error) break;
         }
@@ -1966,6 +1971,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     for (int j = 0; j < (theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU); ++j) {
         theSim.sCPU()[j].runningOnCPU = forceCPU;
         theSim.sCPU()[j].assignedGPU = assignedGPU;
+        std::lock_guard dataLock(theSim.mutexes.at(j));
         if (theSim.base().isInSequence) {
             try {
                 error = sequenceFunction(&theSim.sCPU()[j]);
@@ -2132,7 +2138,9 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     theSim.base().isRunning = true;
     theSim.base().runningOnCPU = forceCPU;
     theSim.base().assignedGPU = assignedGPU;
+    std::unique_lock lock(theSim.mutexes.at(0));
     fittingFunction(theSim.sCPU());
+    lock.unlock();
     theSim.base().plotSim = 0;
 
     theGui.requestPlotUpdate();
