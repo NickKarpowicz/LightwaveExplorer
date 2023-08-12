@@ -33,9 +33,9 @@ maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
 
 constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
     std::array<std::array<uint8_t, 3>, 256> colorMap{};
-    const double oneOver255 = 1.0f / 255.0f;
+    constexpr double oneOver255 = 1.0 / 255.0;
     for (int j = 0; j < 256; ++j) {
-        double nval = 0.0;
+        const double nval = static_cast<double>(j) * oneOver255;
         switch (cm) {
         case 0:
             colorMap[j][0] = static_cast<uint8_t>(j);
@@ -43,13 +43,11 @@ constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
             colorMap[j][2] = static_cast<uint8_t>(j);
             break;
         case 1:
-            nval = j * oneOver255;
             colorMap[j][0] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * nval / 2.));
             colorMap[j][1] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
             colorMap[j][2] = static_cast<uint8_t>(255. * gcem::sin(vPi<double>() * nval / 2.));
             break;
         case 2:
-            nval = j * oneOver255;
             colorMap[j][0] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * nval / 2.));
             colorMap[j][1] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
             colorMap[j][2] = static_cast<uint8_t>(255. * gcem::sin(vPi<double>() * nval / 2.));
@@ -65,19 +63,17 @@ constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
             }
             break;
         case 3:
-            nval = 255 * (j * oneOver255);
             colorMap[j][0] = static_cast<uint8_t>(255. *
-                (0.998 * gcem::exp(-gcem::pow(7.7469e-03 * (nval - 160.), 6))
-                    + 0.22 * gcem::exp(-gcem::pow(0.016818 * (nval - 305.), 4))));
+                (0.998 * gcem::exp(-gcem::pow(7.7469e-03 * (j - 160.), 6))
+                    + 0.22 * gcem::exp(-gcem::pow(0.016818 * (j - 305.), 4))));
             colorMap[j][1] = static_cast<uint8_t>(255. *
-                (0.022 * gcem::exp(-gcem::pow(0.042045 * (nval - 25.), 4))
-                    + 0.11 * gcem::exp(-gcem::pow(0.015289 * (nval - 120.), 4))
-                    + 1 * gcem::exp(-gcem::pow(4.6889e-03 * (nval - 400.), 6))));
+                (0.022 * gcem::exp(-gcem::pow(0.042045 * (j - 25.), 4))
+                    + 0.11 * gcem::exp(-gcem::pow(0.015289 * (j - 120.), 4))
+                    + 1 * gcem::exp(-gcem::pow(4.6889e-03 * (j - 400.), 6))));
             colorMap[j][2] = static_cast<uint8_t>(255. *
-                (gcem::exp(-gcem::pow(3.1101e-03 * (nval - 415), 10))));
+                (gcem::exp(-gcem::pow(3.1101e-03 * (j - 415), 10))));
             break;
         case 4:
-            nval = j * oneOver255;
             colorMap[j][0] = static_cast<uint8_t>(255. * (1.0 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
                 + 1.00 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
             colorMap[j][1] = static_cast<uint8_t>(255. * (0.95 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
