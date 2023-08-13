@@ -7,7 +7,6 @@
     "command": "LightwaveExplorer",
     "finish-args": [
         "--share=ipc",
-        "--socket=session-bus",
         "--device=dri",
         "--socket=x11",
         "--socket=wayland",
