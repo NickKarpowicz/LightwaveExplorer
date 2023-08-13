@@ -1595,10 +1595,16 @@ namespace deviceFunctions {
 		const real_t k0, 
 		const real_t d) {
 
-		if (deviceFPLib::abs(dk2) < 0.1f * k.real() && deviceFPLib::abs(dk1) < 0.1f *  k.real()) {
+		if ( (deviceFPLib::abs(dk2) < 0.1f * k.real()) 
+			&& (deviceFPLib::abs(dk1) < 0.1f *  k.real())) {
+			deviceFP halfOverKr = (0.5f / k.real()) * (dk1 * dk1 + dk2 * dk2);
+			deviceFP kMoving = k.real() - k0;
 			return deviceLib::exp(
-				complex_t(0.0,-d)*((k - k0) - (dk1 * dk1) / (2.0f * k.real()) 
-					- (dk2 * dk2) / (2.0f * k.real())));
+				complex_t(
+					d * k.imag(),
+					d * (halfOverKr - kMoving)
+				)
+			);
 		}
 		complex_t kz = 
 			(deviceLib::sqrt(-dk2 * dk2 / (k + deviceFPLib::abs(dk1)) + k - deviceFPLib::abs(dk1))
