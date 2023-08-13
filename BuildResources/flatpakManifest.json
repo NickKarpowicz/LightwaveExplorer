@@ -6,8 +6,9 @@
     "sdk": "org.gnome.Sdk",
     "command": "LightwaveExplorer",
     "finish-args": [
-        "--share=network",
         "--share=ipc",
+        "--socket=session-bus",
+        "--device=dri",
         "--socket=x11",
         "--socket=wayland",
         "--filesystem=host"
