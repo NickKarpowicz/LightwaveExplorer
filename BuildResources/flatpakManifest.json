@@ -43,27 +43,27 @@
             "sources": [ 
                 { 
                     "type": "git", 
-                    "url": "https://github.com/fmtlib/fmt/fmt.git", 
+                    "url": "https://github.com/fmtlib/fmt", 
                     "tag": "10.1.0" } 
                 ]
         },
         {
             "name": "gcem",
-            "buildsystem": "simple",
+            "buildsystem": "cmake",
             "sources": [ 
                 { 
                     "type": "git", 
-                    "url": "https://github.com/kthohr/gcem/gcem.git", 
+                    "url": "https://github.com/kthohr/gcem", 
                     "tag": "v1.17.0" } 
                 ]
         },
         {
             "name": "dlib",
-            "buildsystem": "simple",
+            "buildsystem": "cmake",
             "sources": [ 
                 { 
                     "type": "git", 
-                    "url": "https://github.com/davisking/dlib/dlib.git", 
+                    "url": "https://github.com/davisking/dlib", 
                     "tag": "v19.24.2" } 
                 ]
         },
@@ -74,7 +74,7 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "https://github.com/NickKarpowicz/LightwaveExplorer/LightwaveExplorer.git",
+                    "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
                     "branch": "master" 
                 }
             ]
