@@ -59,7 +59,8 @@
         },
         {
             "name": "dlib",
-            "buildsystem": "cmake",
+            "buildsystem": "simple",
+            "build-commands":["cp -R dlib /app/include/"],
             "sources": [ 
                 { 
                     "type": "git", 
@@ -70,7 +71,7 @@
         {
             "name": "Lightwave Explorer",
             "buildsystem": "cmake",
-            "config-opts": "-DMAKEFLATPAK",
+            "config-opts": "-DMAKEFLATPAK=1",
             "sources": [
                 {
                     "type": "git",
