@@ -3,7 +3,7 @@
 <p style="text-align: center;">Nick Karpowicz</p>
 <p style="text-align: center;">Max Planck Institute of Quantum Optics</p>
 
-<p style="text-align: center;"><img src="BuildResources/AppImage/ico512.png" width="256" height="256"></p>
+<p style="text-align: center;"><img src="BuildResources/icons/hicolor/512x512/apps/io.github.NickKarpowicz.LightwaveExplorer.png" width="256" height="256"></p>
 
 <p style="text-align: center;">(icon made by Stable Diffusion)</p>
 
