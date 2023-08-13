@@ -171,11 +171,11 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer ${FFTWF_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt)
 
-        add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND sh ${CMAKE_BINARY_DIR}/makeLinuxIcons.sh)
+        
         install(TARGETS LightwaveExplorer)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
         install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
-        install(DIRECTORY ${CMAKE_BINARY_DIR}/icons DESTINATION share FILES_MATCHING PATTERN "*")
+        install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
         install(FILES BuildResources/DesktopFileNoLauncher DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
         install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
     endif()
