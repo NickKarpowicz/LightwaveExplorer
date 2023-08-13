@@ -1,0 +1,84 @@
+{
+    "id": "io.github.NickKarpowicz.LightwaveExplorer",
+    "branch": "master",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "44",
+    "sdk": "org.gnome.Sdk",
+    "command": "LightwaveExplorer",
+    "finish-args": [
+        "--share=network",
+        "--share=ipc",
+        "--socket=x11",
+        "--socket=wayland",
+        "--filesystem=host"
+    ],
+    "cleanup": [
+        "/include",
+        "/lib/cmake",
+        "/lib/pkgconfig",
+        "/lib/*.la",
+        "/lib/*.a",
+        "/mkspecs",
+        "/share/aclocal",
+        "/share/info",
+        "/share/man"
+    ],
+    "modules": [
+       {
+            "name": "fftw3",
+            "buildsystem": "autotools",
+            "config-opts": ["--enable-float", "--enable-shared", "--silent"],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "http://fftw.org/fftw-3.3.10.tar.gz",
+                    "md5": "8ccbf6a5ea78a16dbc3e1306e234cc5c"
+                }
+            ]
+        },
+        {
+            "name": "fmt",
+            "config-opts": ["-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", "-DFMT_TEST=OFF"],
+            "buildsystem": "cmake",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/fmtlib/fmt/fmt.git", 
+                    "tag": "10.1.0" } 
+                ]
+        },
+        {
+            "name": "gcem",
+            "buildsystem": "simple",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/kthohr/gcem/gcem.git", 
+                    "tag": "v1.17.0" } 
+                ]
+        },
+        {
+            "name": "dlib",
+            "buildsystem": "simple",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/davisking/dlib/dlib.git", 
+                    "tag": "v19.24.2" } 
+                ]
+        },
+        {
+            "name": "Lightwave Explorer",
+            "buildsystem": "cmake",
+            "config-opts": "-DMAKEFLATPAK",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/NickKarpowicz/LightwaveExplorer/LightwaveExplorer.git",
+                    "branch": "master" 
+                }
+            ]
+        }
+            
+    ]
+}
