@@ -1775,6 +1775,7 @@ namespace deviceFunctions {
 			return deviceComplex(
 				deviceFPLib::sqrt(maxN(realPart, 0.9f)), 
 				0.0f);
+		default: return cOne<deviceComplex>();
 		}
 		return cOne<deviceComplex>();
 	};
@@ -1790,7 +1791,7 @@ namespace deviceFunctions {
 		const deviceFP phi, 
 		const int type, 
 		const int eqn) {
-
+		
 		if (f == 0.0f) {
 			*ne = cOne<deviceComplex>(); 
 			*no = cOne<deviceComplex>(); 
@@ -1806,6 +1807,7 @@ namespace deviceFunctions {
 			*no = *ne;
 			return *ne;
 		}
+		
 		//option 1: uniaxial
 		else if (type == 1) {
 			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn);
@@ -3054,7 +3056,7 @@ namespace kernelNamespace{
 		const deviceFP* sellmeierCoefficients;
 		deviceFunction void operator()(const int64_t i) const {
 			//frequency being resolved by current thread
-			const deviceFP f = i * (*s).fStep;
+			const deviceFP f = static_cast<deviceFP>(i) * (*s).fStep;
 			deviceComplex ne, no;
 			if (i < (*s).Ntime / 2) {
 				sellmeierCuda(
@@ -3168,12 +3170,12 @@ namespace kernelNamespace{
 		deviceFunction void operator()(int64_t i) const {
 			const int64_t j = i / ((*s).Nfreq - 1); //spatial coordinate
 			const int64_t k = 1 + i % ((*s).Nfreq - 1); //temporal coordinate
-			i = k + j * (*s).Nfreq;
+			i = static_cast<deviceFP>(k) + static_cast<deviceFP>(j) * (*s).Nfreq;
 			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
 			//frequency being resolved by current thread
-			const deviceFP f = -(k * (*s).fStep);
+			const deviceFP f = -(static_cast<deviceFP>(k) * (*s).fStep);
 			//transverse wavevector being resolved
-			const deviceFP dk = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) 
+			const deviceFP dk = static_cast<deviceFP>(j) * (*s).dk1 - static_cast<deviceFP>(j >= ((*s).Nspace / 2)) 
 				* ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
 			deviceComplex ne, no;
 			sellmeierCuda(
@@ -5257,7 +5259,7 @@ namespace hostFunctions{
 			2 * minGridDimension, 
 			multiplyByConstantKernelD{ 
 				d.deviceStruct.gridETime1, 
-				(deviceFP)(1.0 / d.deviceStruct.Ngrid) });
+				static_cast<deviceFP>(1.0 / d.deviceStruct.Ngrid) });
 		d.deviceMemcpy(
 			(*sCPU).ExtOut, 
 			d.deviceStruct.gridETime1, 

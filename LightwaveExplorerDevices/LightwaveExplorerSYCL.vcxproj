@@ -169,6 +169,7 @@
       <DebugInformationFormat>None</DebugInformationFormat>
       <SYCLOptimization>MaxSpeed</SYCLOptimization>
       <SYCLWarningLevel>EnablesWarningsAndErrors</SYCLWarningLevel>
+      <AdditionalOptions>/fp:precise %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
