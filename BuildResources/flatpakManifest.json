@@ -71,7 +71,7 @@
         {
             "name": "Lightwave Explorer",
             "buildsystem": "cmake",
-            "config-opts": "-DMAKEFLATPAK=1",
+            "config-opts": ["-DMAKEFLATPAK=1"],
             "sources": [
                 {
                     "type": "git",
