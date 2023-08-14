@@ -1,7 +1,8 @@
-<p style="text-align: center;"><img src="BuildResources/icons/hicolor/512x512/apps/io.github.NickKarpowicz.LightwaveExplorer.png" width="256" height="256"></p>
+<p align="center"><img src="BuildResources/icons/hicolor/512x512/apps/io.github.NickKarpowicz.LightwaveExplorer.png" width="256" height="256"></p>
 
-<p style="text-align: center; font-size: 24px; font-weight: bold">Lightwave Explorer</p>
-<p style="text-align: center;">Nick Karpowicz, Max Planck Institute of Quantum Optics</p>
+## <p align="center">Lightwave Explorer</p>
+<p align="center">Nick Karpowicz<br>
+ Max Planck Institute of Quantum Optics</p>
 
 ---
 <p style="text-align: center;">New! <a href="https://youtu.be/J1-dh6V5flQ">YouTube tutorials!</a></p>
