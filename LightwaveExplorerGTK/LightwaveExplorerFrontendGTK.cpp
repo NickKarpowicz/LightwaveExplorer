@@ -1927,7 +1927,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     
     theSim.base().isRunning = true;
     auto sequenceFunction = use64bitFloatingPoint ? 
-        &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceFP32;
+        &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
     auto normalFunction = use64bitFloatingPoint ? 
         &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
     int assignedGPU = 0;
