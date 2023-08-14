@@ -1,6 +1,6 @@
 #!/bin/bash
 # Path to the 512x512 pixel PNG icon
-icon_path="../BuildResources/AppImage/ico512.png"
+icon_path="ico512.png"
 mkdir -p icons/hicolor/512x512/apps
 cp ${icon_path} icons/hicolor/512x512/apps/io.github.NickKarpowicz.LightwaveExplorer.png
 mkdir -p icons/hicolor/256x256/apps
