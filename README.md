@@ -38,28 +38,37 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   - Maciej Kowalczyk, *et al.*, Ultra-CEP-stable single-cycle pulses at 2.2 µm. [*Optica* **10**, 801-811 (2023).](https://opg.optica.org/optica/fulltext.cfm?uri=optica-10-6-801)
   - Najd Altwaijry, *et al.*, Broadband Photoconductive Sampling in Gallium Phosphide. [*Advanced Optical Materials* **11**, 2202994 (2023).](https://onlinelibrary.wiley.com/doi/full/10.1002/adom.202202994)
   - Hadil Kassab, *et al.*, In-line synthesis of multi-octave phase-stable infrared light, [*Optics Express* **31**, 24862 (2023).](https://opg.optica.org/oe/fulltext.cfm?uri=oe-31-15-24862)
+
 ---
   ### Installation on a Windows PC
-  Download and extract either LightwaveExplorerWin64.zip or LightwaveExplorerWin64.7z from this [shared volume on the Max Planck Computing and Data Facility DataShare](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP). The LighwaveExplorer.exe application should just work.
+  You can get the [latest version directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.08), where there's a LightwaveExplorerWin64.zip file that you can just download, extract, and run.
 
   If you want to use SYCL for propagation, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
 
-  The Python module for working with the results is also in that folder for convenience; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder. It's also in this repo if you think of any improvements.
+  The Python module for working with the results is [here](https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/LightwaveExplorer.py) in this repo; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder.
 
 ---
-
   ### Installation on Linux
-  Currently the best way to run on Linux is to compile it from source following the instructions below. I've played around with AppImages and Flatpak, but they only work well for the simple version of the code that doesn't use the GPU. That version is a simple copy-paste of a few lines to the terminal to compile and install anyway. Apologies for the inconvenience, but every other solution I tried only seemed to work completely on whatever Linux distribution it was compiled on.
+  Currently the best way to run on Linux is to compile it from source following the instructions below, if your system supports it, especially if you'd like to make use of your GPU.
+  
+  Another option is Flatpak - I'm working on adding a version to Flathub to make it easier. In the meantime, you can make/install the Flatpak locally, once you've installed flatpak and flatpak-builder from your package manager, with the commands:
+  ```
+  wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/flatpakManifest.json
+  flatpak-builder --user --install build-dir flatpakManifest.json
+  ```
+  Since making the Flatpak doesn't depend on your local environment, it might be more reproducible/functional. The Flatpak currently only supports CPU calculations since getting GPUs to work reliably with it is tricky, but I'm working on it.
 
 ---
 
 ### Installation on Mac
 
-There is an Intel version in the [shared volume](https://datashare.mpcdf.mpg.de/s/oJj9eFYDBFmViFP). This version also makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
+The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.08). In there, there's a LightwaveExplorerMacOS.zip file that you can just download and run. You might have to right-click on it and run it from there, and accept a prompt that you actually want to run it.
+
+This version makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
 
 The application bundle contains all the required files. If you want to edit the crystal database or default settings, open the app as a folder (right click or control-click on the app and select "show package contents") - You will find them in the Resources folder.
 
-A native version for the new Arm-based Macs is technically possible (and has been compiled) but you can't use it because Apple protects you from developers like me who refuse to pay them $100/year.
+A native version for the new Arm-based Macs is technically possible (and has been compiled) but you can't use it because Apple considers developers that don't pay them $100/year to be dangerous and blocks them at the hardware level.
 
 ---
   ### How do I know which configuration to run?
@@ -83,7 +92,6 @@ A native version for the new Arm-based Macs is technically possible (and has bee
 
 
   ---
-
 ### Compiling the GUI app on Linux (Easy CPU-only version)
 The easiest version to compile on Linux is the GPL3 version, which doesn't include the CUDA or OneAPI propagators. This means it will _only_ run on CPU, but if you don't have a compatible GPU anyway, it makes use of FFTW for the FFTs, which may be faster on your hardware in any case.
 
@@ -164,7 +172,7 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
 
   ### Compiling on Mac
 
-  The first things you'll need is [Homebrew](https://brew.sh/), and [Vcpkg](https://github.com/microsoft/vcpkg). After installing those, install a few things with homebrew:
+  The first things you'll need are [Homebrew](https://brew.sh/), and [Vcpkg](https://github.com/microsoft/vcpkg). After installing those, install a few things with homebrew:
   ```
   brew install cmake make llvm fftw gtk4 pkgconfig libomp libtool autoconf autotools
   ```
