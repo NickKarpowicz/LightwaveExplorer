@@ -44,7 +44,8 @@
                 { 
                     "type": "git", 
                     "url": "https://github.com/fmtlib/fmt", 
-                    "tag": "10.1.0" } 
+                    "tag": "10.1.0",
+                    "commit": "e57ca2e3685b160617d3d95fcd9e789c4e06ca88" } 
                 ]
         },
         {
@@ -54,7 +55,8 @@
                 { 
                     "type": "git", 
                     "url": "https://github.com/kthohr/gcem", 
-                    "tag": "v1.17.0" } 
+                    "tag": "v1.17.0",
+                    "commit": "8422f5307b0498d09cf626f38acb03fe9f1efd94" } 
                 ]
         },
         {
@@ -65,7 +67,8 @@
                 { 
                     "type": "git", 
                     "url": "https://github.com/davisking/dlib", 
-                    "tag": "v19.24.2" } 
+                    "tag": "v19.24.2",
+                    "commit": "39749fba5163d4e25030358f6aa8d91617bfdca2" } 
                 ]
         },
         {
