@@ -27,7 +27,7 @@
        {
             "name": "fftw3",
             "buildsystem": "autotools",
-            "config-opts": ["--enable-float", "--enable-shared", "--silent"],
+            "config-opts": ["--enable-float", "--enable-openmp", "--enable-shared", "--enable-silent-rules"],
             "sources": [
                 {
                     "type": "archive",
@@ -69,9 +69,12 @@
                 ]
         },
         {
-            "name": "Lightwave Explorer",
+            "name": "LightwaveExplorer",
             "buildsystem": "cmake",
             "config-opts": ["-DMAKEFLATPAK=1"],
+            "build-options": {
+                "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
+                "cxxflags-override": true},
             "sources": [
                 {
                     "type": "git",
