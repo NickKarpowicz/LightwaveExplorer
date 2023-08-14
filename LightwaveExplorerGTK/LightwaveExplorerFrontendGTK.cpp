@@ -1803,8 +1803,8 @@ void secondaryQueue(
     int pulldownSelectionPrimary, 
     bool use64bitFloatingPoint) {
     if (theSim.base().NsimsCPU < 1) return;
-    auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-    auto normalFunction = &solveNonlinearWaveEquationCPU;
+    auto sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
+    auto normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
     int assignedGPU = 0;
     bool forceCPU = 0;
     [[maybe_unused]]int SYCLitems = 0;
@@ -1817,8 +1817,8 @@ void secondaryQueue(
 #ifndef CPUONLY
     //launch on CUDA if selected, putting in the correct GPU in multi-gpu systems
     if (pulldownSelection < theSim.base().cudaGPUCount) {
-        sequenceFunction = &solveNonlinearWaveEquationSequence;
-        normalFunction = &solveNonlinearWaveEquation;
+        sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequence : &solveNonlinearWaveEquationSequenceFP32;
+        normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquation : &solveNonlinearWaveEquationFP32;
         assignedGPU = pulldownSelection;
     }
     #ifndef NOSYCL
@@ -1827,12 +1827,12 @@ void secondaryQueue(
         if (pulldownSelection == pulldownSelectionPrimary) {
             theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
                 "\n- defaulting to OpenMP for the secondary queue.\n");
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-            normalFunction = &solveNonlinearWaveEquationCPU;
+            sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
+            normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
         }
         else {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-            normalFunction = &solveNonlinearWaveEquationSYCL;
+            sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceSYCL : &solveNonlinearWaveEquationSequenceSYCLFP32;
+            normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSYCL : &solveNonlinearWaveEquationSYCLFP32;
         }
     }
     #endif
@@ -1840,14 +1840,14 @@ void secondaryQueue(
         if (pulldownSelection == pulldownSelectionPrimary) {
             theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
                 "\n- defaulting to OpenMP for the secondary queue.\n");
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-            normalFunction = &solveNonlinearWaveEquationCPU;
+            sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
+            normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
         }
     #ifndef NOSYCL
         else {
             forceCPU = 1;
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-            normalFunction = &solveNonlinearWaveEquationSYCL;
+            sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceSYCL : &solveNonlinearWaveEquationSequenceSYCLFP32;
+            normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSYCL : &solveNonlinearWaveEquationSYCLFP32;
         }
     #endif
     }
@@ -1855,20 +1855,20 @@ void secondaryQueue(
         if (pulldownSelection == pulldownSelectionPrimary) {
             theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
                 "\n- defaulting to OpenMP for the secondary queue.\n");
-            sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-            normalFunction = &solveNonlinearWaveEquationCPU;
+            sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
+            normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
         }
         #ifndef NOSYCL
         else {
             assignedGPU = 1;
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-            normalFunction = &solveNonlinearWaveEquationSYCL;
+            sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceSYCL : &solveNonlinearWaveEquationSequenceSYCLFP32;
+            normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSYCL : &solveNonlinearWaveEquationSYCLFP32;
         }
         #endif
     }
     else {
-        sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-        normalFunction = &solveNonlinearWaveEquationCPU;
+        sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
+        normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
     }
 #endif
     int error = 0;
@@ -1926,8 +1926,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     
     
     theSim.base().isRunning = true;
-    auto sequenceFunction = &solveNonlinearWaveEquationSequenceCPU;
-    auto normalFunction = &solveNonlinearWaveEquationCPU;
+    auto sequenceFunction = use64bitFloatingPoint ? 
+        &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceFP32;
+    auto normalFunction = use64bitFloatingPoint ? 
+        &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
     int assignedGPU = 0;
     bool forceCPU = 0;
     [[maybe_unused]]int SYCLitems = 0;
