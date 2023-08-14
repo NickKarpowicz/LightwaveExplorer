@@ -1,11 +1,11 @@
-## <p style="text-align: center;">Lightwave Explorer</p>
+<p align="center"><img src="BuildResources/icons/hicolor/512x512/apps/io.github.NickKarpowicz.LightwaveExplorer.png" width="256" height="256"></p>
+
+## <p align="center">Lightwave Explorer</p>
+<p align="center">Nick Karpowicz<br>
+ Max Planck Institute of Quantum Optics</p>
+
+---
 <p style="text-align: center;">New! <a href="https://youtu.be/J1-dh6V5flQ">YouTube tutorials!</a></p>
-<p style="text-align: center;">Nick Karpowicz</p>
-<p style="text-align: center;">Max Planck Institute of Quantum Optics</p>
-
-<p style="text-align: center;"><img src="BuildResources/icons/hicolor/512x512/apps/io.github.NickKarpowicz.LightwaveExplorer.png" width="256" height="256"></p>
-
-<p style="text-align: center;">(icon made by Stable Diffusion)</p>
 
 ---
 
@@ -88,7 +88,7 @@ A native version for the new Arm-based Macs is technically possible (and has bee
   
    Next, install the [CUDA development kit](https://developer.nvidia.com/cuda-downloads) from NVIDIA, and [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
    
-   Next, you'll need a compiled version of [GTK4](http://gtk.org) - the easiest way in my view was the gvsbuild option. I also keep a gtk.zip file in the shared folder for convenience, since it's a bit of a pain, and the current version is actually a bit broken on Windows. The resulting compiled thing should be kept in a folder next to the LightwaveExplorer folder (e.g. they're both in the same parent folder).
+   Next, you'll need a compiled version of [GTK4](http://gtk.org). The resulting compiled thing should be kept in a folder next to the LightwaveExplorer folder (e.g. they're both in the same parent folder).
 
 
   ---
