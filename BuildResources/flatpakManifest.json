@@ -82,7 +82,8 @@
                 {
                     "type": "git",
                     "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
-                    "branch": "master" 
+                    "tag": "2023.08",
+                    "commit": "80bf6becd2191c700da8e4cc07dbf3cf7a7f0ecb" 
                 }
             ]
         }
