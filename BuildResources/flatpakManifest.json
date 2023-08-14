@@ -71,7 +71,7 @@
         {
             "name": "LightwaveExplorer",
             "buildsystem": "cmake",
-            "config-opts": ["-DMAKEFLATPAK=1"],
+            "config-opts": ["-DMAKEFLATPAK=TRUE"],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
                 "cxxflags-override": true},
