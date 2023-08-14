@@ -1,0 +1,104 @@
+{
+    "id": "io.github.NickKarpowicz.LightwaveExplorer",
+    "branch": "master",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "44",
+    "sdk": "org.gnome.Sdk",
+    "command": "LightwaveExplorer",
+    "finish-args": [
+        "--share=ipc",
+        "--device=dri",
+        "--socket=x11",
+        "--socket=wayland",
+        "--filesystem=host"
+    ],
+    "cleanup": [
+        "/include",
+        "/lib/cmake",
+        "/lib/pkgconfig",
+        "/lib/*.la",
+        "/lib/*.a",
+        "/mkspecs",
+        "/share/aclocal",
+        "/share/info",
+        "/share/man"
+    ],
+    "modules": [
+       {
+            "name": "fftw3",
+            "buildsystem": "autotools",
+            "config-opts": ["--enable-float", "--enable-openmp", "--enable-shared", "--enable-silent-rules"],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "http://fftw.org/fftw-3.3.10.tar.gz",
+                    "md5": "8ccbf6a5ea78a16dbc3e1306e234cc5c"
+                }
+            ]
+        },
+        {
+            "name": "fmt",
+            "config-opts": ["-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", "-DFMT_TEST=OFF"],
+            "buildsystem": "cmake",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/fmtlib/fmt", 
+                    "tag": "10.1.0",
+                    "commit": "e57ca2e3685b160617d3d95fcd9e789c4e06ca88" } 
+                ]
+        },
+        {
+            "name": "gcem",
+            "buildsystem": "cmake",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/kthohr/gcem", 
+                    "tag": "v1.17.0",
+                    "commit": "8422f5307b0498d09cf626f38acb03fe9f1efd94" } 
+                ]
+        },
+        {
+            "name": "dlib",
+            "buildsystem": "simple",
+            "build-commands":["cp -R dlib /app/include/"],
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/davisking/dlib", 
+                    "tag": "v19.24.2",
+                    "commit": "39749fba5163d4e25030358f6aa8d91617bfdca2" } 
+                ]
+        },
+        {
+            "name": "cuda",
+            "buildsystem": "simple",
+            "build-commands":["sh cuda_12.2.1_535.86.10_linux.run"],
+            "sources":[
+                {
+                    "type": "file",
+                    "url": "https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run",
+                    "md5": "2579fcb61cd80d3284d73da93785550f"
+                }
+            ]
+        },
+        {
+            "name": "LightwaveExplorer",
+            "buildsystem": "cmake",
+            "config-opts": ["-DMAKEFLATPAK=TRUE"],
+            "build-options": {
+                "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
+                "cxxflags-override": true},
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
+                    "tag": "2023.08",
+                    "commit": "80bf6becd2191c700da8e4cc07dbf3cf7a7f0ecb" 
+                }
+            ]
+        }
+            
+    ]
+}

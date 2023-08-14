@@ -1817,9 +1817,11 @@ void secondaryQueue(
 #ifndef CPUONLY
     //launch on CUDA if selected, putting in the correct GPU in multi-gpu systems
     if (pulldownSelection < theSim.base().cudaGPUCount) {
+        #ifndef NOCUDA
         sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequence : &solveNonlinearWaveEquationSequenceFP32;
         normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquation : &solveNonlinearWaveEquationFP32;
         assignedGPU = pulldownSelection;
+        #endif
     }
     #ifndef NOSYCL
     //launch on SYCL, but if the primary queue matches, default to openMP

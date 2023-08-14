@@ -1,0 +1,91 @@
+{
+    "id": "io.github.NickKarpowicz.LightwaveExplorer",
+    "branch": "master",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "44",
+    "sdk": "org.gnome.Sdk",
+    "command": "LightwaveExplorer",
+    "finish-args": [
+        "--share=ipc",
+        "--device=dri",
+        "--socket=x11",
+        "--socket=wayland",
+        "--filesystem=host"
+    ],
+    "cleanup": [
+        "/include",
+        "/lib/cmake",
+        "/lib/pkgconfig",
+        "/lib/*.la",
+        "/lib/*.a",
+        "/mkspecs",
+        "/share/aclocal",
+        "/share/info",
+        "/share/man"
+    ],
+    "modules": [
+        {
+            "name": "oneAPI",
+            "buildsystem": "simple",
+            "build-commands": ["sh ./l_BaseKit_p_2023.2.0.49397_offline.sh -a --silent --eula=accept --components=intel.oneapi.lin.dpcpp-cpp-compiler:intel.oneapi.lin.dpl"],
+            "sources": [
+                {
+                    "type": "file",
+                    "path": "l_BaseKit_p_2023.2.0.49397_offline.sh"
+                }
+            ]
+        },
+        {
+            "name": "fmt",
+            "config-opts": ["-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", "-DFMT_TEST=OFF"],
+            "buildsystem": "cmake",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/fmtlib/fmt", 
+                    "tag": "10.1.0",
+                    "commit": "e57ca2e3685b160617d3d95fcd9e789c4e06ca88" } 
+                ]
+        },
+        {
+            "name": "gcem",
+            "buildsystem": "cmake",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/kthohr/gcem", 
+                    "tag": "v1.17.0",
+                    "commit": "8422f5307b0498d09cf626f38acb03fe9f1efd94" } 
+                ]
+        },
+        {
+            "name": "dlib",
+            "buildsystem": "simple",
+            "build-commands":["cp -R dlib /app/include/"],
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/davisking/dlib", 
+                    "tag": "v19.24.2",
+                    "commit": "39749fba5163d4e25030358f6aa8d91617bfdca2" } 
+                ]
+        },
+        {
+            "name": "LightwaveExplorer",
+            "buildsystem": "cmake",
+            "config-opts": ["-DMAKEONEAPIFLATPAK=TRUE"],
+            "build-options": {
+                "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
+                "cxxflags-override": true},
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
+                    "tag": "2023.08",
+                    "commit": "80bf6becd2191c700da8e4cc07dbf3cf7a7f0ecb" 
+                }
+            ]
+        }
+            
+    ]
+}
