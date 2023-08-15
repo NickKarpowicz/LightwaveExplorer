@@ -196,6 +196,8 @@ if(UNIX AND NOT APPLE)
             -Wl,--end-group
             )
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+
+        add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh)
         install(TARGETS LightwaveExplorer)
         install(PROGRAMS ${CMAKE_BINARY_DIR}/LightwaveExplorerLauncher.sh DESTINATION bin)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
