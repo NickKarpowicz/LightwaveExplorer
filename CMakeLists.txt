@@ -181,8 +181,9 @@ if(UNIX AND NOT APPLE)
         include_directories(${GTK4_INCLUDE_DIRS})
         include_directories(${MKL_ROOT}/include/fftw)
         add_library(LightwaveExplorerCuda LightwaveExplorerCore.cu LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
-        add_compile_options(-std=c++20 -O3 -fopenmp -DNOSYCL)
+        
         add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+        target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL)
         target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
@@ -196,12 +197,24 @@ if(UNIX AND NOT APPLE)
             )
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
 
-        install(TARGETS LightwaveExplorer)
+        add_executable(LightwaveExplorerNoCuda LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+        target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL -DNOCUDA)
+        target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorerNoCuda fmt::fmt)
+        target_link_libraries(LightwaveExplorerNoCuda -lm -lgomp
+            -Wl,--start-group 
+            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_core.a 
+            -Wl,--end-group
+            )
+
+        install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
         install(PROGRAMS ${CMAKE_SOURCE_DIR}/BuildResources/flatpakLauncher.sh DESTINATION bin)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
         install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
         install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
-        install(FILES BuildResources/DesktopFileLauncher DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
+        install(FILES BuildResources/DesktopFileFlatpak DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
     else()
         cmake_minimum_required(VERSION 3.16)
         project(LightwaveExplorer LANGUAGES CXX)

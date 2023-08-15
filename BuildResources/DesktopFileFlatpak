@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Lightwave Explorer
+Exec=flatpakLauncher.sh
+Icon=io.github.NickKarpowicz.LightwaveExplorer
+Type=Application
+Categories=Science
