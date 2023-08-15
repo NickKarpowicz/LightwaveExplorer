@@ -62,7 +62,8 @@
         {
             "name": "dlib",
             "buildsystem": "simple",
-            "build-commands":["cp -R dlib /app/include/"],
+            "build-commands":["cp -R dlib /app/include/",
+            ". /app/opt/intel/oneapi/setvars.sh"],
             "sources": [ 
                 { 
                     "type": "git", 
@@ -74,7 +75,7 @@
         {
             "name": "LightwaveExplorer",
             "buildsystem": "cmake",
-            "config-opts": ["-DMAKEFLATPAK=TRUE"],
+            "config-opts": ["-DMAKEFLATPAK=TRUE -DCMAKE_CXX_COMPILER=icpx"],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
                 "cxxflags-override": true},
