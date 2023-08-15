@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.NickKarpowicz.LightwaveExplorer</id>
+  
+  <name>Lightwave Explorer</name>
+  <summary>An efficient, user-friendly solver for nonlinear light-matter interaction</summary>
+  
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  
+  <description>
+    <p>
+      Lightwave explorer is an open source nonlinear optics simulator, intended to be fast, visual, and flexible for students and researchers to play with ultrashort laser pulses and nonlinear optics without having to buy a laser first.
+    </p>
+    <p>
+      The simulation was written CUDA in order to run quickly on graphics cards, but also supports CPU-based simulations.
+    </p>
+    <p>
+      Main goals:  - _Easily extensible database of materials:_ Eveything the program knows about nonlinear materials comes from a human-readable text file giving the appropriate coefficients and tensors. If you want to use a new material, or you&apos;ve done a measurement in a new range where typical extrapolations from older data isn&apos;t relevant, it&apos;s easy to add and correct. There are places for references for the key parameters, and these references are stored in the saved simulation results for future reference. Especially if you have simulations that you checked against experiments, I&apos;d be very happy for you to add your crystal definitions to the central database in the project Github.  - _Accurate modeling of nonlinear optics_ using multiple, user-selectable physical models, including the unidirectional nonlinear wave equation and finite-difference time-domain approaches. This allows calculations that accommodate large systems where forward-propagation is an appropriate assumption, but also of etalon effects in thin crystals where reflections cannot be neglected.  - _Efficient code so that complicated systems can be simulated in 3D:_ Real laser pulses can be messy, and if they weren&apos;t so before a nonlinear crystal, there&apos;s a good chance they are after (but not always). If things are slow, it&apos;s hard to go beyond one dimension on tolerable time scales, and then you miss out on the whole weird world of spatiotemporal couplings. Here you have options for rather fast simulations when there&apos;s a symmetry to apply (e.g. cylindrical or along one Cartesian dimension), alongside fully 3D propagation. Runs natively on both GPU and CPU to make use of whatever you have to work with.  - _A graphical interface that lets you see what you&apos;re doing:_ A lot of us think in visual terms. Being able to adjust and scan parameters and immediately see what happens can really make it easier to understand what you&apos;re looking at.   - _A flexible sequence mode:_ By stringing together elements, not just nonlinear crystals but also spherical or parabolic mirrors, apertures, filters, free space propagation and other elements, simulate how  one interaction affects another. Sequences of events can be scripted and even programmed with loop functions to see how things change over the course of repeated interactions.  - _Fitting modes:_ Sometimes the data that we measure depends in an interesting way on a parameter, and we&apos;d actually like to go back and figure out what that parameter was from the data. Solving this kind of inverse problem can be tough when the parameter lives inside a partial differential equation, but by simulating the whole thing and doing a fit, you have a chance to do it! The fitting algorithm can be used to narrow down a huge space of variables to come at your best estimation of what was happening in an experiment, or to adjust your experimental system to maximize output at a given frequency.  - _A Python module for easy postprocessing of the results:_ I hope that you get something interesting out that you want to plot and maybe publish. One of the nicest platforms for making nice plots is Python in my opinion (that&apos;s why the documentation is in a Jupyter notebook), so purely out of self interest I tried to make it easy to load the results in Python. The module also has some functions related to typical operations you&apos;d like to do on the data to make it easy for all of us. The program also gives you a Matlab loading script for those who want to use that.  - _Multiplatform:_ Works on Windows, Linux, and Mac.  - _Command line interface for running on Linux/clusters:_ the simulation core can be compiled as a command line application to be controlled via the SLURM system. The GUI app can automatically configure the SLURM script, as well. I use this to run it on the clusters of the Max Planck Society, and other institutes and universities likely have similar systems. This lets you do a lot more if your personal resources are limited but you want to run simulations on a large grid or cover a lot of different parameters!
+    </p>
+    <p>
+      
+    </p>
+  </description>
+  
+  <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot.png</image>
+    </screenshot>
+  </screenshots>
+</component>
