@@ -51,12 +51,12 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   ### Installation on Linux
   Currently the best way to run on Linux is to compile it from source following the instructions below, if your system supports it, especially if you'd like to make use of your GPU.
   
-  Another option is Flatpak - I'm working on adding a version to Flathub to make it easier. In the meantime, you can make/install the Flatpak locally, once you've installed flatpak and flatpak-builder from your package manager, with the commands:
+  Another option is Flatpak - you can currently make/install the Flatpak locally, once you've installed flatpak and flatpak-builder from your package manager, with the commands:
   ```
-  wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/flatpakManifest.json
-  flatpak-builder --user --install build-dir flatpakManifest.json
+  wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/flatpakManifestCUDA.json
+  flatpak-builder --user --install build-dir flatpakManifestCUDA.json
   ```
-  Since making the Flatpak doesn't depend on your local environment, it might be more reproducible/functional. The Flatpak currently only supports CPU calculations since getting GPUs to work reliably with it is tricky, but I'm working on it.
+  Since making the Flatpak doesn't depend on your local environment, it may be more reproducible/functional. This wilĺ download everything it needs to build, do it, and install the resulting Flatpak on your system, which at the moment will take a good bit of time and bandwidth. Hopefully soon I'll figure out how to get it on Flathub instead!
 
 ---
 
