@@ -30,7 +30,38 @@
         "/mkspecs",
         "/share/aclocal",
         "/share/info",
-        "/share/man"
+        "/share/man",
+        "/opt/cuda/bin",
+        "/opt/cuda/compute-sanitizer",
+        "/opt/cuda/extras",
+        "/opt/cuda/gds",
+        "/opt/cuda/gds-12.2",
+        "/opt/cuda/tools",
+        "/opt/cuda/src",
+        "/opt/cuda/share",
+        "/opt/cuda/pkgconfig",
+        "/opt/cuda/nvvm",
+        "/opt/cuda/nvml",
+        "/opt/cuda/nsight-systems-2023.2.3",
+        "/opt/cuda/nsight-compute-2023.2.1",
+        "/opt/cuda/libnvvp",
+        "/opt/cuda/nsightee_plugins",
+        "/opt/cuda/libnvvp",
+        "/opt/cuda/targets/x86_64-linux/include",
+        "/opt/cuda/targets/x86_64-linux/res",
+        "/opt/cuda/targets/x86_64-linux/lib/*.a",
+        "/opt/cuda/targets/x86_64-linux/lib/libcublas*",
+        "/opt/cuda/targets/x86_64-linux/lib/libcusparse*",
+        "/opt/cuda/targets/x86_64-linux/lib/libcusolver*",
+        "/opt/cuda/targets/x86_64-linux/lib/libcublas*",
+        "/opt/cuda/targets/x86_64-linux/lib/libcurand*",
+        "/opt/cuda/targets/x86_64-linux/lib/libnppif*",
+        "/opt/cuda/targets/x86_64-linux/lib/libnvrtc*",
+        "/opt/cuda/targets/x86_64-linux/lib/stubs",
+        "/opt/cuda/targets/x86_64-linux/lib/cmake",
+        "/lib/debug",
+        "/opt/intel"
+
     ],
     "modules": [
         {
@@ -50,7 +81,9 @@
             "sources": [
                 {
                     "type": "file",
-                    "path": "l_BaseKit_p_2023.2.0.49397_offline.sh"
+                    "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/992857b9-624c-45de-9701-f6445d845359/l_BaseKit_p_2023.2.0.49397_offline.sh",
+                    "md5": "560466f714a79fce3cb8793528d487c8"
+        
                 }
             ]
         },
@@ -96,7 +129,8 @@
             "sources":[
                 {
                     "type": "file",
-                    "path": "cuda_12.2.1_535.86.10_linux.run"
+                    "url": "https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run",
+                    "md5": "2579fcb61cd80d3284d73da93785550f"
                 }
             ]
         },
