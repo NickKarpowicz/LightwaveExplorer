@@ -2,10 +2,18 @@
     "id": "io.github.NickKarpowicz.LightwaveExplorer",
     "branch": "master",
     "runtime": "org.gnome.Platform",
+    
     "runtime-version": "44",
     "sdk": "org.gnome.Sdk",
     "sdk-extensions":["org.freedesktop.Sdk.Extension.llvm15"],
-    "command": "LightwaveExplorer",
+    "add-extensions":{
+        "org.freedesktop.Platform.ffmpeg-full": {
+            "directory": "lib/ffmpeg",
+            "version": "22.08",
+            "add-ld-path": "."
+        }
+    },
+    "command": "LightwaveExplorerLauncher.sh",
     "finish-args": [
         "--share=ipc",
         "--device=dri",
@@ -103,6 +111,11 @@
             "echo \"cmake -DMAKECUDAFLATPAK=TRUE -DCMAKE_CUDA_ARCHITECTURES=75 .\" >> localscript.sh",
             "echo \"make\" >> localscript.sh",
             "chmod +x localscript.sh","./localscript.sh",
+            "touch LWElauncher.sh",
+            "echo \"export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/opt/cuda/lib64\" >> LWElauncher.sh",
+            "echo \"exec LightwaveExplorer\" >> LWElauncher.sh",
+            "chmod +x LWElauncher.sh",
+            "cp LWElauncher.sh /app/bin/LWElauncher.sh",
             "cmake --install . --prefix \"/app\""],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
