@@ -84,7 +84,7 @@
         {
             "name": "cuda",
             "buildsystem": "simple",
-            "build-commands":["sh cuda_12.2.1_535.86.10_linux.run --silent"],
+            "build-commands":["mkdir /app/tmp","sh cuda_12.2.1_535.86.10_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
             "sources":[
                 {
                     "type": "file",
@@ -95,7 +95,7 @@
         {
             "name": "LightwaveExplorer",
             "buildsystem": "cmake",
-            "config-opts": ["-DMAKECUDAFLATPAK=TRUE -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_ARCHITECTURES=75"],
+            "config-opts": ["-DMAKECUDAFLATPAK=TRUE -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_ARCHITECTURES=75 -DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc -DCUDA_PATH=/app/opt/cuda"],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
                 "cxxflags-override": true,
