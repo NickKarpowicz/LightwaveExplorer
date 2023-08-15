@@ -175,7 +175,6 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(GTK4 REQUIRED gtk4)
         find_package(CUDAToolkit)
         find_package(MKL)
-        find_package(OpenMP REQUIRED)
         include_directories(../LightwaveExplorer)
         include_directories(${CUDA_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
@@ -187,7 +186,7 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt -lm OpenMP::OpenMP_CXX)
-        target_link_libraries(LightwaveExplorer
+        target_link_libraries(LightwaveExplorer -lm -lgomp
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
             ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 

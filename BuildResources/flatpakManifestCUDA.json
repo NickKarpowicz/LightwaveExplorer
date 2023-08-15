@@ -94,8 +94,16 @@
         },
         {
             "name": "LightwaveExplorer",
-            "buildsystem": "cmake",
-            "config-opts": ["-DMAKECUDAFLATPAK=TRUE -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_ARCHITECTURES=75 -DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc -DCUDA_PATH=/app/opt/cuda"],
+            "buildsystem": "simple",
+            "build-commands": ["touch localscript.sh",
+            "echo \". /app/opt/intel/oneapi/setvars.sh\" >> localscript.sh",
+            "echo \"export PATH=$PATH:/app/opt/cuda/bin\" >> localscript.sh",
+            "echo \"export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:/app/opt/intel/oneapi/mkl/latest/lib/cmake/mkl\" >> localscript.sh",
+            "echo \"export CUDA_PATH=$PATH:/app/opt/cuda/\" >> localscript.sh",
+            "echo \"cmake -DMAKECUDAFLATPAK=TRUE -DCMAKE_CUDA_ARCHITECTURES=75 .\" >> localscript.sh",
+            "echo \"make\" >> localscript.sh",
+            "chmod +x localscript.sh","./localscript.sh",
+            "cmake --install . --prefix \"/app\""],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
                 "cxxflags-override": true,
