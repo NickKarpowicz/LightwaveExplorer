@@ -7,7 +7,7 @@
     "command": "LightwaveExplorerLauncher.sh",
     "finish-args": [
         "--share=ipc",
-        "--device=dri",
+        "--device=all",
         "--socket=x11",
         "--socket=wayland",
         "--filesystem=host"
