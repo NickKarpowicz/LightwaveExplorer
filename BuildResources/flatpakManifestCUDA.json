@@ -13,7 +13,7 @@
             "add-ld-path": "."
         }
     },
-    "command": "LightwaveExplorerLauncher.sh",
+    "command": "flatpakLauncher.sh",
     "finish-args": [
         "--share=ipc",
         "--device=dri",
