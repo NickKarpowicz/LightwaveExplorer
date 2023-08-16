@@ -39,7 +39,7 @@
         {
             "name": "fmt",
             "config-opts": ["-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", "-DFMT_TEST=OFF"],
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "sources": [ 
                 { 
                     "type": "git", 
@@ -50,7 +50,7 @@
         },
         {
             "name": "gcem",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "sources": [ 
                 { 
                     "type": "git", 
@@ -73,7 +73,7 @@
         },
         {
             "name": "LightwaveExplorer",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "config-opts": ["-DMAKEFLATPAK=TRUE -DCMAKE_CXX_COMPILER=icpx"],
             "sources": [
                 {

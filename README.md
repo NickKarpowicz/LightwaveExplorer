@@ -26,7 +26,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
  - _Efficient code so that complicated systems can be simulated in 3D:_ Real laser pulses can be messy, and if they weren't so before a nonlinear crystal, there's a good chance they are after (but not always). If things are slow, it's hard to go beyond one dimension on tolerable time scales, and then you miss out on the whole weird world of spatiotemporal couplings. Here you have options for rather fast simulations when there's a symmetry to apply (e.g. cylindrical or along one Cartesian dimension), alongside fully 3D propagation. Runs natively on both GPU and CPU to make use of whatever you have to work with.
  - _A graphical interface that lets you see what you're doing:_ A lot of us think in visual terms. Being able to adjust and scan parameters and immediately see what happens can really make it easier to understand what you're looking at. 
  - _A flexible sequence mode:_ By stringing together elements, not just nonlinear crystals but also spherical or parabolic mirrors, apertures, filters, free space propagation and other elements, simulate how  one interaction affects another. Sequences of events can be scripted and even programmed with loop functions to see how things change over the course of repeated interactions.
- - _Fitting modes:_ Sometimes the data that we measure depends on an interesting way on a parameter, and we'd actually like to go back and figure out what that parameter was from the data. Solving this kind of inverse problem can be tough when the parameter lives inside a partial differential equation, but by simulating the whole thing and doing a fit, you have a chance to do it! The fitting algorithm can be used to narrow down a huge space of variables to come at your best estimation of what was happening in an experiment, or to adjust your experimental system to maximize output at a given frequency.
+ - _Fitting modes:_ Sometimes the data that we measure depends in an interesting way on a parameter, and we'd actually like to go back and figure out what that parameter was from the data. Solving this kind of inverse problem can be tough when the parameter lives inside a partial differential equation, but by simulating the whole thing and doing a fit, you have a chance to do it! The fitting algorithm can be used to narrow down a huge space of variables to come at your best estimation of what was happening in an experiment, or to adjust your experimental system to maximize output at a given frequency.
  - _A Python module for easy postprocessing of the results:_ I hope that you get something interesting out that you want to plot and maybe publish. One of the nicest platforms for making nice plots is Python in my opinion (that's why the documentation is in a Jupyter notebook), so purely out of self interest I tried to make it easy to load the results in Python. The module also has some functions related to typical operations you'd like to do on the data to make it easy for all of us. The program also gives you a Matlab loading script for those who want to use that.
  - _Multiplatform:_ Works on Windows, Linux, and Mac.
  - _Command line interface for running on Linux/clusters:_ the simulation core can be compiled as a command line application to be controlled via the SLURM system. The GUI app can automatically configure the SLURM script, as well. I use this to run it on the clusters of the Max Planck Society, and other institutes and universities likely have similar systems. This lets you do a lot more if your personal resources are limited but you want to run simulations on a large grid or cover a lot of different parameters!
@@ -41,7 +41,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
 ---
   ### Installation on a Windows PC
-  You can get the [latest version directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.08), where there's a LightwaveExplorerWin64.zip file that you can just download, extract, and run.
+  You can get the [latest version directly from the Github releases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.08.04), where there's a LightwaveExplorerWin64.zip file that you can just download, extract, and run.
 
   If you want to use SYCL for propagation, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
 
@@ -51,18 +51,19 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   ### Installation on Linux
   Currently the best way to run on Linux is to compile it from source following the instructions below, if your system supports it, especially if you'd like to make use of your GPU.
   
-  Another option is Flatpak - I'm working on adding a version to Flathub to make it easier. In the meantime, you can make/install the Flatpak locally, once you've installed flatpak and flatpak-builder from your package manager, with the commands:
+  Another option is Flatpak - you can currently make/install the Flatpak locally, once you've installed flatpak and flatpak-builder from your package manager, with the commands:
   ```
-  wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/flatpakManifest.json
-  flatpak-builder --user --install build-dir flatpakManifest.json
+  flatpak install flathub org.gnome.Platform//44 org.gnome.Sdk//44 org.freedesktop.Sdk.Extension.llvm15/x86_64/22.08
+  wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/flatpakManifestCUDA.json
+  flatpak-builder --user --install build-dir flatpakManifestCUDA.json
   ```
-  Since making the Flatpak doesn't depend on your local environment, it might be more reproducible/functional. The Flatpak currently only supports CPU calculations since getting GPUs to work reliably with it is tricky, but I'm working on it.
+  Since making the Flatpak doesn't depend on your local environment, it may be more reproducible/functional. This wilĺ download everything it needs to build, do it, and install the resulting Flatpak on your system, which at the moment will take a good bit of time and bandwidth. Hopefully soon I'll figure out how to get it on Flathub instead!
 
 ---
 
 ### Installation on Mac
 
-The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.08). In there, there's a LightwaveExplorerMacOS.zip file that you can just download and run. You might have to right-click on it and run it from there, and accept a prompt that you actually want to run it.
+The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.08.04). In there, there's a LightwaveExplorerMacOS.zip file that you can just download and run. You might have to right-click on it and run it from there, and accept a prompt that you actually want to run it.
 
 This version makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
 

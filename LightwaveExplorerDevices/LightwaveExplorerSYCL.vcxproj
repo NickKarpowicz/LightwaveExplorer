@@ -169,7 +169,7 @@
       <DebugInformationFormat>None</DebugInformationFormat>
       <SYCLOptimization>MaxSpeed</SYCLOptimization>
       <SYCLWarningLevel>EnablesWarningsAndErrors</SYCLWarningLevel>
-      <AdditionalOptions>/fp:precise %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/fp:precise -fsycl-targets=spir64_x86_64,spir64 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

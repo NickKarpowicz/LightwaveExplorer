@@ -1827,8 +1827,9 @@ void secondaryQueue(
     //launch on SYCL, but if the primary queue matches, default to openMP
     else if (pulldownSelection == theSim.base().cudaGPUCount && SYCLitems > 0) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
-                "\n- defaulting to OpenMP for the secondary queue.\n");
+            theGui.console.tPrint(
+                "Sorry, can't run two identical SYCL queues.\n"
+                "Defaulting to OpenMP for the secondary queue.\n");
             sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
             normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
         }
@@ -1840,8 +1841,9 @@ void secondaryQueue(
     #endif
     else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
-                "\n- defaulting to OpenMP for the secondary queue.\n");
+            theGui.console.tPrint(
+                "Sorry, can't run two identical SYCL queues.\n"
+                "Defaulting to OpenMP for the secondary queue.\n");
             sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
             normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
         }
@@ -1855,8 +1857,9 @@ void secondaryQueue(
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
         if (pulldownSelection == pulldownSelectionPrimary) {
-            theGui.console.tPrint("Sorry, can't run two identical SYCL queues"
-                "\n- defaulting to OpenMP for the secondary queue.\n");
+            theGui.console.tPrint(
+                "Sorry, can't run two identical SYCL queues.\n"
+                "Defaulting to OpenMP for the secondary queue.\n");
             sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
             normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
         }
@@ -1894,7 +1897,7 @@ void secondaryQueue(
     }
 
     if (error) {
-        theGui.console.tPrint("Encountered error {} in secondary queue.\r\n", error);
+        theGui.console.tPrint("Encountered error {} in secondary queue.\n", error);
         return;
     }
 
@@ -1976,9 +1979,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
         forceCPU = 1;
-        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
-            "some time to compile kernels for your device.\n"
-            "Subsequent runs will be faster.\n");
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint(
+            "Note: the first time you run SYCL, it will\n"
+            "take some time to compile kernels for your\n"
+            "device. Subsequent runs will be faster.\n");
         theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
@@ -1991,9 +1995,10 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     }
     else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
         assignedGPU = 1;
-        if (theGui.firstSYCLsimulation) theGui.console.tPrint("Note: the first time you run SYCL, it will be take\n"
-            "some time to compile kernels for your device.\n"
-            "Subsequent runs will be faster.\n");
+        if (theGui.firstSYCLsimulation) theGui.console.tPrint(
+            "Note: the first time you run SYCL, it will\n"
+            "take some time to compile kernels for your\n"
+            "device. Subsequent runs will be faster.\n");
         theGui.firstSYCLsimulation = false;
         if (use64bitFloatingPoint) {
             sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
@@ -2079,8 +2084,9 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         }
         if (theSim.base().cancellationCalled) {
             theGui.console.tPrint((
-                "<span color=\"#FF88FF\">Warning: series cancelled, "
-                "stopping after {} simulations.</span>\r\n"), j + 1);
+                "<span color=\"#FF88FF\">"
+                "Warning: series cancelled, stopping\n"
+                "after {} simulations.</span>\n"), j + 1);
             break;
         }
         theGui.requestSliderMove(j);
@@ -2091,19 +2097,25 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error == 13) {
         theGui.console.tPrint(
-            "<span color=\"#FF88FF\">NaN detected in grid!\n"
-            "Try using a larger spatial/temporal step\nor smaller propagation step.\n"
+            "<span color=\"#FF88FF\">"
+            "NaN detected in grid!\n"
+            "Try using a larger spatial/temporal step\n"
+            "or smaller propagation step.\n"
             "Simulation was cancelled.\n</span>");
     }
     else if (error == 15) {
         theGui.console.tPrint(
-            "<span color=\"#FF88FF\">Sorry, that sequence mode has been \n"
-            "replaced by the new one. Look in the \ndocumentation for more info. "
-            "It is a lot \neasier to use now, and hopefully \n"
-            "it won't take long to set it up. \nSorry about that!\n</span>");
+            "<span color=\"#FF88FF\">"
+            "Sorry, that sequence mode has been \n"
+            "replaced by the new one. Look in the \n"
+            "documentation for more info. It is a lot\n"
+            "easier to use now, and hopefully \n"
+            "it won't take long to set it up. \n"
+            "Sorry about that!\n</span>");
     }
     else if(!error){
-        theGui.console.tPrint("<span color=\"#88FFFF\">Finished after {:.4} s. </span>\n", 1e-6 *
+        theGui.console.tPrint(
+            "<span color=\"#88FFFF\">Finished after {:.4} s. </span>\n", 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>
                 (simulationTimerEnd - simulationTimerBegin).count()));
     }
@@ -2135,7 +2147,8 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
         }
     }
 
-    theGui.console.tPrint("Fitting {} values in mode {} over {} iterations.\n"
+    theGui.console.tPrint(
+        "Fitting {} values in mode {} over {} iterations.\n"
         "Region of interest contains {} elements\n",
         theSim.base().Nfitting, 
         theSim.base().fittingMode, 
@@ -2193,7 +2206,9 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     theGui.console.tPrint(("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>
             (simulationTimerEnd - simulationTimerBegin).count()));
-    theGui.console.tPrint("Fitting result:\n (index, value)\n");
+    theGui.console.tPrint(
+        "Fitting result:\n"
+        "(index, value)\n");
     for (int i = 0; i < theSim.base().Nfitting; ++i) {
         theGui.console.tPrint("{},  {}\n", i, theSim.base().fittingResult[i]);
     }

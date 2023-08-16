@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.NickKarpowicz.LightwaveExplorer</id>
+  
+  <name>Lightwave Explorer</name>
+  <summary>An efficient, user-friendly solver for nonlinear light-matter interaction</summary>
+  <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <content_rating type="oars-1.1" />
+  <releases>
+  <release version="2023.08.04" date="2023-08-15" urgency="high">
+  <description>
+  <p>This is the initial Flatpak release.</p>
+  </description>
+  </release>
+  </releases>
+  <url type="homepage">https://github.com/NickKarpowicz/LightwaveExplorer</url>
+  <description>
+    <p>
+      Lightwave explorer is an open source nonlinear optics simulator, intended to be fast, visual, and flexible for students and researchers to play with ultrashort laser pulses and nonlinear optics without having to buy a laser first.
+    </p>
+    <p>
+      The simulation was written CUDA in order to run quickly on graphics cards, but also supports CPU-based simulations. It has successfully been applied to several recent studies (see a list of publications of the Github page), and will continually gain new features and a larger material database as the community of users grows. It is open source, essential for reproducible scientific work, and available on Windows, MacOS, and Linux.
+    </p>
+    <p>
+    </p>
+  </description>
+  
+  <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot.png</image>
+    </screenshot>
+  </screenshots>
+</component>
