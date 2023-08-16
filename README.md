@@ -53,6 +53,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   
   Another option is Flatpak - you can currently make/install the Flatpak locally, once you've installed flatpak and flatpak-builder from your package manager, with the commands:
   ```
+  flatpak install flathub org.gnome.Platform//44 org.gnome.Sdk//44 org.freedesktop.Sdk.Extension.llvm15/x86_64/22.08
   wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/flatpakManifestCUDA.json
   flatpak-builder --user --install build-dir flatpakManifestCUDA.json
   ```
