@@ -1,18 +1,9 @@
 {
     "id": "io.github.NickKarpowicz.LightwaveExplorer",
-    "branch": "master",
     "runtime": "org.gnome.Platform",
-    
     "runtime-version": "44",
     "sdk": "org.gnome.Sdk",
     "sdk-extensions":["org.freedesktop.Sdk.Extension.llvm15"],
-    "add-extensions":{
-        "org.freedesktop.Platform.ffmpeg-full": {
-            "directory": "lib/ffmpeg",
-            "version": "22.08",
-            "add-ld-path": "."
-        }
-    },
     "command": "flatpakLauncher.sh",
     "finish-args": [
         "--share=ipc",
@@ -90,7 +81,7 @@
         {
             "name": "fmt",
             "config-opts": ["-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", "-DFMT_TEST=OFF"],
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "sources": [ 
                 { 
                     "type": "git", 
@@ -101,7 +92,7 @@
         },
         {
             "name": "gcem",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "sources": [ 
                 { 
                     "type": "git", 
@@ -136,16 +127,8 @@
         },
         {
             "name": "LightwaveExplorer",
-            "buildsystem": "simple",
-            "build-commands": ["touch localscript.sh",
-            "echo \". /app/opt/intel/oneapi/setvars.sh\" >> localscript.sh",
-            "echo \"export PATH=$PATH:/app/opt/cuda/bin\" >> localscript.sh",
-            "echo \"export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:/app/opt/intel/oneapi/mkl/latest/lib/cmake/mkl\" >> localscript.sh",
-            "echo \"export CUDA_PATH=$PATH:/app/opt/cuda/\" >> localscript.sh",
-            "echo \"cmake -DMAKECUDAFLATPAK=TRUE -DCMAKE_CUDA_ARCHITECTURES=75 .\" >> localscript.sh",
-            "echo \"make\" >> localscript.sh",
-            "chmod +x localscript.sh","./localscript.sh",
-            "cmake --install . --prefix \"/app\""],
+            "buildsystem": "cmake-ninja",
+            "config-opts": ["-DMAKECUDAFLATPAK=TRUE", "-DCMAKE_CUDA_ARCHITECTURES=75"],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
                 "cxxflags-override": true,
@@ -155,8 +138,7 @@
                 {
                     "type": "git",
                     "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
-                    "tag": "2023.08.04",
-                    "commit": "732b669f11ea2220881a022fa300cdd4e934e692"
+                    "branch": "master"
                 }
             ]
         }

@@ -39,7 +39,7 @@
         {
             "name": "fmt",
             "config-opts": ["-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", "-DFMT_TEST=OFF"],
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "sources": [ 
                 { 
                     "type": "git", 
@@ -50,7 +50,7 @@
         },
         {
             "name": "gcem",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "sources": [ 
                 { 
                     "type": "git", 
@@ -62,8 +62,7 @@
         {
             "name": "dlib",
             "buildsystem": "simple",
-            "build-commands":["cp -R dlib /app/include/",
-            ". /app/opt/intel/oneapi/setvars.sh"],
+            "build-commands":["cp -R dlib /app/include/"],
             "sources": [ 
                 { 
                     "type": "git", 
@@ -74,7 +73,7 @@
         },
         {
             "name": "LightwaveExplorer",
-            "buildsystem": "cmake",
+            "buildsystem": "cmake-ninja",
             "config-opts": ["-DMAKEFLATPAK=TRUE -DCMAKE_CXX_COMPILER=icpx"],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
