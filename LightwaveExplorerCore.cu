@@ -29,9 +29,6 @@ namespace deviceFunctions {
 					+ (*s).rotateBackward[7][0] * in.y 
 					+ (*s).rotateBackward[8][0] * in.z};
 		}
-		//{ cosT* cosP, sinP, -sinT * cosP,
-		//	-sinP * cosT, cosP, sinP* sinT,
-		//	sinT, 0.0, cosT };
 		return maxwellPoint<deviceFP>{
 			(*s).rotateForward[0][0] * in.x 
 				+ (*s).rotateForward[1][0] * in.y 
@@ -1546,7 +1543,6 @@ namespace deviceFunctions {
 		return;
 	}
 
-
 	//Expand the information contained in the radially-symmetric beam in the offset grid
 	// representation.
 	// see the expandCylindricalBeam() kernel for more details
@@ -1568,7 +1564,6 @@ namespace deviceFunctions {
 		expandedBeam2[pos1] = sourceBeam2[i];
 		expandedBeam2[pos2] = sourceBeam2[i];
 	}
-
 
 	template<typename T>
 	deviceFunction static T lagrangeInterpolation(T x, T* yData) {
@@ -1595,12 +1590,19 @@ namespace deviceFunctions {
 		const real_t k0, 
 		const real_t d) {
 
-		if (isnan(k0) || isnan(dk1) || isnan(dk2) || isnan(k.real()) || isnan(k.imag()) || k.real() == real_t{}) return complex_t(0.0f, 0.0f);
+		if (isnan(k0) 
+		|| isnan(dk1) 
+		|| isnan(dk2) 
+		|| isnan(k.real()) 
+		|| isnan(k.imag()) 
+		|| k.real() == real_t{}) return complex_t(0.0f, 0.0f);
 		if ( (deviceFPLib::abs(dk2) < 0.1f * k.real()) 
 			&& (deviceFPLib::abs(dk1) < 0.1f *  k.real())) {
 			deviceFP halfOverKr = (0.5f / k.real()) * (dk1 * dk1 + dk2 * dk2);
 			deviceFP kMoving = k.real() - k0;
-			if(isnan(kMoving) || isnan(halfOverKr) || isnan(k.imag())) return complex_t(0.0f,0.0f);
+			if(isnan(kMoving) 
+			|| isnan(halfOverKr) 
+			|| isnan(k.imag())) return complex_t(0.0f,0.0f);
 			return deviceLib::exp(
 				complex_t(
 					d * k.imag(),
@@ -2832,7 +2834,6 @@ namespace kernelNamespace{
 			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 			deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 			if (!(*s).is3D)dk2 = 0.0f;
-			//if ((*s).isCylindric) dk2 = dk1;
 			sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
 				crystalTheta, crystalPhi, axesNumber, sellmeierType);
 			if (isnan(ne.real()) || isnan(no.real())) {
@@ -3776,8 +3777,6 @@ namespace kernelNamespace{
 		}
 	};
 
-	
-
 	class maxwellRKkernel0 {
 	public:
 		const maxwell3D* s;
@@ -4046,15 +4045,6 @@ namespace kernelNamespace{
 	class multiplyByConstantKernelD {
 	public:
 		deviceFP* A;
-		const deviceFP val;
-		deviceFunction void operator()(const int64_t i) const {
-			A[i] = val * A[i];
-		}
-	};
-
-	class multiplyByConstantKernelDZ {
-	public:
-		deviceComplex* A;
 		const deviceFP val;
 		deviceFunction void operator()(const int64_t i) const {
 			A[i] = val * A[i];
@@ -4516,7 +4506,7 @@ namespace hostFunctions{
 		//transform final result
 		d.fft(sc.gridEFrequency1, sc.gridETime1, deviceFFT::Z2D);
 		d.deviceLaunch(2 * sc.Nblock, sc.Nthread, multiplyByConstantKernelD{
-			sc.gridETime1, (deviceFP)(1.0 / sc.Ngrid) });
+			sc.gridETime1, static_cast<deviceFP>(1.0 / sc.Ngrid) });
 		//copy the field arrays from the GPU to CPU memory
 		d.deviceMemcpy(
 			(*s).ExtOut, 
@@ -4555,11 +4545,11 @@ namespace hostFunctions{
 			d.deviceStruct.Nthread, 
 			filterKernel{
 				sDevice,
-				(deviceFP)(1.0e12 * f0),
-				(deviceFP)(1.0e12 * bandwidth),
-				(int)round(order),
-				(deviceFP)inBandAmplitude,
-				(deviceFP)outOfBandAmplitude });
+				static_cast<deviceFP>(1.0e12 * f0),
+				static_cast<deviceFP>(1.0e12 * bandwidth),
+				static_cast<int>round(order),
+				static_cast<deviceFP>inBandAmplitude,
+				static_cast<deviceFP>outOfBandAmplitude });
 
 		d.deviceMemcpy(
 			(*sCPU).EkwOut, 
@@ -4951,20 +4941,20 @@ namespace hostFunctions{
 			getChiLinearKernel{ sD, sellmeierCoefficients });
 		if ((*s).is3D) {
 			d.deviceLaunch(
-				(unsigned int)(*sc).Nblock / 2u, 
-				(unsigned int)(*sc).Nthread, 
+				static_cast<unsigned int>((*sc).Nblock / 2u), 
+				static_cast<unsigned int>((*sc).Nthread), 
 				prepare3DGridsKernel{ sellmeierCoefficients, sD });
 		}
 		else if ((*s).isCylindric) {
 			d.deviceLaunch(
-				(unsigned int)(*sc).Nblock / 2u, 
-				(unsigned int)(*sc).Nthread, 
+				static_cast<unsigned int>((*sc).Nblock / 2u), 
+				static_cast<unsigned int>((*sc).Nthread), 
 				prepareCylindricGridsKernel{ sellmeierCoefficients, sD });
 		}
 		else {
 			d.deviceLaunch(
-				(unsigned int)(*sc).Nblock / 2u, 
-				(unsigned int)(*sc).Nthread, 
+				static_cast<unsigned int>((*sc).Nblock / 2u), 
+				static_cast<unsigned int>((*sc).Nthread), 
 				prepareCartesianGridsKernel{ sellmeierCoefficients, sD });
 		}
 		d.deviceMemcpy(
@@ -4996,7 +4986,7 @@ namespace hostFunctions{
 			2 * (*sCPU).NgridC * sizeof(std::complex<double>), 
 			copyType::ToDevice);
 		d.deviceLaunch(
-			(unsigned int)(d.deviceStruct.NgridC / minGridDimension), 
+			static_cast<unsigned int>(d.deviceStruct.NgridC / minGridDimension), 
 			minGridDimension, 
 			rotateFieldKernel{ Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle });
 		d.deviceMemcpy(
@@ -5012,7 +5002,7 @@ namespace hostFunctions{
 			d.deviceStruct.Nthread, 
 			multiplyByConstantKernelD{ 
 				d.deviceStruct.gridETime1, 
-				(deviceFP)(1.0 / d.deviceStruct.Ngrid) });
+				static_cast<deviceFP>(1.0 / d.deviceStruct.Ngrid) });
 		d.deviceMemcpy(
 			(*sCPU).ExtOut, 
 			d.deviceStruct.gridETime1, 
