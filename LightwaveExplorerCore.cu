@@ -4547,7 +4547,7 @@ namespace hostFunctions{
 				sDevice,
 				static_cast<deviceFP>(1.0e12 * f0),
 				static_cast<deviceFP>(1.0e12 * bandwidth),
-				static_cast<int>round(order),
+				static_cast<int>(round(order)),
 				static_cast<deviceFP>(inBandAmplitude),
 				static_cast<deviceFP>(outOfBandAmplitude) });
 
