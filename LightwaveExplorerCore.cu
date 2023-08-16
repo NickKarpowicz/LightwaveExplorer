@@ -1595,7 +1595,7 @@ namespace deviceFunctions {
 		const real_t k0, 
 		const real_t d) {
 
-		if(isnan(k0) || isnan(dk1) || isnan(dk2) || isnan(k.real()) || isnan(k.imag()) || k.real()==real_t{}) return complex_t(0.0f,0.0f);
+		if (isnan(k0) || isnan(dk1) || isnan(dk2) || isnan(k.real()) || isnan(k.imag()) || k.real() == real_t{}) return complex_t(0.0f, 0.0f);
 		if ( (deviceFPLib::abs(dk2) < 0.1f * k.real()) 
 			&& (deviceFPLib::abs(dk1) < 0.1f *  k.real())) {
 			deviceFP halfOverKr = (0.5f / k.real()) * (dk1 * dk1 + dk2 * dk2);
@@ -1614,7 +1614,7 @@ namespace deviceFunctions {
 		if (kz.imag() > 0.0f) kz = complex_t(kz.real(), -kz.imag());
 		kz = complex_t(d*kz.imag(),-d*kz.real());
 		if (isnan(kz.real()) || isnan(kz.imag())) return complex_t(0.0f,0.0f);
-		return deviceLib::exp(complex_t(0.0f, -d) * kz);
+		return deviceLib::exp(kz);
 	}
 
 	//give the Dawson function value at x
