@@ -1595,10 +1595,12 @@ namespace deviceFunctions {
 		const real_t k0, 
 		const real_t d) {
 
+		if(isnan(k0) || isnan(dk1) || isnan(dk2) || isnan(k.real()) || isnan(k.imag()) || k.real()==real_t{}) return complex_t(0.0f,0.0f);
 		if ( (deviceFPLib::abs(dk2) < 0.1f * k.real()) 
 			&& (deviceFPLib::abs(dk1) < 0.1f *  k.real())) {
 			deviceFP halfOverKr = (0.5f / k.real()) * (dk1 * dk1 + dk2 * dk2);
 			deviceFP kMoving = k.real() - k0;
+			if(isnan(kMoving) || isnan(halfOverKr) || isnan(k.imag())) return complex_t(0.0f,0.0f);
 			return deviceLib::exp(
 				complex_t(
 					d * k.imag(),
@@ -1610,6 +1612,8 @@ namespace deviceFunctions {
 			(deviceLib::sqrt(-dk2 * dk2 / (k + deviceFPLib::abs(dk1)) + k - deviceFPLib::abs(dk1))
 				* deviceLib::sqrt(k + deviceFPLib::abs(dk1)) - k0);
 		if (kz.imag() > 0.0f) kz = complex_t(kz.real(), -kz.imag());
+		kz = complex_t(d*kz.imag(),-d*kz.real());
+		if (isnan(kz.real()) || isnan(kz.imag())) return complex_t(0.0f,0.0f);
 		return deviceLib::exp(complex_t(0.0f, -d) * kz);
 	}
 
@@ -2883,7 +2887,7 @@ namespace kernelNamespace{
 			const deviceFP dk = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) 
 				* ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
 			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-
+			
 			//if the refractive index was returned weird, 
 			//then the index isn't valid, so set the propagator to zero for that frequency
 			if (minN(ne.real(), no.real()) < 0.9f 
@@ -2917,17 +2921,31 @@ namespace kernelNamespace{
 			const deviceComplex kz1 = deviceLib::sqrt(ke - dk) * deviceLib::sqrt(ke + dk);
 			const deviceComplex kz2 = deviceLib::sqrt(ko - dk) * deviceLib::sqrt(ko + dk);
 
-			if (kz1.real() > 0.0f && kz2.real() > 0.0f) {
-				(*s).gridPropagationFactor1[i] = 
-					deviceLib::exp(-0.5f * ii * (kz1 - k0) * (*s).h);
-				if (isnan(((*s).gridPropagationFactor1[i]).real())) {
+			if (kz1.real() > 0.0f 
+			&& kz2.real() > 0.0f
+			&& !isnan(k0.real())
+			&& !isnan(kz1.real())
+			&& !isnan(kz2.real())
+			&& !isnan(k0.imag())
+			&& !isnan(kz1.imag())
+			&& !isnan(kz2.imag())) {
+				(*s).gridPropagationFactor1[i] = -0.5f * ii * (kz1 - k0) * (*s).h;
+				if (isnan((*s).gridPropagationFactor1[i].real())
+				|| isnan((*s).gridPropagationFactor1[i].imag())) {
 					(*s).gridPropagationFactor1[i] = {};
 				}
+				else{
+					
+					(*s).gridPropagationFactor1[i] = deviceLib::exp((*s).gridPropagationFactor1[i]);
+				}
 
-				(*s).gridPropagationFactor2[i] = 
-					deviceLib::exp(-0.5f * ii * (kz2 - k0) * (*s).h);
-				if (isnan(((*s).gridPropagationFactor2[i]).real())) {
+				(*s).gridPropagationFactor2[i] = -0.5f * ii * (kz2 - k0) * (*s).h;
+				if (isnan((*s).gridPropagationFactor2[i].real())
+				|| isnan((*s).gridPropagationFactor2[i].imag())) {
 					(*s).gridPropagationFactor2[i] = {};
+				}
+				else{
+					(*s).gridPropagationFactor2[i] = deviceLib::exp((*s).gridPropagationFactor2[i]);
 				}
 
 				(*s).gridPolarizationFactor1[i] = -ii * 
@@ -5520,21 +5538,21 @@ namespace hostFunctions{
 			(*sCPU).materialIndex = 0;
 			(*sCPU).crystalTheta = 0.0;
 			(*sCPU).crystalPhi = 0.0;
-			(*sCPU).crystalThickness = 0;
+			(*sCPU).crystalThickness = 0.0;
 			(*sCPU).propagationStep = 1e-9;
 
 			(*sCPU).nonlinearAbsorptionStrength = 0.0;
-			(*sCPU).chi2Tensor = (*sCPU).crystalDatabase[(*sCPU).materialIndex].d.data();
-			(*sCPU).chi3Tensor = (*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3.data();
+			(*sCPU).chi2Tensor = (*sCPU).crystalDatabase[0].d.data();
+			(*sCPU).chi3Tensor = (*sCPU).crystalDatabase[0].chi3.data();
 			(*sCPU).nonlinearSwitches = 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches.data();
+				(*sCPU).crystalDatabase[0].nonlinearSwitches.data();
 			(*sCPU).absorptionParameters = 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].absorptionParameters.data();
+				(*sCPU).crystalDatabase[0].absorptionParameters.data();
 			(*sCPU).sellmeierCoefficients = 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data();
+				(*sCPU).crystalDatabase[0].sellmeierCoefficients.data();
 
-			(*sCPU).sellmeierType = (*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierType;
-			(*sCPU).axesNumber = (*sCPU).crystalDatabase[(*sCPU).materialIndex].axisType;
+			(*sCPU).sellmeierType = (*sCPU).crystalDatabase[0].sellmeierType;
+			(*sCPU).axesNumber = 0;
 			(*sCPU).isFDTD = false;
 			d.reset(sCPU);
 			solveNonlinearWaveEquationWithDevice(d, sCPU);
