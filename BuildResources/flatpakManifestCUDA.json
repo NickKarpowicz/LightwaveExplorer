@@ -50,7 +50,6 @@
         "/opt/cuda/targets/x86_64-linux/lib/libnvrtc*",
         "/opt/cuda/targets/x86_64-linux/lib/stubs",
         "/opt/cuda/targets/x86_64-linux/lib/cmake",
-        "/lib/debug",
         "/opt/intel"
 
     ],
@@ -116,7 +115,9 @@
         {
             "name": "cuda",
             "buildsystem": "simple",
-            "build-commands":["mkdir /app/tmp","sh cuda_12.2.1_535.86.10_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
+            "build-commands":[
+                "mkdir /app/tmp",
+                "sh cuda_12.2.1_535.86.10_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
             "sources":[
                 {
                     "type": "file",
@@ -128,7 +129,11 @@
         {
             "name": "LightwaveExplorer",
             "buildsystem": "cmake-ninja",
-            "config-opts": ["-DMAKECUDAFLATPAK=TRUE", "-DCMAKE_CUDA_ARCHITECTURES=75", "-DCUDAToolkit_ROOT=/app/opt/cuda","-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc"],
+            "config-opts": [
+                "-DMAKECUDAFLATPAK=TRUE", 
+                "-DCMAKE_CUDA_ARCHITECTURES=75", 
+                "-DCUDAToolkit_ROOT=/app/opt/cuda",
+                "-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc"],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
                 "cxxflags-override": true},
