@@ -4548,8 +4548,8 @@ namespace hostFunctions{
 				static_cast<deviceFP>(1.0e12 * f0),
 				static_cast<deviceFP>(1.0e12 * bandwidth),
 				static_cast<int>round(order),
-				static_cast<deviceFP>inBandAmplitude,
-				static_cast<deviceFP>outOfBandAmplitude });
+				static_cast<deviceFP>(inBandAmplitude),
+				static_cast<deviceFP>(outOfBandAmplitude) });
 
 		d.deviceMemcpy(
 			(*sCPU).EkwOut, 
@@ -4707,7 +4707,6 @@ namespace hostFunctions{
 			copyType::ToHost);
 
 		getTotalSpectrum(d);
-
 		return 0;
 	}
 
