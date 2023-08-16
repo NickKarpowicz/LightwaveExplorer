@@ -8,8 +8,8 @@
     "finish-args": [
         "--share=ipc",
         "--device=dri",
-        "--socket=x11",
         "--socket=wayland",
+        "--socket=fallback-x11",
         "--filesystem=host"
     ],
     "cleanup": [
@@ -73,7 +73,7 @@
                 {
                     "type": "file",
                     "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/992857b9-624c-45de-9701-f6445d845359/l_BaseKit_p_2023.2.0.49397_offline.sh",
-                    "md5": "560466f714a79fce3cb8793528d487c8"
+                    "sha256": "3dd04d2cc9ba2a8785580ba09068dbaf9aff9aa930b5fa7f10688210ea9be4a0"
         
                 }
             ]
@@ -121,7 +121,7 @@
                 {
                     "type": "file",
                     "url": "https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run",
-                    "md5": "2579fcb61cd80d3284d73da93785550f"
+                    "sha256": "c51e814eaa756160a73289b1f35880cc38c18e1ddedc87f46f7ff0d1696bdb95"
                 }
             ]
         },
