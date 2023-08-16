@@ -131,7 +131,7 @@
             "buildsystem": "cmake-ninja",
             "config-opts": [
                 "-DMAKECUDAFLATPAK=TRUE", 
-                "-DCMAKE_CUDA_ARCHITECTURES=75", 
+                "-DCMAKE_CUDA_ARCHITECTURES='75;86;89'", 
                 "-DCUDAToolkit_ROOT=/app/opt/cuda",
                 "-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc"],
             "sources": [
