@@ -131,9 +131,7 @@
             "config-opts": ["-DMAKECUDAFLATPAK=TRUE", "-DCMAKE_CUDA_ARCHITECTURES=75", "-DCUDAToolkit_ROOT=/app/opt/cuda","-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc"],
             "build-options": {
                 "cxxflags": "-O3 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong -grecord-gcc-switches",
-                "cxxflags-override": true,
-                "append-path": "/usr/lib/sdk/llvm15/bin",
-                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib" },
+                "cxxflags-override": true},
             "sources": [
                 {
                     "type": "git",
@@ -141,7 +139,6 @@
                     "branch": "master"
                 }
             ]
-        }
-            
+        } 
     ]
 }
