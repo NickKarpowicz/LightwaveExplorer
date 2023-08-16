@@ -139,6 +139,7 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(LIOMP5 openmp)
         include_directories(${GTK4_INCLUDE_DIRS})
         include_directories(/app/opt/intel/mkl/latest/include)
+        
         include_directories(/app/opt/intel/mkl/latest/include/fftw)
         include_directories(../LightwaveExplorer)
         link_directories(${LIOMP5_LIBRARY_DIRS})
