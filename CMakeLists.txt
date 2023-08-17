@@ -1,60 +1,13 @@
 if(UNIX AND NOT APPLE)
-    # CPU/CUDA build
-    # cmake --fresh -DNOSYCL -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_HOST_COMPILER=clang++-15 -DCMAKE_CUDA_ARCHITECTURES=75 ..
-    if(CUDANOSYCL)
-        cmake_minimum_required(VERSION 3.23.0)
-        project(LightwaveExplorer LANGUAGES CXX)      
-        enable_language("CUDA")
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(GTK4 REQUIRED gtk4)
-        find_package(CUDAToolkit)
-        find_package(MKL)
-        find_package(OpenMP REQUIRED)
-        include(FetchContent)
-        FetchContent_Declare(fmt
-            GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-            GIT_TAG        9.1.0
-        )
-        FetchContent_MakeAvailable(fmt)
-        execute_process(COMMAND git clone https://github.com/davisking/dlib)
-        execute_process(COMMAND git clone https://github.com/kthohr/gcem)
-        include_directories(build/dlib) 
-        include_directories(build/gcem/include)
-        include_directories(../LightwaveExplorer)
-        include_directories(${CUDA_INCLUDE_DIRS})
-        include_directories(${GTK4_INCLUDE_DIRS})
-        include_directories(${MKL_ROOT}/include/fftw)
-        add_library(LightwaveExplorerCuda LightwaveExplorerCore.cu LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
-        add_compile_options(-std=c++20 -O3 -fopenmp -DNOSYCL)
-        add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
-        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
-        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
-        target_link_libraries(LightwaveExplorer fmt::fmt -lm OpenMP::OpenMP_CXX)
-        target_link_libraries(LightwaveExplorer
-            -Wl,--start-group 
-            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
-            ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
-            ${MKL_ROOT}/lib/intel64/libmkl_core.a 
-            -Wl,--end-group
-            )
-        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
-        install(TARGETS LightwaveExplorer)
-        install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
-        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
-        install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
-        install(FILES BuildResources/DesktopFileNoLauncher DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
-        install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
-    elseif(MAKEFULL)
+    if(MAKEFULL)
     #full Linux build; typical usage:
-    #cmake --fresh -DMAKEFULL=TRUE -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
+    #. /opt/intel/oneapi/setvars.sh
+    #cmake --fresh -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
         cmake_minimum_required(VERSION 3.23.0)
         project(LightwaveExplorer LANGUAGES CXX CUDA)
-        configure_file(${CMAKE_SOURCE_DIR}/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
+
         execute_process(COMMAND git clone https://github.com/davisking/dlib)
         execute_process(COMMAND git clone https://github.com/kthohr/gcem)
-        include_directories(build/dlib) 
-        include_directories(build/gcem/include)
         find_package(CUDAToolkit)
         find_package(PkgConfig REQUIRED)
         find_package(fmt REQUIRED)
@@ -64,14 +17,20 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(TBB tbb)
         pkg_check_modules(GTK4 gtk4)
         pkg_check_modules(LIOMP5 openmp)
+        
         include_directories(${MKL_ROOT}/include/fftw)
         include_directories(../LightwaveExplorer)
         include_directories(${GTK4_INCLUDE_DIRS})
+        include_directories(build/dlib) 
+        include_directories(build/gcem/include)
+
         link_directories(${LIOMP5_LIBRARY_DIRS})
         link_directories(${TBB_LIBRARY_DIRS})
         link_directories(${SYCL_LIBRARY_DIR})
         link_directories(${GTK4_LIBRARY_DIRS})
+
         add_library(LightwaveExplorerCuda LightwaveExplorerCore.cu LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
+        
         add_compile_options(-std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -fsycl-targets=spir64_x86_64,spir64 -w)
         add_link_options(-fsycl -fsycl-targets=spir64_x86_64,spir64)
         add_executable(LightwaveExplorer LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp LightwaveExplorerGTK/LightwaveExplorerDPCPPlibFP32.cpp LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
@@ -89,6 +48,8 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer ${LIOMP5_LIBRARIES})
         target_link_libraries(LightwaveExplorer ${TBB_LIBRARIES})
+
+        configure_file(${CMAKE_SOURCE_DIR}/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
         add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh)
         install(TARGETS LightwaveExplorer)
         install(PROGRAMS ${CMAKE_BINARY_DIR}/LightwaveExplorerLauncher.sh DESTINATION bin)
@@ -97,7 +58,9 @@ if(UNIX AND NOT APPLE)
         install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
         install(FILES BuildResources/DesktopFileLauncher DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
         install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
+    
     elseif(MAKEFLATPAK)
+    #Flatpak build without GPU, based on FFTW. Used only for testing.
         cmake_minimum_required(VERSION 3.16)
         project(LightwaveExplorer LANGUAGES CXX)
         find_package(PkgConfig REQUIRED)
@@ -126,6 +89,8 @@ if(UNIX AND NOT APPLE)
         install(FILES ${CMAKE_SOURCE_DIR}/BuildResources/DesktopFileNoLauncher DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
         install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
     elseif(MAKEONEAPIFLATPAK)
+    #Flatpak using OneAPI. Currently doesn't work. SYCL will start, and find the CPU, but
+    #not the GPU, and the JIT will fail.
         cmake_minimum_required(VERSION 3.25)
         project(LightwaveExplorer LANGUAGES CXX)
         configure_file(${CMAKE_SOURCE_DIR}/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
@@ -170,6 +135,8 @@ if(UNIX AND NOT APPLE)
         install(FILES BuildResources/DesktopFileLauncher DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
         install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
     elseif(MAKECUDAFLATPAK)
+    #Flatpak using CUDA, and CPU calculations with FFTs in MKL. 
+    #Current release version of the Flatpak.
         cmake_minimum_required(VERSION 3.23.0)
         project(LightwaveExplorer LANGUAGES CXX)   
         enable_language("CUDA")
@@ -219,6 +186,7 @@ if(UNIX AND NOT APPLE)
         install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
         install(FILES BuildResources/DesktopFileFlatpak DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
     else()
+    #if nothing specified, build GPL version based on FFTW
         cmake_minimum_required(VERSION 3.16)
         project(LightwaveExplorer LANGUAGES CXX)
         find_package(PkgConfig REQUIRED)
