@@ -5533,30 +5533,30 @@ namespace hostFunctions{
 		
 		//initialize the grid if necessary
 		if (!sCPU->isFollowerInSequence) {
-			simulationParameterSet sCPUbackup = *sCPU;
+			simulationParameterSet sCPUcopy = *sCPU;
 
-			(*sCPU).materialIndex = 0;
-			(*sCPU).crystalTheta = 0.0;
-			(*sCPU).crystalPhi = 0.0;
-			(*sCPU).crystalThickness = 0.0;
-			(*sCPU).propagationStep = 1e-9;
+			sCPUcopy.materialIndex = 0;
+			sCPUcopy.crystalTheta = 0.0;
+			sCPUcopy.crystalPhi = 0.0;
+			sCPUcopy.crystalThickness = 0.0;
+			sCPUcopy.propagationStep = 1e-9;
 
-			(*sCPU).nonlinearAbsorptionStrength = 0.0;
-			(*sCPU).chi2Tensor = (*sCPU).crystalDatabase[0].d.data();
-			(*sCPU).chi3Tensor = (*sCPU).crystalDatabase[0].chi3.data();
-			(*sCPU).nonlinearSwitches = 
-				(*sCPU).crystalDatabase[0].nonlinearSwitches.data();
-			(*sCPU).absorptionParameters = 
-				(*sCPU).crystalDatabase[0].absorptionParameters.data();
-			(*sCPU).sellmeierCoefficients = 
-				(*sCPU).crystalDatabase[0].sellmeierCoefficients.data();
+			sCPUcopy.nonlinearAbsorptionStrength = 0.0;
+			sCPUcopy.chi2Tensor = sCPUcopy.crystalDatabase[0].d.data();
+			sCPUcopy.chi3Tensor = sCPUcopy.crystalDatabase[0].chi3.data();
+			sCPUcopy.nonlinearSwitches = 
+				sCPUcopy.crystalDatabase[0].nonlinearSwitches.data();
+			sCPUcopy.absorptionParameters = 
+				sCPUcopy.crystalDatabase[0].absorptionParameters.data();
+			sCPUcopy.sellmeierCoefficients = 
+				sCPUcopy.crystalDatabase[0].sellmeierCoefficients.data();
 
-			(*sCPU).sellmeierType = (*sCPU).crystalDatabase[0].sellmeierType;
-			(*sCPU).axesNumber = 0;
-			(*sCPU).isFDTD = false;
+			sCPUcopy.sellmeierType = sCPUcopy.crystalDatabase[0].sellmeierType;
+			sCPUcopy.axesNumber = 0;
+			sCPUcopy.isFDTD = false;
+			d.reset(&sCPUcopy);
+			solveNonlinearWaveEquationWithDevice(d, &sCPUcopy);
 			d.reset(sCPU);
-			solveNonlinearWaveEquationWithDevice(d, sCPU);
-			*sCPU = sCPUbackup;
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			(*sCPU).isFollowerInSequence = true;
 		}
