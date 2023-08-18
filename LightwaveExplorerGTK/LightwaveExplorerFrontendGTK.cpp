@@ -525,19 +525,27 @@ public:
         // App /Resources folder
         // working directory
 #ifdef __linux__
-                char pBuf[256];
-        int64_t len = sizeof(pBuf); 
-        int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
-        if(bytes >= 0)
-            pBuf[bytes] = '\0';
-        std::string binPath(pBuf);
-        int64_t posPath = binPath.find_last_of("/");
-        std::string defaultsPath = 
-            binPath.substr(0, posPath).append("/../share/LightwaveExplorer/DefaultValues.ini");
+        std::string homePath(std::getenv("HOME"));
+        homePath.append("/.LightwaveExplorer/DefaultValues.ini");
+        bool firstReadFail = (1 == 
+            theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), homePath));
+        
+        if(firstReadFail){
+            char pBuf[256];
+            int64_t len = sizeof(pBuf); 
+            int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
+            if(bytes >= 0)
+                pBuf[bytes] = '\0';
+            std::string binPath(pBuf);
+            int64_t posPath = binPath.find_last_of("/");
+            std::string defaultsPath = 
+                binPath.substr(0, posPath).append("/../share/LightwaveExplorer/DefaultValues.ini");
 
-		if (1 == theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), defaultsPath)) {
-			theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
-		}
+            if (1 == theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), defaultsPath)) {
+                theSim.sCPU()->readInputParametersFile(theDatabase.db.data(), "DefaultValues.ini");
+            }
+        }
+        
 #elif defined __APPLE__
 		uint32_t bufferSize = 1024;
 		char sysPathBuffer[1024] = { 0 };

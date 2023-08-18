@@ -370,18 +370,26 @@ public:
             fs.open("CrystalDatabase.txt");
         }
 #elif defined __linux__
-        char pBuf[256];
-        int64_t len = sizeof(pBuf); 
-        int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
-        if(bytes >= 0)
-            pBuf[bytes] = '\0';
-        std::string binPath(pBuf);
-        int64_t posPath = binPath.find_last_of("/");
-        std::string databasePath = binPath.substr(0, posPath).append("/../share/LightwaveExplorer/CrystalDatabase.txt");
+
+        std::string databasePath(std::getenv("HOME"));
+        databasePath.append("/.LightwaveExplorer/CrystalDatabase.txt");
         std::ifstream fs(databasePath);
-        if (!fs.is_open()) {
-            fs.open("CrystalDatabase.txt");
+
+        if(!fs.is_open()){
+            char pBuf[256];
+            int64_t len = sizeof(pBuf); 
+            int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
+            if(bytes >= 0)
+                pBuf[bytes] = '\0';
+            std::string binPath(pBuf);
+            int64_t posPath = binPath.find_last_of("/");
+            databasePath = binPath.substr(0, posPath).append("/../share/LightwaveExplorer/CrystalDatabase.txt");
+            fs.open(databasePath);
+            if (!fs.is_open()) {
+                fs.open("CrystalDatabase.txt");
+            }
         }
+        
 #else
         std::ifstream fs("CrystalDatabase.txt");
 #endif

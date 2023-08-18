@@ -4,8 +4,10 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <filesystem>
 #include "../LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerGraphicalClasses.h"
+
 #undef __noinline__
 #include <gtk/gtk.h>
 #if defined __linux__
