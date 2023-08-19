@@ -61,16 +61,25 @@
                 "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib"
                 },
             "build-commands": [
-                    "chmod +x l_BaseKit_p_2023.2.0.49397_offline.sh",
-                    "./l_BaseKit_p_2023.2.0.49397_offline.sh -x -f webimage_extracted",
-                    "rm l_BaseKit_p_2023.2.0.49397_offline.sh",
-                    "webimage_extracted/l_BaseKit_p_2023.2.0.49397_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel --install-dir=/app/opt/intel/oneapi --eula=accept"
+                    "chmod +x l_BaseKit_p_2023.1.0.46401_offline.sh",
+                    "./l_BaseKit_p_2023.1.0.46401_offline.sh -x -f webimage_extracted",
+                    "rm l_BaseKit_p_2023.1.0.46401_offline.sh",
+                    "webimage_extracted/l_BaseKit_p_2023.2.0.49397_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.dpl:intel.oneapi.lin.tbb.devel:intel.oneapi.lin.dpcpp-cpp-compiler  --install-dir=/app/opt/intel/oneapi --eula=accept",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64/* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/lib/x64/* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/lib/libpi_level_zero.so /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/lib/libpi_opencl.so /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/lib/sycl.conf /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/lib/libOpenCL.so* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/lib/libsycl.so* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbb.so* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbbmalloc.so* /app/lib/"
                     ],
             "sources": [
                 {
                     "type": "file",
-                    "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/992857b9-624c-45de-9701-f6445d845359/l_BaseKit_p_2023.2.0.49397_offline.sh",
-                    "sha256": "3dd04d2cc9ba2a8785580ba09068dbaf9aff9aa930b5fa7f10688210ea9be4a0"
+                    "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/7deeaac4-f605-4bcf-a81b-ea7531577c61/l_BaseKit_p_2023.1.0.46401_offline.sh",
+                    "sha384": "aa874c08c985095c710f849af7e3d1f0cfecf561398056d391aae2528c40ea12994b17e244646597be4e55cb762490e1"
         
                 }
             ],
