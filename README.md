@@ -49,15 +49,20 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
 ---
   ### Installation on Linux
-  I am working on making this easier by getting it onto Flathub, or of course you can compile it yourself following the instructions further down in this readme.
+  The easiest way to install on Linux is using the Flatpak, which is [available on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
+
+  If your system's graphical installer integrates Flathub, you might already be able to find it there (it's quite new, as of August 2023), or you can install it from the command line with:
+  ```
+  flatpak install flathub io.github.NickKarpowicz.LightwaveExplorer
+  ```
+
+  Once it's installed it should show up in your system menu in the Science category. Otherwise you can also run it with 
   
-  You can also make/install the Flatpak, which supports running on CPUs or Nvidia GPUs, locally, once you've installed flatpak and flatpak-builder from your package manager, with the commands:
   ```
-  flatpak install flathub org.gnome.Platform//44 org.gnome.Sdk//44 org.freedesktop.Sdk.Extension.llvm15/x86_64/22.08
-  wget https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/BuildResources/flatpakManifestCUDA.json
-  flatpak-builder --user --install build-dir flatpakManifestCUDA.json
+  flatpak run io.github.NickKarpowicz.LightwaveExplorer
   ```
-  Since making the Flatpak doesn't depend on your local environment, it may be more reproducible/functional. This wilĺ download everything it needs to build, do it, and install the resulting Flatpak on your system, which at the moment will take a good bit of time and bandwidth. Hopefully soon I'll figure out how to get it on Flathub instead!
+
+  Of course you can also build it yourself using the instructions below. That's currently what you'll need to do to use the SYCL propagator, since that's kinda still in beta.
 
 ---
 
