@@ -7,7 +7,7 @@ maxwell3D;
 
 namespace deviceFunctions {
 	//strict isnan for complex type
-	deviceFunction static inline bool isComplexNaN(deviceComplex x){
+	deviceFunction static inline bool isComplexNaN(const deviceComplex& x){
 		return isnan(x.real()) || isnan(x.imag());
 	}
 
