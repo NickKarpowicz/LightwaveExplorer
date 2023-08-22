@@ -789,7 +789,7 @@ d:
 0 0 0 0 75 0
 0 0 0 0 0 75
 d reference:
-Laser Phys. 5(5), 1014–1019 (1995).
+Laser Phys. 5(5), 1014-1019 (1995).
 chi3 type:
 2
 chi3:
@@ -824,7 +824,7 @@ d:
 0 0 0 0 83 0
 0 0 0 0 0 83
 d reference:
-IEEE J. Quant. Electr. 28(10), 2057–2074 (1992)
+IEEE J. Quant. Electr. 28(10), 2057 2074 (1992)
 chi3 type:
 2
 chi3:
