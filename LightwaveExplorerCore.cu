@@ -6,6 +6,11 @@ maxwellCalculation<deviceFP, maxwellPoint<deviceFP>, maxwellPoint<deviceFP>, osc
 maxwell3D;
 
 namespace deviceFunctions {
+	//strict isnan for complex type
+	deviceFunction static inline bool isComplexNaN(deviceComplex x){
+		return isnan(x.real()) || isnan(x.imag());
+	}
+
 	//define math operators for maxwell grid points
 	deviceFunction static inline deviceFP dotProduct(
 		const maxwellPoint<deviceFP>& a, 
@@ -1593,16 +1598,15 @@ namespace deviceFunctions {
 		if (isnan(k0) 
 		|| isnan(dk1) 
 		|| isnan(dk2) 
-		|| isnan(k.real()) 
-		|| isnan(k.imag()) 
-		|| k.real() == real_t{}) return complex_t(0.0f, 0.0f);
+		|| isComplexNaN(k) 
+		|| k.real() == real_t{}) return complex_t{};
 		if ( (deviceFPLib::abs(dk2) < 0.1f * k.real()) 
 			&& (deviceFPLib::abs(dk1) < 0.1f *  k.real())) {
 			deviceFP halfOverKr = (0.5f / k.real()) * (dk1 * dk1 + dk2 * dk2);
 			deviceFP kMoving = k.real() - k0;
 			if(isnan(kMoving) 
 			|| isnan(halfOverKr) 
-			|| isnan(k.imag())) return complex_t(0.0f,0.0f);
+			|| isnan(k.imag())) return complex_t{};
 			return deviceLib::exp(
 				complex_t(
 					d * k.imag(),
@@ -1615,7 +1619,7 @@ namespace deviceFunctions {
 				* deviceLib::sqrt(k + deviceFPLib::abs(dk1)) - k0);
 		if (kz.imag() > 0.0f) kz = complex_t(kz.real(), -kz.imag());
 		kz = complex_t(d*kz.imag(),-d*kz.real());
-		if (isnan(kz.real()) || isnan(kz.imag())) return complex_t(0.0f,0.0f);
+		if (isComplexNaN(kz)) return complex_t{};
 		return deviceLib::exp(kz);
 	}
 
@@ -2007,10 +2011,8 @@ namespace deviceFunctions {
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			if (isnan(n[0][0].real()) 
-				|| isnan(n[0][0].imag()) 
-				|| isnan(n[1][0].real()) 
-				|| isnan(n[1][0].imag())) {
+			if (isComplexNaN(n[0][0]) 
+				|| isComplexNaN(n[1][0])) {
 				*n1 = deviceComplex{};
 				*n2 = deviceComplex{};
 				return;
@@ -2020,10 +2022,8 @@ namespace deviceFunctions {
 			gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 
 			for (it = 0; it < maxiter; ++it) {
-				if (isnan(n[0][0].real()) 
-					|| isnan(n[0][0].imag()) 
-					|| isnan(n[1][0].real()) 
-					|| isnan(n[1][0].imag())) {
+				if (isComplexNaN(n[0][0]) 
+					|| isComplexNaN(n[1][0])) {
 					*n1 = deviceComplex{};
 					*n2 = deviceComplex{};
 					return;
@@ -2150,10 +2150,8 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[1] - gradientStep, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			if (isnan(n[0][0].real()) 
-				|| isnan(n[0][0].imag()) 
-				|| isnan(n[1][0].real()) 
-				|| isnan(n[1][0].imag())) {
+			if (isComplexNaN(n[0][0]) 
+				|| isComplexNaN(n[1][0])) {
 				*n1 = n[0][0];
 				*n2 = n[0][1];
 				return;
@@ -2172,10 +2170,8 @@ namespace deviceFunctions {
 			gradient[1][1] = gradientFactor * (errArray[2][1] - errArray[3][1]);
 
 			for (it = 0; it < maxiter; ++it) {
-				if (isnan(n[0][0].real()) 
-					|| isnan(n[0][0].imag()) 
-					|| isnan(n[1][0].real()) 
-					|| isnan(n[1][0].imag())) {
+				if (isComplexNaN(n[0][0])
+					|| isComplexNaN(n[1][0])) {
 					*n1 = deviceComplex{};
 					*n2 = deviceComplex{};
 					return;
@@ -2798,10 +2794,8 @@ namespace kernelNamespace{
 
 			(*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
 			(*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
-			if (isnan((*s).gridEFrequency1[i].real()) 
-				|| isnan((*s).gridEFrequency2[i].real()) 
-				|| isnan((*s).gridEFrequency1[i].imag()) 
-				|| isnan((*s).gridEFrequency2[i].imag())) {
+			if (isComplexNaN((*s).gridEFrequency1[i]) 
+				|| isComplexNaN((*s).gridEFrequency2[i])) {
 				(*s).gridEFrequency1[i] = deviceComplex{};
 				(*s).gridEFrequency2[i] = deviceComplex{};
 			}
@@ -2836,7 +2830,7 @@ namespace kernelNamespace{
 			if (!(*s).is3D)dk2 = 0.0f;
 			sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
 				crystalTheta, crystalPhi, axesNumber, sellmeierType);
-			if (isnan(ne.real()) || isnan(no.real())) {
+			if (isComplexNaN(ne) || isComplexNaN(no)) {
 				ne = cOne<deviceComplex>();
 				no = cOne<deviceComplex>();
 			}
@@ -2848,14 +2842,12 @@ namespace kernelNamespace{
 			deviceComplex ts = fourierPropagator(ke, dk1, dk2, k0.real(), thickness);
 			deviceComplex tp = fourierPropagator(ko, dk1, dk2, k0.real(), thickness);
 
-			if (isnan(ts.real()) || isnan(ts.imag())) ts = deviceComplex{};
-			if (isnan(tp.real()) || isnan(tp.imag())) tp = deviceComplex{};
+			if (isComplexNaN(ts)) ts = deviceComplex{};
+			if (isComplexNaN(tp)) tp = deviceComplex{};
 			(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
 			(*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
-			if (isnan((*s).gridEFrequency2[i].real()) ||
-				isnan((*s).gridEFrequency2[i].imag()) ||
-				isnan((*s).gridEFrequency1[i].real()) ||
-				isnan((*s).gridEFrequency1[i].imag())) {
+			if (isComplexNaN((*s).gridEFrequency1[i])
+			|| isComplexNaN((*s).gridEFrequency2[i])){
 				(*s).gridEFrequency1[i] = deviceComplex{};
 				(*s).gridEFrequency2[i] = deviceComplex{};
 			}
@@ -2892,10 +2884,8 @@ namespace kernelNamespace{
 			//if the refractive index was returned weird, 
 			//then the index isn't valid, so set the propagator to zero for that frequency
 			if (minN(ne.real(), no.real()) < 0.9f 
-				|| isnan(ne.real()) 
-				|| isnan(no.real()) 
-				|| isnan(ne.imag()) 
-				|| isnan(no.imag())) {
+				|| isComplexNaN(ne) 
+				|| isComplexNaN(no)) {
 				(*s).gridPropagationFactor1[i] = {};
 				(*s).gridPropagationFactor2[i] = {};
 				(*s).gridPolarizationFactor1[i] = {};
@@ -2924,31 +2914,11 @@ namespace kernelNamespace{
 
 			if (kz1.real() > 0.0f 
 			&& kz2.real() > 0.0f
-			&& !isnan(k0.real())
-			&& !isnan(kz1.real())
-			&& !isnan(kz2.real())
-			&& !isnan(k0.imag())
-			&& !isnan(kz1.imag())
-			&& !isnan(kz2.imag())) {
-				(*s).gridPropagationFactor1[i] = -0.5f * ii * (kz1 - k0) * (*s).h;
-				if (isnan((*s).gridPropagationFactor1[i].real())
-				|| isnan((*s).gridPropagationFactor1[i].imag())) {
-					(*s).gridPropagationFactor1[i] = {};
-				}
-				else{
-					
-					(*s).gridPropagationFactor1[i] = deviceLib::exp((*s).gridPropagationFactor1[i]);
-				}
-
-				(*s).gridPropagationFactor2[i] = -0.5f * ii * (kz2 - k0) * (*s).h;
-				if (isnan((*s).gridPropagationFactor2[i].real())
-				|| isnan((*s).gridPropagationFactor2[i].imag())) {
-					(*s).gridPropagationFactor2[i] = {};
-				}
-				else{
-					(*s).gridPropagationFactor2[i] = deviceLib::exp((*s).gridPropagationFactor2[i]);
-				}
-
+			&& !isComplexNaN(k0)
+			&& !isComplexNaN(kz1)
+			&& !isComplexNaN(kz2)) {
+				(*s).gridPropagationFactor1[i] = fourierPropagator(ke, dk, deviceFP{}, k0.real(), 0.5f * (*s).h);
+				(*s).gridPropagationFactor2[i] = fourierPropagator(ko, dk, deviceFP{}, k0.real(), 0.5f * (*s).h);
 				(*s).gridPolarizationFactor1[i] = -ii * 
 					deviceLib::pow((deviceComplex)(*s).chiLinear1[k] 
 						+ (deviceFP)1.0f, (deviceFP)0.25f) 
@@ -2964,6 +2934,16 @@ namespace kernelNamespace{
 					/ ((2.0f * (deviceFP)lightC<deviceFP>() * (deviceFP)lightC<deviceFP>() * kz2)) * (*s).h;
 			}
 			else {
+				(*s).gridPropagationFactor1[i] = {};
+				(*s).gridPropagationFactor2[i] = {};
+				(*s).gridPolarizationFactor1[i] = {};
+				(*s).gridPolarizationFactor2[i] = {};
+			}
+
+			if(isComplexNaN((*s).gridPropagationFactor1[i])
+			|| isComplexNaN((*s).gridPropagationFactor2[i])
+			|| isComplexNaN((*s).gridPolarizationFactor1[i])
+			|| isComplexNaN((*s).gridPolarizationFactor2[i])){
 				(*s).gridPropagationFactor1[i] = {};
 				(*s).gridPropagationFactor2[i] = {};
 				(*s).gridPolarizationFactor1[i] = {};
@@ -3001,10 +2981,8 @@ namespace kernelNamespace{
 
 			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 			if (minN(ne.real(), no.real()) < 0.9f 
-				|| isnan(ne.real()) 
-				|| isnan(no.real()) 
-				|| isnan(ne.imag()) 
-				|| isnan(no.imag())) {
+				|| isComplexNaN(ne) 
+				|| isComplexNaN(no)) {
 				(*s).gridPropagationFactor1[i] = {};
 				(*s).gridPropagationFactor2[i] = {};
 				(*s).gridPolarizationFactor1[i] = {};
@@ -3056,10 +3034,10 @@ namespace kernelNamespace{
 				(*s).gridPolarizationFactor2[i] = {};
 			}
 
-			if (isnan((*s).gridPropagationFactor1[i].real() + (*s).gridPropagationFactor1[i].imag()) 
-				|| isnan((*s).gridPropagationFactor2[i].real() + (*s).gridPropagationFactor2[i].imag()) 
-				|| isnan((*s).gridPolarizationFactor1[i].real() + (*s).gridPolarizationFactor1[i].imag()) 
-				|| isnan((*s).gridPolarizationFactor2[i].real() + (*s).gridPolarizationFactor2[i].imag())) {
+			if (isComplexNaN((*s).gridPropagationFactor1[i])
+				|| isComplexNaN((*s).gridPropagationFactor2[i])
+				|| isComplexNaN((*s).gridPolarizationFactor1[i])
+				|| isComplexNaN((*s).gridPolarizationFactor2[i])) {
 				(*s).gridPropagationFactor1[i] = {};
 				(*s).gridPropagationFactor2[i] = {};
 				(*s).gridPolarizationFactor1[i] = {};
@@ -3110,8 +3088,8 @@ namespace kernelNamespace{
 				}
 				(*s).fieldFactor1[i] *= (*s).fftNorm;
 				(*s).fieldFactor2[i] *= (*s).fftNorm;
-				if (isnan(ne.real()) 
-					|| isnan(no.real()) 
+				if (isComplexNaN(ne) 
+					|| isComplexNaN(no) 
 					|| ne.real() < 0.9f 
 					|| no.real() < 0.9f 
 					|| ne.imag() > 0.0f 
@@ -3211,10 +3189,8 @@ namespace kernelNamespace{
 			if (minN(ne.real(), no.real()) < 0.95f 
 				|| ne.real() > 6.0f 
 				|| no.real() > 6.0f 
-				|| isnan(ne.real()) 
-				|| isnan(no.real()) 
-				|| isnan(ne.imag()) 
-				|| isnan(no.imag())) {
+				|| isComplexNaN(ne) 
+				|| isComplexNaN(no)) {
 				(*s).gridPropagationFactor1[i] = {};
 				(*s).gridPropagationFactor2[i] = {};
 				(*s).gridPolarizationFactor1[i] = {};
@@ -3273,10 +3249,8 @@ namespace kernelNamespace{
 					0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + 1.0f, 0.25f) 
 					* chi12 * ii * (twoPi<deviceFP>() * f) 
 					/ (2.0f * no.real() * lightC<deviceFP>()) * (*s).h;
-				if (isnan((*s).gridPolarizationFactor1[i].real()) 
-					|| isnan((*s).gridPolarizationFactor1[i].imag()) 
-					|| isnan((*s).gridPolarizationFactor2[i].real()) 
-					|| isnan((*s).gridPolarizationFactor2[i].imag())) {
+				if (isComplexNaN((*s).gridPolarizationFactor1[i])
+					|| isComplexNaN((*s).gridPolarizationFactor2[i])) {
 					(*s).gridPolarizationFactor1[i] = {};
 					(*s).gridPolarizationFactor2[i] = {};
 				}
@@ -3328,10 +3302,8 @@ namespace kernelNamespace{
 					0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + 1.0f, 0.25f) 
 					* chi12 * ii * (twoPi<deviceFP>() * f) 
 					/ (2.0f * no.real() * lightC<deviceFP>()) * (*s).h;
-				if (isnan((*s).gridPolarizationFactor1[i].real()) 
-					|| isnan((*s).gridPolarizationFactor1[i].imag()) 
-					|| isnan((*s).gridPolarizationFactor2[i].real()) 
-					|| isnan((*s).gridPolarizationFactor2[i].imag())) {
+				if (isComplexNaN((*s).gridPolarizationFactor1[i]) 
+					|| isComplexNaN((*s).gridPolarizationFactor2[i])) {
 					(*s).gridPolarizationFactor1[i] = {};
 					(*s).gridPolarizationFactor2[i] = {};
 				}
