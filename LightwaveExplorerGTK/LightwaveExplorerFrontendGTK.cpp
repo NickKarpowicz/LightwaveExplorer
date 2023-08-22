@@ -1129,10 +1129,10 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
 void createRunFile() {
     readParametersFromInterface();
     theSim.base().runType = 0;
-    theSim.base().isGridAllocated = true;
+    theSim.base().isGridAllocated = false;
     theSim.base().isFollowerInSequence = false;
     theSim.base().crystalDatabase = theDatabase.db.data();
-    theSim.configure();
+    theSim.configureCounter();
 
 
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
@@ -1193,10 +1193,8 @@ void createRunFile() {
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
         getBasename(theSim.base().outputBasePath), getBasename(theSim.base().outputBasePath));
     theGui.console.tPrint(
-        "Estimated time to complete: {:.2} hours\n", 
-        timeEstimate, 
-        (double)totalSteps * theSim.base().Ntime * theSim.base().Nspace * theSim.base().Nspace2, 
-        theSim.base().runType);
+        "Upper estimate time to complete: {:.2} hours\n", 
+        timeEstimate);
     theSim.base().isRunning = false;
     theSim.base().isGridAllocated = false;
 }

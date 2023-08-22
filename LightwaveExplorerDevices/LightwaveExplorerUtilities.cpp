@@ -144,20 +144,26 @@ double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_
 	if (fs.fail()) return 1;
 
 	//Estimate the time required on the cluster, proportional to number of grid points x steps
-	double timeEstimate = (double)(totalSteps * Nspace * Ntime) * ceil(((float)Nsims)/gpuCount);
+	double timeEstimate = static_cast<double>((totalSteps / (Nsims * Nsims2)) * Nspace * Ntime) * ceil(static_cast<double>(Nsims * Nsims2) / gpuCount);
+	//3D
 	if (symmetryType == 2) {
 		timeEstimate *= Nspace2;
-		timeEstimate *= 1.2e-09;
+		timeEstimate *= 1.0e-11;
 	}
+	//Radial symmetry
 	else if (symmetryType == 1) {
-		timeEstimate *= 4.7e-9;
+		timeEstimate *= 2.0e-11;
 	}
+	//2D
 	else {
-		timeEstimate *= 4.6e-9;
+		timeEstimate *= 1.0e-11;
 	}
+	//Plasma doubles estimate
 	if (nonlinearAbsorptionStrength != 0.0) timeEstimate *= 2.1;
-	timeEstimate /= 3600.0;
-	if (gpuType != 2) timeEstimate *= 8;
+	if (gpuType != 2) timeEstimate *= 8; //if it's not an A100, assume its slow.
+	timeEstimate += 20.0; //fixed offset for loading .etc
+	timeEstimate /= 3600.0; //convert to hours
+	
 	if (fittingString[0] != 0 && fittingString[0] != 'N') {
 		readFittingString();
 		if (fittingMaxIterations > 0) timeEstimate *= fittingMaxIterations;
@@ -727,6 +733,64 @@ void simulationBatch::configure() {
 			parameters[j + currentRow].isFollowerInSequence = false;
 			parameters[j + currentRow].setByNumberWithMultiplier(
 				parameters[0].batchIndex, 
+				parameters[0].getByNumberWithMultiplier(
+					parameters[0].batchIndex) + j * step1);
+		}
+	}
+}
+
+
+void simulationBatch::configureCounter() {
+	Nfreq = parameters[0].Nfreq;
+	Nsims = parameters[0].Nsims;
+	Nsims2 = parameters[0].Nsims2;
+	Nsimstotal = Nsims * Nsims2;
+	Ngrid = parameters[0].Ngrid;
+	NgridC = parameters[0].NgridC;
+	simulationParameterSet base = parameters[0];
+	parameters.resize(Nsimstotal, base);
+	std::for_each(mutexes.begin(), mutexes.end(),
+		[](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
+	mutexes = std::vector<std::mutex>(Nsimstotal);
+
+	//configure
+	double step1 = (parameters[0].batchDestination
+		- parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex))
+		/ (Nsims - 1);
+	double step2 = 0.0;
+	if (Nsims2 > 0) {
+		step2 = (parameters[0].batchDestination2
+			- parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2))
+			/ (Nsims2 - 1);
+	}
+
+	parameters[0].isGridAllocated = false;
+
+
+	for (int64_t i = 0; i < Nsims2; i++) {
+		int64_t currentRow = i * Nsims;
+
+		if (currentRow > 0) {
+			parameters[currentRow] = parameters[0];
+		}
+		if (Nsims2 > 1) {
+			parameters[currentRow].setByNumberWithMultiplier(
+				parameters[0].batchIndex2,
+				parameters[0].getByNumberWithMultiplier(
+					parameters[0].batchIndex2) + i * step2);
+		}
+
+		for (int64_t j = 0; j < Nsims; j++) {
+
+			if (j > 0) {
+				parameters[j + currentRow] = parameters[currentRow];
+			}
+
+			parameters[j + currentRow].batchLoc1 = j;
+			parameters[j + currentRow].batchLoc2 = i;
+			parameters[j + currentRow].isFollowerInSequence = false;
+			parameters[j + currentRow].setByNumberWithMultiplier(
+				parameters[0].batchIndex,
 				parameters[0].getByNumberWithMultiplier(
 					parameters[0].batchIndex) + j * step1);
 		}

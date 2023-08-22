@@ -962,6 +962,7 @@ public:
             [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
     }
     void configure();
+    void configureCounter();
     void loadPulseFiles();
     int saveDataSet();
     [[nodiscard]] double* getExt(int64_t i) {
