@@ -184,7 +184,7 @@ double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_
 	}
 	if (gpuType == 2) {
 		fs << "#SBATCH --gres=gpu:a100:" << minN(gpuCount, 4) << '\x0A';
-		fs << "#SBATCH --cpus-per-task=" << 2 * minN(gpuCount, 4) << '\x0A';
+		fs << "#SBATCH --cpus-per-task=" << 1 + minN(gpuCount, 4) << '\x0A';
 	}
 	fs << "#SBATCH --mem=" << 
 		8192 + (18 * sizeof(double) * Ngrid * maxN(Nsims, 1u)) / 1048576 << "M\x0A";
