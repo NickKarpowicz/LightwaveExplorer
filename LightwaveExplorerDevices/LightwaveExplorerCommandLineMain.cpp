@@ -1,24 +1,30 @@
 #include "LightwaveExplorerTrilingual.h"	
 #include "LightwaveExplorerUtilities.h"
 #include <iostream>
+#include <chrono>
+#include <thread>
 
-	#ifndef PLATFORMTYPE
+#ifdef __CUDACC__
 	#include "../LightwaveExplorerCore.cuh"
-	#include <chrono>
-	#include <thread>
-	#endif
+	#include "LightwaveExplorerCoreFP32.cuh"
+#elif defined CPUONLY
+	#include "LightwaveExplorerCoreCPU.h"
+	#include "LightwaveExplorerCoreCPUFP32.h"
+#elif defined RUNONSYCL
+	#include "LightwaveExplorerSYCL.h"
+	#include "LightwaveExplorerSYCLFP32.h"
+#endif
+
 //main function - if included in the GUI, this should have a different name
 // than main() - this one applies when running in command line mode (e.g. on
 // the clusters.)
 int main(int argc, char* argv[]){
 	char* filepath = argv[1];
-	int i, j;
-
 	std::atomic_uint32_t progressCounter = 0;
 	int CUDAdeviceCount = 1;
-
+#ifdef __CUDACC__
 	if (hardwareCheck(&CUDAdeviceCount)) return 1;
-
+#endif
 	if (argc < 2) {
 		std::cout << "No input file specified." << std::endl;
 		return 2;
@@ -35,8 +41,8 @@ int main(int argc, char* argv[]){
 		return 12;
 	}
 	std::cout << "Read " << db.db.size() << "crystal database entries :" << std::endl;
-	for (j = 0; j < db.db.size(); ++j) {
-		std::cout << "Material " << j << "name: " << db.db[j].crystalName.c_str() << std::endl;
+	for (int j = 0; j < db.db.size(); ++j) {
+		std::cout << "Material " << j << " name: " << db.db[j].crystalName.c_str() << std::endl;
 	}
 
 	// read from settings file
@@ -54,7 +60,7 @@ int main(int argc, char* argv[]){
 	if ((*sCPU).Nfitting != 0) {
 		std::cout << "Running optimization for" << (*sCPU).fittingMaxIterations << "iterations..." << std::endl;
 
-		runDlibFitting(sCPU);
+		runDlibFittingX(sCPU);
 
 		auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
 		std::cout << "Finished after" <<
@@ -71,7 +77,7 @@ int main(int argc, char* argv[]){
 	// run simulations
 	std::thread* threadBlock = new std::thread[(*sCPU).Nsims * (*sCPU).Nsims2];
 	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
-	for (j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; ++j) {
+	for (int j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; ++j) {
 
 		sCPU[j].assignedGPU = j % CUDAdeviceCount;
 		if (j >= maxThreads) {
@@ -81,14 +87,14 @@ int main(int argc, char* argv[]){
 		}
 
 		if ((*sCPU).isInSequence) {
-			threadBlock[j] = std::thread(solveNonlinearWaveEquationSequence, &sCPU[j]);
+			threadBlock[j] = std::thread(solveNonlinearWaveEquationSequenceX, &sCPU[j]);
 		}
 		else {
-			threadBlock[j] = std::thread(solveNonlinearWaveEquation, &sCPU[j]);
+			threadBlock[j] = std::thread(solveNonlinearWaveEquationX, &sCPU[j]);
 		}
 
 	}
-	for (i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; ++i) {
+	for (int i = 0; i < (*sCPU).Nsims * (*sCPU).Nsims2; ++i) {
 		if (sCPU[i].memoryError > 0) {
 			std::cout << "Warning: device memory error " << sCPU[i].memoryError << std::endl;
 		}
@@ -98,7 +104,7 @@ int main(int argc, char* argv[]){
 	}
 
 	auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-	std::cout << "Finished after" <<
+	std::cout << "Finished after " <<
 		1e-6 * (double)(std::chrono::duration_cast<std::chrono::microseconds>(simulationTimerEnd - simulationTimerBegin).count())
 		<< "s" << std::endl;
 	theSim.saveDataSet();
