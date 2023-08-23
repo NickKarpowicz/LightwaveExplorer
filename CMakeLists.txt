@@ -189,17 +189,16 @@ if(UNIX AND NOT APPLE)
         cmake_minimum_required(VERSION 3.16)
         project(LightwaveExplorer LANGUAGES CXX)
         find_package(PkgConfig REQUIRED)
-        find_package(OpenMP)
         pkg_check_modules(FFTW REQUIRED fftw3)
         execute_process(COMMAND git clone https://github.com/davisking/dlib)
-        
+
         include_directories(build/dlib) 
         include_directories(${FFTW_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
 
         add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -w)
         add_executable(LightwaveExplorer LightwaveExplorerDevices/LightwaveExplorerCommandLineMain.cpp LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp LightwaveExplorerDevices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer OpenMP::OpenMP_CXX)
+        target_link_libraries(LightwaveExplorer -lgomp)
         target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
     else()
     #if nothing specified, build GPL version based on FFTW
