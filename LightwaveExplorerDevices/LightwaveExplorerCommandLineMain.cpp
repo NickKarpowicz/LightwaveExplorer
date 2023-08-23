@@ -15,9 +15,6 @@
 	#include "LightwaveExplorerSYCLFP32.h"
 #endif
 
-//main function - if included in the GUI, this should have a different name
-// than main() - this one applies when running in command line mode (e.g. on
-// the clusters.)
 int main(int argc, char* argv[]){
 	char* filepath = argv[1];
 	std::atomic_uint32_t progressCounter = 0;
@@ -50,7 +47,6 @@ int main(int argc, char* argv[]){
 		std::cout << "Could not read input file." << std::endl;
 		return 13;
 	}
-
 	
 	if ((theSim.sCPU()->sequenceString[0] != 'N') && theSim.sCPU()->sequenceString[0] != 0) theSim.sCPU()->isInSequence = true;
 	theSim.configure();
