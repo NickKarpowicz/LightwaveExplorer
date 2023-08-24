@@ -158,21 +158,11 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
   git clone https://github.com/NickKarpowicz/LightwaveExplorer
   mkdir LightwaveExplorer/build
   cd LightwaveExplorer/build
-  cmake -DONEAPI_ROOT=${ONEAPI_ROOT} -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
+  cmake -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
   make
   ```
   
   If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
-
-  If you just want to use CUDA and don't need SYCL, you can do a slimmed-down install that doesn't have as many requirements, and only needs the Math Kernel Library (MKL) from OneAPI to be available. You can do this one with:
-  ```
-  git clone https://github.com/NickKarpowicz/LightwaveExplorer
-  mkdir LightwaveExplorer/build
-  cd LightwaveExplorer/build
-  cmake -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 -DNOSYCL ..
-  make
-  ```
-
 
 ---
 
