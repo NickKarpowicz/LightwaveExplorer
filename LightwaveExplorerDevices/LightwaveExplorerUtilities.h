@@ -293,7 +293,6 @@ public:
     deviceFP* gridPlasmaCurrent2 = 0;
 
     //fixed length arrays
-    deviceFP firstDerivativeOperation[6] = { 0 };
     deviceFP plasmaParameters[6] = { 0 }; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
     deviceFP chi2Tensor[18] = { 0 };
     deviceFP chi3Tensor[81] = { 0 };
@@ -888,11 +887,6 @@ public:
         (*s).gridPropagationFactor2 = (*s).gridPropagationFactor1 + (*s).NgridC;
         (*s).gridEFrequency2 = (*s).gridEFrequency1 + (*s).NgridC;
 
-        double firstDerivativeOperation[6] = { -1. / 60.,  3. / 20., -3. / 4.,  3. / 4.,  -3. / 20., 1. / 60. };
-        for (int64_t i = 0; i < 6; ++i) {
-            firstDerivativeOperation[i] *= (-2.0 / ((*s).dx));
-        }
-
         //set nonlinearSwitches[3] to the number of photons needed to overcome bandgap
         nonlinearSwitches[3] = (int)ceil(bandGapElectronVolts * 241.79893e12 / pulse1.frequency) - 2;
         double plasmaParametersCPU[6] = { 0 };
@@ -927,10 +921,6 @@ public:
 
         for (int64_t i = 0; i < 6; i++) {
             (*s).plasmaParameters[i] = (deviceFP)plasmaParametersCPU[i];
-        }
-
-        for (int64_t i = 0; i < 6; i++) {
-            (*s).firstDerivativeOperation[i] = (deviceFP)firstDerivativeOperation[i];
         }
     }
 };

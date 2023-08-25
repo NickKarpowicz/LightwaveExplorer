@@ -121,6 +121,19 @@ template <typename T>
 hostOrDevice static constexpr T eVtoHz() {
     return elCharge<T>() / planckConstant<T>();
 }
+template<typename T>
+hostOrDevice static constexpr T firstDerivativeStencil(const int i){
+    switch(i){
+        case -3: return static_cast<T>(-1./60.);
+        case -2: return static_cast<T>(3./20.);
+        case -1: return static_cast<T>(-3./4.);
+        case 1: return static_cast<T>(3./4.);
+        case 2: return static_cast<T>(-3./20.);
+        case 3: return static_cast<T>(1./60.);
+        default: return static_cast<T>(0.0);
+    }
+    return static_cast<T>(0.0);
+}
 
 //this is a job for std::erase, but when running the code on the cluster, everything
 //is done with nvcc, with only an old version of cmake available. This means I can't

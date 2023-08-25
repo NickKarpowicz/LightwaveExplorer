@@ -1605,8 +1605,7 @@ namespace deviceFunctions {
 			deviceFP halfOverKr = (0.5f / k.real()) * (dk1 * dk1 + dk2 * dk2);
 			deviceFP kMoving = k.real() - k0;
 			if(isnan(kMoving) 
-			|| isnan(halfOverKr) 
-			|| isnan(k.imag())) return complex_t{};
+			|| isnan(halfOverKr)) return complex_t{};
 			return deviceLib::exp(
 				complex_t(
 					d * k.imag(),
@@ -1861,7 +1860,7 @@ namespace deviceFunctions {
 		}
 	}
 
-	deviceFunction static inline deviceFP cuCModSquared(
+	deviceFunction static inline deviceFP modulusSquared(
 		const deviceComplex& a) {
 		return a.real() * a.real() + a.imag() * a.imag();
 	}
@@ -2331,10 +2330,10 @@ namespace kernelNamespace{
 			else {
 				for (auto j = 0; j < (*s).Nspace; ++j) {
 					deviceFP x = (*s).dx * j;
-					deviceFP a = cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+					deviceFP a = modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
 					beamTotal1 += a;
 					beamCenter1 += x * a;
-					a = cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+					a = modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
 					beamTotal2 += a;
 					beamCenter2 += x * a;
 				}
@@ -2353,9 +2352,9 @@ namespace kernelNamespace{
 			for (auto j = 0; j < (*s).Nspace; ++j) {
 				deviceFP x = (*s).dx * j;
 				beamTotal1 += deviceFPLib::abs(x - beamCenter1) 
-					* cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
+					* modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
 				beamTotal2 += deviceFPLib::abs(x - beamCenter2) 
-					* cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+					* modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
 			beamTotal1 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) 
 				* (*s).dx * (*s).dt * (*s).dt;
@@ -2380,8 +2379,8 @@ namespace kernelNamespace{
 	//	beamTotal1 = 0.0f;
 	//	beamTotal2 = 0.0f;
 	//	for (j = 0; j < (*s).Nspace; ++j) {
-	//		beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
-	//		beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+	//		beamTotal1 += modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
+	//		beamTotal2 += modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
 	//	}
 	//	beamTotal1 *= 2.0f * LIGHTC * eps0<deviceFP>() * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
 	//	beamTotal2 *= 2.0f * LIGHTC * eps0<deviceFP>() * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
@@ -2400,8 +2399,8 @@ namespace kernelNamespace{
 			deviceFP beamTotal2{};
 			//Integrate total beam power
 			for (int64_t j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
-				beamTotal1 += cuCModSquared((*s).workspace1[i + j * (*s).Nfreq]);
-				beamTotal2 += cuCModSquared((*s).workspace2[i + j * (*s).Nfreq]);
+				beamTotal1 += modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
+				beamTotal2 += modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
 			beamTotal1 *= constProd(lightC<deviceFP>(), 2 * eps0<deviceFP>()) 
 				* (*s).dx * (*s).dx * (*s).dt * (*s).dt;
@@ -2500,22 +2499,22 @@ namespace kernelNamespace{
 			else {
 				int64_t neighbors[6];
 				const deviceFP oneOverRho  = 
-					-1.0 / 
-					resolveNeighborsInOffsetRadialSymmetry(neighbors, s, j, i % (*s).Ntime);
+					2.0f / 
+					((*s).dx * resolveNeighborsInOffsetRadialSymmetry(neighbors, s, j, i % (*s).Ntime));
 				(*s).gridRadialLaplacian1[i] = oneOverRho 
-					* ((*s).firstDerivativeOperation[0] * (*s).gridETime1[neighbors[0]]
-					+ (*s).firstDerivativeOperation[1] * (*s).gridETime1[neighbors[1]]
-					+ (*s).firstDerivativeOperation[2] * (*s).gridETime1[neighbors[2]]
-					+ (*s).firstDerivativeOperation[3] * (*s).gridETime1[neighbors[3]]
-					+ (*s).firstDerivativeOperation[4] * (*s).gridETime1[neighbors[4]]
-					+ (*s).firstDerivativeOperation[5] * (*s).gridETime1[neighbors[5]]);
+					* (firstDerivativeStencil<deviceFP>(-3) * (*s).gridETime1[neighbors[0]]
+					+ firstDerivativeStencil<deviceFP>(-2) * (*s).gridETime1[neighbors[1]]
+					+ firstDerivativeStencil<deviceFP>(-1) * (*s).gridETime1[neighbors[2]]
+					+ firstDerivativeStencil<deviceFP>(1) * (*s).gridETime1[neighbors[3]]
+					+ firstDerivativeStencil<deviceFP>(2) * (*s).gridETime1[neighbors[4]]
+					+ firstDerivativeStencil<deviceFP>(3) * (*s).gridETime1[neighbors[5]]);
 				(*s).gridRadialLaplacian2[i] = oneOverRho 
-					* ((*s).firstDerivativeOperation[0] * (*s).gridETime2[neighbors[0]]
-					+ (*s).firstDerivativeOperation[1] * (*s).gridETime2[neighbors[1]]
-					+ (*s).firstDerivativeOperation[2] * (*s).gridETime2[neighbors[2]]
-					+ (*s).firstDerivativeOperation[3] * (*s).gridETime2[neighbors[3]]
-					+ (*s).firstDerivativeOperation[4] * (*s).gridETime2[neighbors[4]]
-					+ (*s).firstDerivativeOperation[5] * (*s).gridETime2[neighbors[5]]);
+					* (firstDerivativeStencil<deviceFP>(-3) * (*s).gridETime2[neighbors[0]]
+					+ firstDerivativeStencil<deviceFP>(-2) * (*s).gridETime2[neighbors[1]]
+					+ firstDerivativeStencil<deviceFP>(-1) * (*s).gridETime2[neighbors[2]]
+					+ firstDerivativeStencil<deviceFP>(1) * (*s).gridETime2[neighbors[3]]
+					+ firstDerivativeStencil<deviceFP>(2) * (*s).gridETime2[neighbors[4]]
+					+ firstDerivativeStencil<deviceFP>(3) * (*s).gridETime2[neighbors[5]]);
 			}
 		}
 	};
@@ -3543,27 +3542,30 @@ namespace kernelNamespace{
 	class updateKwithPolarizationKernelCylindric {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(int64_t i) const {
-			int64_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
-			const int64_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
-			i = h + j * ((*sP).Nfreq);
-			h += (j + ((j > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
-			(*sP).k1[i] += (*sP).gridPolarizationFactor1[i] * (*sP).workspace1[h];
-			(*sP).k2[i] += (*sP).gridPolarizationFactor2[i] * (*sP).workspace2P[h];
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
+			const int64_t radIndex = i / ((*sP).Nfreq - 1);
+			const int64_t gridIndex = freqIndex + radIndex * ((*sP).Nfreq);
+			const int64_t polIndex = freqIndex + 
+				(radIndex + ((radIndex > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
+			(*sP).k1[gridIndex] += 
+				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[polIndex];
+			(*sP).k2[gridIndex] += 
+				(*sP).gridPolarizationFactor2[gridIndex] * (*sP).workspace2P[polIndex];
 		}
 	};
 
 	class updateKwithPlasmaKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(int64_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			int64_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 			const int64_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
-			const deviceComplex jfac = deviceComplex(0.0f, -1.0f / (h * (*sP).fStep));
+			const deviceFP jfac = -1.0f / (h * (*sP).fStep);
 			h += j * (*sP).Nfreq;
-			(*sP).k1[h] += jfac * (*sP).gridPolarizationFactor1[h] 
+			(*sP).k1[h] += deviceComplex{-jfac * (*sP).gridPolarizationFactor1[h].imag(), jfac * (*sP).gridPolarizationFactor1[h].real()} 
 				* (*sP).workspace1[h] * (*sP).inverseChiLinear1[h % ((*sP).Nfreq)];
-			(*sP).k2[h] += jfac * (*sP).gridPolarizationFactor2[h] 
+			(*sP).k2[h] += deviceComplex{-jfac * (*sP).gridPolarizationFactor2[h].imag(), jfac * (*sP).gridPolarizationFactor2[h].real()} 
 				* (*sP).workspace2P[h] * (*sP).inverseChiLinear2[h % ((*sP).Nfreq)];
 		}
 	};
@@ -3573,19 +3575,22 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
 		deviceFunction void operator()(const int64_t i) const {
 			const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
-			const deviceFP jfac = -1.0f / (freqIndex * (*sP).fStep);
+			const deviceFP jfac = -1.0f/(freqIndex * (*sP).fStep);
 			const int64_t spaceIndex = i / ((*sP).Nfreq - 1);
 			const int64_t gridIndex = freqIndex + spaceIndex * ((*sP).Nfreq);
 			const int64_t fftIndex = freqIndex +
 				(spaceIndex + ((spaceIndex > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
 			
-			deviceComplex kAddition = (*sP).gridPolarizationFactor1[gridIndex]
+			(*sP).k1[gridIndex] += 
+				deviceComplex{
+					-jfac * (*sP).gridPolarizationFactor1[gridIndex].imag(), 
+					jfac * (*sP).gridPolarizationFactor1[gridIndex].real()}
 				* (*sP).workspace1[fftIndex] * (*sP).inverseChiLinear1[gridIndex % ((*sP).Nfreq)];
-			(*sP).k1[gridIndex] += jfac * deviceComplex(-kAddition.imag(), kAddition.real());
-
-			kAddition = (*sP).gridPolarizationFactor2[gridIndex]
+			(*sP).k2[gridIndex] += 
+				deviceComplex{
+					-jfac * (*sP).gridPolarizationFactor2[gridIndex].imag(), 
+					jfac * (*sP).gridPolarizationFactor2[gridIndex].real()}
 				* (*sP).workspace2P[fftIndex] * (*sP).inverseChiLinear2[gridIndex % ((*sP).Nfreq)];
-			(*sP).k2[gridIndex] += jfac * deviceComplex(-kAddition.imag(), kAddition.real());
 
 			(*sP).k1[gridIndex] += 
 				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[fftIndex + 4 * (*sP).NgridC];
@@ -3600,77 +3605,81 @@ namespace kernelNamespace{
 	class rkKernel0 {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(int64_t iC) const {
-			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
-			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
-			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-			[[unlikely]] if (h == 1) (*sP).workspace1[iC - 1] = {};
-			(*sP).gridEFrequency1Next1[iC] = (*sP).gridPropagationFactor1[iC] 
-				* (*sP).gridPropagationFactor1[iC] 
-				* (sixth<deviceFP>() * (*sP).k1[iC] + (*sP).gridEFrequency1[iC]);
-			
-			const deviceFP ff = (iC > (*sP).NgridC) ? (*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
-			(*sP).workspace1[iC] = ff * (*sP).gridPropagationFactor1[iC] 
-				* ((*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC]);
-			(*sP).k1[iC] = {};
+		deviceFunction void operator()(int64_t gridIndex) const {
+			const int64_t freqIndex = 1 + gridIndex % ((*sP).Nfreq - 1); //frequency coordinate
+			gridIndex = freqIndex + (gridIndex / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+			(*sP).k1[gridIndex] += (*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
+			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridPropagationFactor1[gridIndex] 
+				* (*sP).gridPropagationFactor1[gridIndex] 
+				* (sixth<deviceFP>() * (*sP).k1[gridIndex] + (*sP).gridEFrequency1[gridIndex]);
+			const deviceFP ff = (gridIndex > (*sP).NgridC) ? 
+				(*sP).fieldFactor2[freqIndex] 
+				: (*sP).fieldFactor1[freqIndex];
+			(*sP).workspace1[gridIndex] = ff * (*sP).gridPropagationFactor1[gridIndex] 
+				* ((*sP).gridEFrequency1[gridIndex] + 0.5f * (*sP).k1[gridIndex]);
+			(*sP).k1[gridIndex] = {};
 		}
 	};
 
 	class rkKernel1 {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(int64_t iC) const {
-			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
-			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
-			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
-			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] 
-				+ (*sP).gridPropagationFactor1[iC] 
-				* (deviceFP)third<deviceFP>() * (*sP).k1[iC];
-
-			const deviceFP ff = (iC > (*sP).NgridC) ?
-				(*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
-			(*sP).workspace1[iC] = ff * ((*sP).gridPropagationFactor1[iC] 
-				* (*sP).gridEFrequency1[iC] + 0.5f * (*sP).k1[iC]);
-			(*sP).k1[iC] = {};
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1); //frequency coordinate
+			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+			(*sP).k1[gridIndex] += 
+				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
+			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
+			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
+				+ (*sP).gridPropagationFactor1[gridIndex] 
+				* (deviceFP)third<deviceFP>() * (*sP).k1[gridIndex];
+			const deviceFP ff = (gridIndex > (*sP).NgridC) ?
+				(*sP).fieldFactor2[freqIndex] 
+				: (*sP).fieldFactor1[freqIndex];
+			(*sP).workspace1[gridIndex] = ff * ((*sP).gridPropagationFactor1[gridIndex] 
+				* (*sP).gridEFrequency1[gridIndex] + 0.5f * (*sP).k1[gridIndex]);
+			(*sP).k1[gridIndex] = {};
 		}
 	};
 
 	class rkKernel2 {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(int64_t iC) const {
-			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
-			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
-			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
-			(*sP).gridEFrequency1Next1[iC] = (*sP).gridEFrequency1Next1[iC] 
-				+ (*sP).gridPropagationFactor1[iC] 
-				* (deviceFP)third<deviceFP>() * (*sP).k1[iC];
-
-			const deviceFP ff = (iC > (*sP).NgridC) ? 
-				(*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
-			(*sP).workspace1[iC] = ff * ((*sP).gridPropagationFactor1[iC] 
-				* ((*sP).gridPropagationFactor1[iC] * (*sP).gridEFrequency1[iC] + (*sP).k1[iC]));
-			(*sP).k1[iC] = {};
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1); //frequency coordinate
+			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+			(*sP).k1[gridIndex] += 
+				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
+			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
+			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
+				+ (*sP).gridPropagationFactor1[gridIndex] 
+				* (deviceFP)third<deviceFP>() * (*sP).k1[gridIndex];
+			const deviceFP ff = (gridIndex > (*sP).NgridC) ? 
+				(*sP).fieldFactor2[freqIndex] 
+				: (*sP).fieldFactor1[freqIndex];
+			(*sP).workspace1[gridIndex] = ff * ((*sP).gridPropagationFactor1[gridIndex] 
+				* ((*sP).gridPropagationFactor1[gridIndex] * (*sP).gridEFrequency1[gridIndex] + (*sP).k1[gridIndex]));
+			(*sP).k1[gridIndex] = {};
 		}
 	};
 
 	class rkKernel3 {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
-		deviceFunction void operator()(int64_t iC) const {
-			const int64_t h = 1 + iC % ((*sP).Nfreq - 1); //frequency coordinate
-			iC = h + (iC / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
-			(*sP).k1[iC] += (*sP).gridPolarizationFactor1[iC] * (*sP).workspace1[iC];
-			[[unlikely]] if (h == 1)(*sP).workspace1[iC - 1] = {};
-			(*sP).gridEFrequency1[iC] = (*sP).gridEFrequency1Next1[iC] 
-				+ sixth<deviceFP>() * (*sP).k1[iC];
-
-			const deviceFP ff = (iC > (*sP).NgridC) ? 
-				(*sP).fieldFactor2[h] : (*sP).fieldFactor1[h];
-			(*sP).workspace1[iC] = ff * (*sP).gridEFrequency1[iC];
-			(*sP).k1[iC] = {};
+		deviceFunction void operator()(const int64_t i) const {
+			const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1); //frequency coordinate
+			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+			(*sP).k1[gridIndex] += 
+				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
+			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
+			(*sP).gridEFrequency1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
+				+ sixth<deviceFP>() * (*sP).k1[gridIndex];
+			const deviceFP ff = (gridIndex > (*sP).NgridC) ? 
+				(*sP).fieldFactor2[freqIndex] 
+				: (*sP).fieldFactor1[freqIndex];
+			(*sP).workspace1[gridIndex] = ff * (*sP).gridEFrequency1[gridIndex];
+			(*sP).k1[gridIndex] = {};
 		}
 	};
 
@@ -3905,7 +3914,7 @@ namespace kernelNamespace{
 				* deviceLib::exp(deviceComplex(0.0f, 1.0f) 
 					* (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
 			Eb = Eb * specfac;
-			if (isnan(cuCModSquared(Eb))) {
+			if (isComplexNaN(Eb)) {
 				Eb = deviceComplex{};
 			}
 
@@ -3916,7 +3925,7 @@ namespace kernelNamespace{
 				deviceFPLib::sin((*p).polarizationAngle), 
 				(*p).circularity * deviceFPLib::cos((*p).polarizationAngle)) * Eb;
 			deviceFP pointEnergy = deviceFPLib::abs(r) 
-				* (cuCModSquared(field[i]) + cuCModSquared(field[i + (*s).NgridC]));
+				* (modulusSquared(field[i]) + modulusSquared(field[i + (*s).NgridC]));
 			pointEnergy *= 2.0f * vPi<deviceFP>() * lightC<deviceFP>() * eps0<deviceFP>() 
 				* (*s).dx * (*s).dt;
 			//two factors of two cancel here - there should be one for the missing 
@@ -4000,7 +4009,7 @@ namespace kernelNamespace{
 						+ ko * r * r / (2.0f * Rz) - phi) 
 					- r * r / (wz * wz));
 			Eb = Eb * specfac;
-			if (isnan(cuCModSquared(Eb)) || f <= 0.0f) {
+			if (isComplexNaN(Eb) || f <= 0.0f) {
 				Eb = deviceComplex{};
 			}
 
@@ -4011,7 +4020,7 @@ namespace kernelNamespace{
 				deviceFPLib::sin((*p).polarizationAngle), 
 				(*p).circularity * deviceFPLib::cos((*p).polarizationAngle)) * Eb;
 			deviceFP pointEnergy = 
-				(cuCModSquared(field[i]) + cuCModSquared(field[i + (*s).NgridC]));
+				(modulusSquared(field[i]) + modulusSquared(field[i + (*s).NgridC]));
 			pointEnergy *= 
 				constProd(lightC<deviceFP>() * eps0<deviceFP>(), 2) * (*s).dx * (*s).dx * (*s).dt;
 
@@ -4025,7 +4034,7 @@ namespace kernelNamespace{
 		deviceFP* A;
 		const deviceFP val;
 		deviceFunction void operator()(const int64_t i) const {
-			A[i] = val * A[i];
+			A[i] *= val;
 		}
 	};
 
