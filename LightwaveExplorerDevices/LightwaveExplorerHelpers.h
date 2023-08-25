@@ -11,21 +11,21 @@
 //convention: if there are multiple types as inputs, 
 //return type is the type of the first argument
 template<typename T>
-hostOrDevice static constexpr T constProd(T x) {
+hostOrDevice static constexpr T constProd(const T x) {
     return x;
 }
 template<typename T, typename... Args>
-hostOrDevice static constexpr T constProd(T x, Args... args) {
-    return (T)(x * constProd(args...));
+hostOrDevice static constexpr T constProd(const T x, const Args... args) {
+    return static_cast<T>(x * constProd(args...));
 }
 
 template <typename T, typename U>
-hostOrDevice static constexpr inline T maxN(T a, U b) {
+hostOrDevice static constexpr inline T maxN(const T a, const U b) {
     return (((a) > (b)) ? (a) : (b));
 }
 
 template <typename T, typename U>
-hostOrDevice static constexpr inline T minN(T a, U b) {
+hostOrDevice static constexpr inline T minN(const T a, const U b) {
     return (((a) < (b)) ? (a) : (b));
 }
 //pi to stupid digits

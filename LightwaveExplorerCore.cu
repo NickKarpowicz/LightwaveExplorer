@@ -5596,6 +5596,7 @@ namespace hostFunctions{
 	}
 
 	static unsigned int stringHash(const std::string& s, const int off = 0){
+		if (off >= s.length()) throw std::runtime_error(std::string("Didn't find opening parenthesis in\n").append(s));
 		return (s.length() == off || s.at(off) == '(') ? 7177 : (stringHash(s,off+1) * 31) ^ s.at(off);
 	}
 
@@ -5920,45 +5921,48 @@ namespace hostFunctions{
 		}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("for"):
-			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
-			int counter = (int)parameters[0];
-			int targetVar = (int)parameters[1];
-			std::string currentString = cc.substr(cc.find_first_of('{')+1,std::string::npos);
-			std::string forStartString = currentString;
-			vBlock[targetVar] = 0.0;
-			for (int i = 0; i < counter; i++) {
-				
-				while (currentString.length() > 0 && currentString.at(0) != '}'){
-					if (currentString.at(0) == '<'){
-						currentString = 
-							currentString.substr(currentString.find_first_of('>'), std::string::npos);
-						if(currentString.length()>0) currentString = 
-							currentString.substr(1, std::string::npos);
-					}
-					if (currentString.at(0) == '{') {
-						currentString = currentString.substr(1,std::string::npos);
-						while(currentString.find_first_of('{') != std::string::npos 
-							&& currentString.find_first_of('{') < currentString.find_first_of('}')){
-							currentString = 
-								currentString.substr(currentString.find_first_of('}'),std::string::npos);
+		
+		case funHash("for"): {
+				interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
+				int counter = (int)parameters[0];
+				int targetVar = (int)parameters[1];
+				std::string currentString = cc.substr(cc.find_first_of('{') + 1, std::string::npos);
+				std::string forStartString = currentString;
+				vBlock[targetVar] = 0.0;
+				for (int i = 0; i < counter; i++) {
+
+					while (currentString.length() > 0 && currentString.at(0) != '}') {
+						if (currentString.at(0) == '<') {
+							currentString =
+								currentString.substr(currentString.find_first_of('>'), std::string::npos);
+							if (currentString.length() > 0) currentString =
+								currentString.substr(1, std::string::npos);
+						}
+						if (currentString.at(0) == '{') {
+							currentString = currentString.substr(1, std::string::npos);
+							while (currentString.find_first_of('{') != std::string::npos
+								&& currentString.find_first_of('{') < currentString.find_first_of('}')) {
+								currentString =
+									currentString.substr(currentString.find_first_of('}'), std::string::npos);
+								currentString = currentString.substr(1, std::string::npos);
+							}
+							currentString =
+								currentString.substr(currentString.find_first_of('}'), std::string::npos);
+							if (currentString.length() < 5) break;
 							currentString = currentString.substr(1, std::string::npos);
 						}
-						currentString = 
-							currentString.substr(currentString.find_first_of('}'),std::string::npos);
-						if(currentString.length()<5) break; 
-						currentString = currentString.substr(1,std::string::npos);
+						error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
+						currentString =
+							currentString.substr(currentString.find_first_of(')') + 1, std::string::npos);
+						if (error || (*sCPU).cancellationCalled) break;
 					}
-					error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
-					currentString = 
-						currentString.substr(currentString.find_first_of(')') + 1, std::string::npos);
+					++vBlock[targetVar];
+					currentString = forStartString;
 					if (error || (*sCPU).cancellationCalled) break;
 				}
-				++vBlock[targetVar];
-				currentString = forStartString;
-				if (error || (*sCPU).cancellationCalled) break;
 			}
 			break;
+		default: throw std::runtime_error(std::string("Could not interpret:\n").append(cc));
 		}
 		return error;
 	}

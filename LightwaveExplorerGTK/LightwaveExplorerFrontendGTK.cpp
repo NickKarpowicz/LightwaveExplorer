@@ -1928,17 +1928,33 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     totalSteps = 0;
     progressCounter = 0;
-    for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
-        if (theSim.base().isInSequence) {
-            counterVector[j].progressCounter = &totalSteps;
-            counterVector[j].runType = -1;
-            solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
-        }
-        else {
-            counterVector[j].progressCounter = &totalSteps;
-            solveNonlinearWaveEquationCounter(&counterVector[j]);
+    try {
+        for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
+            if (theSim.base().isInSequence) {
+                counterVector[j].progressCounter = &totalSteps;
+                counterVector[j].runType = -1;
+                solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
+            }
+            else {
+                counterVector[j].progressCounter = &totalSteps;
+                solveNonlinearWaveEquationCounter(&counterVector[j]);
+            }
         }
     }
+    catch (std::exception const& e) {
+        std::string errorString = e.what();
+        std::erase(errorString, '<');
+        std::erase(errorString, '>');
+        std::erase(errorString, '&');
+        std::erase(errorString, ';');
+        std::erase(errorString, '{');
+        std::erase(errorString, '}');
+        theGui.console.tPrint(
+            "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n",
+            errorString);
+        return;
+    }
+
     
     
     theSim.base().isRunning = true;

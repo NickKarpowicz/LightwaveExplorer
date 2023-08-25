@@ -961,6 +961,14 @@ int interpretParameters(
 		}
 		i++;
 	}
+	if (i != n) {
+		std::string errorMessage("Not enough input parameters,\nexpected ");
+		errorMessage.append(std::to_string(n));
+		errorMessage.append(" but got ");
+		errorMessage.append(std::to_string(i));
+		errorMessage.append("\nwhen interpreting\n").append(cc);
+		throw std::runtime_error(errorMessage);
+	}
 
 	return 0;
 }
