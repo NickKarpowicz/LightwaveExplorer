@@ -90,6 +90,7 @@ void launchFitThread();
 void fittingThread(int pulldownSelection, bool use64bitFloatingPoint);
 void stopButtonCallback();
 void svgCallback();
+void dataPanelCollapseCallback();
 void createRunFile();
 static void buttonAddSameCrystal();
 static void buttonAddDefault();

@@ -93,22 +93,18 @@ static constexpr std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColor
 
 class LweColor {
 public:
-    double r{};
-    double g{};
-    double b{};
-    double a{};
-    LweColor(double rIn, double gIn, double bIn, double aIn) {
-        r = rIn;
-        g = gIn;
-        b = bIn;
-        a = aIn;
-    }
+    double r;
+    double g;
+    double b;
+    double a;
+    constexpr LweColor(double rIn, double gIn, double bIn, double aIn) 
+        : r(rIn), g(gIn), b(bIn), a(aIn) {}
     [[nodiscard]] constexpr int rHex() const noexcept { return static_cast<int>(15 * r); }
     [[nodiscard]] constexpr int gHex() const noexcept { return static_cast<int>(15 * g); }
     [[nodiscard]] constexpr int bHex() const noexcept { return static_cast<int>(15 * b); }
     [[nodiscard]] constexpr int aHex() const noexcept { return static_cast<int>(15 * a); }
-    void setCairo(cairo_t* cr) { cairo_set_source_rgb(cr, r, g, b); }
-    void setCairoA(cairo_t* cr) { cairo_set_source_rgba(cr, r, g, b, a); }
+    void setCairo(cairo_t* cr) const { cairo_set_source_rgb(cr, r, g, b); }
+    void setCairoA(cairo_t* cr) const { cairo_set_source_rgba(cr, r, g, b, a); }
 };
 
 class LwePlot {
@@ -237,17 +233,17 @@ public:
         }
 
         //Tickmark labels
-        int NyTicks = 3;
+        constexpr int NyTicks = 3;
         std::string messageBuffer;
-        double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
-        double xTicks1[3] = { 
+        const double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
+        const double xTicks1[3] = { 
             minX + 0.25 * (maxX - minX), 
             minX + 0.5 * (maxX - minX), 
             minX + 0.75 * (maxX - minX) };
 
         //Start SVG file if building one
-        auto SVGh = [&](double x) {
-            return (int)(15 * x);
+        auto constexpr SVGh = [&](const double x) {
+            return static_cast<int>(15 * x);
         };
         if (makeSVG) {
             SVGString.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
@@ -387,7 +383,7 @@ public:
             }
 
             layoutLeft = axisLabelSpaceX;
-            layoutTop = (double)(i * (0.5 * (height)));
+            layoutTop = (i * (0.5 * (height)));
             if (i == 2) layoutTop -= 8.0f;
             if (i == 1) layoutTop -= 6.0f;
             layoutBottom = layoutTop + axisSpaceY;
@@ -690,7 +686,7 @@ public:
         }
     }
 
-    [[nodiscard]] constexpr double cModulusSquared(const std::complex<double>& x) {
+    [[nodiscard]] constexpr double cModulusSquared(const std::complex<double>& x) const {
         return x.real() * x.real() + x.imag() * x.imag();
     }
 
@@ -885,7 +881,7 @@ public:
         }
     }
 
-    int valueInt() {
+    int valueInt() const {
         std::unique_lock GTKlock(GTKmutex);
         int sdata;
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
@@ -1461,6 +1457,7 @@ class LweWindow {
     GtkWidget* plotControlsSubgrid1 = nullptr;
     GtkWidget* plotControlsSubgrid2 = nullptr;
     unsigned int updaterID = 0;
+    bool showingControlsPanel = true;
 public:
     GtkWidget* window = nullptr;
     void init(
@@ -1553,6 +1550,14 @@ public:
 
     GtkWidget* parentHandle() const {
         return grid;
+    }
+    void toggleSettingsPanel() {
+        std::unique_lock GTKlock(GTKmutex);
+        showingControlsPanel = !showingControlsPanel;
+        gtk_widget_set_visible(grid,showingControlsPanel);
+        gtk_widget_set_visible(consoleGrid,showingControlsPanel);
+        gtk_widget_set_visible(consoleControlsSubgrid1,showingControlsPanel);
+        gtk_widget_set_visible(consoleControlsSubgrid2,showingControlsPanel);
     }
     GtkWidget* parentHandle(const int index) const {
         switch (index) {

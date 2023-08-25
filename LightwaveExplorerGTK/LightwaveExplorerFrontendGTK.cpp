@@ -414,7 +414,9 @@ public:
         buttons[12].setTooltip("Generate SVG files of the four line plots, with "
             "filenames based on the base path set above");
         buttons[12].squeeze();
-        plotSlider.init(window.parentHandle(3), 0, 0, 4, 1);
+        buttons[13].init("\xe2\x86\x94\xef\xb8\x8f",window.parentHandle(3),0,0,1,1,dataPanelCollapseCallback);
+        buttons[13].setTooltip("Collapse/expand the data entry panel");
+        plotSlider.init(window.parentHandle(3), 1, 0, 3, 1);
         plotSlider.setRange(0.0, 10.0);
         plotSlider.setDigits(0);
         plotSlider.setFunction(independentPlotQueue);
@@ -1101,6 +1103,9 @@ void svgCallback() {
     theGui.requestPlotUpdate();
 }
 
+void dataPanelCollapseCallback(){
+    theGui.window.toggleSettingsPanel();
+}
 void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     theGui.pathTarget = (int64_t)pathTarget;
     //get around bug in GTK4 by opening dialog box directly in cocoa on mac
