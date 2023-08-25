@@ -1624,7 +1624,7 @@ public:
 };
 
 class LweSlider : public LweGuiElement {
-    GtkEventController* eventController;
+    GtkEventController* eventController{};
 public:
     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
