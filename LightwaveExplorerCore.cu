@@ -5708,6 +5708,11 @@ namespace hostFunctions{
 						(*sCPU).totalSpectrum, 
 						3 * (*sCPU).Nfreq * sizeof(double));
 				}
+				else{
+					throw std::runtime_error(
+						std::string("Attempted out-of-bounds save() to index ")
+						.append(std::to_string(saveLoc)).append("\n"));
+				}
 			}
 			break;
 		case funHash("savePlasma"):
@@ -5837,7 +5842,7 @@ namespace hostFunctions{
 				energy += (*sCPU).totalSpectrum[i + (*sCPU).Nfreq * spectrumType];
 			}
 			energy *= (*sCPU).fStep;
-			vBlock[targetVar] = energy;
+			if(targetVar<100) vBlock[targetVar] = energy;
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
