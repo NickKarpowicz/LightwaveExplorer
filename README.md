@@ -82,7 +82,7 @@ A native version for the new Arm-based Macs is technically possible (and has bee
 
   - If you have an Intel CPU, chances are it will have an integrated GPU, which can be used by SYCL. In my experience, the ones that show up as "Iris Graphics" are actually much faster than running the code on the actual CPU, while the ones named "HD Graphics" are sometimes slower. Just try them both.
 
-  - The SYCL code compiles itself for your specific hardware the first time it runs. So, the first run will be slower than the rest - don't reject it because it that; subsequent runs will be faster!
+  - The SYCL code compiles itself for your specific hardware the first time it runs. So, the first run will be slower than the rest - subsequent runs will be faster!
 
   - The second pulldown is for offloading work onto other parts of your system. For example, if you are running a big batch of simulations on a CUDA-capable GPU, you can send some of them to the CPU to work on. This is what the second menu and following number do: chose the offload target, and the number to send to it. You don't have to use this if you don't want to.
 
