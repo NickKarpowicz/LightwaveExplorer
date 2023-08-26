@@ -5625,7 +5625,8 @@ namespace hostFunctions{
 			break;
 		case funHash("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
-			vBlock[(int)parameters[0]] = parameters[1];
+			if(parameters[0]<100) vBlock[parameters[0]] = parameters[1];
+			else throw std::runtime_error("set() index must be less than 100\n");
 			break;
 		case funHash("plasmaReinject"):
 			(*sCPU).isReinjecting = true;
@@ -5708,7 +5709,7 @@ namespace hostFunctions{
 						(*sCPU).totalSpectrum, 
 						3 * (*sCPU).Nfreq * sizeof(double));
 				}
-				else{
+				else {
 					throw std::runtime_error(
 						std::string("Attempted out-of-bounds save() to index ")
 						.append(std::to_string(saveLoc)).append("\n"));
@@ -5724,6 +5725,11 @@ namespace hostFunctions{
 					&& saveLoc != 0 
 					&& (*sCPU).runType != -1) 
 					savePlasma(d, saveLoc, plasmaLoc);
+				else {
+					throw std::runtime_error(
+						std::string("Attempted out-of-bounds savePlasma() to index ")
+						.append(std::to_string(saveLoc)).append("\n"));
+				}
 			}
 			break;
 		case funHash("init"):
