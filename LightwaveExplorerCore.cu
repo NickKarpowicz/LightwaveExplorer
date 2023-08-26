@@ -5625,7 +5625,9 @@ namespace hostFunctions{
 			break;
 		case funHash("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
-			if(parameters[0]<100) vBlock[parameters[0]] = parameters[1];
+			if(parameters[0]<100 && parameters[0] >= 0){ 
+				vBlock[static_cast<int>(parameters[0])] = parameters[1];
+			}
 			else throw std::runtime_error("set() index must be less than 100\n");
 			break;
 		case funHash("plasmaReinject"):
