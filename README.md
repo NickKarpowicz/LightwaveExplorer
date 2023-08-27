@@ -5,7 +5,10 @@
  Max Planck Institute of Quantum Optics</p>
 
 ---
-<p style="text-align: center;">New! <a href="https://youtu.be/J1-dh6V5flQ">YouTube tutorials!</a></p>
+New! Tutorials on YouTube!
+
+- Tutorial 1: <a href="https://youtu.be/J1-dh6V5flQ">Introduction and quick start, with walkthrough of simulating SHG and OPA</a></li>
+- Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
 
 ---
 
