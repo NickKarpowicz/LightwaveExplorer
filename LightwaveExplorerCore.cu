@@ -3609,7 +3609,6 @@ namespace kernelNamespace{
 			const int64_t freqIndex = 1 + gridIndex % ((*sP).Nfreq - 1); //frequency coordinate
 			gridIndex = freqIndex + (gridIndex / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 			(*sP).k1[gridIndex] += (*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
-			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridPropagationFactor1[gridIndex] 
 				* (*sP).gridPropagationFactor1[gridIndex] 
 				* (sixth<deviceFP>() * (*sP).k1[gridIndex] + (*sP).gridEFrequency1[gridIndex]);
@@ -3619,6 +3618,7 @@ namespace kernelNamespace{
 			(*sP).workspace1[gridIndex] = ff * (*sP).gridPropagationFactor1[gridIndex] 
 				* ((*sP).gridEFrequency1[gridIndex] + 0.5f * (*sP).k1[gridIndex]);
 			(*sP).k1[gridIndex] = {};
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 		}
 	};
 
@@ -3630,7 +3630,6 @@ namespace kernelNamespace{
 			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 			(*sP).k1[gridIndex] += 
 				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
-			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
 			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
 				+ (*sP).gridPropagationFactor1[gridIndex] 
 				* (deviceFP)third<deviceFP>() * (*sP).k1[gridIndex];
@@ -3640,6 +3639,7 @@ namespace kernelNamespace{
 			(*sP).workspace1[gridIndex] = ff * ((*sP).gridPropagationFactor1[gridIndex] 
 				* (*sP).gridEFrequency1[gridIndex] + 0.5f * (*sP).k1[gridIndex]);
 			(*sP).k1[gridIndex] = {};
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 		}
 	};
 
@@ -3651,7 +3651,6 @@ namespace kernelNamespace{
 			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 			(*sP).k1[gridIndex] += 
 				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
-			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
 			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
 				+ (*sP).gridPropagationFactor1[gridIndex] 
 				* (deviceFP)third<deviceFP>() * (*sP).k1[gridIndex];
@@ -3661,6 +3660,7 @@ namespace kernelNamespace{
 			(*sP).workspace1[gridIndex] = ff * ((*sP).gridPropagationFactor1[gridIndex] 
 				* ((*sP).gridPropagationFactor1[gridIndex] * (*sP).gridEFrequency1[gridIndex] + (*sP).k1[gridIndex]));
 			(*sP).k1[gridIndex] = {};
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 		}
 	};
 
@@ -3672,7 +3672,6 @@ namespace kernelNamespace{
 			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
 			(*sP).k1[gridIndex] += 
 				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
-			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
 			(*sP).gridEFrequency1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
 				+ sixth<deviceFP>() * (*sP).k1[gridIndex];
 			const deviceFP ff = (gridIndex > (*sP).NgridC) ? 
@@ -3680,6 +3679,7 @@ namespace kernelNamespace{
 				: (*sP).fieldFactor1[freqIndex];
 			(*sP).workspace1[gridIndex] = ff * (*sP).gridEFrequency1[gridIndex];
 			(*sP).k1[gridIndex] = {};
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 		}
 	};
 
@@ -3693,7 +3693,6 @@ namespace kernelNamespace{
 			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
 			(*sP).k1[gridIndex] += 
 				(*sP).gridPropagationFactor1Rho1[gridIndex] * (*sP).workspace1[gridIndex];
-			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridPropagationFactor1[gridIndex] 
 				* (*sP).gridPropagationFactor1[gridIndex] 
 				* (sixth<deviceFP>() * (*sP).k1[gridIndex] + (*sP).gridEFrequency1[gridIndex]);
@@ -3702,6 +3701,7 @@ namespace kernelNamespace{
 			(*sP).workspace1[gridIndex] = ff * ((*sP).gridPropagationFactor1[gridIndex] 
 				* ((*sP).gridEFrequency1[gridIndex] + 0.5f * (*sP).k1[gridIndex]));
 			(*sP).k1[gridIndex] = {};
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 		}
 	};
 
@@ -3713,7 +3713,6 @@ namespace kernelNamespace{
 			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
 			(*sP).k1[gridIndex] += 
 				(*sP).gridPropagationFactor1Rho1[gridIndex] * (*sP).workspace1[gridIndex];
-			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
 			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
 				+ (*sP).gridPropagationFactor1[gridIndex] 
 				* third<deviceFP>() * (*sP).k1[gridIndex];
@@ -3722,6 +3721,7 @@ namespace kernelNamespace{
 			(*sP).workspace1[gridIndex] = ff * ((*sP).gridPropagationFactor1[gridIndex] 
 				* (*sP).gridEFrequency1[gridIndex] + 0.5f * (*sP).k1[gridIndex]);
 			(*sP).k1[gridIndex] = {};
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 		}
 	};
 
@@ -3733,7 +3733,6 @@ namespace kernelNamespace{
 			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
 			(*sP).k1[gridIndex] += 
 				(*sP).gridPropagationFactor1Rho1[gridIndex] * (*sP).workspace1[gridIndex];
-			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
 			(*sP).gridEFrequency1Next1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
 				+ (*sP).gridPropagationFactor1[gridIndex] 
 				* third<deviceFP>() * (*sP).k1[gridIndex];
@@ -3743,6 +3742,7 @@ namespace kernelNamespace{
 				* ((*sP).gridPropagationFactor1[gridIndex] * (*sP).gridEFrequency1[gridIndex] 
 					+ (*sP).k1[gridIndex]));
 			(*sP).k1[gridIndex] = {};
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 		}
 	};
 
@@ -3754,13 +3754,13 @@ namespace kernelNamespace{
 			const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
 			(*sP).k1[gridIndex] += 
 				(*sP).gridPropagationFactor1Rho1[gridIndex] * (*sP).workspace1[gridIndex];
-			[[unlikely]] if (freqIndex == 1)(*sP).workspace1[gridIndex - 1] = {};
 			(*sP).gridEFrequency1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] 
 				+ sixth<deviceFP>() * (*sP).k1[gridIndex];
 			const deviceFP ff = (gridIndex > (*sP).NgridC) ? 
 				(*sP).fieldFactor2[freqIndex] : (*sP).fieldFactor1[freqIndex];
 			(*sP).workspace1[gridIndex] = ff * (*sP).gridEFrequency1[gridIndex];
 			(*sP).k1[gridIndex] = {};
+			[[unlikely]] if (freqIndex == 1) (*sP).workspace1[gridIndex - 1] = {};
 		}
 	};
 
