@@ -2870,12 +2870,9 @@ namespace kernelNamespace{
 		const deviceFP* sellmeierCoefficients;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t localIndex) const {
-			int64_t i = localIndex;
-			deviceComplex ne, no;
-			const int64_t j = i / ((*s).Nfreq - 1); //spatial coordinate
-			const int64_t k = 1 + (i % ((*s).Nfreq - 1)); //temporal coordinate
-			i = k + j * (*s).Nfreq;
-			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
+			const int64_t j = localIndex / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t k = 1 + (localIndex % ((*s).Nfreq - 1)); //temporal coordinate
+			const int64_t i = k + j * (*s).Nfreq;
 
 			//frequency being resolved by current thread
 			const deviceFP f = k * (*s).fStep;
@@ -2883,6 +2880,7 @@ namespace kernelNamespace{
 			//transverse wavevector being resolved
 			const deviceFP dk = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) 
 				* ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
+			deviceComplex ne, no;
 			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 			
 			//if the refractive index was returned weird, 
@@ -2903,16 +2901,14 @@ namespace kernelNamespace{
 			const deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
 			const deviceComplex ko = twoPi<deviceFP>() * no * f / lightC<deviceFP>();
 
-			deviceComplex chi11 = cOne<deviceComplex>();
-			deviceComplex chi12 = cOne<deviceComplex>();
-			if ((*s).isUsingMillersRule) {
-				chi11 = (*s).chiLinear1[k];
-				chi12 = (*s).chiLinear2[k];
-			}
-			else {
-				chi11 = cOne<deviceComplex>();
-				chi12 = cOne<deviceComplex>();
-			}
+			//chi11 factor, also multiplied by -sqrt(-1)!
+			const deviceComplex chi11 = ((*s).isUsingMillersRule) ?
+				deviceComplex((*s).chiLinear1[k].imag(), -(*s).chiLinear1[k].real())
+				: cOne<deviceComplex>();
+			const deviceComplex chi12 = ((*s).isUsingMillersRule) ?
+				deviceComplex((*s).chiLinear2[k].imag(), -(*s).chiLinear2[k].real())
+				: cOne<deviceComplex>();
+
 			const deviceComplex kz1 = deviceLib::sqrt(ke - dk) * deviceLib::sqrt(ke + dk);
 			const deviceComplex kz2 = deviceLib::sqrt(ko - dk) * deviceLib::sqrt(ko + dk);
 
@@ -2923,19 +2919,14 @@ namespace kernelNamespace{
 			&& !isComplexNaN(kz2)) {
 				(*s).gridPropagationFactor1[i] = fourierPropagator(ke, dk, deviceFP{}, k0.real(), 0.5f * (*s).h);
 				(*s).gridPropagationFactor2[i] = fourierPropagator(ko, dk, deviceFP{}, k0.real(), 0.5f * (*s).h);
-				(*s).gridPolarizationFactor1[i] = -ii * 
-					deviceLib::pow((deviceComplex)(*s).chiLinear1[k] 
-						+ (deviceFP)1.0f, (deviceFP)0.25f) 
-					* chi11 
-					* ((deviceFP)twoPi<deviceFP>() * (deviceFP)twoPi<deviceFP>() * f * f) 
-					/ ((2.0f * (deviceFP)lightC<deviceFP>() * (deviceFP)lightC<deviceFP>() * kz1)) * (*s).h;
+				(*s).gridPolarizationFactor1[i] = 
+					deviceLib::pow((*s).chiLinear1[k] + 1.0f, (deviceFP)0.25f) 
+					* chi11 * (twoPi<deviceFP>() * twoPi<deviceFP>() * f * f) 
+					/ ((2.0f * lightC<deviceFP>() * lightC<deviceFP>() * kz1)) * (*s).h;
 				(*s).gridPolarizationFactor2[i] = 
-					-ii * deviceLib::pow(
-						(deviceComplex)(*s).chiLinear2[k] + (deviceFP)1.0f, 
-						(deviceFP)0.25f) 
-					* chi12 * ((deviceFP)twoPi<deviceFP>() 
-						* (deviceFP)twoPi<deviceFP>() * f * f) 
-					/ ((2.0f * (deviceFP)lightC<deviceFP>() * (deviceFP)lightC<deviceFP>() * kz2)) * (*s).h;
+					deviceLib::pow((*s).chiLinear2[k] + 1.0f, (deviceFP)0.25f) 
+					* chi12 * (twoPi<deviceFP>() * twoPi<deviceFP>() * f * f) 
+					/ ((2.0f * lightC<deviceFP>() * lightC<deviceFP>() * kz2)) * (*s).h;
 			}
 			else {
 				(*s).gridPropagationFactor1[i] = {};
@@ -2964,15 +2955,12 @@ namespace kernelNamespace{
 		const deviceFP* sellmeierCoefficients;
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t localIndex) const {
-			int64_t i = localIndex;
-			deviceComplex ne, no;
-			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
-			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
-			i = j + col * (*s).Nfreq;
+			
+			const int64_t col = localIndex / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + localIndex % ((*s).Nfreq - 1); // frequency coordinate
+			const int64_t i = j + col * (*s).Nfreq;
 			const int64_t k = col % (*s).Nspace;
 			const int64_t l = col / (*s).Nspace;
-
-			const deviceComplex ii = deviceComplex(0.0f, 1.0f);
 
 			//frequency being resolved by current thread
 			const deviceFP f = j * (*s).fStep;
@@ -2983,6 +2971,7 @@ namespace kernelNamespace{
 			const deviceFP dk2 = l * (*s).dk2 - (l >= ((*s).Nspace2 / 2)) 
 				* ((*s).dk2 * (*s).Nspace2); //frequency grid in y direction
 
+			deviceComplex ne, no;
 			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
 			if (minN(ne.real(), no.real()) < 0.9f 
 				|| isComplexNaN(ne) 
@@ -2998,16 +2987,13 @@ namespace kernelNamespace{
 			deviceComplex ke = twoPi<deviceFP>() * ne * f / lightC<deviceFP>();
 			deviceComplex ko = (deviceFP)twoPi<deviceFP>() * no * f / lightC<deviceFP>();
 
-			deviceComplex chi11 = cOne<deviceComplex>();
-			deviceComplex chi12 = cOne<deviceComplex>();
-			if ((*s).isUsingMillersRule) {
-				chi11 = (*s).chiLinear1[j];
-				chi12 = (*s).chiLinear2[j];
-			}
-			else {
-				chi11 = cOne<deviceComplex>();
-				chi12 = cOne<deviceComplex>();
-			}
+			//chi11 factor, also multiplied by -sqrt(-1)!
+			const deviceComplex chi11 = ((*s).isUsingMillersRule) ?
+				deviceComplex((*s).chiLinear1[j].imag(), -(*s).chiLinear1[j].real())
+				: cOne<deviceComplex>();
+			const deviceComplex chi12 = ((*s).isUsingMillersRule) ?
+				deviceComplex((*s).chiLinear2[j].imag(), -(*s).chiLinear2[j].real())
+				: cOne<deviceComplex>();
 
 			deviceComplex kz1 = deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2);
 			deviceComplex kz2 = deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2);
@@ -3023,13 +3009,13 @@ namespace kernelNamespace{
 				}
 
 				(*s).gridPolarizationFactor1[i] = 
-					-ii * deviceLib::pow((deviceComplex)(*s).chiLinear1[j] + 1.0f, 0.25f) 
-					* chi11 * ((deviceFP)twoPi<deviceFP>() * (deviceFP)twoPi<deviceFP>() * f * f) 
-					/ (2.0f * (deviceFP)lightC<deviceFP>() * (deviceFP)lightC<deviceFP>() * kz1) * (*s).h;
+					deviceLib::pow((*s).chiLinear1[j] + 1.0f, 0.25f) 
+					* chi11 * (twoPi<deviceFP>() * twoPi<deviceFP>() * f * f) 
+					/ (2.0f * lightC<deviceFP>() * lightC<deviceFP>() * kz1) * (*s).h;
 				(*s).gridPolarizationFactor2[i] = 
-					-ii * deviceLib::pow((deviceComplex)(*s).chiLinear2[j] + 1.0f, 0.25f) 
-					* chi12 * ((deviceFP)twoPi<deviceFP>() * (deviceFP)twoPi<deviceFP>() * f * f) 
-					/ (2.0f * (deviceFP)lightC<deviceFP>() * (deviceFP)lightC<deviceFP>() * kz2) * (*s).h;
+					deviceLib::pow((deviceComplex)(*s).chiLinear2[j] + 1.0f, 0.25f) 
+					* chi12 * (twoPi<deviceFP>() * twoPi<deviceFP>() * f * f) 
+					/ (2.0f * lightC<deviceFP>() * lightC<deviceFP>() * kz2) * (*s).h;
 			}
 			else {
 				(*s).gridPropagationFactor1[i] = {};
@@ -3081,11 +3067,9 @@ namespace kernelNamespace{
 					(*s).inverseChiLinear2[i] = {};
 				}
 
-				(*s).fieldFactor1[i] = 1.0f / 
-					deviceFPLib::pow((*s).chiLinear1[i].real() + 1.0f, 0.25f); 
+				(*s).fieldFactor1[i] = deviceFPLib::pow((*s).chiLinear1[i].real() + 1.0f, -0.25f); 
 				//account for the effective field strength in the medium (1/n)
-				(*s).fieldFactor2[i] = 1.0f / 
-					deviceFPLib::pow((*s).chiLinear2[i].real() + 1.0f, 0.25f);
+				(*s).fieldFactor2[i] = deviceFPLib::pow((*s).chiLinear2[i].real() + 1.0f, -0.25f);
 				if ((*s).isUsingMillersRule) {
 					(*s).fieldFactor1[i] *= (*s).chiLinear1[i].real();
 					(*s).fieldFactor2[i] *= (*s).chiLinear2[i].real();
