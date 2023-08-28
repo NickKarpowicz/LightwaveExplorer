@@ -1554,7 +1554,8 @@ namespace deviceFunctions {
 	template<typename T, typename U>
 	deviceFunction static void expandCylindricalBeamDevice(
 		const deviceParameterSet<T,U>* s, 
-		const int64_t i, T* expandedBeam1, 
+		const int64_t i, 
+		T* expandedBeam1, 
 		const T* sourceBeam1, 
 		const T* sourceBeam2) {
 		const int64_t j = i / (*s).Ntime; //spatial coordinate
@@ -1865,39 +1866,7 @@ namespace deviceFunctions {
 		return a.real() * a.real() + a.imag() * a.imag();
 	}
 
-	//provide a list of nearest-3 neighbors for taking spatial derivatives
-	// exploiting the fact that the radial grid is offset by 1/4 step from 0
-	// this means that midpoints are available on the other side of the origin.
-	// returns rho at the given index j
-	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static deviceFP resolveNeighborsInOffsetRadialSymmetry(
-		int64_t* neighbors, 
-		const deviceParameterSet<deviceFP, deviceComplex>* s, 
-		const int64_t j, 
-		const int64_t h) {
-
-		if (j < (*s).Nspace / 2) {
-			neighbors[0] = ((*s).Nspace - j - 2) * (*s).Ntime + h;
-			neighbors[1] = (j + 1) * (*s).Ntime + h;
-			neighbors[2] = ((*s).Nspace - j - 1) * (*s).Ntime + h;
-			neighbors[3] = ((*s).Nspace - j) * (*s).Ntime + h;
-			neighbors[4] = (j - 1) * (*s).Ntime + h;
-			neighbors[5] = ((*s).Nspace - j + 1) * (*s).Ntime + h;
-			return ((*s).dx * ((*s).Nspace / 2 - j) - 0.25f * (*s).dx);
-		}
-		else {
-			neighbors[0] = ((*s).Nspace - j + 1) * (*s).Ntime + h;
-			neighbors[1] = (j - 1) * (*s).Ntime + h;
-			neighbors[2] = ((*s).Nspace - j) * (*s).Ntime + h;
-			neighbors[3] = ((*s).Nspace - j - 1) * (*s).Ntime + h;
-			neighbors[4] = (j + 1) * (*s).Ntime + h;
-			neighbors[5] = ((*s).Nspace - j - 2) * (*s).Ntime + h;
-			return (*s).dx * (j - (*s).Nspace / 2) + 0.25f * (*s).dx;
-		}
-	}
-	//provide the position rho in cylindric mode; a simplified
-	//version of the resolveNeighbors function above for cases where
-	//the neighbors aren't required
+	//provide the position rho in cylindric mode
 	template<typename deviceFP>
 	deviceFunction static deviceFP rhoInRadialSymmetry(
 		const int64_t N, 
@@ -2490,31 +2459,67 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t i) const {
-			const int64_t j = i / (*s).Ntime; //spatial coordinate
+			const int64_t j = i / (*s).Ntime;
+			
 			//zero at edges of grid
 			[[unlikely]] if (j < 3 || j > ((*s).Nspace - 4)) {
 				(*s).gridRadialLaplacian1[i] = {};
 				(*s).gridRadialLaplacian2[i] = {};
 			}
 			else {
-				int64_t neighbors[6];
-				const deviceFP oneOverRho  = 
-					2.0f / 
-					((*s).dx * resolveNeighborsInOffsetRadialSymmetry(neighbors, s, j, i % (*s).Ntime));
-				(*s).gridRadialLaplacian1[i] = oneOverRho 
-					* (firstDerivativeStencil<deviceFP>(-3) * (*s).gridETime1[neighbors[0]]
-					+ firstDerivativeStencil<deviceFP>(-2) * (*s).gridETime1[neighbors[1]]
-					+ firstDerivativeStencil<deviceFP>(-1) * (*s).gridETime1[neighbors[2]]
-					+ firstDerivativeStencil<deviceFP>(1) * (*s).gridETime1[neighbors[3]]
-					+ firstDerivativeStencil<deviceFP>(2) * (*s).gridETime1[neighbors[4]]
-					+ firstDerivativeStencil<deviceFP>(3) * (*s).gridETime1[neighbors[5]]);
-				(*s).gridRadialLaplacian2[i] = oneOverRho 
-					* (firstDerivativeStencil<deviceFP>(-3) * (*s).gridETime2[neighbors[0]]
-					+ firstDerivativeStencil<deviceFP>(-2) * (*s).gridETime2[neighbors[1]]
-					+ firstDerivativeStencil<deviceFP>(-1) * (*s).gridETime2[neighbors[2]]
-					+ firstDerivativeStencil<deviceFP>(1) * (*s).gridETime2[neighbors[3]]
-					+ firstDerivativeStencil<deviceFP>(2) * (*s).gridETime2[neighbors[4]]
-					+ firstDerivativeStencil<deviceFP>(3) * (*s).gridETime2[neighbors[5]]);
+				const int64_t h = i % (*s).Ntime;
+				const deviceFP* E1 = (*s).gridETime1 + h;
+				const deviceFP* E2 = (*s).gridETime2 + h;
+				if (j < (*s).Nspace / 2) {
+					const deviceFP rhoFac = 2.0f / ((*s).dx * (*s).dx * (static_cast<deviceFP>((*s).Nspace / 2 - j) - 0.25f));
+					const int64_t neighbors[6]{
+						((*s).Nspace - j - 2) * (*s).Ntime,
+						(j + 1) * (*s).Ntime,
+						((*s).Nspace - j - 1) * (*s).Ntime,
+						((*s).Nspace - j) * (*s).Ntime,
+						(j - 1) * (*s).Ntime,
+						((*s).Nspace - j + 1) * (*s).Ntime
+					};
+					(*s).gridRadialLaplacian1[i] = rhoFac
+						* (firstDerivativeStencil<deviceFP>(-3) * E1[neighbors[0]]
+							+ firstDerivativeStencil<deviceFP>(-2) * E1[neighbors[1]]
+							+ firstDerivativeStencil<deviceFP>(-1) * E1[neighbors[2]]
+							+ firstDerivativeStencil<deviceFP>(1) * E1[neighbors[3]]
+							+ firstDerivativeStencil<deviceFP>(2) * E1[neighbors[4]]
+							+ firstDerivativeStencil<deviceFP>(3) * E1[neighbors[5]]);
+					(*s).gridRadialLaplacian2[i] = rhoFac
+						* (firstDerivativeStencil<deviceFP>(-3) * E2[neighbors[0]]
+							+ firstDerivativeStencil<deviceFP>(-2) * E2[neighbors[1]]
+							+ firstDerivativeStencil<deviceFP>(-1) * E2[neighbors[2]]
+							+ firstDerivativeStencil<deviceFP>(1) * E2[neighbors[3]]
+							+ firstDerivativeStencil<deviceFP>(2) * E2[neighbors[4]]
+							+ firstDerivativeStencil<deviceFP>(3) * E2[neighbors[5]]);
+				}
+				else {
+					const deviceFP rhoFac = 2.0f / ((*s).dx * (*s).dx * (static_cast<deviceFP>(j - (*s).Nspace / 2) + 0.25f));
+					const int64_t neighbors[6]{
+						((*s).Nspace - j + 1) * (*s).Ntime,
+						(j - 1) * (*s).Ntime,
+						((*s).Nspace - j) * (*s).Ntime,
+						((*s).Nspace - j - 1) * (*s).Ntime,
+						(j + 1) * (*s).Ntime,
+						((*s).Nspace - j - 2) * (*s).Ntime
+					};
+					(*s).gridRadialLaplacian1[i] = rhoFac
+						* (firstDerivativeStencil<deviceFP>(-3) * E1[neighbors[0]]
+							+ firstDerivativeStencil<deviceFP>(-2) * E1[neighbors[1]]
+							+ firstDerivativeStencil<deviceFP>(-1) * E1[neighbors[2]]
+							+ firstDerivativeStencil<deviceFP>(1) * E1[neighbors[3]]
+							+ firstDerivativeStencil<deviceFP>(2) * E1[neighbors[4]]
+							+ firstDerivativeStencil<deviceFP>(3) * E1[neighbors[5]]);
+					(*s).gridRadialLaplacian2[i] = rhoFac
+						* (firstDerivativeStencil<deviceFP>(-3) * E2[neighbors[0]]
+							+ firstDerivativeStencil<deviceFP>(-2) * E2[neighbors[1]]
+							+ firstDerivativeStencil<deviceFP>(-1) * E2[neighbors[2]]
+							+ firstDerivativeStencil<deviceFP>(1) * E2[neighbors[3]]
+							+ firstDerivativeStencil<deviceFP>(2) * E2[neighbors[4]]
+							+ firstDerivativeStencil<deviceFP>(3) * E2[neighbors[5]]);
+				}
 			}
 		}
 	};
