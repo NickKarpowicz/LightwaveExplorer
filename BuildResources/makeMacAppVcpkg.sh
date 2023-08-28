@@ -15,11 +15,6 @@ cmake -DCMAKE_CXX_COMPILER=${LLVM}/bin/clang++ -DCMAKE_C_COMPILER=${LLVM}/bin/cl
 ninja
 cd ..
 
-#restore the original source and clean up
-cp BuildResources/AppImage/AppImageCPU/COPYING COPYING
-tar cf GPLsource.tar COPYING *.cu LightwaveExplorerGTK/* LightwaveExplorerDevices/* BuildResources/macplistbase.plist CMakeLists.txt BuildResources/AppIcon.icns
-rm COPYING
-
 #complete the directory structure of the .app
 mkdir $APP/Contents/Resources/
 mkdir $APP/Contents/Resources/lib
