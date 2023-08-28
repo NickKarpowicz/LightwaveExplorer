@@ -3440,7 +3440,6 @@ namespace kernelNamespace{
 
 			//save values in workspaces, casting to deviceFP
 			deviceFP* dN = (deviceFP*)(*s).workspace1;
-			deviceFP* dN2 = dN + (*s).Ngrid;
 			const deviceFP Esquared = 
 				(*s).plasmaParameters[0] 
 				* ((*s).gridETime1[i] * (*s).gridETime1[i] 
@@ -3454,7 +3453,6 @@ namespace kernelNamespace{
 			dN[i] = (*s).plasmaParameters[2] * (
 				(*s).gridPolarizationTime1[i] * (*s).gridETime1[i] 
 				+ (*s).gridPolarizationTime2[i] * (*s).gridETime2[i]);
-			dN2[i] = dN[i];
 		}
 	};
 
@@ -3466,7 +3464,7 @@ namespace kernelNamespace{
 			deviceFP N{};
 			deviceFP integralx{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-			const deviceFP* dN = j + (deviceFP*)(*s).workspace1;
+			const deviceFP* dN = (j % (*s).Ngrid) + (deviceFP*)(*s).workspace1;
 			const deviceFP* E = &(*s).gridETime1[j];
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
 			for (auto k = 0; k < (*s).Ntime; ++k) {
