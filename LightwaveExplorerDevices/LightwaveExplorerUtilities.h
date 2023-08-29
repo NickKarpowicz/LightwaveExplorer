@@ -629,7 +629,7 @@ public:
     bool is3D = 0;
     bool isFDTD = 0;
     int symmetryType = 0;
-
+    bool useOpenMP = false;
     //loaded FROG/EOS fields
     std::complex<double>* loadedField1 = 0;
     std::complex<double>* loadedField2 = 0;

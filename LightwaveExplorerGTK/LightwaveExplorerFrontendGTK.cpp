@@ -448,13 +448,14 @@ public:
                 pulldowns[8].addElement("SYCLgpu");
             }
         }
-#if defined _WIN32 || defined __linux__
+#if defined _WIN32 || defined __linux__ && not defined CPUONLY
         pulldowns[7].addElement("C++");
         pulldowns[8].addElement("C++");
 #elif defined __APPLE__
         pulldowns[7].addElement("\xef\xa3\xbfGCD");
         pulldowns[8].addElement("\xef\xa3\xbfGCD");
-#else
+#endif
+#if defined _WIN32 || defined __linux__
         pulldowns[7].addElement("OpenMP");
         pulldowns[8].addElement("OpenMP");
 #endif
@@ -1824,7 +1825,11 @@ void secondaryQueue(
     auto sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
     auto normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
     int assignedGPU = 0;
-    bool forceCPU = 0;
+    bool forceCPU = false;
+    bool useOpenMP = false;
+#ifdef CPUONLY
+    useOpenMP = true;
+#endif
     [[maybe_unused]]int SYCLitems = 0;
     if (theSim.base().syclGPUCount == 0) {
         SYCLitems = (int)theSim.base().SYCLavailable;
@@ -1889,9 +1894,8 @@ void secondaryQueue(
         }
         #endif
     }
-    else {
-        sequenceFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
-        normalFunction = use64bitFloatingPoint ? &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
+    else if (pulldownSelection == (theSim.base().cudaGPUCount + SYCLitems + 1)) {
+        useOpenMP = true;
     }
 #endif
     int error = 0;
@@ -1899,6 +1903,7 @@ void secondaryQueue(
         for (unsigned int i = 0; i < theSim.base().NsimsCPU; ++i) {
             cpuSims[i].assignedGPU = assignedGPU;
             cpuSims[i].runningOnCPU = forceCPU;
+            cpuSims[i].useOpenMP = useOpenMP;
             std::lock_guard dataLock(theSim.mutexes.at(i));
             error = sequenceFunction(&cpuSims[i]);
             if (error) break;
@@ -1908,6 +1913,7 @@ void secondaryQueue(
         for (unsigned int i = 0; i < theSim.base().NsimsCPU; ++i) {
             cpuSims[i].assignedGPU = assignedGPU;
             cpuSims[i].runningOnCPU = forceCPU;
+            cpuSims[i].useOpenMP = useOpenMP;
             std::lock_guard dataLock(theSim.mutexes.at(i));
             error = normalFunction(&cpuSims[i]);
             if (error) break;
@@ -1970,7 +1976,11 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     auto normalFunction = use64bitFloatingPoint ? 
         &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
     int assignedGPU = 0;
-    bool forceCPU = 0;
+    bool forceCPU = false;
+    bool useOpenMP = false;
+#ifdef CPUONLY
+    useOpenMP = true;
+#endif
     [[maybe_unused]]int SYCLitems = 0;
     #if !defined(CPUONLY)
     if (theSim.base().syclGPUCount == 0) {
@@ -2043,7 +2053,9 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             normalFunction = &solveNonlinearWaveEquationSYCLFP32;
         }
     }
-     
+    else if (pulldownSelection == (theSim.base().cudaGPUCount + SYCLitems + 1)){
+        useOpenMP = true;
+    }
     #endif
 
     std::thread secondQueueThread(secondaryQueue, 
@@ -2053,6 +2065,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     for (int j = 0; j < (theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU); ++j) {
         theSim.sCPU()[j].runningOnCPU = forceCPU;
         theSim.sCPU()[j].assignedGPU = assignedGPU;
+        theSim.sCPU()[j].useOpenMP = useOpenMP;
         std::lock_guard dataLock(theSim.mutexes.at(j));
         if (theSim.base().isInSequence) {
             try {
@@ -2190,7 +2203,11 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
         theSim.base().fittingROIsize);
 
     int assignedGPU = 0;
-    bool forceCPU = 0;
+    bool forceCPU = false;
+    bool useOpenMP = false;
+#ifdef CPUONLY
+    useOpenMP = true;
+#endif
     [[maybe_unused]]int SYCLitems = 0;
     if (theSim.base().syclGPUCount == 0) {
         SYCLitems = (int)theSim.base().SYCLavailable;
@@ -2225,10 +2242,15 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
         if (!use64bitFloatingPoint)fittingFunction = &runDlibFittingSYCLFP32;
     }
     #endif
+    else if (pulldownSelection == (theSim.base().cudaGPUCount + SYCLitems + 1)) {
+        useOpenMP = true;
+    }
 #endif
     theSim.base().isRunning = true;
     theSim.base().runningOnCPU = forceCPU;
     theSim.base().assignedGPU = assignedGPU;
+    theSim.base().useOpenMP = useOpenMP;
+
     std::unique_lock lock(theSim.mutexes.at(0));
     fittingFunction(theSim.sCPU());
     lock.unlock();
