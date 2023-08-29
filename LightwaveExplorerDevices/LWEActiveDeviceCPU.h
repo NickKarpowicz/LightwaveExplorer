@@ -9,6 +9,9 @@
 #include <iostream>
 #include <cmath>
 #include <cstring>
+#ifndef CPUONLY
+#include <tbb/parallel_for.h>
+#endif
 #include <algorithm>
 #include <execution>
 #include <numeric>
@@ -250,15 +253,26 @@ public:
 			dispatch_barrier_sync(queue,^{});
 		}
 #elif defined _WIN32 || defined __linux__ && not defined CPUONLY
+	//void deviceLaunch(
+	//	const unsigned int Nblock,
+	//	const unsigned int Nthread,
+	//	const T& functor) const {
+	//	std::for_each(
+	//		std::execution::par_unseq, 
+	//		indices.begin(), 
+	//		indices.begin() + static_cast<int64_t>(Nblock)*Nthread, 
+	//		functor);
+	//}
 	void deviceLaunch(
 		const unsigned int Nblock,
 		const unsigned int Nthread,
 		const T& functor) const {
-		std::for_each(
-			std::execution::par_unseq, 
-			indices.begin(), 
-			indices.begin() + static_cast<int64_t>(Nblock)*Nthread, 
-			functor);
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, static_cast<size_t>(Nblock) * Nthread, Nblock),
+			[&](tbb::blocked_range<size_t>& range) {
+				for (size_t i = range.begin(); i != range.end(); ++i) {
+					functor(i);
+				}
+				});
 	}
 #else
 	void deviceLaunch(
