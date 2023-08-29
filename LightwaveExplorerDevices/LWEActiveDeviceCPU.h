@@ -218,18 +218,13 @@ public:
 		dParamsDevice = &dParamslocal;
 		memoryStatus = allocateSet(sCPU);
 	#ifdef __APPLE__
-		queue = dispatch_get_main_queue();
+		queue = dispatch_queue_create("Kernel", DISPATCH_QUEUE_CONCURRENT);
 	#endif
 	}
 
 	~CPUDevice() {
 		fftDestroy();
 		deallocateSet();
-	#ifdef __APPLE__
-		dispatch_async(queue, ^{
-			exit(0);
-		});
-	#endif
 	}
 
 	template<typename T>
@@ -239,13 +234,15 @@ public:
 		const unsigned int Nblock, 
 		const unsigned int Nthread, 
 		const T& functor) const {
-		for (int i = 0; i < static_cast<int>(Nblock); i++) {
-			dispatch_async(queue, ^{
-			const int64_t offset = i * static_cast<int64_t>(Nthread);
-			for(int64_t j = offset; j < static_cast<int64_t>(offset+Nthread); functor(j++)){}
-			})
+			for (auto i = 0; i < Nthread; i++) {
+				dispatch_async(queue, ^{
+					const int64_t offset = i * static_cast<int64_t>(Nblock);
+					for(int64_t j = offset; j < static_cast<int64_t>(offset+Nblock); functor(j++)){}
+				});
+			}
+			dispatch_barrier_sync(queue,^{});
+			
 		}
-	}
 #else
 	void deviceLaunch(
 		const unsigned int Nblock, 
