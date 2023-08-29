@@ -448,9 +448,16 @@ public:
                 pulldowns[8].addElement("SYCLgpu");
             }
         }
+#ifdef _WIN32
+        pulldowns[7].addElement("C++");
+        pulldowns[8].addElement("C++");
+#elif defined __APPLE__
+        pulldowns[7].addElement("\xef\xa3\xbfGCD");
+        pulldowns[8].addElement("\xef\xa3\xbfGCD");
+#else
         pulldowns[7].addElement("OpenMP");
         pulldowns[8].addElement("OpenMP");
-
+#endif
         
         pulldowns[7].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
         pulldowns[8].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);

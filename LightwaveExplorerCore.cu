@@ -1694,7 +1694,7 @@ namespace deviceFunctions {
 		}
 		return invSqrtPi<double>() * d;
 	}
-	//Inner function for the Sellmeier equation to provide the refractive indicies
+	//Inner function for the Sellmeier equation to provide the refractive indices
 	//current equation form:
 	//n^2 = a[0] //background (high freq) contribution
 	//      + four resonances, purely real contribution
@@ -1790,7 +1790,7 @@ namespace deviceFunctions {
 		return cOne<deviceComplex>();
 	};
 
-	//Sellmeier equation for refractive indicies
+	//Sellmeier equation for refractive indices
 	template<typename deviceFP, typename deviceComplex>
 	deviceFunction static deviceComplex sellmeierCuda(
 		deviceComplex* ne, 

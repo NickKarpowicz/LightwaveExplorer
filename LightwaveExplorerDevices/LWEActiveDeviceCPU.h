@@ -9,7 +9,9 @@
 #include <iostream>
 #include <cmath>
 #include <cstring>
-
+#include <algorithm>
+#include <execution>
+#include <numeric>
 #ifdef __APPLE__
 #include <dispatch/dispatch.h>
 #endif
@@ -159,7 +161,9 @@ class CPUDevice {
 private:
 #ifdef __APPLE__
 	dispatch_queue_t queue{};
-#endif 
+#elif defined _WIN32
+	std::vector<int64_t> indices;
+#endif
 	bool configuredFFT = false;
 	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
@@ -174,7 +178,7 @@ private:
 	fftwf_plan fftPlan1DD2Z32;
 	fftwf_plan fftPlan1DZ2D32;
 	fftwf_plan doublePolfftPlan32;
-
+	
 	void fftDestroy() {
 		if(sizeof(deviceFP)==sizeof(double)){
 			fftw_destroy_plan(fftPlanD2Z);
@@ -227,8 +231,11 @@ public:
 		deallocateSet();
 	}
 
+	//Use different threading models on different platforms:
+	// MacOS: Grand Central Dispatch
+	// Windows: C++ std::execution::par_unseq
+	// Linux: OpenMP
 	template<typename T>
-
 #ifdef __APPLE__
 	void deviceLaunch(
 		const unsigned int Nblock, 
@@ -241,8 +248,18 @@ public:
 				});
 			}
 			dispatch_barrier_sync(queue,^{});
-			
 		}
+#elif defined _WIN32
+	void deviceLaunch(
+		const unsigned int Nblock,
+		const unsigned int Nthread,
+		const T& functor) const {
+		std::for_each(
+			std::execution::par_unseq, 
+			indices.begin(), 
+			indices.begin() + static_cast<int64_t>(Nblock)*Nthread, 
+			functor);
+	}
 #else
 	void deviceLaunch(
 		const unsigned int Nblock, 
@@ -607,6 +624,11 @@ public:
 			hasPlasma = s->hasPlasma;
 		}
 		
+	#ifdef _WIN32
+		indices = std::vector<int64_t>(4 * (*s).NgridC);
+		std::iota(indices.begin(), indices.end(), 0);
+	#endif
+
 		sCPU->fillRotationMatricies(s);
 		int64_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
@@ -656,6 +678,11 @@ public:
 
 		int memErrors = 0;
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
+
+	#ifdef _WIN32
+		indices = std::vector<int64_t>(4 * (*s).NgridC);
+		std::iota(indices.begin(), indices.end(), 0);
+	#endif
 
 		int64_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
