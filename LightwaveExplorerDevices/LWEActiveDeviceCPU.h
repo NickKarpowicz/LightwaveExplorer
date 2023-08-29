@@ -10,6 +10,9 @@
 #include <cmath>
 #include <cstring>
 
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+#endif
 static const int LWEThreadCount = 
 	maxN(static_cast<int>(std::thread::hardware_concurrency() / 2), 2);
 #if defined __APPLE__ || defined __linux__
@@ -154,6 +157,9 @@ namespace deviceLibCPUFP32{
 template <typename deviceFP, typename deviceComplex>
 class CPUDevice {
 private:
+#ifdef __APPLE__
+	dispatch_queue_t queue{};
+#endif 
 	bool configuredFFT = false;
 	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
@@ -211,14 +217,36 @@ public:
 		doublePolfftPlan = 0;
 		dParamsDevice = &dParamslocal;
 		memoryStatus = allocateSet(sCPU);
+	#ifdef __APPLE__
+		queue = dispatch_get_main_queue();
+	#endif
 	}
 
 	~CPUDevice() {
 		fftDestroy();
 		deallocateSet();
+	#ifdef __APPLE__
+		dispatch_async(queue, ^{
+			exit(0);
+		});
+	#endif
 	}
 
 	template<typename T>
+
+#ifdef __APPLE__
+	void deviceLaunch(
+		const unsigned int Nblock, 
+		const unsigned int Nthread, 
+		const T& functor) const {
+		for (int i = 0; i < static_cast<int>(Nblock); i++) {
+			dispatch_async(queue, ^{
+			const int64_t offset = i * static_cast<int64_t>(Nthread);
+			for(int64_t j = offset; j < static_cast<int64_t>(offset+Nthread); functor(j++)){}
+			})
+		}
+	}
+#else
 	void deviceLaunch(
 		const unsigned int Nblock, 
 		const unsigned int Nthread, 
@@ -229,6 +257,10 @@ public:
 			for(int64_t j = offset; j < static_cast<int64_t>(offset+Nthread); functor(j++)){}
 		}
 	}
+#endif
+	
+
+
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize){
 		*ptr = calloc(N, elementSize);
 		return static_cast<int>(*ptr == nullptr);
