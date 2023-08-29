@@ -5,13 +5,12 @@ BINPATH=${APP}/Contents/MacOS/${BIN}
 
 #Homebrew libraries location
 LIBS="/Users"
-LLVM="$(brew --prefix llvm)"
 
 #build executable
 rm -rf build
 mkdir build
 cd build
-cmake -DCMAKE_CXX_COMPILER=${LLVM}/bin/clang++ -DCMAKE_C_COMPILER=${LLVM}/bin/clang -DCMAKE_TOOLCHAIN_FILE=/Users/nick/Desktop/Code/vcpkg/scripts/buildsystems/vcpkg.cmake .. -G Ninja
+cmake -DCMAKE_TOOLCHAIN_FILE=/Users/nick/Desktop/Code/vcpkg/scripts/buildsystems/vcpkg.cmake .. -G Ninja
 ninja
 cd ..
 
