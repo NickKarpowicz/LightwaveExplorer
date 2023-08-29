@@ -161,7 +161,7 @@ class CPUDevice {
 private:
 #ifdef __APPLE__
 	dispatch_queue_t queue{};
-#elif defined _WIN32
+#elif defined _WIN32 || defined __linux__
 	std::vector<int64_t> indices;
 #endif
 	bool configuredFFT = false;
@@ -249,7 +249,7 @@ public:
 			}
 			dispatch_barrier_sync(queue,^{});
 		}
-#elif defined _WIN32
+#elif defined _WIN32 || defined __linux__ && not defined CPUONLY
 	void deviceLaunch(
 		const unsigned int Nblock,
 		const unsigned int Nthread,
@@ -273,8 +273,6 @@ public:
 	}
 #endif
 	
-
-
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize){
 		*ptr = calloc(N, elementSize);
 		return static_cast<int>(*ptr == nullptr);
@@ -624,7 +622,7 @@ public:
 			hasPlasma = s->hasPlasma;
 		}
 		
-	#ifdef _WIN32
+	#if defined _WIN32 || defined __linux__
 		indices = std::vector<int64_t>(4 * (*s).NgridC);
 		std::iota(indices.begin(), indices.end(), 0);
 	#endif
@@ -679,7 +677,7 @@ public:
 		int memErrors = 0;
 		double* expGammaTCPU = new double[2 * (*s).Ntime];
 
-	#ifdef _WIN32
+	#if defined _WIN32 || defined __linux__
 		indices = std::vector<int64_t>(4 * (*s).NgridC);
 		std::iota(indices.begin(), indices.end(), 0);
 	#endif

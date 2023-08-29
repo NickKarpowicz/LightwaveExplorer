@@ -448,7 +448,7 @@ public:
                 pulldowns[8].addElement("SYCLgpu");
             }
         }
-#ifdef _WIN32
+#if defined _WIN32 || defined __linux__
         pulldowns[7].addElement("C++");
         pulldowns[8].addElement("C++");
 #elif defined __APPLE__
