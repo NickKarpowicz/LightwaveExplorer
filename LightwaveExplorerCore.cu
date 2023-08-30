@@ -5597,7 +5597,7 @@ namespace hostFunctions{
 		double* vBlock, 
 		ActiveDevice& d, 
 		simulationParameterSet *sCPU) {
-
+		if (cc.size() == 0) return 0;
 		crystalEntry* db = (*sCPU).crystalDatabase;
 		int error = 0;
 		double parameters[32] = {};
@@ -5698,7 +5698,7 @@ namespace hostFunctions{
 						(*sCPU).totalSpectrum, 
 						3 * (*sCPU).Nfreq * sizeof(double));
 				}
-				else {
+				else if ((*sCPU).runType != -1) {
 					throw std::runtime_error(
 						std::string("Attempted out-of-bounds save() to index ")
 						.append(std::to_string(saveLoc)).append("\n"));
@@ -6008,7 +6008,7 @@ namespace hostFunctions{
 				currentString = currentString.substr(1, std::string::npos);
 			}
 			//skip angle brackets (comments)
-			if (currentString.at(0) == '<') {
+			while (currentString.at(0) == '<') {
 				currentString = 
 					currentString.substr(currentString.find_first_of('>'), std::string::npos);
 				if (currentString.length() < minLength) break;
