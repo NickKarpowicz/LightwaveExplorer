@@ -974,12 +974,14 @@ int interpretParameters(
 				else{
 					throw std::runtime_error("Malformed argument\n");
 				}
+				if(expectedDelimiter==')') break;
 			}
 			else if(openParens > 0 && arguments[i]==')'){
 				openParens--;
 			}
 			else if(arguments[i] == wrongDelimiter){
-				throw std::runtime_error("Wrong number of arguments\n");
+				std::cout << "error at " << i << "\n" << arguments << std::endl;
+				throw std::runtime_error(std::string("Wrong number of arguments\n").append(cc).append("\n"));
 			}
 		}
 

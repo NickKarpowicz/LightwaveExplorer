@@ -6037,7 +6037,7 @@ namespace hostFunctions{
 			error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
 			if (error || (*sCPU).cancellationCalled) break;
 			currentString = 
-				currentString.substr(findFunctionArgumentClosure(currentString)+1, std::string::npos);
+				currentString.substr(findFunctionArgumentClosure(currentString), std::string::npos);
 
 			if (currentString.length() < minLength) break;
 
