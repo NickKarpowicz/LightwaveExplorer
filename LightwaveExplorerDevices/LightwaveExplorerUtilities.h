@@ -25,7 +25,7 @@ int             loadSavedGridFile(const std::string& filePath, std::vector<doubl
 int             loadSavedGridFileMultiple(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid, int64_t Nsims);
 int             loadWaveformFile(const std::string& filePath, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);
 double          cModulusSquared(const std::complex<double>& x);
-void            applyOp(const char op, double* result, const double* readout);
+size_t          findParenthesesClosure(std::string& a);
 double          parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock);
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
