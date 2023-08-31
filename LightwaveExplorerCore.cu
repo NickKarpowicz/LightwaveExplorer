@@ -5966,7 +5966,26 @@ namespace hostFunctions{
 		}
 		return error;
 	}
-
+	static size_t findFunctionArgumentClosure(std::string& a){
+		int nParen = 0;
+		bool foundFirstParen = false;
+		for(int i = 0; i<a.size(); ++i){
+			if(a[i]=='('){
+				nParen++;
+				foundFirstParen = true;
+			}
+			if(a[i]==')'){
+				nParen--;
+				if(nParen==0 && foundFirstParen){
+					return i;
+				}
+				else if(nParen < 0 || !foundFirstParen){
+					throw std::runtime_error(std::string("Weird parenthesis in:\n").append(a).append("\n"));
+				}
+			}
+		}
+		throw std::runtime_error(std::string("Weird parenthesis in:\n").append(a).append("\n"));
+	}
 	static int solveSequenceWithDevice(
 		ActiveDevice& d, 
 		simulationParameterSet* sCPU) {
@@ -6018,7 +6037,7 @@ namespace hostFunctions{
 			error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
 			if (error || (*sCPU).cancellationCalled) break;
 			currentString = 
-				currentString.substr(currentString.find_first_of(')'), std::string::npos);
+				currentString.substr(findFunctionArgumentClosure(currentString)+1, std::string::npos);
 
 			if (currentString.length() < minLength) break;
 

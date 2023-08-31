@@ -1,5 +1,5 @@
 #include "LightwaveExplorerUtilities.h"
-
+#include <iostream>
 #ifdef CPUONLY
 #include <fftw3.h>
 #else
@@ -938,8 +938,63 @@ void stripLineBreaks(std::string& s) {
 	removeCharacterFromString(s, '\r');
 	removeCharacterFromString(s, '\n');
 }
-
 int interpretParameters(
+	const std::string& cc, 
+	const int numberParams, 
+	const double *iBlock, 
+	const double *vBlock, 
+	double *parameters, 
+	bool* defaultMask){
+		std::string arguments = cc.substr(cc.find_first_of('(')+1, std::string::npos);
+		// pattern: search for a , or ) depending on how many have been found
+		// and the value of numberParams. 
+		// If an ) is encountered while searching for , throw "too few"
+		// If an , is encountered while searching for ) throw "too many"
+		int numberFound = 0;
+		size_t startArgument = 0;
+		std::vector<std::string> argTable;
+		argTable.reserve(numberParams);
+		char expectedDelimiter = ',';
+		char wrongDelimiter = ')';
+		int openParens = 0;
+
+		for(int i = 0; i<arguments.size(); ++i){
+			if(numberFound == numberParams-1) {
+				expectedDelimiter = ')';
+				wrongDelimiter = ',';
+			}
+			if(arguments[i] == '(') openParens++;
+			if(arguments[i] == expectedDelimiter && openParens == 0){
+				std::cout << i << std::endl;
+				if(i != startArgument){
+					argTable.push_back(arguments.substr(startArgument,i-startArgument));
+					numberFound++;
+					startArgument = i+1;
+				}
+				else{
+					throw std::runtime_error("Malformed argument\n");
+				}
+			}
+			else if(openParens > 0 && arguments[i]==')'){
+				openParens--;
+			}
+			else if(arguments[i] == wrongDelimiter){
+				throw std::runtime_error("Wrong number of arguments\n");
+			}
+		}
+
+		for(int i = 0; i<argTable.size(); ++i){
+			std::cout << argTable[i] << std::endl;
+			if(argTable[i].at(0)=='d'){
+				defaultMask[i] = true;
+			}
+			else{
+				parameters[i] = parameterStringToDouble(argTable[i],iBlock,vBlock);
+			}
+		}
+		return 0;
+	}
+int interpretParametersOld(
 	const std::string& cc, 
 	const int n, 
 	const double *iBlock, 
