@@ -1073,10 +1073,10 @@ const std::string& ss,
 			numberTable.push_back(std::stod(ss.substr(lastOperator+1,std::string::npos)));
 		}
 
-	auto applyOperator = [&](char theOp){
+	auto applyOperators = [&](char firstOp, char secondOp){
 		for(int i = 0; i < operatorTable.size(); ++i){
-			if(ss[operatorTable[i]] == theOp){
-				switch(theOp){
+			if(ss[operatorTable[i]] == firstOp || ss[operatorTable[i]] == secondOp){
+				switch(ss[operatorTable[i]]){
 				case '^':
 					numberTable[i] = std::pow(numberTable[i],numberTable[i+1]);
 					break;
@@ -1099,11 +1099,9 @@ const std::string& ss,
 			}
 		}
 	};
-	applyOperator('^');
-	applyOperator('*');
-	applyOperator('/');
-	applyOperator('+');
-	applyOperator('-');
+	applyOperators('^',0);
+	applyOperators('*','/');
+	applyOperators('+','-');
 	if(std::isnan(numberTable[0])) throw std::runtime_error(
 		std::string("NaN encountered when evaluating:\n").append(ss).append("\n"));
 	return numberTable[0];
