@@ -472,13 +472,12 @@ public:
 		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
 		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-		delete[] expGammaTCPU;
+		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 
 		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, 
@@ -548,17 +547,12 @@ public:
 		memErrors += deviceCalloc((void**)
 			&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
 
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
 		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy(
-			(*s).expGammaT, 
-			expGammaTCPU, 
-			2 * sizeof(double) * (*s).Ntime, 
-			copyType::ToDevice);
-		delete[] expGammaTCPU;
+		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 
 		(*sCPU).memoryError = memErrors;
 		if (memErrors > 0) {

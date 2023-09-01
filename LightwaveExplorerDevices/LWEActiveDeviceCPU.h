@@ -233,8 +233,7 @@ public:
 
 	//Use different threading models on different platforms:
 	// MacOS: Grand Central Dispatch
-	// Windows: C++ std::execution::par_unseq
-	// Linux: OpenMP
+	// Window/Linux: C++ std::execution::par or OpenMP
 	template<typename T>
 #ifdef __APPLE__
 	void deviceLaunch(
@@ -254,28 +253,24 @@ public:
 		const unsigned int Nblock,
 		const unsigned int Nthread,
 		const T& functor) const {
-
 		if (cParams->useOpenMP) {
 #pragma omp parallel for num_threads(LWEThreadCount)
 			for (int i = 0; i < static_cast<int>(Nblock); i++) {
 				const int64_t offset = i * static_cast<int64_t>(Nthread);
 				for (int64_t j = offset; j < static_cast<int64_t>(offset + Nthread); functor(j++)) {}
 			}
-		}
-		
+		}		
 		else {
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
 			std::for_each(
-				std::execution::par_unseq,
+				std::execution::par,
 				indices.begin(),
 				indices.begin() + static_cast<int64_t>(Nblock) * Nthread,
 				functor);
 #endif
 		}
-		
 	}
 #endif
-	
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize){
 		*ptr = calloc(N, elementSize);
 		return static_cast<int>(*ptr == nullptr);
@@ -624,12 +619,10 @@ public:
 			sCPU->initializeDeviceParameters(s);
 			hasPlasma = s->hasPlasma;
 		}
-		
 	#if defined _WIN32 || defined __linux__
 		indices = std::vector<int64_t>(4 * (*s).NgridC);
 		std::iota(indices.begin(), indices.end(), 0);
 	#endif
-
 		sCPU->fillRotationMatricies(s);
 		int64_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
@@ -660,13 +653,12 @@ public:
 		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
 		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-		delete[] expGammaTCPU;
+		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 
 		sCPU->finishConfiguration(s);
 		deviceMemcpy(dParamsDevice, s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
@@ -678,7 +670,7 @@ public:
 		fftInitialize();
 
 		int memErrors = 0;
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
+
 
 	#if defined _WIN32 || defined __linux__
 		indices = std::vector<int64_t>(4 * (*s).NgridC);
@@ -731,12 +723,13 @@ public:
 			&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
 		memErrors += deviceCalloc((void**)
 			&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
 		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-		delete[] expGammaTCPU;
+		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
+
 		(*sCPU).memoryError = memErrors;
 		if (memErrors > 0) {
 			return memErrors;
