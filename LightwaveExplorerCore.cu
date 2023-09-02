@@ -5952,8 +5952,8 @@ namespace hostFunctions{
 							currentString = currentString.substr(1, std::string::npos);
 						}
 						error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
-						currentString =
-							currentString.substr(currentString.find_first_of(')') + 1, std::string::npos);
+						currentString = 
+							currentString.substr(findParenthesesClosure(currentString)+1, std::string::npos);
 						if (error || (*sCPU).cancellationCalled) break;
 					}
 					++vBlock[targetVar];
@@ -5966,7 +5966,7 @@ namespace hostFunctions{
 		}
 		return error;
 	}
-
+	
 	static int solveSequenceWithDevice(
 		ActiveDevice& d, 
 		simulationParameterSet* sCPU) {
@@ -6018,8 +6018,7 @@ namespace hostFunctions{
 			error = interpretCommand(currentString, iBlock, vBlock, d, sCPU);
 			if (error || (*sCPU).cancellationCalled) break;
 			currentString = 
-				currentString.substr(currentString.find_first_of(')'), std::string::npos);
-
+				currentString.substr(findParenthesesClosure(currentString), std::string::npos);
 			if (currentString.length() < minLength) break;
 
 			currentString = currentString.substr(1, std::string::npos);

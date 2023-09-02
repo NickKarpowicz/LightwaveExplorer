@@ -407,20 +407,20 @@ public:
 	}
 
 	void fft(const void* input, void* output, const deviceFFT type) const {
-		switch (static_cast<int>(type)) {
-		case 0:
+		switch (type) {
+		case deviceFFT::D2Z:
 			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (deviceComplex*)output);
 			break;
-		case 1:
+		case deviceFFT::Z2D:
 			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (deviceComplex*)input, (deviceFP*)output);
 			break;
-		case 2:
+		case deviceFFT::D2Z_1D:
 			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (deviceComplex*)output);
 			break;
-		case 3:
+		case deviceFFT::Z2D_1D:
 			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (deviceComplex*)input, (deviceFP*)output);
 			break;
-		case 4:
+		case deviceFFT::D2Z_Polarization:
 			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (deviceComplex*)output);
 			break;
 		}
@@ -486,13 +486,12 @@ public:
 		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
 
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
+		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
 		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-		delete[] expGammaTCPU;
+		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 
 		sCPU->finishConfiguration(s);
 		deviceMemcpy(
@@ -537,7 +536,6 @@ public:
 		hasPlasma = s->hasPlasma;
 		fftInitialize();
 		int memErrors = 0;
-		double* expGammaTCPU = new double[2 * (*s).Ntime];
 
 		int64_t beamExpansionFactor = 1;
 		if ((*s).isCylindric) {
@@ -585,12 +583,12 @@ public:
 			&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
 		memErrors += deviceCalloc((void**)
 			&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
+		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
 		for (int64_t i = 0; i < (*s).Ntime; ++i) {
 			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
 			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
 		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU, 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-		delete[] expGammaTCPU;
+		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
 		(*sCPU).memoryError = memErrors;
 		if (memErrors > 0) {
 			return memErrors;

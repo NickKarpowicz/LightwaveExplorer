@@ -1129,6 +1129,10 @@ gboolean formatSequenceBuffer(gpointer data) {
             //if the ( isn't closed properly, paint it as an error
             close = s.find_first_of(')', i);
             nameStart = s.find_first_of('(', i + 1);
+            while(nameStart < close && nameStart != std::string::npos){
+                close = s.find_first_of(')',close+1);
+                nameStart = s.find_first_of('(', close + 1);
+            }
             if (close == std::string::npos || close > nameStart) {
                 applyTag("error", i, i + 1);
             }
@@ -1150,6 +1154,9 @@ gboolean formatSequenceBuffer(gpointer data) {
                     }
                     if (s[i] == ',') {
                         applyTag("parenthesis", i, i + 1);
+                    }
+                    if (s[i] == ')' || s[i] == '('){
+                        applyTag("function", i, i + 1);
                     }
                 }
             }

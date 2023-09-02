@@ -1,5 +1,5 @@
 #include "LightwaveExplorerUtilities.h"
-
+#include <iostream>
 #ifdef CPUONLY
 #include <fftw3.h>
 #else
@@ -941,171 +941,170 @@ void stripLineBreaks(std::string& s) {
 
 int interpretParameters(
 	const std::string& cc, 
-	const int n, 
+	const int numberParams, 
 	const double *iBlock, 
 	const double *vBlock, 
 	double *parameters, 
 	bool* defaultMask){
-	std::string ccSegment = cc.substr(cc.find_first_of('(')+1, std::string::npos);
+		std::string arguments = cc.substr(cc.find_first_of('(')+1, std::string::npos);
+		// pattern: search for a , or ) depending on how many have been found
+		// and the value of numberParams. 
+		// If an ) is encountered while searching for , throw "too few"
+		// If an , is encountered while searching for ) throw "too many"
+		int numberFound = 0;
+		size_t startArgument = 0;
+		std::vector<std::string> argTable;
+		argTable.reserve(numberParams);
+		char expectedDelimiter = ',';
+		char wrongDelimiter = ')';
+		int openParens = 0;
 
-	std::stringstream ss(ccSegment);
-	std::string line;
-	int i = 0;
-	while(i<n && ss.good()){
-		std::getline(ss, line, ',');
-		if(line.at(0)=='d'){
-			defaultMask[i] = true;
+		for(int i = 0; i<arguments.size(); ++i){
+			if(numberFound == numberParams-1) {
+				expectedDelimiter = ')';
+				wrongDelimiter = ',';
+			}
+			if(arguments[i] == '(') openParens++;
+			if(arguments[i] == expectedDelimiter && openParens == 0){
+				if(i != startArgument){
+					argTable.push_back(arguments.substr(startArgument,i-startArgument));
+					numberFound++;
+					startArgument = i+1;
+				}
+				else{
+					throw std::runtime_error("Malformed argument\n");
+				}
+				if(expectedDelimiter==')') break;
+			}
+			else if(openParens > 0 && arguments[i]==')'){
+				openParens--;
+			}
+			else if(arguments[i] == wrongDelimiter){
+				throw std::runtime_error(std::string("Wrong number of arguments\n").append(cc).append("\n"));
+			}
 		}
-		else{
-			parameters[i] = parameterStringToDouble(line,iBlock,vBlock);
-		}
-		i++;
-	}
-	if (i != n) {
-		std::string errorMessage("Not enough input parameters,\nexpected ");
-		errorMessage.append(std::to_string(n));
-		errorMessage.append(" but got ");
-		errorMessage.append(std::to_string(i));
-		errorMessage.append("\nwhen interpreting\n").append(cc);
-		throw std::runtime_error(errorMessage);
-	}
 
-	return 0;
+		for(int i = 0; i<argTable.size(); ++i){
+			if(argTable[i].at(0)=='d'){
+				defaultMask[i] = true;
+			}
+			else{
+				parameters[i] = parameterStringToDouble(argTable[i],iBlock,vBlock);
+			}
+		}
+		return 0;
 }
 
-void applyOp(const char op, double* result, const double* readout) {
-	switch (op) {
-	case '*':
-		*result *= *readout;
-		return;
-	case '/':
-		*result /= *readout;
-		return;
-	case '-':
-		*result -= *readout;
-		return;
-	case '+':
-		*result += *readout;
-		return;
-	case '^':
-		if (*readout < 1.0 && *result < 0.0) {
-			*result = 0.0;
+size_t findParenthesesClosure(std::string& a){
+	int nParen = 0;
+	bool foundFirstParen = false;
+	for(int i = 0; i<a.size(); ++i){
+		if(a[i]=='('){
+			nParen++;
+			foundFirstParen = true;
 		}
-		else {
-			*result = pow(*result, *readout);
+		if(a[i]==')'){
+			nParen--;
+			if(nParen==0 && foundFirstParen){
+				return i;
+			}
+			else if(nParen < 0 || !foundFirstParen){
+				throw std::runtime_error(std::string("Weird parenthesis in:\n").append(a).append("\n"));
+			}
 		}
-		return;
 	}
+	throw std::runtime_error(std::string("Weird parenthesis in:\n").append(a).append("\n"));
 }
 
 double parameterStringToDouble(
-	const std::string& ss, 
+const std::string& ss, 
 	const double* iBlock, 
 	const double* vBlock) {
-	auto nextInt = [&](const std::string& iStr, int location) {
-		std::stringstream s(iStr.substr(location));
-		int a;
-		s >> a;
-		return a;
-	};
-
-	auto nextDouble = [&](const std::string& iStr, int location) {
-		std::stringstream s(iStr.substr(location));
-		double a;
-		s >> a;
-		return a;
-	};
-
-	int loc = 0;
-	double result = 0.0;
-	double readout = 0.0;
-	int ind = 0;
-	bool previousCharWasOp = 0;
-	char lastOp = 0;
-	while (loc < (ss.length()) && ss[loc]!=')') {
-		if (!previousCharWasOp) {
-			if (ss[loc] == 'v') {
-				++loc;
-				ind = nextInt(ss,loc);
-				loc += 2;
-				if (ind < 100) result = vBlock[ind];
-			}
-			else if (ss[loc] == 'i') {
-				++loc;
-				ind = nextInt(ss, loc);
-				loc += 2;
-				if (ind < 100) result = iBlock[ind];
-			}
-
-			else if (ss[loc] == '*'
-				|| ss[loc] == '-'
-				|| ss[loc] == '+'
-				|| ss[loc] == '/'
-				|| ss[loc] == '^') {
-				previousCharWasOp = 1;
-				lastOp = ss[loc];
-				loc++;
-			}
-			else {
-				result = nextDouble(ss, loc);
-				while (!(ss[loc] == '*'
-					|| ss[loc] == '-'
-					|| ss[loc] == '+'
-					|| ss[loc] == '/'
-					|| ss[loc] == '^')) {
-					if (loc >= (ss.length()-1) || ss[loc]==')') {
-						return result;
-					}
-					if (ss[loc] == 'e') {
-						if (ss.at(loc+1) == '-' || ss.at(loc+1) == '+') loc += 2;
-					}
-					else {
-						loc++;
-					}
-				}
-			}
+	std::vector<size_t> operatorTable;
+	std::vector<double> numberTable;
+	int lastOperator = -1;
+	bool lastNumberWasNotParenthesized = true;
+	for(size_t i = 0; i<ss.size(); ++i){
+		if(
+		  (ss[i] == '+'
+		|| ss[i] == '-'
+		|| ss[i] == '*'
+		|| ss[i] == '/'
+		|| ss[i] == '^')
+		&& i != 0){
+			operatorTable.push_back(i);
+			if(lastNumberWasNotParenthesized)numberTable.push_back(std::stod(ss.substr(lastOperator+1,i-lastOperator-1)));
+			lastOperator = i;
+			lastNumberWasNotParenthesized = true;
 		}
-		else {
-			if (ss[loc] == 'v') {
-				++loc;
-				ind = nextInt(ss, loc);
-				loc += 2;
-				if (ind < 100)readout = vBlock[ind];
-				applyOp(lastOp, &result, &readout);
-				previousCharWasOp = 0;
-			}
-			else if (ss[loc] == 'i') {
-				++loc;
-				ind = nextInt(ss, loc);
-				loc += 2;
-				if (ind < 100) readout = iBlock[ind];
-				applyOp(lastOp, &result, &readout);
-				previousCharWasOp = 0;
-			}
-			else {
-				readout = nextDouble(ss, loc);
-				applyOp(lastOp, &result, &readout);
-				previousCharWasOp = 0;
-				while (!(ss[loc] == '*'
-					|| ss[loc] == '-'
-					|| ss[loc] == '+'
-					|| ss[loc] == '/'
-					|| ss[loc] == '^')) {
-					if (loc >= (ss.length()-1) || ss[loc]==')') {
-						return result;
-					}
-					if (ss[loc] == 'e') {
-						if (ss.at(loc+1) == '-' || ss.at(loc+1) == '+') loc += 2;
-					}
-					else {
-						loc++;
-					}
-				}
-			}
+		else if(ss[i] == '('){
+			std::string parenString = ss.substr(i, std::string::npos);
+			parenString = parenString.substr(1,
+				findParenthesesClosure(
+					parenString)-1);
+			numberTable.push_back(parameterStringToDouble(parenString, iBlock, vBlock));
+			lastOperator = i + parenString.size();
+			i += parenString.size()+1;
+			lastNumberWasNotParenthesized = false;
 		}
-
+		else if(ss[i] == 'e'){
+			if(ss[i] == '+' || ss[i] == '-') i += 2;
+			else i++;
+		}
+		else if(ss[i] == 'v'){
+			int ind = std::stoi(ss.substr(i+1,2));
+			numberTable.push_back(vBlock[ind]);
+			lastOperator = i + 2;
+			i += 2;
+			lastNumberWasNotParenthesized = false;
+		}
+		else if(ss[i] == 'i'){
+			int ind = std::stoi(ss.substr(i+1,2));
+			numberTable.push_back(iBlock[ind]);
+			lastOperator = i + 2;
+			i += 2;
+			lastNumberWasNotParenthesized = false;
+		}
 	}
-	return result;
+	if(lastOperator == -1) {
+		return std::stod(ss);
+	}
+	if(lastOperator+1 < ss.size()){
+			numberTable.push_back(std::stod(ss.substr(lastOperator+1,std::string::npos)));
+		}
+
+	auto applyOperators = [&](char firstOp, char secondOp){
+		for(int i = 0; i < operatorTable.size(); ++i){
+			if(ss[operatorTable[i]] == firstOp || ss[operatorTable[i]] == secondOp){
+				switch(ss[operatorTable[i]]){
+				case '^':
+					numberTable[i] = std::pow(numberTable[i],numberTable[i+1]);
+					break;
+				case '*':
+					numberTable[i] = numberTable[i] * numberTable[i+1];
+					break;
+				case '/':
+					numberTable[i] = numberTable[i] / numberTable[i+1];
+					break;
+				case '+':
+					numberTable[i] = numberTable[i] + numberTable[i+1];
+					break;
+				case '-':
+					numberTable[i] = numberTable[i] - numberTable[i+1];
+					break;
+				}
+				numberTable.erase(numberTable.begin() + i + 1);
+				operatorTable.erase(operatorTable.begin()+i);
+				i--;
+			}
+		}
+	};
+	applyOperators('^',0);
+	applyOperators('*','/');
+	applyOperators('+','-');
+	if(std::isnan(numberTable[0])) throw std::runtime_error(
+		std::string("NaN encountered when evaluating:\n").append(ss).append("\n"));
+	return numberTable[0];
 }
 
 std::string getBasename(const std::string& fullPath) {
