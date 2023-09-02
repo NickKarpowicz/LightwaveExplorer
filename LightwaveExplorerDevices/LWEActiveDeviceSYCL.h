@@ -407,20 +407,20 @@ public:
 	}
 
 	void fft(const void* input, void* output, const deviceFFT type) const {
-		switch (static_cast<int>(type)) {
-		case 0:
+		switch (type) {
+		case deviceFFT::D2Z:
 			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (deviceComplex*)output);
 			break;
-		case 1:
+		case deviceFFT::Z2D:
 			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (deviceComplex*)input, (deviceFP*)output);
 			break;
-		case 2:
+		case deviceFFT::D2Z_1D:
 			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (deviceComplex*)output);
 			break;
-		case 3:
+		case deviceFFT::Z2D_1D:
 			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (deviceComplex*)input, (deviceFP*)output);
 			break;
-		case 4:
+		case deviceFFT::D2Z_Polarization:
 			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (deviceComplex*)output);
 			break;
 		}
