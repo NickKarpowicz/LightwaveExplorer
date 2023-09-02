@@ -3,7 +3,7 @@ BIN=LightwaveExplorer
 APP=build/${BIN}.app
 BINPATH=${APP}/Contents/MacOS/${BIN}
 
-#Homebrew libraries location
+#Shared libraries location
 LIBS="/Users"
 
 #build executable
