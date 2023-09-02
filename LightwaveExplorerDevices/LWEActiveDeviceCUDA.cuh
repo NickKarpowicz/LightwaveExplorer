@@ -384,37 +384,43 @@ public:
 	}
 
 	void fft(const void* input, void* output, deviceFFT type) {
-		switch (static_cast<int>(type) + 5 * ( sizeof(deviceFP) == sizeof (float))) {
-		case 0:
-			cufftExecD2Z(fftPlanD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
-			break;
-		case 1:
-			cufftExecZ2D(fftPlanZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
-			break;
-		case 2:
-			cufftExecD2Z(fftPlan1DD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
-			break;
-		case 3:
-			cufftExecZ2D(fftPlan1DZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
-			break;
-		case 4:
-			cufftExecD2Z(doublePolfftPlan, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
-			break;
-		case 5:
-			cufftExecR2C(fftPlanD2Z, (cufftReal*)input, (cufftComplex*)output);
-			break;
-		case 6:
-			cufftExecC2R(fftPlanZ2D, (cufftComplex*)input, (cufftReal*)output);
-			break;
-		case 7:
-			cufftExecR2C(fftPlan1DD2Z, (cufftReal*)input, (cufftComplex*)output);
-			break;
-		case 8:
-			cufftExecC2R(fftPlan1DZ2D, (cufftComplex*)input, (cufftReal*)output);
-			break;
-		case 9:
-			cufftExecR2C(doublePolfftPlan, (cufftReal*)input, (cufftComplex*)output);
-			break;
+		if(sizeof(deviceFP) == sizeof(double)){
+			switch (type){
+			case deviceFFT::D2Z:
+				cufftExecD2Z(fftPlanD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+				break;
+			case deviceFFT::Z2D:
+				cufftExecZ2D(fftPlanZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
+				break;
+			case deviceFFT::D2Z_1D:
+				cufftExecD2Z(fftPlan1DD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+				break;
+			case deviceFFT::Z2D_1D:
+				cufftExecZ2D(fftPlan1DZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
+				break;
+			case deviceFFT::D2Z_Polarization:
+				cufftExecD2Z(doublePolfftPlan, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
+				break;
+			}
+		}
+		else{
+			switch(type){
+			case deviceFFT::D2Z:
+				cufftExecR2C(fftPlanD2Z, (cufftReal*)input, (cufftComplex*)output);
+				break;
+			case deviceFFT::Z2D:
+				cufftExecC2R(fftPlanZ2D, (cufftComplex*)input, (cufftReal*)output);
+				break;
+			case deviceFFT::D2Z_1D:
+				cufftExecR2C(fftPlan1DD2Z, (cufftReal*)input, (cufftComplex*)output);
+				break;
+			case deviceFFT::Z2D_1D:
+				cufftExecC2R(fftPlan1DZ2D, (cufftComplex*)input, (cufftReal*)output);
+				break;
+			case deviceFFT::D2Z_Polarization:
+				cufftExecR2C(doublePolfftPlan, (cufftReal*)input, (cufftComplex*)output);
+				break;
+			}
 		}
 	}
 	void deallocateSet() {

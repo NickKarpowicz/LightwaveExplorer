@@ -336,39 +336,46 @@ public:
 	inline bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
 		return isnan(*canaryPointer);
 	}
+	
 	void fft(void* input, void* output, deviceFFT type) const {
 		if (!configuredFFT) return;
-		switch (static_cast<int>(type) + 5 * (sizeof(deviceFP) == sizeof(float))){
-		case 0:
-			fftw_execute_dft_r2c(fftPlanD2Z, (double*)input, (fftw_complex*)output);
-			break;
-		case 1:
-			fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)input, (double*)output);
-			break;
-		case 2:
-			fftw_execute_dft_r2c(fftPlan1DD2Z, (double*)input, (fftw_complex*)output);
-			break;
-		case 3:
-			fftw_execute_dft_c2r(fftPlan1DZ2D, (fftw_complex*)input, (double*)output);
-			break;
-		case 4:
-			fftw_execute_dft_r2c(doublePolfftPlan, (double*)input, (fftw_complex*)output);
-			break;
-		case 5:
-			fftwf_execute_dft_r2c(fftPlanD2Z32, (float*)input, (fftwf_complex*)output);
-			break;
-		case 6:
-			fftwf_execute_dft_c2r(fftPlanZ2D32, (fftwf_complex*)input, (float*)output);
-			break;
-		case 7:
-			fftwf_execute_dft_r2c(fftPlan1DD2Z32, (float*)input, (fftwf_complex*)output);
-			break;
-		case 8:
-			fftwf_execute_dft_c2r(fftPlan1DZ2D32, (fftwf_complex*)input, (float*)output);
-			break;
-		case 9:
-			fftwf_execute_dft_r2c(doublePolfftPlan32, (float*)input, (fftwf_complex*)output);
-			break;
+		if(sizeof(deviceFP) == sizeof(double)){
+			switch (type){
+			case deviceFFT::D2Z:
+				fftw_execute_dft_r2c(fftPlanD2Z, (double*)input, (fftw_complex*)output);
+				break;
+			case deviceFFT::Z2D:
+				fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)input, (double*)output);
+				break;
+			case deviceFFT::D2Z_1D:
+				fftw_execute_dft_r2c(fftPlan1DD2Z, (double*)input, (fftw_complex*)output);
+				break;
+			case deviceFFT::Z2D_1D:
+				fftw_execute_dft_c2r(fftPlan1DZ2D, (fftw_complex*)input, (double*)output);
+				break;
+			case deviceFFT::D2Z_Polarization:
+				fftw_execute_dft_r2c(doublePolfftPlan, (double*)input, (fftw_complex*)output);
+				break;
+			}
+		}
+		else{
+			switch(type){
+			case deviceFFT::D2Z:
+				fftwf_execute_dft_r2c(fftPlanD2Z32, (float*)input, (fftwf_complex*)output);
+				break;
+			case deviceFFT::Z2D:
+				fftwf_execute_dft_c2r(fftPlanZ2D32, (fftwf_complex*)input, (float*)output);
+				break;
+			case deviceFFT::D2Z_1D:
+				fftwf_execute_dft_r2c(fftPlan1DD2Z32, (float*)input, (fftwf_complex*)output);
+				break;
+			case deviceFFT::Z2D_1D:
+				fftwf_execute_dft_c2r(fftPlan1DZ2D32, (fftwf_complex*)input, (float*)output);
+				break;
+			case deviceFFT::D2Z_Polarization:
+				fftwf_execute_dft_r2c(doublePolfftPlan32, (float*)input, (fftwf_complex*)output);
+				break;
+			}
 		}
 	}
 
