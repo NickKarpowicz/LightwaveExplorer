@@ -1034,7 +1034,7 @@ const std::string& ss,
 		&& i != 0){
 			operatorTable.push_back(i);
 			if(lastNumberWasNotParenthesized)numberTable.push_back(std::stod(ss.substr(lastOperator+1,i-lastOperator-1)));
-			lastOperator = i;
+			lastOperator = static_cast<int>(i);
 			lastNumberWasNotParenthesized = true;
 		}
 		else if(ss[i] == '('){
@@ -1043,7 +1043,7 @@ const std::string& ss,
 				findParenthesesClosure(
 					parenString)-1);
 			numberTable.push_back(parameterStringToDouble(parenString, iBlock, vBlock));
-			lastOperator = i + parenString.size();
+			lastOperator = static_cast<int>(i + parenString.size());
 			i += parenString.size()+1;
 			lastNumberWasNotParenthesized = false;
 		}
@@ -1054,14 +1054,14 @@ const std::string& ss,
 		else if(ss[i] == 'v'){
 			int ind = std::stoi(ss.substr(i+1,2));
 			numberTable.push_back(vBlock[ind]);
-			lastOperator = i + 2;
+			lastOperator = static_cast<int>(i + 2);
 			i += 2;
 			lastNumberWasNotParenthesized = false;
 		}
 		else if(ss[i] == 'i'){
 			int ind = std::stoi(ss.substr(i+1,2));
 			numberTable.push_back(iBlock[ind]);
-			lastOperator = i + 2;
+			lastOperator = static_cast<int>(i + 2);
 			i += 2;
 			lastNumberWasNotParenthesized = false;
 		}
