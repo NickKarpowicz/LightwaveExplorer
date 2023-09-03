@@ -3,7 +3,9 @@
     "runtime": "org.gnome.Platform",
     "runtime-version": "44",
     "sdk": "org.gnome.Sdk",
-    "sdk-extensions":["org.freedesktop.Sdk.Extension.llvm15"],
+    "sdk-extensions":[
+        "org.freedesktop.Sdk.Extension.llvm15",
+        "org.freedesktop.Sdk.Extension.llvm14"],
     "command": "flatpakLauncher.sh",
     "finish-args": [
         "--share=ipc",
@@ -64,7 +66,14 @@
                     "chmod +x l_BaseKit_p_2023.2.0.49397_offline.sh",
                     "./l_BaseKit_p_2023.2.0.49397_offline.sh -x -f webimage_extracted",
                     "rm l_BaseKit_p_2023.2.0.49397_offline.sh",
-                    "webimage_extracted/l_BaseKit_p_2023.2.0.49397_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel --install-dir=/app/opt/intel/oneapi --eula=accept"
+                    "webimage_extracted/l_BaseKit_p_2023.2.0.49397_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.tbb.devel:intel.oneapi.lin.dpcpp-cpp-compiler --install-dir=/app/opt/intel/oneapi --eula=accept",
+                    "rm -rf /app/opt/intel/oneapi/compiler/latest/linux/lib/oclfpga/host/linux64/bin/perl/lib",
+                    "mkdir -p /app/lib/pkgconfig",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64/* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/linux/lib/x64/* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbb.so* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbbmalloc.so* /app/lib/",
+                    "cp /app/opt/intel/oneapi/compiler/latest/lib/pkgconfig/openmp.pc /app/lib/pkgconfig/"
                     ],
             "sources": [
                 {
@@ -77,7 +86,8 @@
             "cleanup":[
                 "/opt/intel/oneapi/mkl/latest/lib/ia32",
                 "/opt/intel/oneapi/mkl/latest/lib/intel64/*.so*",
-                "/opt/intel/oneapi/conda_channel"]
+                "/opt/intel/oneapi/conda_channel"
+                ]
         },
         {
             "name": "fmt",
@@ -131,17 +141,22 @@
         {
             "name": "LightwaveExplorer",
             "buildsystem": "cmake-ninja",
+            "build-options":{
+                "append-path": "/usr/lib/sdk/llvm15/bin",
+                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib"
+            },
             "config-opts": [
-                "-DMAKECUDAFLATPAK=TRUE", 
+                "-DMAKECUDAFLATPAK=TRUE",
+                "-DCMAKE_CXX_COMPILER=clang++", 
                 "-DCMAKE_CUDA_ARCHITECTURES='75;86;89'", 
                 "-DCUDAToolkit_ROOT=/app/opt/cuda",
-                "-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc"],
+                "-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc",
+                "-DCMAKE_CUDA_HOST_COMPILER=clang++"],
             "sources": [
                 {
                     "type": "git",
                     "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
-                    "tag": "2023.08.09",
-                    "commit": "1f8dea778281c36f794d20f681683b346af56b23"
+                    "branch": "septemberFlatpak"
                 }
             ]
         } 

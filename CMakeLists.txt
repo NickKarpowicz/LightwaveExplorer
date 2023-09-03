@@ -73,8 +73,10 @@ if(UNIX AND NOT APPLE)
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(GTK4 REQUIRED gtk4)
         find_package(CUDAToolkit REQUIRED)
+        find_package(TBB PATHS /app/opt/intel/oneapi/tbb/latest/lib/cmake REQUIRED)
         find_package(MKL PATHS /app/opt/intel/oneapi/mkl/latest/lib/cmake REQUIRED)
         find_package(fmt)
+        find_package(OpenMP)
         include_directories(../LightwaveExplorer)
         include_directories(${CUDA_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
@@ -95,15 +97,16 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt)
-        target_link_libraries(LightwaveExplorer -lm -lgomp
+        target_link_libraries(LightwaveExplorer -lm
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
-            ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
             ${MKL_ROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group
+            ${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.a
             )
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
-
+        target_link_libraries(LightwaveExplorer TBB::tbb)
         add_executable(LightwaveExplorerNoCuda 
             LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
             LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
@@ -114,14 +117,15 @@ if(UNIX AND NOT APPLE)
         target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL -DNOCUDA)
         target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
         target_link_libraries(LightwaveExplorerNoCuda fmt::fmt)
-        target_link_libraries(LightwaveExplorerNoCuda -lm -lgomp
+        target_link_libraries(LightwaveExplorerNoCuda -lm
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
-            ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
             ${MKL_ROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group
+            ${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.a
             )
-
+        target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
         install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
         install(PROGRAMS ${CMAKE_SOURCE_DIR}/BuildResources/flatpakLauncher.sh DESTINATION bin)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
@@ -129,6 +133,85 @@ if(UNIX AND NOT APPLE)
         install(FILES BuildResources/io.github.NickKarpowicz.LightwaveExplorer.metainfo.xml DESTINATION share/metainfo)
         install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
         install(FILES BuildResources/DesktopFileFlatpak DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
+        elseif(MAKECUDAINTELFLATPAK)
+        #Flatpak using CUDA, SYCL, and CPU calculations with FFTs in MKL. 
+        #Pre release version of the Flatpak.
+            cmake_minimum_required(VERSION 3.23.0)
+            project(LightwaveExplorer LANGUAGES CXX)   
+            enable_language("CUDA")
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(GTK4 REQUIRED gtk4)
+            find_package(CUDAToolkit REQUIRED)
+            find_package(IntelSYCL PATHS /app/opt/intel/oneapi/compiler/latest/linux REQUIRED)
+            find_package(TBB PATHS /app/opt/intel/oneapi/tbb/latest/lib/cmake REQUIRED)
+            find_package(MKL PATHS /app/opt/intel/oneapi/mkl/latest/lib/cmake /app/opt/intel/oneapi/tbb/latest/lib/cmake REQUIRED)
+            find_package(oneDPL PATHS /app/opt/intel/oneapi/dpl/latest/lib/cmake REQUIRED)
+            
+            find_package(fmt)
+            find_package(OpenMP)
+            include_directories(../LightwaveExplorer)
+            include_directories(${CUDA_INCLUDE_DIRS})
+            include_directories(${GTK4_INCLUDE_DIRS})
+            include_directories(${MKL_ROOT}/include/fftw)
+            include_directories(${MKL_ROOT}/include)
+            include_directories(/app/opt/intel/oneapi/dpl/latest/linux/include)
+            add_library(LightwaveExplorerCuda 
+                LightwaveExplorerCore.cu 
+                LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
+            add_executable(LightwaveExplorer 
+                LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
+                LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
+                LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
+                LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
+                LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
+                LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+            target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -fp-model=precise -O3 -fopenmp -DNOSYCL -U_GLIBCXX_ASSERTIONS -DNDEBUG)
+            target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
+            target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+            target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+            target_link_libraries(LightwaveExplorer fmt::fmt)
+            target_link_libraries(LightwaveExplorer -lm
+                -Wl,--start-group 
+                ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_core.a 
+                -Wl,--end-group
+                ${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.a
+                )
+            target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+            target_link_libraries(LightwaveExplorer TBB::tbb)
+
+            add_link_options(-fsycl)
+            add_executable(LightwaveExplorerNoCuda 
+                LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
+                LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
+                LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
+                LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
+                LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
+                LightwaveExplorerDevices/DlibLibraryComponents.cpp
+                LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp 
+                LightwaveExplorerGTK/LightwaveExplorerDPCPPlibFP32.cpp 
+                )
+            target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fp-model=precise -fopenmp -std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -DNOCUDA -U_GLIBCXX_ASSERTIONS -DNDEBUG)
+            target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
+            target_link_libraries(LightwaveExplorerNoCuda fmt::fmt)
+            target_link_libraries(LightwaveExplorerNoCuda -lm
+                ${MKL_ROOT}/lib/intel64/libmkl_sycl.a 
+                -Wl,--start-group 
+                ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_core.a 
+                -Wl,--end-group
+                ${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.a
+                -lsycl -lOpenCL)
+            target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
+            install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
+            install(PROGRAMS ${CMAKE_SOURCE_DIR}/BuildResources/flatpakLauncher.sh DESTINATION bin)
+            install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
+            install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+            install(FILES BuildResources/io.github.NickKarpowicz.LightwaveExplorer.metainfo.xml DESTINATION share/metainfo)
+            install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
+            install(FILES BuildResources/DesktopFileFlatpak DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
     elseif(CLICPU)
         cmake_minimum_required(VERSION 3.16)
         project(LightwaveExplorer LANGUAGES CXX)
@@ -140,7 +223,7 @@ if(UNIX AND NOT APPLE)
         include_directories(${FFTW_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
 
-        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -w)
+        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -Wno-deprecated-declarations)
         add_executable(LightwaveExplorer 
             LightwaveExplorerDevices/LightwaveExplorerCommandLineMain.cpp 
             LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
@@ -173,7 +256,7 @@ if(UNIX AND NOT APPLE)
         )
         FetchContent_MakeAvailable(fmt)
 
-        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -w)
+        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -Wno-deprecated-declarations -DNDEBUG)
         execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
         add_executable(LightwaveExplorer 
             LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
