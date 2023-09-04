@@ -56,7 +56,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
 ---
   ### Installation on a Windows PC
-  You can get the [latest version directly from the Github releases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.08.08), where there's a LightwaveExplorerWin64.zip file that you can just download, extract, and run.
+  You can get the [latest version directly from the Github releases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.09.01), where there's a LightwaveExplorerWin64.zip file that you can just download, extract, and run.
 
   If you want to use SYCL for propagation, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
 
@@ -83,7 +83,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
 ### Installation on Mac
 
-The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.08.08). In there, there's a LightwaveExplorerMacOS.zip file that you can just download and run. You might have to right-click on it and run it from there, and accept a prompt that you actually want to run it.
+The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.09.01). In there, there's a LightwaveExplorerMacOS.zip file that you can just download and run. You might have to right-click on it and run it from there, and accept a prompt that you actually want to run it.
 
 This version makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
 
