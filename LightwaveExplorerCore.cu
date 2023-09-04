@@ -3074,7 +3074,9 @@ namespace kernelNamespace{
 				(*s).fieldFactor1[i] *= (*s).fftNorm;
 				(*s).fieldFactor2[i] *= (*s).fftNorm;
 				if (isComplexNaN(ne) 
-					|| isComplexNaN(no) 
+					|| isComplexNaN(no)
+					|| isComplexNaN((*s).chiLinear1[i])
+					|| isComplexNaN((*s).chiLinear2[i])
 					|| ne.real() < 0.9f 
 					|| no.real() < 0.9f 
 					|| ne.imag() > 0.0f 
@@ -3085,7 +3087,10 @@ namespace kernelNamespace{
 					(*s).fieldFactor2[i] = {};
 					(*s).inverseChiLinear1[i] = {};
 					(*s).inverseChiLinear2[i] = {};
+					(*s).chiLinear1[i] = {};
+					(*s).chiLinear2[i] = {};
 				}
+
 			}
 			
 
@@ -5223,8 +5228,8 @@ namespace hostFunctions{
 			return solveFDTD(d, sCPU, 5, 0, 1e-6, 1e-6);
 		}
 		//prepare the propagation arrays
-		//preparePropagationGrids(d);
-		//prepareElectricFieldArrays(d);
+		preparePropagationGrids(d);
+		prepareElectricFieldArrays(d);
 
 		deviceFP* canaryPointer = 
 			&d.deviceStruct.gridETime1[
