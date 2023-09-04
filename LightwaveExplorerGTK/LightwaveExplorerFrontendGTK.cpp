@@ -717,6 +717,10 @@ void readParametersFromInterface() {
     theGui.textBoxes[i++].valueToPointer(1e12, &theSim.base().drudeGamma);
     theGui.textBoxes[i++].valueToPointer(&theSim.base().effectiveMass);
 
+    if(theSim.base().nonlinearAbsorptionStrength != 0.0 && theSim.base().materialIndex==0){
+        theGui.console.tPrint("Note:\nplasma generation doesn't work in vacuum\n");
+    }
+
     theGui.textBoxes[i++].valueToTwoPointers(
         1e-6, &theSim.base().spatialWidth, &theSim.base().spatialHeight);
 

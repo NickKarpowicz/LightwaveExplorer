@@ -3063,7 +3063,8 @@ namespace kernelNamespace{
 					(*s).inverseChiLinear1[i] = {};
 					(*s).inverseChiLinear2[i] = {};
 				}
-
+				(*s).inverseChiLinear1[i] = 1.0f;
+				(*s).inverseChiLinear2[i] = 1.0f;
 				(*s).fieldFactor1[i] = deviceFPLib::pow((*s).chiLinear1[i].real() + 1.0f, -0.25f); 
 				//account for the effective field strength in the medium (1/n)
 				(*s).fieldFactor2[i] = deviceFPLib::pow((*s).chiLinear2[i].real() + 1.0f, -0.25f);
@@ -3077,6 +3078,10 @@ namespace kernelNamespace{
 					|| isComplexNaN(no)
 					|| isComplexNaN((*s).chiLinear1[i])
 					|| isComplexNaN((*s).chiLinear2[i])
+					|| isnan((*s).fieldFactor1[i])
+					|| isnan((*s).fieldFactor2[i])
+					|| isnan((*s).inverseChiLinear1[i])
+					|| isnan((*s).inverseChiLinear2[i])
 					|| ne.real() < 0.9f 
 					|| no.real() < 0.9f 
 					|| ne.imag() > 0.0f 
@@ -3090,7 +3095,6 @@ namespace kernelNamespace{
 					(*s).chiLinear1[i] = {};
 					(*s).chiLinear2[i] = {};
 				}
-
 			}
 			
 
@@ -3110,8 +3114,8 @@ namespace kernelNamespace{
 				(*s).chiLinear2[(*s).Ntime / 2] = cOne<deviceComplex>();
 				(*s).fieldFactor1[(*s).Ntime / 2] = {};
 				(*s).fieldFactor2[(*s).Ntime / 2] = {};
-				(*s).inverseChiLinear1[(*s).Ntime / 2] = 1.0f / (*s).chiLinear1[i].real();
-				(*s).inverseChiLinear2[(*s).Ntime / 2] = 1.0f / (*s).chiLinear2[i].real();
+				(*s).inverseChiLinear1[(*s).Ntime / 2] = 1.0f / (*s).chiLinear1[(*s).Ntime / 2].real();
+				(*s).inverseChiLinear2[(*s).Ntime / 2] = 1.0f / (*s).chiLinear2[(*s).Ntime / 2].real();
 			}
 
 			//apply Miller's rule to nonlinear coefficients
@@ -3142,10 +3146,12 @@ namespace kernelNamespace{
 			//normalize chi2 tensor values
 			if (i < 18) {
 				(*s).chi2Tensor[i] /= chi11[0] * chi11[1] * chi11[2];
+				if(isnan((*s).chi2Tensor[i])) (*s).chi2Tensor[i] = {};
 			}
 
 			//normalize chi3 tensor values
 			(*s).chi3Tensor[i] /= chi11[3] * chi11[4] * chi11[5] * chi11[6];
+			if(isnan((*s).chi3Tensor[i])) (*s).chi3Tensor[i] = {};
 		}
 	};
 
