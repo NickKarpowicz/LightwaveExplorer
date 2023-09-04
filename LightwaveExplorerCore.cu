@@ -3204,7 +3204,12 @@ namespace kernelNamespace{
 					ke.real() * ke.real() + ke.imag() * ke.imag(), 
 					ko.real() * ko.real() + ko.imag() * ko.imag()))
 				&& (*s).fieldFactor1[k] > 0.0f
-				&& (*s).fieldFactor2[k] > 0.0f) {
+				&& (*s).fieldFactor2[k] > 0.0f
+				&& !isComplexNaN(ke)
+				&& !isComplexNaN(ko)
+				&& ke.real()>0.0f
+				&& ko.real()>0.0f
+				) {
 				(*s).gridPropagationFactor1[i] = 
 					deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
 				(*s).gridPropagationFactor1Rho1[i] = 
@@ -3897,14 +3902,11 @@ namespace kernelNamespace{
 			const deviceFP wz = (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
 			const deviceFP Rz = (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
 			const deviceFP phi = deviceFPLib::atan(z / zR);
-			deviceComplex Eb = ((*p).beamwaist / wz) 
-				* deviceLib::exp(deviceComplex(0.0f, 1.0f) 
-					* (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
+			deviceComplex Eb = deviceComplex(0.0f, 1.0f) 
+					* (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz)
+			Eb = isComplexNaN(Eb) ? deviceComplex{} : ((*p).beamwaist / wz) * deviceLib::exp();
 			Eb = Eb * specfac;
-			if (isComplexNaN(Eb)) {
-				Eb = deviceComplex{};
-			}
-
+			
 			field[i] = deviceComplex(
 				deviceFPLib::cos((*p).polarizationAngle), 
 				-(*p).circularity * deviceFPLib::sin((*p).polarizationAngle)) * Eb;
