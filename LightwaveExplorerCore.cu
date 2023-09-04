@@ -3913,6 +3913,8 @@ namespace kernelNamespace{
 			field[i + (*s).NgridC] = deviceComplex(
 				deviceFPLib::sin((*p).polarizationAngle), 
 				(*p).circularity * deviceFPLib::cos((*p).polarizationAngle)) * Eb;
+			if(isComplexNaN(field[i])) field[i] = deviceComplex{};
+			if(isComplexNaN(field[i + (*s).NgridC])) field[i + (*s).NgridC] = deviceComplex{};
 			deviceFP pointEnergy = deviceFPLib::abs(r) 
 				* (modulusSquared(field[i]) + modulusSquared(field[i + (*s).NgridC]));
 			pointEnergy *= 2.0f * vPi<deviceFP>() * lightC<deviceFP>() * eps0<deviceFP>() 
