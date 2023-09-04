@@ -3955,7 +3955,7 @@ namespace kernelNamespace{
 					+ 0.5f * (*p).gdd * w * w
 					+ (*p).tod * w * w * w / 6.0f
 					+ materialPhase[h]));
-			specfac = deviceLib::exp(specfac + specphase);
+			specfac = isComplexNaN(specphase) ? deviceComplex{} : deviceLib::exp(specfac + specphase);
 
 			if (hasLoadedField) {
 				specfac = loadedField[h] * deviceLib::exp(specphase);
