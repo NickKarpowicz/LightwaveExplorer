@@ -5223,7 +5223,7 @@ namespace hostFunctions{
 			return solveFDTD(d, sCPU, 5, 0, 1e-6, 1e-6);
 		}
 		//prepare the propagation arrays
-		preparePropagationGrids(d);
+		//preparePropagationGrids(d);
 		//prepareElectricFieldArrays(d);
 
 		deviceFP* canaryPointer = 
