@@ -3887,6 +3887,13 @@ namespace kernelNamespace{
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
+
+			if(isComplexNaN(ne) || isComplexNaN(no)){
+				field[i] = deviceComplex{};
+				field[i + (*s).NgridC] = deviceComplex{};
+				return;
+			}
+			
 			const deviceFP ko = twoPi<deviceFP>() * no.real() * f / lightC<deviceFP>();
 			const deviceFP zR = vPi<deviceFP>() 
 				* (*p).beamwaist * (*p).beamwaist 
@@ -3972,7 +3979,11 @@ namespace kernelNamespace{
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-
+			if(isComplexNaN(ne) || isComplexNaN(no)){
+				field[i] = deviceComplex{};
+				field[i + (*s).NgridC] = deviceComplex{};
+				return;
+			}
 			const deviceFP ko = twoPi<deviceFP>() * no.real() * f 
 				/ lightC<deviceFP>();
 			const deviceFP zR = vPi<deviceFP>() * (*p).beamwaist * (*p).beamwaist 
