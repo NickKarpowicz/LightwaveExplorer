@@ -1605,15 +1605,11 @@ namespace deviceFunctions {
 			&& (deviceFPLib::abs(dk1) < 0.1f *  k.real())) {
 			deviceFP halfOverKr = (0.5f / k.real()) * (dk1 * dk1 + dk2 * dk2);
 			deviceFP kMoving = k.real() - k0;
-			if(isnan(kMoving) 
-			|| isnan(halfOverKr)) return complex_t{};
-			return complex_t{};
-			return deviceLib::exp(
-				complex_t(
+			complex_t returnVal = complex_t(
 					d * k.imag(),
 					d * (halfOverKr - kMoving)
-				)
-			);
+				);
+			return isComplexNaN(returnVal) ? complex_t deviceLib::exp(returnVal);
 		}
 		complex_t kz = 
 			(deviceLib::sqrt(-dk2 * dk2 / (k + deviceFPLib::abs(dk1)) + k - deviceFPLib::abs(dk1))
@@ -1621,7 +1617,6 @@ namespace deviceFunctions {
 		if (kz.imag() > 0.0f) kz = complex_t(kz.real(), -kz.imag());
 		kz = complex_t(d*kz.imag(),-d*kz.real());
 		if (isComplexNaN(kz)) return complex_t{};
-		return complex_t{};
 		return deviceLib::exp(kz);
 	}
 
