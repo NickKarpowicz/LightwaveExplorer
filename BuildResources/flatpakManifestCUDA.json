@@ -156,7 +156,7 @@
                 {
                     "type": "git",
                     "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
-                    "branch": "septemberFlatpak"
+                    "branch": "master"
                 }
             ]
         } 
