@@ -3212,24 +3212,26 @@ namespace kernelNamespace{
 				&& ke.real()>0.0f
 				&& ko.real()>0.0f
 				) {
-				(*s).gridPropagationFactor1[i] = 
-					deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
+				(*s).gridPropagationFactor1[i] = 0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h;
+				(*s).gridPropagationFactor1[i] = isComplexNaN((*s).gridPropagationFactor1[i]) ? 
+					deviceComplex{} : deviceLib::exp((*s).gridPropagationFactor1[i]);
+					
 				(*s).gridPropagationFactor1Rho1[i] = 
 					(*s).fftNorm * ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
-				if (isnan(
-					(deviceLib::abs((*s).gridPropagationFactor1Rho1[i] 
-						+ (*s).gridPropagationFactor1[i])))) {
+				if (isComplexNaN((*s).gridPropagationFactor1Rho1[i])
+				|| (*s).gridPropagationFactor1[i] == deviceComplex{}) {
 					(*s).gridPropagationFactor1[i] = {};
 					(*s).gridPropagationFactor1Rho1[i] = {};
 				}
 
-				(*s).gridPropagationFactor2[i] = 
-					deviceLib::exp(0.5f * ii * (ko - k0 - dk * dk / (2.0f * ko.real())) * (*s).h);
+				(*s).gridPropagationFactor2[i] = 0.5f * ii * (ko - k0 - dk * dk / (2.0f * ko.real())) * (*s).h;
+				(*s).gridPropagationFactor2[i] = isComplexNaN((*s).gridPropagationFactor2[i]) ? 
+					deviceComplex{} : deviceLib::exp((*s).gridPropagationFactor2[i]);
+
 				(*s).gridPropagationFactor1Rho2[i] = 
 					(*s).fftNorm * ii * (*s).h / ((*s).fieldFactor2[k] * 2.0f * ko);
-				if (isnan(
-					(deviceLib::abs((*s).gridPropagationFactor1Rho2[i] 
-						+ (*s).gridPropagationFactor2[i])))) {
+				if (isComplexNaN((*s).gridPropagationFactor1Rho2[i])
+				|| (*s).gridPropagationFactor2[i] == deviceComplex{}) {
 					(*s).gridPropagationFactor2[i] = {};
 					(*s).gridPropagationFactor1Rho2[i] = {};
 				}
@@ -3245,59 +3247,6 @@ namespace kernelNamespace{
 					* chi12 * ii * (twoPi<deviceFP>() * f) 
 					/ (2.0f * no.real() * lightC<deviceFP>()) * (*s).h;
 				if (isComplexNaN((*s).gridPolarizationFactor1[i])
-					|| isComplexNaN((*s).gridPolarizationFactor2[i])) {
-					(*s).gridPolarizationFactor1[i] = {};
-					(*s).gridPolarizationFactor2[i] = {};
-				}
-			}
-			else {
-				(*s).gridPropagationFactor1[i] = {};
-				(*s).gridPropagationFactor2[i] = {};
-				(*s).gridPolarizationFactor1[i] = {};
-				(*s).gridPolarizationFactor2[i] = {};
-				(*s).gridPropagationFactor1Rho1[i] = {};
-				(*s).gridPropagationFactor1Rho2[i] = {};
-			}
-			if ((dk * dk 
-				< minN(ke.real() * ke.real() + ke.imag() * ke.imag(), 
-					ko.real() * ko.real() + ko.imag() * ko.imag())) 
-				&& (*s).fieldFactor1[k] > 0.0f 
-				&& (*s).fieldFactor2[k] > 0.0f) {
-				(*s).gridPropagationFactor1[i] = 
-					deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
-				(*s).gridPropagationFactor1Rho1[i] = 
-					(*s).fftNorm * ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
-				if (isnan(
-					(deviceLib::abs((*s).gridPropagationFactor1Rho1[i] 
-						+ (*s).gridPropagationFactor1[i])))) {
-					(*s).gridPropagationFactor1[i] = {};
-					(*s).gridPropagationFactor1Rho1[i] = {};
-				}
-
-				(*s).gridPropagationFactor2[i] = 
-					deviceLib::exp(0.5f * ii * (ko - k0 - dk * dk 
-						/ (2.0f * ko.real())) * (*s).h);
-				(*s).gridPropagationFactor1Rho2[i] = 
-					(*s).fftNorm * ii * (*s).h 
-					/ ((*s).fieldFactor2[k] * 2.0f * ko);
-				if (isnan(
-					(deviceLib::abs((*s).gridPropagationFactor1Rho2[i] 
-						+ (*s).gridPropagationFactor2[i])))) {
-					(*s).gridPropagationFactor2[i] = {};
-					(*s).gridPropagationFactor1Rho2[i] = {};
-				}
-
-				//factor of 0.5 comes from deviceFPd grid size in cylindrical symmetry 
-				//mode after expanding the beam
-				(*s).gridPolarizationFactor1[i] = 
-					0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + 1.0f, 0.25f) 
-					* chi11 * ii * (twoPi<deviceFP>() * f) 
-					/ (2.0f * ne.real() * lightC<deviceFP>()) * (*s).h;
-				(*s).gridPolarizationFactor2[i] = 
-					0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + 1.0f, 0.25f) 
-					* chi12 * ii * (twoPi<deviceFP>() * f) 
-					/ (2.0f * no.real() * lightC<deviceFP>()) * (*s).h;
-				if (isComplexNaN((*s).gridPolarizationFactor1[i]) 
 					|| isComplexNaN((*s).gridPolarizationFactor2[i])) {
 					(*s).gridPolarizationFactor1[i] = {};
 					(*s).gridPolarizationFactor2[i] = {};
