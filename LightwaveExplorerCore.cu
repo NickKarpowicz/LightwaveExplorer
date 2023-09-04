@@ -3903,8 +3903,8 @@ namespace kernelNamespace{
 			const deviceFP Rz = (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
 			const deviceFP phi = deviceFPLib::atan(z / zR);
 			deviceComplex Eb = deviceComplex(0.0f, 1.0f) 
-					* (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz)
-			Eb = isComplexNaN(Eb) ? deviceComplex{} : ((*p).beamwaist / wz) * deviceLib::exp();
+					* (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz);
+			Eb = isComplexNaN(Eb) ? deviceComplex{} : ((*p).beamwaist / wz) * deviceLib::exp(Eb);
 			Eb = Eb * specfac;
 			
 			field[i] = deviceComplex(
