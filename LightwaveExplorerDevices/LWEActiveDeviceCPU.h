@@ -7,6 +7,7 @@
 #include <atomic>
 #include <thread>
 #include <iostream>
+#define NDEBUG
 #include <cmath>
 #include <cstring>
 #include <algorithm>
