@@ -11,6 +11,18 @@ New! Tutorials on YouTube!
 - Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
 
 ---
+### Latest release: 2023.09
+<p>This release adds the following fixes and improvements:</p>
+  <ul>
+  <li>Adds a new CPU-based propagation mode on Linux/Windows using C++ std::execution::par instead of OpenMP, which on some computers is nearly twice as fast</li>
+  <li>MacOS version now uses Grand Central Dispatch for multithreading, with a slight performance improvement.
+  <li>Applies PEMDAS rules to the input arguments of sequence functions. In short: previously an input of 1+2*3 would give 9 because the operators were resolved from left to right, now it has the correct behavior (i.e. 7).</li>
+  <li>Multiple small optimizations to propagation kernels with a small (percent-level) performance improvement</li>
+  <li>Various bug fixes and stability enhancements (mostly regarding mutex locks).</li>
+  <li>A button to collapse the data input panel so that the plots and images fill the whole window</li>
+  </ul>
+  
+---
 
 
 ### What and why
