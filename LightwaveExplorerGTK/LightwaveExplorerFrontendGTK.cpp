@@ -1817,7 +1817,7 @@ bool sliderResponseToArrows(GtkWidget* widget, guint keyValue, guint keyCode, Gd
 }
 
 void secondaryQueue(
-    simulationParameterSet* cpuSims, 
+    int64_t cpuSimsIndex, 
     int pulldownSelection, 
     int pulldownSelectionPrimary, 
     bool use64bitFloatingPoint) {
@@ -1900,22 +1900,22 @@ void secondaryQueue(
 #endif
     int error = 0;
     if (theSim.base().isInSequence) {
-        for (unsigned int i = 0; i < theSim.base().NsimsCPU; ++i) {
-            cpuSims[i].assignedGPU = assignedGPU;
-            cpuSims[i].runningOnCPU = forceCPU;
-            cpuSims[i].useOpenMP = useOpenMP;
+        for (unsigned int i = cpuSimsIndex; i < theSim.base().NsimsCPU+cpuSimsIndex; ++i) {
+            theSim.sCPU()[i].assignedGPU = assignedGPU;
+            theSim.sCPU()[i].runningOnCPU = forceCPU;
+            theSim.sCPU()[i].useOpenMP = useOpenMP;
             std::lock_guard dataLock(theSim.mutexes.at(i));
-            error = sequenceFunction(&cpuSims[i]);
+            error = sequenceFunction(&theSim.sCPU()[i]);
             if (error) break;
         }
     }
     else {
-        for (unsigned int i = 0; i < theSim.base().NsimsCPU; ++i) {
-            cpuSims[i].assignedGPU = assignedGPU;
-            cpuSims[i].runningOnCPU = forceCPU;
-            cpuSims[i].useOpenMP = useOpenMP;
+        for (unsigned int i = cpuSimsIndex; i < theSim.base().NsimsCPU+cpuSimsIndex; ++i) {
+            theSim.sCPU()[i].assignedGPU = assignedGPU;
+            theSim.sCPU()[i].runningOnCPU = forceCPU;
+            theSim.sCPU()[i].useOpenMP = useOpenMP;
             std::lock_guard dataLock(theSim.mutexes.at(i));
-            error = normalFunction(&cpuSims[i]);
+            error = normalFunction(&theSim.sCPU()[i]);
             if (error) break;
         }
     }
@@ -2059,7 +2059,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
     #endif
 
     std::thread secondQueueThread(secondaryQueue, 
-        &theSim.sCPU()[theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU], 
+        theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU, 
         secondPulldownSelection, pulldownSelection, use64bitFloatingPoint);
 
     for (int j = 0; j < (theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU); ++j) {
