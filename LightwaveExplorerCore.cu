@@ -1609,7 +1609,7 @@ namespace deviceFunctions {
 					d * k.imag(),
 					d * (halfOverKr - kMoving)
 				);
-			return isComplexNaN(returnVal) ? complex_t deviceLib::exp(returnVal);
+			return isComplexNaN(returnVal) ? complex_t{} : deviceLib::exp(returnVal);
 		}
 		complex_t kz = 
 			(deviceLib::sqrt(-dk2 * dk2 / (k + deviceFPLib::abs(dk1)) + k - deviceFPLib::abs(dk1))
