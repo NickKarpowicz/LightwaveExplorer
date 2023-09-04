@@ -3063,8 +3063,7 @@ namespace kernelNamespace{
 					(*s).inverseChiLinear1[i] = {};
 					(*s).inverseChiLinear2[i] = {};
 				}
-				(*s).inverseChiLinear1[i] = 1.0f;
-				(*s).inverseChiLinear2[i] = 1.0f;
+				
 				(*s).fieldFactor1[i] = deviceFPLib::pow((*s).chiLinear1[i].real() + 1.0f, -0.25f); 
 				//account for the effective field strength in the medium (1/n)
 				(*s).fieldFactor2[i] = deviceFPLib::pow((*s).chiLinear2[i].real() + 1.0f, -0.25f);
