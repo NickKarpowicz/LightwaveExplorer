@@ -1605,14 +1605,11 @@ namespace deviceFunctions {
 			&& (deviceFPLib::abs(dk1) < 0.1f *  k.real())) {
 			deviceFP halfOverKr = (0.5f / k.real()) * (dk1 * dk1 + dk2 * dk2);
 			deviceFP kMoving = k.real() - k0;
-			if(isnan(kMoving) 
-			|| isnan(halfOverKr)) return complex_t{};
-			return deviceLib::exp(
-				complex_t(
+			complex_t returnVal = complex_t(
 					d * k.imag(),
 					d * (halfOverKr - kMoving)
-				)
-			);
+				);
+			return isComplexNaN(returnVal) ? complex_t{} : deviceLib::exp(returnVal);
 		}
 		complex_t kz = 
 			(deviceLib::sqrt(-dk2 * dk2 / (k + deviceFPLib::abs(dk1)) + k - deviceFPLib::abs(dk1))
@@ -3077,7 +3074,9 @@ namespace kernelNamespace{
 				(*s).fieldFactor1[i] *= (*s).fftNorm;
 				(*s).fieldFactor2[i] *= (*s).fftNorm;
 				if (isComplexNaN(ne) 
-					|| isComplexNaN(no) 
+					|| isComplexNaN(no)
+					|| isComplexNaN((*s).chiLinear1[i])
+					|| isComplexNaN((*s).chiLinear2[i])
 					|| ne.real() < 0.9f 
 					|| no.real() < 0.9f 
 					|| ne.imag() > 0.0f 
@@ -3088,7 +3087,10 @@ namespace kernelNamespace{
 					(*s).fieldFactor2[i] = {};
 					(*s).inverseChiLinear1[i] = {};
 					(*s).inverseChiLinear2[i] = {};
+					(*s).chiLinear1[i] = {};
+					(*s).chiLinear2[i] = {};
 				}
+
 			}
 			
 
@@ -3198,66 +3200,15 @@ namespace kernelNamespace{
 				(*s).chiLinear1[k] : cOne<deviceComplex>();
 			const deviceComplex chi12 = ((*s).isUsingMillersRule) ? 
 				(*s).chiLinear2[k] : cOne<deviceComplex>();
-
-			if ((dk * dk 
-				< minN(
-					ke.real() * ke.real() + ke.imag() * ke.imag(), 
-					ko.real() * ko.real() + ko.imag() * ko.imag()))
-				&& (*s).fieldFactor1[k] > 0.0f
-				&& (*s).fieldFactor2[k] > 0.0f) {
-				(*s).gridPropagationFactor1[i] = 
-					deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
-				(*s).gridPropagationFactor1Rho1[i] = 
-					(*s).fftNorm * ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
-				if (isnan(
-					(deviceLib::abs((*s).gridPropagationFactor1Rho1[i] 
-						+ (*s).gridPropagationFactor1[i])))) {
-					(*s).gridPropagationFactor1[i] = {};
-					(*s).gridPropagationFactor1Rho1[i] = {};
-				}
-
-				(*s).gridPropagationFactor2[i] = 
-					deviceLib::exp(0.5f * ii * (ko - k0 - dk * dk / (2.0f * ko.real())) * (*s).h);
-				(*s).gridPropagationFactor1Rho2[i] = 
-					(*s).fftNorm * ii * (*s).h / ((*s).fieldFactor2[k] * 2.0f * ko);
-				if (isnan(
-					(deviceLib::abs((*s).gridPropagationFactor1Rho2[i] 
-						+ (*s).gridPropagationFactor2[i])))) {
-					(*s).gridPropagationFactor2[i] = {};
-					(*s).gridPropagationFactor1Rho2[i] = {};
-				}
-
-				//factor of 0.5 comes from doubledd grid size in cylindrical 
-				//symmetry mode after expanding the beam
-				(*s).gridPolarizationFactor1[i] = 
-					0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear1[k] + 1.0f, 0.25f) 
-					* chi11 * ii * (twoPi<deviceFP>() * f) 
-					/ (2.0f * ne.real() * lightC<deviceFP>()) * (*s).h;
-				(*s).gridPolarizationFactor2[i] = 
-					0.5f * deviceLib::pow((deviceComplex)(*s).chiLinear2[k] + 1.0f, 0.25f) 
-					* chi12 * ii * (twoPi<deviceFP>() * f) 
-					/ (2.0f * no.real() * lightC<deviceFP>()) * (*s).h;
-				if (isComplexNaN((*s).gridPolarizationFactor1[i])
-					|| isComplexNaN((*s).gridPolarizationFactor2[i])) {
-					(*s).gridPolarizationFactor1[i] = {};
-					(*s).gridPolarizationFactor2[i] = {};
-				}
-			}
-			else {
-				(*s).gridPropagationFactor1[i] = {};
-				(*s).gridPropagationFactor2[i] = {};
-				(*s).gridPolarizationFactor1[i] = {};
-				(*s).gridPolarizationFactor2[i] = {};
-				(*s).gridPropagationFactor1Rho1[i] = {};
-				(*s).gridPropagationFactor1Rho2[i] = {};
-			}
+			
 			if ((dk * dk 
 				< minN(ke.real() * ke.real() + ke.imag() * ke.imag(), 
 					ko.real() * ko.real() + ko.imag() * ko.imag())) 
 				&& (*s).fieldFactor1[k] > 0.0f 
 				&& (*s).fieldFactor2[k] > 0.0f) {
-				(*s).gridPropagationFactor1[i] = 
-					deviceLib::exp(0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h);
+				(*s).gridPropagationFactor1[i] = 0.5f * ii * (ke - k0 - dk * dk / (2.0f * ke.real())) * (*s).h;
+				(*s).gridPropagationFactor1[i] = isComplexNaN((*s).gridPropagationFactor1[i]) ? 
+					deviceComplex{} : deviceLib::exp((*s).gridPropagationFactor1[i]);
 				(*s).gridPropagationFactor1Rho1[i] = 
 					(*s).fftNorm * ii * (*s).h / ((*s).fieldFactor1[k] * 2.0f * ke);
 				if (isnan(
@@ -3267,9 +3218,10 @@ namespace kernelNamespace{
 					(*s).gridPropagationFactor1Rho1[i] = {};
 				}
 
-				(*s).gridPropagationFactor2[i] = 
-					deviceLib::exp(0.5f * ii * (ko - k0 - dk * dk 
-						/ (2.0f * ko.real())) * (*s).h);
+				(*s).gridPropagationFactor2[i] = 0.5f * ii * (ko - k0 - dk * dk 
+						/ (2.0f * ko.real())) * (*s).h;
+				(*s).gridPropagationFactor2[i] = isComplexNaN((*s).gridPropagationFactor2[i]) ?	
+					deviceComplex{} : deviceLib::exp((*s).gridPropagationFactor2[i]);
 				(*s).gridPropagationFactor1Rho2[i] = 
 					(*s).fftNorm * ii * (*s).h 
 					/ ((*s).fieldFactor2[k] * 2.0f * ko);
@@ -3862,6 +3814,11 @@ namespace kernelNamespace{
 				-deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 
 				0.0f);
 
+			if(isComplexNaN(materialPhase[h])){
+				field[i] = deviceComplex{};
+				field[i + (*s).NgridC] = deviceComplex{};
+				return;
+			}
 			deviceComplex specphase = deviceComplex(0.0f,
 				-((*p).cep
 					+ twoPi<deviceFP>() * f * ((*p).delay - 0.5f * (*s).dt * (*s).Ntime)
@@ -3882,6 +3839,13 @@ namespace kernelNamespace{
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
+
+			if(isComplexNaN(ne) || isComplexNaN(no)){
+				field[i] = deviceComplex{};
+				field[i + (*s).NgridC] = deviceComplex{};
+				return;
+			}
+
 			const deviceFP ko = twoPi<deviceFP>() * no.real() * f / lightC<deviceFP>();
 			const deviceFP zR = vPi<deviceFP>() 
 				* (*p).beamwaist * (*p).beamwaist 
@@ -3897,20 +3861,19 @@ namespace kernelNamespace{
 			const deviceFP wz = (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
 			const deviceFP Rz = (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
 			const deviceFP phi = deviceFPLib::atan(z / zR);
-			deviceComplex Eb = ((*p).beamwaist / wz) 
-				* deviceLib::exp(deviceComplex(0.0f, 1.0f) 
-					* (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz));
+			deviceComplex Eb = deviceComplex(0.0f, 1.0f) 
+					* (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) - r * r / (wz * wz);
+			Eb = isComplexNaN(Eb) ? deviceComplex{} : ((*p).beamwaist / wz) * deviceLib::exp(Eb);
 			Eb = Eb * specfac;
-			if (isComplexNaN(Eb)) {
-				Eb = deviceComplex{};
-			}
-
+			
 			field[i] = deviceComplex(
 				deviceFPLib::cos((*p).polarizationAngle), 
 				-(*p).circularity * deviceFPLib::sin((*p).polarizationAngle)) * Eb;
 			field[i + (*s).NgridC] = deviceComplex(
 				deviceFPLib::sin((*p).polarizationAngle), 
 				(*p).circularity * deviceFPLib::cos((*p).polarizationAngle)) * Eb;
+			if(isComplexNaN(field[i])) field[i] = deviceComplex{};
+			if(isComplexNaN(field[i + (*s).NgridC])) field[i + (*s).NgridC] = deviceComplex{};
 			deviceFP pointEnergy = deviceFPLib::abs(r) 
 				* (modulusSquared(field[i]) + modulusSquared(field[i + (*s).NgridC]));
 			pointEnergy *= 2.0f * vPi<deviceFP>() * lightC<deviceFP>() * eps0<deviceFP>() 
@@ -3941,7 +3904,11 @@ namespace kernelNamespace{
 			const int64_t k = col / (*s).Nspace;
 			const deviceFP f = h * (*s).fStep;
 			const deviceFP w = twoPi<deviceFP>() * (f - (*p).frequency);
-
+			if(isComplexNaN(materialPhase[h])){
+				field[i] = deviceComplex{};
+				field[i + (*s).NgridC] = deviceComplex{};
+				return;
+			}
 			//supergaussian pulse spectrum, if no input pulse specified
 			deviceComplex specfac = deviceComplex(
 				-deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 
@@ -3953,7 +3920,7 @@ namespace kernelNamespace{
 					+ 0.5f * (*p).gdd * w * w
 					+ (*p).tod * w * w * w / 6.0f
 					+ materialPhase[h]));
-			specfac = deviceLib::exp(specfac + specphase);
+			specfac = isComplexNaN(specphase) ? deviceComplex{} : deviceLib::exp(specfac + specphase);
 
 			if (hasLoadedField) {
 				specfac = loadedField[h] * deviceLib::exp(specphase);
@@ -3968,7 +3935,11 @@ namespace kernelNamespace{
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-
+			if(isComplexNaN(ne) || isComplexNaN(no)){
+				field[i] = deviceComplex{};
+				field[i + (*s).NgridC] = deviceComplex{};
+				return;
+			}
 			const deviceFP ko = twoPi<deviceFP>() * no.real() * f 
 				/ lightC<deviceFP>();
 			const deviceFP zR = vPi<deviceFP>() * (*p).beamwaist * (*p).beamwaist 

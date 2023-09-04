@@ -165,7 +165,7 @@ if(UNIX AND NOT APPLE)
                 LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
                 LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
                 LightwaveExplorerDevices/DlibLibraryComponents.cpp)
-            target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -fp-model=precise -O3 -fopenmp -DNOSYCL -U_GLIBCXX_ASSERTIONS -DNDEBUG)
+            target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -fp-model=precise -O3 -fopenmp -DNOSYCL -Wno-deprecated-declarations)
             target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
             target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
             target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
@@ -192,7 +192,7 @@ if(UNIX AND NOT APPLE)
                 LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp 
                 LightwaveExplorerGTK/LightwaveExplorerDPCPPlibFP32.cpp 
                 )
-            target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fp-model=precise -fopenmp -std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -DNOCUDA -U_GLIBCXX_ASSERTIONS -DNDEBUG)
+            target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fp-model=precise -fopenmp -std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -DNOCUDA -Wno-deprecated-declarations)
             target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
             target_link_libraries(LightwaveExplorerNoCuda fmt::fmt)
             target_link_libraries(LightwaveExplorerNoCuda -lm
