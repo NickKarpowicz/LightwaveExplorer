@@ -5224,7 +5224,7 @@ namespace hostFunctions{
 		}
 		//prepare the propagation arrays
 		preparePropagationGrids(d);
-		prepareElectricFieldArrays(d);
+		//prepareElectricFieldArrays(d);
 
 		deviceFP* canaryPointer = 
 			&d.deviceStruct.gridETime1[
