@@ -77,7 +77,7 @@ namespace deviceLibCPUFP32{
 		return std::pow(x,y);
 	}
 	inline std::complex<float> exp(const std::complex<float> x){
-		if(isnan(x.real()) || isnan(x.imag())) return x;
+		//if(isnan(x.real()) || isnan(x.imag())) return x;
 		return std::exp(x);
 	}
 	inline float abs(const std::complex<float> x){
