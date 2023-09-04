@@ -1904,7 +1904,7 @@ void secondaryQueue(
 #endif
     int error = 0;
     if (theSim.base().isInSequence) {
-        for (unsigned int i = cpuSimsIndex; i < theSim.base().NsimsCPU+cpuSimsIndex; ++i) {
+        for (int64_t i = cpuSimsIndex; i < theSim.base().NsimsCPU+cpuSimsIndex; ++i) {
             theSim.sCPU()[i].assignedGPU = assignedGPU;
             theSim.sCPU()[i].runningOnCPU = forceCPU;
             theSim.sCPU()[i].useOpenMP = useOpenMP;
@@ -1914,7 +1914,7 @@ void secondaryQueue(
         }
     }
     else {
-        for (unsigned int i = cpuSimsIndex; i < theSim.base().NsimsCPU+cpuSimsIndex; ++i) {
+        for (int64_t i = cpuSimsIndex; i < theSim.base().NsimsCPU+cpuSimsIndex; ++i) {
             theSim.sCPU()[i].assignedGPU = assignedGPU;
             theSim.sCPU()[i].runningOnCPU = forceCPU;
             theSim.sCPU()[i].useOpenMP = useOpenMP;
