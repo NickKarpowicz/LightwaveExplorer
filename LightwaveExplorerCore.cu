@@ -3864,6 +3864,11 @@ namespace kernelNamespace{
 				-deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 
 				0.0f);
 
+			if(isComplexNaN(materialPhase[h])){
+				field[i] = deviceComplex{};
+				field[i + (*s).NgridC] = deviceComplex{};
+				return;
+			}
 			deviceComplex specphase = deviceComplex(0.0f,
 				-((*p).cep
 					+ twoPi<deviceFP>() * f * ((*p).delay - 0.5f * (*s).dt * (*s).Ntime)
@@ -3949,7 +3954,11 @@ namespace kernelNamespace{
 			const int64_t k = col / (*s).Nspace;
 			const deviceFP f = h * (*s).fStep;
 			const deviceFP w = twoPi<deviceFP>() * (f - (*p).frequency);
-
+			if(isComplexNaN(materialPhase[h])){
+				field[i] = deviceComplex{};
+				field[i + (*s).NgridC] = deviceComplex{};
+				return;
+			}
 			//supergaussian pulse spectrum, if no input pulse specified
 			deviceComplex specfac = deviceComplex(
 				-deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder), 
