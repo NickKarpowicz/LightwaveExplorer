@@ -1607,6 +1607,7 @@ namespace deviceFunctions {
 			deviceFP kMoving = k.real() - k0;
 			if(isnan(kMoving) 
 			|| isnan(halfOverKr)) return complex_t{};
+			return complex_t{};
 			return deviceLib::exp(
 				complex_t(
 					d * k.imag(),
@@ -1620,6 +1621,7 @@ namespace deviceFunctions {
 		if (kz.imag() > 0.0f) kz = complex_t(kz.real(), -kz.imag());
 		kz = complex_t(d*kz.imag(),-d*kz.real());
 		if (isComplexNaN(kz)) return complex_t{};
+		return complex_t{};
 		return deviceLib::exp(kz);
 	}
 
@@ -3893,7 +3895,7 @@ namespace kernelNamespace{
 				field[i + (*s).NgridC] = deviceComplex{};
 				return;
 			}
-			
+
 			const deviceFP ko = twoPi<deviceFP>() * no.real() * f / lightC<deviceFP>();
 			const deviceFP zR = vPi<deviceFP>() 
 				* (*p).beamwaist * (*p).beamwaist 
