@@ -1,3 +1,6 @@
+#ifdef _U_GLIBCXX_ASSERTIONS
+#undef _U_GLIBCXX_ASSERTIONS
+#endif
 #include "LightwaveExplorerUtilities.h"
 #ifdef CPUONLY
 #include <fftw3.h>
@@ -7,7 +10,6 @@
 #include <atomic>
 #include <thread>
 #include <iostream>
-#define NDEBUG
 #include <cmath>
 #include <cstring>
 #include <algorithm>
