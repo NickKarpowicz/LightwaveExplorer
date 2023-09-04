@@ -81,7 +81,7 @@ namespace deviceLibCPUFP32{
 		return std::exp(x);
 	}
 	inline float abs(const std::complex<float> x){
-		if(isnan(x.real()) || isnan(x.imag())) return x;
+		if(isnan(x.real()) || isnan(x.imag())) return x.real();
 		return std::abs(x);
 	}
 	inline std::complex<float> sqrt(const std::complex<float> x){
