@@ -161,17 +161,17 @@ d:
 d reference:
 M. Ghotbi and M. Ebrahim-Zadeh, Optics Express 12, 6002-6019 (2004).
 chi3 type:
-0
+2
 chi3:
-0 0 0 0 0 0 0 0 0
+1.87e-21 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 chi3 reference:
-Empty matrix awaiting input
+Miller et al, Optical Materials 30, 1469-1472 (2008).
 Spectral file:
 None
 Nonlinear reference frequencies:
-0 0 0 0 0 0 0
+370e12 370e12 740e12 282e12 282e12 282e12 282e12
 ~~~crystal end~~~
 Name:
 a-Quartz
