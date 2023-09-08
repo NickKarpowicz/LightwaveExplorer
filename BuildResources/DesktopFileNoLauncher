@@ -4,3 +4,5 @@ Exec=LightwaveExplorer
 Icon=io.github.NickKarpowicz.LightwaveExplorer
 Type=Application
 Categories=Science
+GenericName[en_US]=Nonlinear Optics Simulation
+GenericName=Nonlinear Optics Simulation

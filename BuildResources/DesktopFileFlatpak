@@ -4,5 +4,5 @@ Exec=flatpakLauncher.sh
 Icon=io.github.NickKarpowicz.LightwaveExplorer
 Type=Application
 Categories=Science
-GenericName[en_US]=Nonlinear optics simulation
-GenericName=Nonlinear optics simulation
+GenericName[en_US]=Nonlinear Optics Simulation
+GenericName=Nonlinear Optics Simulation
