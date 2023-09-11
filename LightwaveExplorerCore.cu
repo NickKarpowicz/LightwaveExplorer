@@ -4178,7 +4178,7 @@ namespace hostFunctions{
 		pulse<double>& pCPU, 
 		const bool useLoadedField, 
 		const std::complex<double>* loadedFieldIn) {
-
+		if(pCPU.energy == 0.0) return 0;
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		deviceParameterSet<deviceFP, deviceComplex>* scDevice = d.dParamsDevice;
