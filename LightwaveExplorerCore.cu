@@ -1708,7 +1708,8 @@ namespace deviceFunctions {
 		deviceFP ls, 
 		const deviceFP omega, 
 		const deviceFP* a, 
-		const int eqn) {
+		const int eqn,
+		const bool takeSqrt = true) {
 
 		const deviceFP omega2 = omega * omega;
 		deviceFP realPart;
@@ -1727,7 +1728,8 @@ namespace deviceFunctions {
 				+ a[15] * ls * ls * ls;
 			compPart = kLorentzian<deviceFP>()*a[16] / deviceComplex(a[17] - omega2, a[18] * omega)
 				+ kLorentzian<deviceFP>()*a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
-			return deviceLib::sqrt(maxN(realPart, 0.9f) + compPart);
+			return takeSqrt ? deviceLib::sqrt(maxN(realPart, 0.9f) + compPart)
+				: maxN(realPart, 0.9f) + compPart;
 		case 1:
 			//up to 7 Lorentzian lines
 			compPart = a[1] / deviceComplex(a[2] - omega2, a[3] * omega)
@@ -1739,9 +1741,11 @@ namespace deviceFunctions {
 				+ a[19] / deviceComplex(a[20] - omega2, a[21] * omega);
 			compPart *= kLorentzian<deviceFP>();
 			compPart += a[0];
-			return deviceComplex((
-				deviceLib::sqrt(compPart)).real(), 
-				-deviceFPLib::abs((deviceLib::sqrt(compPart)).imag()));
+			return takeSqrt ?
+				deviceComplex((
+					deviceLib::sqrt(compPart)).real(),
+					-deviceFPLib::abs((deviceLib::sqrt(compPart)).imag()))
+				: compPart;
 		case 2:
 		{
 			//Up to 7 complex Gaussian functions
@@ -1758,9 +1762,11 @@ namespace deviceFunctions {
 
 			}
 			//always select branch with imaginary part < 0
-			return deviceComplex((
-				deviceLib::sqrt(compPart)).real(), 
-				-deviceFPLib::abs((deviceLib::sqrt(compPart)).imag()));
+			return takeSqrt ?
+				deviceComplex((
+					deviceLib::sqrt(compPart)).real(),
+					-deviceFPLib::abs((deviceLib::sqrt(compPart)).imag()))
+				: compPart;
 
 		}
 		case 100:
@@ -1779,9 +1785,11 @@ namespace deviceFunctions {
 				+ a[14] * ls * ls
 				+ a[15] * ls * ls * ls;
 			//"real-valued equation has no business being < 1" - causality
-			return deviceComplex(
-				deviceFPLib::sqrt(maxN(realPart, 0.9f)), 
-				0.0f);
+			return takeSqrt ?
+				deviceComplex(
+					deviceFPLib::sqrt(maxN(realPart, 0.9f)),
+					0.0f)
+				: maxN(realPart, 0.9f);
 		default: return cOne<deviceComplex>();
 		}
 		return cOne<deviceComplex>();
@@ -1789,7 +1797,7 @@ namespace deviceFunctions {
 
 	//Sellmeier equation for refractive indices
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static deviceComplex sellmeierCuda(
+	deviceFunction static deviceComplex sellmeierDevice(
 		deviceComplex* ne, 
 		deviceComplex* no, 
 		const deviceFP* a, 
@@ -1797,7 +1805,8 @@ namespace deviceFunctions {
 		const deviceFP theta, 
 		const deviceFP phi, 
 		const int type, 
-		const int eqn) {
+		const int eqn,
+		const bool takeSqrt = true) {
 		
 		if (f == 0.0f) {
 			*ne = cOne<deviceComplex>(); 
@@ -1810,36 +1819,36 @@ namespace deviceFunctions {
 
 		//option 0: isotropic
 		if (type == 0) {
-			*ne = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn);
+			*ne = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn, takeSqrt);
 			*no = *ne;
 			return *ne;
 		}
 		
 		//option 1: uniaxial
 		else if (type == 1) {
-			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn);
-			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn);
+			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn, false);
+			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn, false);
 
-			*no = na;
-			na *= na;
-			nb *= nb;
+			
 			deviceFP cosT = deviceFPLib::cos(theta);
 			cosT *= cosT;
 			deviceFP sinT = deviceFPLib::sin(theta);
 			sinT *= sinT;
-
-			*ne = deviceLib::sqrt((na * nb) / (nb * cosT + na * sinT));
-
+			if (takeSqrt) {
+				*no = deviceLib::sqrt(na);
+				*ne = deviceLib::sqrt((na * nb) / (nb * cosT + na * sinT));
+			}
+			else {
+				*no = na;
+				*ne = (na * nb) / (nb * cosT + na * sinT);
+			}
 			return *ne;
 		}
 		//option 2: biaxial
 		else {
-			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn);
-			na *= na;
-			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn);
-			nb *= nb;
-			deviceComplex nc = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[44], eqn);
-			nc *= nc;
+			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn, false);
+			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn, false);
+			deviceComplex nc = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[44], eqn, false);
 			deviceFP cp = deviceFPLib::cos(phi);
 			cp *= cp;
 			deviceFP sp = deviceFPLib::sin(phi);
@@ -1848,12 +1857,14 @@ namespace deviceFunctions {
 			ct *= ct;
 			deviceFP st = deviceFPLib::sin(theta);
 			st *= st;
-
-			*ne = deviceLib::sqrt(na * nb * nc /
-				(na * nb * st + na * nc * sp * ct + nb * nc * cp * ct));
-			*no = deviceLib::sqrt(na * nb /
-				(na * cp + nb * sp));
-
+			*ne = na * nb * nc /
+				(na * nb * st + na * nc * sp * ct + nb * nc * cp * ct);
+			*no = na * nb /
+				(na * cp + nb * sp);
+			if (takeSqrt) {
+				*ne = deviceLib::sqrt(*ne);
+				*no = deviceLib::sqrt(*no);
+			}
 			return *ne;
 		}
 	}
@@ -1925,7 +1936,7 @@ namespace deviceFunctions {
 		//
 		deviceComplex n[4][2]{};
 		deviceComplex nW = deviceComplex{};
-		sellmeierCuda(
+		sellmeierDevice(
 			&n[0][0], 
 			&n[0][1], 
 			sellmeierCoefficients, 
@@ -1958,7 +1969,7 @@ namespace deviceFunctions {
 		deviceFP errArray[4][2]{};
 		if ((*s).axesNumber == 1) {
 			maxiter = 64;
-			sellmeierCuda(
+			sellmeierDevice(
 				&n[0][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -1967,7 +1978,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&n[1][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2000,7 +2011,7 @@ namespace deviceFunctions {
 					break;
 				}
 
-				sellmeierCuda(
+				sellmeierDevice(
 					&n[0][0], 
 					&nW, 
 					sellmeierCoefficients, 
@@ -2009,7 +2020,7 @@ namespace deviceFunctions {
 					(*s).crystalPhi, 
 					(*s).axesNumber, 
 					(*s).sellmeierType);
-				sellmeierCuda(
+				sellmeierDevice(
 					&n[1][0], 
 					&nW, 
 					sellmeierCoefficients, 
@@ -2021,7 +2032,7 @@ namespace deviceFunctions {
 				errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
 				gradient[0][0] = gradientFactor * (errArray[0][0] - errArray[1][0]);
 			}
-			sellmeierCuda(
+			sellmeierDevice(
 				&n[0][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2030,7 +2041,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&nW, 
 				&n[1][1], 
 				sellmeierCoefficients, 
@@ -2045,7 +2056,7 @@ namespace deviceFunctions {
 		}
 
 		if ((*s).axesNumber == 2) {
-			sellmeierCuda(
+			sellmeierDevice(
 				&n[0][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2053,7 +2064,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[0], 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&n[1][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2061,7 +2072,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[0], 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&n[2][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2070,7 +2081,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[0] + gradientStep, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&n[3][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2079,7 +2090,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[0] - gradientStep, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&nW, 
 				&n[0][1], 
 				sellmeierCoefficients, 
@@ -2088,7 +2099,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[1], 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&nW, 
 				&n[1][1], 
 				sellmeierCoefficients, 
@@ -2097,7 +2108,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[1], 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&nW, 
 				&n[2][1], 
 				sellmeierCoefficients, 
@@ -2106,7 +2117,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[1] + gradientStep, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&nW, 
 				&n[3][1], 
 				sellmeierCoefficients, 
@@ -2158,7 +2169,7 @@ namespace deviceFunctions {
 						maxN(
 							deviceFPLib::abs(gradient[0][1]), 
 							deviceFPLib::abs(gradient[1][1]))) < gradientTol) break;
-				sellmeierCuda(
+				sellmeierDevice(
 					&n[0][0], 
 					&nW, 
 					sellmeierCoefficients, 
@@ -2167,7 +2178,7 @@ namespace deviceFunctions {
 					(*s).crystalPhi + beta[0], 
 					(*s).axesNumber, 
 					(*s).sellmeierType);
-				sellmeierCuda(
+				sellmeierDevice(
 					&n[1][0], 
 					&nW, 
 					sellmeierCoefficients, 
@@ -2176,7 +2187,7 @@ namespace deviceFunctions {
 					(*s).crystalPhi + beta[0], 
 					(*s).axesNumber, 
 					(*s).sellmeierType);
-				sellmeierCuda(
+				sellmeierDevice(
 					&n[2][0], 
 					&nW, 
 					sellmeierCoefficients, 
@@ -2185,7 +2196,7 @@ namespace deviceFunctions {
 					(*s).crystalPhi + beta[0] + gradientStep, 
 					(*s).axesNumber, 
 					(*s).sellmeierType);
-				sellmeierCuda(
+				sellmeierDevice(
 					&n[3][0], 
 					&nW, 
 					sellmeierCoefficients, 
@@ -2194,7 +2205,7 @@ namespace deviceFunctions {
 					(*s).crystalPhi + beta[0] - gradientStep, 
 					(*s).axesNumber, 
 					(*s).sellmeierType);
-				sellmeierCuda(
+				sellmeierDevice(
 					&nW, 
 					&n[0][1], 
 					sellmeierCoefficients, 
@@ -2203,7 +2214,7 @@ namespace deviceFunctions {
 					(*s).crystalPhi + beta[1], 
 					(*s).axesNumber, 
 					(*s).sellmeierType);
-				sellmeierCuda(
+				sellmeierDevice(
 					&nW, 
 					&n[1][1], 
 					sellmeierCoefficients, 
@@ -2212,7 +2223,7 @@ namespace deviceFunctions {
 					(*s).crystalPhi + beta[1], 
 					(*s).axesNumber, 
 					(*s).sellmeierType);
-				sellmeierCuda(
+				sellmeierDevice(
 					&nW, 
 					&n[2][1], 
 					sellmeierCoefficients, 
@@ -2221,7 +2232,7 @@ namespace deviceFunctions {
 					(*s).crystalPhi + beta[1] + gradientStep, 
 					(*s).axesNumber, 
 					(*s).sellmeierType);
-				sellmeierCuda(
+				sellmeierDevice(
 					&nW, 
 					&n[3][1], 
 					sellmeierCoefficients, 
@@ -2243,7 +2254,7 @@ namespace deviceFunctions {
 				gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
 				gradient[1][1] = gradientFactor * (errArray[2][1] - errArray[3][1]);
 			}
-			sellmeierCuda(
+			sellmeierDevice(
 				&n[0][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2251,7 +2262,7 @@ namespace deviceFunctions {
 				(*s).crystalPhi + beta[0], 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
-			sellmeierCuda(
+			sellmeierDevice(
 				&nW, 
 				&n[1][1], 
 				sellmeierCoefficients, 
@@ -2829,7 +2840,7 @@ namespace kernelNamespace{
 			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 			deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 			if (!(*s).is3D)dk2 = 0.0f;
-			sellmeierCuda(&n0, &n0o, sellmeierCoefficients, (*s).f0,
+			sellmeierDevice(&n0, &n0o, sellmeierCoefficients, (*s).f0,
 				crystalTheta, crystalPhi, axesNumber, sellmeierType);
 			if (isComplexNaN(ne) || isComplexNaN(no)) {
 				ne = cOne<deviceComplex>();
@@ -3043,7 +3054,7 @@ namespace kernelNamespace{
 			const deviceFP f = static_cast<deviceFP>(i) * (*s).fStep;
 			deviceComplex ne, no;
 			if (i < (*s).Ntime / 2) {
-				sellmeierCuda(
+				sellmeierDevice(
 					&ne, 
 					&no, 
 					sellmeierCoefficients, 
@@ -3051,10 +3062,11 @@ namespace kernelNamespace{
 					(*s).crystalTheta, 
 					(*s).crystalPhi, 
 					(*s).axesNumber, 
-					(*s).sellmeierType);
+					(*s).sellmeierType,
+					false); //note: false to applySqrt, so it returns n^2
 
-				(*s).chiLinear1[i] = ne * ne - 1.0f;
-				(*s).chiLinear2[i] = no * no - 1.0f;
+				(*s).chiLinear1[i] = ne - 1.0f;
+				(*s).chiLinear2[i] = no - 1.0f;
 				if ((*s).chiLinear1[i].real() != 0.0f && (*s).chiLinear2[i].real() != 0.0f) {
 					(*s).inverseChiLinear1[i] = 1.0f / (*s).chiLinear1[i].real();
 					(*s).inverseChiLinear2[i] = 1.0f / (*s).chiLinear2[i].real();
@@ -3099,7 +3111,7 @@ namespace kernelNamespace{
 
 			if (i == 81) {
 				deviceComplex n0;
-				sellmeierCuda(
+				sellmeierDevice(
 					&n0, 
 					&no, 
 					sellmeierCoefficients, 
@@ -3129,7 +3141,7 @@ namespace kernelNamespace{
 					chi11[im] = 100000.0f;
 				}
 				else {
-					sellmeierCuda(
+					sellmeierDevice(
 						&ne, 
 						&no, 
 						sellmeierCoefficients, 
@@ -3137,8 +3149,9 @@ namespace kernelNamespace{
 						(*s).crystalTheta, 
 						(*s).crystalPhi, 
 						(*s).axesNumber, 
-						(*s).sellmeierType);
-					chi11[im] = no.real() * no.real() - 1.0f;
+						(*s).sellmeierType,
+						false); //note: false to applySqrt, so it returns n^2
+					chi11[im] = no.real() - 1.0f;
 				}
 			}
 
@@ -3170,7 +3183,7 @@ namespace kernelNamespace{
 			const deviceFP dk = static_cast<deviceFP>(j) * (*s).dk1 - static_cast<deviceFP>(j >= ((*s).Nspace / 2)) 
 				* ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
 			deviceComplex ne, no;
-			sellmeierCuda(
+			sellmeierDevice(
 				&ne, 
 				&no, 
 				sellmeierCoefficients, 
@@ -3279,13 +3292,13 @@ namespace kernelNamespace{
 			//give phase shift relative to group velocity (approximated 
 			// with low-order finite difference) so the pulse doesn't move
 			deviceComplex ne, no, no0, n0p, n0m;
-			sellmeierCuda<deviceFP, deviceComplex>(
+			sellmeierDevice<deviceFP, deviceComplex>(
 				&ne, &no, a, f, {}, {}, 0, sellmeierEquation);
-			sellmeierCuda<deviceFP, deviceComplex>(
+			sellmeierDevice<deviceFP, deviceComplex>(
 				&ne, &no0, a, f0, {}, {}, 0, sellmeierEquation);
-			sellmeierCuda<deviceFP, deviceComplex>(
+			sellmeierDevice<deviceFP, deviceComplex>(
 				&ne, &n0p, a, f0 + 1.0e11f, {}, {}, 0, sellmeierEquation);
-			sellmeierCuda<deviceFP, deviceComplex>(
+			sellmeierDevice<deviceFP, deviceComplex>(
 				&ne, &n0m, a, f0 - 1.0e11f, {}, {}, 0, sellmeierEquation);
 			no0 = no0 + f0 * (n0p - n0m) / 2.0e11f;
 			phase1[i] = thickness * twoPi<deviceFP>() * f 
@@ -3836,7 +3849,7 @@ namespace kernelNamespace{
 				specfac = loadedField[h] * deviceLib::exp(specphase);
 			}
 			deviceComplex ne, no;
-			sellmeierCuda(
+			sellmeierDevice(
 				&ne, 
 				&no, 
 				sellmeierCoefficients, 
@@ -3931,7 +3944,7 @@ namespace kernelNamespace{
 				specfac = loadedField[h] * deviceLib::exp(specphase);
 			}
 			deviceComplex ne, no;
-			sellmeierCuda(
+			sellmeierDevice(
 				&ne, 
 				&no, 
 				sellmeierCoefficients, 
