@@ -89,7 +89,11 @@ namespace deviceLibSYCLFP32{
 		return oneapi::dpl::abs(x);
 	}
 	static inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
-		return pow(x, 0.5f);
+		float h = sqrtf(abs(x) + x.real());
+		return 0.70710678118f * oneapi::dpl::complex<float>{
+			h,
+			x.imag()/h
+		};
 	}
 };
 
