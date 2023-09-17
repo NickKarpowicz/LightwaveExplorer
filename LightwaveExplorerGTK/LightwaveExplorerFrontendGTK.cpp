@@ -1273,7 +1273,7 @@ static void buttonAddForLoop() {
     theGui.sequence.paintSequenceText();
 }
 static void buttonAddPulse() {
-    theGui.sequence.cPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})\n",
+    theGui.sequence.cPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})\n",
         theGui.textBoxes[0].valueDouble(),
         theGui.textBoxes[1].valueDouble(),
         theGui.textBoxes[2].valueDouble(),
