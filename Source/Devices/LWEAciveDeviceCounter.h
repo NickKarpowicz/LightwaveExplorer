@@ -1,5 +1,5 @@
 #pragma once
-#include "LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerUtilities.h"
 namespace deviceLib = std;
 namespace deviceFPLib = std;
 namespace complexLib = std;

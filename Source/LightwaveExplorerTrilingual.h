@@ -7,7 +7,7 @@
 #ifdef __CUDACC__
 	#include <cufft.h>
 	#include <thrust/complex.h>
-	#include "LWEActiveDeviceCUDA.cuh"
+	#include "Devices/LWEActiveDeviceCUDA.cuh"
 	#define deviceFunction __device__
 	#if LWEFLOATINGPOINT==64
 		#define kernelNamespace CUDA64Kernels
@@ -34,7 +34,7 @@
 	const auto dftPrecision = (LWEFLOATINGPOINT == 32) ? 
 		oneapi::mkl::dft::precision::SINGLE 
 		: oneapi::mkl::dft::precision::DOUBLE;
-	#include "LWEActiveDeviceSYCL.h"
+	#include "Devices/LWEActiveDeviceSYCL.h"
 	#define deviceFunction 
 	#if LWEFLOATINGPOINT == 64
 		namespace deviceLib = oneapi::dpl;
@@ -60,7 +60,7 @@
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCLFP32
 	#endif
 #elif defined RUNSTEPCOUNTER
-	#include "LWEAciveDeviceCounter.h"
+	#include "Devices/LWEAciveDeviceCounter.h"
 	#define kernelNamespace CounterKernels
 	#define deviceFunction 
 	typedef counterDevice<double, std::complex<double>> ActiveDevice;
@@ -70,7 +70,7 @@
 	#define solveNonlinearWaveEquationX solveNonlinearWaveEquationCounter
 	#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
 #else
-	#include "LWEActiveDeviceCPU.h"
+	#include "Devices/LWEActiveDeviceCPU.h"
 	namespace complexLib = std;
 	#define deviceFunction 
 	#if LWEFLOATINGPOINT == 32

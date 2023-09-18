@@ -1,4 +1,4 @@
-#include "LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
+#include "LightwaveExplorerUtilities.h"
 
 unsigned long   solveNonlinearWaveEquationSequence(simulationParameterSet* lpParam);
 unsigned long	solveNonlinearWaveEquation(simulationParameterSet* lpParam);

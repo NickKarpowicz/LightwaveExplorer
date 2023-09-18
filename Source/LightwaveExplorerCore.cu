@@ -1,4 +1,4 @@
-#include "LightwaveExplorerDevices/LightwaveExplorerTrilingual.h"
+#include "LightwaveExplorerTrilingual.h"
 #include <dlib/global_optimization.h>
 
 typedef 

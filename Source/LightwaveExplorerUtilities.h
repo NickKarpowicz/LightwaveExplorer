@@ -7,7 +7,7 @@
 #include <atomic>
 #include <mutex>
 #include <algorithm>
-#include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
+#include "LightwaveExplorerHelpers.h"
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif

@@ -4,7 +4,7 @@
 #include <nvml.h>
 #include <thrust/complex.h>
 #include <iostream>
-#include "LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerUtilities.h"
 
 namespace complexLib = thrust;
 #if LWEFLOATINGPOINT==64

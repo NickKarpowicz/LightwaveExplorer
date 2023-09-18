@@ -1,4 +1,4 @@
-#include "LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerUtilities.h"
 #include <sycl/sycl.hpp>
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>

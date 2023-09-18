@@ -1,7 +1,7 @@
 #ifdef _U_GLIBCXX_ASSERTIONS
 #undef _U_GLIBCXX_ASSERTIONS
 #endif
-#include "LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerUtilities.h"
 #ifdef CPUONLY
 #include <fftw3.h>
 #else

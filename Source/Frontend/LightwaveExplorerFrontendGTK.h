@@ -5,7 +5,7 @@
 #include <string>
 #include <algorithm>
 #include <filesystem>
-#include "../LightwaveExplorerDevices/LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerGraphicalClasses.h"
 
 #undef __noinline__
@@ -14,9 +14,9 @@
 #include <thread>
 #include <chrono>
 #include <locale>
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPU.h"
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCounter.h"
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.h"
+#include "../Devices/LightwaveExplorerCoreCPU.h"
+#include "../Devices/LightwaveExplorerCoreCounter.h"
+#include "../Devices/LightwaveExplorerCoreCPUFP32.h"
 
 //conditional includes and definitions
 //Apple libraries
@@ -33,14 +33,14 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <nvml.h>
-#include "../LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cuh"
+#include "../Devices/LightwaveExplorerCoreFP32.cuh"
 #include "../LightwaveExplorerCore.cuh"
 #endif
 //if on windows, include the header for the Windows version
 //of the SYCL code and the Windows headers needed to check
 //if the Intel DPC++ runtime is present
 #ifdef _WIN32
-#include "../LightwaveExplorerDevices/LightwaveExplorerSYCL.h"
+#include "../Devices/LightwaveExplorerSYCL.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #else

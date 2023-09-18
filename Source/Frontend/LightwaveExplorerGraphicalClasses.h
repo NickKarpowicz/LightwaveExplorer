@@ -10,7 +10,7 @@
 #include <thread>
 #include <mutex>
 #include <gcem.hpp>
-#include "../LightwaveExplorerDevices/LightwaveExplorerHelpers.h"
+#include "../LightwaveExplorerHelpers.h"
 
 //GLOBAL VARIABLE: GTK MUTEX
 std::mutex GTKmutex;
