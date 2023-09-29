@@ -185,7 +185,7 @@
       <SpecifySyclLink>false</SpecifySyclLink>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(TargetPath)" "$(ProjectDir)..\LightwaveExplorerWin64\bin"
+      <Command>copy "$(TargetPath)" "$(ProjectDir)..\..\LightwaveExplorerWin64\bin"
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>

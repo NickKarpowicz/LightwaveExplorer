@@ -25,7 +25,7 @@
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
     <UseInteloneMKL>Parallel</UseInteloneMKL>
-    <EnableASAN>true</EnableASAN>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -89,9 +89,9 @@
       <EnableDpiAwareness>true</EnableDpiAwareness>
     </Manifest>
     <PostBuildEvent>
-      <Command>copy "$(TargetPath)" "$(SolutionDir)LightwaveExplorerWin64\bin\"
-copy "$(SolutionDir)CrystalDatabase.txt" "$(SolutionDir)LightwaveExplorerWin64"
-copy "$(SolutionDir)Source\BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveExplorerWin64"</Command>
+      <Command>copy "$(TargetPath)" "$(SolutionDir)..\LightwaveExplorerWin64\bin\"
+copy "$(SolutionDir)..\CrystalDatabase.txt" "$(SolutionDir)LightwaveExplorerWin64"
+copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveExplorerWin64"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -103,7 +103,7 @@ copy "$(SolutionDir)Source\BuildResources\DefaultValues.ini" "$(SolutionDir)Ligh
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <OpenMPSupport>true</OpenMPSupport>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <FloatingPointModel>Fast</FloatingPointModel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -131,9 +131,9 @@ copy "$(SolutionDir)Source\BuildResources\DefaultValues.ini" "$(SolutionDir)Ligh
       <AdditionalOptions>-std=c++17 %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
     <PostBuildEvent>
-      <Command>copy "$(TargetPath)" "$(SolutionDir)LightwaveExplorerWin64\bin\"
-copy "$(SolutionDir)CrystalDatabase.txt" "$(SolutionDir)LightwaveExplorerWin64"
-copy "$(SolutionDir)Source\BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveExplorerWin64"</Command>
+      <Command>copy "$(TargetPath)" "$(SolutionDir)..\LightwaveExplorerWin64\bin\"
+copy "$(SolutionDir)..\CrystalDatabase.txt" "$(SolutionDir)LightwaveExplorerWin64"
+copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveExplorerWin64"</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -163,13 +163,15 @@ copy "$(SolutionDir)Source\BuildResources\DefaultValues.ini" "$(SolutionDir)Ligh
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="..\LightwaveExplorerCore.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <Defines Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NOCUDAMAIN;%(Defines)</Defines>
-      <Defines Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NOCUDAMAIN;%(Defines)</Defines>
-    </CudaCompile>
     <CudaCompile Include="..\Devices\LightwaveExplorerCoreFP32.cu" />
+    <CudaCompile Include="..\LightwaveExplorerCore.cu">
+      <AdditionalCompilerOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </AdditionalCompilerOptions>
+      <AdditionalCompilerOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </AdditionalCompilerOptions>
+      <Defines Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NOCUDAMAIN</Defines>
+      <Defines Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NOCUDAMAIN</Defines>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LightwaveExplorerGTK.rc" />

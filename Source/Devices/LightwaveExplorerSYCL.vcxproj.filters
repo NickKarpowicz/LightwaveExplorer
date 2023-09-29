@@ -21,10 +21,10 @@
     <ClInclude Include="LightwaveExplorerSYCL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerTrilingual.h">
+    <ClInclude Include="LWEActiveDeviceSYCL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LWEActiveDeviceSYCL.h">
+    <ClInclude Include="..\LightwaveExplorerTrilingual.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,10 +32,10 @@
     <ClCompile Include="LightwaveExplorerSYCL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp">
+    <ClCompile Include="LightwaveExplorerSYCLFP32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LightwaveExplorerSYCLFP32.cpp">
+    <ClCompile Include="..\LightwaveExplorerUtilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

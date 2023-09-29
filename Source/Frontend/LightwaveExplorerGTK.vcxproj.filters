@@ -4,18 +4,10 @@
     <ClCompile Include="LightwaveExplorerFrontendGTK.cpp">
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPUFP32.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="..\Devices\LightwaveExplorerCoreCounter.cpp" />
+    <ClCompile Include="..\Devices\LightwaveExplorerCoreCPU.cpp" />
+    <ClCompile Include="..\Devices\LightwaveExplorerCoreCPUFP32.cpp" />
+    <ClCompile Include="..\LightwaveExplorerUtilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
@@ -29,12 +21,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="..\LightwaveExplorerCore.cu">
-      <Filter>Resource Files\Source Files</Filter>
-    </CudaCompile>
-    <CudaCompile Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cu">
-      <Filter>Resource Files\Source Files</Filter>
-    </CudaCompile>
+    <CudaCompile Include="..\Devices\LightwaveExplorerCoreFP32.cu" />
+    <CudaCompile Include="..\LightwaveExplorerCore.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LightwaveExplorerFrontendGTK.h">
@@ -44,39 +32,19 @@
     <ClInclude Include="..\LightwaveExplorerCore.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCounter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreCPU.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerTrilingual.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerUtilities.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LWEAciveDeviceCounter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCPU.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceSYCL.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LWEActiveDeviceCUDA.cuh">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerCoreFP32.cuh">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="LightwaveExplorerGraphicalClasses.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\LightwaveExplorerDevices\LightwaveExplorerHelpers.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <ClInclude Include="..\Devices\LightwaveExplorerCoreCounter.h" />
+    <ClInclude Include="..\Devices\LightwaveExplorerCoreCPU.h" />
+    <ClInclude Include="..\Devices\LightwaveExplorerCoreFP32.cuh" />
+    <ClInclude Include="..\LightwaveExplorerHelpers.h" />
+    <ClInclude Include="..LightwaveExplorerTrilingual.h" />
+    <ClInclude Include="..\LightwaveExplorerUtilities.h" />
+    <ClInclude Include="..\Devices\LWEAciveDeviceCounter.h" />
+    <ClInclude Include="..\Devices\LWEActiveDeviceCPU.h" />
+    <ClInclude Include="..\Devices\LWEActiveDeviceCUDA.cuh" />
+    <ClInclude Include="..\Devices\LWEActiveDeviceSYCL.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LightwaveExplorerGTK.rc">
