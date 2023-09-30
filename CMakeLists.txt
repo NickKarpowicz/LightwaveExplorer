@@ -17,27 +17,26 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(GTK4 gtk4)
         
         include_directories(${MKL_ROOT}/include/fftw)
-        include_directories(../LightwaveExplorer)
         include_directories(${GTK4_INCLUDE_DIRS})
         include_directories(build/dlib) 
         include_directories(build/gcem/include)
         link_directories(${GTK4_LIBRARY_DIRS})
 
         add_library(LightwaveExplorerCuda 
-            LightwaveExplorerCore.cu 
-            LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
+            Source/LightwaveExplorerCore.cu 
+            Source/Devices/LightwaveExplorerCoreFP32.cu)
         
         add_compile_options(-std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -w)
         add_link_options(-fsycl)
         add_executable(LightwaveExplorer 
-            LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp 
-            LightwaveExplorerGTK/LightwaveExplorerDPCPPlibFP32.cpp 
-            LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
-            LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+            Source/Devices/LightwaveExplorerSYCLLinux.cpp 
+            Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
+            Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+            Source/LightwaveExplorerUtilities.cpp 
+            Source/Devices/LightwaveExplorerCoreCPU.cpp 
+            Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+            Source/Devices/LightwaveExplorerCoreCounter.cpp 
+            Source/Devices/DlibLibraryComponents.cpp)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt -lm)
         target_link_libraries(LightwaveExplorer
@@ -53,14 +52,14 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer TBB::tbb)
 
-        configure_file(${CMAKE_SOURCE_DIR}/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
+        configure_file(${CMAKE_SOURCE_DIR}/Source/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
         add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh)
         install(TARGETS LightwaveExplorer)
         install(PROGRAMS ${CMAKE_BINARY_DIR}/LightwaveExplorerLauncher.sh DESTINATION bin)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
-        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
-        install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
-        install(FILES BuildResources/DesktopFileLauncher 
+        install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+        install(DIRECTORY ${CMAKE_SOURCE_DIR}Source//BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
+        install(FILES Source/BuildResources/DesktopFileLauncher 
             DESTINATION share/applications 
             RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
         install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
@@ -77,21 +76,20 @@ if(UNIX AND NOT APPLE)
         find_package(MKL PATHS /app/opt/intel/oneapi/mkl/latest/lib/cmake REQUIRED)
         find_package(fmt)
         find_package(OpenMP)
-        include_directories(../LightwaveExplorer)
         include_directories(${CUDA_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
         include_directories(${MKL_ROOT}/include/fftw)
         include_directories(${MKL_ROOT}/include)
         add_library(LightwaveExplorerCuda 
-            LightwaveExplorerCore.cu 
-            LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
+            Source/LightwaveExplorerCore.cu 
+            Source/Devices/LightwaveExplorerCoreFP32.cu)
         add_executable(LightwaveExplorer 
-            LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
-            LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+            Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+            Source/LightwaveExplorerUtilities.cpp 
+            Source/Devices/LightwaveExplorerCoreCPU.cpp 
+            Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+            Source/Devices/LightwaveExplorerCoreCounter.cpp 
+            Source/Devices/DlibLibraryComponents.cpp)
         target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL)
         target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
@@ -108,12 +106,12 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer TBB::tbb)
         add_executable(LightwaveExplorerNoCuda 
-            LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
-            LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+            Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+            Source/LightwaveExplorerUtilities.cpp 
+            Source/Devices/LightwaveExplorerCoreCPU.cpp 
+            Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+            Source/Devices/LightwaveExplorerCoreCounter.cpp 
+            Source/Devices/DlibLibraryComponents.cpp)
         target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL -DNOCUDA)
         target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
         target_link_libraries(LightwaveExplorerNoCuda fmt::fmt)
@@ -127,12 +125,12 @@ if(UNIX AND NOT APPLE)
             )
         target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
         install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
-        install(PROGRAMS ${CMAKE_SOURCE_DIR}/BuildResources/flatpakLauncher.sh DESTINATION bin)
+        install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
-        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
-        install(FILES BuildResources/io.github.NickKarpowicz.LightwaveExplorer.metainfo.xml DESTINATION share/metainfo)
-        install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
-        install(FILES BuildResources/DesktopFileFlatpak DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
+        install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+        install(FILES Source/BuildResources/io.github.NickKarpowicz.LightwaveExplorer.metainfo.xml DESTINATION share/metainfo)
+        install(DIRECTORY ${CMAKE_SOURCE_DIR}/Source/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
+        install(FILES Source/BuildResources/DesktopFileFlatpak DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
         elseif(MAKECUDAINTELFLATPAK)
         #Flatpak using CUDA, SYCL, and CPU calculations with FFTs in MKL. 
         #Pre release version of the Flatpak.
@@ -156,15 +154,15 @@ if(UNIX AND NOT APPLE)
             include_directories(${MKL_ROOT}/include)
             include_directories(/app/opt/intel/oneapi/dpl/latest/linux/include)
             add_library(LightwaveExplorerCuda 
-                LightwaveExplorerCore.cu 
-                LightwaveExplorerDevices/LightwaveExplorerCoreFP32.cu)
+                Source/LightwaveExplorerCore.cu 
+                Source/Devices/LightwaveExplorerCoreFP32.cu)
             add_executable(LightwaveExplorer 
-                LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
-                LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
-                LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
-                LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
-                LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
-                LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+                Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+                Source/LightwaveExplorerUtilities.cpp 
+                Source/Devices/LightwaveExplorerCoreCPU.cpp 
+                Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+                Source/Devices/LightwaveExplorerCoreCounter.cpp 
+                Source/Devices/DlibLibraryComponents.cpp)
             target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -fp-model=precise -O3 -fopenmp -DNOSYCL -Wno-deprecated-declarations)
             target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
             target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
@@ -183,14 +181,14 @@ if(UNIX AND NOT APPLE)
 
             add_link_options(-fsycl)
             add_executable(LightwaveExplorerNoCuda 
-                LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
-                LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
-                LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
-                LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
-                LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
-                LightwaveExplorerDevices/DlibLibraryComponents.cpp
-                LightwaveExplorerGTK/LightwaveExplorerDPCPPlib.cpp 
-                LightwaveExplorerGTK/LightwaveExplorerDPCPPlibFP32.cpp 
+                Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+                Source/LightwaveExplorerUtilities.cpp 
+                Source/Devices/LightwaveExplorerCoreCPU.cpp 
+                Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+                Source/Devices/LightwaveExplorerCoreCounter.cpp 
+                Source/Devices/DlibLibraryComponents.cpp
+                Source/Devices/LightwaveExplorerSYCLLinux.cpp 
+                Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
                 )
             target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fp-model=precise -fopenmp -std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -DNOCUDA -Wno-deprecated-declarations)
             target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
@@ -206,12 +204,12 @@ if(UNIX AND NOT APPLE)
                 -lsycl -lOpenCL)
             target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
             install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
-            install(PROGRAMS ${CMAKE_SOURCE_DIR}/BuildResources/flatpakLauncher.sh DESTINATION bin)
+            install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
             install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
-            install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
-            install(FILES BuildResources/io.github.NickKarpowicz.LightwaveExplorer.metainfo.xml DESTINATION share/metainfo)
-            install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
-            install(FILES BuildResources/DesktopFileFlatpak DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
+            install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+            install(FILES Source/BuildResources/io.github.NickKarpowicz.LightwaveExplorer.metainfo.xml DESTINATION share/metainfo)
+            install(DIRECTORY ${CMAKE_SOURCE_DIR}/Source/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
+            install(FILES Source/BuildResources/DesktopFileFlatpak DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
     elseif(CLICPU)
         cmake_minimum_required(VERSION 3.16)
         project(LightwaveExplorer LANGUAGES CXX)
@@ -225,10 +223,10 @@ if(UNIX AND NOT APPLE)
 
         add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -Wno-deprecated-declarations)
         add_executable(LightwaveExplorer 
-            LightwaveExplorerDevices/LightwaveExplorerCommandLineMain.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
-            LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+            Source/Devices/LightwaveExplorerCommandLineMain.cpp 
+            Source/LightwaveExplorerUtilities.cpp 
+            Source/Devices/LightwaveExplorerCoreCPU.cpp 
+            Source/Devices/DlibLibraryComponents.cpp)
         target_link_libraries(LightwaveExplorer -lgomp)
         target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
     else()
@@ -259,12 +257,12 @@ if(UNIX AND NOT APPLE)
         add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -Wno-deprecated-declarations -DNDEBUG)
         execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
         add_executable(LightwaveExplorer 
-            LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
-            LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
-            LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+            Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+            Source/LightwaveExplorerUtilities.cpp 
+            Source/Devices/LightwaveExplorerCoreCPU.cpp 
+            Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+            Source/Devices/LightwaveExplorerCoreCounter.cpp 
+            Source/Devices/DlibLibraryComponents.cpp)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
         target_link_libraries(LightwaveExplorer OpenMP::OpenMP_CXX)
         target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
@@ -274,9 +272,9 @@ if(UNIX AND NOT APPLE)
         
         install(TARGETS LightwaveExplorer)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
-        install(FILES BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
-        install(DIRECTORY ${CMAKE_SOURCE_DIR}/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
-        install(FILES BuildResources/DesktopFileNoLauncher DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
+        install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+        install(DIRECTORY ${CMAKE_SOURCE_DIR}/Source/BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
+        install(FILES Source/BuildResources/DesktopFileNoLauncher DESTINATION share/applications RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
         install(CODE "execute_process(COMMAND gtk-update-icon-cache -q -t -f ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor)")
     endif()
 endif()
@@ -297,19 +295,19 @@ if(APPLE)
     link_directories(${GTK4_LIBRARY_DIRS})
     add_compile_options(-std=c++20 -O3 -DCPUONLY -DNOSYCL -Wall -Wno-deprecated-declarations -x objective-c++)
     add_executable(LightwaveExplorer MACOSX_BUNDLE 
-        LightwaveExplorerGTK/LightwaveExplorerFrontendGTK.cpp 
-        LightwaveExplorerDevices/LightwaveExplorerUtilities.cpp 
-        LightwaveExplorerDevices/LightwaveExplorerCoreCPUFP32.cpp 
-        LightwaveExplorerDevices/LightwaveExplorerCoreCPU.cpp 
-        LightwaveExplorerDevices/LightwaveExplorerCoreCounter.cpp 
-        LightwaveExplorerDevices/DlibLibraryComponents.cpp)
+        Source/Devices/LightwaveExplorerFrontendGTK.cpp 
+        Source/LightwaveExplorerUtilities.cpp 
+        Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+        Source/Devices/LightwaveExplorerCoreCPU.cpp 
+        Source/Devices/LightwaveExplorerCoreCounter.cpp 
+        Source/Devices/DlibLibraryComponents.cpp)
     set_target_properties(LightwaveExplorer  PROPERTIES
         BUNDLE True
         MACOSX_BUNDLE_BUNDLE_NAME LightwaveExplorer
         MACOSX_BUNDLE_VERSION "0.1"
         MACOSX_BUNDLE_VERSION_STRING "0.1"
-        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/BuildResources/macplistbase.plist
-        MACOSX_BUNDLE_ICON_FILE ${CMAKE_SOURCE_DIR}/BuildResources/AppIcon.icns
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/Source/BuildResources/macplistbase.plist
+        MACOSX_BUNDLE_ICON_FILE ${CMAKE_SOURCE_DIR}/Source/BuildResources/AppIcon.icns
     )
     target_link_libraries(LightwaveExplorer fmt::fmt)
     target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})

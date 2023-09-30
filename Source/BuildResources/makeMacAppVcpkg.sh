@@ -23,8 +23,8 @@ mkdir $APP/Contents/Resources/share
 
 #copy in the databases and icons
 cp CrystalDatabase.txt $APP/Contents/Resources
-cp BuildResources/DefaultValues.ini $APP/Contents/Resources
-cp BuildResources/AppIcon.icns $APP/Contents/Resources
+cp Source/BuildResources/DefaultValues.ini $APP/Contents/Resources
+cp Source/BuildResources/AppIcon.icns $APP/Contents/Resources
 
 #Functions:
 

@@ -46,8 +46,8 @@
 #else
 //on Linux, load the Linux versions of the SYCL code
 #ifndef NOSYCL
-#include "LightwaveExplorerDPCPPlib.h"
-#include "LightwaveExplorerDPCPPlibFP32.h"
+#include "../Devices/LightwaveExplorerSYCLLinux.h"
+#include "../Devices/LightwaveExplorerSYCLLinuxFP32.h"
 #endif
 #endif
 #endif
