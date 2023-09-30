@@ -295,7 +295,7 @@ if(APPLE)
     link_directories(${GTK4_LIBRARY_DIRS})
     add_compile_options(-std=c++20 -O3 -DCPUONLY -DNOSYCL -Wall -Wno-deprecated-declarations -x objective-c++)
     add_executable(LightwaveExplorer MACOSX_BUNDLE 
-        Source/Devices/LightwaveExplorerFrontendGTK.cpp 
+        Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
         Source/LightwaveExplorerUtilities.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
