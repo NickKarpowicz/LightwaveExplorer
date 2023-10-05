@@ -12,7 +12,7 @@ module purge
 module load gcc/12
 module load mkl/2022.2
 module load cuda/12.1
-git clone --branch ReorganizeFolder https://github.com/NickKarpowicz/LightwaveExplorer
+git clone https://github.com/NickKarpowicz/LightwaveExplorer
 git clone --depth 1 --branch v19.24.2 https://github.com/davisking/dlib
 
 cd LightwaveExplorer
