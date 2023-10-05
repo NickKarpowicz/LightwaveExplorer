@@ -5,14 +5,14 @@
 #include <thread>
 
 #ifdef __CUDACC__
-	#include "../LightwaveExplorerCore.cuh"
-	#include "LightwaveExplorerCoreFP32.cuh"
+	#include "LightwaveExplorerCore.cuh"
+	#include "Devices/LightwaveExplorerCoreFP32.cuh"
 #elif defined CPUONLY
-	#include "LightwaveExplorerCoreCPU.h"
-	#include "LightwaveExplorerCoreCPUFP32.h"
+	#include "Devices/LightwaveExplorerCoreCPU.h"
+	#include "Devices/LightwaveExplorerCoreCPUFP32.h"
 #elif defined RUNONSYCL
-	#include "LightwaveExplorerSYCL.h"
-	#include "LightwaveExplorerSYCLFP32.h"
+	#include "Devices/LightwaveExplorerSYCL.h"
+	#include "Devices/LightwaveExplorerSYCLFP32.h"
 #endif
 
 int main(int argc, char* argv[]){
