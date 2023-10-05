@@ -1,4 +1,4 @@
-<p align="center"><img src="BuildResources/icons/hicolor/512x512/apps/io.github.NickKarpowicz.LightwaveExplorer.png" width="256" height="256"></p>
+<p align="center"><img src="Source/BuildResources/icons/hicolor/512x512/apps/io.github.NickKarpowicz.LightwaveExplorer.png" width="256" height="256"></p>
 
 ## <p align="center">Lightwave Explorer</p>
 <p align="center">Nick Karpowicz<br>
