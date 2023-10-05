@@ -1015,8 +1015,6 @@ void checkLibraryAvailability() {
 #endif
 }
 
-
-
 void pathFromDialogBox(GtkDialog* dialog, int response) {
     std::unique_lock<std::mutex> GTKlock(GTKmutex);
     if (response == GTK_RESPONSE_ACCEPT) {
@@ -1060,16 +1058,6 @@ void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
     gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
 }
 
-void changeToBaseNamePath(char* str, int64_t maxSize) {
-    std::string s(str, maxSize);
-    int64_t extension = s.find_last_of(".");
-    if (extension != std::string::npos) {
-        std::string baseName = s.substr(0, extension);
-        baseName.append("\0");
-        baseName.copy(str, maxSize);
-    }
-}
-
 void loadFromDialogBox(GtkDialog* dialog, int response) {
     std::unique_lock<std::mutex> GTKlock(GTKmutex);
     if (response == GTK_RESPONSE_ACCEPT) {
@@ -1093,7 +1081,6 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         }
         GTKlock.lock();
     }
-
     g_object_unref(dialog);
 }
 

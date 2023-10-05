@@ -132,8 +132,8 @@ copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveEx
     </CudaCompile>
     <PostBuildEvent>
       <Command>copy "$(TargetPath)" "$(SolutionDir)..\LightwaveExplorerWin64\bin\"
-copy "$(SolutionDir)..\CrystalDatabase.txt" "$(SolutionDir)LightwaveExplorerWin64"
-copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveExplorerWin64"</Command>
+copy "$(SolutionDir)..\CrystalDatabase.txt" "$(SolutionDir)..\LightwaveExplorerWin64\"
+copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)..\LightwaveExplorerWin64\"</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
