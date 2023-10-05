@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{7CAD0699-F993-4EEE-A752-E21A6F3C9A8C}</ProjectGuid>
+    <RootNamespace>LightwaveExplorerGTK</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.1.props" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseInteloneMKL>Parallel</UseInteloneMKL>
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseInteloneMKL>Parallel</UseInteloneMKL>
+    <EnableASAN>false</EnableASAN>
+    <UseInteloneTBB>false</UseInteloneTBB>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(SolutionDir)../../gtk/lib/graphene-1.0/include;$(SolutionDir)../../gtk/include/gtk-4.0;$(SolutionDir)../../gtk/include/cairo;$(SolutionDir)../../gtk/include/pango-1.0;$(SolutionDir)../../gtk/include/glib-2.0;$(SolutionDir)../../gtk/include/pixman-1;$(SolutionDir)../../gtk/freetype2;$(SolutionDir)../../gtk/include/libpng16;$(SolutionDir)../../gtk/include/harfbuzz;$(SolutionDir)../../gtk/lib/glib-2.0/include;$(SolutionDir)../../gtk/include/gdk-pixbuf-2.0;$(SolutionDir)../../gtk/include/graphene-1.0;$(IncludePath)</IncludePath>
+    <LibraryPath>$(OutputPath);$(SolutionDir)../../gtk/lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(SolutionDir)../../gtk/lib/graphene-1.0/include;$(SolutionDir)../../gtk/include/gtk-4.0;$(SolutionDir)../../gtk/include/cairo;$(SolutionDir)../../gtk/include/pango-1.0;$(SolutionDir)../../gtk/include/glib-2.0;$(SolutionDir)../../gtk/include/pixman-1;$(SolutionDir)../../gtk/freetype2;$(SolutionDir)../../gtk/include/libpng16;$(SolutionDir)../../gtk/include/harfbuzz;$(SolutionDir)../../gtk/lib/glib-2.0/include;$(SolutionDir)../../gtk/include/gdk-pixbuf-2.0;$(SolutionDir)../../gtk/include/graphene-1.0;$(IncludePath)</IncludePath>
+    <LibraryPath>$(OutputPath);$(SolutionDir)../../gtk/lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <VcpkgUseStatic>false</VcpkgUseStatic>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgUseStatic>false</VcpkgUseStatic>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;WIN64;_DEBUG;_CONSOLE;_DISABLE_VECTOR_ANNOTATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <OpenMPSupport>true</OpenMPSupport>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>LightwaveExplorerSYCL.lib;cufft.lib;nvml.lib;gio-2.0.lib;gtk-4.lib;pangoft2-1.0.lib;gdk_pixbuf-2.0.lib;pangocairo-1.0.lib;cairo.lib;pango-1.0.lib;freetype.lib;fontconfig.lib;gobject-2.0.lib;gthread-2.0.lib;glib-2.0.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>LightwaveExplorerSYCL.dll;nvml.dll;cufft64_11.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalLibraryDirectories>$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
+      <AdditionalOptions>-std=c++17 %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>copy "$(TargetPath)" "$(SolutionDir)..\LightwaveExplorerWin64\bin\"
+copy "$(SolutionDir)..\CrystalDatabase.txt" "$(SolutionDir)LightwaveExplorerWin64"
+copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveExplorerWin64"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <OpenMPSupport>true</OpenMPSupport>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>LightwaveExplorerSYCL.lib;cufft.lib;nvml.lib;gio-2.0.lib;gtk-4.lib;pangoft2-1.0.lib;gdk_pixbuf-2.0.lib;pangocairo-1.0.lib;cairo.lib;pango-1.0.lib;freetype.lib;fontconfig.lib;gobject-2.0.lib;gthread-2.0.lib;glib-2.0.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <DelayLoadDLLs>LightwaveExplorerSYCL.dll;nvml.dll;cufft64_11.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalLibraryDirectories>$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <CodeGeneration>compute_75,sm_75;compute_86,sm_86</CodeGeneration>
+      <Optimization>O3</Optimization>
+      <AdditionalCompilerOptions>
+      </AdditionalCompilerOptions>
+      <AdditionalOptions>-std=c++17 %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
+    <PostBuildEvent>
+      <Command>copy "$(TargetPath)" "$(SolutionDir)..\LightwaveExplorerWin64\bin\"
+copy "$(SolutionDir)..\CrystalDatabase.txt" "$(SolutionDir)LightwaveExplorerWin64"
+copy "$(SolutionDir)BuildResources\DefaultValues.ini" "$(SolutionDir)LightwaveExplorerWin64"</Command>
+    </PostBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Devices\LightwaveExplorerCoreCounter.cpp" />
+    <ClCompile Include="..\Devices\LightwaveExplorerCoreCPU.cpp" />
+    <ClCompile Include="..\Devices\LightwaveExplorerCoreCPUFP32.cpp" />
+    <ClCompile Include="..\LightwaveExplorerUtilities.cpp" />
+    <ClCompile Include="LightwaveExplorerFrontendGTK.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\LightwaveExplorerCore.cuh" />
+    <ClInclude Include="..\Devices\LightwaveExplorerCoreCounter.h" />
+    <ClInclude Include="..\Devices\LightwaveExplorerCoreCPU.h" />
+    <ClInclude Include="..\Devices\LightwaveExplorerCoreFP32.cuh" />
+    <ClInclude Include="..\LightwaveExplorerHelpers.h" />
+    <ClInclude Include="..LightwaveExplorerTrilingual.h" />
+    <ClInclude Include="..\LightwaveExplorerUtilities.h" />
+    <ClInclude Include="..\Devices\LWEAciveDeviceCounter.h" />
+    <ClInclude Include="..\Devices\LWEActiveDeviceCPU.h" />
+    <ClInclude Include="..\Devices\LWEActiveDeviceCUDA.cuh" />
+    <ClInclude Include="..\Devices\LWEActiveDeviceSYCL.h" />
+    <ClInclude Include="LightwaveExplorerFrontendGTK.h" />
+    <ClInclude Include="LightwaveExplorerGraphicalClasses.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\Devices\LightwaveExplorerCoreFP32.cu" />
+    <CudaCompile Include="..\LightwaveExplorerCore.cu">
+      <AdditionalCompilerOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </AdditionalCompilerOptions>
+      <AdditionalCompilerOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </AdditionalCompilerOptions>
+      <Defines Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NOCUDAMAIN</Defines>
+      <Defines Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NOCUDAMAIN</Defines>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="LightwaveExplorerGTK.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\CrystalDatabase.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.1.targets" />
+  </ImportGroup>
+</Project>
