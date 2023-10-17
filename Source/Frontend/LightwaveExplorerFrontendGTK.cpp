@@ -390,13 +390,13 @@ public:
             "You should select the associated .txt file. The parameters will be "
             "loaded into the interface, and the data (if it exists) will be plotted.");
         buttons[6].init(
-            ("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
+            ("Path"), parentHandle, textWidth, 16, textWidth, 1, waveform1PathCallback);
         buttons[7].init(
-            ("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
+            ("Path"), parentHandle, textWidth, 18, textWidth, 1, waveform2PathCallback);
         buttons[8].init(
-            ("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
+            ("Path"), parentHandle, textWidth, 20, textWidth, 1, fittingPathCallback);
         buttons[9].init(
-            ("Path"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
+            ("Path"), parentHandle, buttonCol1, 17, textWidth, 1, savePathCallback);
         buttons[9].setTooltip("Sets the base path for the output files");
         buttons[10].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
         buttons[10].setTooltip("Apply the entered x limits to the plot. The two text "
@@ -1015,86 +1015,39 @@ void checkLibraryAvailability() {
 #endif
 }
 
-void pathFromDialogBox(GtkDialog* dialog, int response) {
-    std::unique_lock<std::mutex> GTKlock(GTKmutex);
-    if (response == GTK_RESPONSE_ACCEPT) {
-        GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
-        GFile* file = gtk_file_chooser_get_file(chooser);
-        std::string s(g_file_get_path(file));
-        GTKlock.unlock();
-        if (s.substr(s.length() - 4, std::string::npos) == std::string(".txt") 
-            && theGui.pathTarget == 3) {
-            theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s.substr(0,s.length()-4));
-        }
-        else {
-            theGui.filePaths[theGui.pathTarget].overwritePrint("{}", s);
-        } 
-        GTKlock.lock();
+void savePathCallback() {
+    pathFromSaveDialog(theGui.filePaths[3]);
+}
+
+void waveform1PathCallback() {
+    pathFromLoadDialog(theGui.filePaths[0]);
+}
+void waveform2PathCallback() {
+    pathFromLoadDialog(theGui.filePaths[1]);
+}
+void fittingPathCallback() {
+    pathFromLoadDialog(theGui.filePaths[2]);
+}
+
+void loadFromPath(std::string& path) {
+    theGui.sequence.clear();
+    theGui.fitCommand.clear();
+    int readParameters =
+        theSim.base().readInputParametersFile(theDatabase.db.data(), path);
+    theSim.configure();
+    if (readParameters == 61) {
+        int64_t extensionLoc = path.find_last_of(".");
+        const std::string basePath = path.substr(0, extensionLoc);
+        theSim.base().loadSavedFields(basePath);
+
+        setInterfaceValuesToActiveValues();
+        theGui.requestSliderUpdate();
+        theGui.requestPlotUpdate();
     }
-    g_object_unref(dialog);
 }
 
-void openFileDialog(int64_t pathTarget) {
-    std::unique_lock<std::mutex> GTKlock(GTKmutex);
-    theGui.pathTarget = pathTarget;
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
-        "Open File", 
-        theGui.window.windowHandle(), 
-        GTK_FILE_CHOOSER_ACTION_OPEN, "Ok", "Cancel");
-    g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
-}
-
-void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
-    std::unique_lock<std::mutex> GTKlock(GTKmutex);
-    theGui.pathTarget = (int64_t)pathTarget;
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
-        "Open File", 
-        theGui.window.windowHandle(), 
-        GTK_FILE_CHOOSER_ACTION_OPEN, 
-        "Ok", 
-        "Cancel");
-    g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
-}
-
-void loadFromDialogBox(GtkDialog* dialog, int response) {
-    std::unique_lock<std::mutex> GTKlock(GTKmutex);
-    if (response == GTK_RESPONSE_ACCEPT) {
-        GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
-        GFile* file = gtk_file_chooser_get_file(chooser);
-        std::string path(g_file_get_path(file));
-        GTKlock.unlock();
-        theGui.sequence.clear();
-        theGui.fitCommand.clear();
-        int readParameters = 
-            theSim.base().readInputParametersFile(theDatabase.db.data(), path);
-        theSim.configure();
-        if (readParameters == 61) {
-            int64_t extensionLoc = path.find_last_of(".");
-            const std::string basePath = path.substr(0, extensionLoc);
-            theSim.base().loadSavedFields(basePath);
-
-            setInterfaceValuesToActiveValues();
-            theGui.requestSliderUpdate();
-            theGui.requestPlotUpdate();
-        }
-        GTKlock.lock();
-    }
-    g_object_unref(dialog);
-}
-
-void loadCallback(GtkWidget* widget, gpointer pathTarget) {
-    std::unique_lock<std::mutex> GTKlock(GTKmutex);
-    theGui.pathTarget = (int64_t)pathTarget;
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
-        "Open File", 
-        theGui.window.windowHandle(), 
-        GTK_FILE_CHOOSER_ACTION_OPEN, 
-        "Ok", 
-        "Cancel");
-    g_signal_connect(fileC, "response", G_CALLBACK(loadFromDialogBox), NULL);
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
+void loadCallback() {
+    loadFromLoadDialog(loadFromPath);
 }
 
 void svgCallback() {
@@ -1104,30 +1057,6 @@ void svgCallback() {
 
 void dataPanelCollapseCallback(){
     theGui.window.toggleSettingsPanel();
-}
-void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
-    theGui.pathTarget = (int64_t)pathTarget;
-    //get around bug in GTK4 by opening dialog box directly in cocoa on mac
-#ifdef __APPLE__
-    NSString *filePath;
-    NSSavePanel *savePanel = [NSSavePanel savePanel];
-    if ([savePanel runModal] == NSModalResponseOK) {
-        filePath = [savePanel URL].path;
-        theGui.filePaths[theGui.pathTarget].overwritePrint("{}", [filePath UTF8String]);
-    }
-    return;
-#else
-    std::unique_lock<std::mutex> GTKlock(GTKmutex);
-    GtkFileChooserNative* fileC = gtk_file_chooser_native_new(
-        "Save File", 
-        theGui.window.windowHandle(), 
-        GTK_FILE_CHOOSER_ACTION_SAVE, 
-        "Ok", 
-        "Cancel");
-    g_signal_connect(fileC, "response", G_CALLBACK(pathFromDialogBox), NULL);
-    gtk_native_dialog_show(GTK_NATIVE_DIALOG(fileC));
-#endif
-
 }
 
 void createRunFile() {

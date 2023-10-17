@@ -74,7 +74,11 @@ int formatSequence(std::string& s);
 void mainSimThread(int pulldownSelection, int pulldownSelection2, bool use64bitFloatingPoint);
 void launchRunThread();
 void independentPlotQueue();
-void loadCallback(GtkWidget* widget, gpointer pathTarget);
+void loadCallback();
+void savePathCallback();
+void waveform1PathCallback();
+void waveform2PathCallback();
+void fittingPathCallback();
 void launchFitThread();
 void fittingThread(int pulldownSelection, bool use64bitFloatingPoint);
 void stopButtonCallback();
@@ -93,4 +97,4 @@ static void buttonAddFarFieldAperture();
 static void buttonAddForLoop();
 bool updateDisplay();
 void destroyMainWindowCallback();
-
+void testNewDialog();
