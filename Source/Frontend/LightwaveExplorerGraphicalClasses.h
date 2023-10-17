@@ -1728,5 +1728,5 @@ static void loadDataCallback(GObject* gobject, GAsyncResult* result, gpointer da
 
 void loadFromLoadDialog(loadingFunction loadingFunctionPointer) {
     GtkFileDialog* dialog = gtk_file_dialog_new();
-    gtk_file_dialog_open(dialog, NULL, NULL, loadDataCallback, loadingFunctionPointer);
+    gtk_file_dialog_open(dialog, NULL, NULL, loadDataCallback, reinterpret_cast<gpointer>(loadingFunctionPointer));
 }
