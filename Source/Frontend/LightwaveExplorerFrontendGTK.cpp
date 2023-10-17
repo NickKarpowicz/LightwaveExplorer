@@ -1719,14 +1719,14 @@ void independentPlotQueue(){
     theGui.requestPlotUpdate();
 }
 
-bool sliderResponseToArrows(GtkWidget* widget, guint keyValue, guint keyCode, GdkModifierType state, GtkEventControllerKey* eventController) {
-    double value = gtk_range_get_value(GTK_RANGE(widget));
+bool sliderResponseToArrows(void* widget, unsigned int keyValue) {
+    double value = theGui.plotSlider.getDoubleValue();
     switch (keyValue) {
-    case GDK_KEY_Left:
+    case 0xff51:
         value -= 1.0;
         theGui.plotSlider.setValue(static_cast<int>(value));
         break;
-    case GDK_KEY_Right:
+    case 0xff53:
         value += 1.0;
         theGui.plotSlider.setValue(static_cast<int>(value));
         break;
