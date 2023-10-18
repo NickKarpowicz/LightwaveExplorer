@@ -1388,27 +1388,34 @@ namespace deviceFunctions {
 
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz);
-		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
-			const int64_t oscillatorIndex = 
-				(zIndex - s->materialStart) * s->Noscillators 
-				+ xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
+		bool solveMaterialEquations = s->hasMaterialMap ?
+			s->materialMap[i] > 0
+			: zIndex >= s->materialStart && zIndex < s->materialStop;
 
+		if (solveMaterialEquations) {
+			const int64_t oscillatorIndex = s->hasMaterialMap ?
+				s->oscillatorIndexMap[i]
+				: (zIndex - s->materialStart) * s->Noscillators 
+				+ xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
+			const int oscillatorType = s->hasMaterialMap ?
+				s->materialMap[i]
+				: 0;
 			//rotate the field and the currently-active derivative term into the crystal coordinates
 			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
 			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
-			maxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][0] - 1.0f;
+			maxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][oscillatorType] - 1.0f;
 
 			//get the total dipole current and polarization of the oscillators
 			maxwellPoint<deviceFP> J{};
 			maxwellPoint<deviceFP> P = chiInstant * crystalField;
-			for (int j = 0; j < (s->Noscillators - s->hasPlasma[0]); j++) {
+			for (int j = 0; j < (s->Noscillators - s->hasPlasma[oscillatorType]); j++) {
 				J += currentGridIn[oscillatorIndex + j].J;
 				P += currentGridIn[oscillatorIndex + j].P;
 			}
 			//update dEdt (kE) with the dipole current and divide by the instantaneous
 			//part of the dielectric constant
 			kE += J * inverseEps0<deviceFP>();
-			kE /= s->sellmeierEquations[0][0];
+			kE /= s->sellmeierEquations[0][oscillatorType];
 
 			//Use dEdt to calculate dPdt
 			maxwellPoint<deviceFP> dPdt = (kE * chiInstant) * eps0<deviceFP>();
@@ -1425,42 +1432,42 @@ namespace deviceFunctions {
 			maxwellPoint<deviceFP> nonlinearDriver{};
 
 			//calculate the chi2 nonlinearity
-			if (s->hasChi2[0]) {
-				nonlinearDriver += s->chi2[0][0] * (P.x * P.x);
-				instNonlin += s->chi2[0][0] * (2.0f * dPdt.x * P.x);
+			if (s->hasChi2[oscillatorType]) {
+				nonlinearDriver += s->chi2[0][oscillatorType] * (P.x * P.x);
+				instNonlin += s->chi2[0][oscillatorType] * (2.0f * dPdt.x * P.x);
 
-				nonlinearDriver += s->chi2[1][0] * (P.y * P.y);
+				nonlinearDriver += s->chi2[1][oscillatorType] * (P.y * P.y);
 				instNonlin += s->chi2[1][0] * (2.0f * dPdt.y * P.y);
 
-				nonlinearDriver += s->chi2[2][0] * (P.z * P.z);
-				instNonlin += s->chi2[2][0] * (2.0f * P.z * dPdt.z);
+				nonlinearDriver += s->chi2[2][oscillatorType] * (P.z * P.z);
+				instNonlin += s->chi2[2][oscillatorType] * (2.0f * P.z * dPdt.z);
 
-				nonlinearDriver += s->chi2[3][0] * (P.y * P.z);
-				instNonlin += s->chi2[3][0] * (P.y * dPdt.z + dPdt.y * P.z);
+				nonlinearDriver += s->chi2[3][oscillatorType] * (P.y * P.z);
+				instNonlin += s->chi2[3][oscillatorType] * (P.y * dPdt.z + dPdt.y * P.z);
 
-				nonlinearDriver += s->chi2[4][0] * (P.x * P.z);
-				instNonlin += s->chi2[4][0] * (P.x * dPdt.z + dPdt.x * P.z);
+				nonlinearDriver += s->chi2[4][oscillatorType] * (P.x * P.z);
+				instNonlin += s->chi2[4][oscillatorType] * (P.x * dPdt.z + dPdt.x * P.z);
 
-				nonlinearDriver += s->chi2[5][0] * (P.x * P.y);
-				instNonlin += s->chi2[5][0] * (P.x * dPdt.y + dPdt.x * P.y);
+				nonlinearDriver += s->chi2[5][oscillatorType] * (P.x * P.y);
+				instNonlin += s->chi2[5][oscillatorType] * (P.x * dPdt.y + dPdt.x * P.y);
 			}
 
 			//calculate kerr nonlinearity for scalar chi3 (assuming centrosymmetry)
-			if (s->hasSingleChi3[0]) {
+			if (s->hasSingleChi3[oscillatorType]) {
 				deviceFP fieldSquaredSum = dotProduct(P, P);
 				deviceFP dByDtfieldSquaredSum = 2.0f * dotProduct(dPdt, P);
-				nonlinearDriver += P * (s->chi3[0][0].x * fieldSquaredSum);
-				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum) * (s->chi3[0][0].x);
+				nonlinearDriver += P * (s->chi3[0][oscillatorType].x * fieldSquaredSum);
+				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum) * (s->chi3[0][oscillatorType].x);
 			}
 
 			//calculate Chi3 nonlinearity with full tensor
-			if (s->hasFullChi3[0]) {
+			if (s->hasFullChi3[oscillatorType]) {
 				for (auto a = 0; a < 3; ++a) {
 					for (auto b = 0; b < 3; ++b) {
 						for (auto c = 0; c < 3; ++c) {
-							nonlinearDriver += s->chi3[a + 3 * b + 9 * c][0] 
+							nonlinearDriver += s->chi3[a + 3 * b + 9 * c][oscillatorType]
 								* P(a) * P(b) * P(c);
-							instNonlin += s->chi3[a + 3 * b + 9 * c][0] * (
+							instNonlin += s->chi3[a + 3 * b + 9 * c][oscillatorType] * (
 								dPdt(a) * P(b) * P(c)
 								+ P(a) * dPdt(b) * P(c)
 								+ P(a) * P(b) * dPdt(c));
@@ -1469,19 +1476,19 @@ namespace deviceFunctions {
 				}
 			}
 			nonlinearDriver *= 2.0f;
-			instNonlin /= s->sellmeierEquations[0][0];
+			instNonlin /= s->sellmeierEquations[0][oscillatorType];
 			kE += (instNonlin * chiInstant) * (2.0f * inverseEps0<deviceFP>());
 
 			//resolve the plasma nonlinearity
-			deviceFP absorptionCurrent = (s->hasPlasma[0]) ?
+			deviceFP absorptionCurrent = (s->hasPlasma[oscillatorType]) ?
 				2.0f * deviceFPLib::pow(
-					dotProduct(P, P) * s->kNonlinearAbsorption[0], 
-					s->nonlinearAbsorptionOrder[0])
+					dotProduct(P, P) * s->kNonlinearAbsorption[oscillatorType],
+					s->nonlinearAbsorptionOrder[oscillatorType])
 				: 0.0f;
-			if (s->hasPlasma[0]) {
+			if (s->hasPlasma[oscillatorType]) {
 				maxwellPoint<deviceFP> absorption = -twoPi<deviceFP>() * absorptionCurrent * crystalField;
 				absorption += currentGridIn[oscillatorIndex + s->Noscillators - 1].J * inverseEps0<deviceFP>();
-				absorption /= s->sellmeierEquations[0][0];
+				absorption /= s->sellmeierEquations[0][oscillatorType];
 				kE += absorption;
 			}
 
@@ -1490,17 +1497,17 @@ namespace deviceFunctions {
 
 			//Update and advance the material oscillators
 			for (int j = 0; j < s->Noscillators; j++) {
-				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ?
+				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[oscillatorType])) ?
 					oscillator<deviceFP>{
 					(-eps0<deviceFP>() * kLorentzian<deviceFP>())*
-						s->sellmeierEquations[1 + j * 3][0] * (crystalField+nonlinearDriver)
-						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].P
-						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].J,
+						s->sellmeierEquations[1 + j * 3][oscillatorType] * (crystalField+nonlinearDriver)
+						- s->sellmeierEquations[2 + j * 3][oscillatorType] * currentGridIn[oscillatorIndex+j].P
+						- s->sellmeierEquations[3 + j * 3][oscillatorType] * currentGridIn[oscillatorIndex+j].J,
 						currentGridIn[oscillatorIndex + j].J} :
 				oscillator<deviceFP>{
-					currentGridIn[oscillatorIndex + j].P.x * s->kDrude[0] * crystalField 
-					- s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].J,
-					maxwellPoint<deviceFP>{absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[0],
+					currentGridIn[oscillatorIndex + j].P.x * s->kDrude[oscillatorType] * crystalField
+					- s->gammaDrude[oscillatorType] * currentGridIn[oscillatorIndex + j].J,
+					maxwellPoint<deviceFP>{absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[oscillatorType],
 					deviceFP{},
 					deviceFP{} } };
 				//note that k.P.x is used to store the carrier density
@@ -4076,7 +4083,8 @@ namespace hostFunctions{
 		int64_t tFactor, 
 		deviceFP dz, 
 		deviceFP frontBuffer, 
-		deviceFP backBuffer);
+		deviceFP backBuffer,
+		const std::string& materialMapPath = "");
 
 	static std::complex<double> hostSellmeierFunc(
 		double ls, 
@@ -5265,8 +5273,9 @@ namespace hostFunctions{
 	template<typename maxwellType>
 	static void calculateFDTDParameters(
 		const simulationParameterSet* sCPU, 
-		maxwellType& maxCalc){
-
+		maxwellType& maxCalc,
+		int mapValue = 0){
+		
 		double n0 = hostSellmeierFunc(
 			0, twoPi<double>() * sCPU->pulse1.frequency, 
 			(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
@@ -5421,7 +5430,48 @@ namespace hostFunctions{
 	static void prepareFDTD(
 		ActiveDevice& d, 
 		const simulationParameterSet* sCPU, 
-		maxwell3D& maxCalc) {
+		maxwell3D& maxCalc,
+		const std::string& materialMapPath = "") {
+
+		//Check if there is a material map and allocate/load it if necessary
+		if (materialMapPath != "") {
+			maxCalc.hasMaterialMap = false;
+			int64_t NmaterialPoints = 0;
+			std::vector<char> materialMapCPU(maxCalc.Ngrid, 0);
+			std::ifstream fs(materialMapPath);
+
+			if (fs.good()) {
+				auto moveToColon = [&]() {
+					char x = 0;
+					while (x != ':' && fs.good()) {
+						fs >> x;
+					}
+					return 0;
+				};
+				//First line: materials
+				//Second line: theta
+				//Third line: phi
+				//Fourth: Nonlinear absorption
+				//Fifth: bandgap
+				//Sixth: gamma
+				//Seventh: effective mass
+				//Eighth: start data
+				int64_t gridCount{};
+				while (fs.good() && gridCount < maxCalc.Ngrid) {
+					fs >> materialMapCPU[gridCount];
+					if (materialMapCPU[gridCount] > 0) NmaterialPoints++;
+					gridCount++;
+				}
+				d.deviceCalloc((void**)&(maxCalc.materialMap),
+					maxCalc.Ngrid, sizeof(char));
+				d.deviceMemcpy(
+					(void*)maxCalc.materialMap,
+					(void*)materialMapCPU.data(),
+					maxCalc.Ngrid * sizeof(char),
+					copyType::ToDevice);
+				maxCalc.hasMaterialMap = true;
+			}
+		}
 
 		calculateFDTDParameters(sCPU, maxCalc);
 		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
@@ -5438,6 +5488,7 @@ namespace hostFunctions{
 		maxCalc.inputEyFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency2);
 		d.deviceMemset(maxCalc.inOutEx, 0, 2*(*sCPU).Ngrid * sizeof(deviceFP));
 
+		
 		//allocate the new memory needed for the maxwell calculation
 		d.deviceCalloc((void**)&(maxCalc.Egrid), 
 			maxCalc.Ngrid, sizeof(maxwellPoint<deviceFP>));
@@ -5481,7 +5532,8 @@ namespace hostFunctions{
 		int64_t tFactor, 
 		deviceFP dz, 
 		deviceFP frontBuffer, 
-		deviceFP backBuffer) {
+		deviceFP backBuffer,
+		const std::string& materialMapPath) {
 		
 		//initialize the grid if necessary
 		if (!sCPU->isFollowerInSequence) {
@@ -5515,7 +5567,7 @@ namespace hostFunctions{
 		if (dz == 0.0) dz = (*sCPU).propagationStep;
 		//generate the FDTD data structure and prepare the device
 		maxwell3D maxCalc = maxwell3D(sCPU, tFactor, dz, frontBuffer, backBuffer);
-		prepareFDTD(d, sCPU, maxCalc);
+		prepareFDTD(d, sCPU, maxCalc, materialMapPath);
 
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {

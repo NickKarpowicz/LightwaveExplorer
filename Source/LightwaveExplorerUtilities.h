@@ -976,6 +976,8 @@ public:
     }
 };
 
+constexpr int64_t NmaterialMax = 8;
+
 template <typename deviceFP, typename E, typename H, typename O>
 class maxwellCalculation {
 public:
@@ -991,21 +993,27 @@ public:
     O* materialGridNext{};
     O* materialGridEstimate{};
     O* materialGridEstimate2{};
-    int64_t* materialIndexMap{};
-    maxwellPoint<deviceFP> sellmeierEquations[22][8]{};
-    maxwellPoint<deviceFP> chi3[27][8]{};
-    maxwellPoint<deviceFP> chi2[6][8]{};
-    int nonlinearAbsorptionOrder[8]{};
-    deviceFP kNonlinearAbsorption[8]{};
-    deviceFP kDrude[8]{};
-    deviceFP gammaDrude[8]{};
-    deviceFP kCarrierGeneration[8]{};
-    deviceFP rotateForward[9][8]{};
-    deviceFP rotateBackward[9][8]{};
-    bool hasChi2[8]{};
-    bool hasFullChi3[8]{};
-    bool hasSingleChi3[8]{};
-    bool hasPlasma[8]{};
+    char* materialMap{};
+    int64_t* oscillatorIndexMap{};
+    int64_t materialKeys[NmaterialMax]{};
+    deviceFP materialTheta[NmaterialMax]{};
+    deviceFP materialPhi[NmaterialMax]{};
+
+    maxwellPoint<deviceFP> sellmeierEquations[22][NmaterialMax]{};
+    maxwellPoint<deviceFP> chi3[27][NmaterialMax]{};
+    maxwellPoint<deviceFP> chi2[6][NmaterialMax]{};
+    int nonlinearAbsorptionOrder[NmaterialMax]{};
+    deviceFP kNonlinearAbsorption[NmaterialMax]{};
+    deviceFP kDrude[NmaterialMax]{};
+    deviceFP gammaDrude[NmaterialMax]{};
+    deviceFP kCarrierGeneration[NmaterialMax]{};
+    deviceFP rotateForward[9][NmaterialMax]{};
+    deviceFP rotateBackward[9][NmaterialMax]{};
+    bool hasChi2[NmaterialMax]{};
+    bool hasFullChi3[NmaterialMax]{};
+    bool hasSingleChi3[NmaterialMax]{};
+    bool hasPlasma[NmaterialMax]{};
+    bool hasMaterialMap{};
     deviceFP* inOutEy{};
     deviceFP* inOutEx{};
     deviceFP* inputExFFT{};
@@ -1081,6 +1089,4 @@ public:
         Ngrid = Nz * Ny * Nx;
         fillRotationMatricies((*s).crystalTheta, (*s).crystalPhi, 0);
     }
-
-    
 };
