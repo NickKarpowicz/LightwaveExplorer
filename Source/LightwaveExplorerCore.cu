@@ -5433,7 +5433,89 @@ namespace hostFunctions{
 	static void prepareFDTD(
 		ActiveDevice& d, 
 		const simulationParameterSet* sCPU, 
-		maxwell3D& maxCalc) {
+		maxwell3D& maxCalc,
+		const std::string& materialMapPath = "") {
+
+		//Check if there is a material map and allocate/load it if necessary
+		//fdtdGrid("C:\Users\nickk\rzgdatashare\LightwaveExplorer\Tests\file.txt")
+		if (materialMapPath != "") {
+			//throw std::runtime_error(std::string("path string:\n").append(materialMapPath));
+			maxCalc.hasMaterialMap = false;
+			int64_t NmaterialPoints = 0;
+			std::vector<int8_t> materialMapCPU(maxCalc.Ngrid, 0);
+			std::ifstream fs(materialMapPath);
+
+			if (fs.good()) {
+				auto moveToColon = [&]() {
+					char x = 0;
+					while (x != ':' && fs.good()) {
+						fs >> x;
+					}
+					return 0;
+					};
+				//First line: materials
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialKeys[i];
+					//optimization: count oscillators
+				}
+				maxCalc.Noscillators = 7;
+				//Second line: theta
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialTheta[i];
+				}
+				//Third line: phi
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialPhi[i];
+				}
+				//Fourth: Nonlinear absorption (NOTE: FIX PLASMA PARAMS)
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kNonlinearAbsorption[i];
+				}
+				//Fifth: bandgap
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kDrude[i];
+				}
+				//Sixth: gamma
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.gammaDrude[i];
+				}
+				//Seventh: effective mass
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kCarrierGeneration[i];
+				}
+				//Eighth: start data
+				int64_t gridCount{};
+				std::string testString;
+				while (fs.good() && gridCount < maxCalc.Ngrid) {
+					int currentInt;
+					fs >> currentInt;
+					materialMapCPU[gridCount] = static_cast<int8_t>(currentInt);
+					if (materialMapCPU[gridCount] > 0) NmaterialPoints++;
+					testString += std::to_string(materialMapCPU[gridCount]) + " ";
+					if (gridCount % maxCalc.Nz == 0) testString += "\n";
+					gridCount++;
+				}
+				//throw std::runtime_error(testString);
+
+
+				d.deviceCalloc((void**)&(maxCalc.materialMap),
+					maxCalc.Ngrid, sizeof(char));
+				d.deviceMemcpy(
+					(void*)maxCalc.materialMap,
+					(void*)materialMapCPU.data(),
+					maxCalc.Ngrid * sizeof(char),
+					copyType::ToDevice);
+				maxCalc.hasMaterialMap = true;
+				maxCalc.NMaterialGrid = NmaterialPoints * maxCalc.Noscillators;
+			}
+		}
 
 		calculateFDTDParameters(sCPU, maxCalc);
 		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
