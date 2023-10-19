@@ -1398,7 +1398,7 @@ namespace deviceFunctions {
 				: (zIndex - s->materialStart) * s->Noscillators 
 				+ xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
 			const int oscillatorType = s->hasMaterialMap ?
-				s->materialMap[i]
+				s->materialMap[i] - 1
 				: 0;
 			//rotate the field and the currently-active derivative term into the crystal coordinates
 			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
@@ -5422,9 +5422,12 @@ namespace hostFunctions{
 				std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts 
 					/ (*sCPU).pulse1.frequency)) - 1;
 		}
-		maxCalc.NMaterialGrid = 
-			(maxCalc.materialStop - maxCalc.materialStart) 
-			* maxCalc.Nx * maxCalc.Ny * maxCalc.Noscillators;
+
+		if (!maxCalc.hasMaterialMap) {
+			maxCalc.NMaterialGrid =
+				(maxCalc.materialStop - maxCalc.materialStart)
+				* maxCalc.Nx * maxCalc.Ny * maxCalc.Noscillators;
+		}
 	}
 
 	static void prepareFDTD(
@@ -5434,10 +5437,12 @@ namespace hostFunctions{
 		const std::string& materialMapPath = "") {
 
 		//Check if there is a material map and allocate/load it if necessary
+		//fdtdGrid("C:\Users\nickk\rzgdatashare\LightwaveExplorer\Tests\file.txt")
 		if (materialMapPath != "") {
+			//throw std::runtime_error(std::string("path string:\n").append(materialMapPath));
 			maxCalc.hasMaterialMap = false;
 			int64_t NmaterialPoints = 0;
-			std::vector<char> materialMapCPU(maxCalc.Ngrid, 0);
+			std::vector<int8_t> materialMapCPU(maxCalc.Ngrid, 0);
 			std::ifstream fs(materialMapPath);
 
 			if (fs.good()) {
@@ -5449,19 +5454,57 @@ namespace hostFunctions{
 					return 0;
 				};
 				//First line: materials
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialKeys[i];
+					//optimization: count oscillators
+				}
+				maxCalc.Noscillators = 7;
 				//Second line: theta
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialTheta[i];
+				}
 				//Third line: phi
-				//Fourth: Nonlinear absorption
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialPhi[i];
+				}
+				//Fourth: Nonlinear absorption (NOTE: FIX PLASMA PARAMS)
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kNonlinearAbsorption[i];
+				}
 				//Fifth: bandgap
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kDrude[i];
+				}
 				//Sixth: gamma
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.gammaDrude[i];
+				}
 				//Seventh: effective mass
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kCarrierGeneration[i];
+				}
 				//Eighth: start data
 				int64_t gridCount{};
+				std::string testString;
 				while (fs.good() && gridCount < maxCalc.Ngrid) {
-					fs >> materialMapCPU[gridCount];
+					int currentInt;
+					fs >> currentInt;
+					materialMapCPU[gridCount] = static_cast<int8_t>(currentInt);
 					if (materialMapCPU[gridCount] > 0) NmaterialPoints++;
+					testString += std::to_string(materialMapCPU[gridCount]) + " ";
+					if (gridCount % maxCalc.Nz == 0) testString += "\n";
 					gridCount++;
 				}
+				//throw std::runtime_error(testString);
+
+
 				d.deviceCalloc((void**)&(maxCalc.materialMap),
 					maxCalc.Ngrid, sizeof(char));
 				d.deviceMemcpy(
@@ -5470,6 +5513,7 @@ namespace hostFunctions{
 					maxCalc.Ngrid * sizeof(char),
 					copyType::ToDevice);
 				maxCalc.hasMaterialMap = true;
+				maxCalc.NMaterialGrid = NmaterialPoints * maxCalc.Noscillators;
 			}
 		}
 
@@ -5716,6 +5760,15 @@ namespace hostFunctions{
 				parameters[1], 
 				parameters[2], 
 				parameters[3]);
+			break;
+		case funHash("fdtdGrid"):
+			error = solveFDTD(d,
+				sCPU,
+				5,
+				(*sCPU).propagationStep,
+				0.0,
+				0.0,
+				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
 			break;
 		case funHash("default"):
 			d.reset(sCPU);
