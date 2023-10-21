@@ -1394,17 +1394,18 @@ namespace deviceFunctions {
 
 		if (solveMaterialEquations) {
 			const int64_t oscillatorIndex = s->hasMaterialMap ?
-				s->oscillatorIndexMap[i]
+				s->oscillatorIndexMap[i] * s->Noscillators
 				: (zIndex - s->materialStart) * s->Noscillators 
 				+ xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
 			const int oscillatorType = s->hasMaterialMap ?
 				s->materialMap[i] - 1
 				: 0;
+			
 			//rotate the field and the currently-active derivative term into the crystal coordinates
 			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
 			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
 			maxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][oscillatorType] - 1.0f;
-
+			
 			//get the total dipole current and polarization of the oscillators
 			maxwellPoint<deviceFP> J{};
 			maxwellPoint<deviceFP> P = chiInstant * crystalField;
@@ -5275,155 +5276,157 @@ namespace hostFunctions{
 		const simulationParameterSet* sCPU, 
 		maxwellType& maxCalc,
 		int mapValue = 0){
-		
-		double n0 = hostSellmeierFunc(
+
+		if(mapValue == 0){
+			double n0 = hostSellmeierFunc(
 			0, twoPi<double>() * sCPU->pulse1.frequency, 
-			(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double nm1 = hostSellmeierFunc(
-			0, twoPi<double>() * (-2e11 + sCPU->pulse1.frequency), 
-			(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double np1 = hostSellmeierFunc(
-			0, twoPi<double>() * (2e11 + sCPU->pulse1.frequency), 
-			(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double nGroup = n0 + sCPU->pulse1.frequency * (np1 - nm1) / 4.0e11;
-		maxCalc.waitFrames = 
-			(maxCalc.frontBuffer + nGroup * maxCalc.crystalThickness + 10 * maxCalc.zStep) 
-			/ (lightC<double>() * maxCalc.tStep);
-		maxCalc.waitFrames = maxCalc.tGridFactor * (maxCalc.waitFrames / maxCalc.tGridFactor);
-		maxCalc.Nt = maxCalc.waitFrames + (*sCPU).Ntime * maxCalc.tGridFactor;
+			(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
+			double nm1 = hostSellmeierFunc(
+				0, twoPi<double>() * (-2e11 + sCPU->pulse1.frequency), 
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
+			double np1 = hostSellmeierFunc(
+				0, twoPi<double>() * (2e11 + sCPU->pulse1.frequency), 
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
+			double nGroup = n0 + sCPU->pulse1.frequency * (np1 - nm1) / 4.0e11;
+			maxCalc.waitFrames = 
+				(maxCalc.frontBuffer + nGroup * maxCalc.crystalThickness + 10 * maxCalc.zStep) 
+				/ (lightC<double>() * maxCalc.tStep);
+			maxCalc.waitFrames = maxCalc.tGridFactor * (maxCalc.waitFrames / maxCalc.tGridFactor);
+			maxCalc.Nt = maxCalc.waitFrames + (*sCPU).Ntime * maxCalc.tGridFactor;
+		}
+		
 
 		//copy the crystal info
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].axisType == 0) {
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].axisType == 0) {
 			//isotropic
 			for (int i = 0; i < 22; i++) {
-				maxCalc.sellmeierEquations[i][0].x = 
+				maxCalc.sellmeierEquations[i][mapValue].x = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[i][0].y = 
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
+				maxCalc.sellmeierEquations[i][mapValue].y = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[i][0].z = 
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
+				maxCalc.sellmeierEquations[i][mapValue].z = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
 			}
 		}
-		else if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].axisType == 1) {
+		else if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].axisType == 1) {
 			//uniaxial
 			for (int i = 0; i < 22; i++) {
-				maxCalc.sellmeierEquations[i][0].x = 
+				maxCalc.sellmeierEquations[i][mapValue].x = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[i][0].y = 
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
+				maxCalc.sellmeierEquations[i][mapValue].y = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[i][0].z = 
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
+				maxCalc.sellmeierEquations[i][mapValue].z = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+22]);
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i+22]);
 			}
 		}
 		else {
 			//biaxial
 			for (int i = 0; i < 22; i++) {
-				maxCalc.sellmeierEquations[i][0] = maxwellPoint<deviceFP>{
+				maxCalc.sellmeierEquations[i][mapValue] = maxwellPoint<deviceFP>{
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]),
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]),
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+22]),
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i+22]),
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+44])
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i+44])
 				};
 			}
 		}
 		
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[0]) 
-			maxCalc.hasChi2[0] = true;
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 1) 
-			maxCalc.hasFullChi3[0] = true;
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 2) 
-			maxCalc.hasSingleChi3[0] = true;
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[0]) 
+			maxCalc.hasChi2[mapValue] = true;
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[1] == 1) 
+			maxCalc.hasFullChi3[mapValue] = true;
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[1] == 2) 
+			maxCalc.hasSingleChi3[mapValue] = true;
 
 		//perform millers rule normalization on the nonlinear coefficients while copying the values
 		double millersRuleFactorChi2 = 2e-12;
 		double millersRuleFactorChi3 = 1.0;
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) {
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[0]) {
 			double wRef = 
 				twoPi<double>() * 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0];
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[0];
 			double nRef = hostSellmeierFunc(
 				0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi2 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[1];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[1];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi2 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[2];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[2];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi2 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[3];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[3];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[4];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[4];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[5];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[5];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[6];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[6];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 		}
 		for (int i = 0; i < 6; i++) {
-			maxCalc.chi2[i][0] = maxwellPoint<deviceFP>{
+			maxCalc.chi2[i][mapValue] = maxwellPoint<deviceFP>{
 				static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i] * millersRuleFactorChi2),
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].d[3 * i] * millersRuleFactorChi2),
 				static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i + 1] * millersRuleFactorChi2),
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].d[3 * i + 1] * millersRuleFactorChi2),
 				static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i + 2] * millersRuleFactorChi2) };
-			if (i > 2) maxCalc.chi2[i][0] *= 2.0;
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].d[3 * i + 2] * millersRuleFactorChi2) };
+			if (i > 2) maxCalc.chi2[i][mapValue] *= 2.0;
 		}
 		for (int i = 0; i < 27; i++) {
-			maxCalc.chi3[i][0].x = static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i] * millersRuleFactorChi3);
-			maxCalc.chi3[i][0].y = static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i+27] * millersRuleFactorChi3);
-			maxCalc.chi3[i][0].z = static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i+54] * millersRuleFactorChi3);
+			maxCalc.chi3[i][mapValue].x = static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].chi3[i] * millersRuleFactorChi3);
+			maxCalc.chi3[i][mapValue].y = static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].chi3[i+27] * millersRuleFactorChi3);
+			maxCalc.chi3[i][mapValue].z = static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].chi3[i+54] * millersRuleFactorChi3);
 		}
 
 		//count the nonzero oscillators
-		for (int i = 0; i < 7; i++) {
-			if (maxCalc.sellmeierEquations[1 + i * 3][0].x > 0.0) maxCalc.Noscillators++;
-			else break;
-		}
+		if(!maxCalc.hasMaterialMap){
+			for (int i = 0; i < 7; i++) {
+				if (maxCalc.sellmeierEquations[1 + i * 3][mapValue].x > 0.0) maxCalc.Noscillators++;
+				else break;
+			}
 
-		//collect plasma properties
-		if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
-			maxCalc.Noscillators++;
-			maxCalc.hasPlasma[0] = true;
-			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts);
-			maxCalc.kDrude[0] = - eps0<double>() * elCharge<double>() 
-				/ ((*sCPU).effectiveMass * elMass<double>());
-			maxCalc.gammaDrude[0] = (*sCPU).drudeGamma;
-			maxCalc.kNonlinearAbsorption[0] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;
-			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(
-				std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts 
-					/ (*sCPU).pulse1.frequency)) - 1;
-		}
-
-		if (!maxCalc.hasMaterialMap) {
+			//collect plasma properties
+			if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
+				maxCalc.Noscillators++;
+				maxCalc.hasPlasma[mapValue] = true;
+				maxCalc.kCarrierGeneration[mapValue] = 2.0 / ((*sCPU).bandGapElectronVolts);
+				maxCalc.kDrude[mapValue] = - eps0<double>() * elCharge<double>() 
+					/ ((*sCPU).effectiveMass * elMass<double>());
+				maxCalc.gammaDrude[mapValue] = (*sCPU).drudeGamma;
+				maxCalc.kNonlinearAbsorption[mapValue] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;
+				maxCalc.nonlinearAbsorptionOrder[mapValue] = static_cast<int>(
+					std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts 
+						/ (*sCPU).pulse1.frequency)) - 1;
+			}
 			maxCalc.NMaterialGrid =
 				(maxCalc.materialStop - maxCalc.materialStart)
 				* maxCalc.Nx * maxCalc.Ny * maxCalc.Noscillators;
@@ -5443,6 +5446,7 @@ namespace hostFunctions{
 			maxCalc.hasMaterialMap = false;
 			int64_t NmaterialPoints = 0;
 			std::vector<int8_t> materialMapCPU(maxCalc.Ngrid, 0);
+			std::vector<int64_t> oscillatorIndexMapCPU(maxCalc.Ngrid, 0);
 			std::ifstream fs(materialMapPath);
 
 			if (fs.good()) {
@@ -5474,6 +5478,7 @@ namespace hostFunctions{
 				moveToColon();
 				for (int i = 0; i < NmaterialMax; i++) {
 					fs >> maxCalc.kNonlinearAbsorption[i];
+					maxCalc.hasPlasma[i] = maxCalc.kNonlinearAbsorption[i] > 0.0;
 				}
 				//Fifth: bandgap
 				moveToColon();
@@ -5492,18 +5497,16 @@ namespace hostFunctions{
 				}
 				//Eighth: start data
 				int64_t gridCount{};
-				std::string testString;
 				while (fs.good() && gridCount < maxCalc.Ngrid) {
 					int currentInt;
 					fs >> currentInt;
 					materialMapCPU[gridCount] = static_cast<int8_t>(currentInt);
-					if (materialMapCPU[gridCount] > 0) NmaterialPoints++;
-					testString += std::to_string(materialMapCPU[gridCount]) + " ";
-					if (gridCount % maxCalc.Nz == 0) testString += "\n";
+					if (materialMapCPU[gridCount] > 0) {
+						oscillatorIndexMapCPU[gridCount] = NmaterialPoints;
+						NmaterialPoints++;
+					}
 					gridCount++;
 				}
-				//throw std::runtime_error(testString);
-
 
 				d.deviceCalloc((void**)&(maxCalc.materialMap),
 					maxCalc.Ngrid, sizeof(char));
@@ -5512,12 +5515,32 @@ namespace hostFunctions{
 					(void*)materialMapCPU.data(),
 					maxCalc.Ngrid * sizeof(char),
 					copyType::ToDevice);
+				d.deviceCalloc((void**)&(maxCalc.oscillatorIndexMap),
+					maxCalc.Ngrid, sizeof(int64_t));
+				d.deviceMemcpy(
+					(void*)maxCalc.oscillatorIndexMap,
+					(void*)oscillatorIndexMapCPU.data(),
+					maxCalc.Ngrid * sizeof(int64_t),
+					copyType::ToDevice);
 				maxCalc.hasMaterialMap = true;
 				maxCalc.NMaterialGrid = NmaterialPoints * maxCalc.Noscillators;
+
+				for(int i = 0; i<NmaterialMax; i++){
+					calculateFDTDParameters(sCPU, maxCalc, i);
+				}
+				maxCalc.observationPoint = maxCalc.Nz - 10;
 			}
+			else{
+				throw std::runtime_error("Failed to load material map.\n");
+			}
+
+		}
+		else{
+			maxCalc.materialKeys[0] = (*sCPU).materialIndex;
+			calculateFDTDParameters(sCPU, maxCalc);
 		}
 
-		calculateFDTDParameters(sCPU, maxCalc);
+		
 		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
 		//make both grids available through the maxCalc class
 		d.deviceMemcpy(
@@ -5532,7 +5555,6 @@ namespace hostFunctions{
 		maxCalc.inputEyFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency2);
 		d.deviceMemset(maxCalc.inOutEx, 0, 2*(*sCPU).Ngrid * sizeof(deviceFP));
 
-		
 		//allocate the new memory needed for the maxwell calculation
 		d.deviceCalloc((void**)&(maxCalc.Egrid), 
 			maxCalc.Ngrid, sizeof(maxwellPoint<deviceFP>));
@@ -5762,6 +5784,7 @@ namespace hostFunctions{
 				parameters[3]);
 			break;
 		case funHash("fdtdGrid"):
+			if((*sCPU).runType == -1) break;
 			error = solveFDTD(d,
 				sCPU,
 				5,
