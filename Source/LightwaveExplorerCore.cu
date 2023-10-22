@@ -295,20 +295,24 @@ namespace deviceFunctions {
 
 		real_t result1{};
 		real_t result2{};
-		real_t dOmegaT = dOmega * timeShift;
+		const real_t dOmegaT = dOmega * timeShift;
 		for (int i = 1; i < frequencyLimit; i++) {
-			real_t w = static_cast<real_t>(i) * dOmegaT;
-			real_t sinw = deviceFPLib::sin(w);
-			real_t cosw = deviceFPLib::cos(w);
+			const real_t w = static_cast<real_t>(i) * dOmegaT;
+			const real_t sinw = deviceFPLib::sin(w);
+			const real_t cosw = deviceFPLib::cos(w);
 			result1 += static_cast<real_t>(i) * (cosw * fourierData1[i].imag() + sinw * fourierData1[i].real());
 			result2 += static_cast<real_t>(i) * (cosw * fourierData2[i].imag() + sinw * fourierData2[i].real());
 		}
-		result1 = (460.76f * dOmega * result1) / (static_cast<real_t>(dataSize + 1));
-		result2 = (460.76f * dOmega * result2) / (static_cast<real_t>(dataSize + 1));
+		
+		const real_t normalizationFactor = (460.76f * dOmega) / (static_cast<real_t>(dataSize + 1));
+		result1 *= normalizationFactor;
+		result2 *= normalizationFactor;
+		
 		k.kE.x += result1;
-		k.kH.y -= inverseZo<real_t>() * result1;
 		k.kE.y += result2;
+		
 		k.kH.x += inverseZo<real_t>() * result2;
+		k.kH.y -= inverseZo<real_t>() * result1;
 	}
 
 	deviceFunction static maxwellKPoint<deviceFP> maxwellDerivativeTerms(
