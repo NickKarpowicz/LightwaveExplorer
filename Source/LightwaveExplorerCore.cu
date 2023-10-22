@@ -5267,6 +5267,10 @@ namespace hostFunctions{
 		d.deviceFree(maxCalc.materialGridEstimate);
 		d.deviceFree(maxCalc.materialGridEstimate2);
 		d.deviceFree(maxCalc.deviceCopy);
+		if(maxCalc.hasMaterialMap){
+			d.deviceFree(maxCalc.materialMap);
+			d.deviceFree(maxCalc.oscillatorIndexMap);
+		}
 		return errorValue;
 	}
 
