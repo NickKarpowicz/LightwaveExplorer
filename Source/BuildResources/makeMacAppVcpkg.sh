@@ -10,7 +10,7 @@ LIBS="/Users"
 rm -rf build
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=/Users/nick/Desktop/Code/vcpkg/scripts/buildsystems/vcpkg.cmake .. -G Ninja
+cmake -DCMAKE_TOOLCHAIN_FILE=../../vcpkg/scripts/buildsystems/vcpkg.cmake .. -G Ninja
 ninja
 cd ..
 
