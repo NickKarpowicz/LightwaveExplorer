@@ -2861,7 +2861,12 @@ namespace kernelNamespace{
 
 			deviceComplex ts = fourierPropagator(ke, dk1, dk2, k0.real(), thickness);
 			deviceComplex tp = fourierPropagator(ko, dk1, dk2, k0.real(), thickness);
-
+			if (((dk1 * dk1 + dk2 * dk2 > modulusSquared(ke))
+				|| (dk1 * dk1 + dk2 * dk2 > modulusSquared(ko)))
+				&& thickness < 0.0f) {
+				ts = deviceComplex{};
+				tp = deviceComplex{};
+			}
 			if (isComplexNaN(ts)) ts = deviceComplex{};
 			if (isComplexNaN(tp)) tp = deviceComplex{};
 			(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
@@ -5797,7 +5802,11 @@ namespace hostFunctions{
 				parameters[3]);
 			break;
 		case funHash("fdtdGrid"):
-			if((*sCPU).runType == -1) break;
+			if ((*sCPU).runType == -1) {
+				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)
+					+=5 * ((*sCPU).Ntime + (*sCPU).crystalThickness/(lightC<double>()*(*sCPU).tStep));
+				break;
+			}
 			error = solveFDTD(d,
 				sCPU,
 				5,
