@@ -130,7 +130,7 @@ sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3 libfftw3-dev
 
 On OpenSUSE Tumbleweed, I needed:
 ```
-sudo zypper install git gcc-c++ cmake gtk4-devel fftw-devel
+sudo zypper install git gcc-c++ cmake gtk4-devel fftw-devel fmt-devel
 ```
 
 Once you have that, type the following into the terminal:
@@ -182,6 +182,8 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
   ```
   
   If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
+
+  Depending on your distro, your version of Clang or GCC might be too new to work with CUDA, in which case you might need to install an older one and specify that in the call to cmake, i.e. -DCMAKE_CUDA_HOST_COMPILER=clang++15 after installing the clang15 package.
 
 ---
 
