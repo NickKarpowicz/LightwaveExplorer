@@ -203,6 +203,20 @@ double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_
 		fs << "srun ./lwe " << baseName << ".input > " << baseName << ".out\x0A";
 	}
 
+	//optionally upload to a webdav location, if a token is provided
+	fs << "if [ -f webdav_token.txt ]; then" << '\x0A';
+	fs << "    webdav_token=$(<webdav_token.txt)" << '\x0A';
+	fs << "    webdav_url=$(<webdav_url.txt)" << '\x0A';
+	fs << "    curl --user \"$webdav_token\":nopass $webdav_url --upload-file " << baseName << ".out" << '\x0A';
+	fs << "    curl --user \"$webdav_token\":nopass $webdav_url --upload-file " << baseName << ".txt" << '\x0A';
+	fs << "    curl --user \"$webdav_token\":nopass $webdav_url --upload-file " << baseName << "_Ext.dat" << '\x0A';
+	fs << "    curl --user \"$webdav_token\":nopass $webdav_url --upload-file " << baseName << "_spectrum.dat" << '\x0A';
+	fs << "    rm " << baseName << ".out" << '\x0A';
+	fs << "    rm " << baseName << ".txt" << '\x0A';
+	fs << "    rm " << baseName << "_Ext.dat" << '\x0A';
+	fs << "    rm " << baseName << "_spectrum.dat" << '\x0A';
+	fs << "fi" << '\x0A';
+
 	return timeEstimate;
 }
 
