@@ -5703,17 +5703,16 @@ namespace hostFunctions{
 		return freeFDTD(d, maxCalc);
 	}
 
-	static constexpr unsigned int funHash(const char* s, const int off = 0) {
-		return (s[off] == 0 || s[off] == '(') ? 7177 : (funHash(s, off + 1) * 31) ^ s[off];
-	}
-
-	static unsigned int stringHash(const std::string& s, const int off = 0){
-		if (off >= s.length()) throw std::runtime_error(std::string("Didn't find opening parenthesis in\n").append(s));
-		return (s.length() == off || s.at(off) == '(') ? 7177 : (stringHash(s,off+1) * 31) ^ s.at(off);
+	static constexpr unsigned int functionID(const char* s) {
+		unsigned int result = 0;
+		for (int i = 0; s[i]; ++i) {
+			result += s[i];
+		}
+		return result;
 	}
 
 	//Dispatcher of the sequence mode. 
-	// New functions go here, and should have a unique hash (chances of a conflict are small, and 
+	// New functions go here, and should have a unique ID (chances of a conflict are small, and 
 	// will produce a compile-time error.
 	// Functions cannot start with a number or the string "None".
 	static int interpretCommand(
@@ -5727,25 +5726,26 @@ namespace hostFunctions{
 		int error = 0;
 		double parameters[32] = {};
 		bool defaultMask[32] = {};
-
-		switch (stringHash(cc)) {
-		case funHash("rotate"):
+		auto functionNameEnd = cc.find_first_of('(');
+		if (functionNameEnd ==std::string::npos) throw std::runtime_error(std::string("Didn't find opening parenthesis in\n").append(cc));
+		switch (functionID(cc.substr(0, functionNameEnd).c_str())) {
+		case functionID("rotate"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			rotateField(d, sCPU, deg2Rad<deviceFP>() * parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("set"):
+		case functionID("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			if(parameters[0]<100 && parameters[0] >= 0){ 
 				vBlock[static_cast<int>(parameters[0])] = parameters[1];
 			}
 			else throw std::runtime_error("set() index must be less than 100\n");
 			break;
-		case funHash("plasmaReinject"):
+		case functionID("plasmaReinject"):
 			(*sCPU).isReinjecting = true;
 			[[fallthrough]];
-		case funHash("plasma"):
+		case functionID("plasma"):
 		{
 			interpretParameters(cc, 9, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
@@ -5770,7 +5770,7 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 		}
 			break;
-		case funHash("nonlinear"):
+		case functionID("nonlinear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*sCPU).crystalTheta = deg2Rad<deviceFP>() * parameters[1];
@@ -5791,7 +5791,7 @@ namespace hostFunctions{
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
 			(*sCPU).isFollowerInSequence = true;
 			break;
-		case funHash("fdtd"):
+		case functionID("fdtd"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			error = solveFDTD(
 				d, 
@@ -5801,7 +5801,7 @@ namespace hostFunctions{
 				parameters[2], 
 				parameters[3]);
 			break;
-		case funHash("fdtdGrid"):
+		case functionID("fdtdGrid"):
 			if ((*sCPU).runType == -1) {
 				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)
 					+=5 * ((*sCPU).Ntime + (*sCPU).crystalThickness/(lightC<double>()*(*sCPU).tStep));
@@ -5815,11 +5815,11 @@ namespace hostFunctions{
 				0.0,
 				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
 			break;
-		case funHash("default"):
+		case functionID("default"):
 			d.reset(sCPU);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
 			break;
-		case funHash("save"):
+		case functionID("save"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
@@ -5844,7 +5844,7 @@ namespace hostFunctions{
 				}
 			}
 			break;
-		case funHash("savePlasma"):
+		case functionID("savePlasma"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
@@ -5860,7 +5860,7 @@ namespace hostFunctions{
 				}
 			}
 			break;
-		case funHash("init"):
+		case functionID("init"):
 			(*sCPU).materialIndex = 0;
 			(*sCPU).crystalTheta = 0.0;
 			(*sCPU).crystalPhi = 0.0;
@@ -5882,7 +5882,7 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 			break;
 
-		case funHash("linear"):
+		case functionID("linear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if ((*sCPU).isCylindric) {
 				if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
@@ -5921,7 +5921,7 @@ namespace hostFunctions{
 			}
 
 			break;
-		case funHash("fresnelLoss"):
+		case functionID("fresnelLoss"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*sCPU).crystalTheta = deg2Rad<deviceFP>() * parameters[1];
@@ -5931,19 +5931,19 @@ namespace hostFunctions{
 				(int)parameters[4],
 				(int)parameters[5]);
 			break;
-		case funHash("sphericalMirror"):
+		case functionID("sphericalMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applySphericalMirror(d, sCPU, d.deviceStruct, parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("parabolicMirror"):
+		case functionID("parabolicMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyParabolicMirror(d, sCPU, d.deviceStruct, parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("aperture"):
+		case functionID("aperture"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyAperature(d, sCPU,
@@ -5951,7 +5951,7 @@ namespace hostFunctions{
 				parameters[1]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("farFieldAperture"):
+		case functionID("farFieldAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			(*sCPU).materialIndex = 0;
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
@@ -5965,7 +5965,7 @@ namespace hostFunctions{
 				parameters[3]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("energy"):
+		case functionID("energy"):
 			{
 			if ((*sCPU).runType == -1) break;
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
@@ -5980,7 +5980,7 @@ namespace hostFunctions{
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("filter"):
+		case functionID("filter"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyFilter(d, sCPU,
@@ -5991,7 +5991,7 @@ namespace hostFunctions{
 				parameters[4]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("lorentzian"):
+		case functionID("lorentzian"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyLorenzian(
@@ -6004,7 +6004,7 @@ namespace hostFunctions{
 				parameters[4]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("addPulse"):
+		case functionID("addPulse"):
 			if ((*sCPU).runType == -1) break;
 		{
 			interpretParameters(cc, 21, iBlock, vBlock, parameters, defaultMask);
@@ -6061,7 +6061,7 @@ namespace hostFunctions{
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		
-		case funHash("for"): {
+		case functionID("for"): {
 				interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 				int counter = (int)parameters[0];
 				int targetVar = (int)parameters[1];

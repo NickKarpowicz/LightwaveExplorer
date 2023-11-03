@@ -39,7 +39,7 @@ int main(int argc, char* argv[]){
 	}
 	std::cout << "Read " << db.db.size() << " crystal database entries:" << std::endl;
 	for (int j = 0; j < db.db.size(); ++j) {
-		std::cout << "Material " << j << " name: " << db.db[j].crystalName.c_str() << std::endl;
+		std::cout << "Material " << j << " name: " << db.db[j].crystalName << std::endl;
 	}
 
 	// read from settings file
