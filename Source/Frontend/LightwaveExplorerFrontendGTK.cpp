@@ -1,5 +1,5 @@
 #include "LightwaveExplorerFrontendGTK.h"
-
+#include <unordered_map>
 //Main data structures:
 // theSim contains all of the parameters of the current simulation including grid arrays
 // theDatabase is the database of crystal properties
@@ -19,17 +19,18 @@ class mainGui {
     int sliderTarget = 0;
     std::mutex mutex;
 public:
-    LweTextBox textBoxes[54]{};
-    LweButton buttons[16]{};
-    LweButton miniButtons[12]{};
+    //LweTextBox textBoxes[54]{};
+    std::unordered_map<int64_t, LweTextBox> textBoxes;
+    std::unordered_map<int64_t, LweButton> buttons;
+    std::unordered_map<int64_t, LweButton> miniButtons;
     LweConsole console{};
     LweConsole sequence{};
     LweConsole fitCommand{};
-    LweTextBox filePaths[4]{};
-    LwePulldown pulldowns[10]{};
-    LweDrawBox drawBoxes[8]{};
+    std::unordered_map<int64_t, LweTextBox> filePaths;
+    std::unordered_map<int64_t, LwePulldown> pulldowns;
+    std::unordered_map<int64_t, LweDrawBox> drawBoxes;
     LweDrawBox progressBarBox{};
-    LweCheckBox checkBoxes[4]{};
+    std::unordered_map<int64_t, LweCheckBox> checkBoxes;
     LweSlider plotSlider{};
     LweWindow window{};
     int64_t pathTarget = 0;
