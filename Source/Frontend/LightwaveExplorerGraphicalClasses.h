@@ -1078,7 +1078,8 @@ gboolean formatSequenceBuffer(gpointer data) {
         "lorentzian",
         "addPulse",
         "fdtd2d",
-        "fdtd"
+        "fdtd",
+        "fdtdGrid"
     };
 
     auto applyTag = [&](const char* tag, const size_t a, const size_t b) {
@@ -1096,6 +1097,15 @@ gboolean formatSequenceBuffer(gpointer data) {
             size_t b = s.find_first_of('>', i);
             if (b == std::string::npos)break;
             applyTag("comment", i, b + 1);
+            i = b + 1;
+            if (i >= s.length())break;
+        }
+
+        //anything enclosed between quotes is a string
+        if (s[i] == '"') {
+            size_t b = s.find_first_of('"', i+1);
+            if (b == std::string::npos)break;
+            applyTag("string", i, b + 1);
             i = b + 1;
             if (i >= s.length())break;
         }
@@ -1155,6 +1165,13 @@ gboolean formatSequenceBuffer(gpointer data) {
                     if (s[i] == ',') {
                         applyTag("parenthesis", i, i + 1);
                     }
+                    if (s[i] == '"') {
+                        size_t b = s.find_first_of('"', i+1);
+                        if (b == std::string::npos)break;
+                        applyTag("string", i, b + 1);
+                        i = b + 1;
+                        if (i >= s.length())break;
+                    }
                     if (s[i] == ')' || s[i] == '('){
                         applyTag("function", i, i + 1);
                     }
@@ -1192,6 +1209,7 @@ public:
         gtk_text_buffer_create_tag(buf, "interface", "foreground", "#FF0088FF", NULL);
         gtk_text_buffer_create_tag(buf, "error", "foreground", "#FF0000FF", NULL);
         gtk_text_buffer_create_tag(buf, "parenthesis", "foreground", "#CC99FFFF", NULL);
+        gtk_text_buffer_create_tag(buf, "string", "foreground", "#FFAA00FF", NULL);
     }
     void init(
         GtkWidget* grid, 

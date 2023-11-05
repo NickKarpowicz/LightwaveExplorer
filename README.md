@@ -5,8 +5,12 @@
  Max Planck Institute of Quantum Optics</p>
 
 ---
-New! Tutorials on YouTube!
+New! 
 
+Publication!
+- N. Karpowicz, Open source, heterogenous, nonlinear-optics simulation. [*Optics Continuum* **2**, 2244-2254 (2023).](https://opg.optica.org/optcon/fulltext.cfm?uri=optcon-2-11-2244&id=540999)
+  
+Tutorials on YouTube!
 - Tutorial 1: <a href="https://youtu.be/J1-dh6V5flQ">Introduction and quick start, with walkthrough of simulating SHG and OPA</a></li>
 - Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
 
@@ -89,7 +93,7 @@ This version makes use of the FFTW library for Fourier transforms and is therefo
 
 The application bundle contains all the required files. If you want to edit the crystal database or default settings, open the app as a folder (right click or control-click on the app and select "show package contents") - You will find them in the Resources folder.
 
-A native version for the new Arm-based Macs is technically possible (and has been compiled) but you can't use it because Apple considers developers that don't pay them $100/year to be dangerous and blocks them at the hardware level.
+I can't give you a binary that is native to the new Apple M1 and M2 chips, due to how Apple locks down their hardware, and how I refuse to pay them $100/year. However, you can compile it yourself using the instructions below (it's actually pretty easy).
 
 ---
   ### How do I know which configuration to run?
@@ -126,7 +130,7 @@ sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3 libfftw3-dev
 
 On OpenSUSE Tumbleweed, I needed:
 ```
-sudo zypper install git gcc-c++ cmake gtk4-devel fftw-devel
+sudo zypper install git gcc-c++ cmake gtk4-devel fftw-devel fmt-devel
 ```
 
 Once you have that, type the following into the terminal:
@@ -179,26 +183,26 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
   
   If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
 
+  Depending on your distro, your version of Clang or GCC might be too new to work with CUDA, in which case you might need to install an older one and specify that in the call to cmake, i.e. -DCMAKE_CUDA_HOST_COMPILER=clang++15 after installing the clang15 package.
+
 ---
 
   ### Compiling on Mac
 
-  The first things you'll need are [Homebrew](https://brew.sh/), and [Vcpkg](https://github.com/microsoft/vcpkg). After installing those, install a few things with homebrew:
+  The first thing you'll need is [Homebrew](https://brew.sh/). If you go there, you'll see a command that you have to run in the terminal. Just paste it and follow the instructions.
+
+  I also made a build script that you can run in the same way; just copy and paste the command below that matches your system and it will compile everything it needs and put the application in your Applications folder. It will take a while, so go get a coffee!
+
+  Apple Silicon (M1, M2, .etc) version:
+
   ```
-  brew install cmake make llvm fftw gtk4 pkgconfig libomp libtool autoconf autotools
+  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuild.sh | zsh -s
   ```
-  and get gtk with vcpkg
+
+  Intel version:
   ```
-  vcpkg install gtk
+  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuildIntel.sh | zsh -s
   ```
-  Once you have all the tools, you can compile like this:
-  ```
-  git clone https://github.com/NickKarpowicz/LightwaveExplorer
-  cd LightwaveExplorer
-  chmod +x BuildResources/makeMacAppVcpkg.sh
-  ./BuildResources/makeMacAppVcpkg.sh
-  ```
-  If all goes well, you'll have a LightwaveExplorer.app application in the LightwaveExplorer/build folder. I think if you are on a M1 or M2 based mac, your computer won't allow you to run the resulting executable unless you pay Apple for code signing rights, but I don't have one to try it out.
   
 ---
   ### Compilation on clusters

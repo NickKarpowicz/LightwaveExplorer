@@ -295,20 +295,24 @@ namespace deviceFunctions {
 
 		real_t result1{};
 		real_t result2{};
-		real_t dOmegaT = dOmega * timeShift;
+		const real_t dOmegaT = dOmega * timeShift;
 		for (int i = 1; i < frequencyLimit; i++) {
-			real_t w = static_cast<real_t>(i) * dOmegaT;
-			real_t sinw = deviceFPLib::sin(w);
-			real_t cosw = deviceFPLib::cos(w);
+			const real_t w = static_cast<real_t>(i) * dOmegaT;
+			const real_t sinw = deviceFPLib::sin(w);
+			const real_t cosw = deviceFPLib::cos(w);
 			result1 += static_cast<real_t>(i) * (cosw * fourierData1[i].imag() + sinw * fourierData1[i].real());
 			result2 += static_cast<real_t>(i) * (cosw * fourierData2[i].imag() + sinw * fourierData2[i].real());
 		}
-		result1 = (460.76f * dOmega * result1) / (static_cast<real_t>(dataSize + 1));
-		result2 = (460.76f * dOmega * result2) / (static_cast<real_t>(dataSize + 1));
+		
+		const real_t normalizationFactor = (460.76f * dOmega) / (static_cast<real_t>(dataSize + 1));
+		result1 *= normalizationFactor;
+		result2 *= normalizationFactor;
+		
 		k.kE.x += result1;
-		k.kH.y -= inverseZo<real_t>() * result1;
 		k.kE.y += result2;
+		
 		k.kH.x += inverseZo<real_t>() * result2;
+		k.kH.y -= inverseZo<real_t>() * result1;
 	}
 
 	deviceFunction static maxwellKPoint<deviceFP> maxwellDerivativeTerms(
@@ -1388,27 +1392,35 @@ namespace deviceFunctions {
 
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz);
-		if (zIndex >= s->materialStart && zIndex < s->materialStop) {
-			const int64_t oscillatorIndex = 
-				(zIndex - s->materialStart) * s->Noscillators 
-				+ xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
+		bool solveMaterialEquations = s->hasMaterialMap ?
+			s->materialMap[i] > 0
+			: zIndex >= s->materialStart && zIndex < s->materialStop;
 
+		if (solveMaterialEquations) {
+			const int64_t oscillatorIndex = s->hasMaterialMap ?
+				s->oscillatorIndexMap[i] * s->Noscillators
+				: (zIndex - s->materialStart) * s->Noscillators 
+				+ xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
+			const int oscillatorType = s->hasMaterialMap ?
+				s->materialMap[i] - 1
+				: 0;
+			
 			//rotate the field and the currently-active derivative term into the crystal coordinates
 			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
 			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
-			maxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][0] - 1.0f;
-
+			maxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][oscillatorType] - 1.0f;
+			
 			//get the total dipole current and polarization of the oscillators
 			maxwellPoint<deviceFP> J{};
 			maxwellPoint<deviceFP> P = chiInstant * crystalField;
-			for (int j = 0; j < (s->Noscillators - s->hasPlasma[0]); j++) {
+			for (int j = 0; j < (s->Noscillators - s->hasPlasma[oscillatorType]); j++) {
 				J += currentGridIn[oscillatorIndex + j].J;
 				P += currentGridIn[oscillatorIndex + j].P;
 			}
 			//update dEdt (kE) with the dipole current and divide by the instantaneous
 			//part of the dielectric constant
 			kE += J * inverseEps0<deviceFP>();
-			kE /= s->sellmeierEquations[0][0];
+			kE /= s->sellmeierEquations[0][oscillatorType];
 
 			//Use dEdt to calculate dPdt
 			maxwellPoint<deviceFP> dPdt = (kE * chiInstant) * eps0<deviceFP>();
@@ -1425,42 +1437,42 @@ namespace deviceFunctions {
 			maxwellPoint<deviceFP> nonlinearDriver{};
 
 			//calculate the chi2 nonlinearity
-			if (s->hasChi2[0]) {
-				nonlinearDriver += s->chi2[0][0] * (P.x * P.x);
-				instNonlin += s->chi2[0][0] * (2.0f * dPdt.x * P.x);
+			if (s->hasChi2[oscillatorType]) {
+				nonlinearDriver += s->chi2[0][oscillatorType] * (P.x * P.x);
+				instNonlin += s->chi2[0][oscillatorType] * (2.0f * dPdt.x * P.x);
 
-				nonlinearDriver += s->chi2[1][0] * (P.y * P.y);
+				nonlinearDriver += s->chi2[1][oscillatorType] * (P.y * P.y);
 				instNonlin += s->chi2[1][0] * (2.0f * dPdt.y * P.y);
 
-				nonlinearDriver += s->chi2[2][0] * (P.z * P.z);
-				instNonlin += s->chi2[2][0] * (2.0f * P.z * dPdt.z);
+				nonlinearDriver += s->chi2[2][oscillatorType] * (P.z * P.z);
+				instNonlin += s->chi2[2][oscillatorType] * (2.0f * P.z * dPdt.z);
 
-				nonlinearDriver += s->chi2[3][0] * (P.y * P.z);
-				instNonlin += s->chi2[3][0] * (P.y * dPdt.z + dPdt.y * P.z);
+				nonlinearDriver += s->chi2[3][oscillatorType] * (P.y * P.z);
+				instNonlin += s->chi2[3][oscillatorType] * (P.y * dPdt.z + dPdt.y * P.z);
 
-				nonlinearDriver += s->chi2[4][0] * (P.x * P.z);
-				instNonlin += s->chi2[4][0] * (P.x * dPdt.z + dPdt.x * P.z);
+				nonlinearDriver += s->chi2[4][oscillatorType] * (P.x * P.z);
+				instNonlin += s->chi2[4][oscillatorType] * (P.x * dPdt.z + dPdt.x * P.z);
 
-				nonlinearDriver += s->chi2[5][0] * (P.x * P.y);
-				instNonlin += s->chi2[5][0] * (P.x * dPdt.y + dPdt.x * P.y);
+				nonlinearDriver += s->chi2[5][oscillatorType] * (P.x * P.y);
+				instNonlin += s->chi2[5][oscillatorType] * (P.x * dPdt.y + dPdt.x * P.y);
 			}
 
 			//calculate kerr nonlinearity for scalar chi3 (assuming centrosymmetry)
-			if (s->hasSingleChi3[0]) {
+			if (s->hasSingleChi3[oscillatorType]) {
 				deviceFP fieldSquaredSum = dotProduct(P, P);
 				deviceFP dByDtfieldSquaredSum = 2.0f * dotProduct(dPdt, P);
-				nonlinearDriver += P * (s->chi3[0][0].x * fieldSquaredSum);
-				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum) * (s->chi3[0][0].x);
+				nonlinearDriver += P * (s->chi3[0][oscillatorType].x * fieldSquaredSum);
+				instNonlin += (dPdt * fieldSquaredSum + P * dByDtfieldSquaredSum) * (s->chi3[0][oscillatorType].x);
 			}
 
 			//calculate Chi3 nonlinearity with full tensor
-			if (s->hasFullChi3[0]) {
+			if (s->hasFullChi3[oscillatorType]) {
 				for (auto a = 0; a < 3; ++a) {
 					for (auto b = 0; b < 3; ++b) {
 						for (auto c = 0; c < 3; ++c) {
-							nonlinearDriver += s->chi3[a + 3 * b + 9 * c][0] 
+							nonlinearDriver += s->chi3[a + 3 * b + 9 * c][oscillatorType]
 								* P(a) * P(b) * P(c);
-							instNonlin += s->chi3[a + 3 * b + 9 * c][0] * (
+							instNonlin += s->chi3[a + 3 * b + 9 * c][oscillatorType] * (
 								dPdt(a) * P(b) * P(c)
 								+ P(a) * dPdt(b) * P(c)
 								+ P(a) * P(b) * dPdt(c));
@@ -1469,19 +1481,19 @@ namespace deviceFunctions {
 				}
 			}
 			nonlinearDriver *= 2.0f;
-			instNonlin /= s->sellmeierEquations[0][0];
+			instNonlin /= s->sellmeierEquations[0][oscillatorType];
 			kE += (instNonlin * chiInstant) * (2.0f * inverseEps0<deviceFP>());
 
 			//resolve the plasma nonlinearity
-			deviceFP absorptionCurrent = (s->hasPlasma[0]) ?
+			deviceFP absorptionCurrent = (s->hasPlasma[oscillatorType]) ?
 				2.0f * deviceFPLib::pow(
-					dotProduct(P, P) * s->kNonlinearAbsorption[0], 
-					s->nonlinearAbsorptionOrder[0])
+					dotProduct(P, P) * s->kNonlinearAbsorption[oscillatorType],
+					s->nonlinearAbsorptionOrder[oscillatorType])
 				: 0.0f;
-			if (s->hasPlasma[0]) {
+			if (s->hasPlasma[oscillatorType]) {
 				maxwellPoint<deviceFP> absorption = -twoPi<deviceFP>() * absorptionCurrent * crystalField;
 				absorption += currentGridIn[oscillatorIndex + s->Noscillators - 1].J * inverseEps0<deviceFP>();
-				absorption /= s->sellmeierEquations[0][0];
+				absorption /= s->sellmeierEquations[0][oscillatorType];
 				kE += absorption;
 			}
 
@@ -1490,17 +1502,17 @@ namespace deviceFunctions {
 
 			//Update and advance the material oscillators
 			for (int j = 0; j < s->Noscillators; j++) {
-				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[0])) ?
+				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[oscillatorType])) ?
 					oscillator<deviceFP>{
 					(-eps0<deviceFP>() * kLorentzian<deviceFP>())*
-						s->sellmeierEquations[1 + j * 3][0] * (crystalField+nonlinearDriver)
-						- s->sellmeierEquations[2 + j * 3][0] * currentGridIn[oscillatorIndex+j].P
-						- s->sellmeierEquations[3 + j * 3][0] * currentGridIn[oscillatorIndex+j].J,
+						s->sellmeierEquations[1 + j * 3][oscillatorType] * (crystalField+nonlinearDriver)
+						- s->sellmeierEquations[2 + j * 3][oscillatorType] * currentGridIn[oscillatorIndex+j].P
+						- s->sellmeierEquations[3 + j * 3][oscillatorType] * currentGridIn[oscillatorIndex+j].J,
 						currentGridIn[oscillatorIndex + j].J} :
 				oscillator<deviceFP>{
-					currentGridIn[oscillatorIndex + j].P.x * s->kDrude[0] * crystalField 
-					- s->gammaDrude[0] * currentGridIn[oscillatorIndex + j].J,
-					maxwellPoint<deviceFP>{absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[0],
+					currentGridIn[oscillatorIndex + j].P.x * s->kDrude[oscillatorType] * crystalField
+					- s->gammaDrude[oscillatorType] * currentGridIn[oscillatorIndex + j].J,
+					maxwellPoint<deviceFP>{absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[oscillatorType],
 					deviceFP{},
 					deviceFP{} } };
 				//note that k.P.x is used to store the carrier density
@@ -2379,10 +2391,6 @@ namespace kernelNamespace{
 				beamTotal1 += modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
 				beamTotal2 += modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
-			beamTotal1 *= constProd(lightC<deviceFP>(), 2 * eps0<deviceFP>()) 
-				* (*s).dx * (*s).dx * (*s).dt * (*s).dt;
-			beamTotal2 *= constProd(lightC<deviceFP>(), 2 * eps0<deviceFP>()) 
-				* (*s).dx * (*s).dx * (*s).dt * (*s).dt;
 
 			//put the values into the output spectrum
 			(*s).gridPolarizationTime1[i] = beamTotal1;
@@ -2853,7 +2861,12 @@ namespace kernelNamespace{
 
 			deviceComplex ts = fourierPropagator(ke, dk1, dk2, k0.real(), thickness);
 			deviceComplex tp = fourierPropagator(ko, dk1, dk2, k0.real(), thickness);
-
+			if (((dk1 * dk1 + dk2 * dk2 > modulusSquared(ke))
+				|| (dk1 * dk1 + dk2 * dk2 > modulusSquared(ko)))
+				&& thickness < 0.0f) {
+				ts = deviceComplex{};
+				tp = deviceComplex{};
+			}
 			if (isComplexNaN(ts)) ts = deviceComplex{};
 			if (isComplexNaN(tp)) tp = deviceComplex{};
 			(*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
@@ -4076,7 +4089,8 @@ namespace hostFunctions{
 		int64_t tFactor, 
 		deviceFP dz, 
 		deviceFP frontBuffer, 
-		deviceFP backBuffer);
+		deviceFP backBuffer,
+		const std::string& materialMapPath = "");
 
 	static std::complex<double> hostSellmeierFunc(
 		double ls, 
@@ -4158,6 +4172,15 @@ namespace hostFunctions{
 		d.deviceMemcpy((double*)(*sCPU).totalSpectrum, 
 			(deviceFP*)(*sc).gridPolarizationTime1, 
 			3 * (*sCPU).Nfreq * sizeof(double), copyType::ToHost);
+
+		//apply normalization to result of 3D calculation for numerical precision (value may not be
+		//represtentable as a float)
+		if ((*sCPU).is3D) {
+			for (int64_t i = 0; i < 3 * (*sCPU).Nfreq; i++) {
+				(*sCPU).totalSpectrum[i] *= constProd(lightC<double>(), 2 * eps0<double>())
+					* (*sCPU).rStep * (*sCPU).rStep * (*sCPU).tStep * (*sCPU).tStep;
+			}
+		}
 		return 0;
 	}
 
@@ -5258,6 +5281,10 @@ namespace hostFunctions{
 		d.deviceFree(maxCalc.materialGridEstimate);
 		d.deviceFree(maxCalc.materialGridEstimate2);
 		d.deviceFree(maxCalc.deviceCopy);
+		if(maxCalc.hasMaterialMap){
+			d.deviceFree(maxCalc.materialMap);
+			d.deviceFree(maxCalc.oscillatorIndexMap);
+		}
 		return errorValue;
 	}
 
@@ -5265,165 +5292,273 @@ namespace hostFunctions{
 	template<typename maxwellType>
 	static void calculateFDTDParameters(
 		const simulationParameterSet* sCPU, 
-		maxwellType& maxCalc){
+		maxwellType& maxCalc,
+		int mapValue = 0){
 
-		double n0 = hostSellmeierFunc(
+		if(mapValue == 0){
+			double n0 = hostSellmeierFunc(
 			0, twoPi<double>() * sCPU->pulse1.frequency, 
-			(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double nm1 = hostSellmeierFunc(
-			0, twoPi<double>() * (-2e11 + sCPU->pulse1.frequency), 
-			(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double np1 = hostSellmeierFunc(
-			0, twoPi<double>() * (2e11 + sCPU->pulse1.frequency), 
-			(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
-		double nGroup = n0 + sCPU->pulse1.frequency * (np1 - nm1) / 4.0e11;
-		maxCalc.waitFrames = 
-			(maxCalc.frontBuffer + nGroup * maxCalc.crystalThickness + 10 * maxCalc.zStep) 
-			/ (lightC<double>() * maxCalc.tStep);
-		maxCalc.waitFrames = maxCalc.tGridFactor * (maxCalc.waitFrames / maxCalc.tGridFactor);
-		maxCalc.Nt = maxCalc.waitFrames + (*sCPU).Ntime * maxCalc.tGridFactor;
+			(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
+			double nm1 = hostSellmeierFunc(
+				0, twoPi<double>() * (-2e11 + sCPU->pulse1.frequency), 
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
+			double np1 = hostSellmeierFunc(
+				0, twoPi<double>() * (2e11 + sCPU->pulse1.frequency), 
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
+			double nGroup = n0 + sCPU->pulse1.frequency * (np1 - nm1) / 4.0e11;
+			maxCalc.waitFrames = 
+				(maxCalc.frontBuffer + nGroup * maxCalc.crystalThickness + 10 * maxCalc.zStep) 
+				/ (lightC<double>() * maxCalc.tStep);
+			maxCalc.waitFrames = maxCalc.tGridFactor * (maxCalc.waitFrames / maxCalc.tGridFactor);
+			maxCalc.Nt = maxCalc.waitFrames + (*sCPU).Ntime * maxCalc.tGridFactor;
+		}
+		
 
 		//copy the crystal info
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].axisType == 0) {
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].axisType == 0) {
 			//isotropic
 			for (int i = 0; i < 22; i++) {
-				maxCalc.sellmeierEquations[i][0].x = 
+				maxCalc.sellmeierEquations[i][mapValue].x = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[i][0].y = 
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
+				maxCalc.sellmeierEquations[i][mapValue].y = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[i][0].z = 
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
+				maxCalc.sellmeierEquations[i][mapValue].z = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
 			}
 		}
-		else if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].axisType == 1) {
+		else if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].axisType == 1) {
 			//uniaxial
 			for (int i = 0; i < 22; i++) {
-				maxCalc.sellmeierEquations[i][0].x = 
+				maxCalc.sellmeierEquations[i][mapValue].x = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[i][0].y = 
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
+				maxCalc.sellmeierEquations[i][mapValue].y = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]);
-				maxCalc.sellmeierEquations[i][0].z = 
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]);
+				maxCalc.sellmeierEquations[i][mapValue].z = 
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+22]);
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i+22]);
 			}
 		}
 		else {
 			//biaxial
 			for (int i = 0; i < 22; i++) {
-				maxCalc.sellmeierEquations[i][0] = maxwellPoint<deviceFP>{
+				maxCalc.sellmeierEquations[i][mapValue] = maxwellPoint<deviceFP>{
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i]),
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i]),
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+22]),
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i+22]),
 					static_cast<deviceFP>(
-						(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients[i+44])
+						(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients[i+44])
 				};
 			}
 		}
 		
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[0]) 
-			maxCalc.hasChi2[0] = true;
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 1) 
-			maxCalc.hasFullChi3[0] = true;
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearSwitches[1] == 2) 
-			maxCalc.hasSingleChi3[0] = true;
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[0]) 
+			maxCalc.hasChi2[mapValue] = true;
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[1] == 1) 
+			maxCalc.hasFullChi3[mapValue] = true;
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[1] == 2) 
+			maxCalc.hasSingleChi3[mapValue] = true;
 
 		//perform millers rule normalization on the nonlinear coefficients while copying the values
 		double millersRuleFactorChi2 = 2e-12;
 		double millersRuleFactorChi3 = 1.0;
-		if ((*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0]) {
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[0]) {
 			double wRef = 
 				twoPi<double>() * 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[0];
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[0];
 			double nRef = hostSellmeierFunc(
 				0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi2 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[1];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[1];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi2 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[2];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[2];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi2 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[3];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[3];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[4];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[4];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[5];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[5];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 			wRef = twoPi<double>() 
-				* (*sCPU).crystalDatabase[(*sCPU).materialIndex].nonlinearReferenceFrequencies[6];
+				* (*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearReferenceFrequencies[6];
 			nRef = hostSellmeierFunc(0, wRef, 
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].sellmeierCoefficients.data(), 1).real();
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			millersRuleFactorChi3 /= nRef * nRef - 1.0;
 		}
 		for (int i = 0; i < 6; i++) {
-			maxCalc.chi2[i][0] = maxwellPoint<deviceFP>{
+			maxCalc.chi2[i][mapValue] = maxwellPoint<deviceFP>{
 				static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i] * millersRuleFactorChi2),
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].d[3 * i] * millersRuleFactorChi2),
 				static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i + 1] * millersRuleFactorChi2),
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].d[3 * i + 1] * millersRuleFactorChi2),
 				static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].d[3 * i + 2] * millersRuleFactorChi2) };
-			if (i > 2) maxCalc.chi2[i][0] *= 2.0;
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].d[3 * i + 2] * millersRuleFactorChi2) };
+			if (i > 2) maxCalc.chi2[i][mapValue] *= 2.0;
 		}
 		for (int i = 0; i < 27; i++) {
-			maxCalc.chi3[i][0].x = static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i] * millersRuleFactorChi3);
-			maxCalc.chi3[i][0].y = static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i+27] * millersRuleFactorChi3);
-			maxCalc.chi3[i][0].z = static_cast<deviceFP>(
-				(*sCPU).crystalDatabase[(*sCPU).materialIndex].chi3[i+54] * millersRuleFactorChi3);
+			maxCalc.chi3[i][mapValue].x = static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].chi3[i] * millersRuleFactorChi3);
+			maxCalc.chi3[i][mapValue].y = static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].chi3[i+27] * millersRuleFactorChi3);
+			maxCalc.chi3[i][mapValue].z = static_cast<deviceFP>(
+				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].chi3[i+54] * millersRuleFactorChi3);
 		}
 
 		//count the nonzero oscillators
-		for (int i = 0; i < 7; i++) {
-			if (maxCalc.sellmeierEquations[1 + i * 3][0].x > 0.0) maxCalc.Noscillators++;
-			else break;
-		}
+		if(!maxCalc.hasMaterialMap){
+			for (int i = 0; i < 7; i++) {
+				if (maxCalc.sellmeierEquations[1 + i * 3][mapValue].x > 0.0) maxCalc.Noscillators++;
+				else break;
+			}
 
-		//collect plasma properties
-		if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
-			maxCalc.Noscillators++;
-			maxCalc.hasPlasma[0] = true;
-			maxCalc.kCarrierGeneration[0] = 2.0 / ((*sCPU).bandGapElectronVolts);
-			maxCalc.kDrude[0] = - eps0<double>() * elCharge<double>() 
-				/ ((*sCPU).effectiveMass * elMass<double>());
-			maxCalc.gammaDrude[0] = (*sCPU).drudeGamma;
-			maxCalc.kNonlinearAbsorption[0] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;
-			maxCalc.nonlinearAbsorptionOrder[0] = static_cast<int>(
-				std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts 
-					/ (*sCPU).pulse1.frequency)) - 1;
+			//collect plasma properties
+			if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
+				maxCalc.Noscillators++;
+				maxCalc.hasPlasma[mapValue] = true;
+				maxCalc.kCarrierGeneration[mapValue] = 2.0 / ((*sCPU).bandGapElectronVolts);
+				maxCalc.kDrude[mapValue] = - eps0<double>() * elCharge<double>() 
+					/ ((*sCPU).effectiveMass * elMass<double>());
+				maxCalc.gammaDrude[mapValue] = (*sCPU).drudeGamma;
+				maxCalc.kNonlinearAbsorption[mapValue] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;
+				maxCalc.nonlinearAbsorptionOrder[mapValue] = static_cast<int>(
+					std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts 
+						/ (*sCPU).pulse1.frequency)) - 1;
+			}
+			maxCalc.NMaterialGrid =
+				(maxCalc.materialStop - maxCalc.materialStart)
+				* maxCalc.Nx * maxCalc.Ny * maxCalc.Noscillators;
 		}
-		maxCalc.NMaterialGrid = 
-			(maxCalc.materialStop - maxCalc.materialStart) 
-			* maxCalc.Nx * maxCalc.Ny * maxCalc.Noscillators;
 	}
 
 	static void prepareFDTD(
 		ActiveDevice& d, 
 		const simulationParameterSet* sCPU, 
-		maxwell3D& maxCalc) {
+		maxwell3D& maxCalc,
+		const std::string& materialMapPath = "") {
 
-		calculateFDTDParameters(sCPU, maxCalc);
+		//Check if there is a material map and allocate/load it if necessary
+		//fdtdGrid("C:\Users\nickk\rzgdatashare\LightwaveExplorer\Tests\file.txt")
+		if (materialMapPath != "") {
+			//throw std::runtime_error(std::string("path string:\n").append(materialMapPath));
+			maxCalc.hasMaterialMap = false;
+			int64_t NmaterialPoints = 0;
+			std::vector<int8_t> materialMapCPU(maxCalc.Ngrid, 0);
+			std::vector<int64_t> oscillatorIndexMapCPU(maxCalc.Ngrid, 0);
+			std::ifstream fs(materialMapPath);
+
+			if (fs.good()) {
+				auto moveToColon = [&]() {
+					char x = 0;
+					while (x != ':' && fs.good()) {
+						fs >> x;
+					}
+					return 0;
+					};
+				//First line: materials
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialKeys[i];
+					//optimization: count oscillators
+				}
+				maxCalc.Noscillators = 7;
+				//Second line: theta
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialTheta[i];
+				}
+				//Third line: phi
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.materialPhi[i];
+				}
+				//Fourth: Nonlinear absorption (NOTE: FIX PLASMA PARAMS)
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kNonlinearAbsorption[i];
+					maxCalc.hasPlasma[i] = maxCalc.kNonlinearAbsorption[i] > 0.0;
+				}
+				//Fifth: bandgap
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kDrude[i];
+				}
+				//Sixth: gamma
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.gammaDrude[i];
+				}
+				//Seventh: effective mass
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kCarrierGeneration[i];
+				}
+				//Eighth: start data
+				int64_t gridCount{};
+				while (fs.good() && gridCount < maxCalc.Ngrid) {
+					int currentInt;
+					fs >> currentInt;
+					materialMapCPU[gridCount] = static_cast<int8_t>(currentInt);
+					if (materialMapCPU[gridCount] > 0) {
+						oscillatorIndexMapCPU[gridCount] = NmaterialPoints;
+						NmaterialPoints++;
+					}
+					gridCount++;
+				}
+
+				d.deviceCalloc((void**)&(maxCalc.materialMap),
+					maxCalc.Ngrid, sizeof(char));
+				d.deviceMemcpy(
+					(void*)maxCalc.materialMap,
+					(void*)materialMapCPU.data(),
+					maxCalc.Ngrid * sizeof(char),
+					copyType::ToDevice);
+				d.deviceCalloc((void**)&(maxCalc.oscillatorIndexMap),
+					maxCalc.Ngrid, sizeof(int64_t));
+				d.deviceMemcpy(
+					(void*)maxCalc.oscillatorIndexMap,
+					(void*)oscillatorIndexMapCPU.data(),
+					maxCalc.Ngrid * sizeof(int64_t),
+					copyType::ToDevice);
+				maxCalc.hasMaterialMap = true;
+				maxCalc.NMaterialGrid = NmaterialPoints * maxCalc.Noscillators;
+
+				for(int i = 0; i<NmaterialMax; i++){
+					calculateFDTDParameters(sCPU, maxCalc, i);
+				}
+				maxCalc.observationPoint = maxCalc.Nz - 10;
+			}
+			else{
+				throw std::runtime_error("Failed to load material map.\n");
+			}
+
+		}
+		else{
+			maxCalc.materialKeys[0] = (*sCPU).materialIndex;
+			calculateFDTDParameters(sCPU, maxCalc);
+		}
+
+		
 		//Make sure that the time grid is populated and do a 1D (time) FFT onto the frequency grid
 		//make both grids available through the maxCalc class
 		d.deviceMemcpy(
@@ -5481,7 +5616,8 @@ namespace hostFunctions{
 		int64_t tFactor, 
 		deviceFP dz, 
 		deviceFP frontBuffer, 
-		deviceFP backBuffer) {
+		deviceFP backBuffer,
+		const std::string& materialMapPath) {
 		
 		//initialize the grid if necessary
 		if (!sCPU->isFollowerInSequence) {
@@ -5515,7 +5651,7 @@ namespace hostFunctions{
 		if (dz == 0.0) dz = (*sCPU).propagationStep;
 		//generate the FDTD data structure and prepare the device
 		maxwell3D maxCalc = maxwell3D(sCPU, tFactor, dz, frontBuffer, backBuffer);
-		prepareFDTD(d, sCPU, maxCalc);
+		prepareFDTD(d, sCPU, maxCalc, materialMapPath);
 
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {
@@ -5567,17 +5703,16 @@ namespace hostFunctions{
 		return freeFDTD(d, maxCalc);
 	}
 
-	static constexpr unsigned int funHash(const char* s, const int off = 0) {
-		return (s[off] == 0 || s[off] == '(') ? 7177 : (funHash(s, off + 1) * 31) ^ s[off];
-	}
-
-	static unsigned int stringHash(const std::string& s, const int off = 0){
-		if (off >= s.length()) throw std::runtime_error(std::string("Didn't find opening parenthesis in\n").append(s));
-		return (s.length() == off || s.at(off) == '(') ? 7177 : (stringHash(s,off+1) * 31) ^ s.at(off);
+	static constexpr unsigned int functionID(const char* s) {
+		unsigned int result = 0;
+		for (int i = 0; s[i]; ++i) {
+			result += s[i];
+		}
+		return result;
 	}
 
 	//Dispatcher of the sequence mode. 
-	// New functions go here, and should have a unique hash (chances of a conflict are small, and 
+	// New functions go here, and should have a unique ID (chances of a conflict are small, and 
 	// will produce a compile-time error.
 	// Functions cannot start with a number or the string "None".
 	static int interpretCommand(
@@ -5591,25 +5726,26 @@ namespace hostFunctions{
 		int error = 0;
 		double parameters[32] = {};
 		bool defaultMask[32] = {};
-
-		switch (stringHash(cc)) {
-		case funHash("rotate"):
+		auto functionNameEnd = cc.find_first_of('(');
+		if (functionNameEnd ==std::string::npos) throw std::runtime_error(std::string("Didn't find opening parenthesis in\n").append(cc));
+		switch (functionID(cc.substr(0, functionNameEnd).c_str())) {
+		case functionID("rotate"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			rotateField(d, sCPU, deg2Rad<deviceFP>() * parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("set"):
+		case functionID("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			if(parameters[0]<100 && parameters[0] >= 0){ 
 				vBlock[static_cast<int>(parameters[0])] = parameters[1];
 			}
 			else throw std::runtime_error("set() index must be less than 100\n");
 			break;
-		case funHash("plasmaReinject"):
+		case functionID("plasmaReinject"):
 			(*sCPU).isReinjecting = true;
 			[[fallthrough]];
-		case funHash("plasma"):
+		case functionID("plasma"):
 		{
 			interpretParameters(cc, 9, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
@@ -5634,7 +5770,7 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 		}
 			break;
-		case funHash("nonlinear"):
+		case functionID("nonlinear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*sCPU).crystalTheta = deg2Rad<deviceFP>() * parameters[1];
@@ -5655,7 +5791,7 @@ namespace hostFunctions{
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
 			(*sCPU).isFollowerInSequence = true;
 			break;
-		case funHash("fdtd"):
+		case functionID("fdtd"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			error = solveFDTD(
 				d, 
@@ -5665,11 +5801,25 @@ namespace hostFunctions{
 				parameters[2], 
 				parameters[3]);
 			break;
-		case funHash("default"):
+		case functionID("fdtdGrid"):
+			if ((*sCPU).runType == -1) {
+				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)
+					+=5 * ((*sCPU).Ntime + (*sCPU).crystalThickness/(lightC<double>()*(*sCPU).tStep));
+				break;
+			}
+			error = solveFDTD(d,
+				sCPU,
+				5,
+				(*sCPU).propagationStep,
+				0.0,
+				0.0,
+				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
+			break;
+		case functionID("default"):
 			d.reset(sCPU);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
 			break;
-		case funHash("save"):
+		case functionID("save"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
@@ -5694,7 +5844,7 @@ namespace hostFunctions{
 				}
 			}
 			break;
-		case funHash("savePlasma"):
+		case functionID("savePlasma"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
@@ -5710,7 +5860,7 @@ namespace hostFunctions{
 				}
 			}
 			break;
-		case funHash("init"):
+		case functionID("init"):
 			(*sCPU).materialIndex = 0;
 			(*sCPU).crystalTheta = 0.0;
 			(*sCPU).crystalPhi = 0.0;
@@ -5732,7 +5882,7 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 			break;
 
-		case funHash("linear"):
+		case functionID("linear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if ((*sCPU).isCylindric) {
 				if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
@@ -5771,7 +5921,7 @@ namespace hostFunctions{
 			}
 
 			break;
-		case funHash("fresnelLoss"):
+		case functionID("fresnelLoss"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*sCPU).crystalTheta = deg2Rad<deviceFP>() * parameters[1];
@@ -5781,19 +5931,19 @@ namespace hostFunctions{
 				(int)parameters[4],
 				(int)parameters[5]);
 			break;
-		case funHash("sphericalMirror"):
+		case functionID("sphericalMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applySphericalMirror(d, sCPU, d.deviceStruct, parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("parabolicMirror"):
+		case functionID("parabolicMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyParabolicMirror(d, sCPU, d.deviceStruct, parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("aperture"):
+		case functionID("aperture"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyAperature(d, sCPU,
@@ -5801,7 +5951,7 @@ namespace hostFunctions{
 				parameters[1]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("farFieldAperture"):
+		case functionID("farFieldAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			(*sCPU).materialIndex = 0;
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
@@ -5815,7 +5965,7 @@ namespace hostFunctions{
 				parameters[3]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("energy"):
+		case functionID("energy"):
 			{
 			if ((*sCPU).runType == -1) break;
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
@@ -5830,7 +5980,7 @@ namespace hostFunctions{
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("filter"):
+		case functionID("filter"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyFilter(d, sCPU,
@@ -5841,7 +5991,7 @@ namespace hostFunctions{
 				parameters[4]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("lorentzian"):
+		case functionID("lorentzian"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyLorenzian(
@@ -5854,7 +6004,7 @@ namespace hostFunctions{
 				parameters[4]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case funHash("addPulse"):
+		case functionID("addPulse"):
 			if ((*sCPU).runType == -1) break;
 		{
 			interpretParameters(cc, 21, iBlock, vBlock, parameters, defaultMask);
@@ -5911,7 +6061,7 @@ namespace hostFunctions{
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		
-		case funHash("for"): {
+		case functionID("for"): {
 				interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 				int counter = (int)parameters[0];
 				int targetVar = (int)parameters[1];
