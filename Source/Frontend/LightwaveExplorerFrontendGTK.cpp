@@ -21,7 +21,7 @@ class mainGui {
 public:
     //LweTextBox textBoxes[54]{};
     std::unordered_map<int64_t, LweTextBox> textBoxes;
-    std::unordered_map<int64_t, LweButton> buttons;
+    std::unordered_map<std::string, LweButton> buttons;
     std::unordered_map<int64_t, LweButton> miniButtons;
     LweConsole console{};
     LweConsole sequence{};
@@ -371,52 +371,52 @@ public:
         miniButtons[9].setTooltip(
             "Add an empty for loop. Parameters:\n   "
             "Number of times to execute\n   Variable number in which to put the counter");
-        buttons[0].init(("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
-        buttons[0].setTooltip("Run the simulation as currently entered on the "
+        buttons["Run"].init(("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
+        buttons["Run"].setTooltip("Run the simulation as currently entered on the "
             "interface. If a sequence is entered in the sequence box below, "
             "that will execute, otherwise, a simulation on the input parameters "
             "above and to the left in a single medium will be performed.");
-        buttons[1].init(("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
-        buttons[1].setTooltip("Tell a currently-running simulation to stop. "
+        buttons["Stop"].init(("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
+        buttons["Stop"].setTooltip("Tell a currently-running simulation to stop. "
             "It might not stop right away; it will only happen once it reaches a break point");
-        buttons[2].init(
+        buttons["Script"].init(
             ("Script"), parentHandle, buttonCol3 + 1, 17, textWidth, 1, createRunFile);
-        buttons[2].setTooltip("Generate an input file and SLURM script for running "
+        buttons["Script"].setTooltip("Generate an input file and SLURM script for running "
             "the simulation as entered on the selected cluster");
-        buttons[3].init(("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
-        buttons[3].setTooltip("Run the fitting routine with the above parameters. "
+        buttons["Fit"].init(("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
+        buttons["Fit"].setTooltip("Run the fitting routine with the above parameters. "
             "The mode is set in the pulldown next to the (optional) fitting input data file path.");
-        buttons[4].init(("Load"), parentHandle, buttonCol1, 15, buttonWidth, 1, loadCallback);
-        buttons[4].setTooltip("Load the results of a previous simulation run. "
+        buttons["Load"].init(("Load"), parentHandle, buttonCol1, 15, buttonWidth, 1, loadCallback);
+        buttons["Load"].setTooltip("Load the results of a previous simulation run. "
             "You should select the associated .txt file. The parameters will be "
             "loaded into the interface, and the data (if it exists) will be plotted.");
-        buttons[6].init(
+        buttons["Field1Path"].init(
             ("Path"), parentHandle, textWidth, 16, textWidth, 1, openFileDialogCallback, 0);
-        buttons[7].init(
+        buttons["Field2Path"].init(
             ("Path"), parentHandle, textWidth, 18, textWidth, 1, openFileDialogCallback, (gpointer)1);
-        buttons[8].init(
+        buttons["FitPath"].init(
             ("Path"), parentHandle, textWidth, 20, textWidth, 1, openFileDialogCallback, (gpointer)2);
-        buttons[9].init(
+        buttons["Path"].init(
             ("Path"), parentHandle, buttonCol1, 17, textWidth, 1, saveFileDialogCallback, (gpointer)3);
-        buttons[9].setTooltip("Sets the base path for the output files");
-        buttons[10].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
-        buttons[10].setTooltip("Apply the entered x limits to the plot. The two text "
+        buttons["Path"].setTooltip("Sets the base path for the output files");
+        buttons["xlim"].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
+        buttons["xlim"].setTooltip("Apply the entered x limits to the plot. The two text "
             "boxes are for the upper and lower limits applied to the frequency axis. "
             "If they are empty, the range will include the whole grid.");
-        buttons[10].squeeze();
-        buttons[11].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
-        buttons[11].setTooltip("Apply the entered y limits to the plot. The two "
+        buttons["xlim"].squeeze();
+        buttons["ylim"].init(("ylim"), window.parentHandle(4), 6, 0, 1, 1, independentPlotQueue);
+        buttons["ylim"].setTooltip("Apply the entered y limits to the plot. The two "
             "text boxes are for the upper and lower limits applied to the frequency "
             "axis. If they are empty, the range will include the whole grid.");
-        buttons[11].squeeze();
+        buttons["ylim"].squeeze();
         checkBoxes[0].setFunction(independentPlotQueue);
         checkBoxes[1].setFunction(independentPlotQueue);
-        buttons[12].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
-        buttons[12].setTooltip("Generate SVG files of the four line plots, with "
+        buttons["SVG"].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
+        buttons["SVG"].setTooltip("Generate SVG files of the four line plots, with "
             "filenames based on the base path set above");
-        buttons[12].squeeze();
-        buttons[13].init("\xe2\x86\x94\xef\xb8\x8f",window.parentHandle(3),0,0,1,1,dataPanelCollapseCallback);
-        buttons[13].setTooltip("Collapse/expand the data entry panel");
+        buttons["SVG"].squeeze();
+        buttons["expandPlots"].init("\xe2\x86\x94\xef\xb8\x8f",window.parentHandle(3),0,0,1,1,dataPanelCollapseCallback);
+        buttons["expandPlots"].setTooltip("Collapse/expand the data entry panel");
         plotSlider.init(window.parentHandle(3), 1, 0, 3, 1);
         plotSlider.setRange(0.0, 10.0);
         plotSlider.setDigits(0);
