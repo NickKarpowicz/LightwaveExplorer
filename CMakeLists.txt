@@ -311,7 +311,7 @@ if(UNIX AND NOT APPLE)
         )
         FetchContent_MakeAvailable(fmt)
 
-        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -Wno-deprecated-declarations -DNDEBUG)
+        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -DNDEBUG)
         execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
         add_executable(LightwaveExplorer 
             Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
