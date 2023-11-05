@@ -403,15 +403,19 @@ def normaM(v: np.ndarray):
         out[i,:] = norma(v[i,:])
     return out
 
-def printSellmeier(sc: np.ndarray):
+def printSellmeier(sc: np.ndarray, highPrecision=False):
     """
     print an array containing LWE sellmeier coefficients in a format
     that can be copy-pasted into the CrystalDatabase.txt file
     
     :param sc: the coefficients (22-element array)
     :type sc: np.ndarray
+    :param highPrecision: if true, use 15 digits for the numbers
     """
-    s = np.array2string(sc, formatter={'float_kind': '{0:.6g}'.format}).replace('\n','').replace('[','').replace(']','')
+    if highPrecision:
+        s = np.array2string(sc, formatter={'float_kind': '{0:.15g}'.format}).replace('\n','').replace('[','').replace(']','')
+    else:
+        s = np.array2string(sc, formatter={'float_kind': '{0:.6g}'.format}).replace('\n','').replace('[','').replace(']','')
     print(s)
 
 def sellmeier(wavelengthMicrons, a: np.ndarray, equationType: int):

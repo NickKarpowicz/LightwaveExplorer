@@ -838,5 +838,41 @@ None
 Nonlinear reference frequencies:
 28.28e12 28.28e12 56.56e12 281.8e12 281.8e12 281.8e12 281.8e12
 ~~~crystal end~~~
+Name:
+Air L
+Type:
+0
+Sellmeier equation:
+1
+1st axis coefficients:
+1.00019992656595 4.7e+24 2.03528591788614e+32 100000000000 4.00000000000673e+20 1.93444246261351e+29 200000000000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1.00019992656595 4.7e+24 2.03528591788614e+32 100000000000 4.00000000000673e+20 1.93444246261351e+29 200000000000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1.00019992656595 4.7e+24 2.03528591788614e+32 100000000000 4.00000000000673e+20 1.93444246261351e+29 200000000000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+Fit to Ciddor 96, with approximate CO2 absorption
+chi2 type:
+0
+d:
+0 0 0 0 0 0
+0 0 0 0 0 0
+0 0 0 0 0 0
+d reference:
+None
+chi3 type:
+2
+chi3:
+9.2e-26
+0
+0
+chi3 reference:
+Opt. Express 20, 8791-8803 (2012) 
+Spectral file:
+None
+Nonlinear reference frequencies:
+28.28e12 28.28e12 56.56e12 284.43 284.43 284.43 284.43
+~~~crystal end~~~
+
 
 
