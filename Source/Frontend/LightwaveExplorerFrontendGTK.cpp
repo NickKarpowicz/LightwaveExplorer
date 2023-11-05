@@ -19,18 +19,17 @@ class mainGui {
     int sliderTarget = 0;
     std::mutex mutex;
 public:
-    //LweTextBox textBoxes[54]{};
-    std::unordered_map<int64_t, LweTextBox> textBoxes;
+    std::array<LweTextBox, 56> textBoxes;
     std::unordered_map<std::string, LweButton> buttons;
-    std::unordered_map<int64_t, LweButton> miniButtons;
+    std::unordered_map<std::string, LweButton> miniButtons;
     LweConsole console{};
     LweConsole sequence{};
     LweConsole fitCommand{};
-    std::unordered_map<int64_t, LweTextBox> filePaths;
-    std::unordered_map<int64_t, LwePulldown> pulldowns;
-    std::unordered_map<int64_t, LweDrawBox> drawBoxes;
+    std::array<LweTextBox,4> filePaths;
+    std::unordered_map<std::string, LwePulldown> pulldowns;
+    std::array<LweDrawBox,8> drawBoxes;
     LweDrawBox progressBarBox{};
-    std::unordered_map<int64_t, LweCheckBox> checkBoxes;
+    std::unordered_map<std::string, LweCheckBox> checkBoxes;
     LweSlider plotSlider{};
     LweWindow window{};
     int64_t pathTarget = 0;
@@ -118,31 +117,31 @@ public:
 
         filePaths[0].init(parentHandle, 0, 17, colWidth, 1);
         filePaths[0].setMaxCharacters(pathChars);
-        pulldowns[0].addElement(("Synthetic"));
-        pulldowns[0].addElement(("FROG"));
-        pulldowns[0].addElement(("Waveform"));
-        pulldowns[0].addElement("LWE .dat");
-        pulldowns[0].init(parentHandle, labelWidth, 16, pulldownWidth, 1);
+        pulldowns["pulse1"].addElement(("Synthetic"));
+        pulldowns["pulse1"].addElement(("FROG"));
+        pulldowns["pulse1"].addElement(("Waveform"));
+        pulldowns["pulse1"].addElement("LWE .dat");
+        pulldowns["pulse1"].init(parentHandle, labelWidth, 16, pulldownWidth, 1);
         filePaths[0].setLabel(0, -1, ("Data 1:"));
 
         filePaths[1].init(parentHandle, 0, 19, colWidth, 1);
         filePaths[1].setMaxCharacters(pathChars);
         filePaths[1].setLabel(0, -1, ("Data 2:"));
-        pulldowns[1].addElement(("Synthetic"));
-        pulldowns[1].addElement(("FROG"));
-        pulldowns[1].addElement(("Waveform"));
-        pulldowns[1].addElement("LWE .dat");
-        pulldowns[1].init(parentHandle, labelWidth, 18, pulldownWidth, 1);
+        pulldowns["pulse2"].addElement(("Synthetic"));
+        pulldowns["pulse2"].addElement(("FROG"));
+        pulldowns["pulse2"].addElement(("Waveform"));
+        pulldowns["pulse2"].addElement("LWE .dat");
+        pulldowns["pulse2"].init(parentHandle, labelWidth, 18, pulldownWidth, 1);
 
         filePaths[2].init(parentHandle, 0, 21, colWidth, 1);
         filePaths[2].setMaxCharacters(pathChars);
         filePaths[2].setLabel(0, -1, ("Fit data:"));
-        pulldowns[2].addElement(("Maximize x"));
-        pulldowns[2].addElement(("Maximize y"));
-        pulldowns[2].addElement(("Maximize Total"));
-        pulldowns[2].addElement(("Fit spectrum"));
-        pulldowns[2].addElement(("Fit spectrum (log)"));
-        pulldowns[2].init(parentHandle, labelWidth, 20, pulldownWidth, 1);
+        pulldowns["fit"].addElement(("Maximize x"));
+        pulldowns["fit"].addElement(("Maximize y"));
+        pulldowns["fit"].addElement(("Maximize Total"));
+        pulldowns["fit"].addElement(("Fit spectrum"));
+        pulldowns["fit"].addElement(("Fit spectrum (log)"));
+        pulldowns["fit"].init(parentHandle, labelWidth, 20, pulldownWidth, 1);
 
         filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
         filePaths[3].setMaxCharacters(pathChars);
@@ -190,20 +189,20 @@ public:
         textBoxes[50].init(window.parentHandle(4), 8, 0, 2, 1);
         textBoxes[51].init(window.parentHandle(4), 10, 0, 2, 1);
 
-        checkBoxes[0].init(("Total"), window.parentHandle(4), 12, 0, 1, 1);
-        checkBoxes[0].setTooltip("Overlay a plot of the integrated energy spectrum over the two "
+        checkBoxes["Total"].init(("Total"), window.parentHandle(4), 12, 0, 1, 1);
+        checkBoxes["Total"].setTooltip("Overlay a plot of the integrated energy spectrum over the two "
             "polarization-resolved spectra");
-        checkBoxes[1].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
-        checkBoxes[1].setTooltip("Plot spectra on a log10 scale");
-        checkBoxes[3].init("FP64", window.parentHandle(6), buttonWidth-2, 0, 1, 1);
-        checkBoxes[3].setTooltip("Select whether the simulation is performed with 32-bit "
+        checkBoxes["Log"].init(("Log"), window.parentHandle(4), 13, 0, 1, 1);
+        checkBoxes["Log"].setTooltip("Plot spectra on a log10 scale");
+        checkBoxes["FP64"].init("FP64", window.parentHandle(6), buttonWidth-2, 0, 1, 1);
+        checkBoxes["FP64"].setTooltip("Select whether the simulation is performed with 32-bit "
             "(unchecked) or 64-bit (checked) floating point numbers");
-        pulldowns[4].addElement(("2D Cartesian"));
-        pulldowns[4].addElement(("3D radial symm."));
-        pulldowns[4].addElement(("3D"));
-        pulldowns[4].addElement(("FDTD 2D"));
-        pulldowns[4].addElement(("FDTD 3D"));
-        pulldowns[4].init(parentHandle, textCol2a, 7, pulldownWidth, 1);
+        pulldowns["propagator"].addElement(("2D Cartesian"));
+        pulldowns["propagator"].addElement(("3D radial symm."));
+        pulldowns["propagator"].addElement(("3D"));
+        pulldowns["propagator"].addElement(("FDTD 2D"));
+        pulldowns["propagator"].addElement(("FDTD 3D"));
+        pulldowns["propagator"].init(parentHandle, textCol2a, 7, pulldownWidth, 1);
 
         char batchModeNames[38][64] = {
         "none",
@@ -247,22 +246,22 @@ public:
         };
 
         for (int i = 0; i < 38; ++i) {
-            pulldowns[5].addElement(batchModeNames[i]);
-            pulldowns[6].addElement(batchModeNames[i]);
+            pulldowns["batch1"].addElement(batchModeNames[i]);
+            pulldowns["batch2"].addElement(batchModeNames[i]);
         }
-        pulldowns[5].init(parentHandle, textCol2a, 8, pulldownWidth, 1);
-        pulldowns[6].init(parentHandle, textCol2a, 9, pulldownWidth, 1);
-        pulldowns[5].setTooltip("Primary batch mode selector: the selected value "
+        pulldowns["batch1"].init(parentHandle, textCol2a, 8, pulldownWidth, 1);
+        pulldowns["batch2"].init(parentHandle, textCol2a, 9, pulldownWidth, 1);
+        pulldowns["batch1"].setTooltip("Primary batch mode selector: the selected value "
             "from the interface will be scanned in a series of simulations, starting "
             "from the value entered on the interface, and ending with the batch target "
             "set below. The number of simulations is set by the batch steps parameter.");
-        pulldowns[6].setTooltip("Secondary batch mode selector - allows a 2D parameter "
+        pulldowns["batch2"].setTooltip("Secondary batch mode selector - allows a 2D parameter "
             "scan. Works in the same way as the primary batch, but uses the values in "
             "the right-hand column.");
 
         int mbRow = 22;
         textBoxes[31].setLabel(-9 ,7,"Sequence:");
-        miniButtons[0].init(
+        miniButtons["addSameCrystal"].init(
             "\xf0\x9f\x93\xb8", 
             parentHandle, 
             textWidth + 1, 
@@ -270,7 +269,7 @@ public:
             2, 
             1, 
             buttonAddSameCrystal);
-        miniButtons[1].init(
+        miniButtons["addDefault"].init(
             "\xe2\x99\x8a", 
             parentHandle, 
             textWidth + 3, 
@@ -278,7 +277,7 @@ public:
             2, 
             1, 
             buttonAddDefault);
-        miniButtons[2].init(
+        miniButtons["addRotation"].init(
             "\xf0\x9f\x92\xab", 
             parentHandle, 
             textWidth + 5, 
@@ -286,7 +285,7 @@ public:
             2, 
             1, 
             buttonAddRotation);
-        miniButtons[3].init(
+        miniButtons["addPulse"].init(
             "\xf0\x9f\x92\xa1", 
             parentHandle, 
             textWidth + 7, 
@@ -294,7 +293,7 @@ public:
             2, 
             1, 
             buttonAddPulse);
-        miniButtons[4].init(
+        miniButtons["addMirror"].init(
             "\xf0\x9f\x94\x8e", 
             parentHandle, 
             textWidth + 9, 
@@ -302,7 +301,7 @@ public:
             2, 
             1, 
             buttonAddMirror);
-        miniButtons[5].init(
+        miniButtons["addFilter"].init(
             "\xf0\x9f\x98\x8e", 
             parentHandle, 
             textWidth + 11, 
@@ -310,7 +309,7 @@ public:
             2, 
             1, 
             buttonAddFilter);
-        miniButtons[6].init(
+        miniButtons["addLinear"].init(
             "\xf0\x9f\x93\x8f", 
             parentHandle, 
             textWidth + 13, 
@@ -318,7 +317,7 @@ public:
             2, 
             1, 
             buttonAddLinear);
-        miniButtons[7].init(
+        miniButtons["addAperture"].init(
             "\xf0\x9f\x8e\xaf", 
             parentHandle, 
             textWidth + 15, 
@@ -326,7 +325,7 @@ public:
             2, 
             1, 
             buttonAddAperture);
-        miniButtons[8].init(
+        miniButtons["addFarFieldAperture"].init(
             "\xe2\x9b\xb3", 
             parentHandle, 
             textWidth + 17, 
@@ -334,7 +333,7 @@ public:
             2, 
             1, 
             buttonAddFarFieldAperture);
-        miniButtons[9].init(
+        miniButtons["addForLoop"].init(
             "\xf0\x9f\x94\x81", 
             parentHandle, 
             textWidth + 19, 
@@ -343,32 +342,32 @@ public:
             1, 
             buttonAddForLoop);
         
-        miniButtons[0].setTooltip(
+        miniButtons["addSameCrystal"].setTooltip(
             "Make a copy of the crystal currently entered in the interface");
-        miniButtons[1].setTooltip(
+        miniButtons["addDefault"].setTooltip(
             "Insert a crystal that will change with the values set on the "
             "interface, or modified during a batch calculation");
-        miniButtons[2].setTooltip(
+        miniButtons["addRotation"].setTooltip(
             "Rotate the polarization by a specified angle in degrees");
-        miniButtons[3].setTooltip(
+        miniButtons["addPulse"].setTooltip(
             "Add a new pulse to the grid; values will be set to duplicate "
             "pulse 1 as entered above");
-        miniButtons[4].setTooltip(
+        miniButtons["addMirror"].setTooltip(
             "Add a spherical mirror to the beam path, with radius "
             "of curvature in meters");
-        miniButtons[5].setTooltip(
+        miniButtons["addFilter"].setTooltip(
             "Add a spectral filter to the beam path. "
             "Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   "
             "in-band amplitude\n   out-of-band amplitude\n");
-        miniButtons[6].setTooltip(
+        miniButtons["addLinear"].setTooltip(
             "Add a linear propagation through the crystal entered on the interface");
-        miniButtons[7].setTooltip(
+        miniButtons["addAperture"].setTooltip(
             "Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
             "activation parameter\n");
-        miniButtons[8].setTooltip(
+        miniButtons["addFarFieldAperture"].setTooltip(
             "Filter the beam with a far-field aperture. Parameters:\n   "
             "opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ");
-        miniButtons[9].setTooltip(
+        miniButtons["addForLoop"].setTooltip(
             "Add an empty for loop. Parameters:\n   "
             "Number of times to execute\n   Variable number in which to put the counter");
         buttons["Run"].init(("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
@@ -409,8 +408,8 @@ public:
             "text boxes are for the upper and lower limits applied to the frequency "
             "axis. If they are empty, the range will include the whole grid.");
         buttons["ylim"].squeeze();
-        checkBoxes[0].setFunction(independentPlotQueue);
-        checkBoxes[1].setFunction(independentPlotQueue);
+        checkBoxes["Total"].setFunction(independentPlotQueue);
+        checkBoxes["Log"].setFunction(independentPlotQueue);
         buttons["SVG"].init(("SVG"), window.parentHandle(3), 5, 0, 1, 1, svgCallback);
         buttons["SVG"].setTooltip("Generate SVG files of the four line plots, with "
             "filenames based on the base path set above");
@@ -429,50 +428,50 @@ public:
         
         std::string A;
         if (theSim.base().CUDAavailable) {
-            pulldowns[7].addElement("CUDA");
-            pulldowns[8].addElement("CUDA");
+            pulldowns["primaryHardware"].addElement("CUDA");
+            pulldowns["secondaryHardware"].addElement("CUDA");
             for (int i = 1; i < theSim.base().cudaGPUCount; ++i) {
                 A = Sformat("CUDA {}", i);
-                pulldowns[7].addElement(A.c_str());
-                pulldowns[8].addElement(A.c_str());
+                pulldowns["primaryHardware"].addElement(A.c_str());
+                pulldowns["secondaryHardware"].addElement(A.c_str());
             }
         }
         if (theSim.base().SYCLavailable) {
             A.assign("SYCL");
-            pulldowns[7].addElement(A.c_str());
-            pulldowns[8].addElement(A.c_str());
+            pulldowns["primaryHardware"].addElement(A.c_str());
+            pulldowns["secondaryHardware"].addElement(A.c_str());
             if (theSim.base().syclGPUCount > 0) {
 
-                pulldowns[7].addElement("SYCLcpu");
-                pulldowns[8].addElement("SYCLcpu");
-                pulldowns[7].addElement("SYCLgpu");
-                pulldowns[8].addElement("SYCLgpu");
+                pulldowns["primaryHardware"].addElement("SYCLcpu");
+                pulldowns["secondaryHardware"].addElement("SYCLcpu");
+                pulldowns["primaryHardware"].addElement("SYCLgpu");
+                pulldowns["secondaryHardware"].addElement("SYCLgpu");
             }
         }
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
-        pulldowns[7].addElement("C++");
-        pulldowns[8].addElement("C++");
+        pulldowns["primaryHardware"].addElement("C++");
+        pulldowns["secondaryHardware"].addElement("C++");
 #elif defined __APPLE__
-        pulldowns[7].addElement("\xef\xa3\xbfGCD");
-        pulldowns[8].addElement("\xef\xa3\xbfGCD");
+        pulldowns["primaryHardware"].addElement("\xef\xa3\xbfGCD");
+        pulldowns["secondaryHardware"].addElement("\xef\xa3\xbfGCD");
 #endif
 #if defined _WIN32 || defined __linux__
-        pulldowns[7].addElement("OpenMP");
-        pulldowns[8].addElement("OpenMP");
+        pulldowns["primaryHardware"].addElement("OpenMP");
+        pulldowns["secondaryHardware"].addElement("OpenMP");
 #endif
         
-        pulldowns[7].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
-        pulldowns[8].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);
+        pulldowns["primaryHardware"].init(window.parentHandle(6), 2 + buttonWidth, 0, buttonWidth, 1);
+        pulldowns["secondaryHardware"].init(window.parentHandle(6), 4 + 2 * buttonWidth, 0, buttonWidth, 1);
         textBoxes[52].init(window.parentHandle(6), 4 + 3 * buttonWidth, 0, 1, 1);
-        pulldowns[7].setTooltip("Select the primary method of calculation. "
+        pulldowns["primaryHardware"].setTooltip("Select the primary method of calculation. "
             "The algorithm is the same, but you can run it either on a "
             "GPU or CPU depending on your machine");
-        pulldowns[8].setTooltip("Select a secondary mode of calculation for "
+        pulldowns["secondaryHardware"].setTooltip("Select a secondary mode of calculation for "
             "offloading jobs from a batch. For example, if the pulldown to the "
             "left is set to CUDA and this one is OpenMP, and the number to "
             "the right is 2, 2 of the simulations from the batch will be performed on the CPU");
 
-        //pulldowns[7].setLabel(-2, 0, ("Config:"), 8, 2);
+        //pulldowns["primaryHardware"].setLabel(-2, 0, ("Config:"), 8, 2);
         textBoxes[0].setLabel(-labelWidth, 0, ("Pulse energy (J)"));
         textBoxes[1].setLabel(-labelWidth, 0, ("Frequency (THz)"));
         textBoxes[2].setLabel(-labelWidth, 0, ("Bandwidth (THz)"));
@@ -498,9 +497,9 @@ public:
         
         textBoxes[44].setLabel(-labelWidth, 0, ("Batch end"));
         textBoxes[46].setLabel(-labelWidth, 0, ("Batch steps"));
-        pulldowns[4].setLabel(-labelWidth, 0, ("Propagation"));
-        pulldowns[5].setLabel(-labelWidth, 0, ("Batch mode"));
-        pulldowns[6].setLabel(-labelWidth, 0, ("Batch mode 2"));
+        pulldowns["propagator"].setLabel(-labelWidth, 0, ("Propagation"));
+        pulldowns["batch1"].setLabel(-labelWidth, 0, ("Batch mode"));
+        pulldowns["batch2"].setLabel(-labelWidth, 0, ("Batch mode 2"));
 
         fitCommand.setLabel(0, -1, ("Fitting:"));
 
@@ -511,21 +510,21 @@ public:
         for (int i = 0; i < theDatabase.db.size(); ++i) {
             materialString = Sformat(
                 "{:2}: {}", i, std::string(theDatabase.db[i].crystalName.c_str()));
-            pulldowns[3].addElement(materialString.c_str());
+            pulldowns["material"].addElement(materialString.c_str());
         }
         
-        pulldowns[3].init(parentHandle, textCol2a, 0, pulldownWidth, 1);
-        pulldowns[3].setLabel(-labelWidth, 0, ("Material"));
+        pulldowns["material"].init(parentHandle, textCol2a, 0, pulldownWidth, 1);
+        pulldowns["material"].setLabel(-labelWidth, 0, ("Material"));
 
-        pulldowns[9].addElement(("Cobra 1xR5k"));
-        pulldowns[9].addElement(("Cobra 2xR5k"));
-        pulldowns[9].addElement(("Cobra 1xV100"));
-        pulldowns[9].addElement(("Cobra 2xV100"));
-        pulldowns[9].addElement(("Raven 1xA100"));
-        pulldowns[9].addElement(("Raven 2xA100"));
-        pulldowns[9].addElement(("Raven 4xA100"));
-        pulldowns[9].init(parentHandle, buttonCol2, 17, buttonWidth + 1, 1);
-        pulldowns[9].setTooltip(
+        pulldowns["cluster"].addElement(("Cobra 1xR5k"));
+        pulldowns["cluster"].addElement(("Cobra 2xR5k"));
+        pulldowns["cluster"].addElement(("Cobra 1xV100"));
+        pulldowns["cluster"].addElement(("Cobra 2xV100"));
+        pulldowns["cluster"].addElement(("Raven 1xA100"));
+        pulldowns["cluster"].addElement(("Raven 2xA100"));
+        pulldowns["cluster"].addElement(("Raven 4xA100"));
+        pulldowns["cluster"].init(parentHandle, buttonCol2, 17, buttonWidth + 1, 1);
+        pulldowns["cluster"].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");
         
         //Linux search order:
@@ -580,7 +579,7 @@ public:
         if (!theSim.base().CUDAavailable 
             && theSim.base().SYCLavailable 
             && theSim.base().syclGPUCount == 0) {
-            pulldowns[7].setValue(1);
+            pulldowns["primaryHardware"].setValue(1);
         }
     }
 };
@@ -622,10 +621,10 @@ void setInterfaceValuesToActiveValues(){
         t = &theSim.base().pulse2;
     }
 
-    theGui.pulldowns[0].setValue(theSim.base().pulse1FileType);
-    theGui.pulldowns[1].setValue(theSim.base().pulse2FileType);
-    theGui.pulldowns[2].setValue(theSim.base().fittingMode);
-    theGui.pulldowns[3].setValue(theSim.base().materialIndex);
+    theGui.pulldowns["pulse1"].setValue(theSim.base().pulse1FileType);
+    theGui.pulldowns["pulse2"].setValue(theSim.base().pulse2FileType);
+    theGui.pulldowns["fit"].setValue(theSim.base().fittingMode);
+    theGui.pulldowns["material"].setValue(theSim.base().materialIndex);
     
     theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * asin(sin(theSim.base().crystalTheta)));
     theGui.textBoxes[i++].setToDouble(rad2Deg<double>() * asin(sin(theSim.base().crystalPhi)));
@@ -655,9 +654,9 @@ void setInterfaceValuesToActiveValues(){
     theGui.textBoxes[i++].setToDouble(theSim.base().batchDestination2);
     theGui.textBoxes[i++].setToDouble((double)theSim.base().Nsims);
     theGui.textBoxes[i++].setToDouble((double)theSim.base().Nsims2);
-    theGui.pulldowns[4].setValue(theSim.base().symmetryType);
-    theGui.pulldowns[5].setValue(theSim.base().batchIndex);
-    theGui.pulldowns[6].setValue(theSim.base().batchIndex2);
+    theGui.pulldowns["propagator"].setValue(theSim.base().symmetryType);
+    theGui.pulldowns["batch1"].setValue(theSim.base().batchIndex);
+    theGui.pulldowns["batch2"].setValue(theSim.base().batchIndex2);
     theGui.sequence.clear();
     if (theSim.base().sequenceString.length() > 6) {
         std::string formattedSequence= theSim.base().sequenceString;
@@ -706,10 +705,10 @@ void readParametersFromInterface() {
         t = &theSim.base().pulse2;
     }
     
-    theSim.base().pulse1FileType = theGui.pulldowns[0].getValue();
-    theSim.base().pulse2FileType = theGui.pulldowns[1].getValue();
-    theSim.base().fittingMode = theGui.pulldowns[2].getValue();
-    theSim.base().materialIndex = theGui.pulldowns[3].getValue();
+    theSim.base().pulse1FileType = theGui.pulldowns["pulse1"].getValue();
+    theSim.base().pulse2FileType = theGui.pulldowns["pulse2"].getValue();
+    theSim.base().fittingMode = theGui.pulldowns["fit"].getValue();
+    theSim.base().materialIndex = theGui.pulldowns["material"].getValue();
 
     theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(), &theSim.base().crystalTheta);
     theGui.textBoxes[i++].valueToPointer(deg2Rad<double>(),  &theSim.base().crystalPhi);
@@ -735,10 +734,10 @@ void readParametersFromInterface() {
     theGui.textBoxes[i++].valueToPointer(&theSim.base().Nsims);
     theGui.textBoxes[i++].valueToPointer(&theSim.base().Nsims2);
 
-    theSim.base().symmetryType = theGui.pulldowns[4].getValue();
-    theSim.base().batchIndex = theGui.pulldowns[5].getValue();
-    theSim.base().batchIndex2 = theGui.pulldowns[6].getValue();
-    theSim.base().runType = theGui.pulldowns[9].getValue();
+    theSim.base().symmetryType = theGui.pulldowns["propagator"].getValue();
+    theSim.base().batchIndex = theGui.pulldowns["batch1"].getValue();
+    theSim.base().batchIndex2 = theGui.pulldowns["batch2"].getValue();
+    theSim.base().runType = theGui.pulldowns["cluster"].getValue();
     theGui.textBoxes[52].valueToPointer(&theSim.base().NsimsCPU);
     theSim.base().isInSequence = false;
     theGui.sequence.copyBuffer(theSim.base().sequenceString);
@@ -1155,7 +1154,7 @@ void createRunFile() {
     }
 
     //create SLURM script
-    theSim.base().runType = theGui.pulldowns[9].getValue();
+    theSim.base().runType = theGui.pulldowns["cluster"].getValue();
     int gpuType = 0;
     int gpuCount = 1;
     switch (theSim.base().runType) {
@@ -1207,7 +1206,7 @@ void createRunFile() {
 static void buttonAddSameCrystal() {
     if (theGui.textBoxes[34].valueDouble() != 0.0) {
         theGui.sequence.cPrint("plasma({},{},{},{},{},{},{},{},{})\n",
-            theGui.pulldowns[3].getValue(), theGui.textBoxes[32].valueDouble(),
+            theGui.pulldowns["material"].getValue(), theGui.textBoxes[32].valueDouble(),
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[34].valueDouble(),
             theGui.textBoxes[35].valueDouble(), theGui.textBoxes[36].valueDouble(),
             theGui.textBoxes[37].valueDouble(), theGui.textBoxes[42].valueDouble(),
@@ -1216,7 +1215,7 @@ static void buttonAddSameCrystal() {
     }
     else {
         theGui.sequence.cPrint("nonlinear({},{},{},{},{})\n",
-            theGui.pulldowns[3].getValue(), theGui.textBoxes[32].valueDouble(),
+            theGui.pulldowns["material"].getValue(), theGui.textBoxes[32].valueDouble(),
             theGui.textBoxes[33].valueDouble(), theGui.textBoxes[42].valueDouble(),
             theGui.textBoxes[43].valueDouble());
         theGui.sequence.paintSequenceText();
@@ -1240,7 +1239,7 @@ static void buttonAddFilter() {
 
 static void buttonAddLinear() {
     theGui.sequence.cPrint("linear({},{},{},{},{})\n",
-        theGui.pulldowns[3].getValue(), theGui.textBoxes[32].valueDouble(),
+        theGui.pulldowns["material"].getValue(), theGui.textBoxes[32].valueDouble(),
         theGui.textBoxes[33].valueDouble(), theGui.textBoxes[42].valueDouble(),
         theGui.textBoxes[43].valueDouble());
     theGui.sequence.paintSequenceText();
@@ -1280,7 +1279,7 @@ static void buttonAddPulse() {
         0.0,
         theGui.textBoxes[14].valueDouble(),
         theGui.textBoxes[15].valueDouble(),
-        theGui.pulldowns[3].getValue(),
+        theGui.pulldowns["material"].getValue(),
         theGui.textBoxes[32].valueDouble(),
         theGui.textBoxes[33].valueDouble());
     theGui.sequence.paintSequenceText();
@@ -1455,7 +1454,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if (theGui.checkBoxes[1].isChecked()) {
+    if (theGui.checkBoxes["Log"].isChecked()) {
         logPlot = true;
     }
     int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
@@ -1476,7 +1475,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         forceY = true;
     }
     bool overlayTotal = false;
-    if (theGui.checkBoxes[0].isChecked()) {
+    if (theGui.checkBoxes["Total"].isChecked()) {
         overlayTotal = true;
     }
 
@@ -1539,7 +1538,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         theGui.saveSVG--;
     }
     bool logPlot = false;
-    if (theGui.checkBoxes[1].isChecked()) {
+    if (theGui.checkBoxes["Log"].isChecked()) {
         logPlot = true;
     }
     int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
@@ -1560,7 +1559,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         forceY = true;
     }
     bool overlayTotal = false;
-    if (theGui.checkBoxes[0].isChecked()) {
+    if (theGui.checkBoxes["Total"].isChecked()) {
         overlayTotal = true;
     }
     if (saveSVG) {
@@ -1763,9 +1762,9 @@ void launchRunThread() {
     if(!theSim.base().isRunning) 
         std::thread(
             mainSimThread, 
-            theGui.pulldowns[7].getValue(), 
-            theGui.pulldowns[8].getValue(), 
-            theGui.checkBoxes[3].isChecked()
+            theGui.pulldowns["primaryHardware"].getValue(), 
+            theGui.pulldowns["secondaryHardware"].getValue(), 
+            theGui.checkBoxes["FP64"].isChecked()
         ).detach();
 }
 
@@ -1773,8 +1772,8 @@ void launchFitThread() {
     if (!theSim.base().isRunning) 
         std::thread(
             fittingThread, 
-            theGui.pulldowns[7].getValue(), 
-            theGui.checkBoxes[3].isChecked()
+            theGui.pulldowns["primaryHardware"].getValue(), 
+            theGui.checkBoxes["FP64"].isChecked()
         ).detach();
 }
 
