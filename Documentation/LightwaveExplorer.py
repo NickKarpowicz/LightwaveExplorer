@@ -755,4 +755,43 @@ def deviceDawson(x):
             
 
         return d/np.sqrt(np.pi)
+
+def loadAndFuse(listOfFileNames: list[str], batchType: str):
+    """
+    load a set of single simulations and fuse the results together as
+    if they came from a batch. May be useful for getting around memory
+    limitations.
+
+    :param listOfFileNames: list of strings containing the file names to load, in order
+    :param batchType: the attribute being scanned in the batch, e.g. frequency1
+    """
+    baseStructure = load(listOfFileNames[0])
+    stackAxis = len(baseStructure.Ext_x.shape)
+    if stackAxis == 2:
+        baseStructure.Ext_x = baseStructure.Ext_x[:,:,np.newaxis]
+        baseStructure.Ext_y = baseStructure.Ext_y[:,:,np.newaxis]
+    else:
+        baseStructure.Ext_x = baseStructure.Ext_x[:,:,:,np.newaxis]
+        baseStructure.Ext_y = baseStructure.Ext_y[:,:,:,np.newaxis]
+    
+    baseStructure.spectrum_x = baseStructure.spectrum_x[np.newaxis,:]
+    baseStructure.spectrum_y = baseStructure.spectrum_y[np.newaxis,:]
+    baseStructure.spectrumTotal = baseStructure.spectrumTotal[np.newaxis,:]
+
+    baseStructure.batchVector = getattr(baseStructure, batchType)
+    baseStructure.batchStart = baseStructure.batchVector
+    
+    for name in listOfFileNames[1:]:
+        newStructure = load(name)
+        if stackAxis == 2:
+            baseStructure.Ext_x = np.concatenate((baseStructure.Ext_x, newStructure.Ext_x[:,:,np.newaxis]), axis=stackAxis)
+            baseStructure.Ext_y = np.concatenate((baseStructure.Ext_y, newStructure.Ext_y[:,:,np.newaxis]), axis=stackAxis)
+        else:
+            baseStructure.Ext_x = np.concatenate((baseStructure.Ext_x, newStructure.Ext_x[:,:,:,np.newaxis]), axis=stackAxis)
+            baseStructure.Ext_y = np.concatenate((baseStructure.Ext_y, newStructure.Ext_y[:,:,:,np.newaxis]), axis=stackAxis)
+        baseStructure.spectrum_x = np.concatenate((baseStructure.spectrum_x, newStructure.spectrum_x[np.newaxis,:]), axis=0)
+        baseStructure.spectrum_y = np.concatenate((baseStructure.spectrum_y, newStructure.spectrum_y[np.newaxis,:]), axis=0)
+        baseStructure.spectrumTotal = np.concatenate((baseStructure.spectrumTotal, newStructure.spectrumTotal[np.newaxis,:]), axis=0)
+        baseStructure.batchVector = np.append(baseStructure.batchVector, getattr(baseStructure, batchType))
+    return baseStructure
 	
