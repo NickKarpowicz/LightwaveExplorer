@@ -803,7 +803,7 @@ public:
     int loadReferenceSpectrum();
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
     int saveSettingsFile();
-    double saveSlurmScript(int gpuType, int gpuCount, int64_t totalSteps);
+    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps);
     int readFittingString();
 
 

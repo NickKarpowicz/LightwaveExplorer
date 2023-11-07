@@ -137,7 +137,7 @@ int simulationParameterSet::loadReferenceSpectrum() {
 	return 0;
 }
 
-double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_t totalSteps) {
+double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps) {
 	std::string outputFile=outputBasePath;
 	outputFile.append(".slurmScript");
 	std::ofstream fs(outputFile, std::ios::binary);
@@ -160,15 +160,27 @@ double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_
 	}
 	//Plasma doubles estimate
 	if (nonlinearAbsorptionStrength != 0.0) timeEstimate *= 2.1;
-	if (gpuType != 2) timeEstimate *= 8; //if it's not an A100, assume its slow.
-	timeEstimate += 20.0; //fixed offset for loading .etc
-	timeEstimate /= 3600.0; //convert to hours
-	
+	if (gpuType != "a100") timeEstimate *= 8; //if it's not an A100, assume its slow.
+	timeEstimate *= 1.25; //safety margin
+	timeEstimate += 60.0; //fixed offset for loading .etc
+	int timeEstimateHours = timeEstimate/3600.0; //convert to hours
+	int timeEstimateMinutes = static_cast<int>(timeEstimate/60.0) - 60*timeEstimateHours;
+	if(timeEstimateHours >= 24){
+		timeEstimateHours = 24;
+		timeEstimateMinutes = 0;
+	}
+
 	if (fittingString[0] != 0 && fittingString[0] != 'N') {
 		readFittingString();
 		if (fittingMaxIterations > 0) timeEstimate *= fittingMaxIterations;
 	}
 	std::string baseName = getBasename(outputBasePath);
+	int memoryMB = (18 * sizeof(double) * Ngrid * maxN(Nsims, 1u)) / 1048576;
+	//TODO: needs a better estimate for FDTD mode
+
+	if(useJobArray) memoryMB /= Nsims;
+	memoryMB += 8192; //base level
+	if(useJobArray) gpuCount = 1;
 
 	fs << "#!/bin/bash -l" << '\x0A';
 	fs << "#SBATCH -o ./tjob.out.%j" << '\x0A';
@@ -176,48 +188,45 @@ double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_
 	fs << "#SBATCH -D ./" << '\x0A';
 	fs << "#SBATCH -J lightwave" << '\x0A';
 	fs << "#SBATCH --constraint=\"gpu\"" << '\x0A';
-	if (gpuType == 0) {
-		fs << "#SBATCH --gres=gpu:rtx5000:" << minN(gpuCount, 2) << '\x0A';
-	}
-	if (gpuType == 1) {
-		fs << "#SBATCH --gres=gpu:v100:" << minN(gpuCount, 2) << '\x0A';
-	}
-	if (gpuType == 2) {
-		fs << "#SBATCH --gres=gpu:a100:" << minN(gpuCount, 4) << '\x0A';
-		fs << "#SBATCH --cpus-per-task=" << 1 + minN(gpuCount, 4) << '\x0A';
-	}
-	fs << "#SBATCH --mem=" << 
-		8192 + (18 * sizeof(double) * Ngrid * maxN(Nsims, 1u)) / 1048576 << "M\x0A";
+	fs << "#SBATCH --gres=gpu:" << gpuType << ":" << minN(gpuCount, 2) << '\x0A';
+	fs << "#SBATCH --cpus-per-task=" << 1 + minN(gpuCount, 4) << '\x0A';
+	
+	fs << "#SBATCH --mem=" << memoryMB << "M\x0A";
 	fs << "#SBATCH --nodes=1" << '\x0A';
 	fs << "#SBATCH --ntasks-per-node=1" << '\x0A';
-	fs << "#SBATCH --time=" << (int)ceil(1.5 * timeEstimate) << ":00:00" << '\x0A';
+	fs << "#SBATCH --time=" << timeEstimateHours << ':' << timeEstimateMinutes << ":00" << '\x0A';
+	fs << "#SBATCH --array=0-" << Nsims * Nsims2  - 1<< '\x0A';
 	fs << "module purge" << '\x0A';
-	fs << "module load cuda/11.6" << '\x0A';
-	fs << "module load mkl/2022.1" << '\x0A';
+	fs << "module load cuda/12.1" << '\x0A';
+	fs << "module load mkl/2022.2" << '\x0A';
 	fs << "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH" << '\x0A';
-	if (gpuType == 0 || gpuType == 1) {
-		fs << "srun ./lwe " << baseName << ".input > " << baseName << ".out\x0A";
-	}
-	if (gpuType == 2) {
-		fs << "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}" << '\x0A';
-		fs << "srun ./lwe " << baseName << ".input > " << baseName << ".out\x0A";
-	}
+	fs << "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}" << '\x0A';
 
+	if(useJobArray){
+		fs << "file_id=$(printf \"%04d\" $SLURM_ARRAY_TASK_ID)\x0a";
+		fs << "base_name=\"" << baseName << "$file_id\"" << '\x0A';
+	}
+	else{
+		fs << "base_name=\"" << baseName << "\"" << '\x0A';
+	}
+	
+	
+	fs << "srun ./lwe $base_name.input > $base_name.out\x0A";
 	//optionally upload to a webdav location, if a token is provided
 	fs << "if [ -f webdav_token.txt ]; then" << '\x0A';
 	fs << "    webdav_token=$(<webdav_token.txt)" << '\x0A';
 	fs << "    webdav_url=$(<webdav_url.txt)" << '\x0A';
-	fs << "    curl --user \"$webdav_token\":nopass $webdav_url --upload-file " << baseName << ".out" << '\x0A';
-	fs << "    curl --user \"$webdav_token\":nopass $webdav_url --upload-file " << baseName << ".txt" << '\x0A';
-	fs << "    curl --user \"$webdav_token\":nopass $webdav_url --upload-file " << baseName << "_Ext.dat" << '\x0A';
-	fs << "    curl --user \"$webdav_token\":nopass $webdav_url --upload-file " << baseName << "_spectrum.dat" << '\x0A';
-	fs << "    rm " << baseName << ".out" << '\x0A';
-	fs << "    rm " << baseName << ".txt" << '\x0A';
-	fs << "    rm " << baseName << "_Ext.dat" << '\x0A';
-	fs << "    rm " << baseName << "_spectrum.dat" << '\x0A';
+	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\".out" << '\x0A';
+	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\".txt" << '\x0A';
+	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\"_Ext.dat" << '\x0A';
+	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\"_spectrum.dat" << '\x0A';
+	fs << "    rm \"$base_name\".out" << '\x0A';
+	fs << "    rm \"$base_name\".txt" << '\x0A';
+	fs << "    rm \"$base_name\"_Ext.dat" << '\x0A';
+	fs << "    rm \"$base_name\"_spectrum.dat" << '\x0A';
 	fs << "fi" << '\x0A';
 
-	return timeEstimate;
+	return timeEstimate/3600.0;
 }
 
 int simulationParameterSet::saveSettingsFile() {

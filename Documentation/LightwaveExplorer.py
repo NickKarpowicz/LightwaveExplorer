@@ -794,4 +794,7 @@ def loadAndFuse(listOfFileNames: list[str], batchType: str):
         baseStructure.spectrumTotal = np.concatenate((baseStructure.spectrumTotal, newStructure.spectrumTotal[np.newaxis,:]), axis=0)
         baseStructure.batchVector = np.append(baseStructure.batchVector, getattr(baseStructure, batchType))
     return baseStructure
-	
+
+def loadSplit(baseName: str, Ntotal: int, batchType:str):
+    nameList = [f"{baseName}{i:04d}.txt" for i in range(Ntotal)]
+    return loadAndFuse(nameList, batchType=batchType)

@@ -516,13 +516,14 @@ public:
         pulldowns["material"].init(parentHandle, textCol2a, 0, pulldownWidth, 1);
         pulldowns["material"].setLabel(-labelWidth, 0, ("Material"));
 
-        pulldowns["cluster"].addElement(("Cobra 1xR5k"));
-        pulldowns["cluster"].addElement(("Cobra 2xR5k"));
-        pulldowns["cluster"].addElement(("Cobra 1xV100"));
-        pulldowns["cluster"].addElement(("Cobra 2xV100"));
-        pulldowns["cluster"].addElement(("Raven 1xA100"));
-        pulldowns["cluster"].addElement(("Raven 2xA100"));
-        pulldowns["cluster"].addElement(("Raven 4xA100"));
+        pulldowns["cluster"].addElement("Cobra 1xR5k");
+        pulldowns["cluster"].addElement("Cobra 2xR5k");
+        pulldowns["cluster"].addElement("Cobra 1xV100");
+        pulldowns["cluster"].addElement("Cobra 2xV100");
+        pulldowns["cluster"].addElement("Raven 1xA100");
+        pulldowns["cluster"].addElement("Raven 2xA100");
+        pulldowns["cluster"].addElement("Raven 4xA100");
+        pulldowns["cluster"].addElement("Raven NxA100");
         pulldowns["cluster"].init(parentHandle, buttonCol2, 17, buttonWidth + 1, 1);
         pulldowns["cluster"].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");
@@ -1155,43 +1156,72 @@ void createRunFile() {
 
     //create SLURM script
     int cluster = theGui.pulldowns["cluster"].getValue();
-    int gpuType = 0;
+    std::string gpuType("ERROR");
     int gpuCount = 1;
+    bool arrayMode = false;
     switch (cluster) {
     case 0:
-        gpuType = 0;
+        gpuType.assign("rtx5000");
         gpuCount = 1;
         break;
     case 1:
-        gpuType = 0;
+        gpuType.assign("rtx5000");
         gpuCount = 2;
         break;
     case 2:
-        gpuType = 1;
+        gpuType.assign("v100");
         gpuCount = 1;
         break;
     case 3:
-        gpuType = 1;
+        gpuType.assign("v100");
         gpuCount = 2;
         break;
     case 4:
-        gpuType = 2;
+        gpuType.assign("a100");
         gpuCount = 1;
         break;
     case 5:
-        gpuType = 2;
+        gpuType.assign("a100");
         gpuCount = 2;
         break;
     case 6:
-        gpuType = 2;
+        gpuType.assign("a100");
         gpuCount = 4;
         break;
+    case 7:
+        gpuType.assign("a100");
+        gpuCount = 1;
+        arrayMode = true;
+        break;
     }
-    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, totalSteps);
+    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, totalSteps);
 
     //create command line settings file
     theSim.base().runType = runTypes::cluster;
-    theSim.sCPU()->saveSettingsFile();
+    
+    if(arrayMode){
+        int simIndex = 0;
+        auto& params = theSim.getParameterVector();
+        for(int i = 0; i<theSim.sCPU()->Nsims2; ++i){
+            for(int j = 0; j<theSim.sCPU()->Nsims; ++j){
+                simulationParameterSet arraySim = params[i*theSim.sCPU()->Nsims + j];
+                arraySim.Nsims = 1;
+                arraySim.Nsims2 = 1;
+                arraySim.outputBasePath.append(Sformat("{:04d}",simIndex++));
+                arraySim.runType = runTypes::cluster;
+                arraySim.batchIndex = 0;
+                arraySim.batchIndex2 = 0;
+                arraySim.saveSettingsFile();
+            }
+        }
+        int jobID = 0;
+
+    }
+    else{
+        theSim.sCPU()->saveSettingsFile();
+    }
+    
+    
 
     theGui.console.tPrint(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
