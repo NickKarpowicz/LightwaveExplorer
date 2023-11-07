@@ -737,7 +737,7 @@ void readParametersFromInterface() {
     theSim.base().symmetryType = theGui.pulldowns["propagator"].getValue();
     theSim.base().batchIndex = theGui.pulldowns["batch1"].getValue();
     theSim.base().batchIndex2 = theGui.pulldowns["batch2"].getValue();
-    theSim.base().runType = theGui.pulldowns["cluster"].getValue();
+    //theSim.base().runType = theGui.pulldowns["cluster"].getValue();
     theGui.textBoxes[52].valueToPointer(&theSim.base().NsimsCPU);
     theSim.base().isInSequence = false;
     theGui.sequence.copyBuffer(theSim.base().sequenceString);
@@ -874,7 +874,7 @@ void readParametersFromInterface() {
         theDatabase.db[theSim.base().materialIndex].axisType;
     theSim.base().progressCounter = &progressCounter;
 
-    theSim.base().runType = 0;
+    theSim.base().runType = runTypes::normal;
     theSim.base().isFollowerInSequence = false;
     theSim.base().crystalDatabase = theDatabase.db.data();
 }
@@ -1132,7 +1132,7 @@ void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget) {
 
 void createRunFile() {
     readParametersFromInterface();
-    theSim.base().runType = 0;
+    theSim.base().runType = runTypes::normal;
     theSim.base().isGridAllocated = false;
     theSim.base().isFollowerInSequence = false;
     theSim.base().crystalDatabase = theDatabase.db.data();
@@ -1144,7 +1144,7 @@ void createRunFile() {
     for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         if (theSim.base().isInSequence) {
             counterVector[j].progressCounter = &totalSteps;
-            counterVector[j].runType = -1;
+            counterVector[j].runType = runTypes::counter;
             solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
         }
         else {
@@ -1154,10 +1154,10 @@ void createRunFile() {
     }
 
     //create SLURM script
-    theSim.base().runType = theGui.pulldowns["cluster"].getValue();
+    int cluster = theGui.pulldowns["cluster"].getValue();
     int gpuType = 0;
     int gpuCount = 1;
-    switch (theSim.base().runType) {
+    switch (cluster) {
     case 0:
         gpuType = 0;
         gpuCount = 1;
@@ -1190,7 +1190,7 @@ void createRunFile() {
     double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, totalSteps);
 
     //create command line settings file
-    theSim.base().runType = 1;
+    theSim.base().runType = runTypes::cluster;
     theSim.sCPU()->saveSettingsFile();
 
     theGui.console.tPrint(
@@ -1936,7 +1936,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
             if (theSim.base().isInSequence) {
                 counterVector[j].progressCounter = &totalSteps;
-                counterVector[j].runType = -1;
+                counterVector[j].runType = runTypes::counter;
                 solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
             }
             else {

@@ -223,7 +223,7 @@ double simulationParameterSet::saveSlurmScript(int gpuType, int gpuCount, int64_
 int simulationParameterSet::saveSettingsFile() {
 	crystalEntry *crystalDatabasePtr = crystalDatabase;
 	std::string outputPath(outputBasePath);
-	if (runType > 0) {
+	if (runType == runTypes::cluster) {
 		outputPath.append(".input");
 	}
 	else {
@@ -300,7 +300,7 @@ int simulationParameterSet::saveSettingsFile() {
 	fs << "Sequence: " << sequenceString << '\x0A';
 	fs << "Fitting: " << fittingString << '\x0A';
 	fs << "Fitting mode: " << fittingMode << '\x0A';
-	if (runType > 0) { //don't include full path if making a cluster script
+	if (runType == runTypes::cluster) { //don't include full path if making a cluster script
 		fs << "Output base path: " << baseName << '\x0A';
 		fs << "Field 1 from file type: " << pulse1FileType << '\x0A';
 		fs << "Field 2 from file type: " << pulse2FileType << '\x0A';
@@ -328,7 +328,7 @@ int simulationParameterSet::saveSettingsFile() {
 		}
 		fs << '\x0A';
 	}
-	fs << "Code version: 2023.08";
+	fs << "Code version: 2023.10";
 	fs << '\x0A';
 
 	return 0;

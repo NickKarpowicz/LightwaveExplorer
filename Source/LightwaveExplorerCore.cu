@@ -5802,7 +5802,7 @@ namespace hostFunctions{
 				parameters[3]);
 			break;
 		case functionID("fdtdGrid"):
-			if ((*sCPU).runType == -1) {
+			if ((*sCPU).runType == runTypes::counter) {
 				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)
 					+=5 * ((*sCPU).Ntime + (*sCPU).crystalThickness/(lightC<double>()*(*sCPU).tStep));
 				break;
@@ -5823,7 +5823,7 @@ namespace hostFunctions{
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
-				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != -1) {
+				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != runTypes::counter) {
 					memcpy(
 						&(*sCPU).ExtOut[saveLoc * (*sCPU).Ngrid * 2], 
 						(*sCPU).ExtOut, 
@@ -5837,7 +5837,7 @@ namespace hostFunctions{
 						(*sCPU).totalSpectrum, 
 						3 * (*sCPU).Nfreq * sizeof(double));
 				}
-				else if ((*sCPU).runType != -1) {
+				else if ((*sCPU).runType != runTypes::counter) {
 					throw std::runtime_error(
 						std::string("Attempted out-of-bounds save() to index ")
 						.append(std::to_string(saveLoc)).append("\n"));
@@ -5851,7 +5851,7 @@ namespace hostFunctions{
 				int64_t plasmaLoc = (int)parameters[1];
 				if (saveLoc < (*sCPU).Nsims 
 					&& saveLoc != 0 
-					&& (*sCPU).runType != -1) 
+					&& (*sCPU).runType != runTypes::counter) 
 					savePlasma(d, saveLoc, plasmaLoc);
 				else {
 					throw std::runtime_error(
@@ -5967,7 +5967,7 @@ namespace hostFunctions{
 			break;
 		case functionID("energy"):
 			{
-			if ((*sCPU).runType == -1) break;
+			if ((*sCPU).runType == runTypes::counter) break;
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			int targetVar = (int)parameters[0];
 			int spectrumType = (int)parameters[1];
@@ -6005,7 +6005,7 @@ namespace hostFunctions{
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case functionID("addPulse"):
-			if ((*sCPU).runType == -1) break;
+			if ((*sCPU).runType == runTypes::counter) break;
 		{
 			interpretParameters(cc, 21, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
