@@ -2589,6 +2589,54 @@ namespace kernelNamespace{
 		}
 	};
 
+	class inverseApertureFarFieldKernel {
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP radius;
+		const deviceFP activationParameter;
+		const deviceFP xOffset;
+		const deviceFP yOffset;
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			i = j + col * (*s).Nfreq;
+			const int64_t k = col % (*s).Nspace;
+			const int64_t l = col / (*s).Nspace;
+
+			//magnitude of k vector
+			const deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
+
+			//transverse wavevector being resolved
+			const deviceFP dk1 = k * (*s).dk1 - (k >= ((int64_t)(*s).Nspace / 2)) 
+				* ((*s).dk1 * (int64_t)(*s).Nspace); //frequency grid in x direction
+			deviceFP dk2 = {};
+			if ((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((int64_t)(*s).Nspace2 / 2)) 
+				* ((*s).dk2 * (int64_t)(*s).Nspace2); //frequency grid in y direction
+
+			//light that won't go the the farfield is immediately zero
+			if (dk1 * dk1 > ko * ko || dk2 * dk2 > ko * ko) {
+				(*s).gridEFrequency1[i] = {};
+				(*s).gridEFrequency2[i] = {};
+				return;
+			}
+
+			deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
+			deviceFP theta2 = deviceFPLib::asin(dk2 / ko);
+
+			theta1 -= (!(*s).isCylindric) * xOffset;
+			theta2 -= (*s).is3D * yOffset;
+
+			const deviceFP r = deviceFPLib::hypot(theta1, theta2);
+			const deviceFP a = (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
+			(*s).gridEFrequency1[i] *= a;
+			(*s).gridEFrequency2[i] *= a;
+			if (j == 1) {
+				(*s).gridEFrequency1[i - 1] = deviceComplex{};
+				(*s).gridEFrequency2[i - 1] = deviceComplex{};
+			}
+		}
+	};
+
 	class apertureFarFieldKernelHankel { 
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
@@ -2619,6 +2667,46 @@ namespace kernelNamespace{
 
 			const deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
 			const deviceFP a = 1.0f - (1.0f / (1.0f + 
+				deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
+			(*s).gridEFrequency1[i] *= a;
+			(*s).gridEFrequency2[i] *= a;
+			if (j == 1) {
+				(*s).gridEFrequency1[i - 1] = deviceComplex{};
+				(*s).gridEFrequency2[i - 1] = deviceComplex{};
+			}
+		}
+	};
+
+	class inverseApertureFarFieldKernelHankel { 
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP radius;
+		const deviceFP activationParameter; 
+		const deviceFP xOffset;
+		const deviceFP yOffset;
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			i = j + col * (*s).Nfreq;
+			const int64_t k = col % (*s).Nspace;
+
+			//magnitude of k vector
+			deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) 
+				* j * (*s).fStep;
+
+			//transverse wavevector being resolved
+			deviceFP dk1 = constProd((deviceFP)2.0, 1.0 / vPi<double>()) 
+				* k / ((*s).dx * (*s).Nspace);; //frequency grid in x direction
+
+			//light that won't go the the farfield is immediately zero
+			if (dk1 * dk1 > ko * ko) {
+				(*s).gridEFrequency1[i] = {};
+				(*s).gridEFrequency2[i] = {};
+				return;
+			}
+
+			const deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
+			const deviceFP a = (1.0f / (1.0f + 
 				deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
 			(*s).gridEFrequency1[i] *= a;
 			(*s).gridEFrequency2[i] *= a;
@@ -4648,6 +4736,45 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	static int applyInverseAperatureFarFieldHankel(
+		ActiveDevice& d, 
+		simulationParameterSet* sCPU, 
+		double diameter, 
+		double activationParameter, 
+		double xOffset, 
+		double yOffset) {
+		d.deviceMemcpy(
+			d.deviceStruct.gridETime1, 
+			(*sCPU).ExtOut, 
+			2 * d.deviceStruct.Ngrid * sizeof(double), 
+			copyType::ToDevice);
+		forwardHankel(d, d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1);
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
+		d.deviceLaunch(
+			d.deviceStruct.Nblock / 2, 
+			d.deviceStruct.Nthread, 
+			inverseApertureFarFieldKernelHankel{
+				sDevice,
+				(deviceFP)(0.5 * deg2Rad<deviceFP>() * diameter),
+				(deviceFP)activationParameter,
+				(deviceFP)(deg2Rad<deviceFP>() * xOffset),
+				(deviceFP)(deg2Rad<deviceFP>() * yOffset) });
+		backwardHankel(d, d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1);
+		d.deviceMemcpy(
+			(*sCPU).ExtOut, 
+			d.deviceStruct.gridETime1, 
+			2 * (*sCPU).Ngrid * sizeof(double), 
+			copyType::ToHost);
+		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		d.deviceMemcpy(
+			(*sCPU).EkwOut, 
+			d.deviceStruct.gridEFrequency1, 
+			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), 
+			copyType::ToHost);
+		getTotalSpectrum(d);
+		return 0;
+	}
+
 	static int applyAperatureFarField(
 		ActiveDevice& d, 
 		simulationParameterSet* sCPU, 
@@ -4666,6 +4793,54 @@ namespace hostFunctions{
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, apertureFarFieldKernel{
+			sDevice,
+			(deviceFP)(0.5 * deg2Rad<deviceFP>() * diameter),
+			(deviceFP)activationParameter,
+			(deviceFP)(deg2Rad<deviceFP>() * xOffset),
+			(deviceFP)(deg2Rad<deviceFP>() * yOffset) });
+
+		d.deviceMemcpy(
+			(*sCPU).EkwOut, 
+			d.deviceStruct.gridEFrequency1, 
+			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), 
+			copyType::ToHost);
+
+		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
+
+		d.deviceLaunch(
+			(int)(d.deviceStruct.Ngrid / minGridDimension), 
+			2 * minGridDimension, 
+			multiplyByConstantKernelD{
+				d.deviceStruct.gridETime1, 
+				(deviceFP)(1.0 / d.deviceStruct.Ngrid) });
+		d.deviceMemcpy(
+			(*sCPU).ExtOut, 
+			d.deviceStruct.gridETime1, 
+			2 * (*sCPU).Ngrid * sizeof(double), 
+			copyType::ToHost);
+
+		getTotalSpectrum(d);
+		return 0;
+	}
+
+	static int applyInverseAperatureFarField(
+		ActiveDevice& d, 
+		simulationParameterSet* sCPU, 
+		double diameter, 
+		double activationParameter, 
+		double xOffset, 
+		double yOffset) {
+		if ((*sCPU).isCylindric) {
+			return applyInverseAperatureFarFieldHankel(d, sCPU, diameter, activationParameter, xOffset, yOffset);
+		}
+		d.deviceMemcpy(
+			d.deviceStruct.gridETime1, 
+			(*sCPU).ExtOut, 
+			2 * d.deviceStruct.Ngrid * sizeof(double), 
+			copyType::ToDevice);
+		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
+		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, inverseApertureFarFieldKernel{
 			sDevice,
 			(deviceFP)(0.5 * deg2Rad<deviceFP>() * diameter),
 			(deviceFP)activationParameter,
@@ -5963,6 +6138,20 @@ namespace hostFunctions{
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 			d.reset(sCPU);
 			applyAperatureFarField(d, sCPU,
+				parameters[0],
+				parameters[1],
+				parameters[2],
+				parameters[3]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
+		case functionID("farFieldInverseAperture"):
+			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			(*sCPU).materialIndex = 0;
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
+			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
+			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
+			d.reset(sCPU);
+			applyInverseAperatureFarField(d, sCPU,
 				parameters[0],
 				parameters[1],
 				parameters[2],
