@@ -756,7 +756,7 @@ def deviceDawson(x):
 
         return d/np.sqrt(np.pi)
 
-def loadAndFuse(listOfFileNames: list[str], batchType: str):
+def loadSplit(baseName: str, Ntotal: int, batchType:str):
     """
     load a set of single simulations and fuse the results together as
     if they came from a batch. May be useful for getting around memory
@@ -765,36 +765,83 @@ def loadAndFuse(listOfFileNames: list[str], batchType: str):
     :param listOfFileNames: list of strings containing the file names to load, in order
     :param batchType: the attribute being scanned in the batch, e.g. frequency1
     """
+    listOfFileNames = [f"{baseName}{i:04d}.txt" for i in range(Ntotal)]
     baseStructure = load(listOfFileNames[0])
     stackAxis = len(baseStructure.Ext_x.shape)
     if stackAxis == 2:
-        baseStructure.Ext_x = baseStructure.Ext_x[:,:,np.newaxis]
-        baseStructure.Ext_y = baseStructure.Ext_y[:,:,np.newaxis]
+        tmp = np.array(baseStructure.Ext_x)
+        baseStructure.Ext_x = np.zeros((baseStructure.Ext_x.shape[0],baseStructure.Ext_x.shape[1],Ntotal), dtype=float)
+        baseStructure.Ext_x[:,:,0] = tmp
+        tmp = np.array(baseStructure.Ext_y)
+        baseStructure.Ext_y = np.zeros(baseStructure.Ext_x.shape,dtype=float)
+        baseStructure.Ext_y[:,:,0] = tmp
     else:
-        baseStructure.Ext_x = baseStructure.Ext_x[:,:,:,np.newaxis]
-        baseStructure.Ext_y = baseStructure.Ext_y[:,:,:,np.newaxis]
-    
-    baseStructure.spectrum_x = baseStructure.spectrum_x[np.newaxis,:]
-    baseStructure.spectrum_y = baseStructure.spectrum_y[np.newaxis,:]
-    baseStructure.spectrumTotal = baseStructure.spectrumTotal[np.newaxis,:]
+        tmp = np.array(baseStructure.Ext_x)
+        baseStructure.Ext_x = np.zeros((baseStructure.Ext_x.shape[0],baseStructure.Ext_x.shape[1],baseStructure.Ext_x.shape[2],Ntotal), dtype=float)
+        baseStructure.Ext_x[:,:,:,0] = tmp
+        tmp = np.array(baseStructure.Ext_y)
+        baseStructure.Ext_y = np.zeros(baseStructure.Ext_x.shape,dtype=float)
+        baseStructure.Ext_y[:,:,:,0] = tmp
+    tmp = np.array(baseStructure.spectrum_x)
+    baseStructure.spectrum_x = np.zeros((Ntotal,baseStructure.spectrum_x.shape[0]),dtype=float)#baseStructure.spectrum_x[np.newaxis,:]
+    baseStructure.spectrum_x[0,:] = tmp
+    tmp = np.array(baseStructure.spectrum_y)
+    baseStructure.spectrum_y = np.zeros(baseStructure.spectrum_x.shape,dtype=float)
+    baseStructure.spectrum_y[0,:] = tmp
+    tmp = np.array(baseStructure.spectrumTotal)
+    baseStructure.spectrumTotal = np.zeros(baseStructure.spectrum_x.shape,dtype=float)
+    baseStructure.spectrumTotal[0,:] = tmp
 
     baseStructure.batchVector = getattr(baseStructure, batchType)
     baseStructure.batchStart = baseStructure.batchVector
     
-    for name in listOfFileNames[1:]:
-        newStructure = load(name)
+    for i in range(1,Ntotal):
+        newStructure = load(listOfFileNames[i])
         if stackAxis == 2:
-            baseStructure.Ext_x = np.concatenate((baseStructure.Ext_x, newStructure.Ext_x[:,:,np.newaxis]), axis=stackAxis)
-            baseStructure.Ext_y = np.concatenate((baseStructure.Ext_y, newStructure.Ext_y[:,:,np.newaxis]), axis=stackAxis)
+            baseStructure.Ext_x[:,:,i] = newStructure.Ext_x
+            baseStructure.Ext_y[:,:,i] = newStructure.Ext_y
         else:
-            baseStructure.Ext_x = np.concatenate((baseStructure.Ext_x, newStructure.Ext_x[:,:,:,np.newaxis]), axis=stackAxis)
-            baseStructure.Ext_y = np.concatenate((baseStructure.Ext_y, newStructure.Ext_y[:,:,:,np.newaxis]), axis=stackAxis)
-        baseStructure.spectrum_x = np.concatenate((baseStructure.spectrum_x, newStructure.spectrum_x[np.newaxis,:]), axis=0)
-        baseStructure.spectrum_y = np.concatenate((baseStructure.spectrum_y, newStructure.spectrum_y[np.newaxis,:]), axis=0)
-        baseStructure.spectrumTotal = np.concatenate((baseStructure.spectrumTotal, newStructure.spectrumTotal[np.newaxis,:]), axis=0)
+            baseStructure.Ext_x[:,:,:,i] = newStructure.Ext_x
+            baseStructure.Ext_y[:,:,:,i] = newStructure.Ext_y
+        baseStructure.spectrum_x[i,:] = newStructure.spectrum_x
+        baseStructure.spectrum_y[i,:] = newStructure.spectrum_y
+        baseStructure.spectrumTotal[i,:] = newStructure.spectrumTotal
         baseStructure.batchVector = np.append(baseStructure.batchVector, getattr(baseStructure, batchType))
+    
     return baseStructure
 
-def loadSplit(baseName: str, Ntotal: int, batchType:str):
-    nameList = [f"{baseName}{i:04d}.txt" for i in range(Ntotal)]
-    return loadAndFuse(nameList, batchType=batchType)
+def fuseBinaries(outputTextFile: str):
+    """
+    Combine the binary components of a simulation that was split to run on a cluster.
+    
+    :param inputTextFile: The base file name associated with the simulation. If this is Result.Txt, it will
+    combine the files associated with Result0000.txt, Result0001.txt and so on
+    """
+    def fuseFile(baseName: str, ending: str):
+
+        output_name = baseName+ending
+        if os.path.exists(output_name):
+            os.remove(output_name)
+        print("Fusing "+output_name+" from:")
+        files = [filename for filename in os.listdir() if filename.startswith(baseName) and filename.endswith(ending)]
+        files.sort()
+        print(files)
+        output = open(output_name,'wb')
+        for file in files:
+            current = open(file,'rb')
+            try:
+                while True:
+                    piece = current.read(1024*1024*128)
+                    if not piece:
+                        break
+                    output.write(piece)
+            finally:
+                current.close()
+                print(file)
+        output.close()
+    
+    base = os.path.splitext(os.path.basename(outputTextFile))[0]
+
+    fuseFile(base,"_Ext.dat")
+    fuseFile(base,"_spectrum.dat")
+

@@ -154,6 +154,9 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	else if (symmetryType == 1) {
 		timeEstimate *= 2.0e-11;
 	}
+	else if (symmetryType == 4){
+		timeEstimate = 1e-11 * static_cast<double>((totalSteps / (Nsims * Nsims2)) * Nspace * Nspace2 * Ntime * (crystalThickness/propagationStep)) * ceil(static_cast<double>(Nsims * Nsims2) / gpuCount);
+	}
 	//2D
 	else {
 		timeEstimate *= 1.0e-11;

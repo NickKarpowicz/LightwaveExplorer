@@ -1197,11 +1197,12 @@ void createRunFile() {
     double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, totalSteps);
 
     //create command line settings file
-    theSim.base().runType = runTypes::cluster;
+    
     
     if(arrayMode){
         int simIndex = 0;
         auto& params = theSim.getParameterVector();
+        theSim.sCPU()->saveSettingsFile();
         for(int i = 0; i<theSim.sCPU()->Nsims2; ++i){
             for(int j = 0; j<theSim.sCPU()->Nsims; ++j){
                 simulationParameterSet arraySim = params[i*theSim.sCPU()->Nsims + j];
@@ -1211,13 +1212,14 @@ void createRunFile() {
                 arraySim.runType = runTypes::cluster;
                 arraySim.batchIndex = 0;
                 arraySim.batchIndex2 = 0;
+                arraySim.runType = runTypes::cluster;
                 arraySim.saveSettingsFile();
             }
         }
         int jobID = 0;
-
     }
     else{
+        theSim.base().runType = runTypes::cluster;
         theSim.sCPU()->saveSettingsFile();
     }
     
