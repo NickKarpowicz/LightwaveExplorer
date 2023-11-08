@@ -1070,11 +1070,18 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
         theGui.fitCommand.clear();
         int readParameters = 
             theSim.base().readInputParametersFile(theDatabase.db.data(), path);
-        theSim.configure();
+        
         if (readParameters == 61) {
             int64_t extensionLoc = path.find_last_of(".");
             const std::string basePath = path.substr(0, extensionLoc);
-            theSim.base().loadSavedFields(basePath);
+            std::string testPath = basePath;
+            if(std::filesystem::exists(testPath.append("_Ext.dat"))){
+                theSim.configure();
+                theSim.base().loadSavedFields(basePath);
+            }
+            else{
+                theSim.base().isGridAllocated = false;
+            }
 
             setInterfaceValuesToActiveValues();
             theGui.requestSliderUpdate();

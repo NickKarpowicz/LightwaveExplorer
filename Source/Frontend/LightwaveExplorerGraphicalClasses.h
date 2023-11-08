@@ -1073,7 +1073,7 @@ gboolean formatSequenceBuffer(gpointer data) {
         "fresnelLoss",
         "aperture",
         "farFieldAperture",
-        "farFieldInverseAperture"
+        "farFieldInverseAperture",
         "energy",
         "filter",
         "lorentzian",
