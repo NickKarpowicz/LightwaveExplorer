@@ -957,7 +957,7 @@ public:
         std::for_each(mutexes.begin(), mutexes.end(), 
             [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
     }
-    void configure();
+    void configure(bool allocateFields=true);
     void configureCounter();
     void loadPulseFiles();
     int saveDataSet();

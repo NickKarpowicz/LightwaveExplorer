@@ -1,5 +1,5 @@
 #include "LightwaveExplorerFrontendGTK.h"
-#include <unordered_map>
+
 //Main data structures:
 // theSim contains all of the parameters of the current simulation including grid arrays
 // theDatabase is the database of crystal properties
@@ -1080,6 +1080,7 @@ void loadFromDialogBox(GtkDialog* dialog, int response) {
                 theSim.base().loadSavedFields(basePath);
             }
             else{
+                theSim.configure(false);
                 theSim.base().isGridAllocated = false;
             }
 
@@ -1145,7 +1146,6 @@ void createRunFile() {
     theSim.base().isFollowerInSequence = false;
     theSim.base().crystalDatabase = theDatabase.db.data();
     theSim.configureCounter();
-
 
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     totalSteps = 0;

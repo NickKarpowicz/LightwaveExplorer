@@ -676,7 +676,7 @@ int simulationParameterSet::readInputParametersFile(
 	else return -1;
 }
 
-void simulationBatch::configure() {
+void simulationBatch::configure(bool allocateFields) {
 	Nfreq = parameters[0].Nfreq;
 	Nsims = parameters[0].Nsims;
 	Nsims2 = parameters[0].Nsims2;
@@ -687,10 +687,13 @@ void simulationBatch::configure() {
 	parameters.resize(Nsimstotal, base);
 	std::for_each(mutexes.begin(), mutexes.end(),
 		[](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
-	Ext = std::vector<double>(Nsimstotal * Ngrid * 2, 0.0);
-	Ekw = std::vector<std::complex<double>>(
-		Nsimstotal * NgridC * 2, 
-		std::complex<double>(0.0, 0.0));
+	if(allocateFields){
+		Ext = std::vector<double>(Nsimstotal * Ngrid * 2, 0.0);
+		Ekw = std::vector<std::complex<double>>(
+			Nsimstotal * NgridC * 2, 
+			std::complex<double>(0.0, 0.0));
+	}
+	
 	mutexes = std::vector<std::mutex>(Nsimstotal);
 	totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
 
