@@ -172,6 +172,9 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 		timeEstimateHours = 24;
 		timeEstimateMinutes = 0;
 	}
+	if(timeEstimateHours == 0 && timeEstimateMinutes < 15){
+		timeEstimateMinutes = 15;
+	}
 
 	if (fittingString[0] != 0 && fittingString[0] != 'N') {
 		readFittingString();
