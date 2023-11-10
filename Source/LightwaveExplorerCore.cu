@@ -2911,6 +2911,32 @@ namespace kernelNamespace{
 	};
 
 	//apply linear propagation through a given medium to the fields
+	class correctFDTDAmplitudesKernel { 
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		deviceFunction void operator()(const int64_t localIndex) const {
+			int64_t i = localIndex;
+			const int64_t h = 1 + i % ((*s).Nfreq - 1);
+			const int64_t col = i / ((*s).Nfreq - 1);
+			i = h + col * ((*s).Nfreq);
+			const int64_t j = col % (*s).Nspace;
+			const int64_t k = col / (*s).Nspace;
+			const deviceFP kMagnitude = (h * (*s).fStep * twoPi<deviceFP>()) / lightC<deviceFP>();
+			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
+			const deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
+			if(dk2*dk2 + dk1*dk1 < kMagnitude*kMagnitude){
+				s->gridEFrequency1[i] *= kMagnitude/deviceFPLib::sqrt((kMagnitude - dk1)*(kMagnitude + dk1));//todo check the right value
+				s->gridEFrequency2[i] *= kMagnitude/deviceFPLib::sqrt((kMagnitude - dk2)*(kMagnitude + dk2));;
+			}
+			else{
+				s->gridEFrequency1[i] = {};
+				s->gridEFrequency2[i] = {};
+			}
+			
+
+		}
+	};
+	//apply linear propagation through a given medium to the fields
 	class applyLinearPropagationKernel { 
 	public:
 		const deviceFP* sellmeierCoefficients;
@@ -5859,19 +5885,27 @@ namespace hostFunctions{
 			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;
 			if ((*sCPU).cancellationCalled) break;
 		}
+		
+
+		//correct amplitudes for vectorial effects
+		d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		d.deviceLaunch(
+				d.deviceStruct.Nblock / 2, 
+				d.deviceStruct.Nthread,
+				correctFDTDAmplitudesKernel{ d.dParamsDevice });
+		d.deviceMemcpy(
+			(*sCPU).EkwOut,
+			d.deviceStruct.gridEFrequency1,
+			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>),
+			copyType::ToHost);
+		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
+		//transfer result to CPU memory and take spectrum
 		d.deviceMemcpy(
 			(*sCPU).ExtOut, 
-			maxCalc.inOutEx, 
+			d.deviceStruct.gridETime1, 
 			2*(*sCPU).Ngrid * sizeof(double), 
 			copyType::ToHost);
-
-		//take spectra, repopulate usual grids
-		d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
-		d.deviceMemcpy(
-			(*sCPU).EkwOut, 
-			d.deviceStruct.gridEFrequency1, 
-			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), 
-			copyType::ToHost);
+		
 		getTotalSpectrum(d);
 
 		//free device memory		
