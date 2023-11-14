@@ -166,7 +166,7 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	if (gpuType != "a100") timeEstimate *= 8; //if it's not an A100, assume its slow.
 	timeEstimate *= 1.25; //safety margin
 	timeEstimate += 60.0; //fixed offset for loading .etc
-	int timeEstimateHours = timeEstimate/3600.0; //convert to hours
+	int timeEstimateHours = static_cast<int>(timeEstimate/3600.0); //convert to hours
 	int timeEstimateMinutes = static_cast<int>(timeEstimate/60.0) - 60*timeEstimateHours;
 	if(timeEstimateHours >= 24){
 		timeEstimateHours = 24;
@@ -181,10 +181,10 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 		if (fittingMaxIterations > 0) timeEstimate *= fittingMaxIterations;
 	}
 	std::string baseName = getBasename(outputBasePath);
-	int memoryMB = (18 * sizeof(double) * Ngrid * maxN(Nsims, 1u)) / 1048576;
+	int memoryMB = static_cast<int>((18 * sizeof(double) * Ngrid * maxN(Nsims, 1u)) / 1048576);
 	//TODO: needs a better estimate for FDTD mode
 
-	if(useJobArray) memoryMB /= Nsims;
+	if(useJobArray) memoryMB /= static_cast<int>(Nsims);
 	memoryMB += 8192; //base level
 	if(useJobArray) gpuCount = 1;
 
