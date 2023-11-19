@@ -2925,17 +2925,20 @@ namespace kernelNamespace{
 			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 			const deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 			if(dk2*dk2 + dk1*dk1 < kMagnitude*kMagnitude){
-				s->gridEFrequency1[i] *= kMagnitude/deviceFPLib::sqrt((kMagnitude - dk1)*(kMagnitude + dk1));//todo check the right value
-				s->gridEFrequency2[i] *= kMagnitude/deviceFPLib::sqrt((kMagnitude - dk2)*(kMagnitude + dk2));;
+				s->gridEFrequency1[i] *= (*s).fftNorm * kMagnitude/deviceFPLib::sqrt((kMagnitude - dk1)*(kMagnitude + dk1));
+				s->gridEFrequency2[i] *= (*s).fftNorm * kMagnitude/deviceFPLib::sqrt((kMagnitude - dk2)*(kMagnitude + dk2));
 			}
 			else{
 				s->gridEFrequency1[i] = {};
 				s->gridEFrequency2[i] = {};
 			}
-			
-
+			if(h==1){
+				s->gridEFrequency1[i-1] = {};
+				s->gridEFrequency2[i-1] = {};
+			}
 		}
 	};
+	
 	//apply linear propagation through a given medium to the fields
 	class applyLinearPropagationKernel { 
 	public:
@@ -4204,6 +4207,7 @@ namespace hostFunctions{
 		deviceFP dz, 
 		deviceFP frontBuffer, 
 		deviceFP backBuffer,
+		deviceFP observationPoint = 0.0,
 		const std::string& materialMapPath = "");
 
 	static std::complex<double> hostSellmeierFunc(
@@ -5659,7 +5663,6 @@ namespace hostFunctions{
 		const std::string& materialMapPath = "") {
 
 		//Check if there is a material map and allocate/load it if necessary
-		//fdtdGrid("C:\Users\nickk\rzgdatashare\LightwaveExplorer\Tests\file.txt")
 		if (materialMapPath != "") {
 			//throw std::runtime_error(std::string("path string:\n").append(materialMapPath));
 			maxCalc.hasMaterialMap = false;
@@ -5747,7 +5750,10 @@ namespace hostFunctions{
 				for(int i = 0; i<NmaterialMax; i++){
 					calculateFDTDParameters(sCPU, maxCalc, i);
 				}
-				maxCalc.observationPoint = maxCalc.Nz - 10;
+				if(maxCalc.observationPoint==0){
+					maxCalc.observationPoint = maxCalc.Nz - 10;
+				}
+				
 			}
 			else{
 				throw std::runtime_error("Failed to load material map.\n");
@@ -5818,6 +5824,7 @@ namespace hostFunctions{
 		deviceFP dz, 
 		deviceFP frontBuffer, 
 		deviceFP backBuffer,
+		deviceFP observationPoint,
 		const std::string& materialMapPath) {
 		
 		//initialize the grid if necessary
@@ -5852,8 +5859,14 @@ namespace hostFunctions{
 		if (dz == 0.0) dz = (*sCPU).propagationStep;
 		//generate the FDTD data structure and prepare the device
 		maxwell3D maxCalc = maxwell3D(sCPU, tFactor, dz, frontBuffer, backBuffer);
+		if(observationPoint != 0.0){
+			maxCalc.observationPoint = static_cast<int>(round(observationPoint/dz));
+			if(maxCalc.observationPoint < 1 || maxCalc.observationPoint >= maxCalc.Nz){
+				throw std::runtime_error("Invalid observation point in FDTD\n");
+			}
+		}
 		prepareFDTD(d, sCPU, maxCalc, materialMapPath);
-
+		
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {
 			d.deviceLaunch(
@@ -6019,13 +6032,14 @@ namespace hostFunctions{
 			{std::string filepath = cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1);
 			std::string newParameterString =cc.substr(cc.find('"', cc.find('"') + 1)+1,std::string::npos);
 			newParameterString[0] = '(';
-			interpretParameters(newParameterString, 1, iBlock, vBlock, parameters, defaultMask);}
+			interpretParameters(newParameterString, 2, iBlock, vBlock, parameters, defaultMask);}
 			error = solveFDTD(d,
 				sCPU,
 				static_cast<int>(parameters[0]),
 				(*sCPU).propagationStep,
 				0.0,
 				0.0,
+				parameters[1],
 				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
 			break;
 		case functionID("default"):
