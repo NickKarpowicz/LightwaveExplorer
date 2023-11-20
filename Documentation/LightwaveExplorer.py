@@ -150,10 +150,10 @@ class lightwaveExplorerResult:
             self.batchStart = self.frequency2
             self.batchDestination *= 1e12
         elif self.batchIndex == 7:
-            self.batchStart = self.cephase1
+            self.batchStart = self.cePhase1
             self.batchDestination *= np.pi
         elif self.batchIndex == 8:
-            self.batchStart = self.cephase2
+            self.batchStart = self.cePhase2
             self.batchDestination *= np.pi
         elif self.batchIndex == 9:
             self.batchStart = self.delay1
@@ -258,10 +258,10 @@ class lightwaveExplorerResult:
             self.batchStart2 = self.frequency2
             self.batchDestination2 *= 1e12
         elif self.batchIndex2 == 7:
-            self.batchStart2 = self.cephase1
+            self.batchStart2 = self.cePhase1
             self.batchDestination2 *= np.pi
         elif self.batchIndex2 == 8:
-            self.batchStart2 = self.cephase2
+            self.batchStart2 = self.cePhase2
             self.batchDestination2 *= np.pi
         elif self.batchIndex2 == 9:
             self.batchStart2 = self.delay1
