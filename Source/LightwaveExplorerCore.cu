@@ -1389,9 +1389,8 @@ namespace deviceFunctions {
 		const oscillator<deviceFP>* currentGridIn,
 		maxwellKPoint<deviceFP>& k,
 		const int rkIndex) {
-
-		const int64_t zIndex = i % s->Nz;
-		const int64_t xIndex = (i / s->Nz);
+		const int64_t xIndex = i / s->Nz;
+		const int64_t zIndex = i - s->Nz * xIndex;
 		bool solveMaterialEquations = s->hasMaterialMap ?
 			s->materialMap[i] > 0
 			: zIndex >= s->materialStart && zIndex < s->materialStop;
@@ -1571,7 +1570,7 @@ namespace deviceFunctions {
 		const T* sourceBeam1, 
 		const T* sourceBeam2) {
 		const int64_t j = i / (*s).Ntime; //spatial coordinate
-		const int64_t k = i % (*s).Ntime; //temporal coordinate
+		const int64_t k = i - j * (*s).Ntime; //temporal coordinate
 
 		//positions on the expanded grid corresponding the the current index
 		const int64_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
@@ -1933,8 +1932,9 @@ namespace deviceFunctions {
 
 		int64_t h = 1 + i % ((*s).Nfreq - 1);
 		int64_t col = i / ((*s).Nfreq - 1);
-		int64_t j = col % (*s).Nspace;
 		int64_t k = col / (*s).Nspace;
+		int64_t j = col - k * (*s).Nspace;
+		
 
 		deviceFP f = (*s).fStep * h;
 		deviceFP kx1 = (lightC<deviceFP>() 
@@ -2305,7 +2305,7 @@ namespace kernelNamespace{
 	class totalSpectrumKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(int64_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			deviceFP beamCenter1{};
 			deviceFP beamCenter2{};
 			deviceFP beamTotal1{};
@@ -2483,7 +2483,7 @@ namespace kernelNamespace{
 				(*s).gridRadialLaplacian2[i] = {};
 			}
 			else {
-				const int64_t h = i % (*s).Ntime;
+				const int64_t h = i - j * (*s).Ntime;
 				const deviceFP* E1 = (*s).gridETime1 + h;
 				const deviceFP* E2 = (*s).gridETime2 + h;
 				if (j < (*s).Nspace / 2) {
@@ -2551,8 +2551,9 @@ namespace kernelNamespace{
 			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
 			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			const int64_t k = col % (*s).Nspace;
 			const int64_t l = col / (*s).Nspace;
+			const int64_t k = col - l * (*s).Nspace;
+			
 
 			//magnitude of k vector
 			const deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
@@ -2600,8 +2601,9 @@ namespace kernelNamespace{
 			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
 			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			const int64_t k = col % (*s).Nspace;
 			const int64_t l = col / (*s).Nspace;
+			const int64_t k = col - l * (*s).Nspace;
+			
 
 			//magnitude of k vector
 			const deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
@@ -2919,8 +2921,9 @@ namespace kernelNamespace{
 			const int64_t h = 1 + i % ((*s).Nfreq - 1);
 			const int64_t col = i / ((*s).Nfreq - 1);
 			i = h + col * ((*s).Nfreq);
-			const int64_t j = col % (*s).Nspace;
 			const int64_t k = col / (*s).Nspace;
+			const int64_t j = col - k * (*s).Nspace;
+			
 			const deviceFP kMagnitude = (h * (*s).fStep * twoPi<deviceFP>()) / lightC<deviceFP>();
 			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 			const deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
@@ -3441,7 +3444,7 @@ namespace kernelNamespace{
 	class nonlinearPolarizationKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(int64_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			const deviceFP Ex = (*s).gridETime1[i];
 			const deviceFP Ey = (*s).gridETime2[i];
 
@@ -3560,7 +3563,7 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t i) const {
-			const int64_t j = (i) * (*s).Ntime;
+			const int64_t j = i * (*s).Ntime;
 			deviceFP N{};
 			deviceFP integralx{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
