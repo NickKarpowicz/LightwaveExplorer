@@ -991,9 +991,7 @@ void checkLibraryAvailability() {
 #ifndef NOSYCL
     bool isIntelRuntimeInstalled = true;
 #ifdef _WIN32
-    wchar_t loadBuffer[1024];
-    DWORD envcount = GetEnvironmentVariableW(L"INTEL_DEV_REDIST", loadBuffer, 16);
-    if(envcount==0) isIntelRuntimeInstalled = false;  
+    isIntelRuntimeInstalled = LoadLibraryA("pi_level_zero.dll"); 
 #endif
     if (isIntelRuntimeInstalled) {
         theSim.base().SYCLavailable = true;
