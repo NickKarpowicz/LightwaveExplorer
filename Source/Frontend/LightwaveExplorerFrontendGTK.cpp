@@ -1,5 +1,5 @@
 #include "LightwaveExplorerFrontendGTK.h"
-#include <unordered_map>
+
 //Main data structures:
 // theSim contains all of the parameters of the current simulation including grid arrays
 // theDatabase is the database of crystal properties
@@ -516,13 +516,14 @@ public:
         pulldowns["material"].init(parentHandle, textCol2a, 0, pulldownWidth, 1);
         pulldowns["material"].setLabel(-labelWidth, 0, ("Material"));
 
-        pulldowns["cluster"].addElement(("Cobra 1xR5k"));
-        pulldowns["cluster"].addElement(("Cobra 2xR5k"));
-        pulldowns["cluster"].addElement(("Cobra 1xV100"));
-        pulldowns["cluster"].addElement(("Cobra 2xV100"));
-        pulldowns["cluster"].addElement(("Raven 1xA100"));
-        pulldowns["cluster"].addElement(("Raven 2xA100"));
-        pulldowns["cluster"].addElement(("Raven 4xA100"));
+        pulldowns["cluster"].addElement("Cobra 1xR5k");
+        pulldowns["cluster"].addElement("Cobra 2xR5k");
+        pulldowns["cluster"].addElement("Cobra 1xV100");
+        pulldowns["cluster"].addElement("Cobra 2xV100");
+        pulldowns["cluster"].addElement("Raven 1xA100");
+        pulldowns["cluster"].addElement("Raven 2xA100");
+        pulldowns["cluster"].addElement("Raven 4xA100");
+        pulldowns["cluster"].addElement("Raven NxA100");
         pulldowns["cluster"].init(parentHandle, buttonCol2, 17, buttonWidth + 1, 1);
         pulldowns["cluster"].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");
@@ -737,7 +738,7 @@ void readParametersFromInterface() {
     theSim.base().symmetryType = theGui.pulldowns["propagator"].getValue();
     theSim.base().batchIndex = theGui.pulldowns["batch1"].getValue();
     theSim.base().batchIndex2 = theGui.pulldowns["batch2"].getValue();
-    theSim.base().runType = theGui.pulldowns["cluster"].getValue();
+    //theSim.base().runType = theGui.pulldowns["cluster"].getValue();
     theGui.textBoxes[52].valueToPointer(&theSim.base().NsimsCPU);
     theSim.base().isInSequence = false;
     theGui.sequence.copyBuffer(theSim.base().sequenceString);
@@ -874,7 +875,7 @@ void readParametersFromInterface() {
         theDatabase.db[theSim.base().materialIndex].axisType;
     theSim.base().progressCounter = &progressCounter;
 
-    theSim.base().runType = 0;
+    theSim.base().runType = runTypes::normal;
     theSim.base().isFollowerInSequence = false;
     theSim.base().crystalDatabase = theDatabase.db.data();
 }
@@ -990,9 +991,7 @@ void checkLibraryAvailability() {
 #ifndef NOSYCL
     bool isIntelRuntimeInstalled = true;
 #ifdef _WIN32
-    wchar_t loadBuffer[1024];
-    DWORD envcount = GetEnvironmentVariableW(L"INTEL_DEV_REDIST", loadBuffer, 16);
-    if(envcount==0) isIntelRuntimeInstalled = false;  
+    isIntelRuntimeInstalled = LoadLibraryA("pi_win_proxy_loader.dll"); 
 #endif
     if (isIntelRuntimeInstalled) {
         theSim.base().SYCLavailable = true;
@@ -1039,7 +1038,6 @@ void loadFromPath(std::string& path) {
         int64_t extensionLoc = path.find_last_of(".");
         const std::string basePath = path.substr(0, extensionLoc);
         theSim.base().loadSavedFields(basePath);
-
         setInterfaceValuesToActiveValues();
         theGui.requestSliderUpdate();
         theGui.requestPlotUpdate();
@@ -1061,19 +1059,18 @@ void dataPanelCollapseCallback(){
 
 void createRunFile() {
     readParametersFromInterface();
-    theSim.base().runType = 0;
+    theSim.base().runType = runTypes::normal;
     theSim.base().isGridAllocated = false;
     theSim.base().isFollowerInSequence = false;
     theSim.base().crystalDatabase = theDatabase.db.data();
     theSim.configureCounter();
-
 
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     totalSteps = 0;
     for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         if (theSim.base().isInSequence) {
             counterVector[j].progressCounter = &totalSteps;
-            counterVector[j].runType = -1;
+            counterVector[j].runType = runTypes::counter;
             solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
         }
         else {
@@ -1083,44 +1080,75 @@ void createRunFile() {
     }
 
     //create SLURM script
-    theSim.base().runType = theGui.pulldowns["cluster"].getValue();
-    int gpuType = 0;
+    int cluster = theGui.pulldowns["cluster"].getValue();
+    std::string gpuType("ERROR");
     int gpuCount = 1;
-    switch (theSim.base().runType) {
+    bool arrayMode = false;
+    switch (cluster) {
     case 0:
-        gpuType = 0;
+        gpuType.assign("rtx5000");
         gpuCount = 1;
         break;
     case 1:
-        gpuType = 0;
+        gpuType.assign("rtx5000");
         gpuCount = 2;
         break;
     case 2:
-        gpuType = 1;
+        gpuType.assign("v100");
         gpuCount = 1;
         break;
     case 3:
-        gpuType = 1;
+        gpuType.assign("v100");
         gpuCount = 2;
         break;
     case 4:
-        gpuType = 2;
+        gpuType.assign("a100");
         gpuCount = 1;
         break;
     case 5:
-        gpuType = 2;
+        gpuType.assign("a100");
         gpuCount = 2;
         break;
     case 6:
-        gpuType = 2;
+        gpuType.assign("a100");
         gpuCount = 4;
         break;
+    case 7:
+        gpuType.assign("a100");
+        gpuCount = 1;
+        arrayMode = true;
+        break;
     }
-    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, totalSteps);
+    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, totalSteps);
 
     //create command line settings file
-    theSim.base().runType = 1;
-    theSim.sCPU()->saveSettingsFile();
+    
+    
+    if(arrayMode){
+        int simIndex = 0;
+        auto& params = theSim.getParameterVector();
+        theSim.sCPU()->saveSettingsFile();
+        for(int i = 0; i<theSim.sCPU()->Nsims2; ++i){
+            for(int j = 0; j<theSim.sCPU()->Nsims; ++j){
+                simulationParameterSet arraySim = params[i*theSim.sCPU()->Nsims + j];
+                arraySim.Nsims = 1;
+                arraySim.Nsims2 = 1;
+                arraySim.outputBasePath.append(Sformat("{:04d}",simIndex++));
+                arraySim.runType = runTypes::cluster;
+                arraySim.batchIndex = 0;
+                arraySim.batchIndex2 = 0;
+                arraySim.runType = runTypes::cluster;
+                arraySim.saveSettingsFile();
+            }
+        }
+        int jobID = 0;
+    }
+    else{
+        theSim.base().runType = runTypes::cluster;
+        theSim.sCPU()->saveSettingsFile();
+    }
+    
+    
 
     theGui.console.tPrint(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
@@ -1865,7 +1893,7 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
         for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
             if (theSim.base().isInSequence) {
                 counterVector[j].progressCounter = &totalSteps;
-                counterVector[j].runType = -1;
+                counterVector[j].runType = runTypes::counter;
                 solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
             }
             else {

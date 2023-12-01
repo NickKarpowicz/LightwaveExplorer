@@ -5,15 +5,15 @@
 #include <string>
 #include <algorithm>
 #include <filesystem>
-#include "../LightwaveExplorerUtilities.h"
-#include "LightwaveExplorerGraphicalClasses.h"
-
-#undef __noinline__
-#include <gtk/gtk.h>
-
+#include <unordered_map>
 #include <thread>
 #include <chrono>
 #include <locale>
+#undef __noinline__
+#include <gtk/gtk.h>
+
+#include "../LightwaveExplorerUtilities.h"
+#include "LightwaveExplorerGraphicalClasses.h"
 #include "../Devices/LightwaveExplorerCoreCPU.h"
 #include "../Devices/LightwaveExplorerCoreCounter.h"
 #include "../Devices/LightwaveExplorerCoreCPUFP32.h"

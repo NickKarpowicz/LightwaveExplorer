@@ -49,6 +49,12 @@ enum class deviceFFT : int {
     D2Z_Polarization = 4
 };
 
+enum class runTypes : int {
+    counter = -1,
+    normal = 0,
+    cluster = 1
+};
+
 //Determine the type of data transfer - not necessary on all devices, but should be specified
 //consistently in the abstracted functions.
 // ToDevice: source is the host, destination is device
@@ -655,7 +661,7 @@ public:
     double batchDestination = 0;
     double batchDestination2 = 0;
     std::string outputBasePath;
-    int runType = 0;
+    runTypes runType = runTypes::normal;
     bool runningOnCPU = 0;
 
     //sequence
@@ -797,7 +803,7 @@ public:
     int loadReferenceSpectrum();
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
     int saveSettingsFile();
-    double saveSlurmScript(int gpuType, int gpuCount, int64_t totalSteps);
+    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps);
     int readFittingString();
 
 
@@ -951,7 +957,7 @@ public:
         std::for_each(mutexes.begin(), mutexes.end(), 
             [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
     }
-    void configure();
+    void configure(bool allocateFields=true);
     void configureCounter();
     void loadPulseFiles();
     int saveDataSet();

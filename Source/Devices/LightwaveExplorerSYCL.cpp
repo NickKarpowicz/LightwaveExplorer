@@ -23,7 +23,7 @@ void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
     unsigned char gpuCount = 0;
     std::vector<std::string> namelist;
     std::string deviceList;
-    for (const auto& p : cl::sycl::platform::get_platforms()) {
+    for (const auto& p : sycl::platform::get_platforms()) {
         for (const auto& d : p.get_devices()) {
             //loop through all devices, but only mention the GPUs and CPUs (maybe add accelerators later if there's something
             //useful to target and not emulators)
@@ -31,25 +31,25 @@ void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                 if (!(std::find(
                     std::begin(namelist),
                     std::end(namelist),
-                    d.get_info<cl::sycl::info::device::name>())
+                    d.get_info<sycl::info::device::name>())
                     != std::end(namelist))) {
-                    namelist.push_back(d.get_info<cl::sycl::info::device::name>());
+                    namelist.push_back(d.get_info<sycl::info::device::name>());
                     cpuCount++;
-                    deviceList.append(Sformat("SYCL found a CPU:\n   <span color=\"#66FFFFFF\">{}</span>\n", d.get_info<cl::sycl::info::device::name>()));
+                    deviceList.append(Sformat("SYCL found a CPU:\n   <span color=\"#66FFFFFF\">{}</span>\n", d.get_info<sycl::info::device::name>()));
                 }
             }
             if (d.is_gpu()) {
                 if (!(std::find(
                     std::begin(namelist),
                     std::end(namelist),
-                    d.get_info<cl::sycl::info::device::name>())
+                    d.get_info<sycl::info::device::name>())
                     
                     != std::end(namelist))) {
                     
-                    namelist.push_back(d.get_info<cl::sycl::info::device::name>());
+                    namelist.push_back(d.get_info<sycl::info::device::name>());
                     gpuCount++;
-                    deviceList.append(Sformat("SYCL found a GPU:\n   <span color=\"#66FFFFFF\">{}</span>\n", d.get_info<cl::sycl::info::device::name>()));
-                    if(sizeof(deviceFP) == sizeof(double) && d.get_info<cl::sycl::info::device::double_fp_config>().size() == 0) {
+                    deviceList.append(Sformat("SYCL found a GPU:\n   <span color=\"#66FFFFFF\">{}</span>\n", d.get_info<sycl::info::device::name>()));
+                    if(sizeof(deviceFP) == sizeof(double) && d.get_info<sycl::info::device::double_fp_config>().size() == 0) {
                         //gpuCount--;
                         deviceList.append(Sformat("   <span color=\"#FF6666\">Warning: doesn't support FP64</span>\n"));
                     }

@@ -1389,9 +1389,8 @@ namespace deviceFunctions {
 		const oscillator<deviceFP>* currentGridIn,
 		maxwellKPoint<deviceFP>& k,
 		const int rkIndex) {
-
-		const int64_t zIndex = i % s->Nz;
-		const int64_t xIndex = (i / s->Nz);
+		const int64_t xIndex = i / s->Nz;
+		const int64_t zIndex = i - s->Nz * xIndex;
 		bool solveMaterialEquations = s->hasMaterialMap ?
 			s->materialMap[i] > 0
 			: zIndex >= s->materialStart && zIndex < s->materialStop;
@@ -1571,7 +1570,7 @@ namespace deviceFunctions {
 		const T* sourceBeam1, 
 		const T* sourceBeam2) {
 		const int64_t j = i / (*s).Ntime; //spatial coordinate
-		const int64_t k = i % (*s).Ntime; //temporal coordinate
+		const int64_t k = i - j * (*s).Ntime; //temporal coordinate
 
 		//positions on the expanded grid corresponding the the current index
 		const int64_t pos1 = 2 * ((*s).Nspace - j - 1) * (*s).Ntime + k;
@@ -1933,8 +1932,9 @@ namespace deviceFunctions {
 
 		int64_t h = 1 + i % ((*s).Nfreq - 1);
 		int64_t col = i / ((*s).Nfreq - 1);
-		int64_t j = col % (*s).Nspace;
 		int64_t k = col / (*s).Nspace;
+		int64_t j = col - k * (*s).Nspace;
+		
 
 		deviceFP f = (*s).fStep * h;
 		deviceFP kx1 = (lightC<deviceFP>() 
@@ -2305,7 +2305,7 @@ namespace kernelNamespace{
 	class totalSpectrumKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(int64_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			deviceFP beamCenter1{};
 			deviceFP beamCenter2{};
 			deviceFP beamTotal1{};
@@ -2483,7 +2483,7 @@ namespace kernelNamespace{
 				(*s).gridRadialLaplacian2[i] = {};
 			}
 			else {
-				const int64_t h = i % (*s).Ntime;
+				const int64_t h = i - j * (*s).Ntime;
 				const deviceFP* E1 = (*s).gridETime1 + h;
 				const deviceFP* E2 = (*s).gridETime2 + h;
 				if (j < (*s).Nspace / 2) {
@@ -2551,8 +2551,9 @@ namespace kernelNamespace{
 			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
 			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
 			i = j + col * (*s).Nfreq;
-			const int64_t k = col % (*s).Nspace;
 			const int64_t l = col / (*s).Nspace;
+			const int64_t k = col - l * (*s).Nspace;
+			
 
 			//magnitude of k vector
 			const deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
@@ -2580,6 +2581,55 @@ namespace kernelNamespace{
 			const deviceFP r = deviceFPLib::hypot(theta1, theta2);
 			const deviceFP a = 1.0f 
 				- (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
+			(*s).gridEFrequency1[i] *= a;
+			(*s).gridEFrequency2[i] *= a;
+			if (j == 1) {
+				(*s).gridEFrequency1[i - 1] = deviceComplex{};
+				(*s).gridEFrequency2[i - 1] = deviceComplex{};
+			}
+		}
+	};
+
+	class inverseApertureFarFieldKernel {
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP radius;
+		const deviceFP activationParameter;
+		const deviceFP xOffset;
+		const deviceFP yOffset;
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			i = j + col * (*s).Nfreq;
+			const int64_t l = col / (*s).Nspace;
+			const int64_t k = col - l * (*s).Nspace;
+			
+
+			//magnitude of k vector
+			const deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) * j * (*s).fStep;
+
+			//transverse wavevector being resolved
+			const deviceFP dk1 = k * (*s).dk1 - (k >= ((int64_t)(*s).Nspace / 2)) 
+				* ((*s).dk1 * (int64_t)(*s).Nspace); //frequency grid in x direction
+			deviceFP dk2 = {};
+			if ((*s).is3D) dk2 = l * (*s).dk2 - (l >= ((int64_t)(*s).Nspace2 / 2)) 
+				* ((*s).dk2 * (int64_t)(*s).Nspace2); //frequency grid in y direction
+
+			//light that won't go the the farfield is immediately zero
+			if (dk1 * dk1 > ko * ko || dk2 * dk2 > ko * ko) {
+				(*s).gridEFrequency1[i] = {};
+				(*s).gridEFrequency2[i] = {};
+				return;
+			}
+
+			deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
+			deviceFP theta2 = deviceFPLib::asin(dk2 / ko);
+
+			theta1 -= (!(*s).isCylindric) * xOffset;
+			theta2 -= (*s).is3D * yOffset;
+
+			const deviceFP r = deviceFPLib::hypot(theta1, theta2);
+			const deviceFP a = (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
 			(*s).gridEFrequency1[i] *= a;
 			(*s).gridEFrequency2[i] *= a;
 			if (j == 1) {
@@ -2619,6 +2669,46 @@ namespace kernelNamespace{
 
 			const deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
 			const deviceFP a = 1.0f - (1.0f / (1.0f + 
+				deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
+			(*s).gridEFrequency1[i] *= a;
+			(*s).gridEFrequency2[i] *= a;
+			if (j == 1) {
+				(*s).gridEFrequency1[i - 1] = deviceComplex{};
+				(*s).gridEFrequency2[i - 1] = deviceComplex{};
+			}
+		}
+	};
+
+	class inverseApertureFarFieldKernelHankel { 
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceFP radius;
+		const deviceFP activationParameter; 
+		const deviceFP xOffset;
+		const deviceFP yOffset;
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			i = j + col * (*s).Nfreq;
+			const int64_t k = col % (*s).Nspace;
+
+			//magnitude of k vector
+			deviceFP ko = constProd(twoPi<deviceFP>(), 1.0 / lightC<double>()) 
+				* j * (*s).fStep;
+
+			//transverse wavevector being resolved
+			deviceFP dk1 = constProd((deviceFP)2.0, 1.0 / vPi<double>()) 
+				* k / ((*s).dx * (*s).Nspace);; //frequency grid in x direction
+
+			//light that won't go the the farfield is immediately zero
+			if (dk1 * dk1 > ko * ko) {
+				(*s).gridEFrequency1[i] = {};
+				(*s).gridEFrequency2[i] = {};
+				return;
+			}
+
+			const deviceFP theta1 = deviceFPLib::asin(dk1 / ko);
+			const deviceFP a = (1.0f / (1.0f + 
 				deviceFPLib::exp(-activationParameter * (deviceFPLib::abs(theta1) - radius))));
 			(*s).gridEFrequency1[i] *= a;
 			(*s).gridEFrequency2[i] *= a;
@@ -2822,6 +2912,36 @@ namespace kernelNamespace{
 		}
 	};
 
+	//apply linear propagation through a given medium to the fields
+	class correctFDTDAmplitudesKernel { 
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		deviceFunction void operator()(const int64_t localIndex) const {
+			int64_t i = localIndex;
+			const int64_t h = 1 + i % ((*s).Nfreq - 1);
+			const int64_t col = i / ((*s).Nfreq - 1);
+			i = h + col * ((*s).Nfreq);
+			const int64_t k = col / (*s).Nspace;
+			const int64_t j = col - k * (*s).Nspace;
+			
+			const deviceFP kMagnitude = (h * (*s).fStep * twoPi<deviceFP>()) / lightC<deviceFP>();
+			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
+			const deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
+			if(dk2*dk2 + dk1*dk1 < kMagnitude*kMagnitude){
+				s->gridEFrequency1[i] *= (*s).fftNorm * kMagnitude/deviceFPLib::sqrt((kMagnitude - dk1)*(kMagnitude + dk1));
+				s->gridEFrequency2[i] *= (*s).fftNorm * kMagnitude/deviceFPLib::sqrt((kMagnitude - dk2)*(kMagnitude + dk2));
+			}
+			else{
+				s->gridEFrequency1[i] = {};
+				s->gridEFrequency2[i] = {};
+			}
+			if(h==1){
+				s->gridEFrequency1[i-1] = {};
+				s->gridEFrequency2[i-1] = {};
+			}
+		}
+	};
+	
 	//apply linear propagation through a given medium to the fields
 	class applyLinearPropagationKernel { 
 	public:
@@ -3324,7 +3444,7 @@ namespace kernelNamespace{
 	class nonlinearPolarizationKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
-		deviceFunction void operator()(int64_t i) const {
+		deviceFunction void operator()(const int64_t i) const {
 			const deviceFP Ex = (*s).gridETime1[i];
 			const deviceFP Ey = (*s).gridETime2[i];
 
@@ -3443,7 +3563,7 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t i) const {
-			const int64_t j = (i) * (*s).Ntime;
+			const int64_t j = i * (*s).Ntime;
 			deviceFP N{};
 			deviceFP integralx{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
@@ -4090,6 +4210,7 @@ namespace hostFunctions{
 		deviceFP dz, 
 		deviceFP frontBuffer, 
 		deviceFP backBuffer,
+		deviceFP observationPoint = 0.0,
 		const std::string& materialMapPath = "");
 
 	static std::complex<double> hostSellmeierFunc(
@@ -4648,6 +4769,45 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	static int applyInverseAperatureFarFieldHankel(
+		ActiveDevice& d, 
+		simulationParameterSet* sCPU, 
+		double diameter, 
+		double activationParameter, 
+		double xOffset, 
+		double yOffset) {
+		d.deviceMemcpy(
+			d.deviceStruct.gridETime1, 
+			(*sCPU).ExtOut, 
+			2 * d.deviceStruct.Ngrid * sizeof(double), 
+			copyType::ToDevice);
+		forwardHankel(d, d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1);
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
+		d.deviceLaunch(
+			d.deviceStruct.Nblock / 2, 
+			d.deviceStruct.Nthread, 
+			inverseApertureFarFieldKernelHankel{
+				sDevice,
+				(deviceFP)(0.5 * deg2Rad<deviceFP>() * diameter),
+				(deviceFP)activationParameter,
+				(deviceFP)(deg2Rad<deviceFP>() * xOffset),
+				(deviceFP)(deg2Rad<deviceFP>() * yOffset) });
+		backwardHankel(d, d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1);
+		d.deviceMemcpy(
+			(*sCPU).ExtOut, 
+			d.deviceStruct.gridETime1, 
+			2 * (*sCPU).Ngrid * sizeof(double), 
+			copyType::ToHost);
+		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		d.deviceMemcpy(
+			(*sCPU).EkwOut, 
+			d.deviceStruct.gridEFrequency1, 
+			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), 
+			copyType::ToHost);
+		getTotalSpectrum(d);
+		return 0;
+	}
+
 	static int applyAperatureFarField(
 		ActiveDevice& d, 
 		simulationParameterSet* sCPU, 
@@ -4666,6 +4826,54 @@ namespace hostFunctions{
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
 		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, apertureFarFieldKernel{
+			sDevice,
+			(deviceFP)(0.5 * deg2Rad<deviceFP>() * diameter),
+			(deviceFP)activationParameter,
+			(deviceFP)(deg2Rad<deviceFP>() * xOffset),
+			(deviceFP)(deg2Rad<deviceFP>() * yOffset) });
+
+		d.deviceMemcpy(
+			(*sCPU).EkwOut, 
+			d.deviceStruct.gridEFrequency1, 
+			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), 
+			copyType::ToHost);
+
+		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
+
+		d.deviceLaunch(
+			(int)(d.deviceStruct.Ngrid / minGridDimension), 
+			2 * minGridDimension, 
+			multiplyByConstantKernelD{
+				d.deviceStruct.gridETime1, 
+				(deviceFP)(1.0 / d.deviceStruct.Ngrid) });
+		d.deviceMemcpy(
+			(*sCPU).ExtOut, 
+			d.deviceStruct.gridETime1, 
+			2 * (*sCPU).Ngrid * sizeof(double), 
+			copyType::ToHost);
+
+		getTotalSpectrum(d);
+		return 0;
+	}
+
+	static int applyInverseAperatureFarField(
+		ActiveDevice& d, 
+		simulationParameterSet* sCPU, 
+		double diameter, 
+		double activationParameter, 
+		double xOffset, 
+		double yOffset) {
+		if ((*sCPU).isCylindric) {
+			return applyInverseAperatureFarFieldHankel(d, sCPU, diameter, activationParameter, xOffset, yOffset);
+		}
+		d.deviceMemcpy(
+			d.deviceStruct.gridETime1, 
+			(*sCPU).ExtOut, 
+			2 * d.deviceStruct.Ngrid * sizeof(double), 
+			copyType::ToDevice);
+		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		deviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
+		d.deviceLaunch(d.deviceStruct.Nblock / 2, d.deviceStruct.Nthread, inverseApertureFarFieldKernel{
 			sDevice,
 			(deviceFP)(0.5 * deg2Rad<deviceFP>() * diameter),
 			(deviceFP)activationParameter,
@@ -5458,7 +5666,6 @@ namespace hostFunctions{
 		const std::string& materialMapPath = "") {
 
 		//Check if there is a material map and allocate/load it if necessary
-		//fdtdGrid("C:\Users\nickk\rzgdatashare\LightwaveExplorer\Tests\file.txt")
 		if (materialMapPath != "") {
 			//throw std::runtime_error(std::string("path string:\n").append(materialMapPath));
 			maxCalc.hasMaterialMap = false;
@@ -5546,7 +5753,10 @@ namespace hostFunctions{
 				for(int i = 0; i<NmaterialMax; i++){
 					calculateFDTDParameters(sCPU, maxCalc, i);
 				}
-				maxCalc.observationPoint = maxCalc.Nz - 10;
+				if(maxCalc.observationPoint==0){
+					maxCalc.observationPoint = maxCalc.Nz - 10;
+				}
+				
 			}
 			else{
 				throw std::runtime_error("Failed to load material map.\n");
@@ -5617,6 +5827,7 @@ namespace hostFunctions{
 		deviceFP dz, 
 		deviceFP frontBuffer, 
 		deviceFP backBuffer,
+		deviceFP observationPoint,
 		const std::string& materialMapPath) {
 		
 		//initialize the grid if necessary
@@ -5651,8 +5862,14 @@ namespace hostFunctions{
 		if (dz == 0.0) dz = (*sCPU).propagationStep;
 		//generate the FDTD data structure and prepare the device
 		maxwell3D maxCalc = maxwell3D(sCPU, tFactor, dz, frontBuffer, backBuffer);
+		if(observationPoint != 0.0){
+			maxCalc.observationPoint = static_cast<int>(round(observationPoint/dz));
+			if(maxCalc.observationPoint < 1 || maxCalc.observationPoint >= maxCalc.Nz){
+				throw std::runtime_error("Invalid observation point in FDTD\n");
+			}
+		}
 		prepareFDTD(d, sCPU, maxCalc, materialMapPath);
-
+		
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {
 			d.deviceLaunch(
@@ -5684,19 +5901,27 @@ namespace hostFunctions{
 			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;
 			if ((*sCPU).cancellationCalled) break;
 		}
+		
+
+		//correct amplitudes for vectorial effects
+		d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		d.deviceLaunch(
+				d.deviceStruct.Nblock / 2, 
+				d.deviceStruct.Nthread,
+				correctFDTDAmplitudesKernel{ d.dParamsDevice });
+		d.deviceMemcpy(
+			(*sCPU).EkwOut,
+			d.deviceStruct.gridEFrequency1,
+			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>),
+			copyType::ToHost);
+		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
+		//transfer result to CPU memory and take spectrum
 		d.deviceMemcpy(
 			(*sCPU).ExtOut, 
-			maxCalc.inOutEx, 
+			d.deviceStruct.gridETime1, 
 			2*(*sCPU).Ngrid * sizeof(double), 
 			copyType::ToHost);
-
-		//take spectra, repopulate usual grids
-		d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
-		d.deviceMemcpy(
-			(*sCPU).EkwOut, 
-			d.deviceStruct.gridEFrequency1, 
-			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), 
-			copyType::ToHost);
+		
 		getTotalSpectrum(d);
 
 		//free device memory		
@@ -5802,17 +6027,22 @@ namespace hostFunctions{
 				parameters[3]);
 			break;
 		case functionID("fdtdGrid"):
-			if ((*sCPU).runType == -1) {
+			if ((*sCPU).runType == runTypes::counter) {
 				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)
 					+=5 * ((*sCPU).Ntime + (*sCPU).crystalThickness/(lightC<double>()*(*sCPU).tStep));
 				break;
 			}
+			{std::string filepath = cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1);
+			std::string newParameterString =cc.substr(cc.find('"', cc.find('"') + 1)+1,std::string::npos);
+			newParameterString[0] = '(';
+			interpretParameters(newParameterString, 2, iBlock, vBlock, parameters, defaultMask);}
 			error = solveFDTD(d,
 				sCPU,
-				5,
+				static_cast<int>(parameters[0]),
 				(*sCPU).propagationStep,
 				0.0,
 				0.0,
+				parameters[1],
 				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
 			break;
 		case functionID("default"):
@@ -5823,7 +6053,7 @@ namespace hostFunctions{
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
-				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != -1) {
+				if (saveLoc < (*sCPU).Nsims && saveLoc != 0 && (*sCPU).runType != runTypes::counter) {
 					memcpy(
 						&(*sCPU).ExtOut[saveLoc * (*sCPU).Ngrid * 2], 
 						(*sCPU).ExtOut, 
@@ -5837,7 +6067,7 @@ namespace hostFunctions{
 						(*sCPU).totalSpectrum, 
 						3 * (*sCPU).Nfreq * sizeof(double));
 				}
-				else if ((*sCPU).runType != -1) {
+				else if ((*sCPU).runType != runTypes::counter) {
 					throw std::runtime_error(
 						std::string("Attempted out-of-bounds save() to index ")
 						.append(std::to_string(saveLoc)).append("\n"));
@@ -5851,7 +6081,7 @@ namespace hostFunctions{
 				int64_t plasmaLoc = (int)parameters[1];
 				if (saveLoc < (*sCPU).Nsims 
 					&& saveLoc != 0 
-					&& (*sCPU).runType != -1) 
+					&& (*sCPU).runType != runTypes::counter) 
 					savePlasma(d, saveLoc, plasmaLoc);
 				else {
 					throw std::runtime_error(
@@ -5965,9 +6195,23 @@ namespace hostFunctions{
 				parameters[3]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
+		case functionID("farFieldInverseAperture"):
+			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			(*sCPU).materialIndex = 0;
+			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
+			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
+			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
+			d.reset(sCPU);
+			applyInverseAperatureFarField(d, sCPU,
+				parameters[0],
+				parameters[1],
+				parameters[2],
+				parameters[3]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
 		case functionID("energy"):
 			{
-			if ((*sCPU).runType == -1) break;
+			if ((*sCPU).runType == runTypes::counter) break;
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			int targetVar = (int)parameters[0];
 			int spectrumType = (int)parameters[1];
@@ -6005,7 +6249,7 @@ namespace hostFunctions{
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case functionID("addPulse"):
-			if ((*sCPU).runType == -1) break;
+			if ((*sCPU).runType == runTypes::counter) break;
 		{
 			interpretParameters(cc, 21, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);

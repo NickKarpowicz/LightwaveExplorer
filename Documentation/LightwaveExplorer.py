@@ -150,10 +150,10 @@ class lightwaveExplorerResult:
             self.batchStart = self.frequency2
             self.batchDestination *= 1e12
         elif self.batchIndex == 7:
-            self.batchStart = self.cephase1
+            self.batchStart = self.cePhase1
             self.batchDestination *= np.pi
         elif self.batchIndex == 8:
-            self.batchStart = self.cephase2
+            self.batchStart = self.cePhase2
             self.batchDestination *= np.pi
         elif self.batchIndex == 9:
             self.batchStart = self.delay1
@@ -258,10 +258,10 @@ class lightwaveExplorerResult:
             self.batchStart2 = self.frequency2
             self.batchDestination2 *= 1e12
         elif self.batchIndex2 == 7:
-            self.batchStart2 = self.cephase1
+            self.batchStart2 = self.cePhase1
             self.batchDestination2 *= np.pi
         elif self.batchIndex2 == 8:
-            self.batchStart2 = self.cephase2
+            self.batchStart2 = self.cePhase2
             self.batchDestination2 *= np.pi
         elif self.batchIndex2 == 9:
             self.batchStart2 = self.delay1
@@ -403,15 +403,19 @@ def normaM(v: np.ndarray):
         out[i,:] = norma(v[i,:])
     return out
 
-def printSellmeier(sc: np.ndarray):
+def printSellmeier(sc: np.ndarray, highPrecision=False):
     """
     print an array containing LWE sellmeier coefficients in a format
     that can be copy-pasted into the CrystalDatabase.txt file
     
     :param sc: the coefficients (22-element array)
     :type sc: np.ndarray
+    :param highPrecision: if true, use 15 digits for the numbers
     """
-    s = np.array2string(sc, formatter={'float_kind': '{0:.6g}'.format}).replace('\n','').replace('[','').replace(']','')
+    if highPrecision:
+        s = np.array2string(sc, formatter={'float_kind': '{0:.15g}'.format}).replace('\n','').replace('[','').replace(']','')
+    else:
+        s = np.array2string(sc, formatter={'float_kind': '{0:.6g}'.format}).replace('\n','').replace('[','').replace(']','')
     print(s)
 
 def sellmeier(wavelengthMicrons, a: np.ndarray, equationType: int):
@@ -751,4 +755,93 @@ def deviceDawson(x):
             
 
         return d/np.sqrt(np.pi)
-	
+
+def loadSplit(baseName: str, Ntotal: int, batchType:str):
+    """
+    load a set of single simulations and fuse the results together as
+    if they came from a batch. May be useful for getting around memory
+    limitations.
+
+    :param listOfFileNames: list of strings containing the file names to load, in order
+    :param batchType: the attribute being scanned in the batch, e.g. frequency1
+    """
+    listOfFileNames = [f"{baseName}{i:04d}.txt" for i in range(Ntotal)]
+    baseStructure = load(listOfFileNames[0])
+    stackAxis = len(baseStructure.Ext_x.shape)
+    if stackAxis == 2:
+        tmp = np.array(baseStructure.Ext_x)
+        baseStructure.Ext_x = np.zeros((baseStructure.Ext_x.shape[0],baseStructure.Ext_x.shape[1],Ntotal), dtype=float)
+        baseStructure.Ext_x[:,:,0] = tmp
+        tmp = np.array(baseStructure.Ext_y)
+        baseStructure.Ext_y = np.zeros(baseStructure.Ext_x.shape,dtype=float)
+        baseStructure.Ext_y[:,:,0] = tmp
+    else:
+        tmp = np.array(baseStructure.Ext_x)
+        baseStructure.Ext_x = np.zeros((baseStructure.Ext_x.shape[0],baseStructure.Ext_x.shape[1],baseStructure.Ext_x.shape[2],Ntotal), dtype=float)
+        baseStructure.Ext_x[:,:,:,0] = tmp
+        tmp = np.array(baseStructure.Ext_y)
+        baseStructure.Ext_y = np.zeros(baseStructure.Ext_x.shape,dtype=float)
+        baseStructure.Ext_y[:,:,:,0] = tmp
+    tmp = np.array(baseStructure.spectrum_x)
+    baseStructure.spectrum_x = np.zeros((Ntotal,baseStructure.spectrum_x.shape[0]),dtype=float)#baseStructure.spectrum_x[np.newaxis,:]
+    baseStructure.spectrum_x[0,:] = tmp
+    tmp = np.array(baseStructure.spectrum_y)
+    baseStructure.spectrum_y = np.zeros(baseStructure.spectrum_x.shape,dtype=float)
+    baseStructure.spectrum_y[0,:] = tmp
+    tmp = np.array(baseStructure.spectrumTotal)
+    baseStructure.spectrumTotal = np.zeros(baseStructure.spectrum_x.shape,dtype=float)
+    baseStructure.spectrumTotal[0,:] = tmp
+
+    baseStructure.batchVector = getattr(baseStructure, batchType)
+    baseStructure.batchStart = baseStructure.batchVector
+    
+    for i in range(1,Ntotal):
+        newStructure = load(listOfFileNames[i])
+        if stackAxis == 2:
+            baseStructure.Ext_x[:,:,i] = newStructure.Ext_x
+            baseStructure.Ext_y[:,:,i] = newStructure.Ext_y
+        else:
+            baseStructure.Ext_x[:,:,:,i] = newStructure.Ext_x
+            baseStructure.Ext_y[:,:,:,i] = newStructure.Ext_y
+        baseStructure.spectrum_x[i,:] = newStructure.spectrum_x
+        baseStructure.spectrum_y[i,:] = newStructure.spectrum_y
+        baseStructure.spectrumTotal[i,:] = newStructure.spectrumTotal
+        baseStructure.batchVector = np.append(baseStructure.batchVector, getattr(baseStructure, batchType))
+    
+    return baseStructure
+
+def fuseBinaries(outputTextFile: str):
+    """
+    Combine the binary components of a simulation that was split to run on a cluster.
+    
+    :param inputTextFile: The base file name associated with the simulation. If this is Result.Txt, it will
+    combine the files associated with Result0000.txt, Result0001.txt and so on
+    """
+    def fuseFile(baseName: str, ending: str):
+
+        output_name = baseName+ending
+        if os.path.exists(output_name):
+            os.remove(output_name)
+        print("Fusing "+output_name+" from:")
+        files = [filename for filename in os.listdir() if filename.startswith(baseName) and filename.endswith(ending)]
+        files.sort()
+        print(files)
+        output = open(output_name,'wb')
+        for file in files:
+            current = open(file,'rb')
+            try:
+                while True:
+                    piece = current.read(1024*1024*128)
+                    if not piece:
+                        break
+                    output.write(piece)
+            finally:
+                current.close()
+                print(file)
+        output.close()
+    
+    base = os.path.splitext(os.path.basename(outputTextFile))[0]
+
+    fuseFile(base,"_Ext.dat")
+    fuseFile(base,"_spectrum.dat")
+

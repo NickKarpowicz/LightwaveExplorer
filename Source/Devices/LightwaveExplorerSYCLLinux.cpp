@@ -13,7 +13,7 @@ extern "C" void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
     unsigned char gpuCount = 0;
     std::vector<std::string> namelist;
     std::string deviceList;
-    for (const auto& p : cl::sycl::platform::get_platforms()) {
+    for (const auto& p : sycl::platform::get_platforms()) {
         for (const auto& d : p.get_devices()) {
             //loop through all devices, but only mention the GPUs and CPUs (maybe add accelerators later if there's something
             //useful to target and not emulators)
@@ -21,12 +21,12 @@ extern "C" void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                 if (!(std::find(
                     std::begin(namelist),
                     std::end(namelist),
-                    d.get_info<cl::sycl::info::device::name>())
+                    d.get_info<sycl::info::device::name>())
                     != std::end(namelist))) {
-                    namelist.push_back(d.get_info<cl::sycl::info::device::name>());
+                    namelist.push_back(d.get_info<sycl::info::device::name>());
                     cpuCount++;
                     deviceList.append("SYCL found a CPU:\n   <span color=\"#66FFFFFF\">");
-                    deviceList.append(d.get_info<cl::sycl::info::device::name>());
+                    deviceList.append(d.get_info<sycl::info::device::name>());
                     deviceList.append("</span>\n");
                 }
             }
@@ -34,12 +34,12 @@ extern "C" void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                 if (!(std::find(
                     std::begin(namelist),
                     std::end(namelist),
-                    d.get_info<cl::sycl::info::device::name>())
+                    d.get_info<sycl::info::device::name>())
                     != std::end(namelist))) {
-                    namelist.push_back(d.get_info<cl::sycl::info::device::name>());
+                    namelist.push_back(d.get_info<sycl::info::device::name>());
                     gpuCount++;
                     deviceList.append("SYCL found a GPU:\n   <span color=\"#66FFFFFF\">");
-                    deviceList.append(d.get_info<cl::sycl::info::device::name>());
+                    deviceList.append(d.get_info<sycl::info::device::name>());
                     deviceList.append("</span>\n");
                 }
             }
