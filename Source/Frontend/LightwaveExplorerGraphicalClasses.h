@@ -1503,7 +1503,7 @@ public:
         gtk_css_provider_load_from_data(textProvider,
             "label, scale { font-family: Arial; font-weight: bold; }\n "
             "button, entry, textview { font-family: Arial; font-weight: "
-            "bold; color: #EEEEEE; background-color: #151515; }", -1);
+            "bold; color: #EEEEEE; background-color: #151515; }",-1);
         gtk_style_context_add_provider_for_display(
             gdk_display_get_default(),
             GTK_STYLE_PROVIDER(textProvider),
@@ -1512,7 +1512,7 @@ public:
         GtkCssProvider* buttonShrinker = gtk_css_provider_new();
         gtk_css_provider_load_from_data(buttonShrinker,
             "label, scale, range, button, entry, textview "
-            "{ min-height: 4px; min-width: 4px; }", -1);
+            "{ min-height: 4px; min-width: 4px; }",-1);
         gtk_style_context_add_provider_for_display(
             gdk_display_get_default(),
             GTK_STYLE_PROVIDER(buttonShrinker),
@@ -1700,3 +1700,52 @@ public:
         gtk_range_set_value(GTK_RANGE(elementHandle), (double)value);
     }
 };
+
+
+static void pathFromLoadDialogCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
+    LweTextBox& destinationPathBox = *reinterpret_cast <LweTextBox*>(data);
+    GError* error = nullptr;
+    GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
+    if (error == nullptr) {
+        std::string resultString(g_file_get_path(file));
+        destinationPathBox.overwritePrint(resultString);
+    }
+}
+
+void pathFromLoadDialog(LweTextBox& destinationPathBox) {
+    GtkFileDialog* dialog = gtk_file_dialog_new();
+    gtk_file_dialog_open(dialog, NULL, NULL, pathFromLoadDialogCallback, &destinationPathBox);
+}
+
+static void pathFromSaveDialogCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
+    LweTextBox& destinationPathBox = *reinterpret_cast <LweTextBox*>(data);
+    GError* error = nullptr;
+    GFile* file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(gobject), result, &error);
+    if (error == nullptr) {
+        std::string resultString(g_file_get_path(file));
+        destinationPathBox.overwritePrint(resultString);
+    }
+}
+
+void pathFromSaveDialog(LweTextBox& destinationPathBox) {
+    GtkFileDialog* dialog = gtk_file_dialog_new();
+    gtk_file_dialog_save(dialog, NULL, NULL, pathFromSaveDialogCallback, &destinationPathBox);
+}
+
+
+typedef void(*loadingFunction)(std::string&);
+static void loadDataCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
+    GError* error = nullptr;
+    GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
+    if (error == nullptr) {
+        std::string path(g_file_get_path(file));
+        
+        loadingFunction loadingFunctionPointer = reinterpret_cast<loadingFunction>(data);
+        (loadingFunctionPointer)(path);
+    }
+}
+
+void loadFromLoadDialog(loadingFunction loadingFunctionPointer) {
+    GtkFileDialog* dialog = gtk_file_dialog_new();
+    gtk_file_dialog_open(dialog, NULL, NULL, loadDataCallback, reinterpret_cast<gpointer>(loadingFunctionPointer));
+}
