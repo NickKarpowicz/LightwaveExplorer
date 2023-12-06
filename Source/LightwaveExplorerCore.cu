@@ -6027,11 +6027,6 @@ namespace hostFunctions{
 				parameters[3]);
 			break;
 		case functionID("fdtdGrid"):
-			if ((*sCPU).runType == runTypes::counter) {
-				if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)
-					+=5 * ((*sCPU).Ntime + (*sCPU).crystalThickness/(lightC<double>()*(*sCPU).tStep));
-				break;
-			}
 			{std::string filepath = cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1);
 			std::string newParameterString =cc.substr(cc.find('"', cc.find('"') + 1)+1,std::string::npos);
 			newParameterString[0] = '(';
