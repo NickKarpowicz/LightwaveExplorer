@@ -5666,7 +5666,7 @@ namespace hostFunctions{
 		const std::string& materialMapPath = "") {
 
 		//Check if there is a material map and allocate/load it if necessary
-		if (materialMapPath != "") {
+		if (materialMapPath != "" && (*sCPU).runType != runTypes::counter && (*sCPU).runType != runTypes::cluster) {
 			//throw std::runtime_error(std::string("path string:\n").append(materialMapPath));
 			maxCalc.hasMaterialMap = false;
 			int64_t NmaterialPoints = 0;
@@ -5759,7 +5759,7 @@ namespace hostFunctions{
 				
 			}
 			else{
-				throw std::runtime_error("Failed to load material map.\n");
+				std::runtime_error("Failed to load material map.\n");
 			}
 
 		}
