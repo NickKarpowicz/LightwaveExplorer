@@ -201,7 +201,10 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	fs << "#SBATCH --nodes=1" << '\x0A';
 	fs << "#SBATCH --ntasks-per-node=1" << '\x0A';
 	fs << "#SBATCH --time=" << timeEstimateHours << ':' << timeEstimateMinutes << ":00" << '\x0A';
-	fs << "#SBATCH --array=0-" << Nsims * Nsims2  - 1<< '\x0A';
+	if(useJobArray){
+		fs << "#SBATCH --array=0-" << Nsims * Nsims2 - 1 << '\x0A';
+	}
+
 	fs << "module purge" << '\x0A';
 	fs << "module load cuda/12.1" << '\x0A';
 	fs << "module load mkl/2022.2" << '\x0A';
