@@ -3594,8 +3594,9 @@ namespace kernelNamespace{
 			deviceFP* P2 = P + (*s).Ngrid;
 			for (auto k = 0; k < (*s).Ntime; ++k) {
 				N += dN[k];
-				integralx += N * (*s).expGammaT[k] * E[k];
-				integraly += N * (*s).expGammaT[k] * Ey[k];
+				const deviceFP plasmaFactor = N * (*s).expGammaT[k];
+				integralx += plasmaFactor * E[k];
+				integraly += plasmaFactor * Ey[k];
 				P[k] += expMinusGammaT[k] * integralx;
 				P2[k] += expMinusGammaT[k] * integraly;
 			}
@@ -3664,28 +3665,29 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* sP;
 		deviceFunction void operator()(const int64_t i) const {
-			const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
-			const deviceFP jfac = -1.0f/(freqIndex * (*sP).fStep);
 			const int64_t spaceIndex = i / ((*sP).Nfreq - 1);
+			int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
+			const deviceFP jfac = -1.0f/(freqIndex * (*sP).fStep);
 			const int64_t gridIndex = freqIndex + spaceIndex * ((*sP).Nfreq);
-			const int64_t fftIndex = freqIndex +
+			int64_t fftIndex = freqIndex +
 				(spaceIndex + ((spaceIndex > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;
-			
+			freqIndex = gridIndex % (*sP).Nfreq;
 			(*sP).k1[gridIndex] += 
 				deviceComplex{
 					-jfac * (*sP).gridPolarizationFactor1[gridIndex].imag(), 
 					jfac * (*sP).gridPolarizationFactor1[gridIndex].real()}
-				* (*sP).workspace1[fftIndex] * (*sP).inverseChiLinear1[gridIndex % ((*sP).Nfreq)];
+				* (*sP).workspace1[fftIndex] * (*sP).inverseChiLinear1[freqIndex];
 			(*sP).k2[gridIndex] += 
 				deviceComplex{
 					-jfac * (*sP).gridPolarizationFactor2[gridIndex].imag(), 
 					jfac * (*sP).gridPolarizationFactor2[gridIndex].real()}
-				* (*sP).workspace2P[fftIndex] * (*sP).inverseChiLinear2[gridIndex % ((*sP).Nfreq)];
+				* (*sP).workspace2P[fftIndex] * (*sP).inverseChiLinear2[freqIndex];
 
+			fftIndex += 4 * (*sP).NgridC;
 			(*sP).k1[gridIndex] += 
-				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[fftIndex + 4 * (*sP).NgridC];
+				(*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[fftIndex];
 			(*sP).k2[gridIndex] += 
-				(*sP).gridPolarizationFactor2[gridIndex] * (*sP).workspace2P[fftIndex + 4 * (*sP).NgridC];
+				(*sP).gridPolarizationFactor2[gridIndex] * (*sP).workspace2P[fftIndex];
 		}
 	};
 
@@ -5443,7 +5445,7 @@ namespace hostFunctions{
 
 			//periodically check if the simulation diverged or was cancelled
 			if ((*sCPU).cancellationCalled) break;
-			if (i % 10 == 0) if (d.isTheCanaryPixelNaN(canaryPointer)) break;
+			if (i % 10 == 0 && d.isTheCanaryPixelNaN(canaryPointer)) break;
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 		}
 		if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
