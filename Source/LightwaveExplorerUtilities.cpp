@@ -194,14 +194,17 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	fs << "#SBATCH -D ./" << '\x0A';
 	fs << "#SBATCH -J lightwave" << '\x0A';
 	fs << "#SBATCH --constraint=\"gpu\"" << '\x0A';
-	fs << "#SBATCH --gres=gpu:" << gpuType << ":" << minN(gpuCount, 2) << '\x0A';
-	fs << "#SBATCH --cpus-per-task=" << 1 + minN(gpuCount, 4) << '\x0A';
+	fs << "#SBATCH --gres=gpu:" << gpuType << ":" << gpuCount << '\x0A';
+	fs << "#SBATCH --cpus-per-task=" << 1 + gpuCount << '\x0A';
 	
 	fs << "#SBATCH --mem=" << memoryMB << "M\x0A";
 	fs << "#SBATCH --nodes=1" << '\x0A';
 	fs << "#SBATCH --ntasks-per-node=1" << '\x0A';
 	fs << "#SBATCH --time=" << timeEstimateHours << ':' << timeEstimateMinutes << ":00" << '\x0A';
-	fs << "#SBATCH --array=0-" << Nsims * Nsims2  - 1<< '\x0A';
+	if(useJobArray){
+		fs << "#SBATCH --array=0-" << Nsims * Nsims2 - 1 << '\x0A';
+	}
+
 	fs << "module purge" << '\x0A';
 	fs << "module load cuda/12.1" << '\x0A';
 	fs << "module load mkl/2022.2" << '\x0A';
