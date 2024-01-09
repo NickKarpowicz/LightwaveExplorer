@@ -1141,7 +1141,6 @@ void createRunFile() {
                 arraySim.saveSettingsFile();
             }
         }
-        int jobID = 0;
     }
     else{
         theSim.base().runType = runTypes::cluster;
