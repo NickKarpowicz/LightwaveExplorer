@@ -85,7 +85,7 @@ if(UNIX AND NOT APPLE)
         include_directories(build/gcem/include)
         link_directories(${GTK4_LIBRARY_DIRS})
         
-        add_compile_options(-std=c++20 -DNOCUDA -fp-model=precise -O3 -fopenmp -fsycl -w)
+        add_compile_options(-std=c++20 -DNOCUDA -fp-model=precise -O3 -fopenmp -fsycl -w -Wall)
         add_link_options(-fsycl)
         add_executable(LightwaveExplorer 
             Source/Devices/LightwaveExplorerSYCLLinux.cpp 
@@ -220,7 +220,7 @@ if(UNIX AND NOT APPLE)
                 Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
                 Source/Devices/LightwaveExplorerCoreCounter.cpp 
                 Source/Devices/DlibLibraryComponents.cpp)
-            target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -fp-model=precise -O3 -fopenmp -DNOSYCL -Wno-deprecated-declarations)
+            target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -fp-model=precise -O3 -fopenmp -DNOSYCL)
             target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
             target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
             target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
@@ -247,7 +247,7 @@ if(UNIX AND NOT APPLE)
                 Source/Devices/LightwaveExplorerSYCLLinux.cpp 
                 Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
                 )
-            target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fp-model=precise -fopenmp -std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -DNOCUDA -Wno-deprecated-declarations)
+            target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fp-model=precise -fopenmp -std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -DNOCUDA)
             target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
             target_link_libraries(LightwaveExplorerNoCuda fmt::fmt)
             target_link_libraries(LightwaveExplorerNoCuda -lm
@@ -278,7 +278,7 @@ if(UNIX AND NOT APPLE)
         include_directories(${FFTW_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
 
-        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -Wno-deprecated-declarations)
+        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL)
         add_executable(LightwaveExplorer 
             Source/Devices/LightwaveExplorerCommandLineMain.cpp 
             Source/LightwaveExplorerUtilities.cpp 
@@ -311,7 +311,7 @@ if(UNIX AND NOT APPLE)
         )
         FetchContent_MakeAvailable(fmt)
 
-        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -Wno-deprecated-declarations -DNDEBUG)
+        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -DNDEBUG)
         execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
         add_executable(LightwaveExplorer 
             Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
@@ -347,7 +347,7 @@ if(APPLE)
     include_directories(${CMAKE_SOURCE_DIR}/../fftw/usr/local/include) 
     include_directories(${GTK4_INCLUDE_DIRS})
     link_directories(${GTK4_LIBRARY_DIRS})
-    add_compile_options(-std=c++20 -O3 -DCPUONLY -DNOSYCL -Wall -Wno-deprecated-declarations -x objective-c++)
+    add_compile_options(-std=c++20 -O3 -DCPUONLY -DNOSYCL -Wall -x objective-c++)
     add_executable(LightwaveExplorer MACOSX_BUNDLE 
         Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
         Source/LightwaveExplorerUtilities.cpp 

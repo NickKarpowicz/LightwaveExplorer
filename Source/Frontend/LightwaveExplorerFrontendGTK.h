@@ -52,10 +52,6 @@
 #endif
 #endif
 
-
-
-void openFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
-void saveFileDialogCallback(GtkWidget* widget, gpointer pathTarget);
 void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
@@ -65,7 +61,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
 void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-bool sliderResponseToArrows(GtkWidget* widget, guint keyValue, guint keyCode, GdkModifierType state, GtkEventControllerKey* eventController);
+bool sliderResponseToArrows(void* widget, unsigned int keyValue);
 void checkLibraryAvailability();
 void setInterfaceValuesToActiveValues();
 int insertAfterCharacter(std::string& s, char target, std::string appended);
@@ -74,7 +70,11 @@ int formatSequence(std::string& s);
 void mainSimThread(int pulldownSelection, int pulldownSelection2, bool use64bitFloatingPoint);
 void launchRunThread();
 void independentPlotQueue();
-void loadCallback(GtkWidget* widget, gpointer pathTarget);
+void loadCallback();
+void savePathCallback();
+void waveform1PathCallback();
+void waveform2PathCallback();
+void fittingPathCallback();
 void launchFitThread();
 void fittingThread(int pulldownSelection, bool use64bitFloatingPoint);
 void stopButtonCallback();
