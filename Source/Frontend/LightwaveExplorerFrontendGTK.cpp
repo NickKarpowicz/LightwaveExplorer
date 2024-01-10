@@ -759,7 +759,9 @@ void readParametersFromInterface() {
 
     theGui.filePaths[3].copyBuffer(theSim.base().outputBasePath);
     stripLineBreaks(theSim.base().outputBasePath);
-    
+    if (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt") {
+        theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
+    }
     theGui.filePaths[2].copyBuffer(theSim.base().fittingPath);
     stripLineBreaks(theSim.base().fittingPath);
 

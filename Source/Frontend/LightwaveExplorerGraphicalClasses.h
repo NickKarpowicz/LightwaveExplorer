@@ -1735,13 +1735,26 @@ static void pathFromSaveDialogCallback(GObject* gobject, GAsyncResult* result, g
     GError* error = nullptr;
     GFile* file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(gobject), result, &error);
     if (error == nullptr) {
-        std::string resultString(g_file_get_path(file));
-        destinationPathBox.overwritePrint(resultString);
+        std::string path(g_file_get_path(file));
+        destinationPathBox.overwritePrint(path);
     }
 }
 
 void pathFromSaveDialog(LweTextBox& destinationPathBox) {
     GtkFileDialog* dialog = gtk_file_dialog_new();
+    GListStore* filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
+
+    GtkFileFilter* filter = gtk_file_filter_new();
+    gtk_file_filter_add_suffix(filter, "txt");
+    gtk_file_filter_set_name(filter, "Text");
+    g_list_store_append(filters, filter);
+
+    filter = gtk_file_filter_new();
+    gtk_file_filter_add_pattern(filter, "*");
+    gtk_file_filter_set_name(filter, "All Files");
+    g_list_store_append(filters, filter);
+
+    gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
     gtk_file_dialog_save(dialog, NULL, NULL, pathFromSaveDialogCallback, &destinationPathBox);
 }
 
