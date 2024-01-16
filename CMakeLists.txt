@@ -280,7 +280,7 @@ if(UNIX AND NOT APPLE)
 
         add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL)
         add_executable(LightwaveExplorer 
-            Source/Devices/LightwaveExplorerCommandLineMain.cpp 
+            Source/LightwaveExplorerCommandLineMain.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
