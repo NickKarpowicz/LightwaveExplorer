@@ -945,25 +945,31 @@ int simulationParameterSet::readFittingString() {
 	return 0;
 }
 
+//remove whitespace and line breaks, except inside of protected blocks demarcated with characters in the
+//startChars and endChars strings
+//note that ANY character in the start or stop string will do.
 int removeCharacterFromStringSkippingChars(
 	std::string& s, 
 	const char removedChar, 
-	const char startChar, 
-	const char endChar) {
+	const std::string& startChars, 
+	const std::string& endChars) {
 	bool removing = true;
 	for (size_t i = 0; i < s.length(); ++i) {
 		if (s[i] == removedChar && removing) {
 			s.erase(i,1);
 			--i;
 		}
-		if (s[i] == startChar) removing = false;
-		if (s[i] == endChar) removing = true;
+		if (removing && startChars.find(s[i]) != std::string::npos && endChars.find(s[i]) != std::string::npos){
+			removing = !removing;
+		}
+		else if (startChars.find(s[i]) != std::string::npos) removing = false;
+		else if (endChars.find(s[i]) != std::string::npos) removing = true;
 	}
 	return 0;
 }
 
 void stripWhiteSpace(std::string& s) {
-	removeCharacterFromStringSkippingChars(s, ' ', '<', '>');
+	removeCharacterFromStringSkippingChars(s, ' ', "<\"", ">\"");
 	removeCharacterFromString(s, '\r');
 	removeCharacterFromString(s, '\n');
 	removeCharacterFromString(s, '\t');
