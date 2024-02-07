@@ -1,5 +1,11 @@
 #include "LightwaveExplorerUtilities.h"
 #include <iostream>
+#include <sstream>
+#if defined _WIN32 || defined __APPLE__
+#include <miniz/miniz.h>
+#else
+#include <miniz.h>
+#endif
 #ifdef CPUONLY
 #include <fftw3.h>
 #else
@@ -10,21 +16,58 @@
 #include <mach-o/dyld.h>
 #endif
 
-int simulationParameterSet::loadSavedFields(const std::string& outputBase) {
-	std::string Epath = outputBase;
-	Epath.append("_Ext.dat");
-	std::ifstream Efile(Epath, std::ios::binary);
-	if (Efile.is_open()) {
-		Efile.read(reinterpret_cast<char*>(ExtOut), 2 * (Ngrid * Nsims * Nsims2) * sizeof(double));
-	}
-	else return 1;
+template<typename T>
+void zipIntoMemory(std::string zipPath, std::string filename, T* data, size_t dataSize){
+	mz_zip_archive zip = {};
+	mz_zip_reader_init_file(&zip, zipPath.c_str(), 0);
+	int fileIndex = mz_zip_reader_locate_file(&zip, filename.c_str(), nullptr, 0);
+	mz_zip_archive_file_stat fileStat = {};
+    mz_zip_reader_file_stat(&zip, fileIndex, &fileStat);
+	mz_zip_reader_extract_to_mem(&zip, fileIndex, data, dataSize, 0);
+	mz_zip_reader_end(&zip);
+}
 
-	std::string Spath = outputBase;
-	Spath.append("_spectrum.dat");
-	std::ifstream Sfile(Spath, std::ios::binary);
-	if (Sfile.is_open()) Sfile.read(
-		reinterpret_cast<char*>(totalSpectrum), 
-		Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
+template<typename T>
+void zipIntoMemory(std::string zipPath, std::string filename, std::vector<T>& data){
+	mz_zip_archive zip = {};
+	mz_zip_reader_init_file(&zip, zipPath.c_str(), 0);
+	int fileIndex = mz_zip_reader_locate_file(&zip, filename.c_str(), nullptr, 0);
+	mz_zip_archive_file_stat fileStat = {};
+    mz_zip_reader_file_stat(&zip, fileIndex, &fileStat);
+	data = std::vector<T>(fileStat.m_uncomp_size/sizeof(T));
+	mz_zip_reader_extract_to_mem(&zip, fileIndex, data.data(), data.size(), 0);
+	mz_zip_reader_end(&zip);
+}
+
+int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool isZipFile) {
+
+	if(isZipFile){
+		zipIntoMemory(outputBase + ".zip",
+			getBasename(outputBase)+"_Ext.dat",
+			ExtOut,
+			2 * (Ngrid * Nsims * Nsims2) * sizeof(double));
+		zipIntoMemory(outputBase + ".zip",
+			getBasename(outputBase)+"_spectrum.dat",
+			totalSpectrum,
+			Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
+	}
+	else{
+		std::string Epath = outputBase;
+		Epath.append("_Ext.dat");
+		std::ifstream Efile(Epath, std::ios::binary);
+		if (Efile.is_open()) {
+			Efile.read(reinterpret_cast<char*>(ExtOut), 2 * (Ngrid * Nsims * Nsims2) * sizeof(double));
+		}
+		else return 1;
+
+		std::string Spath = outputBase;
+		Spath.append("_spectrum.dat");
+		std::ifstream Sfile(Spath, std::ios::binary);
+		if (Sfile.is_open()) Sfile.read(
+			reinterpret_cast<char*>(totalSpectrum), 
+			Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
+	}
+	
 
 	fftw_plan fftwPlanD2Z;
 	if (is3D) {
@@ -226,34 +269,20 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	fs << "    webdav_token=$(<webdav_token.txt)" << '\x0A';
 	fs << "    webdav_url=$(<webdav_url.txt)" << '\x0A';
 	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\".out" << '\x0A';
-	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\".txt" << '\x0A';
-	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\"_Ext.dat" << '\x0A';
-	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\"_spectrum.dat" << '\x0A';
+	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\".zip" << '\x0A';
 	fs << "    rm \"$base_name\".out" << '\x0A';
-	fs << "    rm \"$base_name\".txt" << '\x0A';
-	fs << "    rm \"$base_name\"_Ext.dat" << '\x0A';
-	fs << "    rm \"$base_name\"_spectrum.dat" << '\x0A';
+	fs << "    rm \"$base_name\".zip" << '\x0A';
 	fs << "fi" << '\x0A';
 
 	return timeEstimate/3600.0;
 }
 
-int simulationParameterSet::saveSettingsFile() {
-	crystalEntry *crystalDatabasePtr = crystalDatabase;
-	std::string outputPath(outputBasePath);
-	if (runType == runTypes::cluster) {
-		outputPath.append(".input");
-	}
-	else {
-		outputPath.append(".txt");
-	}
-	std::ofstream fs(outputPath, std::ios::binary);
-	if (fs.fail()) return -1;
-
+std::string simulationParameterSet::settingsString(){
 	std::string baseName = getBasename(outputBasePath);
 	std::string referenceBaseName = getBasename(fittingPath);
 	std::string pulse1BaseName = getBasename(field1FilePath);
 	std::string pulse2BaseName = getBasename(field2FilePath);
+	std::stringstream fs;
 	fs.precision(15);
 
 	fs << "Pulse energy 1 (J): " << pulse1.energy << '\x0A';
@@ -335,20 +364,33 @@ int simulationParameterSet::saveSettingsFile() {
 		fs << "Fitting reference file path: " << fittingPath << '\x0A';
 	}
 
-	fs << "Material name: " << crystalDatabasePtr[materialIndex].crystalName << '\x0A';
-	fs << "Sellmeier reference: " << crystalDatabasePtr[materialIndex].sellmeierReference << '\x0A';
-	fs << "Chi2 reference: " << crystalDatabasePtr[materialIndex].dReference << '\x0A';
-	fs << "Chi3 reference: " << crystalDatabasePtr[materialIndex].chi3Reference << '\x0A';
+	fs << "Material name: " << crystalDatabase[materialIndex].crystalName << '\x0A';
+	fs << "Sellmeier reference: " << crystalDatabase[materialIndex].sellmeierReference << '\x0A';
+	fs << "Chi2 reference: " << crystalDatabase[materialIndex].dReference << '\x0A';
+	fs << "Chi3 reference: " << crystalDatabase[materialIndex].chi3Reference << '\x0A';
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 22; ++j) {
-			fs << crystalDatabasePtr[materialIndex].sellmeierCoefficients[i * 22 + j];
+			fs << crystalDatabase[materialIndex].sellmeierCoefficients[i * 22 + j];
 			if (j < 21) fs << ',';
 		}
 		fs << '\x0A';
 	}
 	fs << "Code version: 2023.10";
 	fs << '\x0A';
+	return fs.str();
+}
 
+int simulationParameterSet::saveSettingsFile() {
+	std::string outputPath(outputBasePath);
+	if (runType == runTypes::cluster) {
+		outputPath.append(".input");
+	}
+	else {
+		outputPath.append(".txt");
+	}
+	std::ofstream fs(outputPath, std::ios::binary);
+	if (fs.fail()) return -1;
+	fs << settingsString();
 	return 0;
 }
 
@@ -442,13 +484,30 @@ void simulationParameterSet::setByNumberWithMultiplier(
 	setByNumber(index, value * multipliers[index]);
 }
 
-
 int simulationParameterSet::readInputParametersFile(
 	crystalEntry* crystalDatabasePtr, 
 	const std::string filePath) {
-	std::ifstream fs(filePath);
+	std::string contents;
+	if(filePath.length() >= 4 
+        && filePath.substr(filePath.length()-4)==".zip") {
+			std::vector<char> dataVector;
+			std::string textPath = getBasename(filePath);
+			textPath = textPath.substr(0,textPath.length()-4) + ".txt";
+			std::cout << textPath << std::endl;
+			zipIntoMemory(filePath, textPath, dataVector);
+			dataVector.push_back(0);
+            contents = std::string(dataVector.data(), dataVector.size());
+        }
+	else {
+		std::ifstream file(filePath);
+		if(file.fail()) return 1;
+		contents = std::string((std::istreambuf_iterator<char>(file)),std::istreambuf_iterator<char>());
+	}
+	
 	std::string line;
-
+	std::stringstream fs(contents);
+	
+	
 	if (fs.fail()) return 1;
 
 	auto moveToColon = [&]() {
@@ -887,22 +946,26 @@ void simulationBatch::loadPulseFiles() {
 }
 
 int simulationBatch::saveDataSet() {
-	parameters[0].saveSettingsFile();
 	std::for_each(mutexes.begin(), mutexes.end(),
 		[&](std::mutex& m) { m.lock(); });
+
 	std::string Epath=parameters[0].outputBasePath;
 	Epath.append("_Ext.dat");
-	std::ofstream Efile(Epath, std::ios::binary);
-	if (Efile.is_open()) Efile.write(
-		reinterpret_cast<char*>(Ext.data()), 
-		Ext.size() * sizeof(double));
-
 	std::string Spath=parameters[0].outputBasePath;
 	Spath.append("_spectrum.dat");
-	std::ofstream Sfile(Spath, std::ios::binary);
-	if (Sfile.is_open()) Sfile.write(
-		reinterpret_cast<char*>(totalSpectrum.data()), 
-		totalSpectrum.size() * sizeof(double));
+	std::string Zpath=parameters[0].outputBasePath;
+	Zpath.append(".zip");
+	std::string Tpath = parameters[0].outputBasePath;
+	Tpath.append(".txt");
+	std::string outputText = parameters[0].settingsString();
+	mz_zip_archive zip = {};
+	mz_zip_writer_init_file(&zip, Zpath.c_str(),0);
+	mz_zip_writer_add_mem(&zip, getBasename(Tpath).c_str(), outputText.c_str(), outputText.size(), MZ_DEFAULT_COMPRESSION);
+	mz_zip_writer_add_mem(&zip, getBasename(Epath).c_str(), Ext.data(), sizeof(double)*Ext.size(), MZ_DEFAULT_COMPRESSION);
+	mz_zip_writer_add_mem(&zip, getBasename(Spath).c_str(), totalSpectrum.data(), sizeof(double)*totalSpectrum.size(), MZ_DEFAULT_COMPRESSION);
+	mz_zip_writer_finalize_archive(&zip);
+	mz_zip_writer_end(&zip);
+
 	std::for_each(mutexes.begin(), mutexes.end(),
 		[&](std::mutex& m) { m.unlock(); });
 	return 0;

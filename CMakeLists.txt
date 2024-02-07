@@ -4,10 +4,12 @@ if(UNIX AND NOT APPLE)
     #. /opt/intel/oneapi/setvars.sh
     #cmake --fresh -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 .. -G Ninja
         cmake_minimum_required(VERSION 3.23.0)
-        project(LightwaveExplorer LANGUAGES CXX CUDA)
+        project(LightwaveExplorer LANGUAGES C CXX CUDA)
 
         execute_process(COMMAND git clone https://github.com/davisking/dlib)
         execute_process(COMMAND git clone https://github.com/kthohr/gcem)
+        execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
+        execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
         find_package(CUDAToolkit)
         find_package(PkgConfig REQUIRED)
         find_package(fmt REQUIRED)
@@ -20,8 +22,9 @@ if(UNIX AND NOT APPLE)
         include_directories(${GTK4_INCLUDE_DIRS})
         include_directories(build/dlib) 
         include_directories(build/gcem/include)
+        include_directories(build/miniz)
         link_directories(${GTK4_LIBRARY_DIRS})
-
+        add_library(miniz miniz/miniz.c)
         add_library(LightwaveExplorerCuda 
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu)
@@ -37,7 +40,7 @@ if(UNIX AND NOT APPLE)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES} miniz)
         target_link_libraries(LightwaveExplorer fmt::fmt -lm)
         target_link_libraries(LightwaveExplorer
             ${MKL_ROOT}/lib/intel64/libmkl_sycl.a 
@@ -68,23 +71,28 @@ if(UNIX AND NOT APPLE)
     #. /opt/intel/oneapi/setvars.sh
     #cmake --fresh -DMAKEONEAPI=TRUE -DCMAKE_CXX_COMPILER=icpx .. -G Ninja
         cmake_minimum_required(VERSION 3.23.0)
-        project(LightwaveExplorer LANGUAGES CXX)
+        project(LightwaveExplorer LANGUAGES C CXX)
 
         execute_process(COMMAND git clone https://github.com/davisking/dlib)
         execute_process(COMMAND git clone https://github.com/kthohr/gcem)
+        execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
+        execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
         find_package(PkgConfig REQUIRED)
         find_package(fmt REQUIRED)
         find_package(IntelSYCL REQUIRED)
         find_package(TBB REQUIRED)
         find_package(MKL REQUIRED)
+        
         pkg_check_modules(GTK4 gtk4)
         
         include_directories(${MKL_ROOT}/include/fftw)
         include_directories(${GTK4_INCLUDE_DIRS})
         include_directories(build/dlib) 
         include_directories(build/gcem/include)
+        include_directories(build/miniz)
         link_directories(${GTK4_LIBRARY_DIRS})
-        
+        add_library(miniz miniz/miniz.c)
+
         add_compile_options(-std=c++20 -DNOCUDA -fp-model=precise -O3 -fopenmp -fsycl -w -Wall)
         add_link_options(-fsycl)
         add_executable(LightwaveExplorer 
@@ -97,6 +105,7 @@ if(UNIX AND NOT APPLE)
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer miniz)
         target_link_libraries(LightwaveExplorer fmt::fmt -lm)
         target_link_libraries(LightwaveExplorer
             ${MKL_ROOT}/lib/intel64/libmkl_sycl.a 
@@ -152,7 +161,7 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt)
-        target_link_libraries(LightwaveExplorer -lm
+        target_link_libraries(LightwaveExplorer -lm -lminiz
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
@@ -273,8 +282,10 @@ if(UNIX AND NOT APPLE)
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(FFTW REQUIRED fftw3)
         execute_process(COMMAND git clone https://github.com/davisking/dlib)
-
+        execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
+        execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
         include_directories(build/dlib) 
+        include_directories(build/miniz)
         include_directories(${FFTW_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
 
@@ -284,8 +295,40 @@ if(UNIX AND NOT APPLE)
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer -lgomp)
+        target_link_libraries(LightwaveExplorer -lgomp miniz)
         target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
+    elseif(CLICUDA)
+    #full Linux build; typical usage:
+    #. /opt/intel/oneapi/setvars.sh
+    #cmake --fresh -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 .. -G Ninja
+        cmake_minimum_required(VERSION 3.23.0)
+        project(LightwaveExplorer LANGUAGES C CXX CUDA)
+
+        execute_process(COMMAND git clone https://github.com/davisking/dlib)
+        execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
+        execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
+        find_package(CUDAToolkit)
+        include_directories(${MKL_ROOT}/include/fftw)
+        include_directories(${MKL_ROOT}/include)
+        include_directories(build/dlib) 
+        include_directories(build/miniz)
+        add_library(miniz miniz/miniz.c)
+        add_compile_options(-std=c++20 -O3 -DRUNONCUDA -w)
+        add_executable(LightwaveExplorer 
+        Source/LightwaveExplorerCore.cu
+        Source/LightwaveExplorerCommandLineMain.cu
+        Source/LightwaveExplorerUtilities.cpp 
+        Source/Devices/DlibLibraryComponents.cpp)
+        target_link_libraries(LightwaveExplorer miniz)
+        target_link_libraries(LightwaveExplorer -lm)
+        target_link_libraries(LightwaveExplorer
+            -Wl,--start-group 
+            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_sequential.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_core.a 
+            -Wl,--end-group
+            )
+        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
     else()
     #if nothing specified, build GPL version based on FFTW
         cmake_minimum_required(VERSION 3.16)
@@ -297,8 +340,11 @@ if(UNIX AND NOT APPLE)
         pkg_check_modules(FFTWF REQUIRED fftw3f)
         execute_process(COMMAND git clone https://github.com/davisking/dlib)
         execute_process(COMMAND git clone https://github.com/kthohr/gcem)
+        execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
+        execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
         include_directories(build/dlib) 
         include_directories(build/gcem/include)
+        include_directories(build/miniz)
         include_directories(${FFTW_INCLUDE_DIRS})
         include_directories(${GTK4_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
@@ -324,7 +370,7 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer OpenMP::OpenMP_CXX)
         target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
         target_link_libraries(LightwaveExplorer ${FFTWF_LIBRARIES})
-        target_link_libraries(LightwaveExplorer fmt::fmt)
+        target_link_libraries(LightwaveExplorer fmt::fmt miniz)
 
         
         install(TARGETS LightwaveExplorer)
@@ -342,6 +388,7 @@ if(APPLE)
     find_package(PkgConfig REQUIRED)
     find_package(fmt CONFIG REQUIRED)
     find_package(gcem CONFIG REQUIRED)
+    find_package(miniz CONFIG REQUIRED)
     pkg_check_modules(GTK4 gtk4)
     include_directories(${CMAKE_SOURCE_DIR}/../dlib) 
     include_directories(${CMAKE_SOURCE_DIR}/../fftw/usr/local/include) 
@@ -364,6 +411,7 @@ if(APPLE)
         MACOSX_BUNDLE_ICON_FILE ${CMAKE_SOURCE_DIR}/Source/BuildResources/AppIcon.icns
     )
     target_link_libraries(LightwaveExplorer fmt::fmt)
+    target_link_libraries(LightwaveExplorer miniz::miniz)
     target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3_threads.a)
     target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3f_threads.a)
         target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3.a)

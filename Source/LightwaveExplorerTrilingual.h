@@ -4,7 +4,7 @@
 #define LWEFLOATINGPOINT 64
 #endif
 
-#ifdef __CUDACC__
+#if defined __CUDACC__ || defined RUNONCUDA
 	#include <cufft.h>
 	#include <thrust/complex.h>
 	#include "Devices/LWEActiveDeviceCUDA.cuh"
