@@ -1,10 +1,12 @@
 import numpy as np
 import re
 import os
+import io
 from scipy.optimize import least_squares
 import yaml
 import urllib.request
-
+import zipfile
+import tempfile
 class lightwaveExplorerResult:
     """
     A class which contains the result of a Lightwave Explorer simulation
@@ -81,8 +83,18 @@ class lightwaveExplorerResult:
                           "batchIndex2",
                           "batchDestination2",
                           "Nsims2"]
-        
-        settingsFile = open(filePath, "r")
+        if filePath.endswith(".zip"):
+            isZip = True
+            archive = zipfile.ZipFile(filePath, 'r')
+            directory, archiveName = os.path.split(filePath)
+            fileBase, baseExtension = os.path.splitext(archiveName)
+            settingsFile = archive.open(fileBase+'.txt')
+            settingsFile = io.TextIOWrapper(settingsFile,'utf-8')
+            
+        else:
+            isZip = False
+            settingsFile = open(filePath, "r")
+            fileBase = os.path.splitext(filePath)
         lines = settingsFile.readlines()
 
         def readLine(line: str):
@@ -112,18 +124,28 @@ class lightwaveExplorerResult:
         self.Ngrid = int(self.Ntime*self.Nspace*self.Nspace2)
 
         #now load the output data from binary format. Note that this will fail if you're using wrong-endian CPUs
-        fileBase = os.path.splitext(filePath)
         if loadFieldArray: 
             if self.symmetryType == 2 or self.symmetryType == 4:
-                Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*self.Ngrid*self.Nsims*self.Nsims2)],(self.Ntime,self.Nspace,self.Nspace2, 2*self.Nsims,self.Nsims2),order='F')
+                if isZip:
+                    file = archive.open(fileBase+'_Ext.dat')
+                    Ext = np.reshape(np.frombuffer(file.read(),dtype=np.double)[0:(2*self.Ngrid*self.Nsims*self.Nsims2)],(self.Ntime,self.Nspace,self.Nspace2, 2*self.Nsims,self.Nsims2),order='F')
+                else:
+                    Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*self.Ngrid*self.Nsims*self.Nsims2)],(self.Ntime,self.Nspace,self.Nspace2, 2*self.Nsims,self.Nsims2),order='F')
                 self.Ext_x = np.squeeze(Ext[:,:,:,0:(2*self.Nsims):2,:])
                 self.Ext_y = np.squeeze(Ext[:,:,:,1:(2*self.Nsims + 1):2,:])
             else:
-                Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*self.Ngrid*self.Nsims*self.Nsims2)],(self.Ntime,self.Nspace, 2*self.Nsims, self.Nsims2),order='F')
+                if isZip:
+                    file = archive.open(fileBase+'_Ext.dat')
+                    Ext = np.reshape(np.frombuffer(file.read(),dtype=np.double)[0:(2*self.Ngrid*self.Nsims*self.Nsims2)],(self.Ntime,self.Nspace, 2*self.Nsims, self.Nsims2),order='F')
+                else:
+                    Ext = np.reshape(np.fromfile(fileBase[0]+"_Ext.dat",dtype=np.double)[0:(2*self.Ngrid*self.Nsims*self.Nsims2)],(self.Ntime,self.Nspace, 2*self.Nsims, self.Nsims2),order='F')
                 self.Ext_x = np.squeeze(Ext[:,:,0:(2*self.Nsims):2,:])
                 self.Ext_y = np.squeeze(Ext[:,:,1:(2*self.Nsims + 1):2,:])
-        
-        RawSpectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*self.Nfreq*self.Nsims*self.Nsims2],(self.Nfreq,3,self.Nsims,self.Nsims2),order='F')
+        if isZip:
+            file = archive.open(fileBase+'_spectrum.dat')
+            RawSpectrum = np.reshape(np.frombuffer(file.read(),dtype=np.double)[0:3*self.Nfreq*self.Nsims*self.Nsims2],(self.Nfreq,3,self.Nsims,self.Nsims2),order='F')
+        else:
+            RawSpectrum = np.reshape(np.fromfile(fileBase[0]+"_spectrum.dat",dtype=np.double)[0:3*self.Nfreq*self.Nsims*self.Nsims2],(self.Nfreq,3,self.Nsims,self.Nsims2),order='F')
         self.spectrumTotal = np.squeeze(RawSpectrum[:,2,:,:]).T
         self.spectrum_x = np.squeeze(RawSpectrum[:,0,:,:]).T
         self.spectrum_y = np.squeeze(RawSpectrum[:,1,:,:]).T
@@ -844,4 +866,38 @@ def fuseBinaries(outputTextFile: str):
 
     fuseFile(base,"_Ext.dat")
     fuseFile(base,"_spectrum.dat")
+
+def fuseZips(outputTextFile: str):
+    """
+    Combine the zip files resulting from a simulation that was split to run on a cluster
+    
+    :param inputTextFile: The base file name associated with the simulation. If this is Result.Txt, it will
+    combine the files Result0000.zip, Result0001.zip and so on
+    """
+    ending = ".zip"
+    baseName = os.path.splitext(os.path.basename(outputTextFile))[0]
+    destination = os.path.splitext(outputTextFile)[0]+ending
+    files = [filename for filename in os.listdir() if filename.startswith(baseName) and filename.endswith(ending) and filename != destination]
+    print(files)
+    print(destination)
+    if os.path.exists(destination):
+        os.remove(destination)
+    with zipfile.ZipFile(destination,'w',compression=8) as destinationZip:
+        Ext = tempfile.NamedTemporaryFile(delete=False)
+        spectrum = tempfile.NamedTemporaryFile(delete=False)
+        for sourceFile in files:
+            currentBase = os.path.splitext(os.path.basename(sourceFile))[0]
+            print(currentBase)
+            with zipfile.ZipFile(sourceFile,'r') as sourceZip:
+                spectrum.write(sourceZip.read(currentBase+"_spectrum.dat"))
+                spectrum.flush()
+                Ext.write(sourceZip.read(currentBase+"_Ext.dat"))
+                Ext.flush()
+        destinationZip.write(spectrum.name, baseName+"_spectrum.dat")
+        destinationZip.write(Ext.name, baseName+"_Ext.dat")
+        destinationZip.write(outputTextFile,os.path.basename(outputTextFile))
+    Ext.close()
+    spectrum.close()
+    os.unlink(Ext.name)
+    os.unlink(spectrum.name)
 

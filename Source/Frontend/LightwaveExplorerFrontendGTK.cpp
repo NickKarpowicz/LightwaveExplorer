@@ -759,7 +759,8 @@ void readParametersFromInterface() {
 
     theGui.filePaths[3].copyBuffer(theSim.base().outputBasePath);
     stripLineBreaks(theSim.base().outputBasePath);
-    if (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt") {
+    if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
+        || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
         theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
     }
     theGui.filePaths[2].copyBuffer(theSim.base().fittingPath);
@@ -1033,13 +1034,18 @@ void fittingPathCallback() {
 void loadFromPath(std::string& path) {
     theGui.sequence.clear();
     theGui.fitCommand.clear();
+
+    //if it's a zip file, read as such
+    bool isZipFile = (path.length() >= 4 
+        && path.substr(path.length()-4)==".zip");
+
     int readParameters =
         theSim.base().readInputParametersFile(theDatabase.db.data(), path);
     theSim.configure();
     if (readParameters == 61) {
         int64_t extensionLoc = path.find_last_of(".");
         const std::string basePath = path.substr(0, extensionLoc);
-        theSim.base().loadSavedFields(basePath);
+        theSim.base().loadSavedFields(basePath, isZipFile);
         setInterfaceValuesToActiveValues();
         theGui.requestSliderUpdate();
         theGui.requestPlotUpdate();

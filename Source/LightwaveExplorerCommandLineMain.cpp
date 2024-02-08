@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-#ifdef __CUDACC__
+#ifdef RUNONCUDA
 	#include "LightwaveExplorerCore.cuh"
 	#include "Devices/LightwaveExplorerCoreFP32.cuh"
 #elif defined CPUONLY

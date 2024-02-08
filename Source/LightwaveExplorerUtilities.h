@@ -799,9 +799,10 @@ public:
     }
     void setByNumber(const int64_t index, const double value);
     void setByNumberWithMultiplier(const size_t index, const double value);
-    int loadSavedFields(const std::string& outputBase);
+    int loadSavedFields(const std::string& outputBase, bool isZipFile);
     int loadReferenceSpectrum();
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
+    std::string settingsString();
     int saveSettingsFile();
     double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps);
     int readFittingString();
