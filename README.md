@@ -16,6 +16,11 @@ Tutorials on YouTube!
 
 ---
 ### Latest release: 2023.09
+Windows: <a href="https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2023.09.01/LightwaveExplorerWin64.zip"> Download .zip</a>
+
+Mac: <a href="https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2023.09.01/LightwaveExplorerMacOS.zip"> Download .zip </a>(Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
+
+Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
 <p>This release adds the following fixes and improvements:</p>
   <ul>
   <li>Adds a new CPU-based propagation mode on Linux/Windows using C++ std::execution::par instead of OpenMP, which on some computers is nearly twice as fast</li>
@@ -70,16 +75,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   ### Installation on Linux
   The easiest way to install on Linux is using the Flatpak, which is [available on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
 
-  If your system's graphical installer integrates Flathub, you might already be able to find it there (it's quite new, as of August 2023), or you can install it from the command line with:
-  ```
-  flatpak install flathub io.github.NickKarpowicz.LightwaveExplorer
-  ```
-
-  Once it's installed it should show up in your system menu in the Science category. Otherwise you can also run it with 
-  
-  ```
-  flatpak run io.github.NickKarpowicz.LightwaveExplorer
-  ```
+  If your system's graphical installer integrates Flathub, you should find it there.
 
   Of course you can also build it yourself using the instructions below. That's currently what you'll need to do to use the SYCL propagator, since that's kinda still in beta.
 
@@ -224,6 +220,7 @@ Thanks to the original authors for making their work available! They are all fre
   - [Dlib](http://dlib.net/): This library is the basis of the optimization routines. I make use of the global optimization functions for the fitting/optimization modes. The library is [available on Github](https://github.com/davisking/dlib), and their excellent documentation and further information is on the [main project website](http://dlib.net/).
   - [GTK](https://www.gtk.org): The new version of the user interface uses GTK 4; this is why it looks pretty much the same on Windows, Linux, and Mac. It was pretty easy to get working cross-platform, which again is nice for the goal that everybody should be able to reproduce calculations in LWE.
   - [FFTW](https://www.fftw.org/): This is used for Fast Fourier Transforms in the GPL 3.0 version (i.e. the CPU-only Linux and Mac versions). On a given CPU this is on average the fastest FFT you can find.
+  - [miniz](https://github.com/richgel999/miniz): Nice and easy to use C library for making/reading .zip archives.
   
   ---
 
