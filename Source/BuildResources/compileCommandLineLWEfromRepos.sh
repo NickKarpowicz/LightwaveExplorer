@@ -17,7 +17,6 @@ module load cmake/3.28
 echo "Cloning LWE repo... "
 git clone https://github.com/NickKarpowicz/LightwaveExplorer >& /dev/null
 cd LightwaveExplorer
-git checkout compressedOutputFile
 mkdir build
 cd build
 
