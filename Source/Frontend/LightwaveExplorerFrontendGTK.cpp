@@ -87,9 +87,9 @@ public:
         int textWidth = 3;
         int pulldownWidth = 6;
         int labelWidth = 6;
-        int plotWidth = 1;
+        int plotWidth = 2;
         int plotHeight = 1;
-        int pathChars = 41;
+        int pathChars = 36;
         int colWidth = labelWidth + 2 * textWidth;
         int textCol1a = labelWidth;
         int textCol2a = textCol1a + 2 * textWidth + labelWidth;
@@ -114,6 +114,9 @@ public:
         textBoxes[45].init(parentHandle, textCol2b, 10, textWidth, 1);
         textBoxes[46].init(parentHandle, textCol2a, 11, textWidth, 1);
         textBoxes[47].init(parentHandle, textCol2b, 11, textWidth, 1);
+        for(int i = 0; i<48; i++){
+            textBoxes[i].setMaxCharacters(pathChars/4);
+        }
 
         filePaths[0].init(parentHandle, 0, 17, colWidth, 1);
         filePaths[0].setMaxCharacters(pathChars);
@@ -442,10 +445,10 @@ public:
             pulldowns["secondaryHardware"].addElement(A.c_str());
             if (theSim.base().syclGPUCount > 0) {
 
-                pulldowns["primaryHardware"].addElement("SYCLcpu");
-                pulldowns["secondaryHardware"].addElement("SYCLcpu");
-                pulldowns["primaryHardware"].addElement("SYCLgpu");
-                pulldowns["secondaryHardware"].addElement("SYCLgpu");
+                pulldowns["primaryHardware"].addElement("SYCLc");
+                pulldowns["secondaryHardware"].addElement("SYCLc");
+                pulldowns["primaryHardware"].addElement("SYCLg");
+                pulldowns["secondaryHardware"].addElement("SYCLg");
             }
         }
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
@@ -516,14 +519,14 @@ public:
         pulldowns["material"].init(parentHandle, textCol2a, 0, pulldownWidth, 1);
         pulldowns["material"].setLabel(-labelWidth, 0, ("Material"));
 
-        pulldowns["cluster"].addElement("Cobra 1xR5k");
-        pulldowns["cluster"].addElement("Cobra 2xR5k");
-        pulldowns["cluster"].addElement("Cobra 1xV100");
-        pulldowns["cluster"].addElement("Cobra 2xV100");
-        pulldowns["cluster"].addElement("Raven 1xA100");
-        pulldowns["cluster"].addElement("Raven 2xA100");
-        pulldowns["cluster"].addElement("Raven 4xA100");
-        pulldowns["cluster"].addElement("Raven NxA100");
+        pulldowns["cluster"].addElement("Cobra 1xR");
+        pulldowns["cluster"].addElement("Cobra 2xR");
+        pulldowns["cluster"].addElement("Cobra 1xV");
+        pulldowns["cluster"].addElement("Cobra 2xV");
+        pulldowns["cluster"].addElement("Raven 1x");
+        pulldowns["cluster"].addElement("Raven 2x");
+        pulldowns["cluster"].addElement("Raven 4x");
+        pulldowns["cluster"].addElement("Raven Nx");
         pulldowns["cluster"].init(parentHandle, buttonCol2, 17, buttonWidth + 1, 1);
         pulldowns["cluster"].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");

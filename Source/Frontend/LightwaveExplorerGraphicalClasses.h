@@ -865,8 +865,8 @@ public:
     void init(GtkWidget* grid, const int x, const int y, const int width, const int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_entry_new();
-        gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
-        gtk_widget_set_hexpand(elementHandle, false);
+        //gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
+        gtk_widget_set_hexpand(elementHandle, true);
         gtk_widget_set_vexpand(elementHandle, false);
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), 8);
         GTKlock.unlock();
@@ -1507,12 +1507,12 @@ public:
         gtk_css_provider_load_from_data(textProvider,
             "label, scale { font-family: Arial; font-weight: bold; }\n "
             "button, entry, textview { font-family: Arial; font-weight: "
-            "bold; color: #EEEEEE; background-color: #151515; }", -1);
+            "bold; color: #FFFFFF; background-color: #151515; }", -1);
 #else
         gtk_css_provider_load_from_string(textProvider,
             "label, scale { font-family: Arial; font-weight: bold; }\n "
             "button, entry, textview { font-family: Arial; font-weight: "
-            "bold; color: #EEEEEE; background-color: #151515; }");
+            "bold; color: #FFFFFF; background-color: #151515; }");
 #endif
         gtk_style_context_add_provider_for_display(
             gdk_display_get_default(),
@@ -1651,7 +1651,7 @@ public:
         GTKlock.unlock();
         setPosition(grid, x, y, width, height);
         GTKlock.lock();
-        gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(elementHandle), 12);
+        gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(elementHandle), 320);
         gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(elementHandle), 12);
     }
     void setDrawingFunction(GtkDrawingAreaDrawFunc theFunction) {
