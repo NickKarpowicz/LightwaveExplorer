@@ -20,10 +20,6 @@ static const unsigned int minGridDimension = 8;
 
 
 std::string     getBasename(const std::string& fullPath);
-int				loadFrogSpeck(const std::string& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
-int             loadSavedGridFile(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid);
-int             loadSavedGridFileMultiple(const std::string& filePath, std::vector<double>& outputGrid, int64_t Ngrid, int64_t Nsims);
-int             loadWaveformFile(const std::string& filePath, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);
 double          cModulusSquared(const std::complex<double>& x);
 size_t          findParenthesesClosure(std::string& a);
 double          parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock);
@@ -588,6 +584,20 @@ public:
     }
 };
 
+class loadedInputData {
+    public:
+    std::string fileContents;
+    std::string filePath;
+    bool hasData = false;
+    loadedInputData(){};
+    loadedInputData(std::string& path){
+        filePath = path;
+        std::ifstream file(filePath);
+        if(!file.good()) return;
+        fileContents = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        hasData = fileContents.size() > 1;
+    }
+};
 
 //Simulation parameter class containing the complete description of the running simulation
 //intended only to be present on the CPU, as certain contents (std::array, std::string) can not
@@ -647,7 +657,9 @@ public:
     int pulse2FileType = 0;
     std::string field1FilePath;
     std::string field2FilePath;
-
+    loadedInputData pulse1LoadedData;
+    loadedInputData pulse2LoadedData;
+    loadedInputData fittingLoadedData;
     int pulsetype = 0;
     double* ExtOut = 0;
     std::complex<double>* EkwOut = 0;
@@ -1097,3 +1109,8 @@ public:
         fillRotationMatricies((*s).crystalTheta, (*s).crystalPhi, 0);
     }
 };
+
+int				loadFrogSpeck(const loadedInputData& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
+int             loadWaveformFile(const loadedInputData& waveformFile, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);
+int             loadSavedGridFile(const loadedInputData& file, std::vector<double>& outputGrid, int64_t Ngrid);
+int             loadSavedGridFileMultiple(const loadedInputData& file, std::vector<double>& outputGrid, int64_t Ngrid, int64_t Nsims);

@@ -493,7 +493,6 @@ int simulationParameterSet::readInputParametersFile(
 			std::vector<char> dataVector;
 			std::string textPath = getBasename(filePath);
 			textPath = textPath.substr(0,textPath.length()-4) + ".txt";
-			std::cout << textPath << std::endl;
 			zipIntoMemory(filePath, textPath, dataVector);
 			dataVector.push_back(0);
             contents = std::string(dataVector.data(), dataVector.size());
@@ -1224,14 +1223,13 @@ inline double cModulusSquared(const std::complex<double>& x) {
 }
 
 int loadFrogSpeck(
-	const std::string& frogFilePath, 
+	const loadedInputData& frogSpeckData, 
 	std::complex<double>* Egrid, 
 	const int64_t Ntime, 
 	const double fStep, 
 	const double gateLevel) {
 	std::string line;
-	std::ifstream fs(frogFilePath);
-	if (fs.fail()) return -1;
+	std::stringstream fs(frogSpeckData.fileContents);
 	const int maxFileSize = 16384;
 	double wavelength, R, phi, complexX, complexY, f, f0, f1;
 	double fmax{};
@@ -1297,13 +1295,13 @@ int loadFrogSpeck(
 }
 
 int loadWaveformFile(
-	const std::string& filePath, 
+	const loadedInputData& waveformFile, 
 	std::complex<double>* outputGrid,
 	const int64_t Ntime, 
 	const double fStep) {
 	std::vector<double> Ein;
 	Ein.reserve(8192);
-	std::ifstream fs(filePath);
+	std::stringstream fs(waveformFile.fileContents);
 	std::string line;
 
 	//read the waveform file: assumption is that the first column 
@@ -1380,12 +1378,12 @@ int loadWaveformFile(
 }
 
 int loadSavedGridFile(
-	const std::string& filePath, 
+	const loadedInputData& file, 
 	std::vector<double>& outputGrid, 
 	const int64_t Ngrid) {
-	std::ifstream Efile(filePath, std::ios::binary);
+	std::stringstream Efile(file.fileContents);
 	outputGrid.resize(Ngrid);
-	if (Efile.is_open()) {
+	if (file.hasData) {
 		Efile.read(
 			reinterpret_cast<char*>(outputGrid.data()), 
 			2 * Ngrid * sizeof(double));
@@ -1395,13 +1393,13 @@ int loadSavedGridFile(
 }
 
 int loadSavedGridFileMultiple(
-	const std::string& filePath, 
+	const loadedInputData& file, 
 	std::vector<double>& outputGrid, 
 	const int64_t Ngrid, 
 	const int64_t Nsims) {
 	outputGrid.resize(Ngrid * Nsims);
-	std::ifstream Efile(filePath, std::ios::binary);
-	if (Efile.is_open()) {
+	std::stringstream Efile(file.fileContents);
+	if (file.hasData) {
 		Efile.read(reinterpret_cast<char*>(outputGrid.data()), 2 * Ngrid * Nsims * sizeof(double));
 		return 0;
 	}
