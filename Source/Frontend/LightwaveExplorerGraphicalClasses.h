@@ -1503,7 +1503,7 @@ public:
         
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
         GtkCssProvider* textProvider = gtk_css_provider_new();
-#ifdef __APPLE__
+#if defined __APPLE__ || defined LWEFLATPAK
         gtk_css_provider_load_from_data(textProvider,
             "label, scale { font-family: Arial; font-weight: bold; }\n "
             "button, entry, textview { font-family: Arial; font-weight: "
@@ -1520,7 +1520,7 @@ public:
             GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         GtkCssProvider* buttonShrinker = gtk_css_provider_new();
-#ifdef __APPLE__
+#if defined __APPLE__ || defined LWEFLATPAK
         gtk_css_provider_load_from_data(buttonShrinker,
             "label, scale, range, button, entry, textview "
             "{ min-height: 4px; min-width: 4px; }", -1);
