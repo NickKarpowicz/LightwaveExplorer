@@ -1,7 +1,7 @@
 #include "LightwaveExplorerUtilities.h"
 #include <iostream>
 #include <sstream>
-#if defined _WIN32 || defined __APPLE__
+#if defined _WIN32 || defined __APPLE__ || defined LWEFLATPAK
 #include <miniz/miniz.h>
 #else
 #include <miniz.h>
