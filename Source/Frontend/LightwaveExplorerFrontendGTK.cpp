@@ -83,7 +83,7 @@ public:
     }
 
     void activate(GtkApplication* app) {
-        int buttonWidth = 4;
+        int buttonWidth = 3;
         int textWidth = 3;
         int pulldownWidth = 6;
         int labelWidth = 6;
@@ -98,6 +98,7 @@ public:
         int buttonCol1 = textCol2a - labelWidth;
         int buttonCol2 = buttonCol1 + buttonWidth;
         int buttonCol3 = buttonCol2 + buttonWidth;
+        int buttonCol4 = buttonCol3 + buttonWidth;
         window.init(app, "Lightwave Explorer", 1400, 800);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
@@ -373,22 +374,22 @@ public:
         miniButtons["addForLoop"].setTooltip(
             "Add an empty for loop. Parameters:\n   "
             "Number of times to execute\n   Variable number in which to put the counter");
-        buttons["Run"].init(("Run"), parentHandle, buttonCol3, 15, buttonWidth, 1, launchRunThread);
+        buttons["Run"].init(("Run"), parentHandle, buttonCol4, 15, buttonWidth, 1, launchRunThread);
         buttons["Run"].setTooltip("Run the simulation as currently entered on the "
             "interface. If a sequence is entered in the sequence box below, "
             "that will execute, otherwise, a simulation on the input parameters "
             "above and to the left in a single medium will be performed.");
-        buttons["Stop"].init(("Stop"), parentHandle, buttonCol2, 15, buttonWidth, 1, stopButtonCallback);
+        buttons["Stop"].init(("Stop"), parentHandle, buttonCol3, 15, buttonWidth, 1, stopButtonCallback);
         buttons["Stop"].setTooltip("Tell a currently-running simulation to stop. "
             "It might not stop right away; it will only happen once it reaches a break point");
         buttons["Script"].init(
-            ("Script"), parentHandle, buttonCol3 + 1, 17, textWidth, 1, createRunFile);
+            ("Script"), parentHandle, buttonCol4, 17, textWidth, 1, createRunFile);
         buttons["Script"].setTooltip("Generate an input file and SLURM script for running "
             "the simulation as entered on the selected cluster");
-        buttons["Fit"].init(("Fit"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchFitThread);
+        buttons["Fit"].init(("Fit"), parentHandle, buttonCol4, 12, buttonWidth, 1, launchFitThread);
         buttons["Fit"].setTooltip("Run the fitting routine with the above parameters. "
             "The mode is set in the pulldown next to the (optional) fitting input data file path.");
-        buttons["Load"].init(("Load"), parentHandle, buttonCol1, 15, buttonWidth, 1, loadCallback);
+        buttons["Load"].init(("Load"), parentHandle, buttonCol2, 15, buttonWidth, 1, loadCallback);
         buttons["Load"].setTooltip("Load the results of a previous simulation run. "
             "You should select the associated .txt file. The parameters will be "
             "loaded into the interface, and the data (if it exists) will be plotted.");
@@ -399,7 +400,7 @@ public:
         buttons["FitPath"].init(
             ("Path"), parentHandle, textWidth, 20, textWidth, 1, fittingPathCallback);
         buttons["Path"].init(
-            ("Path"), parentHandle, buttonCol1, 17, textWidth, 1, savePathCallback);
+            ("Path"), parentHandle, buttonCol1, 15, textWidth, 1, savePathCallback);
         buttons["Path"].setTooltip("Sets the base path for the output files");
         buttons["xlim"].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
         buttons["xlim"].setTooltip("Apply the entered x limits to the plot. The two text "
@@ -519,15 +520,15 @@ public:
         pulldowns["material"].init(parentHandle, textCol2a, 0, pulldownWidth, 1);
         pulldowns["material"].setLabel(-labelWidth, 0, ("Material"));
 
-        pulldowns["cluster"].addElement("Cobra 1xR");
-        pulldowns["cluster"].addElement("Cobra 2xR");
-        pulldowns["cluster"].addElement("Cobra 1xV");
-        pulldowns["cluster"].addElement("Cobra 2xV");
-        pulldowns["cluster"].addElement("Raven 1x");
-        pulldowns["cluster"].addElement("Raven 2x");
-        pulldowns["cluster"].addElement("Raven 4x");
-        pulldowns["cluster"].addElement("Raven Nx");
-        pulldowns["cluster"].init(parentHandle, buttonCol2, 17, buttonWidth + 1, 1);
+        pulldowns["cluster"].addElement("Cobra 1xR5k");
+        pulldowns["cluster"].addElement("Cobra 2xR5k");
+        pulldowns["cluster"].addElement("Cobra 1xV100");
+        pulldowns["cluster"].addElement("Cobra 2xV100");
+        pulldowns["cluster"].addElement("Raven 1xA100");
+        pulldowns["cluster"].addElement("Raven 2xA100");
+        pulldowns["cluster"].addElement("Raven 4xA100");
+        pulldowns["cluster"].addElement("Raven NxA100");
+        pulldowns["cluster"].init(parentHandle, buttonCol2, 17, pulldownWidth, 1);
         pulldowns["cluster"].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");
         
