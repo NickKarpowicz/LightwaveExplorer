@@ -168,7 +168,7 @@ if(UNIX AND NOT APPLE)
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
             ${MKL_ROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group
-            ${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64/libiomp5.a
+            ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
             )
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer TBB::tbb)
@@ -188,7 +188,7 @@ if(UNIX AND NOT APPLE)
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
             ${MKL_ROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group
-            ${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64/libiomp5.a
+            ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
             )
         target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
         install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
@@ -209,7 +209,7 @@ if(UNIX AND NOT APPLE)
             find_package(CUDAToolkit REQUIRED)
             find_package(IntelSYCL PATHS /app/opt/intel/oneapi/compiler/latest/linux REQUIRED)
             find_package(TBB PATHS /app/opt/intel/oneapi/tbb/latest/lib/cmake REQUIRED)
-            find_package(MKL PATHS /app/opt/intel/oneapi/mkl/latest/lib/cmake /app/opt/intel/oneapi/tbb/latest/lib/cmake REQUIRED)
+            find_package(MKL PATHS /app/opt/intel/oneapi/mkl/latest/lib/cmake /app/opt/intel/oneapi/tbb/latest/lib/cmake)
             find_package(oneDPL PATHS /app/opt/intel/oneapi/dpl/latest/lib/cmake REQUIRED)
             
             find_package(fmt)
