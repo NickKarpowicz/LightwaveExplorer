@@ -167,7 +167,7 @@ if(UNIX AND NOT APPLE)
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
             ${MKL_ROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group
-            ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
+            ${MKL_ROOT}/../../compiler/latest/linux/compiler/lib/intel64/libiomp5.a
             )
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer TBB::tbb)
