@@ -161,8 +161,8 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
-        target_link_libraries(LightwaveExplorer fmt::fmt)
-        target_link_libraries(LightwaveExplorer -lm -lminiz
+        target_link_libraries(LightwaveExplorer fmt::fmt miniz::miniz)
+        target_link_libraries(LightwaveExplorer -lm
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
@@ -181,7 +181,7 @@ if(UNIX AND NOT APPLE)
             Source/Devices/DlibLibraryComponents.cpp)
         target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL -DNOCUDA -DLWEFLATPAK)
         target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
-        target_link_libraries(LightwaveExplorerNoCuda fmt::fmt)
+        target_link_libraries(LightwaveExplorerNoCuda fmt::fmt miniz::miniz)
         target_link_libraries(LightwaveExplorerNoCuda -lm
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
