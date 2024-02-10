@@ -1708,10 +1708,26 @@ static void pathFromLoadDialogCallback(GObject* gobject, GAsyncResult* result, g
         destinationPathBox.overwritePrint(resultString);
     }
 }
+static void pathFromLoadDialogToStringCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
+    std::string& destinationPath = *reinterpret_cast <std::string*>(data);
+    GError* error = nullptr;
+    GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
+    
+    if (error == nullptr) {
+        destinationPath = std::string(g_file_get_path(file));
+    }
+    else{
+        destinationPath = std::string("?LWE_NOPATH??");
+    }
+}
 
 void pathFromLoadDialog(LweTextBox& destinationPathBox) {
     GtkFileDialog* dialog = gtk_file_dialog_new();
     gtk_file_dialog_open(dialog, NULL, NULL, pathFromLoadDialogCallback, &destinationPathBox);
+}
+void pathFromLoadDialog(std::string& destinationPath) {
+    GtkFileDialog* dialog = gtk_file_dialog_new();
+    gtk_file_dialog_open(dialog, NULL, NULL, pathFromLoadDialogToStringCallback, &destinationPath);
 }
 
 [[maybe_unused]] static void pathFromSaveDialogCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
@@ -1723,7 +1739,14 @@ void pathFromLoadDialog(LweTextBox& destinationPathBox) {
         destinationPathBox.overwritePrint(path);
     }
 }
-
+[[maybe_unused]] static void pathFromSaveDialogStringCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
+    std::string& destinationPath = *reinterpret_cast <std::string*>(data);
+    GError* error = nullptr;
+    GFile* file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(gobject), result, &error);
+    if (error == nullptr) {
+        destinationPath = std::string(g_file_get_path(file));
+    }
+}
 void pathFromSaveDialog(LweTextBox& destinationPathBox) {
 #ifdef __APPLE__
     NSString* filePath;
@@ -1748,6 +1771,33 @@ void pathFromSaveDialog(LweTextBox& destinationPathBox) {
 
     gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
     gtk_file_dialog_save(dialog, NULL, NULL, pathFromSaveDialogCallback, &destinationPathBox);
+#endif
+}
+
+void pathFromSaveDialog(std::string& destinationPath) {
+#ifdef __APPLE__
+    NSString* filePath;
+    NSSavePanel* savePanel = [NSSavePanel savePanel];
+    if ([savePanel runModal] == NSModalResponseOK) {
+        filePath = [savePanel URL].path;
+        destinationPath = [filePath UTF8String];
+    }
+#else
+    GtkFileDialog* dialog = gtk_file_dialog_new();
+    GListStore* filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
+
+    GtkFileFilter* filter = gtk_file_filter_new();
+    gtk_file_filter_add_suffix(filter, "zip");
+    gtk_file_filter_set_name(filter, "Compressed (.zip)");
+    g_list_store_append(filters, filter);
+
+    filter = gtk_file_filter_new();
+    gtk_file_filter_add_pattern(filter, "*");
+    gtk_file_filter_set_name(filter, "All Files");
+    g_list_store_append(filters, filter);
+
+    gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
+    gtk_file_dialog_save(dialog, NULL, NULL, pathFromSaveDialogStringCallback, &destinationPath);
 #endif
 }
 

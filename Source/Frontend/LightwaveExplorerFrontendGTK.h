@@ -75,6 +75,7 @@ void savePathCallback();
 void waveform1PathCallback();
 void waveform2PathCallback();
 void fittingPathCallback();
+void loadFromPath(std::string &path);
 void launchFitThread();
 void fittingThread(int pulldownSelection, bool use64bitFloatingPoint);
 void stopButtonCallback();

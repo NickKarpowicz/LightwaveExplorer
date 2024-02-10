@@ -13,6 +13,10 @@ std::atomic_uint32_t totalSteps{};
 //Main class for controlling the interface
 class mainGui {
     bool queueUpdate = false;
+    bool queuePulse1Update = false;
+    bool queuePulse2Update = false;
+    bool queueFittingFileUpdate = false;
+    bool queueSavePathUpdate = false;
     bool queueSliderUpdate = false;
     bool queueSliderMove = false;
     bool queueInterfaceValuesUpdate = false;
@@ -25,13 +29,18 @@ public:
     LweConsole console{};
     LweConsole sequence{};
     LweConsole fitCommand{};
-    std::array<LweTextBox,4> filePaths;
+    //std::array<LweTextBox,4> filePaths;
     std::unordered_map<std::string, LwePulldown> pulldowns;
     std::array<LweDrawBox,8> drawBoxes;
+    std::string pathBuffer;
     LweDrawBox progressBarBox{};
     std::unordered_map<std::string, LweCheckBox> checkBoxes;
     LweSlider plotSlider{};
     LweWindow window{};
+    loadedInputData pulse1Data;
+    loadedInputData pulse2Data;
+    loadedInputData fittingData;
+    std::string currentPath = "defaultOutput/TestFile";
     int64_t pathTarget = 0;
     int saveSVG = 0;
     bool loadedDefaults = false;
@@ -41,6 +50,30 @@ public:
         std::unique_lock<std::mutex> lock(mutex);
         queueUpdate = true;
     }
+    void requestSavePathUpdate(){
+        std::unique_lock<std::mutex> lock(mutex);
+        pathBuffer = std::string("?LWE_LOADING??");
+        pathFromSaveDialog(pathBuffer);
+        queueSavePathUpdate = true;
+    }
+    void requestPulse1Update(){
+        std::unique_lock<std::mutex> lock(mutex);
+        pathBuffer = std::string("?LWE_LOADING??");
+        pathFromLoadDialog(pathBuffer);
+        queuePulse1Update = true;
+    }
+    void requestPulse2Update(){
+        std::unique_lock<std::mutex> lock(mutex);
+        pathBuffer = std::string("?LWE_LOADING??");
+        pathFromLoadDialog(pathBuffer);
+        queuePulse2Update = true;
+    }
+    void requestFittingFileUpdate(){
+        std::unique_lock<std::mutex> lock(mutex);
+        pathBuffer = std::string("?LWE_LOADING??");
+        pathFromLoadDialog(pathBuffer);
+        queueFittingFileUpdate = true;
+    }
     void applyUpdate() {
         std::unique_lock<std::mutex> lock(mutex);
         if (queueUpdate) {
@@ -49,7 +82,31 @@ public:
                 drawBoxes[i].queueDraw();
             }
         }
-
+        if(queuePulse1Update && pathBuffer != "?LWE_LOADING??"){
+            queuePulse1Update = false;
+            if(pathBuffer == "?LWE_NOPATH??") return;
+            pulse1Data = loadedInputData(pathBuffer);
+            console.tPrint("Loaded new file into pulse 1 buffer:\n{}\n", pulse1Data.filePath);
+        }
+        if(queuePulse2Update && pathBuffer != "?LWE_LOADING??"){
+            queuePulse2Update = false;
+            if(pathBuffer == "?LWE_NOPATH??") return;
+            pulse2Data = loadedInputData(pathBuffer);
+            console.tPrint("Loaded new file into pulse 2 buffer:\n{}\n", pulse2Data.filePath);
+        }
+        if(queueFittingFileUpdate && pathBuffer != "?LWE_LOADING??"){
+            queueFittingFileUpdate = false;
+            if(pathBuffer == "?LWE_NOPATH??") return;
+            fittingData = loadedInputData(pathBuffer);
+            console.tPrint("Loaded new file into fitting target buffer:\n{}\n", fittingData.filePath);
+        }
+        if(queueSavePathUpdate && pathBuffer != "?LWE_LOADING??"){
+            queueSavePathUpdate = false;
+            if(pathBuffer == "?LWE_NOPATH??") return;
+            currentPath = pathBuffer;
+            console.tPrint("New save target:\n{}\n", currentPath);
+        }
+        
         progressBarBox.queueDraw();
         if (queueInterfaceValuesUpdate){
             setInterfaceValuesToActiveValues();
@@ -119,36 +176,36 @@ public:
             textBoxes[i].setMaxCharacters(pathChars/4);
         }
 
-        filePaths[0].init(parentHandle, 0, 17, colWidth, 1);
-        filePaths[0].setMaxCharacters(pathChars);
-        pulldowns["pulse1"].addElement(("Synthetic"));
+        //filePaths[0].init(parentHandle, 0, 17, colWidth, 1);
+        //filePaths[0].setMaxCharacters(pathChars);
+        pulldowns["pulse1"].addElement(("Synth."));
         pulldowns["pulse1"].addElement(("FROG"));
-        pulldowns["pulse1"].addElement(("Waveform"));
-        pulldowns["pulse1"].addElement("LWE .dat");
-        pulldowns["pulse1"].init(parentHandle, labelWidth, 16, pulldownWidth, 1);
-        filePaths[0].setLabel(0, -1, ("Data 1:"));
+        pulldowns["pulse1"].addElement(("Wave"));
+        pulldowns["pulse1"].addElement("LWE");
+        pulldowns["pulse1"].init(parentHandle, labelWidth, 16, buttonWidth, 1);
+        //filePaths[0].setLabel(0, -1, ("Data 1:"));
 
-        filePaths[1].init(parentHandle, 0, 19, colWidth, 1);
-        filePaths[1].setMaxCharacters(pathChars);
-        filePaths[1].setLabel(0, -1, ("Data 2:"));
-        pulldowns["pulse2"].addElement(("Synthetic"));
+        //filePaths[1].init(parentHandle, 0, 19, colWidth, 1);
+        //filePaths[1].setMaxCharacters(pathChars);
+        //filePaths[1].setLabel(0, -1, ("Data 2:"));
+        pulldowns["pulse2"].addElement(("Synth."));
         pulldowns["pulse2"].addElement(("FROG"));
-        pulldowns["pulse2"].addElement(("Waveform"));
-        pulldowns["pulse2"].addElement("LWE .dat");
-        pulldowns["pulse2"].init(parentHandle, labelWidth, 18, pulldownWidth, 1);
+        pulldowns["pulse2"].addElement(("Wave"));
+        pulldowns["pulse2"].addElement("LWE");
+        pulldowns["pulse2"].init(parentHandle, labelWidth+buttonWidth, 16, buttonWidth, 1);
 
-        filePaths[2].init(parentHandle, 0, 21, colWidth, 1);
-        filePaths[2].setMaxCharacters(pathChars);
-        filePaths[2].setLabel(0, -1, ("Fit data:"));
+        //filePaths[2].init(parentHandle, 0, 21, colWidth, 1);
+        //filePaths[2].setMaxCharacters(pathChars);
+        //filePaths[2].setLabel(0, -1, ("Fit data:"));
         pulldowns["fit"].addElement(("Maximize x"));
         pulldowns["fit"].addElement(("Maximize y"));
         pulldowns["fit"].addElement(("Maximize Total"));
         pulldowns["fit"].addElement(("Fit spectrum"));
         pulldowns["fit"].addElement(("Fit spectrum (log)"));
-        pulldowns["fit"].init(parentHandle, labelWidth, 20, pulldownWidth, 1);
+        pulldowns["fit"].init(parentHandle, buttonCol1, 13, pulldownWidth, 1);
 
-        filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
-        filePaths[3].setMaxCharacters(pathChars);
+        //filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
+        //filePaths[3].setMaxCharacters(pathChars);
 
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawTimeImage1);
@@ -374,33 +431,33 @@ public:
         miniButtons["addForLoop"].setTooltip(
             "Add an empty for loop. Parameters:\n   "
             "Number of times to execute\n   Variable number in which to put the counter");
-        buttons["Run"].init(("Run"), parentHandle, buttonCol4, 15, buttonWidth, 1, launchRunThread);
+        buttons["Run"].init(("Run"), parentHandle, buttonCol4, 12, buttonWidth, 1, launchRunThread);
         buttons["Run"].setTooltip("Run the simulation as currently entered on the "
             "interface. If a sequence is entered in the sequence box below, "
             "that will execute, otherwise, a simulation on the input parameters "
             "above and to the left in a single medium will be performed.");
-        buttons["Stop"].init(("Stop"), parentHandle, buttonCol3, 15, buttonWidth, 1, stopButtonCallback);
+        buttons["Stop"].init(("Stop"), parentHandle, buttonCol3, 12, buttonWidth, 1, stopButtonCallback);
         buttons["Stop"].setTooltip("Tell a currently-running simulation to stop. "
             "It might not stop right away; it will only happen once it reaches a break point");
         buttons["Script"].init(
-            ("Script"), parentHandle, buttonCol4, 17, textWidth, 1, createRunFile);
+            ("\xf0\x9f\x92\xbe"), parentHandle, labelWidth+textWidth+1, 19, 2, 1, createRunFile);
         buttons["Script"].setTooltip("Generate an input file and SLURM script for running "
             "the simulation as entered on the selected cluster");
-        buttons["Fit"].init(("Fit"), parentHandle, buttonCol4, 12, buttonWidth, 1, launchFitThread);
+        buttons["Fit"].init(("Fit"), parentHandle, buttonCol4, 13, buttonWidth, 1, launchFitThread);
         buttons["Fit"].setTooltip("Run the fitting routine with the above parameters. "
             "The mode is set in the pulldown next to the (optional) fitting input data file path.");
-        buttons["Load"].init(("Load"), parentHandle, buttonCol2, 15, buttonWidth, 1, loadCallback);
+        buttons["Load"].init(("Load"), parentHandle, buttonCol2, 12, buttonWidth, 1, loadCallback);
         buttons["Load"].setTooltip("Load the results of a previous simulation run. "
             "You should select the associated .txt file. The parameters will be "
             "loaded into the interface, and the data (if it exists) will be plotted.");
         buttons["Field1Path"].init(
-            ("Path"), parentHandle, textWidth, 16, textWidth, 1, waveform1PathCallback);
+            ("\xf0\x9f\x93\x82"), parentHandle, labelWidth, 17, buttonWidth, 1, waveform1PathCallback);
         buttons["Field2Path"].init(
-            ("Path"), parentHandle, textWidth, 18, textWidth, 1, waveform2PathCallback);
+            ("\xf0\x9f\x93\x82"), parentHandle, labelWidth+buttonWidth, 17, buttonWidth, 1, waveform2PathCallback);
         buttons["FitPath"].init(
-            ("Path"), parentHandle, textWidth, 20, textWidth, 1, fittingPathCallback);
-        buttons["Path"].init(
-            ("Path"), parentHandle, buttonCol1, 15, textWidth, 1, savePathCallback);
+            ("\xf0\x9f\x93\x82"), parentHandle, buttonCol3, 13, buttonWidth, 1, fittingPathCallback);
+        buttons["path"].init(
+            ("\xf0\x9f\x92\xbe"), parentHandle, buttonCol1, 12, buttonWidth, 1, savePathCallback);
         buttons["Path"].setTooltip("Sets the base path for the output files");
         buttons["xlim"].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
         buttons["xlim"].setTooltip("Apply the entered x limits to the plot. The two text "
@@ -426,8 +483,8 @@ public:
         plotSlider.setFunction(independentPlotQueue);
         plotSlider.setArrowFunction(sliderResponseToArrows);
         sequence.init(window.parentHandle(1), 0, 0, 1, 1);
-        fitCommand.init(parentHandle, buttonCol1, 13, colWidth, 2);
-        console.init(parentHandle, buttonCol1, 18, colWidth, 4);
+        fitCommand.init(parentHandle, buttonCol1, 14, colWidth, 2);
+        console.init(parentHandle, buttonCol1, 16, colWidth, 4);
         checkLibraryAvailability();
         
         std::string A;
@@ -498,16 +555,16 @@ public:
         textBoxes[38].setLabel(-labelWidth, 0, ("Max x, dx (\xce\xbcm)"));
         textBoxes[40].setLabel(-labelWidth, 0, ("Time span, dt (fs)"));
         textBoxes[42].setLabel(-labelWidth, 0, ("Max z, dz (\xce\xbcm,nm)"));
-        
+        pulldowns["pulse1"].setLabel(-labelWidth, 0, ("Source"));
         textBoxes[44].setLabel(-labelWidth, 0, ("Batch end"));
         textBoxes[46].setLabel(-labelWidth, 0, ("Batch steps"));
         pulldowns["propagator"].setLabel(-labelWidth, 0, ("Propagation"));
         pulldowns["batch1"].setLabel(-labelWidth, 0, ("Batch mode"));
         pulldowns["batch2"].setLabel(-labelWidth, 0, ("Batch mode 2"));
+        
+        //fitCommand.setLabel(0, -1, ("Fitting:"));
 
-        fitCommand.setLabel(0, -1, ("Fitting:"));
-
-        filePaths[3].overwritePrint("TestFile");
+        //filePaths[3].overwritePrint("TestFile");
 
         //read the crystal database
         std::string materialString;
@@ -528,10 +585,11 @@ public:
         pulldowns["cluster"].addElement("Raven 2xA100");
         pulldowns["cluster"].addElement("Raven 4xA100");
         pulldowns["cluster"].addElement("Raven NxA100");
-        pulldowns["cluster"].init(parentHandle, buttonCol2, 17, pulldownWidth, 1);
+        pulldowns["cluster"].init(parentHandle, labelWidth-2, 19, pulldownWidth, 1);
         pulldowns["cluster"].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");
-        
+        pulldowns["cluster"].setLabel(-labelWidth+2,0,"SLURM script",13,3);
+
         //Linux search order:
         // ../share/LightwaveExplorer
         // working directory
@@ -668,9 +726,10 @@ void setInterfaceValuesToActiveValues(){
         formatSequence(formattedSequence);
         theGui.sequence.directOverwritePrintSequence(formattedSequence.c_str());
     }
-    theGui.filePaths[0].overwritePrint(theSim.base().pulse1LoadedData.filePath);
-    theGui.filePaths[1].overwritePrint(theSim.base().pulse1LoadedData.filePath);
-    theGui.filePaths[2].overwritePrint(theSim.base().pulse1LoadedData.filePath);
+    theGui.pulse1Data = theSim.base().pulse1LoadedData;
+    theGui.pulse2Data = theSim.base().pulse2LoadedData;
+    theGui.fittingData = theSim.base().fittingLoadedData;
+
     theGui.fitCommand.clear();
     if (!(theSim.base().fittingString[0] == 'N')) {
         std::string formattedFit=theSim.base().fittingString;
@@ -678,8 +737,6 @@ void setInterfaceValuesToActiveValues(){
         theGui.fitCommand.overwritePrint(formattedFit.c_str());
     }
 
-    if(!theGui.loadedDefaults) 
-        theGui.filePaths[3].overwritePrint(theSim.base().outputBasePath);
     theGui.loadedDefaults = true;
 }
 
@@ -738,7 +795,6 @@ void readParametersFromInterface() {
     theSim.base().symmetryType = theGui.pulldowns["propagator"].getValue();
     theSim.base().batchIndex = theGui.pulldowns["batch1"].getValue();
     theSim.base().batchIndex2 = theGui.pulldowns["batch2"].getValue();
-    //theSim.base().runType = theGui.pulldowns["cluster"].getValue();
     theGui.textBoxes[52].valueToPointer(&theSim.base().NsimsCPU);
     theSim.base().isInSequence = false;
     theGui.sequence.copyBuffer(theSim.base().sequenceString);
@@ -750,25 +806,19 @@ void readParametersFromInterface() {
     theSim.base().isInFittingMode = false;
     theGui.fitCommand.copyBuffer(theSim.base().fittingString);
     stripLineBreaks(theSim.base().fittingString);
-    std::string pathTemp;
-    theGui.filePaths[0].copyBuffer(pathTemp);
-    stripLineBreaks(pathTemp);
-    theSim.base().pulse1LoadedData = loadedInputData(pathTemp);
 
-    theGui.filePaths[1].copyBuffer(pathTemp);
-    stripLineBreaks(pathTemp);
-    theSim.base().pulse2LoadedData = loadedInputData(pathTemp);
+    theSim.base().pulse1LoadedData = theGui.pulse1Data;
+    theSim.base().pulse2LoadedData = theGui.pulse2Data;
 
-    theGui.filePaths[3].copyBuffer(theSim.base().outputBasePath);
+    //theGui.filePaths[3].copyBuffer(theSim.base().outputBasePath);
+    theSim.base().outputBasePath = theGui.currentPath;
     stripLineBreaks(theSim.base().outputBasePath);
     if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
         || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
         theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
     }
 
-    theGui.filePaths[2].copyBuffer(pathTemp);
-    stripLineBreaks(pathTemp);
-    theSim.base().fittingLoadedData = loadedInputData(pathTemp);
+    theSim.base().fittingLoadedData = theGui.fittingData;
     
     //derived parameters and cleanup:
     theSim.base().sellmeierType = 0;
@@ -1022,17 +1072,17 @@ void checkLibraryAvailability() {
 }
 
 void savePathCallback() {
-    pathFromSaveDialog(theGui.filePaths[3]);
+    theGui.requestSavePathUpdate();
 }
 
 void waveform1PathCallback() {
-    pathFromLoadDialog(theGui.filePaths[0]);
+    theGui.requestPulse1Update();
 }
 void waveform2PathCallback() {
-    pathFromLoadDialog(theGui.filePaths[1]);
+    theGui.requestPulse2Update();
 }
 void fittingPathCallback() {
-    pathFromLoadDialog(theGui.filePaths[2]);
+    theGui.requestFittingFileUpdate();
 }
 
 void loadFromPath(std::string& path) {
@@ -1320,8 +1370,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
     if (saveSVG) {
-        std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
+        std::string svgPath = theGui.currentPath;
         svgPath.append("_Ex.svg");
         sPlot.SVGPath = svgPath;
     }
@@ -1375,8 +1424,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
     if (saveSVG) {
-        std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
+        std::string svgPath = theGui.currentPath;
         svgPath.append("_Ey.svg");
         sPlot.SVGPath = svgPath;
     }
@@ -1448,8 +1496,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     }
 
     if (saveSVG) {
-        std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
+        std::string svgPath = theGui.currentPath;
         svgPath.append("_Sx.svg");
         sPlot.SVGPath = svgPath;
     }
@@ -1531,8 +1578,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         overlayTotal = true;
     }
     if (saveSVG) {
-        std::string svgPath;
-        theGui.filePaths[3].copyBuffer(svgPath);
+        std::string svgPath = theGui.currentPath;
         svgPath.append("_Sy.svg");
         sPlot.SVGPath = svgPath;
     }
