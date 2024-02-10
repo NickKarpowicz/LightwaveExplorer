@@ -607,7 +607,7 @@ public:
         pulldowns["cluster"].init(parentHandle, labelWidth-2, 19, pulldownWidth, 1);
         pulldowns["cluster"].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");
-        pulldowns["cluster"].setLabel(-labelWidth+2,0,"SLURM script",13,3);
+        pulldowns["cluster"].setLabel(-labelWidth+2,0,"SLURM script",13,4);
 
         //Linux search order:
         // ../share/LightwaveExplorer
