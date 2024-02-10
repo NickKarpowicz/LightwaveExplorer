@@ -833,6 +833,9 @@ public:
         _height = height;
         gtk_grid_attach(GTK_GRID(_grid), elementHandle, _x, _y, _width, _height);
     }
+    void remove(){
+        gtk_grid_remove(GTK_GRID(_grid), elementHandle);
+    }
     void setLabel(const int x, const int y, const char* labelText) {
         std::unique_lock GTKlock(GTKmutex);
         label = gtk_label_new(labelText);

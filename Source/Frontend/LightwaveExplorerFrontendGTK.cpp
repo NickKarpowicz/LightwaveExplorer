@@ -17,11 +17,28 @@ class mainGui {
     bool queuePulse2Update = false;
     bool queueFittingFileUpdate = false;
     bool queueSavePathUpdate = false;
+    bool queueLoadDatabase = false;
     bool queueSliderUpdate = false;
     bool queueSliderMove = false;
     bool queueInterfaceValuesUpdate = false;
     int sliderTarget = 0;
     std::mutex mutex;
+    int buttonWidth = 3;
+    int textWidth = 3;
+    int pulldownWidth = 6;
+    int labelWidth = 6;
+    int plotWidth = 2;
+    int plotHeight = 1;
+    int pathChars = 36;
+    int colWidth = labelWidth + 2 * textWidth;
+    int textCol1a = labelWidth;
+    int textCol2a = textCol1a + 2 * textWidth + labelWidth;
+    int textCol1b = textCol1a + textWidth;
+    int textCol2b = textCol2a + textWidth;
+    int buttonCol1 = textCol2a - labelWidth;
+    int buttonCol2 = buttonCol1 + buttonWidth;
+    int buttonCol3 = buttonCol2 + buttonWidth;
+    int buttonCol4 = buttonCol3 + buttonWidth;
 public:
     std::array<LweTextBox, 56> textBoxes;
     std::unordered_map<std::string, LweButton> buttons;
@@ -74,6 +91,12 @@ public:
         pathFromLoadDialog(pathBuffer);
         queueFittingFileUpdate = true;
     }
+    void requestLoadDatabase(){
+        std::unique_lock<std::mutex> lock(mutex);
+        pathBuffer = std::string("?LWE_LOADING??");
+        pathFromLoadDialog(pathBuffer);
+        queueLoadDatabase = true;
+    }
     void applyUpdate() {
         std::unique_lock<std::mutex> lock(mutex);
         if (queueUpdate) {
@@ -99,6 +122,22 @@ public:
             if(pathBuffer == "?LWE_NOPATH??") return;
             fittingData = loadedInputData(pathBuffer);
             console.tPrint("Loaded new file into fitting target buffer:\n{}\n", fittingData.filePath);
+        }
+        if(queueLoadDatabase && pathBuffer != "?LWE_LOADING??"){
+            queueLoadDatabase = false;
+            if(pathBuffer == "?LWE_NOPATH??") return;
+            theDatabase = crystalDatabase(pathBuffer);
+            pulldowns["material"].remove();
+            std::string materialString;
+            pulldowns["material"] = LwePulldown();
+            for (int i = 0; i < theDatabase.db.size(); ++i) {
+                materialString = Sformat(
+                    "{:2}: {}", i, std::string(theDatabase.db[i].crystalName.c_str()));
+                pulldowns["material"].addElement(materialString.c_str());
+            }
+            pulldowns["material"].init(window.parentHandle(), textCol2a, 0, pulldownWidth, 1);
+            pulldowns["material"].setLabel(-labelWidth, 0, ("Material"), 9, 2);
+            console.tPrint("Loaded material database from:\n{}\n", pathBuffer);
         }
         if(queueSavePathUpdate && pathBuffer != "?LWE_LOADING??"){
             queueSavePathUpdate = false;
@@ -140,22 +179,7 @@ public:
     }
 
     void activate(GtkApplication* app) {
-        int buttonWidth = 3;
-        int textWidth = 3;
-        int pulldownWidth = 6;
-        int labelWidth = 6;
-        int plotWidth = 2;
-        int plotHeight = 1;
-        int pathChars = 36;
-        int colWidth = labelWidth + 2 * textWidth;
-        int textCol1a = labelWidth;
-        int textCol2a = textCol1a + 2 * textWidth + labelWidth;
-        int textCol1b = textCol1a + textWidth;
-        int textCol2b = textCol2a + textWidth;
-        int buttonCol1 = textCol2a - labelWidth;
-        int buttonCol2 = buttonCol1 + buttonWidth;
-        int buttonCol3 = buttonCol2 + buttonWidth;
-        int buttonCol4 = buttonCol3 + buttonWidth;
+
         window.init(app, "Lightwave Explorer", 1400, 800);
         GtkWidget* parentHandle = window.parentHandle();
         for (int i = 0; i < 16; ++i) {
@@ -561,10 +585,6 @@ public:
         pulldowns["propagator"].setLabel(-labelWidth, 0, ("Propagation"));
         pulldowns["batch1"].setLabel(-labelWidth, 0, ("Batch mode"));
         pulldowns["batch2"].setLabel(-labelWidth, 0, ("Batch mode 2"));
-        
-        //fitCommand.setLabel(0, -1, ("Fitting:"));
-
-        //filePaths[3].overwritePrint("TestFile");
 
         //read the crystal database
         std::string materialString;
@@ -573,10 +593,9 @@ public:
                 "{:2}: {}", i, std::string(theDatabase.db[i].crystalName.c_str()));
             pulldowns["material"].addElement(materialString.c_str());
         }
-        
         pulldowns["material"].init(parentHandle, textCol2a, 0, pulldownWidth, 1);
-        pulldowns["material"].setLabel(-labelWidth, 0, ("Material"));
-
+        pulldowns["material"].setLabel(-labelWidth, 0, ("Material"),9,2);
+        buttons["loadDatabase"].init("\xf0\x9f\x93\x82",parentHandle,buttonCol2+1,0,2,1,loadDatabaseCallback);
         pulldowns["cluster"].addElement("Cobra 1xR5k");
         pulldowns["cluster"].addElement("Cobra 2xR5k");
         pulldowns["cluster"].addElement("Cobra 1xV100");
@@ -1083,6 +1102,9 @@ void waveform2PathCallback() {
 }
 void fittingPathCallback() {
     theGui.requestFittingFileUpdate();
+}
+void loadDatabaseCallback(){
+    theGui.requestLoadDatabase();
 }
 
 void loadFromPath(std::string& path) {

@@ -394,7 +394,13 @@ public:
 #else
         std::ifstream fs("CrystalDatabase.txt");
 #endif
-        
+        loadFromFilestream(fs);
+    }
+    crystalDatabase(std::string path){
+        std::ifstream fs(path);
+        loadFromFilestream(fs);
+    }
+    void loadFromFilestream(std::ifstream& fs){
         std::string line;
         if (!fs.is_open())return;
         while (!fs.eof() && fs.good()) {
