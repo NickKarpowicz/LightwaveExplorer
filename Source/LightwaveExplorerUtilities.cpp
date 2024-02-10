@@ -115,12 +115,12 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool 
 }
 
 
-//note to self: replace raw pointers with std::vector
 int simulationParameterSet::loadReferenceSpectrum() {
-	std::ifstream fs(fittingPath);
-	if (fs.fail()) {
+	if (!fittingLoadedData.hasData) {
 		return 1;
 	}
+	std::stringstream fs(fittingLoadedData.fileContents);
+
 	int64_t maxFileSize = 16384;
 	int64_t currentRow = 0;
 	constexpr double c = 1e9 * lightC<double>();
@@ -279,9 +279,9 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 
 std::string simulationParameterSet::settingsString(){
 	std::string baseName = getBasename(outputBasePath);
-	std::string referenceBaseName = getBasename(fittingPath);
-	std::string pulse1BaseName = getBasename(field1FilePath);
-	std::string pulse2BaseName = getBasename(field2FilePath);
+	std::string referenceBaseName = getBasename(fittingLoadedData.filePath);
+	std::string pulse1BaseName = getBasename(pulse1LoadedData.filePath);
+	std::string pulse2BaseName = getBasename(pulse2LoadedData.filePath);
 	std::stringstream fs;
 	fs.precision(15);
 
@@ -359,9 +359,9 @@ std::string simulationParameterSet::settingsString(){
 		fs << "Output base path: " << outputBasePath << '\x0A';
 		fs << "Field 1 from file type: " << pulse1FileType << '\x0A';
 		fs << "Field 2 from file type: " << pulse2FileType << '\x0A';
-		fs << "Field 1 file path: " << field1FilePath << '\x0A';
-		fs << "Field 2 file path: " << field2FilePath << '\x0A';
-		fs << "Fitting reference file path: " << fittingPath << '\x0A';
+		fs << "Field 1 file path: " << pulse1LoadedData.filePath << '\x0A';
+		fs << "Field 2 file path: " << pulse2LoadedData.filePath << '\x0A';
+		fs << "Fitting reference file path: " << fittingLoadedData.filePath << '\x0A';
 	}
 
 	fs << "Material name: " << crystalDatabase[materialIndex].crystalName << '\x0A';
@@ -662,26 +662,22 @@ int simulationParameterSet::readInputParametersFile(
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-
-	field1FilePath = line;
+	removeCharacterFromString(line, '\r');
+	removeCharacterFromString(line, '\n');
+	pulse1LoadedData = loadedInputData(line);
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
-
-	field2FilePath = line;
+	removeCharacterFromString(line, '\r');
+	removeCharacterFromString(line, '\n');
+	pulse2LoadedData = loadedInputData(line);
 	moveToColon();
 	std::getline(fs, line);
 	line.erase(line.begin());
+	removeCharacterFromString(line, '\r');
+	removeCharacterFromString(line, '\n');
+	fittingLoadedData = loadedInputData(line);
 
-	fittingPath = line;
-	removeCharacterFromString(field1FilePath, '\r');
-	removeCharacterFromString(field1FilePath, '\n');
-	removeCharacterFromString(field2FilePath, '\r');
-	removeCharacterFromString(field2FilePath, '\n');
-	removeCharacterFromString(fittingPath, '\r');
-	removeCharacterFromString(fittingPath, '\n');
-	removeCharacterFromString(fittingString, '\r');
-	removeCharacterFromString(fittingString, '\n');
 	removeCharacterFromString(sequenceString, '\r');
 	removeCharacterFromString(sequenceString, '\n');
 	removeCharacterFromString(outputBasePath, '\r');
@@ -896,7 +892,7 @@ void simulationBatch::loadPulseFiles() {
 	int frogLines = 0;
 	if (parameters[0].pulse1FileType == 1) {
 		frogLines = loadFrogSpeck(
-			parameters[0].field1FilePath, 
+			parameters[0].pulse1LoadedData, 
 			loadedField1.data(), 
 			parameters[0].Ntime, 
 			parameters[0].fStep, 
@@ -905,7 +901,7 @@ void simulationBatch::loadPulseFiles() {
 	}
 	if (parameters[0].pulse2FileType == 1) {
 		frogLines = loadFrogSpeck(
-			parameters[0].field2FilePath, 
+			parameters[0].pulse2LoadedData, 
 			loadedField2.data(), 
 			parameters[0].Ntime, 
 			parameters[0].fStep, 
@@ -915,7 +911,7 @@ void simulationBatch::loadPulseFiles() {
 
 	if (parameters[0].pulse1FileType == 2) {
 		frogLines = loadWaveformFile(
-			parameters[0].field1FilePath, 
+			parameters[0].pulse1LoadedData, 
 			loadedField1.data(), 
 			parameters[0].Ntime, 
 			parameters[0].fStep);
@@ -923,7 +919,7 @@ void simulationBatch::loadPulseFiles() {
 	}
 	if (parameters[0].pulse2FileType == 2) {
 		frogLines = loadWaveformFile(
-			parameters[0].field2FilePath, 
+			parameters[0].pulse2LoadedData, 
 			loadedField2.data(), 
 			parameters[0].Ntime, 
 			parameters[0].fStep);
@@ -932,13 +928,13 @@ void simulationBatch::loadPulseFiles() {
 
 	if (parameters[0].pulse1FileType == 3) {
 		parameters[0].field1IsAllocated = loadSavedGridFile(
-			parameters[0].field1FilePath, 
+			parameters[0].pulse1LoadedData, 
 			loadedFullGrid1, 
 			parameters[0].Ngrid);
 	}
 	if (parameters[0].pulse2FileType == 3) {
 		parameters[0].field2IsAllocated = loadSavedGridFile(
-			parameters[0].field2FilePath, 
+			parameters[0].pulse2LoadedData, 
 			loadedFullGrid2, 
 			parameters[0].Ngrid);
 	}
@@ -998,11 +994,6 @@ int simulationParameterSet::readFittingString() {
 
 	Nfitting = fittingCount / 3;
 	isInFittingMode = ((Nfitting > 0) && (maxIterations > 0));
-
-	if (!isInFittingMode) {
-		std::string noneString("None.");
-		fittingString = noneString;
-	}
 
 	return 0;
 }
@@ -1381,9 +1372,9 @@ int loadSavedGridFile(
 	const loadedInputData& file, 
 	std::vector<double>& outputGrid, 
 	const int64_t Ngrid) {
-	std::stringstream Efile(file.fileContents);
 	outputGrid.resize(Ngrid);
 	if (file.hasData) {
+		std::stringstream Efile(file.fileContents);
 		Efile.read(
 			reinterpret_cast<char*>(outputGrid.data()), 
 			2 * Ngrid * sizeof(double));
@@ -1398,8 +1389,8 @@ int loadSavedGridFileMultiple(
 	const int64_t Ngrid, 
 	const int64_t Nsims) {
 	outputGrid.resize(Ngrid * Nsims);
-	std::stringstream Efile(file.fileContents);
 	if (file.hasData) {
+		std::stringstream Efile(file.fileContents);
 		Efile.read(reinterpret_cast<char*>(outputGrid.data()), 2 * Ngrid * Nsims * sizeof(double));
 		return 0;
 	}

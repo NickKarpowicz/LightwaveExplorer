@@ -1000,28 +1000,15 @@ public:
         std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         std::string s(gtk_entry_buffer_get_text(buf));
-        if (s.length() > 0) {
-            s.append("\0");
-            s.copy(destination, maxLength);
-        }
-        else {
-            s.assign("None\0");
-            s.copy(destination, maxLength);
-        }
+        s.append("\0");
+        s.copy(destination, maxLength);
     }
 
     void copyBuffer(std::string& destination) {
         std::unique_lock GTKlock(GTKmutex);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
-
-        if (gtk_entry_buffer_get_length(buf) > 0) {
-            std::string s(gtk_entry_buffer_get_text(buf));
-            destination = s;
-        }
-        else {
-            std::string s("None.");
-            destination = s;
-        }
+        std::string s(gtk_entry_buffer_get_text(buf));
+        destination = s;
     }
 };
 
@@ -1328,17 +1315,11 @@ public:
         std::unique_lock GTKlock(GTKmutex);
         GtkTextIter start;
         GtkTextIter stop;
-        if (gtk_text_buffer_get_char_count(buf) > 0) {
-            gtk_text_buffer_get_start_iter(buf, &start);
-            gtk_text_buffer_get_end_iter(buf, &stop);
-            char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, false);
-            std::string c(realBuf);
-            s = c;
-        }
-        else {
-            std::string c("None.");
-            s = c;
-        }
+        gtk_text_buffer_get_start_iter(buf, &start);
+        gtk_text_buffer_get_end_iter(buf, &stop);
+        char* realBuf = gtk_text_buffer_get_text(buf, &start, &stop, false);
+        std::string c(realBuf);
+        s = c;
     }
 
     void clear() {

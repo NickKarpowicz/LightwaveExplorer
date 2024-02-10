@@ -668,13 +668,9 @@ void setInterfaceValuesToActiveValues(){
         formatSequence(formattedSequence);
         theGui.sequence.directOverwritePrintSequence(formattedSequence.c_str());
     }
-    stripLineBreaks(theSim.base().field1FilePath);
-    if (std::string(theSim.base().field1FilePath).compare("None") != 0) 
-        theGui.filePaths[0].overwritePrint(theSim.base().field1FilePath);
-    if (std::string(theSim.base().field2FilePath).compare("None") != 0) 
-        theGui.filePaths[1].overwritePrint(theSim.base().field2FilePath);
-    if (std::string(theSim.base().fittingPath).compare("None") != 0) 
-        theGui.filePaths[2].overwritePrint(theSim.base().fittingPath);
+    theGui.filePaths[0].overwritePrint(theSim.base().pulse1LoadedData.filePath);
+    theGui.filePaths[1].overwritePrint(theSim.base().pulse1LoadedData.filePath);
+    theGui.filePaths[2].overwritePrint(theSim.base().pulse1LoadedData.filePath);
     theGui.fitCommand.clear();
     if (!(theSim.base().fittingString[0] == 'N')) {
         std::string formattedFit=theSim.base().fittingString;
@@ -754,12 +750,14 @@ void readParametersFromInterface() {
     theSim.base().isInFittingMode = false;
     theGui.fitCommand.copyBuffer(theSim.base().fittingString);
     stripLineBreaks(theSim.base().fittingString);
+    std::string pathTemp;
+    theGui.filePaths[0].copyBuffer(pathTemp);
+    stripLineBreaks(pathTemp);
+    theSim.base().pulse1LoadedData = loadedInputData(pathTemp);
 
-    theGui.filePaths[0].copyBuffer(theSim.base().field1FilePath);
-    stripLineBreaks(theSim.base().field1FilePath);
-
-    theGui.filePaths[1].copyBuffer(theSim.base().field2FilePath);
-    stripLineBreaks(theSim.base().field2FilePath);
+    theGui.filePaths[1].copyBuffer(pathTemp);
+    stripLineBreaks(pathTemp);
+    theSim.base().pulse2LoadedData = loadedInputData(pathTemp);
 
     theGui.filePaths[3].copyBuffer(theSim.base().outputBasePath);
     stripLineBreaks(theSim.base().outputBasePath);
@@ -767,9 +765,11 @@ void readParametersFromInterface() {
         || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
         theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
     }
-    theGui.filePaths[2].copyBuffer(theSim.base().fittingPath);
-    stripLineBreaks(theSim.base().fittingPath);
 
+    theGui.filePaths[2].copyBuffer(pathTemp);
+    stripLineBreaks(pathTemp);
+    theSim.base().fittingLoadedData = loadedInputData(pathTemp);
+    
     //derived parameters and cleanup:
     theSim.base().sellmeierType = 0;
     theSim.base().axesNumber = 0;

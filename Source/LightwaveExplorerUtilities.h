@@ -593,7 +593,7 @@ class loadedInputData {
     loadedInputData(std::string& path){
         filePath = path;
         std::ifstream file(filePath);
-        if(!file.good()) return;
+        if(file.fail()) return;
         fileContents = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         hasData = fileContents.size() > 1;
     }
@@ -655,8 +655,6 @@ public:
     bool field2IsAllocated = 0;
     int pulse1FileType = 0;
     int pulse2FileType = 0;
-    std::string field1FilePath;
-    std::string field2FilePath;
     loadedInputData pulse1LoadedData;
     loadedInputData pulse2LoadedData;
     loadedInputData fittingLoadedData;
@@ -689,7 +687,6 @@ public:
     //fitting
     bool isInFittingMode = false;
     std::string fittingString;
-    std::string fittingPath;
     std::array<double, 256> fittingArray = {};
     double* fittingReference = 0;
     int Nfitting = 0;
