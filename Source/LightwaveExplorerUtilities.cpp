@@ -1,11 +1,6 @@
 #include "LightwaveExplorerUtilities.h"
 #include <iostream>
 #include <sstream>
-#if defined _WIN32 || defined __APPLE__ || defined LWEFLATPAK
-#include <miniz/miniz.h>
-#else
-#include <miniz.h>
-#endif
 #ifdef CPUONLY
 #include <fftw3.h>
 #else
@@ -15,7 +10,6 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
-
 template<typename T>
 void zipIntoMemory(std::string zipPath, std::string filename, T* data, size_t dataSize){
 	mz_zip_archive zip = {};
@@ -39,17 +33,39 @@ void zipIntoMemory(std::string zipPath, std::string filename, std::vector<T>& da
 	mz_zip_reader_end(&zip);
 }
 
-int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool isZipFile) {
+bool zipContainsFile(std::string zipPath, std::string filename){
+	mz_zip_archive zip = {};
+	mz_zip_reader_init_file(&zip, zipPath.c_str(), 0);
+	int fileIndex = mz_zip_reader_locate_file(&zip, filename.c_str(), nullptr, 0);
+	mz_zip_reader_end(&zip);
+	return fileIndex > 0;
+}
 
+loadedInputData::loadedInputData(const std::string& zipPath, const std::string& filename){
+	if(zipContainsFile(zipPath, filename)){
+		std::vector<char> data;
+		zipIntoMemory(zipPath,filename,data);
+		if(data.size()<1) return;
+		fileContents = std::string(data.begin(),data.end());
+		filePath = filename;
+		hasData = true;
+	}
+}
+
+int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool isZipFile) {
 	if(isZipFile){
-		zipIntoMemory(outputBase + ".zip",
+		std::string zipPath = outputBase + ".zip";
+		zipIntoMemory(zipPath,
 			getBasename(outputBase)+"_Ext.dat",
 			ExtOut,
 			2 * (Ngrid * Nsims * Nsims2) * sizeof(double));
-		zipIntoMemory(outputBase + ".zip",
+		zipIntoMemory(zipPath,
 			getBasename(outputBase)+"_spectrum.dat",
 			totalSpectrum,
 			Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
+		pulse1LoadedData = loadedInputData(zipPath,getBasename(outputBase)+"_pulse1.dat");
+		pulse2LoadedData = loadedInputData(zipPath,getBasename(outputBase)+"_pulse2.dat");
+		fittingLoadedData = loadedInputData(zipPath,getBasename(outputBase)+"_fittingTarget.dat");
 	}
 	else{
 		std::string Epath = outputBase;
@@ -953,11 +969,11 @@ int simulationBatch::saveDataSet() {
 	std::string Tpath = parameters[0].outputBasePath;
 	Tpath.append(".txt");
 	std::string FittingTargetPath = parameters[0].outputBasePath;
-	FittingTargetPath.append("_FittingTarget.dat");
+	FittingTargetPath.append("_fittingTarget.dat");
 	std::string Pulse1Path = parameters[0].outputBasePath;
-	Pulse1Path.append("_Pulse1.dat");
+	Pulse1Path.append("_pulse1.dat");
 	std::string Pulse2Path = parameters[0].outputBasePath;
-	Pulse2Path.append("_Pulse2.dat");
+	Pulse2Path.append("_pulse2.dat");
 	std::string outputText = parameters[0].settingsString();
 	mz_zip_archive zip = {};
 	mz_zip_writer_init_file(&zip, Zpath.c_str(),0);

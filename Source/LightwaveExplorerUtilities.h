@@ -14,7 +14,11 @@
 #ifdef __linux__
 #include <unistd.h>
 #endif
-
+#if defined _WIN32 || defined __APPLE__ || defined LWEFLATPAK
+#include <miniz/miniz.h>
+#else
+#include <miniz.h>
+#endif
 static const unsigned int threadsPerBlock = 64;
 static const unsigned int minGridDimension = 8;
 
@@ -596,13 +600,14 @@ class loadedInputData {
     std::string filePath;
     bool hasData = false;
     loadedInputData(){};
-    loadedInputData(std::string& path){
+    loadedInputData(const std::string& path){
         filePath = path;
         std::ifstream file(filePath);
         if(file.fail()) return;
         fileContents = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         hasData = fileContents.size() > 1;
     }
+    loadedInputData(const std::string& zipPath, const std::string& filename);
 };
 
 //Simulation parameter class containing the complete description of the running simulation

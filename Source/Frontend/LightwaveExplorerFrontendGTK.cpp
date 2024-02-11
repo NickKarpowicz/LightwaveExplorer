@@ -1130,6 +1130,9 @@ void loadFromPath(std::string& path) {
         int64_t extensionLoc = path.find_last_of(".");
         const std::string basePath = path.substr(0, extensionLoc);
         theSim.base().loadSavedFields(basePath, isZipFile);
+        theGui.pulse1Data = theSim.base().pulse1LoadedData;
+        theGui.pulse2Data = theSim.base().pulse2LoadedData;
+        theGui.fittingData = theSim.base().fittingLoadedData;
         setInterfaceValuesToActiveValues();
         theGui.requestSliderUpdate();
         theGui.requestPlotUpdate();
