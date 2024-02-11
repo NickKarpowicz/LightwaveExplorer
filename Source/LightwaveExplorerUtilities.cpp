@@ -952,12 +952,27 @@ int simulationBatch::saveDataSet() {
 	Zpath.append(".zip");
 	std::string Tpath = parameters[0].outputBasePath;
 	Tpath.append(".txt");
+	std::string FittingTargetPath = parameters[0].outputBasePath;
+	FittingTargetPath.append("_FittingTarget.dat");
+	std::string Pulse1Path = parameters[0].outputBasePath;
+	Pulse1Path.append("_Pulse1.dat");
+	std::string Pulse2Path = parameters[0].outputBasePath;
+	Pulse2Path.append("_Pulse2.dat");
 	std::string outputText = parameters[0].settingsString();
 	mz_zip_archive zip = {};
 	mz_zip_writer_init_file(&zip, Zpath.c_str(),0);
 	mz_zip_writer_add_mem(&zip, getBasename(Tpath).c_str(), outputText.c_str(), outputText.size(), MZ_DEFAULT_COMPRESSION);
 	mz_zip_writer_add_mem(&zip, getBasename(Epath).c_str(), Ext.data(), sizeof(double)*Ext.size(), MZ_DEFAULT_COMPRESSION);
 	mz_zip_writer_add_mem(&zip, getBasename(Spath).c_str(), totalSpectrum.data(), sizeof(double)*totalSpectrum.size(), MZ_DEFAULT_COMPRESSION);
+	if(true){
+		mz_zip_writer_add_mem(&zip, getBasename(Pulse1Path).c_str(), parameters[0].pulse1LoadedData.fileContents.c_str(), parameters[0].pulse1LoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+	}
+	if(parameters[0].pulse2LoadedData.hasData){
+		mz_zip_writer_add_mem(&zip, getBasename(Pulse2Path).c_str(), parameters[0].pulse2LoadedData.fileContents.c_str(), parameters[0].pulse2LoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+	}
+	if(parameters[0].fittingLoadedData.hasData){
+		mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(), parameters[0].fittingLoadedData.fileContents.c_str(), parameters[0].fittingLoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+	}
 	mz_zip_writer_finalize_archive(&zip);
 	mz_zip_writer_end(&zip);
 
