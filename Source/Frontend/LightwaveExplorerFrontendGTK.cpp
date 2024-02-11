@@ -21,6 +21,8 @@ class mainGui {
     bool queueSliderUpdate = false;
     bool queueSliderMove = false;
     bool queueInterfaceValuesUpdate = false;
+    bool queueSVGgeneration = false;
+    bool queueSVGsave = false;
     int sliderTarget = 0;
     std::mutex mutex;
     int buttonWidth = 3;
@@ -46,10 +48,12 @@ public:
     LweConsole console{};
     LweConsole sequence{};
     LweConsole fitCommand{};
-    //std::array<LweTextBox,4> filePaths;
     std::unordered_map<std::string, LwePulldown> pulldowns;
     std::array<LweDrawBox,8> drawBoxes;
     std::string pathBuffer;
+    std::array<std::string,4> SVGstrings;
+    std::array<bool,4> SVGqueue{};
+    std::string SVGpath;
     LweDrawBox progressBarBox{};
     std::unordered_map<std::string, LweCheckBox> checkBoxes;
     LweSlider plotSlider{};
@@ -58,8 +62,6 @@ public:
     loadedInputData pulse2Data;
     loadedInputData fittingData;
     std::string currentPath = "defaultOutput/TestFile";
-    int64_t pathTarget = 0;
-    int saveSVG = 0;
     bool loadedDefaults = false;
     bool firstSYCLsimulation = true;
     ~mainGui() { std::lock_guard lastLock(mutex); }
@@ -70,7 +72,7 @@ public:
     void requestSavePathUpdate(){
         std::unique_lock<std::mutex> lock(mutex);
         pathBuffer = std::string("?LWE_LOADING??");
-        pathFromSaveDialog(pathBuffer);
+        pathFromSaveDialog(pathBuffer,"zip","Compressed (.zip)");
         queueSavePathUpdate = true;
         if(theSim.base().isRunning){
             console.tPrint("Note: will be saved when simulation\nis complete.\n");
@@ -99,6 +101,12 @@ public:
         pathBuffer = std::string("?LWE_LOADING??");
         pathFromLoadDialog(pathBuffer);
         queueLoadDatabase = true;
+    }
+    void requestSVG(){
+        std::unique_lock<std::mutex> lock(mutex);
+        pathBuffer = std::string("?LWE_LOADING??");
+        pathFromSaveDialog(pathBuffer, "svg", "Scalable vector graphics (.svg)");
+        queueSVGgeneration = true;
     }
     void applyUpdate() {
         std::unique_lock<std::mutex> lock(mutex);
@@ -152,6 +160,27 @@ public:
                 theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
             }
             theSim.saveDataSet();
+        }
+        if(queueSVGgeneration && pathBuffer != "?LWE_LOADING??"){
+            queueSVGgeneration = false;
+            SVGpath = pathBuffer;
+            SVGqueue[0] = true;
+            SVGqueue[1] = true;
+            SVGqueue[2] = true;
+            SVGqueue[3] = true;
+            for (int i = 0; i < 8; ++i) {
+                drawBoxes[i].queueDraw();
+            }
+            queueSVGsave = true;
+        }
+        if (queueSVGsave 
+            && SVGqueue[0] == false
+            && SVGqueue[1] == false
+            && SVGqueue[2] == false
+            && SVGqueue[3] == false){
+            queueSVGsave = false;
+            std::ofstream fs(SVGpath);
+            fs << SVGstrings[0] << SVGstrings[1] << SVGstrings[2] << SVGstrings[3];
         }
         
         progressBarBox.queueDraw();
@@ -208,36 +237,24 @@ public:
             textBoxes[i].setMaxCharacters(pathChars/4);
         }
 
-        //filePaths[0].init(parentHandle, 0, 17, colWidth, 1);
-        //filePaths[0].setMaxCharacters(pathChars);
         pulldowns["pulse1"].addElement(("Synth."));
         pulldowns["pulse1"].addElement(("FROG"));
         pulldowns["pulse1"].addElement(("Wave"));
         pulldowns["pulse1"].addElement("LWE");
         pulldowns["pulse1"].init(parentHandle, labelWidth, 16, buttonWidth, 1);
-        //filePaths[0].setLabel(0, -1, ("Data 1:"));
 
-        //filePaths[1].init(parentHandle, 0, 19, colWidth, 1);
-        //filePaths[1].setMaxCharacters(pathChars);
-        //filePaths[1].setLabel(0, -1, ("Data 2:"));
         pulldowns["pulse2"].addElement(("Synth."));
         pulldowns["pulse2"].addElement(("FROG"));
         pulldowns["pulse2"].addElement(("Wave"));
         pulldowns["pulse2"].addElement("LWE");
         pulldowns["pulse2"].init(parentHandle, labelWidth+buttonWidth, 16, buttonWidth, 1);
 
-        //filePaths[2].init(parentHandle, 0, 21, colWidth, 1);
-        //filePaths[2].setMaxCharacters(pathChars);
-        //filePaths[2].setLabel(0, -1, ("Fit data:"));
         pulldowns["fit"].addElement(("Maximize x"));
         pulldowns["fit"].addElement(("Maximize y"));
         pulldowns["fit"].addElement(("Maximize Total"));
         pulldowns["fit"].addElement(("Fit spectrum"));
         pulldowns["fit"].addElement(("Fit spectrum (log)"));
         pulldowns["fit"].init(parentHandle, buttonCol1, 13, pulldownWidth, 1);
-
-        //filePaths[3].init(parentHandle, buttonCol1, 16, colWidth, 1);
-        //filePaths[3].setMaxCharacters(pathChars);
 
         drawBoxes[0].init(window.parentHandle(2), 0, 0, plotWidth, plotHeight);
         drawBoxes[0].setDrawingFunction(drawTimeImage1);
@@ -463,12 +480,12 @@ public:
         miniButtons["addForLoop"].setTooltip(
             "Add an empty for loop. Parameters:\n   "
             "Number of times to execute\n   Variable number in which to put the counter");
-        buttons["Run"].init(("Run"), parentHandle, buttonCol2, 12, buttonWidth, 1, launchRunThread);
+        buttons["Run"].init(("Run"), parentHandle, buttonCol3, 12, buttonWidth, 1, launchRunThread);
         buttons["Run"].setTooltip("Run the simulation as currently entered on the "
             "interface. If a sequence is entered in the sequence box below, "
             "that will execute, otherwise, a simulation on the input parameters "
             "above and to the left in a single medium will be performed.");
-        buttons["Stop"].init(("Stop"), parentHandle, buttonCol3, 12, buttonWidth, 1, stopButtonCallback);
+        buttons["Stop"].init(("Stop"), parentHandle, buttonCol2, 12, buttonWidth, 1, stopButtonCallback);
         buttons["Stop"].setTooltip("Tell a currently-running simulation to stop. "
             "It might not stop right away; it will only happen once it reaches a break point");
         buttons["Script"].init(
@@ -763,7 +780,6 @@ void setInterfaceValuesToActiveValues(){
         insertAfterCharacter(formattedFit,';',std::string("\n"));
         theGui.fitCommand.overwritePrint(formattedFit.c_str());
     }
-
     theGui.loadedDefaults = true;
 }
 
@@ -1144,8 +1160,7 @@ void loadCallback() {
 }
 
 void svgCallback() {
-    theGui.saveSVG = 4;
-    theGui.requestPlotUpdate();
+    theGui.requestSVG();
 }
 
 void dataPanelCollapseCallback(){
@@ -1388,12 +1403,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
         return;
     }
     LwePlot sPlot;
-
-    bool saveSVG = theGui.saveSVG > 0;
-    if (saveSVG) {
-        theGui.saveSVG--;
-    }
-
+    bool saveSVG = theGui.SVGqueue[0];
     int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
 
     if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
@@ -1402,12 +1412,7 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
 
     int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
-    if (saveSVG) {
-        std::string svgPath = theGui.currentPath;
-        svgPath.append("_Ex.svg");
-        sPlot.SVGPath = svgPath;
-    }
-
+    sPlot.makeSVG = saveSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theSim.base().tStep / 1e-15;
@@ -1421,7 +1426,18 @@ void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.yLabel = "Ex (GV/m)";
     sPlot.unitY = 1e9;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex),std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.plot(cr);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(saveSVG) {
+            size_t SVGbegin = sPlot.SVGString.find("<svg");
+            sPlot.SVGString.insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+                "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
+                "\"http://www.w3.org/1999/xlink\">\n",
+                2*width, 2*height, 2*width, 2*height));
+            theGui.SVGstrings[0] = sPlot.SVGString;
+            if(saveSVG) theGui.SVGqueue[0] = false;
+        }
+    }
     else {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
@@ -1442,10 +1458,7 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     }
     LwePlot sPlot;
 
-    bool saveSVG = theGui.saveSVG > 0;
-    if (saveSVG) {
-        theGui.saveSVG--;
-    }
+    bool saveSVG = theGui.SVGqueue[1];
 
     int64_t simIndex = maxN(0,theGui.plotSlider.getIntValue());
 
@@ -1456,13 +1469,8 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     int64_t cubeMiddle = 
         theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
 
-    if (saveSVG) {
-        std::string svgPath = theGui.currentPath;
-        svgPath.append("_Ey.svg");
-        sPlot.SVGPath = svgPath;
-    }
 
-
+    sPlot.makeSVG = saveSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theSim.base().tStep / 1e-15;
@@ -1478,7 +1486,17 @@ void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gp
     sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.plot(cr);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(saveSVG) {
+            size_t SVGbegin = sPlot.SVGString.find("width=");
+            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+                0, height));
+            SVGbegin = sPlot.SVGString.find("<svg");
+            theGui.SVGstrings[1] = sPlot.SVGString.substr(SVGbegin);
+            if(saveSVG) theGui.SVGqueue[1] = false;
+        }
+    }
     else {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
@@ -1498,10 +1516,8 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         return;
     }
     LwePlot sPlot;
-    bool saveSVG = theGui.saveSVG > 0;
-    if (saveSVG) {
-        theGui.saveSVG--;
-    }
+    bool saveSVG = theGui.SVGqueue[2];
+
     bool logPlot = false;
     if (theGui.checkBoxes["Log"].isChecked()) {
         logPlot = true;
@@ -1528,12 +1544,7 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         overlayTotal = true;
     }
 
-    if (saveSVG) {
-        std::string svgPath = theGui.currentPath;
-        svgPath.append("_Sx.svg");
-        sPlot.SVGPath = svgPath;
-    }
-
+    sPlot.makeSVG = saveSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theSim.base().fStep / 1e12;
@@ -1559,7 +1570,17 @@ void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.plot(cr);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(saveSVG) {
+            size_t SVGbegin = sPlot.SVGString.find("width=");
+            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+                width, 0));
+            SVGbegin = sPlot.SVGString.find("<svg");
+            theGui.SVGstrings[2] = sPlot.SVGString.substr(SVGbegin);
+            if(saveSVG) theGui.SVGqueue[2] = false;
+        }
+    }
     else {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
@@ -1581,10 +1602,8 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
 
     LwePlot sPlot;
 
-    bool saveSVG = theGui.saveSVG > 0;
-    if (saveSVG) {
-        theGui.saveSVG--;
-    }
+    bool saveSVG = theGui.SVGqueue[3];
+
     bool logPlot = false;
     if (theGui.checkBoxes["Log"].isChecked()) {
         logPlot = true;
@@ -1610,12 +1629,7 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
     if (theGui.checkBoxes["Total"].isChecked()) {
         overlayTotal = true;
     }
-    if (saveSVG) {
-        std::string svgPath = theGui.currentPath;
-        svgPath.append("_Sy.svg");
-        sPlot.SVGPath = svgPath;
-    }
-
+    sPlot.makeSVG = saveSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theSim.base().fStep / 1e12;
@@ -1641,7 +1655,17 @@ void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height,
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
     }
     std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.plot(cr);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(saveSVG) {
+            size_t SVGbegin = sPlot.SVGString.find("width=");
+            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+                width, height));
+            SVGbegin = sPlot.SVGString.find("<svg");
+            theGui.SVGstrings[3] = sPlot.SVGString.substr(SVGbegin).append("</svg>");
+            if(saveSVG) theGui.SVGqueue[3] = false;
+        }
+    }
     else {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);

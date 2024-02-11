@@ -116,8 +116,8 @@ public:
 };
 
 class LwePlot {
-    bool makeSVG = false;
 public:
+    bool makeSVG = false;
     bool markers = true;
     double width = 0;
     double height = 0;
@@ -644,8 +644,10 @@ public:
 
         if (makeSVG) {
             SVGString.append("</svg>");
-            std::ofstream fs(SVGPath);
-            fs << SVGString;
+            if(SVGPath.length()>5){
+                std::ofstream fs(SVGPath);
+                fs << SVGString;
+            }
         }
         return 0;
     }
@@ -1762,8 +1764,8 @@ void pathFromSaveDialog(LweTextBox& destinationPathBox) {
 #else
     GtkFileDialog* dialog = gtk_file_dialog_new();
     GListStore* filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
-
     GtkFileFilter* filter = gtk_file_filter_new();
+    
     gtk_file_filter_add_suffix(filter, "zip");
     gtk_file_filter_set_name(filter, "Compressed (.zip)");
     g_list_store_append(filters, filter);
@@ -1778,7 +1780,7 @@ void pathFromSaveDialog(LweTextBox& destinationPathBox) {
 #endif
 }
 
-void pathFromSaveDialog(std::string& destinationPath) {
+void pathFromSaveDialog(std::string& destinationPath, const std::string& suffix, const std::string& filetypeName) {
 #ifdef __APPLE__
     NSString* filePath;
     NSSavePanel* savePanel = [NSSavePanel savePanel];
@@ -1791,8 +1793,8 @@ void pathFromSaveDialog(std::string& destinationPath) {
     GListStore* filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
 
     GtkFileFilter* filter = gtk_file_filter_new();
-    gtk_file_filter_add_suffix(filter, "zip");
-    gtk_file_filter_set_name(filter, "Compressed (.zip)");
+    gtk_file_filter_add_suffix(filter, suffix.c_str());
+    gtk_file_filter_set_name(filter, filetypeName.c_str());
     g_list_store_append(filters, filter);
 
     filter = gtk_file_filter_new();
