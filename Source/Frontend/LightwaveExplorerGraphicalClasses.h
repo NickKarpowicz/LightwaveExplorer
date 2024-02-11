@@ -1443,6 +1443,7 @@ public:
         elementHandle = gtk_drop_down_new_from_strings(stringPointersForGTK.data());
         gtk_widget_set_hexpand(elementHandle, false);
         gtk_widget_set_vexpand(elementHandle, false);
+        gtk_widget_set_valign(elementHandle, GTK_ALIGN_START);
         GTKlock.unlock();
         setPosition(grid, x, y, width, height);
     }
