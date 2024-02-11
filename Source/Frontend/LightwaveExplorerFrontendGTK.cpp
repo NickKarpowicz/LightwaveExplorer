@@ -72,6 +72,9 @@ public:
         pathBuffer = std::string("?LWE_LOADING??");
         pathFromSaveDialog(pathBuffer);
         queueSavePathUpdate = true;
+        if(theSim.base().isRunning){
+            console.tPrint("Note: will be saved when simulation\nis complete.\n");
+        }
     }
     void requestPulse1Update(){
         std::unique_lock<std::mutex> lock(mutex);
@@ -139,11 +142,16 @@ public:
             pulldowns["material"].setLabel(-labelWidth, 0, ("Material"), 9, 2);
             console.tPrint("Loaded material database from:\n{}\n", pathBuffer);
         }
-        if(queueSavePathUpdate && pathBuffer != "?LWE_LOADING??"){
+        if(queueSavePathUpdate && !(theSim.base().isRunning) && pathBuffer != "?LWE_LOADING??"){
             queueSavePathUpdate = false;
             if(pathBuffer == "?LWE_NOPATH??") return;
-            currentPath = pathBuffer;
-            console.tPrint("New save target:\n{}\n", currentPath);
+            theSim.base().outputBasePath = pathBuffer;
+            stripLineBreaks(theSim.base().outputBasePath);
+            if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
+                || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
+                theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
+            }
+            theSim.saveDataSet();
         }
         
         progressBarBox.queueDraw();
@@ -455,7 +463,7 @@ public:
         miniButtons["addForLoop"].setTooltip(
             "Add an empty for loop. Parameters:\n   "
             "Number of times to execute\n   Variable number in which to put the counter");
-        buttons["Run"].init(("Run"), parentHandle, buttonCol4, 12, buttonWidth, 1, launchRunThread);
+        buttons["Run"].init(("Run"), parentHandle, buttonCol2, 12, buttonWidth, 1, launchRunThread);
         buttons["Run"].setTooltip("Run the simulation as currently entered on the "
             "interface. If a sequence is entered in the sequence box below, "
             "that will execute, otherwise, a simulation on the input parameters "
@@ -470,7 +478,7 @@ public:
         buttons["Fit"].init(("Fit"), parentHandle, buttonCol4, 13, buttonWidth, 1, launchFitThread);
         buttons["Fit"].setTooltip("Run the fitting routine with the above parameters. "
             "The mode is set in the pulldown next to the (optional) fitting input data file path.");
-        buttons["Load"].init(("Load"), parentHandle, buttonCol2, 12, buttonWidth, 1, loadCallback);
+        buttons["Load"].init(("Load"), parentHandle, buttonCol1, 12, buttonWidth, 1, loadCallback);
         buttons["Load"].setTooltip("Load the results of a previous simulation run. "
             "You should select the associated .txt file. The parameters will be "
             "loaded into the interface, and the data (if it exists) will be plotted.");
@@ -481,8 +489,8 @@ public:
         buttons["FitPath"].init(
             ("\xf0\x9f\x93\x82"), parentHandle, buttonCol3, 13, buttonWidth, 1, fittingPathCallback);
         buttons["path"].init(
-            ("\xf0\x9f\x92\xbe"), parentHandle, buttonCol1, 12, buttonWidth, 1, savePathCallback);
-        buttons["Path"].setTooltip("Sets the base path for the output files");
+            ("\xf0\x9f\x92\xbe"), parentHandle, buttonCol4, 12, buttonWidth, 1, savePathCallback);
+        buttons["Path"].setTooltip("Save the simulation results");
         buttons["xlim"].init(("xlim"), window.parentHandle(4), 0, 0, 1, 1, independentPlotQueue);
         buttons["xlim"].setTooltip("Apply the entered x limits to the plot. The two text "
             "boxes are for the upper and lower limits applied to the frequency axis. "
@@ -2193,8 +2201,6 @@ void mainSimThread(int pulldownSelection, int secondPulldownSelection, bool use6
             (double)(std::chrono::duration_cast<std::chrono::microseconds>
                 (simulationTimerEnd - simulationTimerBegin).count()));
     }
-
-    theSim.saveDataSet();
     theSim.base().isRunning = false;
 }
 
@@ -2295,7 +2301,6 @@ void fittingThread(int pulldownSelection, bool use64bitFloatingPoint) {
     for (int i = 0; i < theSim.base().Nfitting; ++i) {
         theGui.console.tPrint("{},  {}\n", i, theSim.base().fittingResult[i]);
     }
-    theSim.saveDataSet();
     theSim.base().isRunning = false;
 }
 
