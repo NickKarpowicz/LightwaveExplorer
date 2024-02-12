@@ -314,10 +314,10 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 		std::string base = getBasename(outputBasePath);
 		std::string mainSettings = base+".txt";
 		mz_zip_writer_add_mem(&zip, getBasename(mainSettings).c_str(), settings.c_str(), settings.size(), MZ_DEFAULT_COMPRESSION);
-		int loopNsims2 = Nsims2;
-		int loopNsims = Nsims;
-        for(int i = 0; i<loopNsims2; ++i){
-            for(int j = 0; j<loopNsims; ++j){
+		int64_t loopNsims2 = Nsims2;
+		int64_t loopNsims = Nsims;
+        for(int64_t i = 0; i<loopNsims2; ++i){
+            for(int64_t j = 0; j<loopNsims; ++j){
                 simulationParameterSet arraySim = params[i*loopNsims + j];
                 arraySim.Nsims = 1;
                 arraySim.Nsims2 = 1;
