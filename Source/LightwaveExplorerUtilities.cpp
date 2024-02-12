@@ -292,6 +292,21 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	mz_zip_archive zip = {};
 	mz_zip_writer_init_file(&zip, Zpath.c_str(),0);
 	mz_zip_writer_add_mem(&zip, getBasename(scriptPath).c_str(), script.c_str(), script.size(), MZ_DEFAULT_COMPRESSION);
+
+	//scan the sequence for quotes, include the data if something is found
+	size_t startPosition = sequenceString.find_first_of('\"');
+	std::string workingString = sequenceString;
+	std::string modifiedString = sequenceString;
+	while(startPosition != std::string::npos){
+		workingString = workingString.substr(startPosition+1);
+		size_t endPosition = workingString.find_first_of('\"');
+		loadedInputData newData(workingString.substr(0,endPosition));
+		size_t pos = modifiedString.find(newData.filePath);
+		modifiedString.replace(pos, newData.filePath.length(), getBasename(newData.filePath));
+		mz_zip_writer_add_mem(&zip, getBasename(newData.filePath).c_str(), newData.fileContents.c_str(), newData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+		workingString = workingString.substr(endPosition+1);
+		startPosition = workingString.find_first_of('\"');
+	}
 	
 	if(useJobArray){
         int simIndex = 0;
@@ -313,6 +328,7 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
                 arraySim.batchIndex = 0;
                 arraySim.batchIndex2 = 0;
                 arraySim.runType = runTypes::cluster;
+				arraySim.sequenceString = modifiedString;
                 settings = arraySim.settingsString();
 				std::string currentPath = getBasename(arraySim.outputBasePath)+".input";
 				mz_zip_writer_add_mem(&zip, getBasename(currentPath).c_str(), settings.c_str(), settings.size(), MZ_DEFAULT_COMPRESSION);
@@ -339,6 +355,7 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	if(fittingLoadedData.hasData){
 		mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(), fittingLoadedData.fileContents.c_str(), fittingLoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 	}
+
 	mz_zip_writer_finalize_archive(&zip);
 	mz_zip_writer_end(&zip);
 
