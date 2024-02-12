@@ -871,7 +871,7 @@ public:
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_entry_new();
         //gtk_widget_set_halign(elementHandle, GTK_ALIGN_START);
-        gtk_widget_set_hexpand(elementHandle, true);
+        gtk_widget_set_hexpand(elementHandle, false);
         gtk_widget_set_vexpand(elementHandle, false);
         gtk_editable_set_max_width_chars(GTK_EDITABLE(elementHandle), 8);
         GTKlock.unlock();
