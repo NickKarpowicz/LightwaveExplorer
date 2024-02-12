@@ -3,8 +3,9 @@
 # This will compile the command line version from the repos. Should be self contained,
 # but you need to have CUDA and MKL available. By default it loads the modules
 # as it is done on the MPCDF clusters. Depending on your GPU, you might need to change
-# or add to the gencodes in the nvcc line
-# NOTE THAT THIS WILL DELETE THE dlib AND LightwaveExplorer DIRECTORIES WHEN DONE
+# or add to the CUDA architecture in the cmake line
+
+# NOTE THAT THIS WILL DELETE THE LightwaveExplorer FOLDER WHEN DONE
 
 # load modules (you probably don't need this if you're not on the cluster
 # but you will need to set MKL_HOME to the location of MKL)
@@ -27,6 +28,7 @@ echo "Cleaning up"
 cp LightwaveExplorer ../../lwe
 cd ..
 
-cp CrystalDatabase.txt ../CrystalDatabase.txt
+cp Source/BuildResources/ClusterScripts/lweget.sh ../lweget.sh
 cd ..
+chmod +x lweget.sh
 rm -rf LightwaveExplorer
