@@ -4298,7 +4298,7 @@ namespace hostFunctions{
 
 		//apply normalization to result of 3D calculation for numerical precision (value may not be
 		//represtentable as a float)
-		if ((*sCPU).is3D) {
+		if ((*sCPU).is3D && (*sCPU).runType != runTypes::counter) {
 			for (int64_t i = 0; i < 3 * (*sCPU).Nfreq; i++) {
 				(*sCPU).totalSpectrum[i] *= constProd(lightC<double>(), 2 * eps0<double>())
 					* (*sCPU).rStep * (*sCPU).rStep * (*sCPU).tStep * (*sCPU).tStep;

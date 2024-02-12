@@ -1209,13 +1209,12 @@ void createRunFile() {
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     totalSteps = 0;
     for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
+        counterVector[j].progressCounter = &totalSteps;
+        counterVector[j].runType = runTypes::counter;
         if (theSim.base().isInSequence) {
-            counterVector[j].progressCounter = &totalSteps;
-            counterVector[j].runType = runTypes::counter;
             solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
         }
         else {
-            counterVector[j].progressCounter = &totalSteps;
             solveNonlinearWaveEquationCounter(&counterVector[j]);
         }
     }
