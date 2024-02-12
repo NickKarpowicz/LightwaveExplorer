@@ -72,8 +72,10 @@ public:
     }
     void requestSavePathUpdate(){
         std::unique_lock<std::mutex> lock(mutex);
+    #ifndef __APPLE__
         pathBuffer = std::string("?LWE_LOADING??");
         pathFromSaveDialog(pathBuffer,"zip","Compressed (.zip)");
+    #endif
         queueSavePathUpdate = true;
         if(theSim.base().isRunning){
             console.tPrint("Note: will be saved when simulation\nis complete.\n");
@@ -105,14 +107,18 @@ public:
     }
     void requestSVG(){
         std::unique_lock<std::mutex> lock(mutex);
+    #ifndef __APPLE__
         pathBuffer = std::string("?LWE_LOADING??");
         pathFromSaveDialog(pathBuffer, "svg", "Scalable vector graphics (.svg)");
+    #endif
         queueSVGgeneration = true;
     }
     void requestRunFile(){
         std::unique_lock<std::mutex> lock(mutex);
+    #ifndef __APPLE__
         pathBuffer = std::string("?LWE_LOADING??");
         pathFromSaveDialog(pathBuffer, "zip", "Compressed (.zip)");
+    #endif
         queueRunFileGeneration = true;
     }
     void applyUpdate() {
@@ -158,6 +164,7 @@ public:
             console.tPrint("Loaded material database from:\n{}\n", pathBuffer);
         }
         if(queueSavePathUpdate && !(theSim.base().isRunning) && pathBuffer != "?LWE_LOADING??"){
+            console.tPrint("I got here\n");
             queueSavePathUpdate = false;
             if(pathBuffer == "?LWE_NOPATH??") return;
             theSim.base().outputBasePath = pathBuffer;
@@ -1126,6 +1133,9 @@ void checkLibraryAvailability() {
 }
 
 void savePathCallback() {
+#ifdef __APPLE__
+    theGui.pathBuffer = pathFromAppleSaveDialog();
+#endif 
     theGui.requestSavePathUpdate();
 }
 
@@ -1171,6 +1181,9 @@ void loadCallback() {
 }
 
 void svgCallback() {
+#ifdef __APPLE__
+    theGui.pathBuffer = pathFromAppleSaveDialog();
+#endif 
     theGui.requestSVG();
 }
 
@@ -1179,6 +1192,9 @@ void dataPanelCollapseCallback(){
 }
 
 void saveRunFileCallback(){
+#ifdef __APPLE__
+    theGui.pathBuffer = pathFromAppleSaveDialog();
+#endif 
     theGui.requestRunFile();
 }
 

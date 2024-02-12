@@ -1779,7 +1779,19 @@ void pathFromSaveDialog(LweTextBox& destinationPathBox) {
     gtk_file_dialog_save(dialog, NULL, NULL, pathFromSaveDialogCallback, &destinationPathBox);
 #endif
 }
-
+#ifdef __APPLE__
+std::string pathFromAppleSaveDialog() {
+    NSString* filePath;
+    NSSavePanel* savePanel = [NSSavePanel savePanel];
+    if ([savePanel runModal] == NSModalResponseOK) {
+        filePath = [savePanel URL].path;
+        return std::string([filePath UTF8String]);
+    }
+    else{
+        return std::string("?LWE_NOPATH??");
+    }
+}
+#endif
 void pathFromSaveDialog(std::string& destinationPath, const std::string& suffix, const std::string& filetypeName) {
 #ifdef __APPLE__
     NSString* filePath;
