@@ -1510,11 +1510,11 @@ public:
 #if defined __APPLE__
         gtk_css_provider_load_from_data(buttonShrinker,
             "label, scale, range, button, entry, textview "
-            "{ min-height: 4px; min-width: 4px; }", -1);
+            "{ min-height: 16px; min-width: 4px; }", -1);
 #else
         gtk_css_provider_load_from_string(buttonShrinker,
             "label, scale, range, button, entry, textview "
-            "{ min-height: 4px; min-width: 4px; }");
+            "{ min-height: 16px; min-width: 8px; }");
 #endif
         gtk_style_context_add_provider_for_display(
             gdk_display_get_default(),
