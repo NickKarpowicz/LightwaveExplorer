@@ -1244,7 +1244,7 @@ void createRunFile() {
         arrayMode = true;
         break;
     }
-    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, totalSteps, theSim.parameters);
+    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, totalSteps, theSim.parameters, theDatabase);
 
     //create command line settings file
     

@@ -360,7 +360,7 @@ public:
 class crystalDatabase {
 public:
     std::vector<crystalEntry> db;
-
+    std::string path = "CrystalDatabase.txt";
     crystalDatabase() {
 #ifdef __APPLE__
         #include <mach-o/dyld.h>
@@ -373,6 +373,9 @@ public:
         std::ifstream fs(databasePath);
         if (!fs.is_open()) {
             fs.open("CrystalDatabase.txt");
+        }
+        else{
+            path = databasePath;
         }
 #elif defined __linux__
 
@@ -393,6 +396,9 @@ public:
             if (!fs.is_open()) {
                 fs.open("CrystalDatabase.txt");
             }
+            else{
+                path = databasePath;
+            }
         }
         
 #else
@@ -400,9 +406,10 @@ public:
 #endif
         loadFromFilestream(fs);
     }
-    crystalDatabase(std::string path){
-        std::ifstream fs(path);
+    crystalDatabase(std::string customPath){
+        std::ifstream fs(customPath);
         loadFromFilestream(fs);
+        path = customPath;
     }
     void loadFromFilestream(std::ifstream& fs){
         std::string line;
@@ -824,7 +831,7 @@ public:
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
     std::string settingsString();
     int saveSettingsFile();
-    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<simulationParameterSet>& params);
+    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<simulationParameterSet>& params, const class crystalDatabase& db);
     int readFittingString();
 
 

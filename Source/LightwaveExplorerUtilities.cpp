@@ -197,7 +197,7 @@ int simulationParameterSet::loadReferenceSpectrum() {
 	return 0;
 }
 
-double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<simulationParameterSet>& params) {
+double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<simulationParameterSet>& params, const class crystalDatabase& db) {
 	std::string scriptPath=getBasename(outputBasePath)+".slurmScript";
 	std::string Zpath=outputBasePath+".zip";
 	std::stringstream fs;
@@ -325,7 +325,8 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 		std::string mainSettings = getBasename(outputBasePath)+".input";
 		mz_zip_writer_add_mem(&zip, getBasename(mainSettings).c_str(), settings.c_str(), settings.size(), MZ_DEFAULT_COMPRESSION);
     }
-
+	loadedInputData dbData(db.path);
+	mz_zip_writer_add_mem(&zip, "CrystalDatabase.txt", dbData.fileContents.c_str(), dbData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 	std::string FittingTargetPath = outputBasePath + "_fittingTarget.dat";
 	std::string Pulse1Path = outputBasePath + "_pulse1.dat";
 	std::string Pulse2Path = outputBasePath + "_pulse2.dat";
