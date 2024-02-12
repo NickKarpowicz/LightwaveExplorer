@@ -22,6 +22,7 @@ class mainGui {
     bool queueSliderMove = false;
     bool queueInterfaceValuesUpdate = false;
     bool queueSVGgeneration = false;
+    bool queueRunFileGeneration = false;
     bool queueSVGsave = false;
     int sliderTarget = 0;
     std::mutex mutex;
@@ -108,6 +109,12 @@ public:
         pathFromSaveDialog(pathBuffer, "svg", "Scalable vector graphics (.svg)");
         queueSVGgeneration = true;
     }
+    void requestRunFile(){
+        std::unique_lock<std::mutex> lock(mutex);
+        pathBuffer = std::string("?LWE_LOADING??");
+        pathFromSaveDialog(pathBuffer, "zip", "Compressed (.zip)");
+        queueRunFileGeneration = true;
+    }
     void applyUpdate() {
         std::unique_lock<std::mutex> lock(mutex);
         if (queueUpdate) {
@@ -182,7 +189,11 @@ public:
             std::ofstream fs(SVGpath);
             fs << SVGstrings[0] << SVGstrings[1] << SVGstrings[2] << SVGstrings[3];
         }
-        
+        if(queueRunFileGeneration && pathBuffer != "?LWE_LOADING??"){
+            queueRunFileGeneration = false;
+            currentPath = pathBuffer;
+            createRunFile();
+        }
         progressBarBox.queueDraw();
         if (queueInterfaceValuesUpdate){
             setInterfaceValuesToActiveValues();
@@ -489,7 +500,7 @@ public:
         buttons["Stop"].setTooltip("Tell a currently-running simulation to stop. "
             "It might not stop right away; it will only happen once it reaches a break point");
         buttons["Script"].init(
-            ("\xf0\x9f\x92\xbe"), parentHandle, labelWidth+textWidth+1, 19, 2, 1, createRunFile);
+            ("\xf0\x9f\x92\xbe"), parentHandle, labelWidth+textWidth+1, 19, 2, 1, saveRunFileCallback);
         buttons["Script"].setTooltip("Generate an input file and SLURM script for running "
             "the simulation as entered on the selected cluster");
         buttons["Fit"].init(("Fit"), parentHandle, buttonCol4, 13, buttonWidth, 1, launchFitThread);
@@ -1167,6 +1178,10 @@ void dataPanelCollapseCallback(){
     theGui.window.toggleSettingsPanel();
 }
 
+void saveRunFileCallback(){
+    theGui.requestRunFile();
+}
+
 void createRunFile() {
     readParametersFromInterface();
     theSim.base().runType = runTypes::normal;
@@ -1229,33 +1244,12 @@ void createRunFile() {
         arrayMode = true;
         break;
     }
-    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, totalSteps);
+    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, totalSteps, theSim.parameters);
 
     //create command line settings file
     
     
-    if(arrayMode){
-        int simIndex = 0;
-        auto& params = theSim.getParameterVector();
-        theSim.sCPU()->saveSettingsFile();
-        for(int i = 0; i<theSim.sCPU()->Nsims2; ++i){
-            for(int j = 0; j<theSim.sCPU()->Nsims; ++j){
-                simulationParameterSet arraySim = params[i*theSim.sCPU()->Nsims + j];
-                arraySim.Nsims = 1;
-                arraySim.Nsims2 = 1;
-                arraySim.outputBasePath.append(Sformat("{:04d}",simIndex++));
-                arraySim.runType = runTypes::cluster;
-                arraySim.batchIndex = 0;
-                arraySim.batchIndex2 = 0;
-                arraySim.runType = runTypes::cluster;
-                arraySim.saveSettingsFile();
-            }
-        }
-    }
-    else{
-        theSim.base().runType = runTypes::cluster;
-        theSim.sCPU()->saveSettingsFile();
-    }
+    
     
     
 

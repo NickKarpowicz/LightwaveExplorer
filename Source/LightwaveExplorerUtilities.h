@@ -824,7 +824,7 @@ public:
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
     std::string settingsString();
     int saveSettingsFile();
-    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps);
+    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<simulationParameterSet>& params);
     int readFittingString();
 
 
@@ -967,8 +967,8 @@ class simulationBatch {
     int64_t Nfreq = 0;
     int64_t Ngrid = 0;
     int64_t NgridC = 0;
-    std::vector<simulationParameterSet> parameters;
 public:
+    std::vector<simulationParameterSet> parameters;
     std::vector<std::mutex> mutexes = std::vector<std::mutex>(1);
 
     simulationBatch() {

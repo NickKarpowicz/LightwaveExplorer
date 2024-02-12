@@ -1,5 +1,6 @@
 #include "LightwaveExplorerUtilities.h"
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #ifdef CPUONLY
 #include <fftw3.h>
@@ -196,11 +197,10 @@ int simulationParameterSet::loadReferenceSpectrum() {
 	return 0;
 }
 
-double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps) {
-	std::string outputFile=outputBasePath;
-	outputFile.append(".slurmScript");
-	std::ofstream fs(outputFile, std::ios::binary);
-	if (fs.fail()) return 1;
+double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<simulationParameterSet>& params) {
+	std::string scriptPath=getBasename(outputBasePath)+".slurmScript";
+	std::string Zpath=outputBasePath+".zip";
+	std::stringstream fs;
 
 	//Estimate the time required on the cluster, proportional to number of grid points x steps
 	double timeEstimate = static_cast<double>((totalSteps / (Nsims * Nsims2)) * Nspace * Ntime) * ceil(static_cast<double>(Nsims * Nsims2) / gpuCount);
@@ -278,7 +278,6 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 		fs << "base_name=\"" << baseName << "\"" << '\x0A';
 	}
 	
-	
 	fs << "srun ./lwe $base_name.input > $base_name.out\x0A";
 	//optionally upload to a webdav location, if a token is provided
 	fs << "if [ -f webdav_token.txt ]; then" << '\x0A';
@@ -289,6 +288,58 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	fs << "    rm \"$base_name\".out" << '\x0A';
 	fs << "    rm \"$base_name\".zip" << '\x0A';
 	fs << "fi" << '\x0A';
+	std::string script = fs.str();
+	mz_zip_archive zip = {};
+	mz_zip_writer_init_file(&zip, Zpath.c_str(),0);
+	mz_zip_writer_add_mem(&zip, getBasename(scriptPath).c_str(), script.c_str(), script.size(), MZ_DEFAULT_COMPRESSION);
+	
+	if(useJobArray){
+        int simIndex = 0;
+        std::string settings = settingsString();
+		std::string base = getBasename(outputBasePath);
+		std::string mainSettings = base+".txt";
+		mz_zip_writer_add_mem(&zip, getBasename(mainSettings).c_str(), settings.c_str(), settings.size(), MZ_DEFAULT_COMPRESSION);
+		int loopNsims2 = Nsims2;
+		int loopNsims = Nsims;
+        for(int i = 0; i<loopNsims2; ++i){
+            for(int j = 0; j<loopNsims; ++j){
+                simulationParameterSet arraySim = params[i*loopNsims + j];
+                arraySim.Nsims = 1;
+                arraySim.Nsims2 = 1;
+				std::ostringstream oss;
+    			oss << std::setw(5) << std::setfill('0') << simIndex++;
+                arraySim.outputBasePath.append(oss.str());
+                arraySim.runType = runTypes::cluster;
+                arraySim.batchIndex = 0;
+                arraySim.batchIndex2 = 0;
+                arraySim.runType = runTypes::cluster;
+                settings = arraySim.settingsString();
+				std::string currentPath = getBasename(arraySim.outputBasePath)+".input";
+				mz_zip_writer_add_mem(&zip, getBasename(currentPath).c_str(), settings.c_str(), settings.size(), MZ_DEFAULT_COMPRESSION);
+            }
+        }
+    }
+    else{
+        runType = runTypes::cluster;
+        std::string settings = settingsString();
+		std::string mainSettings = getBasename(outputBasePath)+".input";
+		mz_zip_writer_add_mem(&zip, getBasename(mainSettings).c_str(), settings.c_str(), settings.size(), MZ_DEFAULT_COMPRESSION);
+    }
+
+	std::string FittingTargetPath = outputBasePath + "_fittingTarget.dat";
+	std::string Pulse1Path = outputBasePath + "_pulse1.dat";
+	std::string Pulse2Path = outputBasePath + "_pulse2.dat";
+	if(pulse2LoadedData.hasData){
+		mz_zip_writer_add_mem(&zip, getBasename(Pulse1Path).c_str(), pulse1LoadedData.fileContents.c_str(), pulse1LoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+	}
+	if(pulse2LoadedData.hasData){
+		mz_zip_writer_add_mem(&zip, getBasename(Pulse2Path).c_str(), pulse2LoadedData.fileContents.c_str(), pulse2LoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+	}
+	if(fittingLoadedData.hasData){
+		mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(), fittingLoadedData.fileContents.c_str(), fittingLoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+	}
+	mz_zip_writer_finalize_archive(&zip);
+	mz_zip_writer_end(&zip);
 
 	return timeEstimate/3600.0;
 }
@@ -960,27 +1011,20 @@ int simulationBatch::saveDataSet() {
 	std::for_each(mutexes.begin(), mutexes.end(),
 		[&](std::mutex& m) { m.lock(); });
 
-	std::string Epath=parameters[0].outputBasePath;
-	Epath.append("_Ext.dat");
-	std::string Spath=parameters[0].outputBasePath;
-	Spath.append("_spectrum.dat");
-	std::string Zpath=parameters[0].outputBasePath;
-	Zpath.append(".zip");
-	std::string Tpath = parameters[0].outputBasePath;
-	Tpath.append(".txt");
-	std::string FittingTargetPath = parameters[0].outputBasePath;
-	FittingTargetPath.append("_fittingTarget.dat");
-	std::string Pulse1Path = parameters[0].outputBasePath;
-	Pulse1Path.append("_pulse1.dat");
-	std::string Pulse2Path = parameters[0].outputBasePath;
-	Pulse2Path.append("_pulse2.dat");
+	std::string Epath=parameters[0].outputBasePath + "_Ext.dat";
+	std::string Spath=parameters[0].outputBasePath + "_spectrum.dat";
+	std::string Zpath=parameters[0].outputBasePath + ".zip";
+	std::string Tpath = parameters[0].outputBasePath + ".txt";
+	std::string FittingTargetPath = parameters[0].outputBasePath + "_fittingTarget.dat";
+	std::string Pulse1Path = parameters[0].outputBasePath + "_pulse1.dat";
+	std::string Pulse2Path = parameters[0].outputBasePath + "_pulse2.dat";
 	std::string outputText = parameters[0].settingsString();
 	mz_zip_archive zip = {};
 	mz_zip_writer_init_file(&zip, Zpath.c_str(),0);
 	mz_zip_writer_add_mem(&zip, getBasename(Tpath).c_str(), outputText.c_str(), outputText.size(), MZ_DEFAULT_COMPRESSION);
 	mz_zip_writer_add_mem(&zip, getBasename(Epath).c_str(), Ext.data(), sizeof(double)*Ext.size(), MZ_DEFAULT_COMPRESSION);
 	mz_zip_writer_add_mem(&zip, getBasename(Spath).c_str(), totalSpectrum.data(), sizeof(double)*totalSpectrum.size(), MZ_DEFAULT_COMPRESSION);
-	if(true){
+	if(parameters[0].pulse1LoadedData.hasData){
 		mz_zip_writer_add_mem(&zip, getBasename(Pulse1Path).c_str(), parameters[0].pulse1LoadedData.fileContents.c_str(), parameters[0].pulse1LoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 	}
 	if(parameters[0].pulse2LoadedData.hasData){
