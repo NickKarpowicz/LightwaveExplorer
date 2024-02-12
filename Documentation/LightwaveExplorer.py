@@ -867,22 +867,20 @@ def fuseBinaries(outputTextFile: str):
     fuseFile(base,"_Ext.dat")
     fuseFile(base,"_spectrum.dat")
 
-def fuseZips(outputTextFile: str):
+def fuseZips(outputFile: str):
     """
     Combine the zip files resulting from a simulation that was split to run on a cluster
     
-    :param inputTextFile: The base file name associated with the simulation. If this is Result.Txt, it will
-    combine the files Result0000.zip, Result0001.zip and so on
+    :param outputFile: The zip file created to run on the cluster. If this is Result.zip, it will
+    combine the files Result00000.zip, Result00001.zip and so on
     """
     ending = ".zip"
-    baseName = os.path.splitext(os.path.basename(outputTextFile))[0]
-    destination = os.path.splitext(outputTextFile)[0]+ending
-    files = [filename for filename in os.listdir() if filename.startswith(baseName) and filename.endswith(ending) and filename != destination]
+    baseName = os.path.splitext(os.path.basename(outputFile))[0]
+    destination = os.path.splitext(outputFile)[0]+ending
+    files = sorted([filename for filename in os.listdir() if filename.startswith(baseName) and filename.endswith(ending) and filename != destination])
     print(files)
     print(destination)
-    if os.path.exists(destination):
-        os.remove(destination)
-    with zipfile.ZipFile(destination,'w',compression=8) as destinationZip:
+    with zipfile.ZipFile(destination,'a',compression=8) as destinationZip:
         Ext = tempfile.NamedTemporaryFile(delete=False)
         spectrum = tempfile.NamedTemporaryFile(delete=False)
         for sourceFile in files:
@@ -895,7 +893,6 @@ def fuseZips(outputTextFile: str):
                 Ext.flush()
         destinationZip.write(spectrum.name, baseName+"_spectrum.dat")
         destinationZip.write(Ext.name, baseName+"_Ext.dat")
-        destinationZip.write(outputTextFile,os.path.basename(outputTextFile))
     Ext.close()
     spectrum.close()
     os.unlink(Ext.name)

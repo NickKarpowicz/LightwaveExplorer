@@ -265,24 +265,24 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	}
 
 	fs << "module purge" << '\x0A';
-	fs << "module load cuda/12.1" << '\x0A';
-	fs << "module load mkl/2022.2" << '\x0A';
+	fs << "module load cuda/12.2" << '\x0A';
+	fs << "module load mkl/2024.0" << '\x0A';
 	fs << "export LD_LIBRARY_PATH=$MKL_HOME/lib/intel64:$LD_LIBRARY_PATH" << '\x0A';
 	fs << "export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}" << '\x0A';
 
 	if(useJobArray){
-		fs << "file_id=$(printf \"%04d\" $SLURM_ARRAY_TASK_ID)\x0a";
+		fs << "file_id=$(printf \"%05d\" $SLURM_ARRAY_TASK_ID)\x0a";
 		fs << "base_name=\"" << baseName << "$file_id\"" << '\x0A';
 	}
 	else{
 		fs << "base_name=\"" << baseName << "\"" << '\x0A';
 	}
 	
-	fs << "srun ./lwe $base_name.input > $base_name.out\x0A";
+	fs << "srun ../lwe $base_name.input > $base_name.out\x0A";
 	//optionally upload to a webdav location, if a token is provided
-	fs << "if [ -f webdav_token.txt ]; then" << '\x0A';
-	fs << "    webdav_token=$(<webdav_token.txt)" << '\x0A';
-	fs << "    webdav_url=$(<webdav_url.txt)" << '\x0A';
+	fs << "if [ -f ../webdav_token.txt ]; then" << '\x0A';
+	fs << "    webdav_token=$(<../webdav_token.txt)" << '\x0A';
+	fs << "    webdav_url=$(<../webdav_url.txt)" << '\x0A';
 	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\".out" << '\x0A';
 	fs << "    curl --user $webdav_token:nopass $webdav_url --upload-file \"$base_name\".zip" << '\x0A';
 	fs << "    rm \"$base_name\".out" << '\x0A';
