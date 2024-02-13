@@ -1490,16 +1490,22 @@ public:
         
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
         GtkCssProvider* textProvider = gtk_css_provider_new();
+//override style more aggressively if it will be Adwaita
+#if defined _WIN32 || defined __APPLE__ || defined LWEFLATPAK
+        std::string styleString( "label, scale { font-family: Arial; font-weight: bold; }\n "
+            "button, entry, textview { font-family: Arial; font-weight: bold; "
+            "color: #FFFFFF; background-color: #151515; }");
+#else
+        std::string styleString( "label, scale { font-family: Arial; font-weight: bold; }\n "
+            "button, entry, textview { font-family: Arial; font-weight: bold;}");
+#endif
+
 #if defined __APPLE__
         gtk_css_provider_load_from_data(textProvider,
-            "label, scale { font-family: Arial; font-weight: bold; }\n "
-            "button, entry, textview { font-family: Arial; font-weight: "
-            "bold; color: #FFFFFF; background-color: #151515; }", -1);
+            styleString.c_str(), -1);
 #else
         gtk_css_provider_load_from_string(textProvider,
-            "label, scale { font-family: Arial; font-weight: bold; }\n "
-            "button, entry, textview { font-family: Arial; font-weight: "
-            "bold; color: #FFFFFF; background-color: #151515; }");
+            styleString.c_str());
 #endif
         gtk_style_context_add_provider_for_display(
             gdk_display_get_default(),
@@ -1507,14 +1513,15 @@ public:
             GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         GtkCssProvider* buttonShrinker = gtk_css_provider_new();
+        std::string buttonStyle(
+            "label, scale, range, button, entry, textview "
+            "{ min-height: 18px; min-width: 8px; }");
 #if defined __APPLE__
         gtk_css_provider_load_from_data(buttonShrinker,
-            "label, scale, range, button, entry, textview "
-            "{ min-height: 16px; min-width: 4px; }", -1);
+            buttonStyle.c_str(), -1);
 #else
         gtk_css_provider_load_from_string(buttonShrinker,
-            "label, scale, range, button, entry, textview "
-            "{ min-height: 16px; min-width: 8px; }");
+            buttonStyle.c_str());
 #endif
         gtk_style_context_add_provider_for_display(
             gdk_display_get_default(),
