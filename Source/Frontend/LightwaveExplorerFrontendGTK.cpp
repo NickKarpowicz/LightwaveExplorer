@@ -1261,16 +1261,10 @@ void createRunFile() {
     }
     double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, totalSteps, theSim.parameters, theDatabase);
 
-    //create command line settings file
-    
-    
-    
-    
-    
-
     theGui.console.tPrint(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
         getBasename(theSim.base().outputBasePath), getBasename(theSim.base().outputBasePath));
+    theGui.console.tPrint("or\n./lweget.sh {}\n",getBasename(theSim.base().outputBasePath));
     theGui.console.tPrint(
         "Upper estimate time to complete: {:.2} hours\n", 
         timeEstimate);
