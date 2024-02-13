@@ -4213,7 +4213,8 @@ namespace hostFunctions{
 		deviceFP frontBuffer, 
 		deviceFP backBuffer,
 		deviceFP observationPoint = 0.0,
-		const std::string& materialMapPath = "");
+		const std::string& materialMapPath = "",
+		bool preserveNearField = false);
 
 	static std::complex<double> hostSellmeierFunc(
 		double ls, 
@@ -5830,7 +5831,8 @@ namespace hostFunctions{
 		deviceFP frontBuffer, 
 		deviceFP backBuffer,
 		deviceFP observationPoint,
-		const std::string& materialMapPath) {
+		const std::string& materialMapPath,
+		bool preserveNearField) {
 		
 		//initialize the grid if necessary
 		if (!sCPU->isFollowerInSequence) {
@@ -5905,12 +5907,15 @@ namespace hostFunctions{
 		}
 		
 
-		//correct amplitudes for vectorial effects
+		
 		d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
-		d.deviceLaunch(
+		//correct far-field amplitudes for vectorial effects
+		if(!preserveNearField){
+			d.deviceLaunch(
 				d.deviceStruct.Nblock / 2, 
 				d.deviceStruct.Nthread,
 				correctFDTDAmplitudesKernel{ d.dParamsDevice });
+		}
 		d.deviceMemcpy(
 			(*sCPU).EkwOut,
 			d.deviceStruct.gridEFrequency1,
@@ -6041,6 +6046,21 @@ namespace hostFunctions{
 				0.0,
 				parameters[1],
 				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
+			break;
+		case functionID("fdtdGridNearField"):
+			{std::string filepath = cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1);
+			std::string newParameterString =cc.substr(cc.find('"', cc.find('"') + 1)+1,std::string::npos);
+			newParameterString[0] = '(';
+			interpretParameters(newParameterString, 2, iBlock, vBlock, parameters, defaultMask);}
+			error = solveFDTD(d,
+				sCPU,
+				static_cast<int>(parameters[0]),
+				(*sCPU).propagationStep,
+				0.0,
+				0.0,
+				parameters[1],
+				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1),
+				true);
 			break;
 		case functionID("default"):
 			d.reset(sCPU);

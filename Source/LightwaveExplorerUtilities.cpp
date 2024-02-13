@@ -316,6 +316,18 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 		mz_zip_writer_add_mem(&zip, getBasename(mainSettings).c_str(), settings.c_str(), settings.size(), MZ_DEFAULT_COMPRESSION);
 		int64_t loopNsims2 = Nsims2;
 		int64_t loopNsims = Nsims;
+		std::vector<double> i37(Nsims);
+		std::vector<double> i37_2(Nsims2);
+		if(batchIndex == 37){
+			for(int64_t i = 0; i<Nsims; ++i){
+				i37[i] = i * batchDestination/(Nsims-1);
+			}
+		}
+		if(batchIndex2 == 37){
+			for(int64_t i = 0; i<Nsims2; ++i){
+				i37_2[i] = i * batchDestination2/(Nsims2-1);
+			}
+		}
         for(int64_t i = 0; i<loopNsims2; ++i){
             for(int64_t j = 0; j<loopNsims; ++j){
                 simulationParameterSet arraySim = params[i*loopNsims + j];
@@ -329,6 +341,26 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
                 arraySim.batchIndex2 = 0;
                 arraySim.runType = runTypes::cluster;
 				arraySim.sequenceString = modifiedString;
+				if(batchIndex == 37){
+					std::ostringstream oss;
+					oss << std::setprecision(15) << i37[j];
+					std::string replacement = oss.str();
+					size_t pos = arraySim.sequenceString.find("i37");
+					while(pos != std::string::npos){
+						arraySim.sequenceString.replace(pos, 3, replacement);
+						pos = arraySim.sequenceString.find("i37", pos+3);
+					}
+				}
+				if(batchIndex2 == 37){
+					std::ostringstream oss;
+					oss << std::setprecision(15) << i37_2[i];
+					std::string replacement = oss.str();
+					size_t pos = arraySim.sequenceString.find("i37");
+					while(pos != std::string::npos){
+						arraySim.sequenceString.replace(pos, 3, replacement);
+						pos = arraySim.sequenceString.find("i37", pos+3);
+					}
+				}
                 settings = arraySim.settingsString();
 				std::string currentPath = getBasename(arraySim.outputBasePath)+".input";
 				mz_zip_writer_add_mem(&zip, getBasename(currentPath).c_str(), settings.c_str(), settings.size(), MZ_DEFAULT_COMPRESSION);

@@ -164,7 +164,6 @@ public:
             console.tPrint("Loaded material database from:\n{}\n", pathBuffer);
         }
         if(queueSavePathUpdate && !(theSim.base().isRunning) && pathBuffer != "?LWE_LOADING??"){
-            console.tPrint("I got here\n");
             queueSavePathUpdate = false;
             if(pathBuffer == "?LWE_NOPATH??") return;
             theSim.base().outputBasePath = pathBuffer;

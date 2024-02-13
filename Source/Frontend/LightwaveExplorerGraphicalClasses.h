@@ -1075,7 +1075,8 @@ gboolean formatSequenceBuffer(gpointer data) {
         "addPulse",
         "fdtd2d",
         "fdtd",
-        "fdtdGrid"
+        "fdtdGrid",
+        "fdtdGridNearField"
     };
 
     auto applyTag = [&](const char* tag, const size_t a, const size_t b) {
