@@ -1516,7 +1516,7 @@ public:
         GtkCssProvider* buttonShrinker = gtk_css_provider_new();
         std::string buttonStyle(
             "label, scale, range, button, entry, textview "
-            "{ min-height: 18px; min-width: 8px; }");
+            "{ min-height: 17px; min-width: 8px; }");
 #if defined __APPLE__
         gtk_css_provider_load_from_data(buttonShrinker,
             buttonStyle.c_str(), -1);
