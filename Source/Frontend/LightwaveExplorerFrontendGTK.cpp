@@ -506,7 +506,7 @@ public:
         buttons["Stop"].setTooltip("Tell a currently-running simulation to stop. "
             "It might not stop right away; it will only happen once it reaches a break point");
         buttons["Script"].init(
-            ("\xf0\x9f\x92\xbe"), parentHandle, labelWidth+textWidth+1, 19, 2, 1, saveRunFileCallback);
+            ("\xf0\x9f\x92\xbe"), parentHandle, labelWidth+textWidth+1, 18, 2, 1, saveRunFileCallback);
         buttons["Script"].setTooltip("Generate an input file and SLURM script for running "
             "the simulation as entered on the selected cluster");
         buttons["Fit"].init(("Fit"), parentHandle, buttonCol4, 13, buttonWidth, 1, launchFitThread);
@@ -550,7 +550,7 @@ public:
         plotSlider.setArrowFunction(sliderResponseToArrows);
         sequence.init(window.parentHandle(1), 0, 0, 1, 1);
         fitCommand.init(parentHandle, buttonCol1, 14, colWidth, 2);
-        console.init(parentHandle, buttonCol1, 16, colWidth, 4);
+        console.init(parentHandle, buttonCol1, 16, colWidth, 3);
         checkLibraryAvailability();
         
         std::string A;
@@ -646,7 +646,7 @@ public:
         pulldowns["cluster"].addElement("Raven 2xA100");
         pulldowns["cluster"].addElement("Raven 4xA100");
         pulldowns["cluster"].addElement("Raven NxA100");
-        pulldowns["cluster"].init(parentHandle, labelWidth-2, 19, pulldownWidth, 1);
+        pulldowns["cluster"].init(parentHandle, labelWidth-2, 18, pulldownWidth, 1);
         pulldowns["cluster"].setTooltip(
             "Select the cluster and GPU configuration for generating a SLURM script");
         pulldowns["cluster"].setLabel(-labelWidth+2,0,"SLURM script",13,4);
