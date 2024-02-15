@@ -16,7 +16,7 @@ void zipIntoMemory(std::string zipPath, std::string filename, T* data, size_t da
 	mz_zip_archive zip = {};
 	mz_zip_reader_init_file(&zip, zipPath.c_str(), 0);
 	int fileIndex = mz_zip_reader_locate_file(&zip, filename.c_str(), nullptr, 0);
-	if(fileIndex < -1) return;
+	if(fileIndex < 0) return;
 	mz_zip_archive_file_stat fileStat = {};
     mz_zip_reader_file_stat(&zip, fileIndex, &fileStat);
 	mz_zip_reader_extract_to_mem(&zip, fileIndex, data, dataSize, 0);
@@ -28,7 +28,7 @@ void zipIntoMemory(std::string zipPath, std::string filename, std::vector<T>& da
 	mz_zip_archive zip = {};
 	mz_zip_reader_init_file(&zip, zipPath.c_str(), 0);
 	int fileIndex = mz_zip_reader_locate_file(&zip, filename.c_str(), nullptr, 0);
-	if(fileIndex < -1) return;
+	if(fileIndex < 0) return;
 	mz_zip_archive_file_stat fileStat = {};
     mz_zip_reader_file_stat(&zip, fileIndex, &fileStat);
 	data = std::vector<T>(fileStat.m_uncomp_size/sizeof(T));
