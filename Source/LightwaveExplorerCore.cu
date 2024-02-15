@@ -2941,6 +2941,32 @@ namespace kernelNamespace{
 			}
 		}
 	};
+
+		class correctFDTDAmplitudesKernel2D { 
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		deviceFunction void operator()(const int64_t localIndex) const {
+			int64_t i = localIndex;
+			const int64_t h = 1 + i % ((*s).Nfreq - 1);
+			const int64_t col = i / ((*s).Nfreq - 1);
+			i = h + col * ((*s).Nfreq);
+			const int64_t j = col % (*s).Nspace;
+			
+			const deviceFP kMagnitude = (h * (*s).fStep * twoPi<deviceFP>()) / lightC<deviceFP>();
+			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
+			if(dk1*dk1 < kMagnitude*kMagnitude && h > 2){
+				s->gridEFrequency1[i] *= (*s).fftNorm * kMagnitude/deviceFPLib::sqrt((kMagnitude - dk1)*(kMagnitude + dk1));
+			}
+			else{
+				s->gridEFrequency1[i] = {};
+				s->gridEFrequency2[i] = {};
+			}
+			if(h==1){
+				s->gridEFrequency1[i-1] = {};
+				s->gridEFrequency2[i-1] = {};
+			}
+		}
+	};
 	
 	//apply linear propagation through a given medium to the fields
 	class applyLinearPropagationKernel { 
@@ -5911,10 +5937,19 @@ namespace hostFunctions{
 		d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
 		//correct far-field amplitudes for vectorial effects
 		if(!preserveNearField){
-			d.deviceLaunch(
-				d.deviceStruct.Nblock / 2, 
-				d.deviceStruct.Nthread,
-				correctFDTDAmplitudesKernel{ d.dParamsDevice });
+			if((*sCPU).is3D){
+				d.deviceLaunch(
+					d.deviceStruct.Nblock / 2, 
+					d.deviceStruct.Nthread,
+					correctFDTDAmplitudesKernel{ d.dParamsDevice });
+			}
+			else{
+				d.deviceLaunch(
+					d.deviceStruct.Nblock / 2, 
+					d.deviceStruct.Nthread,
+					correctFDTDAmplitudesKernel2D{ d.dParamsDevice });
+			}
+			
 		}
 		d.deviceMemcpy(
 			(*sCPU).EkwOut,
