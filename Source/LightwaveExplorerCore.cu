@@ -2956,6 +2956,7 @@ namespace kernelNamespace{
 			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 			if(dk1*dk1 < kMagnitude*kMagnitude && h > 2){
 				s->gridEFrequency1[i] *= (*s).fftNorm * kMagnitude/deviceFPLib::sqrt((kMagnitude - dk1)*(kMagnitude + dk1));
+				s->gridEFrequency2[i] *= (*s).fftNorm;
 			}
 			else{
 				s->gridEFrequency1[i] = {};
