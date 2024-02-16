@@ -78,6 +78,7 @@ void fittingPathCallback();
 void loadDatabaseCallback();
 void saveRunFileCallback();
 void loadFromPath(const std::string path);
+void saveThread();
 void launchFitThread();
 void fittingThread(int pulldownSelection, bool use64bitFloatingPoint);
 void stopButtonCallback();

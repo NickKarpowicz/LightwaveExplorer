@@ -177,7 +177,8 @@ public:
                 || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
                 theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
             }
-            theSim.saveDataSet();
+            std::thread(saveThread).detach();
+            console.tPrint("Saving...");
         }
         if(queueSVGgeneration && pathBuffer != "?LWE_LOADING??"){
             queueSVGgeneration = false;
@@ -1144,7 +1145,10 @@ void checkLibraryAvailability() {
 #endif
 #endif
 }
-
+void saveThread(){
+    theSim.saveDataSet();
+    theGui.console.tPrint("done\n");
+}
 void savePathCallback() {
 #ifdef __APPLE__
     theGui.pathBuffer = pathFromAppleSaveDialog();
