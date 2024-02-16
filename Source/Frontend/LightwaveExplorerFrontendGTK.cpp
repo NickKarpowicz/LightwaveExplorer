@@ -209,6 +209,10 @@ public:
             queuePostLoad = false;
             queueUpdate = true;
             queueSliderUpdate = true;
+            pulse1Data = theSim.base().pulse1LoadedData;
+            pulse2Data = theSim.base().pulse2LoadedData;
+            fittingData = theSim.base().fittingLoadedData;
+            setInterfaceValuesToActiveValues();
         }
         progressBarBox.queueDraw();
         if (queueInterfaceValuesUpdate){
@@ -1164,17 +1168,16 @@ void loadDatabaseCallback(){
 void loadSavedFieldsThread(const std::string path){
     bool isZipFile = (path.length() >= 4 
         && path.substr(path.length()-4)==".zip");
+    
     int readParameters =
         theSim.base().readInputParametersFile(theDatabase.db.data(), path);
     theSim.configure();
+    std::for_each(theSim.mutexes.begin(), theSim.mutexes.end(), 
+            [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
     if (readParameters == 61) {
         int64_t extensionLoc = path.find_last_of(".");
         const std::string basePath = path.substr(0, extensionLoc);
         theSim.base().loadSavedFields(basePath, isZipFile);
-        theGui.pulse1Data = theSim.base().pulse1LoadedData;
-        theGui.pulse2Data = theSim.base().pulse2LoadedData;
-        theGui.fittingData = theSim.base().fittingLoadedData;
-        setInterfaceValuesToActiveValues();
     }
     theGui.requestLoadFollowup();
     theGui.console.tPrint("done\n");
@@ -1185,8 +1188,6 @@ void loadFromPath(const std::string path) {
     theGui.fitCommand.clear();
     std::thread(loadSavedFieldsThread, path).detach();
     theGui.console.tPrint("Loading... ");
-    //if it's a zip file, read as such
-
 }
 
 void loadCallback() {
