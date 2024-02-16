@@ -24,6 +24,7 @@ class mainGui {
     bool queueSVGgeneration = false;
     bool queueRunFileGeneration = false;
     bool queueSVGsave = false;
+    bool queuePostLoad = false;
     int sliderTarget = 0;
     std::mutex mutex;
     int buttonWidth = 3;
@@ -69,6 +70,10 @@ public:
     void requestPlotUpdate() {
         std::unique_lock<std::mutex> lock(mutex);
         queueUpdate = true;
+    }
+    void requestLoadFollowup(){
+        std::unique_lock<std::mutex> lock(mutex);
+        queuePostLoad = true;
     }
     void requestSavePathUpdate(){
         std::unique_lock<std::mutex> lock(mutex);
@@ -199,6 +204,11 @@ public:
             queueRunFileGeneration = false;
             currentPath = pathBuffer;
             createRunFile();
+        }
+        if(queuePostLoad){
+            queuePostLoad = false;
+            queueUpdate = true;
+            queueSliderUpdate = true;
         }
         progressBarBox.queueDraw();
         if (queueInterfaceValuesUpdate){
@@ -1151,14 +1161,9 @@ void loadDatabaseCallback(){
     theGui.requestLoadDatabase();
 }
 
-void loadFromPath(std::string& path) {
-    theGui.sequence.clear();
-    theGui.fitCommand.clear();
-
-    //if it's a zip file, read as such
+void loadSavedFieldsThread(const std::string path){
     bool isZipFile = (path.length() >= 4 
         && path.substr(path.length()-4)==".zip");
-
     int readParameters =
         theSim.base().readInputParametersFile(theDatabase.db.data(), path);
     theSim.configure();
@@ -1170,9 +1175,18 @@ void loadFromPath(std::string& path) {
         theGui.pulse2Data = theSim.base().pulse2LoadedData;
         theGui.fittingData = theSim.base().fittingLoadedData;
         setInterfaceValuesToActiveValues();
-        theGui.requestSliderUpdate();
-        theGui.requestPlotUpdate();
     }
+    theGui.requestLoadFollowup();
+    theGui.console.tPrint("done\n");
+}
+
+void loadFromPath(const std::string path) {
+    theGui.sequence.clear();
+    theGui.fitCommand.clear();
+    std::thread(loadSavedFieldsThread, path).detach();
+    theGui.console.tPrint("Loading... ");
+    //if it's a zip file, read as such
+
 }
 
 void loadCallback() {

@@ -1828,7 +1828,7 @@ void pathFromSaveDialog(std::string& destinationPath, const std::string& suffix,
 }
 
 
-typedef void(*loadingFunction)(std::string&);
+typedef void(*loadingFunction)(std::string);
 static void loadDataCallback(GObject* gobject, GAsyncResult* result, gpointer data) {
     GError* error = nullptr;
     GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
