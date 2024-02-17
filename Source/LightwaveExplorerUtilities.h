@@ -14,11 +14,8 @@
 #ifdef __linux__
 #include <unistd.h>
 #endif
-#if defined _WIN32 || defined __APPLE__ || defined LWEFLATPAK
 #include <miniz/miniz.h>
-#else
-#include <miniz.h>
-#endif
+
 static const unsigned int threadsPerBlock = 64;
 static const unsigned int minGridDimension = 8;
 

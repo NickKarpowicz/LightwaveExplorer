@@ -150,27 +150,16 @@
                 "type": "git",
                 "url": "https://github.com/KhronosGroup/SPIRV-LLVM-Translator",
                 "branch": "llvm_release_140",
-                "commit": "43baf90f96fb9df607595b63858fd9e85fbb2604",
+                "commit": "5e2dec80618b3e22e5c41d8ad89c859fefe3eff2",
                 "dest": "llvm-project/llvm/projects/llvm-spirv"
               },
               {
                 "type": "git",
                 "url": "https://github.com/intel/opencl-clang",
                 "branch": "ocl-open-140",
-                "commit": "cf95b338d14685e4f3402ab1828bef31d48f1fd6",
+                "commit": "980f1691c5babcf824ee10375a04a0d0c5d7d44a",
                 "dest": "llvm-project/llvm/projects/opencl-clang"
-              },
-              {
-                "type": "patch",
-                "path": "no_git_patching.patch"
-              },
-              {
-                "type": "shell",
-                "commands": [
-                    "cat llvm-project/llvm/projects/opencl-clang/patches/{clang,llvm}/*.patch | patch -Np1 -d llvm-project",
-                    "cat llvm-project/llvm/projects/opencl-clang/patches/spirv/*.patch | patch -Np1 -d llvm-project/llvm/projects/llvm-spirv"]
               }
-
             ]
         },
         {
@@ -214,10 +203,6 @@
                 "type": "archive",
                 "url": "https://github.com/intel/compute-runtime/archive/refs/tags/22.43.24595.30.tar.gz",
                 "sha256": "b032e55e16675d75540782dd7d044b7af0923afb34a9a3945656078f97e96491"
-              },
-              {
-                "type": "patch",
-                "path": "find_igc.patch"
               }
             ]
         },
@@ -229,11 +214,11 @@
                 "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib"
                 },
             "build-commands": [
-                    "chmod +x l_BaseKit_p_2023.2.0.49397_offline.sh",
-                    "./l_BaseKit_p_2023.2.0.49397_offline.sh -x -f webimage_extracted",
-                    "rm l_BaseKit_p_2023.2.0.49397_offline.sh",
-                    "webimage_extracted/l_BaseKit_p_2023.2.0.49397_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.tbb.devel:intel.oneapi.lin.dpcpp-cpp-compiler:intel.oneapi.lin.dpl --install-dir=/app/opt/intel/oneapi --eula=accept",
-                    "rm -rf /app/opt/intel/oneapi/compiler/latest/linux/lib/oclfpga/host/linux64/bin/perl/lib",
+                    "chmod +x l_BaseKit_p_2024.0.1.46_offline.sh",
+                    "./l_BaseKit_p_2024.0.1.46_offline.sh -x -f webimage_extracted",
+                    "rm l_BaseKit_p_2024.0.1.46_offline.sh",
+                    "webimage_extracted/l_BaseKit_p_2024.0.1.46_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.tbb.devel:intel.oneapi.lin.dpcpp-cpp-compiler:intel.oneapi.lin.dpl --install-dir=/app/opt/intel/oneapi --eula=accept",
+                    "rm -rf /app/opt/intel/oneapi/compiler/latest/opt/oclfpga/host/linux64/bin/perl/lib",
                     "mkdir -p /app/lib/pkgconfig",
                     "cp -a /app/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64/* /app/lib/",
                     "cp -a /app/opt/intel/oneapi/compiler/latest/linux/lib/x64/* /app/lib/",
@@ -248,10 +233,10 @@
                     ],
             "sources": [
                 {
-                    "type": "file",
-                    "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/992857b9-624c-45de-9701-f6445d845359/l_BaseKit_p_2023.2.0.49397_offline.sh",
-                    "sha256": "3dd04d2cc9ba2a8785580ba09068dbaf9aff9aa930b5fa7f10688210ea9be4a0"
-        
+                  "type": "file",
+                  "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/163da6e4-56eb-4948-aba3-debcec61c064/l_BaseKit_p_2024.0.1.46_offline.sh",
+                  "sha256": "2f60c99098fe81c7aaab3d92cd0bede777567ac8946c8b5cc74876b4e573e1ea"
+    
                 }
             ],
             "cleanup":[
@@ -296,6 +281,18 @@
                 ]
         },
         {
+          "name": "miniz",
+          "buildsystem": "cmake-ninja",
+          "sources":[
+              {
+                  "type": "git",
+                  "url": "https://github.com/richgel999/miniz",
+                  "tag": "3.0.2",
+                  "commit": "293d4db1b7d0ffee9756d035b9ac6f7431ef8492"
+              }
+          ]
+        },
+        {
             "name": "cuda",
             "buildsystem": "simple",
             "build-commands":[
@@ -329,7 +326,7 @@
               {
                   "type": "git",
                   "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
-                  "branch": "septemberFlatpak"
+                  "branch": "fixFlatpak20240"
               },
               {
                 "type": "shell",

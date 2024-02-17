@@ -11,6 +11,20 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="2024.02" date="2024-02-18" urgency="high">
+  <description>
+  <p>This release adds the following fixes and improvements:</p>
+  <ul>
+  <li>FDTD mode now supports importing a user-generated multi-material grid (tutorial upcoming).</li>
+  <li>New compressed file format (produces self-contained .zip files).</li>
+  <li>Saving and loading of files now done entirely through standard system file dialogs.</li>
+  <li>File access now supports XDG portals; Flatpak no longer needs nor requests home folder access.</li>
+  <li>Improved interaction with clusters/SLURM script generation.</li>
+  <li>Made the user interface more compact and organized.</li>
+  <li>Support dynamic loading of new crystal database files.</li>
+  </ul>
+  </description>
+  </release>
   <release version="2023.09" date="2023-09-04" urgency="high">
   <description>
   <p>This release adds the following fixes and improvements:</p>

@@ -163,7 +163,7 @@
                 {
                     "type": "git",
                     "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
-                    "branch": "master"
+                    "branch": "fixFlatpak20240"
                 }
             ]
         } 
