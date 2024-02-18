@@ -1,7 +1,7 @@
 brew install cmake ninja make pkgconfig libomp libtool autoconf automake
 mkdir LightwaveExplorerBuild
 cd LightwaveExplorerBuild
-BASE_DIR=$(pwd)/LightwaveExplorerBuild
+BASE_DIR=$(pwd)
 echo "Building fftw..."
 curl -O http://fftw.org/fftw-3.3.10.tar.gz >& /dev/null
 tar -xvf fftw-3.3.10.tar.gz >& /dev/null
@@ -24,7 +24,7 @@ rm -rf fftw-3.3.10
 git clone --depth 1 https://github.com/NickKarpowicz/LightwaveExplorer >& /dev/null
 git clone --depth 1 --branch v19.24.2 https://github.com/davisking/dlib >& /dev/null
 git clone https://github.com/microsoft/vcpkg >& /dev/null
-./vcpkg/bootstrap-vcpkg.sh
+./vcpkg/bootstrap-vcpkg.sh >& /dev/null
 ./vcpkg/vcpkg install gtk gcem fmt miniz
 
 cd LightwaveExplorer
