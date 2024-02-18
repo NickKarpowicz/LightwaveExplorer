@@ -15,20 +15,21 @@ Tutorials on YouTube!
 - Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
 
 ---
-### Latest release: 2023.09
+### Latest release: 2024.02
 Windows: <a href="https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2023.09.01/LightwaveExplorerWin64.zip"> Download .zip</a>
 
 Mac: <a href="https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2023.09.01/LightwaveExplorerMacOS.zip"> Download .zip </a>(Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
 Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
-<p>This release adds the following fixes and improvements:</p>
+  <p>This release adds the following fixes and improvements:</p>
   <ul>
-  <li>Adds a new CPU-based propagation mode on Linux/Windows using C++ std::execution::par instead of OpenMP, which on some computers is nearly twice as fast</li>
-  <li>MacOS version now uses Grand Central Dispatch for multithreading, with a slight performance improvement.
-  <li>Applies PEMDAS rules to the input arguments of sequence functions. In short: previously an input of 1+2*3 would give 9 because the operators were resolved from left to right, now it has the correct behavior (i.e. 7).</li>
-  <li>Multiple small optimizations to propagation kernels with a small (percent-level) performance improvement</li>
-  <li>Various bug fixes and stability enhancements (mostly regarding mutex locks).</li>
-  <li>A button to collapse the data input panel so that the plots and images fill the whole window</li>
+  <li>FDTD mode now supports importing a user-generated multi-material grid (tutorial upcoming).</li>
+  <li>New compressed file format (produces self-contained .zip files).</li>
+  <li>Saving and loading of files now done entirely through standard system file dialogs.</li>
+  <li>File access now supports XDG portals; Flatpak no longer needs nor requests home folder access.</li>
+  <li>Improved interaction with clusters/SLURM script generation.</li>
+  <li>Made the user interface more compact and organized.</li>
+  <li>Support dynamic loading of new crystal database files.</li>
   </ul>
   
 ---
