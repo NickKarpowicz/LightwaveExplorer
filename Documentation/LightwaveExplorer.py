@@ -695,8 +695,12 @@ def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements: np.arr
         return returnVals
 
     res = least_squares(fun_residual, startingCoefficients[activeElements], gtol=None, xtol=None, ftol = 1e-12, max_nfev=16384)
+    
+    if (eqnType == 1) or (eqnType == 2):
+        res.x = np.abs(res.x)
     print("Resulting coefficients:")
     printSellmeier(expandCoeffs(res.x))
+
     return expandCoeffs(res.x), fun_nforx(res.x)
 
 #Get the plasma density associated with a field using the ionization model in the simulation

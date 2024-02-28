@@ -873,6 +873,40 @@ None
 Nonlinear reference frequencies:
 28.28e12 28.28e12 56.56e12 284.43 284.43 284.43 284.43
 ~~~crystal end~~~
-
+Name:
+a-Quartz L
+Type:
+1
+Sellmeier equation:
+1
+1st axis coefficients:
+1.28341 1.18916e+29 3.52747e+32 1.0e+10 5.61134e+23 4.05595e+29 2.07016e+09 1.1678e+25 4.69152e+27 1.0e+10 0 0 0 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1.28844 1.19585e+29 3.4751e+32 1.0e+10 4.39677e+23 4.05595e+29 1.34477e+11 1.25721e+25 4.69104e+27 1.0e+10 0 0 0 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1.28844 1.19585e+29 3.4751e+32 1.0e+10 4.39677e+23 4.05595e+29 1.34477e+11 1.25721e+25 4.69104e+27 1.0e+10 0 0 0 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+G. Ghosh, Optics Communications 163, 95-102 (1999). Lorentzian fit with additional IR absorption.
+chi2 type:
+1
+d:
+0.18 -0.18 0 0 0 0
+0 0 0 0 0 -0.18
+0 0 0 0 0 0
+d reference:
+(old code, look up later)
+chi3 type:
+2
+chi3:
+2.6e-22 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+chi3 reference:
+Empty matrix awaiting input
+Spectral file:
+None
+Nonlinear reference frequencies:
+0 0 0 0 0 0 0
+~~~crystal end~~~
 
 
