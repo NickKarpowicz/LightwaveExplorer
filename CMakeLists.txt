@@ -109,6 +109,7 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer fmt::fmt -lm)
         target_link_libraries(LightwaveExplorer
             ${MKL_ROOT}/lib/intel64/libmkl_sycl.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_sycl_dft.so
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 

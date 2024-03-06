@@ -1,5 +1,7 @@
 #include "../LightwaveExplorerUtilities.h"
-#include <sycl/sycl.hpp>
+#define SYCL_EXT_ONEAPI_COMPLEX                                        
+#include <sycl/ext/oneapi/experimental/sycl_complex.hpp>
+#include <sycl/sycl.hpp>   
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
 #include <oneapi/dpl/complex>
@@ -11,36 +13,36 @@ static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	a.fetch_add(pointEnergy);
 }
 
-[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator+(
-	const float f, 
-	const oneapi::dpl::complex<double> x) { 
-	return oneapi::dpl::complex<double>(x.real() + f, x.imag()); 
-}
-[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator+(
-	const oneapi::dpl::complex<double> x, 
-	const float f) { 
-	return oneapi::dpl::complex<double>(x.real() + f, x.imag()); 
-}
-[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator-(
-	const oneapi::dpl::complex<double> x, 
-	const float f) { 
-	return oneapi::dpl::complex<double>(x.real() - f, x.imag()); 
-}
-[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator*(
-	const float f, 
-	const oneapi::dpl::complex<double> x) { 
-	return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); 
-}
-[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator*(
-	const oneapi::dpl::complex<double> x, 
-	const float f) { 
-	return oneapi::dpl::complex<double>(x.real() * f, x.imag() * f); 
-}
-[[maybe_unused]] static constexpr oneapi::dpl::complex<double> operator/(
-	const oneapi::dpl::complex<double> x, 
-	const float f) { 
-	return oneapi::dpl::complex<double>(x.real() / f, x.imag() / f); 
-}
+// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator+(
+// 	const float f, 
+// 	const sycl::ext::oneapi::experimental::complex<double> x) { 
+// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() + f, x.imag()); 
+// }
+// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator+(
+// 	const sycl::ext::oneapi::experimental::complex<double> x, 
+// 	const float f) { 
+// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() + f, x.imag()); 
+// }
+// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator-(
+// 	const sycl::ext::oneapi::experimental::complex<double> x, 
+// 	const float f) { 
+// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() - f, x.imag()); 
+// }
+// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator*(
+// 	const float f, 
+// 	const sycl::ext::oneapi::experimental::complex<double> x) { 
+// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() * f, x.imag() * f); 
+// }
+// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator*(
+// 	const sycl::ext::oneapi::experimental::complex<double> x, 
+// 	const float f) { 
+// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() * f, x.imag() * f); 
+// }
+// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator/(
+// 	const sycl::ext::oneapi::experimental::complex<double> x, 
+// 	const float f) { 
+// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() / f, x.imag() / f); 
+// }
 
 namespace deviceLibSYCLFP32{
 	static constexpr inline float exp(const float x){
@@ -76,21 +78,21 @@ namespace deviceLibSYCLFP32{
 	static inline float hypot(const float x, const float y) {
 		return hypotf(x, y);
 	}
-	static oneapi::dpl::complex<float> pow(const oneapi::dpl::complex<float> x, const float y){
+	static sycl::ext::oneapi::experimental::complex<float> pow(const sycl::ext::oneapi::experimental::complex<float> x, const float y){
 		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
 		float theta = atan2f(x.imag(), x.real());
 		float rn = powf(r, y);
-		return oneapi::dpl::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
+		return sycl::ext::oneapi::experimental::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
 	}
-	static inline oneapi::dpl::complex<float> exp(const oneapi::dpl::complex<float> x){
-		return oneapi::dpl::exp(x);
+	static inline sycl::ext::oneapi::experimental::complex<float> exp(const sycl::ext::oneapi::experimental::complex<float> x){
+		return sycl::ext::oneapi::experimental::complex<float>{exp(x.real())*cos(x.imag()),exp(x.real())*sin(x.imag())};
 	}
-	static inline float abs(const oneapi::dpl::complex<float> x){
-		return oneapi::dpl::abs(x);
+	static inline float abs(const sycl::ext::oneapi::experimental::complex<float> x){
+		return sqrtf(x.real() * x.real() + x.imag() * x.imag());
 	}
-	static inline oneapi::dpl::complex<float> sqrt(const oneapi::dpl::complex<float> x){
+	static inline sycl::ext::oneapi::experimental::complex<float> sqrt(const sycl::ext::oneapi::experimental::complex<float> x){
 		float h = sqrtf(abs(x) + x.real());
-		return 0.70710678118f * oneapi::dpl::complex<float>{
+		return 0.70710678118f * sycl::ext::oneapi::experimental::complex<float>{
 			h,
 			x.imag()/h
 		};
@@ -144,12 +146,12 @@ static constexpr float j0Device(const float x) {
 	}
 }
 
-static constexpr oneapi::dpl::complex<double> operator/(
-	const double a, 
-	const oneapi::dpl::complex<double> b) {
-	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
-	return oneapi::dpl::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
-}
+// static constexpr sycl::ext::oneapi::experimental::complex<double> operator/(
+// 	const double a, 
+// 	const sycl::ext::oneapi::experimental::complex<double> b) {
+// 	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
+// 	return sycl::ext::oneapi::experimental::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
+// }
 
 template<typename deviceFP, typename deviceComplex>
 class SYCLDevice {
@@ -251,7 +253,7 @@ public:
 
 	void deviceMemcpy(
 		std::complex<double>* dst, 
-		const oneapi::dpl::complex<float>* src, 
+		const sycl::ext::oneapi::experimental::complex<float>* src, 
 		int64_t count, 
 		copyType kind) {
 		stream.wait();
@@ -267,7 +269,7 @@ public:
 	}
 
 	void deviceMemcpy(
-		oneapi::dpl::complex<float>* dst, 
+		sycl::ext::oneapi::experimental::complex<float>* dst, 
 		const std::complex<double>* src, 
 		const int64_t count, 
 		const copyType kind) {
@@ -413,19 +415,19 @@ public:
 	void fft(const void* input, void* output, const deviceFFT type) const {
 		switch (type) {
 		case deviceFFT::D2Z:
-			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (deviceComplex*)output);
+			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (oneapi::dpl::complex<deviceFP>*)output);
 			break;
 		case deviceFFT::Z2D:
-			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (deviceComplex*)input, (deviceFP*)output);
+			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (oneapi::dpl::complex<deviceFP>*)input, (deviceFP*)output);
 			break;
 		case deviceFFT::D2Z_1D:
-			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (deviceComplex*)output);
+			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (oneapi::dpl::complex<deviceFP>*)output);
 			break;
 		case deviceFFT::Z2D_1D:
-			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (deviceComplex*)input, (deviceFP*)output);
+			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (oneapi::dpl::complex<deviceFP>*)input, (deviceFP*)output);
 			break;
 		case deviceFFT::D2Z_Polarization:
-			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (deviceComplex*)output);
+			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (oneapi::dpl::complex<deviceFP>*)output);
 			break;
 		}
 	}

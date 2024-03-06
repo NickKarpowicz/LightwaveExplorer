@@ -27,8 +27,6 @@
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceFP32
 	#endif
 #elif defined RUNONSYCL
-	#include <oneapi/dpl/complex>
-	#include <oneapi/dpl/cmath>
 	#include <oneapi/mkl/dfti.hpp>
 	#include <sycl/sycl.hpp>
 	const auto dftPrecision = (LWEFLOATINGPOINT == 32) ? 
@@ -37,24 +35,24 @@
 	#include "Devices/LWEActiveDeviceSYCL.h"
 	#define deviceFunction 
 	#if LWEFLOATINGPOINT == 64
-		namespace deviceLib = oneapi::dpl;
-		namespace complexLib = oneapi::dpl;
+		namespace deviceLib = sycl::ext::oneapi::experimental;
+		namespace complexLib = sycl::ext::oneapi::experimental;
 		#define deviceFPLib
 		#define kernelNamespace SYCL64Kernels
-		typedef SYCLDevice<double, oneapi::dpl::complex<double>> ActiveDevice;
+		typedef SYCLDevice<double, sycl::ext::oneapi::experimental::complex<double>> ActiveDevice;
 		typedef double deviceFP;
-		typedef oneapi::dpl::complex<double> deviceComplex;
+		typedef sycl::ext::oneapi::experimental::complex<double> deviceComplex;
 		#define runDlibFittingX runDlibFittingSYCL
 		#define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCL
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCL
 	#else
 		namespace deviceLib = deviceLibSYCLFP32;
 		namespace deviceFPLib = deviceLibSYCLFP32;
-		namespace complexLib = oneapi::dpl;
+		namespace complexLib = sycl::ext::oneapi::experimental;
 		#define kernelNamespace SYCL32Kernels
-		typedef SYCLDevice<float, oneapi::dpl::complex<float>> ActiveDevice;
+		typedef SYCLDevice<float, sycl::ext::oneapi::experimental::complex<float>> ActiveDevice;
 		typedef float deviceFP;
-		typedef oneapi::dpl::complex<float> deviceComplex;
+		typedef sycl::ext::oneapi::experimental::complex<float> deviceComplex;
 		#define runDlibFittingX runDlibFittingSYCLFP32
 		#define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCLFP32
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCLFP32
