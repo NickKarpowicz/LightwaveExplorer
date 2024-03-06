@@ -5935,9 +5935,23 @@ namespace hostFunctions{
 		
 
 		
-		d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		
 		//correct far-field amplitudes for vectorial effects
-		if(!preserveNearField){
+		if(preserveNearField){
+			d.deviceMemcpy(
+				(*sCPU).ExtOut, 
+				maxCalc.inOutEx, 
+				2*(*sCPU).Ngrid * sizeof(double), 
+				copyType::ToHost);
+			d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+			d.deviceMemcpy(
+				(*sCPU).EkwOut,
+				d.deviceStruct.gridEFrequency1,
+				2 * d.deviceStruct.NgridC * sizeof(std::complex<double>),
+				copyType::ToHost);
+		}
+		else {
+			d.fft(maxCalc.inOutEx, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
 			if((*sCPU).is3D){
 				d.deviceLaunch(
 					d.deviceStruct.Nblock / 2, 
@@ -5950,21 +5964,20 @@ namespace hostFunctions{
 					d.deviceStruct.Nthread,
 					correctFDTDAmplitudesKernel2D{ d.dParamsDevice });
 			}
-			
+			d.deviceMemcpy(
+				(*sCPU).EkwOut,
+				d.deviceStruct.gridEFrequency1,
+				2 * d.deviceStruct.NgridC * sizeof(std::complex<double>),
+				copyType::ToHost);
+			d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
+			//transfer result to CPU memory and take spectrum
+			d.deviceMemcpy(
+				(*sCPU).ExtOut, 
+				d.deviceStruct.gridETime1, 
+				2*(*sCPU).Ngrid * sizeof(double), 
+				copyType::ToHost);
 		}
-		d.deviceMemcpy(
-			(*sCPU).EkwOut,
-			d.deviceStruct.gridEFrequency1,
-			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>),
-			copyType::ToHost);
-		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D);
-		//transfer result to CPU memory and take spectrum
-		d.deviceMemcpy(
-			(*sCPU).ExtOut, 
-			d.deviceStruct.gridETime1, 
-			2*(*sCPU).Ngrid * sizeof(double), 
-			copyType::ToHost);
-		
+
 		getTotalSpectrum(d);
 
 		//free device memory		
