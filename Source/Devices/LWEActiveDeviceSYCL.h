@@ -4,7 +4,6 @@
 #include <sycl/sycl.hpp>   
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dfti.hpp>
-#include <oneapi/dpl/complex>
 using std::isnan;
 
 template <typename deviceFP>
@@ -12,37 +11,6 @@ static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	sycl::atomic_ref<deviceFP, sycl::memory_order::relaxed, sycl::memory_scope::device> a(*pulseSum);
 	a.fetch_add(pointEnergy);
 }
-
-// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator+(
-// 	const float f, 
-// 	const sycl::ext::oneapi::experimental::complex<double> x) { 
-// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() + f, x.imag()); 
-// }
-// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator+(
-// 	const sycl::ext::oneapi::experimental::complex<double> x, 
-// 	const float f) { 
-// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() + f, x.imag()); 
-// }
-// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator-(
-// 	const sycl::ext::oneapi::experimental::complex<double> x, 
-// 	const float f) { 
-// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() - f, x.imag()); 
-// }
-// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator*(
-// 	const float f, 
-// 	const sycl::ext::oneapi::experimental::complex<double> x) { 
-// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() * f, x.imag() * f); 
-// }
-// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator*(
-// 	const sycl::ext::oneapi::experimental::complex<double> x, 
-// 	const float f) { 
-// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() * f, x.imag() * f); 
-// }
-// [[maybe_unused]] static constexpr sycl::ext::oneapi::experimental::complex<double> operator/(
-// 	const sycl::ext::oneapi::experimental::complex<double> x, 
-// 	const float f) { 
-// 	return sycl::ext::oneapi::experimental::complex<double>(x.real() / f, x.imag() / f); 
-// }
 
 namespace deviceLibSYCLFP32{
 	static constexpr inline float exp(const float x){
@@ -79,9 +47,8 @@ namespace deviceLibSYCLFP32{
 		return hypotf(x, y);
 	}
 	static sycl::ext::oneapi::experimental::complex<float> pow(const sycl::ext::oneapi::experimental::complex<float> x, const float y){
-		float r = sqrtf(x.real() * x.real() + x.imag() * x.imag());
 		float theta = atan2f(x.imag(), x.real());
-		float rn = powf(r, y);
+		float rn = powf(x.real() * x.real() + x.imag() * x.imag(), 0.5f*y);
 		return sycl::ext::oneapi::experimental::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
 	}
 	static inline sycl::ext::oneapi::experimental::complex<float> exp(const sycl::ext::oneapi::experimental::complex<float> x){
@@ -98,7 +65,6 @@ namespace deviceLibSYCLFP32{
 		};
 	}
 };
-
 
 static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
@@ -145,13 +111,6 @@ static constexpr float j0Device(const float x) {
 		return sqrtf(0.636619772f / x) * (cosf(xx) * ans1 - z * sinf(xx) * ans2);
 	}
 }
-
-// static constexpr sycl::ext::oneapi::experimental::complex<double> operator/(
-// 	const double a, 
-// 	const sycl::ext::oneapi::experimental::complex<double> b) {
-// 	double divByDenominator = a / (b.real() * b.real() + b.imag() * b.imag());
-// 	return sycl::ext::oneapi::experimental::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
-// }
 
 template<typename deviceFP, typename deviceComplex>
 class SYCLDevice {
@@ -415,19 +374,19 @@ public:
 	void fft(const void* input, void* output, const deviceFFT type) const {
 		switch (type) {
 		case deviceFFT::D2Z:
-			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (oneapi::dpl::complex<deviceFP>*)output);
+			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (std::complex<deviceFP>*)output);
 			break;
 		case deviceFFT::Z2D:
-			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (oneapi::dpl::complex<deviceFP>*)input, (deviceFP*)output);
+			oneapi::mkl::dft::compute_backward(*fftPlanZ2D, (std::complex<deviceFP>*)input, (deviceFP*)output);
 			break;
 		case deviceFFT::D2Z_1D:
-			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (oneapi::dpl::complex<deviceFP>*)output);
+			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (std::complex<deviceFP>*)output);
 			break;
 		case deviceFFT::Z2D_1D:
-			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (oneapi::dpl::complex<deviceFP>*)input, (deviceFP*)output);
+			oneapi::mkl::dft::compute_backward(*fftPlan1DZ2D, (std::complex<deviceFP>*)input, (deviceFP*)output);
 			break;
 		case deviceFFT::D2Z_Polarization:
-			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (oneapi::dpl::complex<deviceFP>*)output);
+			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (std::complex<deviceFP>*)output);
 			break;
 		}
 	}
