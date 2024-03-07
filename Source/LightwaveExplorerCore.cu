@@ -2317,7 +2317,7 @@ namespace kernelNamespace{
 				beamCenter2 = beamCenter1;
 			}
 			else {
-				for (auto j = 0; j < (*s).Nspace; ++j) {
+				for (int64_t j{}; j < (*s).Nspace; ++j) {
 					deviceFP x = (*s).dx * j;
 					deviceFP a = modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
 					beamTotal1 += a;
@@ -2338,7 +2338,7 @@ namespace kernelNamespace{
 			//the center
 			beamTotal1 = 0.0f;
 			beamTotal2 = 0.0f;
-			for (auto j = 0; j < (*s).Nspace; ++j) {
+			for (int64_t j{}; j < (*s).Nspace; ++j) {
 				deviceFP x = (*s).dx * j;
 				beamTotal1 += deviceFPLib::abs(x - beamCenter1) 
 					* modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
@@ -2387,7 +2387,7 @@ namespace kernelNamespace{
 			deviceFP beamTotal1{};
 			deviceFP beamTotal2{};
 			//Integrate total beam power
-			for (int64_t j = 0; j < (*s).Nspace * (*s).Nspace2; ++j) {
+			for (int64_t j{}; j < (*s).Nspace * (*s).Nspace2; ++j) {
 				beamTotal1 += modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
 				beamTotal2 += modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
@@ -2420,7 +2420,7 @@ namespace kernelNamespace{
 			deviceFP r0;
 			deviceFP J0 = 1.0f;
 			deviceFP k0 = col * dk;
-			for (auto r = 0; r < (*s).Nspace; ++r) {
+			for (int64_t r{}; r < (*s).Nspace; ++r) {
 				r0 = rhoInRadialSymmetry((*s).Nspace, r, (*s).dx);
 				J0 = r0 * j0Device(r0 * k0);
 				out[i] += J0 * in[r * (*s).Ntime + i % (*s).Ntime];
@@ -2445,7 +2445,7 @@ namespace kernelNamespace{
 			deviceFP r0 = rhoInRadialSymmetry((*s).Nspace, col, (*s).dx);
 			deviceFP J0 = 1.0f;
 			deviceFP k0 = col * dk;
-			for (auto k = 0; k < (*s).Nspace; ++k) {
+			for (int64_t k{}; k < (*s).Nspace; ++k) {
 				k0 = k * dk;
 				J0 = k0 * j0Device(r0 * k0);
 				out[i] += J0 * in[k * (*s).Ntime + i % (*s).Ntime];
@@ -3597,7 +3597,7 @@ namespace kernelNamespace{
 			const deviceFP* dN = (j % (*s).Ngrid) + (deviceFP*)(*s).workspace1;
 			const deviceFP* E = &(*s).gridETime1[j];
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
-			for (auto k = 0; k < (*s).Ntime; ++k) {
+			for (int64_t k{}; k < (*s).Ntime; ++k) {
 				N += dN[k];
 				integralx += N * (*s).expGammaT[k] * E[k];
 				P[k] += expMinusGammaT[k] * integralx;
@@ -3619,7 +3619,7 @@ namespace kernelNamespace{
 			const deviceFP* Ey = E + (*s).Ngrid;
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
 			deviceFP* P2 = P + (*s).Ngrid;
-			for (auto k = 0; k < (*s).Ntime; ++k) {
+			for (int64_t k{}; k < (*s).Ntime; ++k) {
 				N += dN[k];
 				const deviceFP plasmaFactor = N * (*s).expGammaT[k];
 				integralx += plasmaFactor * E[k];
