@@ -4418,7 +4418,7 @@ namespace hostFunctions{
 			d.deviceMemcpy(
 				loadedField, 
 				loadedFieldIn, 
-				(*s).Ntime * sizeof(std::complex<double>), 
+				(*s).Nfreq * sizeof(std::complex<double>), 
 				copyType::ToDevice);
 		}
 		d.deviceMemset(pulseSum, 0, sizeof(deviceFP));
