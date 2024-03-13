@@ -363,9 +363,9 @@ class lightwaveExplorerResult:
             self.batchStart2 = self.propagationStep
             self.batchDestination2 *= 1e-9
         elif self.batchIndex2 == 36:
-            self.batchStart = 0
+            self.batchStart2 = 0
         elif self.batchIndex2 == 37:
-            self.batchStart = 0
+            self.batchStart2 = 0
         self.batchVector2 = np.linspace(self.batchStart2,self.batchDestination2,self.Nsims2)
 
         self.timeVector = self.timeStep*np.arange(0,self.Ntime)
