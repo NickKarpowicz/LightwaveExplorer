@@ -66,54 +66,33 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 
 ---
   ### Installation on a Windows PC
-  You can get the [latest version directly from the Github releases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.09.01), where there's a LightwaveExplorerWin64.zip file that you can just download, extract, and run.
+  Once you've downloaded the file from the latest release above, you should just unzip it and run the exe file inside.
 
   If you want to use SYCL for propagation, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
 
   The Python module for working with the results is [here](https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/LightwaveExplorer.py) in this repo; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder.
 
 ---
-  ### Installation on Linux
-  The easiest way to install on Linux is using the Flatpak, which is [available on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
-
-  If your system's graphical installer integrates Flathub, you should find it there.
-
-  Of course you can also build it yourself using the instructions below. That's currently what you'll need to do to use the SYCL propagator, since that's kinda still in beta.
-
----
-
 ### Installation on Mac
 
-The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/tag/2023.09.01). In there, there's a LightwaveExplorerMacOS.zip file that you can just download and run. You might have to right-click on it and run it from there, and accept a prompt that you actually want to run it.
+The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.2.1/LightwaveExplorerMacOS.zip). The first time you run it, you have to right-click (or command-click) on it and select "open". You have to do this because of how Apple expects developers to pay them a subscription to release applications on their platform, and I'd rather not. For the same reason, if you want the M1,M2,M3 .etc native version, you need to compile it on your machine using the directions below.
 
 This version makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
 
 The application bundle contains all the required files. If you want to edit the crystal database or default settings, open the app as a folder (right click or control-click on the app and select "show package contents") - You will find them in the Resources folder.
 
-I can't give you a binary that is native to the new Apple M1 and M2 chips, due to how Apple locks down their hardware, and how I refuse to pay them $100/year. However, you can compile it yourself using the instructions below (it's actually pretty easy).
+
 
 ---
-  ### How do I know which configuration to run?
-  At the bottom of the window, you'll see two pulldown menus marked "Config" - these let you choose whether the simulation runs in CUDA, SYCL, or OpenMP. It should start set to the fastest option for your system, but if you don't have the right drivers/runtimes, it might step down to something else that is present. OpenMP is typically the slowest (except on Linux), but will run on basically any system.
+### Compilation on Windows
+You will need Visual Studio 2022. You will also need [vcpkg](https://vcpkg.io), and use that to install dlib (make sure you get the 64-bit version, not the 32-bit one) and miniz.
 
-  - If you have an Intel CPU, chances are it will have an integrated GPU, which can be used by SYCL. In my experience, the ones that show up as "Iris Graphics" are actually much faster than running the code on the actual CPU, while the ones named "HD Graphics" are sometimes slower. Just try them both.
-
-  - The SYCL code compiles itself for your specific hardware the first time it runs. So, the first run will be slower than the rest - subsequent runs will be faster!
-
-  - The second pulldown is for offloading work onto other parts of your system. For example, if you are running a big batch of simulations on a CUDA-capable GPU, you can send some of them to the CPU to work on. This is what the second menu and following number do: chose the offload target, and the number to send to it. You don't have to use this if you don't want to.
-
-  - Basically, the order in which you should choose the backends is: CUDA if you have something which supports it. If not, SYCL if you're on windows and/or have a supported Intel integrated GPU. You're running on CPU in Linux, the GPL3 version might be faster.
-
-  ---
-  ### Compilation in Visual Studio
-  LWE was developed in Visual Studio, so you'll need that. You will also need [vcpkg](https://vcpkg.io), and use that to install dlib (make sure you get the 64-bit version, not the 32-bit one).
+Next, install the [CUDA development kit](https://developer.nvidia.com/cuda-downloads) from NVIDIA, and [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
   
-   Next, install the [CUDA development kit](https://developer.nvidia.com/cuda-downloads) from NVIDIA, and [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
-   
-   Next, you'll need a compiled version of [GTK4](http://gtk.org). The resulting compiled thing should be kept in a folder next to the LightwaveExplorer folder (e.g. they're both in the same parent folder).
+Next, you'll need a compiled version of [GTK4](http://gtk.org). The resulting compiled thing should be kept in a folder next to the LightwaveExplorer folder (e.g. they're both in the same parent folder).
 
+---
 
-  ---
 ### Compiling the GUI app on Linux (Easy CPU-only version)
 The easiest version to compile on Linux is the GPL3 version, which doesn't include the CUDA or OneAPI propagators. This means it will _only_ run on CPU, but if you don't have a compatible GPU anyway, it makes use of FFTW for the FFTs, which may be faster on your hardware in any case.
 
@@ -156,7 +135,8 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
 
   You'll need everything required to build the GPL3 version above, except for FFTW, which isn't used in this version. I'd recommend building the one above first to make sure it works. Next, install the prerequisites for this version:
 
-  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) - I recommend using the online installer so you can choose what to install (the full thing is quite large). You'll at least need the DPC++ compiler, the Math Kernel Library, and Thread Building Blocks (and their prerequisites).
+  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
+
   - [NVIDIA CUDA](https://developer.nvidia.com/cuda-downloads) - this might already be in your package manager, but I'd recommend at least version 11.6.
 
   Now that you have everything, in order to build the full version, first you have to set the OneAPI environment variables, typically with:
@@ -178,7 +158,7 @@ Installing will also place the CrystalDatabase.txt and DefaultValues.ini text fi
   make
   ```
   
-  If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
+  Replace the CUDA_ARCHITECTURES number with one that matches your GPU. If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
 
   Depending on your distro, your version of Clang or GCC might be too new to work with CUDA, in which case you might need to install an older one and specify that in the call to cmake, i.e. -DCMAKE_CUDA_HOST_COMPILER=clang++15 after installing the clang15 package.
 
