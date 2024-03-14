@@ -16,9 +16,9 @@ Tutorials on YouTube!
 
 ---
 ### Latest release: 2024.02
-Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.2/LightwaveExplorerWin64.zip)
+Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.2.1/LightwaveExplorerWin64.zip)
 
-Mac: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.2/LightwaveExplorerMacOS.zip) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
+Mac: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.2.1/LightwaveExplorerMacOS.zip) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
 Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
   <p>This release adds the following fixes and improvements:</p>
