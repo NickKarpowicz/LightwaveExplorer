@@ -315,6 +315,7 @@ if(UNIX AND NOT APPLE)
         include_directories(${MKL_ROOT}/include)
         include_directories(build/dlib) 
         include_directories(build/miniz)
+        include_directories(build)
         add_library(miniz miniz/miniz.c)
         add_compile_options(-std=c++20 -O3 -DRUNONCUDA -w)
         add_executable(LightwaveExplorer 
