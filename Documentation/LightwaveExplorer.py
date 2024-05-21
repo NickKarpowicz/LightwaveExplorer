@@ -98,7 +98,7 @@ class lightwaveExplorerResult:
         lines = settingsFile.readlines()
 
         def readLine(line: str):
-            rr = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", line)
+            rr = re.findall(r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", line)
             return float(rr[-1])
 
         for i in range(len(parameterNames)):
