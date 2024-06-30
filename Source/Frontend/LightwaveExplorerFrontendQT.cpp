@@ -87,6 +87,7 @@ public:
     QTextEdit* console;
     QTextEdit* fitting;
     QProgressBar* progress;
+    QSlider* slider;
     GuiMessenger* messenger;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
@@ -726,6 +727,25 @@ public:
             sequenceButtonBoxLayout->addWidget(buttons[entry]);
         };
         addMiniButton("\xf0\x9f\x93\xb8", "addSameCrystal", "Add a fixed crystal which matches the values currently entered on the interface");
+        addMiniButton("\xe2\x99\x8a", "addDefault", "Insert a crystal that will change with the values set on the "
+            "interface, or modified during a batch calculation");
+        addMiniButton("\xf0\x9f\x92\xab", "addRotation", "Rotate the polarization by a specified angle in degrees");
+        addMiniButton("\xf0\x9f\x92\xa1", "addPulse", "Add a new pulse to the grid; values will be set to duplicate "
+            "pulse 1 as entered above");
+        addMiniButton("\xf0\x9f\x94\x8e", "addMirror", "Add a spherical mirror to the beam path, with radius "
+            "of curvature in meters");
+        addMiniButton("\xf0\x9f\x98\x8e", "addFilter", "Add a spectral filter to the beam path. "
+            "Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   "
+            "in-band amplitude\n   out-of-band amplitude\n");
+        addMiniButton("\xf0\x9f\x93\x8f", "addLinear", "Add a linear propagation through the crystal entered on the interface");
+        addMiniButton("\xf0\x9f\x8e\xaf", "addAperture", "Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
+            "activation parameter\n");
+        addMiniButton("\xe2\x9b\xb3", "addFarFieldAperture", "Filter the beam with a far-field aperture. Parameters:\n   "
+            "opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ");
+        addMiniButton("\xf0\x9f\x94\x81", "addForLoop", "Add an empty for loop. Parameters:\n   "
+            "Number of times to execute\n   Variable number in which to put the counter");
+        QSpacerItem* miniButtonSpacer = new QSpacerItem(1,1,QSizePolicy::Expanding,QSizePolicy::Fixed);
+        sequenceButtonBoxLayout->addSpacerItem(miniButtonSpacer);
         sequence = new QTextEdit;
         sequence->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
         sequence->setFixedWidth(2*rowWidth);
@@ -737,15 +757,47 @@ public:
         squeezeMargins(simulationControlStripLayout);
         progress = new QProgressBar;
         simulationControlStripLayout->addWidget(progress);
-        labels["FP64"] = new QLabel("FP64");
-        simulationControlStripLayout->addWidget(labels["FP64"]);
-        checkboxes["FP64"] = new QCheckBox;
+
+        checkboxes["FP64"] = new QCheckBox("FP64");
         simulationControlStripLayout->addWidget(checkboxes["FP64"]);
         addPulldownInContainer(textBoxWidth,mainButtonHeight,simulationControlStripLayout,"primaryHardware");
         addPulldownInContainer(textBoxWidth,mainButtonHeight,simulationControlStripLayout,"secondaryHardware");
         textBoxes["offload"] = new QLineEdit;
         textBoxes["offload"]->setFixedSize(textBoxWidth/2,textBoxHeight);
         simulationControlStripLayout->addWidget(textBoxes["offload"]);
+
+        QHBoxLayout* plotControlStripLayout = new QHBoxLayout(plotControlStrip);
+        buttons["collapse"] = new QPushButton("\xe2\x86\x94\xef\xb8\x8f");
+        buttons["collapse"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        plotControlStripLayout->addWidget(buttons["collapse"]);
+        squeezeMargins(plotControlStripLayout);
+        slider = new QSlider(Qt::Horizontal);
+        plotControlStripLayout->addWidget(slider);
+        buttons["SVG"] = new QPushButton("SVG");
+        buttons["SVG"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        plotControlStripLayout->addWidget(buttons["SVG"]);
+        buttons["xlim"] = new QPushButton("xlim");
+        buttons["xlim"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        plotControlStripLayout->addWidget(buttons["xlim"]);
+        textBoxes["xlimStart"] = new QLineEdit;
+        textBoxes["xlimStart"]->setFixedSize(textBoxWidth/2,textBoxHeight);
+        plotControlStripLayout->addWidget(textBoxes["xlimStart"]);
+        textBoxes["xlimStop"] = new QLineEdit;
+        textBoxes["xlimStop"]->setFixedSize(textBoxWidth/2,textBoxHeight);
+        plotControlStripLayout->addWidget(textBoxes["xlimStop"]);
+        textBoxes["ylimStart"] = new QLineEdit;
+        buttons["ylim"] = new QPushButton("ylim");
+        buttons["ylim"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        plotControlStripLayout->addWidget(buttons["ylim"]);
+        textBoxes["ylimStart"]->setFixedSize(textBoxWidth/2,textBoxHeight);
+        plotControlStripLayout->addWidget(textBoxes["ylimStart"]);
+        textBoxes["ylimStop"] = new QLineEdit;
+        textBoxes["ylimStop"]->setFixedSize(textBoxWidth/2,textBoxHeight);
+        plotControlStripLayout->addWidget(textBoxes["ylimStop"]);
+        checkboxes["Total"] = new QCheckBox("Total");
+        plotControlStripLayout->addWidget(checkboxes["Total"]);
+        checkboxes["Log"] = new QCheckBox("Log");
+        plotControlStripLayout->addWidget(checkboxes["Log"]);
 
         readDefaultValues(theSim, theDatabase);
         setInterfaceValuesToActiveValues(theSim);

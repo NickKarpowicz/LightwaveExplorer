@@ -25,6 +25,7 @@
 #include <QHBoxLayout>
 #include <QGridLayout>
 #include <QProgressBar>
+#include <QSlider>
 #include <QLabel>
 #include <QImage>
 #include <QPainter>
