@@ -1,10 +1,13 @@
 #include "LightwaveExplorerFrontendQT.h"
 
 class CairoWidget : public QWidget {
-    simulationBatch& theSim;
+    LWEGui& theGui;
     CairoFunction theFunction;
 public:
-    CairoWidget(simulationBatch& sim, CairoFunction fun, QWidget* parent = nullptr) : theSim(sim), theFunction(fun), QWidget(parent) {
+    CairoWidget(LWEGui& sim, CairoFunction fun, QWidget* parent = nullptr) : 
+    theGui(sim), 
+    theFunction(fun), 
+    QWidget(parent) {
     }
     
 protected:
@@ -22,7 +25,7 @@ protected:
         theFunction(cr,
             image.width(),
             image.height(),
-            theSim);
+            theGui);
         cairo_destroy(cr);
         cairo_surface_destroy(surface);
         QPainter painter(this);
@@ -30,440 +33,23 @@ protected:
     }
 };
 
-void drawTimeImage1(cairo_t* cr, int width, int height, simulationBatch& theSim) {
-    if (!theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        return;
-    }
-    LweImage sPlot;
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
-        simIndex = 0;
+class GuiMessenger : public QObject {
+    Q_OBJECT
+
+public: 
+    std::mutex m;
+public slots:
+    void passString(QString s){
+        std::unique_lock lock(m);
+        emit sendText(s);
     }
 
-    int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
-
-    sPlot.data =
-        &theSim.base().ExtOut[simIndex * theSim.base().Ngrid * 2 + cubeMiddle];
-    sPlot.dataXdim = theSim.base().Ntime;
-    sPlot.dataYdim = theSim.base().Nspace;
-    sPlot.height = height;
-    sPlot.width = width;
-    sPlot.colorMap = 4;
-    sPlot.dataType = 0;
-    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
-}
-
-void drawField1Plot(cairo_t* cr, int width, int height, simulationBatch& theSim) {
-    if (!theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        return;
-    }
-    LwePlot sPlot;
-    bool saveSVG = false; //theGui.SVGqueue[0];
-    int64_t simIndex = 0; //maxN(0,theGui.plotSlider.getIntValue());
-
-    if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
-        simIndex = 0;
-    }
-
-    int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
-
-    sPlot.makeSVG = saveSVG;
-    sPlot.height = height;
-    sPlot.width = width;
-    sPlot.dx = theSim.base().tStep / 1e-15;
-    sPlot.x0 = -((sPlot.dx * theSim.base().Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = &theSim.base().ExtOut[
-        simIndex * theSim.base().Ngrid * 2 + cubeMiddle + theSim.base().Ntime * theSim.base().Nspace / 2];
-    sPlot.Npts = theSim.base().Ntime;
-    sPlot.color = LweColor(0, 1, 1, 1);
-    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
-    sPlot.xLabel = "Time (fs)";
-    sPlot.yLabel = "Ex (GV/m)";
-    sPlot.unitY = 1e9;
-    std::unique_lock dataLock(theSim.mutexes.at(simIndex),std::try_to_lock);
-    if (dataLock.owns_lock()) {
-        sPlot.plot(cr);
-        // if(saveSVG) {
-        //     size_t SVGbegin = sPlot.SVGString.find("<svg");
-        //     sPlot.SVGString.insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
-        //         "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
-        //         "\"http://www.w3.org/1999/xlink\">\n",
-        //         2*width, 2*height, 2*width, 2*height));
-        //     theGui.SVGstrings[0] = sPlot.SVGString;
-        //     if(saveSVG) theGui.SVGqueue[0] = false;
-        // }
-    }
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        //theGui.requestPlotUpdate();
-    }
-}
-
-void drawField2Plot(cairo_t* cr, int width, int height, simulationBatch& theSim) {
-    if (!theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        return;
-    }
-    LwePlot sPlot;
-
-    bool saveSVG = false; //theGui.SVGqueue[1];
-
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
-
-    if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
-        simIndex = 0;
-    }
-
-    int64_t cubeMiddle = 
-        theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
-
-
-    sPlot.makeSVG = saveSVG;
-    sPlot.height = height;
-    sPlot.width = width;
-    sPlot.dx = theSim.base().tStep / 1e-15;
-    sPlot.x0 = -((sPlot.dx * theSim.base().Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = 
-        &theSim.base().ExtOut[
-        theSim.base().Ngrid + simIndex * theSim.base().Ngrid * 2 
-            + cubeMiddle + theSim.base().Ntime * theSim.base().Nspace / 2];
-    sPlot.Npts = theSim.base().Ntime;
-    sPlot.color = LweColor(1, 0, 1, 1);
-    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
-    sPlot.xLabel = "Time (fs)";
-    sPlot.yLabel = "Ey (GV/m)";
-    sPlot.unitY = 1e9;
-    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) {
-        sPlot.plot(cr);
-        // if(saveSVG) {
-        //     size_t SVGbegin = sPlot.SVGString.find("width=");
-        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-        //         0, height));
-        //     SVGbegin = sPlot.SVGString.find("<svg");
-        //     theGui.SVGstrings[1] = sPlot.SVGString.substr(SVGbegin);
-        //     if(saveSVG) theGui.SVGqueue[1] = false;
-        // }
-    }
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        //theGui.requestPlotUpdate();
-    }
-}
-
-void drawSpectrum1Plot(cairo_t* cr, int width, int height, simulationBatch& theSim) {
-    if (!theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        return;
-    }
-    LwePlot sPlot;
-    bool saveSVG = false; //theGui.SVGqueue[2];
-
-    bool logPlot = false;
-    // if (theGui.checkBoxes["Log"].isChecked()) {
-    //     logPlot = true;
-    // }
-    int64_t simIndex = 0; //maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
-        simIndex = 0;
-    }
-
-    bool forceX = false;
-    double xMin = 0;//theGui.textBoxes[48].valueDouble();
-    double xMax = 0;//theGui.textBoxes[49].valueDouble();
-    if (xMin != xMax && xMax > xMin) {
-        forceX = true;
-    }
-    bool forceY = false;
-    double yMin = 0;//theGui.textBoxes[50].valueDouble();
-    double yMax = 0;//theGui.textBoxes[51].valueDouble();
-    if (yMin != yMax && yMax > yMin) {
-        forceY = true;
-    }
-    bool overlayTotal = false;
-    // if (theGui.checkBoxes["Total"].isChecked()) {
-    //     overlayTotal = true;
-    // }
-
-    sPlot.makeSVG = saveSVG;
-    sPlot.height = height;
-    sPlot.width = width;
-    sPlot.dx = theSim.base().fStep / 1e12;
-    sPlot.data = &theSim.base().totalSpectrum[simIndex * 3 * theSim.base().Nfreq];
-    sPlot.Npts = theSim.base().Nfreq;
-    sPlot.logScale = logPlot;
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
-    sPlot.color = LweColor(0.5, 0, 1, 1);
-    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
-    sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Sx (J/THz)";
-    sPlot.unitY = 1.0e-12;
-    sPlot.forceXmax = forceX;
-    sPlot.forceXmin = forceX;
-    sPlot.forcedXmax = xMax;
-    sPlot.forcedXmin = xMin;
-    if (overlayTotal) {
-        sPlot.data2 = &theSim.base().totalSpectrum[(2 + simIndex * 3) * theSim.base().Nfreq];
-        sPlot.ExtraLines = 1;
-        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
-    }
-    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) {
-        sPlot.plot(cr);
-        // if(saveSVG) {
-        //     size_t SVGbegin = sPlot.SVGString.find("width=");
-        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-        //         width, 0));
-        //     SVGbegin = sPlot.SVGString.find("<svg");
-        //     theGui.SVGstrings[2] = sPlot.SVGString.substr(SVGbegin);
-        //     if(saveSVG) theGui.SVGqueue[2] = false;
-        // }
-    }
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        //theGui.requestPlotUpdate();
-    }
-}
-
-void drawSpectrum2Plot(cairo_t* cr, int width, int height, simulationBatch& theSim) {
-    if (!theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        return;
-    }
-
-    LwePlot sPlot;
-
-    bool saveSVG = false;//theGui.SVGqueue[3];
-
-    bool logPlot = false;
-    // if (theGui.checkBoxes["Log"].isChecked()) {
-    //     logPlot = true;
-    // }
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
-        simIndex = 0;
-    }
-
-    bool forceX = false;
-    double xMin = 0;//theGui.textBoxes[48].valueDouble();
-    double xMax = 0;//theGui.textBoxes[49].valueDouble();
-    if (xMin != xMax && xMax > xMin) {
-        forceX = true;
-    }
-    bool forceY = false;
-    double yMin = 0;//theGui.textBoxes[50].valueDouble();
-    double yMax = 0;//theGui.textBoxes[51].valueDouble();
-    if (yMin != yMax && yMax > yMin) {
-        forceY = true;
-    }
-    bool overlayTotal = false;
-    // if (theGui.checkBoxes["Total"].isChecked()) {
-    //     overlayTotal = true;
-    // }
-    sPlot.makeSVG = saveSVG;
-    sPlot.height = height;
-    sPlot.width = width;
-    sPlot.dx = theSim.base().fStep / 1e12;
-    sPlot.data = &theSim.base().totalSpectrum[(1 + simIndex * 3) * theSim.base().Nfreq];
-    sPlot.Npts = theSim.base().Nfreq;
-    sPlot.logScale = logPlot;
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
-    sPlot.color = LweColor(1, 0, 0.5, 0.0);
-    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
-    sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Sy (J/THz)";
-    sPlot.unitY = 1.0e-12;
-    sPlot.forceXmax = forceX;
-    sPlot.forceXmin = forceX;
-    sPlot.forcedXmax = xMax;
-    sPlot.forcedXmin = xMin;
-    if (overlayTotal) {
-        sPlot.data2 = &theSim.base().totalSpectrum[(2 + simIndex * 3) * theSim.base().Nfreq];
-        sPlot.ExtraLines = 1;
-        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
-    }
-    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) {
-        sPlot.plot(cr);
-        // if(saveSVG) {
-        //     size_t SVGbegin = sPlot.SVGString.find("width=");
-        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-        //         width, height));
-        //     SVGbegin = sPlot.SVGString.find("<svg");
-        //     theGui.SVGstrings[3] = sPlot.SVGString.substr(SVGbegin).append("</svg>");
-        //     if(saveSVG) theGui.SVGqueue[3] = false;
-        // }
-    }
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        //theGui.requestPlotUpdate();
-    }
-}
-
-void drawTimeImage2(cairo_t* cr, int width, int height, simulationBatch& theSim) {
-    if (!theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        return;
-    }
-    LweImage sPlot;
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
-        simIndex = 0;
-    }
-
-    int64_t cubeMiddle = theSim.base().Ntime * theSim.base().Nspace * (theSim.base().Nspace2 / 2);
-
-    sPlot.data =
-    &theSim.base().ExtOut[theSim.base().Ngrid + simIndex * theSim.base().Ngrid * 2 + cubeMiddle];
-    sPlot.dataYdim = theSim.base().Nspace;
-    sPlot.dataXdim = theSim.base().Ntime;
-    sPlot.height = height;
-    sPlot.width = width;
-    sPlot.colorMap = 4;
-    sPlot.dataType = 0;
-    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        //theGui.requestPlotUpdate();
-    }
-}
-
-void drawFourierImage1(cairo_t* cr, int width, int height, simulationBatch& theSim) {
-    if (!theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        return;
-    }
-    LweImage sPlot;
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
-        simIndex = 0;
-    }
-    double logPlotOffset = (double)(1e-4 / (theSim.base().spatialWidth * theSim.base().timeSpan));
-    if (theSim.base().is3D) {
-        logPlotOffset = 
-            (double)(1e-4 
-                / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
-    }
-    sPlot.complexData =
-        &theSim.base().EkwOut[simIndex * theSim.base().NgridC * 2];
-    sPlot.dataXdim = theSim.base().Nfreq;
-    sPlot.dataYdim = theSim.base().Nspace;
-    sPlot.height = height;
-    sPlot.width = width;
-    sPlot.dataType = 1;
-    sPlot.colorMap = 3;
-    sPlot.logMin = logPlotOffset;
-    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        //theGui.requestPlotUpdate();
-    }
-}
-
-void drawFourierImage2(cairo_t* cr, int width, int height, simulationBatch& theSim) {
-    if (!theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        return;
-    }
-    LweImage sPlot;
-
-    int64_t simIndex = 0;// maxN(0,theGui.plotSlider.getIntValue());
-    if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
-        simIndex = 0;
-    }
-
-    double logPlotOffset = (double)(1e-4 / (theSim.base().spatialWidth * theSim.base().timeSpan));
-    if (theSim.base().is3D) {
-        logPlotOffset = (double)(1e-4 
-            / (theSim.base().spatialWidth * theSim.base().spatialHeight * theSim.base().timeSpan));
-    }
-    sPlot.complexData =
-        &theSim.base().EkwOut[simIndex * theSim.base().NgridC * 2 + theSim.base().NgridC];
-    sPlot.dataXdim = theSim.base().Nfreq;
-    sPlot.dataYdim = theSim.base().Nspace;
-    sPlot.height = height;
-    sPlot.width = width;
-    sPlot.colorMap = 3;
-    sPlot.dataType = 1;
-    sPlot.logMin = logPlotOffset;
-    std::unique_lock dataLock(theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-        //theGui.requestPlotUpdate();
-    }
-}
-
+signals:
+    void sendText(const QString &text);
+};
 
 class LWEGui {
+    QThread* messengerThread;
     //QMainWindow mainWindow;
 public:    
 //Main data structures:
@@ -491,6 +77,7 @@ public:
     QTextEdit* console;
     QTextEdit* fitting;
     QProgressBar* progress;
+    GuiMessenger* messenger;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
         console->append(s.c_str());
@@ -806,29 +393,29 @@ public:
         mainAreaLayout->addWidget(plotRegion);
 
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
-        plots["TimeImage1"] = new CairoWidget(theSim, drawTimeImage1);
+        plots["TimeImage1"] = new CairoWidget(*this, drawTimeImage1);
         plots["TimeImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["TimeImage1"],0,0);
-        plots["TimeImage2"] = new CairoWidget(theSim, drawTimeImage2);
+        plots["TimeImage2"] = new CairoWidget(*this, drawTimeImage2);
         plots["TimeImage2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["TimeImage2"],1,0);
-        plots["FreqImage1"] = new CairoWidget(theSim, drawFourierImage1);
+        plots["FreqImage1"] = new CairoWidget(*this, drawFourierImage1);
         plots["FreqImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["FreqImage1"],0,1);
-        plots["FreqImage2"] = new CairoWidget(theSim, drawFourierImage2);
+        plots["FreqImage2"] = new CairoWidget(*this, drawFourierImage2);
         plots["FreqImage2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["FreqImage2"],1,1);
 
-        plots["TimePlot1"] = new CairoWidget(theSim, drawField1Plot);
+        plots["TimePlot1"] = new CairoWidget(*this, drawField1Plot);
         plots["TimePlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["TimePlot1"],2,0);
-        plots["TimePlot2"] = new CairoWidget(theSim, drawField2Plot);
+        plots["TimePlot2"] = new CairoWidget(*this, drawField2Plot);
         plots["TimePlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["TimePlot2"],3,0);
-        plots["FreqPlot1"] = new CairoWidget(theSim, drawSpectrum1Plot);
+        plots["FreqPlot1"] = new CairoWidget(*this, drawSpectrum1Plot);
         plots["FreqPlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["FreqPlot1"],2,1);
-        plots["FreqPlot2"] = new CairoWidget(theSim, drawSpectrum2Plot);
+        plots["FreqPlot2"] = new CairoWidget(*this, drawSpectrum2Plot);
         plots["FreqPlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["FreqPlot2"],3,1);
 
@@ -1189,11 +776,31 @@ public:
         pulldowns["secondaryHardware"]->addItem("OpenMP");
 #endif
 
+        messengerThread = new QThread;
+        messenger = new GuiMessenger;
 
+        messenger->moveToThread(messengerThread);
+        QObject::connect(messenger, &GuiMessenger::sendText, console, &QTextEdit::append);
         windowBody->show();
-        //mainSimThread(0,0,false);
-        readParametersFromInterface(theSim);
-        mainSimThread(theSim,theDatabase,totalSteps,progressCounter,0,0,false);
+
+
+        connectButtons();
+    }
+    void connectButtons(){
+        QObject::connect(buttons["Run"], &QPushButton::clicked, [&](){
+
+            readParametersFromInterface(theSim);
+            theSim.configure();
+            simulationRun r(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
+            //mainSimThread(std::ref(*this),std::ref(r));
+            std::thread(mainSimThread, std::ref(*this), r).detach();
+            //std::thread(
+        //     mainSimThread, 
+        //     theGui.pulldowns["primaryHardware"].getValue(), 
+        //     theGui.pulldowns["secondaryHardware"].getValue(), 
+        //     theGui.checkBoxes["FP64"].isChecked()
+        // ).detach();
+        });
     } 
 };
 
@@ -1272,19 +879,23 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
     return s;
 }
 
-void mainSimThread(simulationBatch& theSim, crystalDatabase& theDatabase,std::atomic_uint32_t& totalSteps, std::atomic_uint32_t& progressCounter, int pulldownSelection, int secondPulldownSelection, bool use64bitFloatingPoint) {
+
+
+void mainSimThread(LWEGui& theGui, simulationRun theRun) {
+
+    simulationBatch& theSim = theGui.theSim;
+    crystalDatabase& theDatabase = theGui.theDatabase; 
     int error = 0;
     theSim.base().cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
-
-    //readParametersFromInterface();
-    theSim.configure();
+    
     //theGui.requestSliderUpdate();
-
-
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
+    std::atomic_uint32_t& totalSteps = theGui.totalSteps;
+    std::atomic_uint32_t& progressCounter = theGui.progressCounter;
     totalSteps = 0;
     progressCounter = 0;
+
     try {
         for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
             if (theSim.base().isInSequence) {
@@ -1311,106 +922,23 @@ void mainSimThread(simulationBatch& theSim, crystalDatabase& theDatabase,std::at
         //     errorString);
         return;
     }
-    
     theSim.base().isRunning = true;
-    auto sequenceFunction = use64bitFloatingPoint ? 
-        &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
-    auto normalFunction = use64bitFloatingPoint ? 
-        &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
-    int assignedGPU = 0;
-    bool forceCPU = false;
-    bool useOpenMP = false;
-#ifdef CPUONLY
-    useOpenMP = true;
-#endif
-    [[maybe_unused]]int SYCLitems = 0;
-    #if !defined(CPUONLY)
-    if (theSim.base().syclGPUCount == 0) {
-        SYCLitems = (int)theSim.base().SYCLavailable;
-    }
-    else {
-        SYCLitems = 3;
-    }
-    #endif
-    #if !defined(CPUONLY) && !defined(NOCUDA)
-    if (pulldownSelection < theSim.base().cudaGPUCount) {
-        if (use64bitFloatingPoint) {
-            sequenceFunction = &solveNonlinearWaveEquationSequence;
-            normalFunction = &solveNonlinearWaveEquation;
-        }
-        else {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceFP32;
-            normalFunction = &solveNonlinearWaveEquationFP32;
-        }
-
-        assignedGPU = pulldownSelection;
-    }
-    #endif
-    #ifndef NOSYCL
-    if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
-        // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
-        //     "Note: the first time you run SYCL, it will\n"
-        //     "take some time to compile kernels for your\n"
-        //     "device. Subsequent runs will be faster.\n");
-        // theGui.firstSYCLsimulation = false;
-        if (use64bitFloatingPoint) {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-            normalFunction = &solveNonlinearWaveEquationSYCL;
-        }
-        else {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
-            normalFunction = &solveNonlinearWaveEquationSYCLFP32;
-        }
-
-    }
-    else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
-        forceCPU = 1;
-        // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
-        //     "Note: the first time you run SYCL, it will\n"
-        //     "take some time to compile kernels for your\n"
-        //     "device. Subsequent runs will be faster.\n");
-        // theGui.firstSYCLsimulation = false;
-        if (use64bitFloatingPoint) {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-            normalFunction = &solveNonlinearWaveEquationSYCL;
-        }
-        else {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
-            normalFunction = &solveNonlinearWaveEquationSYCLFP32;
-        }
-    }
-    else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
-        assignedGPU = 1;
-        // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
-        //     "Note: the first time you run SYCL, it will\n"
-        //     "take some time to compile kernels for your\n"
-        //     "device. Subsequent runs will be faster.\n");
-        // theGui.firstSYCLsimulation = false;
-        if (use64bitFloatingPoint) {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
-            normalFunction = &solveNonlinearWaveEquationSYCL;
-        }
-        else {
-            sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
-            normalFunction = &solveNonlinearWaveEquationSYCLFP32;
-        }
-    }
-    else if (pulldownSelection == (theSim.base().cudaGPUCount + SYCLitems + 1)){
-        useOpenMP = true;
-    }
-    #endif
+    
 
     // std::thread secondQueueThread(secondaryQueue, 
     //     theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU, 
     //     secondPulldownSelection, pulldownSelection, use64bitFloatingPoint);
     for (int j = 0; j < (theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU); ++j) {
-        theSim.sCPU()[j].runningOnCPU = forceCPU;
-        theSim.sCPU()[j].assignedGPU = assignedGPU;
-        theSim.sCPU()[j].useOpenMP = useOpenMP;
-        std::lock_guard dataLock(theSim.mutexes.at(j));
-        if (theSim.base().isInSequence) {
+        theSim.sCPU()[j].runningOnCPU = theRun.forceCPU;
+        theSim.sCPU()[j].assignedGPU = theRun.assignedGPU;
+        theSim.sCPU()[j].useOpenMP = theRun.useOpenMP;
             try {
-                error = sequenceFunction(&theSim.sCPU()[j]);
+                if(theSim.base().isInSequence){
+                    error = theRun.sequenceFunction(&theSim.sCPU()[j]);
+                }
+                else{
+                    error = theRun.normalFunction(&theSim.sCPU()[j]);
+                }
             }
             catch (std::exception const& e) {
                 std::string errorString=e.what();
@@ -1420,56 +948,27 @@ void mainSimThread(simulationBatch& theSim, crystalDatabase& theDatabase,std::at
                 std::erase(errorString,';');
                 std::erase(errorString,'{');
                 std::erase(errorString,'}');
-                // theGui.console.tPrint(
-                //     "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", 
-                //     errorString);
+                theGui.messenger->passString(
+                    Sformat("Simulation failed with exception:\n{}\n", 
+                    errorString).c_str());
             }
             if (theSim.sCPU()[j].memoryError != 0) {
-                // if (theSim.sCPU()[j].memoryError == -1) {
-                //     theGui.console.tPrint((
-                //         "<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), 
-                //         theSim.sCPU()[j].memoryError);
-                // }
-                // else {
-                //     theGui.console.tPrint((
-                //         "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n"), 
-                //         theSim.sCPU()[j].memoryError);
-                // }
+                if (theSim.sCPU()[j].memoryError == -1) {
+                    theGui.messenger->passString(
+                    Sformat(
+                        "Not enough free GPU memory, sorry.\n", 
+                        theSim.sCPU()[j].memoryError).c_str());
+                }
+                else {
+                    theGui.messenger->passString(
+                    Sformat(
+                        "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n", 
+                        theSim.sCPU()[j].memoryError).c_str());
+                }
             }
             if (error) break;
             //theGui.requestSliderMove(j);
             //independentPlotQueue();
-        }
-        else {
-            try {
-                error = normalFunction(&theSim.sCPU()[j]);
-            } catch (std::exception const& e) {
-                std::string errorString=e.what();
-                std::erase(errorString,'<');
-                std::erase(errorString,'>');
-                std::erase(errorString,'&');
-                std::erase(errorString,';');
-                std::erase(errorString,'{');
-                std::erase(errorString,'}');
-                // theGui.console.tPrint(
-                //     "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n", 
-                //     errorString);
-            }
-            
-            if (theSim.sCPU()[j].memoryError != 0) {
-                if (theSim.sCPU()[j].memoryError == -1) {
-                    // theGui.console.tPrint((
-                    //     "<span color=\"#FF88FF\">Not enough free GPU memory, sorry.</span>\n"), 
-                    //     theSim.sCPU()[j].memoryError);
-                }
-                else {
-                    // theGui.console.tPrint((
-                    //     "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\r\n"), 
-                    //     theSim.sCPU()[j].memoryError);
-                }
-            }
-            if (error) break;
-        }
         if (theSim.base().cancellationCalled) {
             // theGui.console.tPrint((
             //     "<span color=\"#FF88FF\">"
@@ -1477,35 +976,33 @@ void mainSimThread(simulationBatch& theSim, crystalDatabase& theDatabase,std::at
             //     "after {} simulations.</span>\n"), j + 1);
             break;
         }
-        // theGui.requestSliderMove(j);
-        // independentPlotQueue();
     }
 
     //if (secondQueueThread.joinable()) secondQueueThread.join();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error == 13) {
-        // theGui.console.tPrint(
-        //     "<span color=\"#FF88FF\">"
-        //     "NaN detected in grid!\n"
-        //     "Try using a larger spatial/temporal step\n"
-        //     "or smaller propagation step.\n"
-        //     "Simulation was cancelled.\n</span>");
+        theGui.messenger->passString(
+            "<span color=\"#FF88FF\">"
+            "NaN detected in grid!\n"
+            "Try using a larger spatial/temporal step\n"
+            "or smaller propagation step.\n"
+            "Simulation was cancelled.\n</span>");
     }
     else if (error == 15) {
-        // theGui.console.tPrint(
-        //     "<span color=\"#FF88FF\">"
-        //     "Sorry, that sequence mode has been \n"
-        //     "replaced by the new one. Look in the \n"
-        //     "documentation for more info. It is a lot\n"
-        //     "easier to use now, and hopefully \n"
-        //     "it won't take long to set it up. \n"
-        //     "Sorry about that!\n</span>");
+        theGui.messenger->passString(
+            "<span color=\"#FF88FF\">"
+            "Sorry, that sequence mode has been \n"
+            "replaced by the new one. Look in the \n"
+            "documentation for more info. It is a lot\n"
+            "easier to use now, and hopefully \n"
+            "it won't take long to set it up. \n"
+            "Sorry about that!\n</span>");
     }
     else if(!error){
-        // theGui.console.tPrint(
-        //     "<span color=\"#88FFFF\">Finished after {:.4} s. </span>\n", 1e-6 *
-        //     (double)(std::chrono::duration_cast<std::chrono::microseconds>
-        //         (simulationTimerEnd - simulationTimerBegin).count()));
+        theGui.messenger->passString(Sformat(
+            "Finished after {:.4} s.\n", 1e-6 *
+            (double)(std::chrono::duration_cast<std::chrono::microseconds>
+                (simulationTimerEnd - simulationTimerBegin).count())).c_str());
     }
     theSim.base().isRunning = false;
 }
@@ -1556,3 +1053,436 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 		sim.sCPU()->readInputParametersFile(db.db.data(), "DefaultValues.ini");
 #endif
 }
+
+void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    if (!theGui.theSim.base().isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
+    LweImage sPlot;
+    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
+
+    sPlot.data =
+        &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
+    sPlot.dataXdim = theGui.theSim.base().Ntime;
+    sPlot.dataYdim = theGui.theSim.base().Nspace;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.colorMap = 4;
+    sPlot.dataType = 0;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+    }
+}
+
+void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    if (!theGui.theSim.base().isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
+    LwePlot sPlot;
+    bool saveSVG = false; //theGui.SVGqueue[0];
+    int64_t simIndex = 0; //maxN(0,theGui.plotSlider.getIntValue());
+
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
+
+    sPlot.makeSVG = saveSVG;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dx = theGui.theSim.base().tStep / 1e-15;
+    sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
+    sPlot.data = &theGui.theSim.base().ExtOut[
+        simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
+    sPlot.Npts = theGui.theSim.base().Ntime;
+    sPlot.color = LweColor(0, 1, 1, 1);
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Time (fs)";
+    sPlot.yLabel = "Ex (GV/m)";
+    sPlot.unitY = 1e9;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        // if(saveSVG) {
+        //     size_t SVGbegin = sPlot.SVGString.find("<svg");
+        //     sPlot.SVGString.insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+        //         "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
+        //         "\"http://www.w3.org/1999/xlink\">\n",
+        //         2*width, 2*height, 2*width, 2*height));
+        //     theGui.SVGstrings[0] = sPlot.SVGString;
+        //     if(saveSVG) theGui.SVGqueue[0] = false;
+        // }
+    }
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        //theGui.requestPlotUpdate();
+    }
+}
+
+void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    if (!theGui.theSim.base().isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
+    LwePlot sPlot;
+
+    bool saveSVG = false; //theGui.SVGqueue[1];
+
+    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    int64_t cubeMiddle = 
+        theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
+
+
+    sPlot.makeSVG = saveSVG;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dx = theGui.theSim.base().tStep / 1e-15;
+    sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
+    sPlot.data = 
+        &theGui.theSim.base().ExtOut[
+        theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
+            + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
+    sPlot.Npts = theGui.theSim.base().Ntime;
+    sPlot.color = LweColor(1, 0, 1, 1);
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Time (fs)";
+    sPlot.yLabel = "Ey (GV/m)";
+    sPlot.unitY = 1e9;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        // if(saveSVG) {
+        //     size_t SVGbegin = sPlot.SVGString.find("width=");
+        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+        //         0, height));
+        //     SVGbegin = sPlot.SVGString.find("<svg");
+        //     theGui.SVGstrings[1] = sPlot.SVGString.substr(SVGbegin);
+        //     if(saveSVG) theGui.SVGqueue[1] = false;
+        // }
+    }
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        //theGui.requestPlotUpdate();
+    }
+}
+
+void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    if (!theGui.theSim.base().isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
+    LwePlot sPlot;
+    bool saveSVG = false; //theGui.SVGqueue[2];
+
+    bool logPlot = false;
+    // if (theGui.checkBoxes["Log"].isChecked()) {
+    //     logPlot = true;
+    // }
+    int64_t simIndex = 0; //maxN(0,theGui.plotSlider.getIntValue());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = false;
+    double xMin = 0;//theGui.textBoxes[48].valueDouble();
+    double xMax = 0;//theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = true;
+    }
+    bool forceY = false;
+    double yMin = 0;//theGui.textBoxes[50].valueDouble();
+    double yMax = 0;//theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = true;
+    }
+    bool overlayTotal = false;
+    // if (theGui.checkBoxes["Total"].isChecked()) {
+    //     overlayTotal = true;
+    // }
+
+    sPlot.makeSVG = saveSVG;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dx = theGui.theSim.base().fStep / 1e12;
+    sPlot.data = &theGui.theSim.base().totalSpectrum[simIndex * 3 * theGui.theSim.base().Nfreq];
+    sPlot.Npts = theGui.theSim.base().Nfreq;
+    sPlot.logScale = logPlot;
+    sPlot.forceYmin = forceY;
+    sPlot.forceYmax = forceY;
+    sPlot.forcedYmax = yMax;
+    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.color = LweColor(0.5, 0, 1, 1);
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Sx (J/THz)";
+    sPlot.unitY = 1.0e-12;
+    sPlot.forceXmax = forceX;
+    sPlot.forceXmin = forceX;
+    sPlot.forcedXmax = xMax;
+    sPlot.forcedXmin = xMin;
+    if (overlayTotal) {
+        sPlot.data2 = &theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq];
+        sPlot.ExtraLines = 1;
+        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
+    }
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        // if(saveSVG) {
+        //     size_t SVGbegin = sPlot.SVGString.find("width=");
+        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+        //         width, 0));
+        //     SVGbegin = sPlot.SVGString.find("<svg");
+        //     theGui.SVGstrings[2] = sPlot.SVGString.substr(SVGbegin);
+        //     if(saveSVG) theGui.SVGqueue[2] = false;
+        // }
+    }
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        //theGui.requestPlotUpdate();
+    }
+}
+
+void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    if (!theGui.theSim.base().isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
+
+    LwePlot sPlot;
+
+    bool saveSVG = false;//theGui.SVGqueue[3];
+
+    bool logPlot = false;
+    // if (theGui.checkBoxes["Log"].isChecked()) {
+    //     logPlot = true;
+    // }
+    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    bool forceX = false;
+    double xMin = 0;//theGui.textBoxes[48].valueDouble();
+    double xMax = 0;//theGui.textBoxes[49].valueDouble();
+    if (xMin != xMax && xMax > xMin) {
+        forceX = true;
+    }
+    bool forceY = false;
+    double yMin = 0;//theGui.textBoxes[50].valueDouble();
+    double yMax = 0;//theGui.textBoxes[51].valueDouble();
+    if (yMin != yMax && yMax > yMin) {
+        forceY = true;
+    }
+    bool overlayTotal = false;
+    // if (theGui.checkBoxes["Total"].isChecked()) {
+    //     overlayTotal = true;
+    // }
+    sPlot.makeSVG = saveSVG;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dx = theGui.theSim.base().fStep / 1e12;
+    sPlot.data = &theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq];
+    sPlot.Npts = theGui.theSim.base().Nfreq;
+    sPlot.logScale = logPlot;
+    sPlot.forceYmin = forceY;
+    sPlot.forceYmax = forceY;
+    sPlot.forcedYmax = yMax;
+    if (forceY)sPlot.forcedYmin = yMin;
+    sPlot.color = LweColor(1, 0, 0.5, 0.0);
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Sy (J/THz)";
+    sPlot.unitY = 1.0e-12;
+    sPlot.forceXmax = forceX;
+    sPlot.forceXmin = forceX;
+    sPlot.forcedXmax = xMax;
+    sPlot.forcedXmin = xMin;
+    if (overlayTotal) {
+        sPlot.data2 = &theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq];
+        sPlot.ExtraLines = 1;
+        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
+    }
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        // if(saveSVG) {
+        //     size_t SVGbegin = sPlot.SVGString.find("width=");
+        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+        //         width, height));
+        //     SVGbegin = sPlot.SVGString.find("<svg");
+        //     theGui.SVGstrings[3] = sPlot.SVGString.substr(SVGbegin).append("</svg>");
+        //     if(saveSVG) theGui.SVGqueue[3] = false;
+        // }
+    }
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        //theGui.requestPlotUpdate();
+    }
+}
+
+void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    if (!theGui.theSim.base().isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
+    LweImage sPlot;
+    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
+
+    sPlot.data =
+    &theGui.theSim.base().ExtOut[theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
+    sPlot.dataYdim = theGui.theSim.base().Nspace;
+    sPlot.dataXdim = theGui.theSim.base().Ntime;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.colorMap = 4;
+    sPlot.dataType = 0;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        //theGui.requestPlotUpdate();
+    }
+}
+
+void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    if (!theGui.theSim.base().isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
+    LweImage sPlot;
+    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+    double logPlotOffset = (double)(1e-4 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().timeSpan));
+    if (theGui.theSim.base().is3D) {
+        logPlotOffset = 
+            (double)(1e-4 
+                / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
+    }
+    sPlot.complexData =
+        &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2];
+    sPlot.dataXdim = theGui.theSim.base().Nfreq;
+    sPlot.dataYdim = theGui.theSim.base().Nspace;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.dataType = 1;
+    sPlot.colorMap = 3;
+    sPlot.logMin = logPlotOffset;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        //theGui.requestPlotUpdate();
+    }
+}
+
+void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    if (!theGui.theSim.base().isGridAllocated) {
+        LweColor black(0, 0, 0, 0);
+        std::unique_lock<std::mutex> GTKlock(GTKmutex);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        return;
+    }
+    LweImage sPlot;
+
+    int64_t simIndex = 0;// maxN(0,theGui.plotSlider.getIntValue());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    double logPlotOffset = (double)(1e-4 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().timeSpan));
+    if (theGui.theSim.base().is3D) {
+        logPlotOffset = (double)(1e-4 
+            / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
+    }
+    sPlot.complexData =
+        &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2 + theGui.theSim.base().NgridC];
+    sPlot.dataXdim = theGui.theSim.base().Nfreq;
+    sPlot.dataYdim = theGui.theSim.base().Nspace;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.colorMap = 3;
+    sPlot.dataType = 1;
+    sPlot.logMin = logPlotOffset;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    else {
+        LweColor black(0, 0, 0, 0);
+        cairo_rectangle(cr, 0, 0, width, height);
+        black.setCairo(cr);
+        cairo_fill(cr);
+        //theGui.requestPlotUpdate();
+    }
+}
+#include "LightwaveExplorerFrontendQT.moc"

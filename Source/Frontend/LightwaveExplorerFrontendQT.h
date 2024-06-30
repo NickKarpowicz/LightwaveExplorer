@@ -14,6 +14,7 @@
 #undef __noinline__
 #include <QApplication>
 #include <QWidget>
+#include <QObject>
 #include <QTextEdit>
 #include <QPushButton>
 #include <QMainWindow>
@@ -27,6 +28,7 @@
 #include <QLabel>
 #include <QImage>
 #include <QPainter>
+#include <QThread>
 #include <cairo.h>
 #include "../LightwaveExplorerUtilities.h"
 std::mutex GTKmutex;
@@ -34,8 +36,8 @@ std::mutex GTKmutex;
 #include "../Devices/LightwaveExplorerCoreCPU.h"
 #include "../Devices/LightwaveExplorerCoreCounter.h"
 #include "../Devices/LightwaveExplorerCoreCPUFP32.h"
-
-using CairoFunction = std::function<void(cairo_t*,int,int,simulationBatch&)>;
+class LWEGui;
+using CairoFunction = std::function<void(cairo_t*,int,int,LWEGui&)>;
 
 //conditional includes and definitions
 //Apple libraries
@@ -104,7 +106,6 @@ int insertAfterCharacter(std::string& s, char target, std::string appended);
 int insertAfterCharacterExcept(std::string& s, char target, std::string appended, std::string exclude);
 int formatSequence(std::string& s);
 void readDefaultValues(simulationBatch& sim, crystalDatabase& db);
-void mainSimThread(simulationBatch& theSim, crystalDatabase& theDatabase,std::atomic_uint32_t& totalSteps, std::atomic_uint32_t& progressCounter, int pulldownSelection, int secondPulldownSelection, bool use64bitFloatingPoint);
 void launchRunThread();
 void independentPlotQueue();
 void loadCallback();
@@ -134,4 +135,112 @@ static void buttonAddFarFieldAperture();
 static void buttonAddForLoop();
 bool updateDisplay();
 void destroyMainWindowCallback();
+
+void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui);
+void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui);
+void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui);
+void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui);
+void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui);
+void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui);
+void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui);
+void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui);
+
+class simulationRun {
+public:
+    std::function<unsigned long(simulationParameterSet*)> normalFunction;
+    std::function<unsigned long(simulationParameterSet*)> sequenceFunction;
+    int assignedGPU{};
+    bool forceCPU = false;
+    bool useOpenMP = false;
+    simulationRun(int pulldownSelection, bool use64bitFloatingPoint, simulationBatch& theSim){
+        sequenceFunction = use64bitFloatingPoint ? 
+            &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
+        normalFunction = use64bitFloatingPoint ? 
+            &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
+        int assignedGPU = 0;
+        bool forceCPU = false;
+        bool useOpenMP = false;
+    #ifdef CPUONLY
+        useOpenMP = true;
+    #endif
+        [[maybe_unused]]int SYCLitems = 0;
+        #if !defined(CPUONLY)
+        if (theSim.base().syclGPUCount == 0) {
+            SYCLitems = (int)theSim.base().SYCLavailable;
+        }
+        else {
+            SYCLitems = 3;
+        }
+        #endif
+        #if !defined(CPUONLY) && !defined(NOCUDA)
+        if (pulldownSelection < theSim.base().cudaGPUCount) {
+            if (use64bitFloatingPoint) {
+                sequenceFunction = &solveNonlinearWaveEquationSequence;
+                normalFunction = &solveNonlinearWaveEquation;
+            }
+            else {
+                sequenceFunction = &solveNonlinearWaveEquationSequenceFP32;
+                normalFunction = &solveNonlinearWaveEquationFP32;
+            }
+
+            assignedGPU = pulldownSelection;
+        }
+        #endif
+        #ifndef NOSYCL
+        if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
+            // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
+            //     "Note: the first time you run SYCL, it will\n"
+            //     "take some time to compile kernels for your\n"
+            //     "device. Subsequent runs will be faster.\n");
+            // theGui.firstSYCLsimulation = false;
+            if (use64bitFloatingPoint) {
+                sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+                normalFunction = &solveNonlinearWaveEquationSYCL;
+            }
+            else {
+                sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
+                normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+            }
+
+        }
+        else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
+            forceCPU = 1;
+            // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
+            //     "Note: the first time you run SYCL, it will\n"
+            //     "take some time to compile kernels for your\n"
+            //     "device. Subsequent runs will be faster.\n");
+            // theGui.firstSYCLsimulation = false;
+            if (use64bitFloatingPoint) {
+                sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+                normalFunction = &solveNonlinearWaveEquationSYCL;
+            }
+            else {
+                sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
+                normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+            }
+        }
+        else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
+            assignedGPU = 1;
+            // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
+            //     "Note: the first time you run SYCL, it will\n"
+            //     "take some time to compile kernels for your\n"
+            //     "device. Subsequent runs will be faster.\n");
+            // theGui.firstSYCLsimulation = false;
+            if (use64bitFloatingPoint) {
+                sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
+                normalFunction = &solveNonlinearWaveEquationSYCL;
+            }
+            else {
+                sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
+                normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+            }
+        }
+        else if (pulldownSelection == (theSim.base().cudaGPUCount + SYCLitems + 1)){
+            useOpenMP = true;
+        }
+        #endif
+    };
+};
+
+void mainSimThread(LWEGui& theGui, simulationRun theRun);
 
