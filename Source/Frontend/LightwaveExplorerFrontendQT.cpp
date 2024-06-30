@@ -1,6 +1,7 @@
 #include "LightwaveExplorerFrontendQT.h"
 
 class CairoWidget : public QWidget {
+    Q_OBJECT
     LWEGui& theGui;
     CairoFunction theFunction;
 public:
@@ -31,6 +32,11 @@ protected:
         QPainter painter(this);
         painter.drawImage(0, 0, image);
     }
+
+public slots:
+    void queueUpdate() {
+        update();
+    }
 };
 
 class GuiMessenger : public QObject {
@@ -43,9 +49,13 @@ public slots:
         std::unique_lock lock(m);
         emit sendText(s);
     }
+    void passDrawRequest(){
+        emit requestUpdate();
+    }
 
 signals:
     void sendText(const QString &text);
+    void requestUpdate();
 };
 
 class LWEGui {
@@ -778,12 +788,17 @@ public:
 
         messengerThread = new QThread;
         messenger = new GuiMessenger;
-
         messenger->moveToThread(messengerThread);
         QObject::connect(messenger, &GuiMessenger::sendText, console, &QTextEdit::append);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqPlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqPlot2"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimePlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimePlot2"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimeImage1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimeImage2"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqImage1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqImage2"], &CairoWidget::queueUpdate);
         windowBody->show();
-
-
         connectButtons();
     }
     void connectButtons(){
@@ -792,14 +807,8 @@ public:
             readParametersFromInterface(theSim);
             theSim.configure();
             simulationRun r(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
-            //mainSimThread(std::ref(*this),std::ref(r));
             std::thread(mainSimThread, std::ref(*this), r).detach();
-            //std::thread(
-        //     mainSimThread, 
-        //     theGui.pulldowns["primaryHardware"].getValue(), 
-        //     theGui.pulldowns["secondaryHardware"].getValue(), 
-        //     theGui.checkBoxes["FP64"].isChecked()
-        // ).detach();
+
         });
     } 
 };
@@ -917,9 +926,9 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun) {
         std::erase(errorString, ';');
         std::erase(errorString, '{');
         std::erase(errorString, '}');
-        // theGui.console.tPrint(
-        //     "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n",
-        //     errorString);
+        theGui.messenger->passString(Sformat(
+            "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n",
+            errorString).c_str());
         return;
     }
     theSim.base().isRunning = true;
@@ -969,6 +978,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun) {
             if (error) break;
             //theGui.requestSliderMove(j);
             //independentPlotQueue();
+            theGui.messenger->requestUpdate();
         if (theSim.base().cancellationCalled) {
             // theGui.console.tPrint((
             //     "<span color=\"#FF88FF\">"
