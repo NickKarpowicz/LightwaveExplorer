@@ -1,5 +1,70 @@
 if(UNIX AND NOT APPLE)
-    if(MAKEFULL)
+    if(MAKEQTVERSION)
+        cmake_minimum_required(VERSION 3.23.0)
+        project(LightwaveExplorer LANGUAGES C CXX CUDA)
+        set(CMAKE_AUTOMOC ON)
+        find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
+        find_package(CUDAToolkit REQUIRED)
+        find_package(PkgConfig REQUIRED)
+        find_package(fmt REQUIRED)
+        find_package(TBB REQUIRED)
+        find_package(MKL REQUIRED)
+        pkg_check_modules(CAIRO REQUIRED cairo)
+
+        include_directories(${MKL_ROOT}/include/fftw)
+        include_directories(${CAIRO_INCLUDE_DIRS})
+        include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib) 
+        include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
+        include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+        add_library(miniz miniz/miniz.c)
+
+        add_library(LightwaveExplorerCuda 
+            Source/LightwaveExplorerCore.cu 
+            Source/Devices/LightwaveExplorerCoreFP32.cu)
+
+add_compile_options(-std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -w)
+        add_link_options(-fsycl)
+        add_executable(LightwaveExplorer 
+            Source/Devices/LightwaveExplorerSYCLLinux.cpp 
+            Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
+            Source/LightwaveExplorerUtilities.cpp 
+            Source/Devices/LightwaveExplorerCoreCPU.cpp 
+            Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+            Source/Devices/LightwaveExplorerCoreCounter.cpp 
+            Source/Devices/DlibLibraryComponents.cpp)
+
+        target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
+        target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
+        target_link_libraries(LightwaveExplorer
+            ${MKL_ROOT}/lib/intel64/libmkl_sycl.a 
+            -Wl,--start-group 
+            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
+            ${MKL_ROOT}/lib/intel64/libmkl_core.a 
+            -Wl,--end-group
+            ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
+            -lsycl -lOpenCL)
+        target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
+        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+        target_link_libraries(LightwaveExplorer TBB::tbb)
+        target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
+        
+        configure_file(${CMAKE_SOURCE_DIR}/Source/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
+        add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh)
+        install(TARGETS LightwaveExplorer)
+        install(PROGRAMS ${CMAKE_BINARY_DIR}/LightwaveExplorerLauncher.sh DESTINATION bin)
+        install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
+        install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+        install(DIRECTORY ${CMAKE_SOURCE_DIR}/Source//BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
+        install(FILES Source/BuildResources/DesktopFileLauncher 
+            DESTINATION share/applications 
+            RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
+
+
+
+    elseif(MAKEFULL)
     #full Linux build; typical usage:
     #. /opt/intel/oneapi/setvars.sh
     #cmake --fresh -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 .. -G Ninja
