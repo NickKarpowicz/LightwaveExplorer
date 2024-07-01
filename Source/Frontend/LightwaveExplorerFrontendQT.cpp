@@ -45,22 +45,48 @@ class GuiMessenger : public QObject {
 public: 
     std::mutex m;
 public slots:
-    void passString(QString s){
+    void passString(std::string s){
         std::unique_lock lock(m);
-        emit sendText(s);
+        emit sendText(QString::fromStdString(s));
     }
+
     void passDrawRequest(){
         emit requestUpdate();
+    }
+
+    void passSyncValues(){
+        emit requestSyncValues();
+    }
+
+    void passSliderUpdate(){
+        emit requestSliderUpdate();
+    }
+
+    void passSliderPosition(int value){
+        emit moveSlider(value);
     }
 
 signals:
     void sendText(const QString &text);
     void requestUpdate();
+    void requestSyncValues();
+    void requestSliderUpdate();
+    void moveSlider(int value);
 };
 
-class LWEGui {
+class LWEGui : public QObject {
+    Q_OBJECT
+    bool isInputRegionHidden=false;
     QThread* messengerThread;
-    //QMainWindow mainWindow;
+    void populateDatabasePulldown(){
+        std::string materialString;
+        pulldowns["material"]->clear();
+        for (int i = 0; i < theDatabase.db.size(); ++i) {
+            materialString = Sformat(
+                "{:2}: {}", i, theDatabase.db[i].crystalName);
+            pulldowns["material"]->addItem(materialString.c_str());
+        }
+    }
 public:    
 //Main data structures:
 // theSim contains all of the parameters of the current simulation including grid arrays
@@ -87,6 +113,7 @@ public:
     QTextEdit* console;
     QTextEdit* fitting;
     QProgressBar* progress;
+    QWidget *inputRegion;
     QSlider* slider;
     GuiMessenger* messenger;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
@@ -141,10 +168,12 @@ public:
         setToDoubleMultiplier(textBoxes["NCAngle2"],rad2Deg<double>(),sim.base().pulse2.beamAngle);
         setToDoubleMultiplier(textBoxes["Polarization2"],rad2Deg<double>(),sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["Circularity2"],sim.base().pulse2.circularity);
-
+        sim.base().pulse1FileType = pulldowns["pulse1type"]->currentIndex();
+        sim.base().pulse2FileType = pulldowns["pulse2type"]->currentIndex();
+        sim.base().fittingMode = pulldowns["fit"]->currentIndex();
         sim.base().materialIndex = pulldowns["material"]->currentIndex();
-        setToDouble(textBoxes["CrystalTheta"],sim.base().crystalTheta);
-        setToDouble(textBoxes["CrystalPhi"],sim.base().crystalPhi);
+        setToDoubleMultiplier(textBoxes["CrystalTheta"],rad2Deg<double>(),sim.base().crystalTheta);
+        setToDoubleMultiplier(textBoxes["CrystalPhi"],rad2Deg<double>(),sim.base().crystalPhi);
         setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
         setToDouble(textBoxes["CrystalBandgap"],sim.base().bandGapElectronVolts);
         setToDouble(textBoxes["DrudeGamma"],sim.base().drudeGamma);
@@ -354,8 +383,8 @@ public:
         pulldowns["batch2"]->setCurrentIndex(sim.base().batchIndex2);
         pulldowns["propagator"]->setCurrentIndex(sim.base().symmetryType);
 
-        setToDouble(textBoxes["CrystalTheta"],sim.base().crystalTheta);
-        setToDouble(textBoxes["CrystalPhi"],sim.base().crystalPhi);
+        setToDouble(textBoxes["CrystalTheta"],rad2Deg<double>() * sim.base().crystalTheta);
+        setToDouble(textBoxes["CrystalPhi"],rad2Deg<double>() *sim.base().crystalPhi);
         setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
         setToDouble(textBoxes["CrystalBandgap"],sim.base().bandGapElectronVolts);
         setToDouble(textBoxes["DrudeGamma"],sim.base().drudeGamma);
@@ -371,6 +400,10 @@ public:
         setToDouble(textBoxes["batch2end"],sim.base().batchDestination2);
         setToInt(textBoxes["batch1steps"],sim.base().Nsims);
         setToInt(textBoxes["batch2steps"],sim.base().Nsims2);
+
+        std::string formattedFit=sim.base().fittingString;
+        insertAfterCharacter(formattedFit,';',std::string("\n"));
+        fitting->setText(QString::fromStdString(formattedFit));
 
     }
     LWEGui(){
@@ -402,7 +435,7 @@ public:
         windowBodyLayOut->addWidget(controlStrips);
 
         //Divide the large window area into an input area and a plot area
-        QWidget *inputRegion = new QWidget;
+        inputRegion = new QWidget;
         QWidget *plotRegion = new QWidget;
 
         QHBoxLayout *mainAreaLayout = new QHBoxLayout(mainArea);
@@ -413,6 +446,7 @@ public:
         mainAreaLayout->addWidget(plotRegion);
 
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
+        plotRegionLayout->setContentsMargins(1,1,1,1);
         plots["TimeImage1"] = new CairoWidget(*this, drawTimeImage1);
         plots["TimeImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["TimeImage1"],0,0);
@@ -585,13 +619,8 @@ public:
         buttons["loadMaterial"]->setFixedWidth(miniButtonWidth);
         materialRow->addWidget(buttons["loadMaterial"]);
         addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,materialRow,"material");
+        populateDatabasePulldown();
 
-        std::string materialString;
-        for (int i = 0; i < theDatabase.db.size(); ++i) {
-            materialString = Sformat(
-                "{:2}: {}", i, std::string(theDatabase.db[i].crystalName.c_str()));
-            pulldowns["material"]->addItem(materialString.c_str());
-        }
         
         addTextBoxRow("Theta, phi (deg)", "CrystalTheta", "CrystalPhi", entryColumn2Layout);
         addTextBoxRow("NL absorption", "NLAbsorption", "CrystalBandgap", entryColumn2Layout);
@@ -859,6 +888,19 @@ public:
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimeImage2"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqImage1"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqImage2"], &CairoWidget::queueUpdate);
+
+        QObject::connect(slider, &QSlider::valueChanged, plots["FreqPlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["FreqPlot2"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["TimePlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["TimePlot2"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["TimeImage1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["TimeImage2"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["FreqImage1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["FreqImage2"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::moveSlider, slider, &QSlider::setValue);
+        QObject::connect(messenger, &GuiMessenger::requestSyncValues, this, &LWEGui::queueSyncValues);
+        QObject::connect(messenger, &GuiMessenger::requestSliderUpdate, this, &LWEGui::updateSlider);
+
         windowBody->show();
         connectButtons();
     }
@@ -866,13 +908,21 @@ public:
         QObject::connect(buttons["Run"], &QPushButton::clicked, [&](){
             readParametersFromInterface(theSim);
             theSim.configure();
+            updateSlider();
             simulationRun theRun(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
             simulationRun theOffloadRun(pulldowns["secondaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
             std::thread(mainSimThread, std::ref(*this), theRun, theOffloadRun).detach();
         });
 
+        QObject::connect(buttons["Fit"], &QPushButton::clicked, [&](){
+            readParametersFromInterface(theSim);
+            theSim.configure();
+            simulationRun theRun(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
+            std::thread(fittingThread, std::ref(*this), theRun).detach();
+        });
+
         QObject::connect(buttons["Save"], &QPushButton::clicked, [&](){
-            theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["Save"],"Open LWE result","","LWE Results (*.zip)").toStdString();
+            theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["Save"],"Save LWE result","","LWE Results (*.zip)").toStdString();
             stripLineBreaks(theSim.base().outputBasePath);
             if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
                 || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
@@ -886,9 +936,18 @@ public:
             };
             std::thread(saveLambda).detach();
         });
+        QObject::connect(buttons["saveSLURM"], &QPushButton::clicked, [&](){
+            theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["saveSLURM"],"Save cluster script","","LWE Results (*.zip)").toStdString();
+            stripLineBreaks(theSim.base().outputBasePath);
+            if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
+                || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
+                theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
+            }
+            createRunFile(*this);
+        });
 
         QObject::connect(buttons["Load"], &QPushButton::clicked, [&](){
-            std::string path = QFileDialog::getOpenFileName(buttons["Load"],"Load LWE result","","LWE Results (*.zip)").toStdString();
+            std::string path = QFileDialog::getOpenFileName(buttons["Load"],"Load LWE result","","LWE Results (*.zip);;LWE Inputs (*.txt)").toStdString();
             std::thread([&](std::string path){
                 bool isZipFile = (path.length() >= 4 
                 && path.substr(path.length()-4)==".zip");
@@ -904,10 +963,66 @@ public:
                     theSim.base().loadSavedFields(basePath, isZipFile);
                 }
                 messenger->requestUpdate();
+                messenger->passSyncValues();
+                messenger->passSliderUpdate();
                 messenger->passString("done.");
             },path).detach();
         });
-    } 
+
+        QObject::connect(buttons["LoadPulse1"], &QPushButton::clicked, [&](){
+            std::string path = QFileDialog::getOpenFileName(buttons["LoadPulse1"],"Load field data","","ASCII data (*.*)").toStdString();
+            pulse1LoadedData = loadedInputData(path);
+            messenger->passString(Sformat("Loaded new file into pulse 1 buffer:\n{}\n", pulse1LoadedData.filePath));
+        });
+
+        QObject::connect(buttons["LoadPulse2"], &QPushButton::clicked, [&](){
+            std::string path = QFileDialog::getOpenFileName(buttons["LoadPulse2"],"Load field data","","ASCII data (*.*)").toStdString();
+            pulse2LoadedData = loadedInputData(path);
+            messenger->passString(Sformat("Loaded new file into pulse 2 buffer:\n{}\n", pulse2LoadedData.filePath));
+        });
+
+        QObject::connect(buttons["LoadFitting"], &QPushButton::clicked, [&](){
+            std::string path = QFileDialog::getOpenFileName(buttons["LoadFitting"],"Load spectral target data","","ASCII data (*.*)").toStdString();
+            fittingLoadedData = loadedInputData(path);
+            messenger->passString(Sformat("Loaded new fitting spectral target:\n{}\n", fittingLoadedData.filePath));
+        });
+
+        QObject::connect(buttons["loadMaterial"], &QPushButton::clicked, [&](){
+            std::string path = QFileDialog::getOpenFileName(buttons["LoadMaterial"],"Load crystal database","","ASCII data (*.*)").toStdString();
+            theDatabase = crystalDatabase(path);
+            populateDatabasePulldown();
+            messenger->passString(Sformat("Loaded new crystal database:\n{}\n", path));
+        });
+
+        QObject::connect(buttons["Stop"], &QPushButton::clicked, [&](){
+            if (theSim.base().isRunning) {
+                theSim.base().cancellationCalled = true;
+                for (int i = 1; i < theSim.base().Nsims; ++i) {
+                    theSim.base().cancellationCalled = true;
+                }
+            }
+        });
+
+        QObject::connect(buttons["collapse"], &QPushButton::clicked, [&](){
+            if(isInputRegionHidden){
+                inputRegion->show();
+                isInputRegionHidden = false;
+            }
+            else{
+                inputRegion->hide();
+                isInputRegionHidden = true;
+            }
+        });
+    }
+    public slots:
+    void queueSyncValues(){
+        setInterfaceValuesToActiveValues(theSim);
+    }
+    void updateSlider(){
+        slider->setMinimum(0);
+        slider->setMaximum(theSim.base().Nsims * theSim.base().Nsims2 - 1);
+    }
+     
 };
 
 int main(int argc, char **argv){
@@ -1026,15 +1141,11 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
         std::erase(errorString, '}');
         theGui.messenger->passString(Sformat(
             "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n",
-            errorString).c_str());
+            errorString));
         return;
     }
     theSim.base().isRunning = true;
     
-
-    // std::thread secondQueueThread(secondaryQueue, 
-    //     theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU, 
-    //     secondPulldownSelection, pulldownSelection, use64bitFloatingPoint);
     auto batchLoop = [&](const int startSim, const int stopSim, const simulationRun& activeRun){
         for (int j = startSim; j < stopSim; ++j) {
             theSim.sCPU()[j].runningOnCPU = activeRun.forceCPU;
@@ -1058,28 +1169,29 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
                     std::erase(errorString,'}');
                     theGui.messenger->passString(
                         Sformat("Simulation failed with exception:\n{}\n", 
-                        errorString).c_str());
+                        errorString));
                 }
                 if (theSim.sCPU()[j].memoryError != 0) {
                     if (theSim.sCPU()[j].memoryError == -1) {
                         theGui.messenger->passString(
                         Sformat(
                             "Not enough free GPU memory, sorry.\n", 
-                            theSim.sCPU()[j].memoryError).c_str());
+                            theSim.sCPU()[j].memoryError));
                     }
                     else {
                         theGui.messenger->passString(
                         Sformat(
                             "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n", 
-                            theSim.sCPU()[j].memoryError).c_str());
+                            theSim.sCPU()[j].memoryError));
                     }
                 }
                 if (error) break;
+                theGui.messenger->passSliderPosition(j);
                 theGui.messenger->requestUpdate();
             if (theSim.base().cancellationCalled) {
                 theGui.messenger->passString(Sformat((
                     "Warning: series cancelled, stopping\n"
-                    "after {} simulations.\n"), j + 1).c_str());
+                    "after {} simulations.\n"), j + 1));
                 break;
             }
         }
@@ -1099,11 +1211,10 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error == 13) {
         theGui.messenger->passString(
-            "<span color=\"#FF88FF\">"
             "NaN detected in grid!\n"
             "Try using a larger spatial/temporal step\n"
             "or smaller propagation step.\n"
-            "Simulation was cancelled.\n</span>");
+            "Simulation was cancelled.");
     }
     else if (error == 15) {
         theGui.messenger->passString(
@@ -1117,11 +1228,63 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     }
     else if(!error){
         theGui.messenger->passString(Sformat(
-            "Finished after {:.4} s.\n", 1e-6 *
+            "Finished after {:.4} s.", 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>
-                (simulationTimerEnd - simulationTimerBegin).count())).c_str());
+                (simulationTimerEnd - simulationTimerBegin).count())));
     }
     theSim.base().isRunning = false;
+}
+void fittingThread(LWEGui& theGui,  simulationRun theRun) {
+    simulationBatch& theSim = theGui.theSim;
+    theSim.base().cancellationCalled = false;
+    auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
+
+    theSim.sCPU()->readFittingString();
+    if (theSim.base().Nfitting == 0) {
+        theGui.messenger->passString("Couldn't interpret fitting command.");
+        return;
+    }
+    theGui.progressCounter = 0;
+    theSim.base().progressCounter = &theGui.progressCounter;
+    if (theSim.base().fittingMode == 3) {
+        if (theSim.sCPU()->loadReferenceSpectrum()) {
+            theGui.messenger->passString("Could not read reference file!");
+            return;
+        }
+    }
+
+    theGui.messenger->passString(Sformat(
+        "Fitting {} values in mode {} over {} iterations.\n"
+        "Region of interest contains {} elements\n",
+        theSim.base().Nfitting, 
+        theSim.base().fittingMode, 
+        theSim.base().fittingMaxIterations, 
+        theSim.base().fittingROIsize));
+
+    theSim.base().isRunning = true;
+    theSim.base().runningOnCPU = theRun.forceCPU;
+    theSim.base().assignedGPU = theRun.assignedGPU;
+    theSim.base().useOpenMP = theRun.useOpenMP;
+
+    std::unique_lock lock(theSim.mutexes.at(0));
+    theRun.fittingFunction(theSim.sCPU());
+    lock.unlock();
+    theSim.base().plotSim = 0;
+
+    theGui.messenger->passDrawRequest();
+    //theGui.requestInterfaceValuesUpdate();
+    auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
+    theGui.messenger->passString(Sformat(("Finished fitting after {:.4} s.\n"), 1e-6 *
+        (double)(std::chrono::duration_cast<std::chrono::microseconds>
+            (simulationTimerEnd - simulationTimerBegin).count())));
+    theGui.messenger->passString(Sformat(
+        "Fitting result:\n"
+        "(index, value)"));
+    for (int i = 0; i < theSim.base().Nfitting; ++i) {
+        theGui.messenger->passString(Sformat("{},  {}", i, theSim.base().fittingResult[i]));
+    }
+    theSim.base().isRunning = false;
+    theGui.messenger->requestSyncValues();
 }
 
 void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
@@ -1180,7 +1343,8 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         return;
     }
     LweImage sPlot;
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.slider->value());
+
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1215,7 +1379,7 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
     LwePlot sPlot;
     bool saveSVG = false; //theGui.SVGqueue[0];
-    int64_t simIndex = 0; //maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.slider->value());
 
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -1271,7 +1435,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     bool saveSVG = false; //theGui.SVGqueue[1];
 
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.slider->value());
 
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -1333,7 +1497,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     // if (theGui.checkBoxes["Log"].isChecked()) {
     //     logPlot = true;
     // }
-    int64_t simIndex = 0; //maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1419,7 +1583,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     // if (theGui.checkBoxes["Log"].isChecked()) {
     //     logPlot = true;
     // }
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1496,7 +1660,7 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         return;
     }
     LweImage sPlot;
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1532,7 +1696,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         return;
     }
     LweImage sPlot;
-    int64_t simIndex = 0;//maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1573,7 +1737,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
     LweImage sPlot;
 
-    int64_t simIndex = 0;// maxN(0,theGui.plotSlider.getIntValue());
+    int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -1601,5 +1765,91 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         cairo_fill(cr);
         //theGui.requestPlotUpdate();
     }
+}
+
+
+void createRunFile(LWEGui& theGui) {
+    simulationBatch& theSim = theGui.theSim;
+    theGui.readParametersFromInterface(theSim);
+    theSim.base().runType = runTypes::normal;
+    theSim.base().isGridAllocated = false;
+    theSim.base().isFollowerInSequence = false;
+    theSim.base().crystalDatabase = theGui.theDatabase.db.data();
+    theSim.configureCounter();
+
+    std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
+    theGui.totalSteps = 0;
+    for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
+        counterVector[j].progressCounter = &theGui.totalSteps;
+        counterVector[j].runType = runTypes::counter;
+        if (theSim.base().isInSequence) {
+            solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
+        }
+        else {
+            solveNonlinearWaveEquationCounter(&counterVector[j]);
+        }
+    }
+
+    //create SLURM script
+    int cluster = theGui.pulldowns["slurm"]->currentIndex();
+    std::string gpuType("ERROR");
+    int gpuCount = 1;
+    bool arrayMode = false;
+    switch (cluster) {
+    case 0:
+        gpuType.assign("rtx5000");
+        gpuCount = 1;
+        break;
+    case 1:
+        gpuType.assign("rtx5000");
+        gpuCount = 2;
+        break;
+    case 2:
+        gpuType.assign("v100");
+        gpuCount = 1;
+        break;
+    case 3:
+        gpuType.assign("v100");
+        gpuCount = 2;
+        break;
+    case 4:
+        gpuType.assign("a100");
+        gpuCount = 1;
+        break;
+    case 5:
+        gpuType.assign("a100");
+        gpuCount = 2;
+        break;
+    case 6:
+        gpuType.assign("a100");
+        gpuCount = 4;
+        break;
+    case 7:
+        gpuType.assign("a100");
+        gpuCount = 1;
+        arrayMode = true;
+        break;
+    }
+    double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, theGui.totalSteps, theSim.parameters, theGui.theDatabase);
+
+    theGui.messenger->passString(Sformat(
+        "Run {} on cluster with:\nsbatch {}.slurmScript\n",
+        getBasename(theSim.base().outputBasePath), getBasename(theSim.base().outputBasePath)));
+    theGui.messenger->passString(Sformat("or\n./lweget.sh {}\n",getBasename(theSim.base().outputBasePath)));
+    theGui.messenger->passString(Sformat(
+        "Upper estimate time to complete: {:.2} hours\n", 
+        timeEstimate));
+    theSim.base().isRunning = false;
+    theSim.base().isGridAllocated = false;
+}
+
+int insertAfterCharacter(std::string& s, char target, std::string appended){
+    for(size_t i = 0; i < s.length(); ++i){
+        if(s[i] == target){
+            s.insert(i+1,appended);
+            i += appended.length();
+        }
+    }
+    return 0;
 }
 #include "LightwaveExplorerFrontendQT.moc"

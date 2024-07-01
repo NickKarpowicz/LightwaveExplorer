@@ -120,11 +120,11 @@ void saveRunFileCallback();
 void loadFromPath(const std::string path);
 void saveThread();
 void launchFitThread();
-void fittingThread(int pulldownSelection, bool use64bitFloatingPoint);
+
 void stopButtonCallback();
 void svgCallback();
 void dataPanelCollapseCallback();
-void createRunFile();
+
 static void buttonAddSameCrystal();
 static void buttonAddDefault();
 static void buttonAddRotation();
@@ -151,6 +151,7 @@ class simulationRun {
 public:
     std::function<unsigned long(simulationParameterSet*)> normalFunction;
     std::function<unsigned long(simulationParameterSet*)> sequenceFunction;
+    std::function<unsigned long(simulationParameterSet*)> fittingFunction;
     int assignedGPU{};
     bool forceCPU = false;
     bool useOpenMP = false;
@@ -159,6 +160,8 @@ public:
             &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
         normalFunction = use64bitFloatingPoint ? 
             &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
+        fittingFunction = use64bitFloatingPoint ?
+            &runDlibFittingCPU : &runDlibFittingCPUFP32;
         int assignedGPU = 0;
         bool forceCPU = false;
         bool useOpenMP = false;
@@ -179,10 +182,12 @@ public:
             if (use64bitFloatingPoint) {
                 sequenceFunction = &solveNonlinearWaveEquationSequence;
                 normalFunction = &solveNonlinearWaveEquation;
+                fittingFunction = &runDlibFitting;
             }
             else {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceFP32;
                 normalFunction = &solveNonlinearWaveEquationFP32;
+                fittingFunction = &runDlibFittingFP32;
             }
 
             assignedGPU = pulldownSelection;
@@ -193,10 +198,12 @@ public:
             if (use64bitFloatingPoint) {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
                 normalFunction = &solveNonlinearWaveEquationSYCL;
+                fittingFunction = &runDlibFittingSYCL;
             }
             else {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
                 normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+                fittingFunction = &runDlibFittingSYCLFP32;
             }
 
         }
@@ -205,10 +212,12 @@ public:
             if (use64bitFloatingPoint) {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
                 normalFunction = &solveNonlinearWaveEquationSYCL;
+                fittingFunction = &runDlibFittingSYCL;
             }
             else {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
                 normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+                fittingFunction = &runDlibFittingSYCLFP32;
             }
         }
         else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
@@ -216,10 +225,12 @@ public:
             if (use64bitFloatingPoint) {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
                 normalFunction = &solveNonlinearWaveEquationSYCL;
+                fittingFunction = &runDlibFittingSYCL;
             }
             else {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCLFP32;
                 normalFunction = &solveNonlinearWaveEquationSYCLFP32;
+                fittingFunction = &runDlibFittingSYCL;
             }
         }
         else if (pulldownSelection == (theSim.base().cudaGPUCount + SYCLitems + 1)){
@@ -230,4 +241,5 @@ public:
 };
 
 void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloadRun);
-
+void fittingThread(LWEGui& theGui,  simulationRun theRun);
+void createRunFile(LWEGui& theGui);
