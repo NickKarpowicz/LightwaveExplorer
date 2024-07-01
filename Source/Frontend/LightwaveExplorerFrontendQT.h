@@ -30,6 +30,7 @@
 #include <QImage>
 #include <QPainter>
 #include <QThread>
+#include <QFileDialog>
 #include <cairo.h>
 #include "../LightwaveExplorerUtilities.h"
 std::mutex GTKmutex;

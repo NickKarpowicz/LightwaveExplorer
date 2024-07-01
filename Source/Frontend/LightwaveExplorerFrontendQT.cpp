@@ -864,14 +864,28 @@ public:
     }
     void connectButtons(){
         QObject::connect(buttons["Run"], &QPushButton::clicked, [&](){
-
             readParametersFromInterface(theSim);
             theSim.configure();
             simulationRun theRun(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
             simulationRun theOffloadRun(pulldowns["secondaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
-            
             std::thread(mainSimThread, std::ref(*this), theRun, theOffloadRun).detach();
+        });
 
+        QObject::connect(buttons["Save"], &QPushButton::clicked, [&](){
+            QString path = QFileDialog::getSaveFileName(buttons["Save"],"Open LWE result","","LWE Results (*.zip)");
+            theSim.base().outputBasePath = path.toStdString();
+            stripLineBreaks(theSim.base().outputBasePath);
+            if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
+                || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
+                theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
+            }
+            messenger->passString(path);
+            messenger->passString("Saving...");
+            auto saveLambda = [&](){
+                theSim.saveDataSet();
+                messenger->passString("done.\n");
+            };
+            std::thread(saveLambda).detach();
         });
     } 
 };
