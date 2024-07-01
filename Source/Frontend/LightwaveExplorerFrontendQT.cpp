@@ -872,20 +872,40 @@ public:
         });
 
         QObject::connect(buttons["Save"], &QPushButton::clicked, [&](){
-            QString path = QFileDialog::getSaveFileName(buttons["Save"],"Open LWE result","","LWE Results (*.zip)");
-            theSim.base().outputBasePath = path.toStdString();
+            theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["Save"],"Open LWE result","","LWE Results (*.zip)").toStdString();
             stripLineBreaks(theSim.base().outputBasePath);
             if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
                 || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
                 theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
             }
-            messenger->passString(path);
+
             messenger->passString("Saving...");
             auto saveLambda = [&](){
                 theSim.saveDataSet();
                 messenger->passString("done.\n");
             };
             std::thread(saveLambda).detach();
+        });
+
+        QObject::connect(buttons["Load"], &QPushButton::clicked, [&](){
+            std::string path = QFileDialog::getOpenFileName(buttons["Load"],"Load LWE result","","LWE Results (*.zip)").toStdString();
+            std::thread([&](std::string path){
+                bool isZipFile = (path.length() >= 4 
+                && path.substr(path.length()-4)==".zip");
+                messenger->passString("Loading...");
+                int readParameters =
+                theSim.base().readInputParametersFile(theDatabase.db.data(), path);
+                theSim.configure();
+                std::for_each(theSim.mutexes.begin(), theSim.mutexes.end(), 
+                        [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
+                if (readParameters == 61) {
+                    int64_t extensionLoc = path.find_last_of(".");
+                    const std::string basePath = path.substr(0, extensionLoc);
+                    theSim.base().loadSavedFields(basePath, isZipFile);
+                }
+                messenger->requestUpdate();
+                messenger->passString("done.");
+            },path).detach();
         });
     } 
 };
