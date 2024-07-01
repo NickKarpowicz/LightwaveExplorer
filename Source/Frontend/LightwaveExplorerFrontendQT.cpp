@@ -159,6 +159,10 @@ public:
         sim.base().symmetryType = pulldowns["propagator"]->currentIndex();
         sim.base().batchIndex = pulldowns["batch1"]->currentIndex();
         sim.base().batchIndex2 = pulldowns["batch2"]->currentIndex();
+        setToDouble(textBoxes["batch1end"],sim.base().batchDestination);
+        setToDouble(textBoxes["batch2end"],sim.base().batchDestination2);
+        setToInt64(textBoxes["batch1steps"],sim.base().Nsims);
+        setToInt64(textBoxes["batch2steps"],sim.base().Nsims2);
         setToInt64(textBoxes["offload"],sim.base().NsimsCPU);
         
         sim.base().isInSequence = false;
@@ -362,6 +366,11 @@ public:
         setToDouble(textBoxes["dt"],1e15*sim.base().tStep);
         setToDouble(textBoxes["ZSize"],1e6*sim.base().crystalThickness);
         setToDouble(textBoxes["dz"],1e9*sim.base().propagationStep);
+
+        setToDouble(textBoxes["batch1end"],sim.base().batchDestination);
+        setToDouble(textBoxes["batch2end"],sim.base().batchDestination2);
+        setToInt(textBoxes["batch1steps"],sim.base().Nsims);
+        setToInt(textBoxes["batch2steps"],sim.base().Nsims2);
 
     }
     LWEGui(){
@@ -858,8 +867,10 @@ public:
 
             readParametersFromInterface(theSim);
             theSim.configure();
-            simulationRun r(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
-            std::thread(mainSimThread, std::ref(*this), r).detach();
+            simulationRun theRun(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
+            simulationRun theOffloadRun(pulldowns["secondaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
+            
+            std::thread(mainSimThread, std::ref(*this), theRun, theOffloadRun).detach();
 
         });
     } 
@@ -943,7 +954,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 
 
 
-void mainSimThread(LWEGui& theGui, simulationRun theRun) {
+void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloadRun) {
 
     simulationBatch& theSim = theGui.theSim;
     crystalDatabase& theDatabase = theGui.theDatabase; 
@@ -990,58 +1001,67 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun) {
     // std::thread secondQueueThread(secondaryQueue, 
     //     theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU, 
     //     secondPulldownSelection, pulldownSelection, use64bitFloatingPoint);
-    for (int j = 0; j < (theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU); ++j) {
-        theSim.sCPU()[j].runningOnCPU = theRun.forceCPU;
-        theSim.sCPU()[j].assignedGPU = theRun.assignedGPU;
-        theSim.sCPU()[j].useOpenMP = theRun.useOpenMP;
-            try {
-                if(theSim.base().isInSequence){
-                    error = theRun.sequenceFunction(&theSim.sCPU()[j]);
+    auto batchLoop = [&](const int startSim, const int stopSim, const simulationRun& activeRun){
+        for (int j = startSim; j < stopSim; ++j) {
+            theSim.sCPU()[j].runningOnCPU = activeRun.forceCPU;
+            theSim.sCPU()[j].assignedGPU = activeRun.assignedGPU;
+            theSim.sCPU()[j].useOpenMP = activeRun.useOpenMP;
+                try {
+                    if(theSim.base().isInSequence){
+                        error = activeRun.sequenceFunction(&theSim.sCPU()[j]);
+                    }
+                    else{
+                        error = activeRun.normalFunction(&theSim.sCPU()[j]);
+                    }
                 }
-                else{
-                    error = theRun.normalFunction(&theSim.sCPU()[j]);
-                }
-            }
-            catch (std::exception const& e) {
-                std::string errorString=e.what();
-                std::erase(errorString,'<');
-                std::erase(errorString,'>');
-                std::erase(errorString,'&');
-                std::erase(errorString,';');
-                std::erase(errorString,'{');
-                std::erase(errorString,'}');
-                theGui.messenger->passString(
-                    Sformat("Simulation failed with exception:\n{}\n", 
-                    errorString).c_str());
-            }
-            if (theSim.sCPU()[j].memoryError != 0) {
-                if (theSim.sCPU()[j].memoryError == -1) {
+                catch (std::exception const& e) {
+                    std::string errorString=e.what();
+                    std::erase(errorString,'<');
+                    std::erase(errorString,'>');
+                    std::erase(errorString,'&');
+                    std::erase(errorString,';');
+                    std::erase(errorString,'{');
+                    std::erase(errorString,'}');
                     theGui.messenger->passString(
-                    Sformat(
-                        "Not enough free GPU memory, sorry.\n", 
-                        theSim.sCPU()[j].memoryError).c_str());
+                        Sformat("Simulation failed with exception:\n{}\n", 
+                        errorString).c_str());
                 }
-                else {
-                    theGui.messenger->passString(
-                    Sformat(
-                        "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n", 
-                        theSim.sCPU()[j].memoryError).c_str());
+                if (theSim.sCPU()[j].memoryError != 0) {
+                    if (theSim.sCPU()[j].memoryError == -1) {
+                        theGui.messenger->passString(
+                        Sformat(
+                            "Not enough free GPU memory, sorry.\n", 
+                            theSim.sCPU()[j].memoryError).c_str());
+                    }
+                    else {
+                        theGui.messenger->passString(
+                        Sformat(
+                            "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n", 
+                            theSim.sCPU()[j].memoryError).c_str());
+                    }
                 }
+                if (error) break;
+                theGui.messenger->requestUpdate();
+            if (theSim.base().cancellationCalled) {
+                theGui.messenger->passString(Sformat((
+                    "Warning: series cancelled, stopping\n"
+                    "after {} simulations.\n"), j + 1).c_str());
+                break;
             }
-            if (error) break;
-            //theGui.requestSliderMove(j);
-            //independentPlotQueue();
-            theGui.messenger->requestUpdate();
-        if (theSim.base().cancellationCalled) {
-            // theGui.console.tPrint((
-            //     "<span color=\"#FF88FF\">"
-            //     "Warning: series cancelled, stopping\n"
-            //     "after {} simulations.</span>\n"), j + 1);
-            break;
         }
+    };
+    if(theSim.base().NsimsCPU){
+        std::thread offloadThread(batchLoop,
+        theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU,
+        theSim.base().Nsims * theSim.base().Nsims2,
+        theOffloadRun);
+        offloadThread.detach();
+        batchLoop(0,theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU,theRun);
+        if (offloadThread.joinable()) offloadThread.join();
     }
-
-    //if (secondQueueThread.joinable()) secondQueueThread.join();
+    else{
+        batchLoop(0,theSim.base().Nsims * theSim.base().Nsims2 - theSim.base().NsimsCPU,theRun);
+    }
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
     if (error == 13) {
         theGui.messenger->passString(

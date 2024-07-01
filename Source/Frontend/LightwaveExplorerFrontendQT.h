@@ -228,5 +228,5 @@ public:
     };
 };
 
-void mainSimThread(LWEGui& theGui, simulationRun theRun);
+void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloadRun);
 
