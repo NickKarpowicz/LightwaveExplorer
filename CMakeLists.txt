@@ -73,11 +73,14 @@ if(UNIX AND NOT APPLE)
             set(CMAKE_AUTOMOC ON)
             find_package(fmt REQUIRED)
             find_package(PkgConfig REQUIRED)
+            find_package(TBB REQUIRED)
+            find_package(MKL REQUIRED)
             pkg_check_modules(CAIRO REQUIRED cairo)
             include_directories(${CAIRO_INCLUDE_DIRS})
             include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib) 
             include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
             include_directories(${CMAKE_CURRENT_BINARY_DIR})
+            include_directories(${MKL_ROOT}/include/fftw)
             find_package(OpenMP)
             pkg_check_modules(FFTW REQUIRED fftw3)
             pkg_check_modules(FFTWF REQUIRED fftw3f)
@@ -104,7 +107,7 @@ if(UNIX AND NOT APPLE)
             add_library(miniz miniz/miniz.c)
 
 
-            add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -DNDEBUG)
+            add_compile_options(-std=c++20 -O3 -fopenmp -DNOCUDA -DNOSYCL -DNDEBUG)
             execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
             add_executable(LightwaveExplorer 
                 Source/Frontend/LightwaveExplorerFrontendQT.cpp 
@@ -115,8 +118,14 @@ if(UNIX AND NOT APPLE)
                 Source/Devices/DlibLibraryComponents.cpp)
             target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
             target_link_libraries(LightwaveExplorer OpenMP::OpenMP_CXX)
-            target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
-            target_link_libraries(LightwaveExplorer ${FFTWF_LIBRARIES})
+            target_link_libraries(LightwaveExplorer
+                -Wl,--start-group 
+                ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_core.a 
+                -Wl,--end-group
+                ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a)
+            target_link_libraries(LightwaveExplorer TBB::tbb)
             target_link_libraries(LightwaveExplorer fmt::fmt miniz)
             target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
             install(TARGETS LightwaveExplorer)
