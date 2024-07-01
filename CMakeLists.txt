@@ -107,7 +107,7 @@ if(UNIX AND NOT APPLE)
             add_library(miniz miniz/miniz.c)
 
 
-            add_compile_options(-std=c++20 -O3 -fopenmp -DNOCUDA -DNOSYCL -DNDEBUG)
+            add_compile_options(-std=c++20 -O3 -fopenmp -DNOCUDA -DNOSYCL -DNDEBUG -Wall)
             execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
             add_executable(LightwaveExplorer 
                 Source/Frontend/LightwaveExplorerFrontendQT.cpp 

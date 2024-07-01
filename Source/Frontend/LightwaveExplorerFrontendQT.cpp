@@ -6,10 +6,9 @@ class CairoWidget : public QWidget {
     CairoFunction theFunction;
 public:
     CairoWidget(LWEGui& sim, CairoFunction fun, QWidget* parent = nullptr) : 
+    QWidget(parent),
     theGui(sim), 
-    theFunction(fun), 
-    QWidget(parent) {
-    }
+    theFunction(fun) {}
     
 protected:
     void paintEvent(QPaintEvent* event) override {
@@ -65,6 +64,12 @@ public slots:
     void passSliderPosition(int value){
         emit moveSlider(value);
     }
+    void passProgressRange(int min, int max){
+        emit sendProgressRange(min, max);
+    }
+    void passProgressValue(int value){
+        emit sendProgressValue(value);
+    }
 
 signals:
     void sendText(const QString &text);
@@ -72,6 +77,8 @@ signals:
     void requestSyncValues();
     void requestSliderUpdate();
     void moveSlider(int value);
+    void sendProgressRange(int min, int max);
+    void sendProgressValue(int value);
 };
 
 class LWEGui : public QObject {
@@ -116,9 +123,15 @@ public:
     QWidget *inputRegion;
     QSlider* slider;
     GuiMessenger* messenger;
+    bool isMakingSVG = false;
+    std::array<std::string,4> SVGStrings;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
         console->append(s.c_str());
+    }
+    template<typename... Args> void sPrint(std::string_view format, Args&&... args) {
+        std::string s = Svformat(format, Smake_format_args(args...));
+        sequence->append(s.c_str());
     }
 
     void readParametersFromInterface(simulationBatch& sim) {
@@ -176,7 +189,7 @@ public:
         setToDoubleMultiplier(textBoxes["CrystalPhi"],rad2Deg<double>(),sim.base().crystalPhi);
         setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
         setToDouble(textBoxes["CrystalBandgap"],sim.base().bandGapElectronVolts);
-        setToDouble(textBoxes["DrudeGamma"],sim.base().drudeGamma);
+        setToDoubleMultiplier(textBoxes["DrudeGamma"],1e-12,sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);
         setToDoubleMultiplier(textBoxes["XSize"],1e6,sim.base().spatialWidth);
         setToDoubleMultiplier(textBoxes["dx"],1e6,sim.base().rStep);
@@ -387,7 +400,7 @@ public:
         setToDouble(textBoxes["CrystalPhi"],rad2Deg<double>() *sim.base().crystalPhi);
         setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
         setToDouble(textBoxes["CrystalBandgap"],sim.base().bandGapElectronVolts);
-        setToDouble(textBoxes["DrudeGamma"],sim.base().drudeGamma);
+        setToDouble(textBoxes["DrudeGamma"],1e-12*sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);
         setToDouble(textBoxes["XSize"],1e6*sim.base().spatialWidth);
         setToDouble(textBoxes["dx"],1e6*sim.base().rStep);
@@ -414,7 +427,6 @@ public:
         const int rowWidth = labelWidth + 2*textBoxWidth + 10;
         const int miniButtonWidth = 30;
         const int mainButtonWidth = rowWidth/4;
-        const int pulldownWidth = 2*textBoxWidth + 30;
         const int mainButtonHeight = textBoxHeight;
         const int pulldownContainerWidth = labelWidth+4;
 
@@ -758,30 +770,99 @@ public:
         labels["sequence"]->setText("Sequence:");
         labels["sequence"]->setFixedWidth(labelWidth/2);
         sequenceButtonBoxLayout->addWidget(labels["sequence"]);
-        auto addMiniButton = [&](const QString& icon, const std::string& entry, const QString& tooltip){
+        auto addMiniButton = [&](const QString& icon, const std::string& entry, const QString& tooltip, std::function<void()> action){
             buttons[entry] = new QPushButton(icon);
             buttons[entry]->setFixedWidth(miniButtonWidth);
             buttons[entry]->setToolTip(tooltip);
             sequenceButtonBoxLayout->addWidget(buttons[entry]);
+            QObject::connect(buttons[entry], &QPushButton::clicked, action);
         };
-        addMiniButton("\xf0\x9f\x93\xb8", "addSameCrystal", "Add a fixed crystal which matches the values currently entered on the interface");
+
+        addMiniButton("\xf0\x9f\x93\xb8", "addSameCrystal", 
+        "Add a fixed crystal which matches the values currently entered on the interface",[&](){
+            if(textBoxes["NLAbsorption"]->text().toDouble() != 0.0){
+                sPrint("plasma({},{},{},{},{},{},{},{},{})",
+                pulldowns["material"]->currentIndex(), 
+                textBoxes["CrystalTheta"]->text().toDouble(),
+                textBoxes["CrystalPhi"]->text().toDouble(), 
+                textBoxes["NLAbsorption"]->text().toDouble(),
+                textBoxes["CrystalBandgap"]->text().toDouble(), 
+                textBoxes["DrudeGamma"]->text().toDouble(),
+                textBoxes["effectiveMass"]->text().toDouble(), 
+                textBoxes["ZSize"]->text().toDouble(),
+                textBoxes["dz"]->text().toDouble());
+            }
+            else{
+                sPrint("nonlinear({},{},{},{},{})",
+                pulldowns["material"]->currentIndex(), 
+                textBoxes["CrystalTheta"]->text().toDouble(),
+                textBoxes["CrystalPhi"]->text().toDouble(), 
+                textBoxes["ZSize"]->text().toDouble(),
+                textBoxes["dz"]->text().toDouble());
+            }
+
+        });
         addMiniButton("\xe2\x99\x8a", "addDefault", "Insert a crystal that will change with the values set on the "
-            "interface, or modified during a batch calculation");
-        addMiniButton("\xf0\x9f\x92\xab", "addRotation", "Rotate the polarization by a specified angle in degrees");
+            "interface, or modified during a batch calculation",[&](){
+                sPrint("plasma(d,d,d,d,d,d,d,d,d)");
+            });
+        addMiniButton("\xf0\x9f\x92\xab", "addRotation", "Rotate the polarization by a specified angle in degrees",[&](){
+            sPrint("rotate(90)");
+        });
         addMiniButton("\xf0\x9f\x92\xa1", "addPulse", "Add a new pulse to the grid; values will be set to duplicate "
-            "pulse 1 as entered above");
+            "pulse 1 as entered above",[&](){
+                sPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})",
+                textBoxes["Energy1"]->text().toDouble(), 
+                textBoxes["Frequency1"]->text().toDouble(),
+                textBoxes["Bandwidth1"]->text().toDouble(), 
+                textBoxes["SGOrder1"]->text().toInt(),
+                textBoxes["CEP1"]->text().toDouble(), 
+                textBoxes["Delay1"]->text().toDouble(), 
+                textBoxes["GDD1"]->text().toDouble(),
+                textBoxes["TOD1"]->text().toDouble(),
+                textBoxes["Material1"]->text().toInt(), 
+                textBoxes["Thickness1"]->text().toDouble(),
+                textBoxes["Beamwaist1"]->text().toDouble(),
+                textBoxes["xOffset1"]->text().toDouble(),
+                0.0,
+                textBoxes["zOffset1"]->text().toDouble(),
+                textBoxes["NCAngle1"]->text().toDouble(),
+                0.0,
+                textBoxes["Polarization1"]->text().toDouble(),
+                textBoxes["Circularity1"]->text().toDouble(),
+                pulldowns["material"]->currentIndex(),
+                textBoxes["CrystalTheta"]->text().toDouble(),
+                textBoxes["CrystalPhi"]->text().toDouble());
+            });
         addMiniButton("\xf0\x9f\x94\x8e", "addMirror", "Add a spherical mirror to the beam path, with radius "
-            "of curvature in meters");
+            "of curvature in meters",[&](){
+                sPrint("sphericalMirror(-1.0)");
+            });
         addMiniButton("\xf0\x9f\x98\x8e", "addFilter", "Add a spectral filter to the beam path. "
             "Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   "
-            "in-band amplitude\n   out-of-band amplitude\n");
-        addMiniButton("\xf0\x9f\x93\x8f", "addLinear", "Add a linear propagation through the crystal entered on the interface");
+            "in-band amplitude\n   out-of-band amplitude\n",[&](){
+                sPrint("filter(130, 20, 4, 1, 0)");
+            });
+        addMiniButton("\xf0\x9f\x93\x8f", "addLinear", "Add a linear propagation through the crystal entered on the interface",[&](){
+            sPrint("linear({},{},{},{},{})",
+                pulldowns["material"]->currentIndex(), 
+                textBoxes["CrystalTheta"]->text().toDouble(),
+                textBoxes["CrystalPhi"]->text().toDouble(), 
+                textBoxes["ZSize"]->text().toDouble(),
+                textBoxes["dz"]->text().toDouble());
+            });
         addMiniButton("\xf0\x9f\x8e\xaf", "addAperture", "Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
-            "activation parameter\n");
+            "activation parameter\n",[&](){
+                sPrint("aperture(0.001, 2)");
+            });
         addMiniButton("\xe2\x9b\xb3", "addFarFieldAperture", "Filter the beam with a far-field aperture. Parameters:\n   "
-            "opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ");
+            "opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ",[&](){
+                sPrint("farFieldAperture(2.0,4000,0,0)");
+            });
         addMiniButton("\xf0\x9f\x94\x81", "addForLoop", "Add an empty for loop. Parameters:\n   "
-            "Number of times to execute\n   Variable number in which to put the counter");
+            "Number of times to execute\n   Variable number in which to put the counter",[&](){
+                sPrint("for(10,1){{\n\n}}");
+            });
         QSpacerItem* miniButtonSpacer = new QSpacerItem(1,1,QSizePolicy::Expanding,QSizePolicy::Fixed);
         sequenceButtonBoxLayout->addSpacerItem(miniButtonSpacer);
         sequence = new QTextEdit;
@@ -900,6 +981,8 @@ public:
         QObject::connect(messenger, &GuiMessenger::moveSlider, slider, &QSlider::setValue);
         QObject::connect(messenger, &GuiMessenger::requestSyncValues, this, &LWEGui::queueSyncValues);
         QObject::connect(messenger, &GuiMessenger::requestSliderUpdate, this, &LWEGui::updateSlider);
+        QObject::connect(messenger, &GuiMessenger::sendProgressRange, progress, &QProgressBar::setRange);
+        QObject::connect(messenger, &GuiMessenger::sendProgressValue, progress, &QProgressBar::setValue);
 
         windowBody->show();
         connectButtons();
@@ -1013,6 +1096,34 @@ public:
                 isInputRegionHidden = true;
             }
         });
+
+        QObject::connect(buttons["ylim"], &QPushButton::clicked, [&](){
+            messenger->passDrawRequest();
+        });
+        QObject::connect(buttons["xlim"], &QPushButton::clicked, [&](){
+            messenger->passDrawRequest();
+        });
+        QObject::connect(checkboxes["Log"], &QCheckBox::clicked, [&](){
+            messenger->passDrawRequest();
+        });
+        QObject::connect(checkboxes["Total"], &QCheckBox::clicked, [&](){
+            messenger->passDrawRequest();
+        });
+        /*std::ofstream fs(SVGpath);
+            fs << SVGstrings[0] << SVGstrings[1] << SVGstrings[2] << SVGstrings[3];*/
+        QObject::connect(buttons["SVG"], &QPushButton::clicked, [&](){
+            std::string SVGpath = QFileDialog::getSaveFileName(buttons["SVG"],"Save SVG file of plots","","Scalable Vector Graphics (*.svg)").toStdString();
+            isMakingSVG = true;
+            plots["TimePlot1"]->repaint();
+            plots["TimePlot2"]->repaint();
+            plots["FreqPlot1"]->repaint();
+            plots["FreqPlot2"]->repaint();
+            isMakingSVG = false;
+            std::ofstream fs(SVGpath);
+            fs << SVGStrings[0] << SVGStrings[1] << SVGStrings[2] << SVGStrings[3];
+            
+        });
+        
     }
     public slots:
     void queueSyncValues(){
@@ -1106,7 +1217,6 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloadRun) {
 
     simulationBatch& theSim = theGui.theSim;
-    crystalDatabase& theDatabase = theGui.theDatabase; 
     int error = 0;
     theSim.base().cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
@@ -1144,8 +1254,17 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
             errorString));
         return;
     }
-    theSim.base().isRunning = true;
+    theGui.messenger->passProgressRange(0,totalSteps-2);
     
+    theSim.base().isRunning = true;
+    auto progressThread = [&](){
+        while(theSim.base().isRunning){
+            theGui.messenger->passProgressValue(theGui.progressCounter);
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+    };
+    std::thread advanceProgressBar(progressThread);
+    advanceProgressBar.detach();
     auto batchLoop = [&](const int startSim, const int stopSim, const simulationRun& activeRun){
         for (int j = startSim; j < stopSim; ++j) {
             theSim.sCPU()[j].runningOnCPU = activeRun.forceCPU;
@@ -1232,6 +1351,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
             (double)(std::chrono::duration_cast<std::chrono::microseconds>
                 (simulationTimerEnd - simulationTimerBegin).count())));
     }
+    theGui.messenger->passProgressValue(theGui.progressCounter);
     theSim.base().isRunning = false;
 }
 void fittingThread(LWEGui& theGui,  simulationRun theRun) {
@@ -1265,7 +1385,15 @@ void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     theSim.base().runningOnCPU = theRun.forceCPU;
     theSim.base().assignedGPU = theRun.assignedGPU;
     theSim.base().useOpenMP = theRun.useOpenMP;
-
+    auto progressThread = [&](){
+        theGui.messenger->passProgressRange(0,theSim.base().fittingMaxIterations-1);
+        while(theSim.base().isRunning){
+            theGui.messenger->passProgressValue(theGui.progressCounter);
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+    };
+    std::thread advanceProgressBar(progressThread);
+    advanceProgressBar.detach();
     std::unique_lock lock(theSim.mutexes.at(0));
     theRun.fittingFunction(theSim.sCPU());
     lock.unlock();
@@ -1378,7 +1506,6 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         return;
     }
     LwePlot sPlot;
-    bool saveSVG = false; //theGui.SVGqueue[0];
     int64_t simIndex = maxN(0,theGui.slider->value());
 
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -1387,7 +1514,7 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    sPlot.makeSVG = saveSVG;
+    sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().tStep / 1e-15;
@@ -1403,22 +1530,20 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
-        // if(saveSVG) {
-        //     size_t SVGbegin = sPlot.SVGString.find("<svg");
-        //     sPlot.SVGString.insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
-        //         "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
-        //         "\"http://www.w3.org/1999/xlink\">\n",
-        //         2*width, 2*height, 2*width, 2*height));
-        //     theGui.SVGstrings[0] = sPlot.SVGString;
-        //     if(saveSVG) theGui.SVGqueue[0] = false;
-        // }
+        if(theGui.isMakingSVG) {
+            std::size_t SVGbegin = sPlot.SVGString.find("<svg");
+            sPlot.SVGString.insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+                "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
+                "\"http://www.w3.org/1999/xlink\">\n",
+                2*width, 2*height, 2*width, 2*height));
+            theGui.SVGStrings[0] = sPlot.SVGString;
+        }
     }
     else {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
-        //theGui.requestPlotUpdate();
     }
 }
 
@@ -1433,8 +1558,6 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
     LwePlot sPlot;
 
-    bool saveSVG = false; //theGui.SVGqueue[1];
-
     int64_t simIndex = maxN(0,theGui.slider->value());
 
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -1445,7 +1568,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
 
-    sPlot.makeSVG = saveSVG;
+    sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().tStep / 1e-15;
@@ -1463,21 +1586,19 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
-        // if(saveSVG) {
-        //     size_t SVGbegin = sPlot.SVGString.find("width=");
-        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-        //         0, height));
-        //     SVGbegin = sPlot.SVGString.find("<svg");
-        //     theGui.SVGstrings[1] = sPlot.SVGString.substr(SVGbegin);
-        //     if(saveSVG) theGui.SVGqueue[1] = false;
-        // }
+        if(theGui.isMakingSVG) {
+            std::size_t SVGbegin = sPlot.SVGString.find("width=");
+            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+                0, height));
+            SVGbegin = sPlot.SVGString.find("<svg");
+            theGui.SVGStrings[1] = sPlot.SVGString.substr(SVGbegin);
+        }
     }
     else {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
-        //theGui.requestPlotUpdate();
     }
 }
 
@@ -1491,35 +1612,34 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         return;
     }
     LwePlot sPlot;
-    bool saveSVG = false; //theGui.SVGqueue[2];
 
     bool logPlot = false;
-    // if (theGui.checkBoxes["Log"].isChecked()) {
-    //     logPlot = true;
-    // }
+    if (theGui.checkboxes["Log"]->isChecked()) {
+        logPlot = true;
+    }
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
 
     bool forceX = false;
-    double xMin = 0;//theGui.textBoxes[48].valueDouble();
-    double xMax = 0;//theGui.textBoxes[49].valueDouble();
+    double xMin = theGui.textBoxes["xlimStart"]->text().toDouble();
+    double xMax = theGui.textBoxes["xlimStop"]->text().toDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = 0;//theGui.textBoxes[50].valueDouble();
-    double yMax = 0;//theGui.textBoxes[51].valueDouble();
+    double yMin = theGui.textBoxes["ylimStart"]->text().toDouble();
+    double yMax = theGui.textBoxes["ylimStop"]->text().toDouble();
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
     bool overlayTotal = false;
-    // if (theGui.checkBoxes["Total"].isChecked()) {
-    //     overlayTotal = true;
-    // }
+    if (theGui.checkboxes["Total"]->isChecked()) {
+        overlayTotal = true;
+    }
 
-    sPlot.makeSVG = saveSVG;
+    sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
@@ -1547,21 +1667,19 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
-        // if(saveSVG) {
-        //     size_t SVGbegin = sPlot.SVGString.find("width=");
-        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-        //         width, 0));
-        //     SVGbegin = sPlot.SVGString.find("<svg");
-        //     theGui.SVGstrings[2] = sPlot.SVGString.substr(SVGbegin);
-        //     if(saveSVG) theGui.SVGqueue[2] = false;
-        // }
+        if(theGui.isMakingSVG) {
+            std::size_t SVGbegin = sPlot.SVGString.find("width=");
+            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+                width, 0));
+            SVGbegin = sPlot.SVGString.find("<svg");
+            theGui.SVGStrings[2] = sPlot.SVGString.substr(SVGbegin);
+        }
     }
     else {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
-        //theGui.requestPlotUpdate();
     }
 }
 
@@ -1576,35 +1694,32 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     LwePlot sPlot;
-
-    bool saveSVG = false;//theGui.SVGqueue[3];
-
     bool logPlot = false;
-    // if (theGui.checkBoxes["Log"].isChecked()) {
-    //     logPlot = true;
-    // }
+    if (theGui.checkboxes["Log"]->isChecked()) {
+        logPlot = true;
+    }
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
 
     bool forceX = false;
-    double xMin = 0;//theGui.textBoxes[48].valueDouble();
-    double xMax = 0;//theGui.textBoxes[49].valueDouble();
+    double xMin = theGui.textBoxes["xlimStart"]->text().toDouble();
+    double xMax = theGui.textBoxes["xlimStop"]->text().toDouble();
     if (xMin != xMax && xMax > xMin) {
         forceX = true;
     }
     bool forceY = false;
-    double yMin = 0;//theGui.textBoxes[50].valueDouble();
-    double yMax = 0;//theGui.textBoxes[51].valueDouble();
+    double yMin = theGui.textBoxes["ylimStart"]->text().toDouble();
+    double yMax = theGui.textBoxes["ylimStop"]->text().toDouble();
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
     bool overlayTotal = false;
-    // if (theGui.checkBoxes["Total"].isChecked()) {
-    //     overlayTotal = true;
-    // }
-    sPlot.makeSVG = saveSVG;
+    if (theGui.checkboxes["Total"]->isChecked()) {
+        overlayTotal = true;
+    }
+    sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
@@ -1632,21 +1747,19 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
-        // if(saveSVG) {
-        //     size_t SVGbegin = sPlot.SVGString.find("width=");
-        //     sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-        //         width, height));
-        //     SVGbegin = sPlot.SVGString.find("<svg");
-        //     theGui.SVGstrings[3] = sPlot.SVGString.substr(SVGbegin).append("</svg>");
-        //     if(saveSVG) theGui.SVGqueue[3] = false;
-        // }
+        if(theGui.isMakingSVG) {
+            std::size_t SVGbegin = sPlot.SVGString.find("width=");
+            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+                width, height));
+            SVGbegin = sPlot.SVGString.find("<svg");
+            theGui.SVGStrings[3] = sPlot.SVGString.substr(SVGbegin).append("</svg>");
+        }
     }
     else {
         LweColor black(0, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
-        //theGui.requestPlotUpdate();
     }
 }
 
@@ -1844,7 +1957,7 @@ void createRunFile(LWEGui& theGui) {
 }
 
 int insertAfterCharacter(std::string& s, char target, std::string appended){
-    for(size_t i = 0; i < s.length(); ++i){
+    for(std::size_t i = 0; i < s.length(); ++i){
         if(s[i] == target){
             s.insert(i+1,appended);
             i += appended.length();
@@ -1852,4 +1965,6 @@ int insertAfterCharacter(std::string& s, char target, std::string appended){
     }
     return 0;
 }
+
+
 #include "LightwaveExplorerFrontendQT.moc"

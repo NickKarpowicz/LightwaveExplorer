@@ -92,52 +92,15 @@ using CairoFunction = std::function<void(cairo_t*,int,int,LWEGui&)>;
 #define Smake_format_args std::make_format_args
 #endif
 
-// void drawFourierImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-// void drawFourierImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-// void drawTimeImage1(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-// void drawTimeImage2(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-// void drawField1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-// void drawField2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-// void drawSpectrum1Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-// void drawSpectrum2Plot(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-// void drawProgress(GtkDrawingArea* area, cairo_t* cr, int width, int height, gpointer data);
-bool sliderResponseToArrows(void* widget, unsigned int keyValue);
 std::string checkLibraryAvailability(simulationBatch& theSim);
 void setInterfaceValuesToActiveValues();
 int insertAfterCharacter(std::string& s, char target, std::string appended);
 int insertAfterCharacterExcept(std::string& s, char target, std::string appended, std::string exclude);
 int formatSequence(std::string& s);
 void readDefaultValues(simulationBatch& sim, crystalDatabase& db);
-void launchRunThread();
-void independentPlotQueue();
-void loadCallback();
-void savePathCallback();
-void waveform1PathCallback();
-void waveform2PathCallback();
-void fittingPathCallback();
-void loadDatabaseCallback();
-void saveRunFileCallback();
 void loadFromPath(const std::string path);
 void saveThread();
-void launchFitThread();
-
-void stopButtonCallback();
-void svgCallback();
-void dataPanelCollapseCallback();
-
-static void buttonAddSameCrystal();
-static void buttonAddDefault();
-static void buttonAddRotation();
-static void buttonAddPulse();
-static void buttonAddMirror();
-static void buttonAddFilter();
-static void buttonAddLinear();
-static void buttonAddAperture();
-static void buttonAddFarFieldAperture();
-static void buttonAddForLoop();
 bool updateDisplay();
-void destroyMainWindowCallback();
-
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui);
@@ -162,9 +125,6 @@ public:
             &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
         fittingFunction = use64bitFloatingPoint ?
             &runDlibFittingCPU : &runDlibFittingCPUFP32;
-        int assignedGPU = 0;
-        bool forceCPU = false;
-        bool useOpenMP = false;
     #ifdef CPUONLY
         useOpenMP = true;
     #endif
@@ -243,3 +203,6 @@ public:
 void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloadRun);
 void fittingThread(LWEGui& theGui,  simulationRun theRun);
 void createRunFile(LWEGui& theGui);
+
+
+
