@@ -873,6 +873,7 @@ int main(int argc, char **argv){
 
 //ifdef guards are in place to only include CUDA/SYCL when they are being used
 std::string checkLibraryAvailability(simulationBatch& theSim) {   
+    std::string s;
 #if defined CPUONLY
     theSim.base().CUDAavailable = false;
     theSim.base().SYCLavailable = false;
@@ -883,7 +884,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 #define runDlibFitting runDlibFittingCPU
 #define runDlibFittingSYCL runDlibFittingCPU
 #else
-    std::string s;
+    
 #ifndef NOCUDA
 	//Find, count, and name the GPUs
 	int CUDAdevice, i;

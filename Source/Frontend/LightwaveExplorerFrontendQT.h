@@ -189,11 +189,6 @@ public:
         #endif
         #ifndef NOSYCL
         if (pulldownSelection == theSim.base().cudaGPUCount && theSim.base().SYCLavailable) {
-            // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
-            //     "Note: the first time you run SYCL, it will\n"
-            //     "take some time to compile kernels for your\n"
-            //     "device. Subsequent runs will be faster.\n");
-            // theGui.firstSYCLsimulation = false;
             if (use64bitFloatingPoint) {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
                 normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -206,11 +201,6 @@ public:
         }
         else if (pulldownSelection == theSim.base().cudaGPUCount + 1 && SYCLitems > 1) {
             forceCPU = 1;
-            // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
-            //     "Note: the first time you run SYCL, it will\n"
-            //     "take some time to compile kernels for your\n"
-            //     "device. Subsequent runs will be faster.\n");
-            // theGui.firstSYCLsimulation = false;
             if (use64bitFloatingPoint) {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
                 normalFunction = &solveNonlinearWaveEquationSYCL;
@@ -222,11 +212,6 @@ public:
         }
         else if (pulldownSelection == theSim.base().cudaGPUCount + 2 && SYCLitems > 1) {
             assignedGPU = 1;
-            // if (theGui.firstSYCLsimulation) theGui.console.tPrint(
-            //     "Note: the first time you run SYCL, it will\n"
-            //     "take some time to compile kernels for your\n"
-            //     "device. Subsequent runs will be faster.\n");
-            // theGui.firstSYCLsimulation = false;
             if (use64bitFloatingPoint) {
                 sequenceFunction = &solveNonlinearWaveEquationSequenceSYCL;
                 normalFunction = &solveNonlinearWaveEquationSYCL;
