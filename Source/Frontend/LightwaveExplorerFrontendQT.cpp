@@ -1221,7 +1221,6 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     theSim.base().cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
     
-    //theGui.requestSliderUpdate();
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     std::atomic_uint32_t& totalSteps = theGui.totalSteps;
     std::atomic_uint32_t& progressCounter = theGui.progressCounter;
@@ -1254,12 +1253,12 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
             errorString));
         return;
     }
-    theGui.messenger->passProgressRange(0,totalSteps-2);
+    theGui.messenger->passProgressRange(0,static_cast<int>(totalSteps));
     
     theSim.base().isRunning = true;
     auto progressThread = [&](){
         while(theSim.base().isRunning){
-            theGui.messenger->passProgressValue(theGui.progressCounter);
+            theGui.messenger->passProgressValue(static_cast<int>(theGui.progressCounter));
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
     };
@@ -1351,8 +1350,8 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
             (double)(std::chrono::duration_cast<std::chrono::microseconds>
                 (simulationTimerEnd - simulationTimerBegin).count())));
     }
-    theGui.messenger->passProgressValue(theGui.progressCounter);
     theSim.base().isRunning = false;
+    theGui.messenger->passProgressValue(static_cast<int>(theGui.progressCounter));
 }
 void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     simulationBatch& theSim = theGui.theSim;
