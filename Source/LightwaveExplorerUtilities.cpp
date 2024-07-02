@@ -1180,7 +1180,7 @@ int interpretParameters(
 		char wrongDelimiter = ')';
 		int openParens = 0;
 
-		for(int i = 0; i<arguments.size(); ++i){
+		for(std::size_t i = 0; i<arguments.size(); ++i){
 			if(numberFound == numberParams-1) {
 				expectedDelimiter = ')';
 				wrongDelimiter = ',';
@@ -1205,7 +1205,7 @@ int interpretParameters(
 			}
 		}
 
-		for(int i = 0; i<argTable.size(); ++i){
+		for(int i = 0; i<static_cast<int>(argTable.size()); ++i){
 			if(argTable[i].at(0)=='d'){
 				defaultMask[i] = true;
 			}
@@ -1219,7 +1219,7 @@ int interpretParameters(
 size_t findParenthesesClosure(std::string& a){
 	int nParen = 0;
 	bool foundFirstParen = false;
-	for(int i = 0; i<a.size(); ++i){
+	for(std::size_t i = 0; i<a.size(); ++i){
 		if(a[i]=='('){
 			nParen++;
 			foundFirstParen = true;
@@ -1290,12 +1290,12 @@ const std::string& ss,
 	if(lastOperator == -1) {
 		return std::stod(ss);
 	}
-	if(lastOperator+1 < ss.size()){
+	if(lastOperator+1 < static_cast<int>(ss.size())){
 			numberTable.push_back(std::stod(ss.substr(lastOperator+1,std::string::npos)));
 		}
 
 	auto applyOperators = [&](char firstOp, char secondOp){
-		for(int i = 0; i < operatorTable.size(); ++i){
+		for(std::size_t i = 0; i < operatorTable.size(); ++i){
 			if(ss[operatorTable[i]] == firstOp || ss[operatorTable[i]] == secondOp){
 				switch(ss[operatorTable[i]]){
 				case '^':
@@ -1330,7 +1330,7 @@ const std::string& ss,
 
 std::string getBasename(const std::string& fullPath) {
 	std::string pathString = fullPath;
-	int64_t positionOfName = pathString.find_last_of("/\\");
+	std::size_t positionOfName = pathString.find_last_of("/\\");
 	if (positionOfName == std::string::npos) return pathString;
 	return pathString.substr(positionOfName + 1);
 }

@@ -84,7 +84,7 @@ class LWEGui : public QObject {
     void populateDatabasePulldown(){
         std::string materialString;
         pulldowns["material"]->clear();
-        for (int i = 0; i < theDatabase.db.size(); ++i) {
+        for (std::size_t i = 0; i < theDatabase.db.size(); ++i) {
             materialString = Sformat(
                 "{:2}: {}", i, theDatabase.db[i].crystalName);
             pulldowns["material"]->addItem(materialString.c_str());
@@ -127,7 +127,7 @@ public:
     }
     template<typename... Args> void sPrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
-        sequence->append(s.c_str());
+        sequence->insertPlainText(s.c_str());
     }
 
     void readParametersFromInterface(simulationBatch& sim) {
@@ -780,7 +780,7 @@ public:
         addMiniButton("\xf0\x9f\x93\xb8", "addSameCrystal", 
         "Add a fixed crystal which matches the values currently entered on the interface",[&](){
             if(textBoxes["NLAbsorption"]->text().toDouble() != 0.0){
-                sPrint("plasma({},{},{},{},{},{},{},{},{})",
+                sPrint("plasma({},{},{},{},{},{},{},{},{})\n",
                 pulldowns["material"]->currentIndex(), 
                 textBoxes["CrystalTheta"]->text().toDouble(),
                 textBoxes["CrystalPhi"]->text().toDouble(), 
@@ -792,7 +792,7 @@ public:
                 textBoxes["dz"]->text().toDouble());
             }
             else{
-                sPrint("nonlinear({},{},{},{},{})",
+                sPrint("nonlinear({},{},{},{},{})\n",
                 pulldowns["material"]->currentIndex(), 
                 textBoxes["CrystalTheta"]->text().toDouble(),
                 textBoxes["CrystalPhi"]->text().toDouble(), 
@@ -803,14 +803,14 @@ public:
         });
         addMiniButton("\xe2\x99\x8a", "addDefault", "Insert a crystal that will change with the values set on the "
             "interface, or modified during a batch calculation",[&](){
-                sPrint("plasma(d,d,d,d,d,d,d,d,d)");
+                sPrint("plasma(d,d,d,d,d,d,d,d,d)\n");
             });
         addMiniButton("\xf0\x9f\x92\xab", "addRotation", "Rotate the polarization by a specified angle in degrees",[&](){
-            sPrint("rotate(90)");
+            sPrint("rotate(90)\n");
         });
         addMiniButton("\xf0\x9f\x92\xa1", "addPulse", "Add a new pulse to the grid; values will be set to duplicate "
             "pulse 1 as entered above",[&](){
-                sPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})",
+                sPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})\n",
                 textBoxes["Energy1"]->text().toDouble(), 
                 textBoxes["Frequency1"]->text().toDouble(),
                 textBoxes["Bandwidth1"]->text().toDouble(), 
@@ -835,15 +835,15 @@ public:
             });
         addMiniButton("\xf0\x9f\x94\x8e", "addMirror", "Add a spherical mirror to the beam path, with radius "
             "of curvature in meters",[&](){
-                sPrint("sphericalMirror(-1.0)");
+                sPrint("sphericalMirror(-1.0)\n");
             });
         addMiniButton("\xf0\x9f\x98\x8e", "addFilter", "Add a spectral filter to the beam path. "
             "Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   "
             "in-band amplitude\n   out-of-band amplitude\n",[&](){
-                sPrint("filter(130, 20, 4, 1, 0)");
+                sPrint("filter(130, 20, 4, 1, 0)\n");
             });
         addMiniButton("\xf0\x9f\x93\x8f", "addLinear", "Add a linear propagation through the crystal entered on the interface",[&](){
-            sPrint("linear({},{},{},{},{})",
+            sPrint("linear({},{},{},{},{})\n",
                 pulldowns["material"]->currentIndex(), 
                 textBoxes["CrystalTheta"]->text().toDouble(),
                 textBoxes["CrystalPhi"]->text().toDouble(), 
@@ -852,15 +852,15 @@ public:
             });
         addMiniButton("\xf0\x9f\x8e\xaf", "addAperture", "Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
             "activation parameter\n",[&](){
-                sPrint("aperture(0.001, 2)");
+                sPrint("aperture(0.001, 2)\n");
             });
         addMiniButton("\xe2\x9b\xb3", "addFarFieldAperture", "Filter the beam with a far-field aperture. Parameters:\n   "
             "opening angle (deg)\n   activation parameter (k)\n   x-angle (deg)\n   y-angle (deg) ",[&](){
-                sPrint("farFieldAperture(2.0,4000,0,0)");
+                sPrint("farFieldAperture(2.0,4000,0,0)\n");
             });
         addMiniButton("\xf0\x9f\x94\x81", "addForLoop", "Add an empty for loop. Parameters:\n   "
             "Number of times to execute\n   Variable number in which to put the counter",[&](){
-                sPrint("for(10,1){{\n\n}}");
+                sPrint("for(10,1){{\n\n}}\n");
             });
         QSpacerItem* miniButtonSpacer = new QSpacerItem(1,1,QSizePolicy::Expanding,QSizePolicy::Fixed);
         sequenceButtonBoxLayout->addSpacerItem(miniButtonSpacer);
@@ -1967,7 +1967,7 @@ int insertAfterCharacterExcept(
     for(std::size_t i = 0; i < s.length()-1; ++i){
         if(s[i] == target){
             match = false;
-            for(int j = 0; j<exclude.length(); j++){
+            for(std::size_t j = 0; j<exclude.length(); j++){
                 if(s[i+1] == exclude[j]){
                     match = true;
                 }
@@ -1985,7 +1985,7 @@ int insertAfterCharacterExcept(
 }
 
 int indentForDepth(std::string& s){
-    int depth = 0;
+    std::size_t depth = 0;
     std::string indent("   ");
     for (std::size_t i = 0; i < s.length() - 1; ++i) {
         if (s[i] == '{') ++depth;
