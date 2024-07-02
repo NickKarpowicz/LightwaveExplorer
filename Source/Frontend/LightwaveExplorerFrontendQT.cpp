@@ -410,12 +410,24 @@ public:
         sequence->setText(QString::fromStdString(formattedSequence));
     }
     LWEGui(){
+#if defined(Q_OS_WIN)
         const int textBoxWidth = 78;
-        const int labelWidth = 156;
         const int textBoxHeight = 26;
+        const int miniButtonWidth = 30;
+#elif defined(Q_OS_MAC)
+        const int textBoxWidth = 80;
+        const int textBoxHeight = 32;
+        const int miniButtonWidth = 36;
+#elif defined(Q_OS_LINUX)
+        const int textBoxWidth = 78;
+        const int textBoxHeight = 26;
+        const int miniButtonWidth = 30;
+#else
+
+#endif
+        const int labelWidth = 2*textBoxWidth;
         const int rowHeight = textBoxHeight+2;
         const int rowWidth = labelWidth + 2*textBoxWidth + 10;
-        const int miniButtonWidth = 30;
         const int mainButtonWidth = rowWidth/4;
         const int mainButtonHeight = textBoxHeight;
         const int pulldownContainerWidth = labelWidth+4;
@@ -1595,7 +1607,7 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
         std::string sysPathFull(sysPathBuffer);
         std::string sysPathIni = sysPathFull.substr(0,sysPathFull.find_last_of("/"));
         sysPathIni.append("/../Resources/DefaultValues.ini");
-		if(1 == theSim.sCPU()->readInputParametersFile(db.db.data(), sysPathIni.c_str())){
+		if(1 == sim.sCPU()->readInputParametersFile(db.db.data(), sysPathIni.c_str())){
             sim.sCPU()->readInputParametersFile(db.db.data(), "DefaultValues.ini");
         }
 #else

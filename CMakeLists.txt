@@ -574,19 +574,43 @@ endif()
 
 if(APPLE)
     cmake_minimum_required(VERSION 3.16)
-    project(LightwaveExplorer)
+    project(LightwaveExplorer LANGUAGES C CXX)
+    find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
+    set(CMAKE_AUTOMOC ON)
     find_package(PkgConfig REQUIRED)
     find_package(fmt CONFIG REQUIRED)
-    find_package(gcem CONFIG REQUIRED)
-    find_package(miniz CONFIG REQUIRED)
-    pkg_check_modules(GTK4 gtk4)
-    include_directories(${CMAKE_SOURCE_DIR}/../dlib) 
-    include_directories(${CMAKE_SOURCE_DIR}/../fftw/usr/local/include) 
-    include_directories(${GTK4_INCLUDE_DIRS})
-    link_directories(${GTK4_LIBRARY_DIRS})
+    pkg_check_modules(CAIRO REQUIRED cairo)
+    include_directories(${CAIRO_INCLUDE_DIRS})
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib) 
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
+    include_directories(${CMAKE_SOURCE_DIR}/../fftw/usr/local/include)
+    find_package(OpenMP)
+    link_directories(${CAIRO_LIBRARY_DIRS})
+
+    if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/dlib)
+        message("Using existing dlib clone")
+    else()
+        execute_process(COMMAND git clone --depth=1 https://github.com/davisking/dlib)
+    endif()
+
+    if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/gcem)
+        message("Using existing gcem clone")
+    else()
+        execute_process(COMMAND git clone --depth=1 https://github.com/kthohr/gcem)
+    endif()
+
+    if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/miniz)
+        message("Using existing miniz download")
+    else()
+        execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
+        execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
+    endif()
+    add_library(miniz miniz/miniz.c)
+
     add_compile_options(-std=c++20 -O3 -DCPUONLY -DNOSYCL -Wall -x objective-c++)
     add_executable(LightwaveExplorer MACOSX_BUNDLE 
-        Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+        Source/Frontend/LightwaveExplorerFrontendQT.cpp 
         Source/LightwaveExplorerUtilities.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
@@ -600,12 +624,14 @@ if(APPLE)
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/Source/BuildResources/macplistbase.plist
         MACOSX_BUNDLE_ICON_FILE ${CMAKE_SOURCE_DIR}/Source/BuildResources/AppIcon.icns
     )
+    
     target_link_libraries(LightwaveExplorer fmt::fmt)
-    target_link_libraries(LightwaveExplorer miniz::miniz)
+    target_link_libraries(LightwaveExplorer miniz)
     target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3_threads.a)
     target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3f_threads.a)
-        target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3.a)
+    target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3.a)
     target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3f.a)
-    target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+    target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
+    target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
     target_link_libraries(LightwaveExplorer "-framework Cocoa")
 endif()
