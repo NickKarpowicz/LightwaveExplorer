@@ -698,7 +698,7 @@ public:
         labels["material"]->setFixedWidth(labelWidth-miniButtonWidth);
         materialRow->addWidget(labels["material"]);
         buttons["loadMaterial"] = new QPushButton("\xf0\x9f\x93\x82");
-        buttons["loadMaterial"]->setFixedWidth(miniButtonWidth);
+        buttons["loadMaterial"]->setFixedSize(miniButtonWidth,mainButtonHeight);
         buttons["loadMaterial"]->setFont(emojiFont);
         materialRow->addWidget(buttons["loadMaterial"]);
         addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,materialRow,"material");
@@ -1145,6 +1145,7 @@ public:
     }
     void connectButtons(){
         QObject::connect(buttons["Run"], &QPushButton::clicked, [&](){
+            if(theSim.base().isRunning) return;
             readParametersFromInterface(theSim);
             theSim.configure();
             updateSlider();
@@ -1154,6 +1155,7 @@ public:
         });
 
         QObject::connect(buttons["Fit"], &QPushButton::clicked, [&](){
+            if(theSim.base().isRunning) return;
             readParametersFromInterface(theSim);
             theSim.configure();
             simulationRun theRun(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
@@ -1176,6 +1178,7 @@ public:
             std::thread(saveLambda).detach();
         });
         QObject::connect(buttons["saveSLURM"], &QPushButton::clicked, [&](){
+            if(theSim.base().isRunning) return;
             theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["saveSLURM"],"Save cluster script","","LWE Results (*.zip)").toStdString();
             stripLineBreaks(theSim.base().outputBasePath);
             if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
@@ -1186,6 +1189,7 @@ public:
         });
 
         QObject::connect(buttons["Load"], &QPushButton::clicked, [&](){
+            if(theSim.base().isRunning) return;
             std::string path = QFileDialog::getOpenFileName(buttons["Load"],"Load LWE result","","LWE Results (*.zip);;LWE Inputs (*.txt)").toStdString();
             std::thread([&](std::string path){
                 bool isZipFile = (path.length() >= 4 
