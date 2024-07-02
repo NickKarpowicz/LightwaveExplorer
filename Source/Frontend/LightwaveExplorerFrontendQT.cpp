@@ -405,6 +405,9 @@ public:
         insertAfterCharacter(formattedFit,';',std::string("\n"));
         fitting->setText(QString::fromStdString(formattedFit));
 
+        std::string formattedSequence = sim.base().sequenceString;
+        formatSequence(formattedSequence);
+        sequence->setText(QString::fromStdString(formattedSequence));
     }
     LWEGui(){
         const int textBoxWidth = 78;
@@ -1787,7 +1790,6 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
-        //theGui.requestPlotUpdate();
     }
 }
 
@@ -1956,5 +1958,57 @@ int insertAfterCharacter(std::string& s, char target, std::string appended){
     return 0;
 }
 
+int insertAfterCharacterExcept(
+    std::string& s, 
+    char target, 
+    std::string appended, 
+    std::string exclude){
+    bool match = false;
+    for(std::size_t i = 0; i < s.length()-1; ++i){
+        if(s[i] == target){
+            match = false;
+            for(int j = 0; j<exclude.length(); j++){
+                if(s[i+1] == exclude[j]){
+                    match = true;
+                }
+            }
+            if(match){
+                ++i;
+            }
+            else{
+                s.insert(i+1,appended);
+                i += appended.length();
+            }
+        }
+    }
+    return 0;
+}
+
+int indentForDepth(std::string& s){
+    int depth = 0;
+    std::string indent("   ");
+    for (std::size_t i = 0; i < s.length() - 1; ++i) {
+        if (s[i] == '{') ++depth;
+        if (s[i] == '}' && depth != 0) --depth;
+        if (s[i] == '\n' && s[i + 1] != '}') {
+            for (std::size_t j = 0; j < depth; j++) {
+                s.insert(i + 1, indent);
+                i += indent.length();
+            }
+        }
+    }
+    return 0;
+}
+
+int formatSequence(std::string& s){
+    if(s.size()==0) return 0;
+    insertAfterCharacter(s, '>', std::string("\n"));
+    insertAfterCharacterExcept(s, ')', std::string("\n"), std::string("{;"));
+    insertAfterCharacter(s, ';', std::string("\n"));
+    insertAfterCharacter(s, '{', std::string("\n"));
+    insertAfterCharacter(s, '}', std::string("\n"));
+    indentForDepth(s);
+    return 0;
+}
 
 #include "LightwaveExplorerFrontendQT.moc"
