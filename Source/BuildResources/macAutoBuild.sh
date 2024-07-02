@@ -23,10 +23,8 @@ rm -rf fftw-3.3.10
 
 git clone -b QT_interface --single-branch --depth 1 https://github.com/NickKarpowicz/LightwaveExplorer >& /dev/null
 git clone --depth 1 --branch v19.24.2 https://github.com/davisking/dlib >& /dev/null
-git clone https://github.com/microsoft/vcpkg >& /dev/null
-./vcpkg/bootstrap-vcpkg.sh >& /dev/null
-./vcpkg/vcpkg install gtk gcem fmt miniz
+
 
 cd LightwaveExplorer
-./Source/BuildResources/makeMacAppVcpkg.sh
+./Source/BuildResources/makeMacAppQt.sh
 cp -r build/LightwaveExplorer.app /Applications/
