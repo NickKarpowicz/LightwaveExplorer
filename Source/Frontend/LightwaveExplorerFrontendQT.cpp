@@ -48,19 +48,15 @@ public slots:
         std::unique_lock lock(m);
         emit sendText(QString::fromStdString(s));
     }
-
     void passDrawRequest(){
         emit requestUpdate();
     }
-
     void passSyncValues(){
         emit requestSyncValues();
     }
-
     void passSliderUpdate(){
         emit requestSliderUpdate();
     }
-
     void passSliderPosition(int value){
         emit moveSlider(value);
     }
@@ -220,15 +216,6 @@ public:
 
         sim.base().pulse1LoadedData = pulse1LoadedData;
         sim.base().pulse2LoadedData = pulse2LoadedData;
-
-        //theGui.filePaths[3].copyBuffer(sim.base().outputBasePath);
-        // sim.base().outputBasePath = theGui.currentPath;
-        // stripLineBreaks(sim.base().outputBasePath);
-        // if ((sim.base().outputBasePath.length() > 4 && sim.base().outputBasePath.substr(sim.base().outputBasePath.length() - 4) == ".txt")
-        //     || (sim.base().outputBasePath.length() > 4 && sim.base().outputBasePath.substr(sim.base().outputBasePath.length() - 4) == ".zip")) {
-        //     sim.base().outputBasePath = sim.base().outputBasePath.substr(0, sim.base().outputBasePath.length() - 4);
-        // }
-
         sim.base().fittingLoadedData = fittingLoadedData;
         
         //derived parameters and cleanup:
@@ -420,8 +407,8 @@ public:
 
     }
     LWEGui(){
-        const int textBoxWidth = 80;
-        const int labelWidth = 160;
+        const int textBoxWidth = 78;
+        const int labelWidth = 156;
         const int textBoxHeight = 26;
         const int rowHeight = textBoxHeight+2;
         const int rowWidth = labelWidth + 2*textBoxWidth + 10;
@@ -429,6 +416,7 @@ public:
         const int mainButtonWidth = rowWidth/4;
         const int mainButtonHeight = textBoxHeight;
         const int pulldownContainerWidth = labelWidth+4;
+        QFont emojiFont = getEmojiFont();
 
         //Divide the main window into a large expanding upper panel and a control strip at the bottom
         auto squeezeMargins = [&](QBoxLayout* layout){
@@ -597,9 +585,11 @@ public:
         loadPulseRow->addWidget(labels["sourceFile"]);
         buttons["LoadPulse1"] = new QPushButton("\xf0\x9f\x93\x82");
         buttons["LoadPulse1"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["LoadPulse1"]->setFont(emojiFont);
         loadPulseRow->addWidget(buttons["LoadPulse1"]);
         buttons["LoadPulse2"] = new QPushButton("\xf0\x9f\x93\x82");
         buttons["LoadPulse2"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["LoadPulse2"]->setFont(emojiFont);
         loadPulseRow->addWidget(buttons["LoadPulse2"]);
 
         QHBoxLayout* slurmRow = getRowBoxLayout(entryColumn1Layout);
@@ -619,6 +609,7 @@ public:
         
         buttons["saveSLURM"] = new QPushButton("\xf0\x9f\x92\xbe");
         buttons["saveSLURM"]->setFixedSize(miniButtonWidth,mainButtonHeight);
+        buttons["saveSLURM"]->setFont(emojiFont);
         slurmRow->addWidget(buttons["saveSLURM"]);
 
         //Second column
@@ -629,6 +620,7 @@ public:
         materialRow->addWidget(labels["material"]);
         buttons["loadMaterial"] = new QPushButton("\xf0\x9f\x93\x82");
         buttons["loadMaterial"]->setFixedWidth(miniButtonWidth);
+        buttons["loadMaterial"]->setFont(emojiFont);
         materialRow->addWidget(buttons["loadMaterial"]);
         addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,materialRow,"material");
         populateDatabasePulldown();
@@ -726,6 +718,7 @@ public:
         loadRow->addWidget(buttons["Run"]);
         buttons["Save"] = new QPushButton("\xf0\x9f\x92\xbe");
         buttons["Save"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["Save"]->setFont(emojiFont);
         loadRow->addWidget(buttons["Save"]);
 
         QHBoxLayout* fitRow = getRowBoxLayout(entryColumn2Layout);
@@ -737,6 +730,7 @@ public:
         pulldowns["fit"]->addItem(("Fit spectrum (log)"));
         buttons["LoadFitting"] = new QPushButton("\xf0\x9f\x93\x82");
         buttons["LoadFitting"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["LoadFitting"]->setFont(emojiFont);
         fitRow->addWidget(buttons["LoadFitting"]);
         buttons["Fit"] = new QPushButton("Fit");
         buttons["Fit"]->setFixedSize(mainButtonWidth,mainButtonHeight);
@@ -755,6 +749,7 @@ public:
         console->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         console->setFixedSize(rowWidth,3*rowHeight-1);
         console->setTabChangesFocus(true);
+        console->setFocusPolicy(Qt::NoFocus);
         entryColumn2Layout->addWidget(console);
 
         //Divide the sequence box into a row of buttons and the text box
@@ -774,6 +769,7 @@ public:
             buttons[entry] = new QPushButton(icon);
             buttons[entry]->setFixedWidth(miniButtonWidth);
             buttons[entry]->setToolTip(tooltip);
+            buttons[entry]->setFont(emojiFont);
             sequenceButtonBoxLayout->addWidget(buttons[entry]);
             QObject::connect(buttons[entry], &QPushButton::clicked, action);
         };
@@ -956,7 +952,6 @@ public:
         pulldowns["primaryHardware"]->addItem("OpenMP");
         pulldowns["secondaryHardware"]->addItem("OpenMP");
 #endif
-
         messengerThread = new QThread;
         messenger = new GuiMessenger;
         messenger->moveToThread(messengerThread);
@@ -1211,8 +1206,6 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 #endif
     return s;
 }
-
-
 
 void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloadRun) {
 
@@ -1834,7 +1827,6 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
-        //theGui.requestPlotUpdate();
     }
 }
 
@@ -1875,7 +1867,6 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         cairo_rectangle(cr, 0, 0, width, height);
         black.setCairo(cr);
         cairo_fill(cr);
-        //theGui.requestPlotUpdate();
     }
 }
 
