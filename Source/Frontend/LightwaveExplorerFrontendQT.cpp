@@ -449,31 +449,50 @@ public:
         mainAreaLayout->addWidget(plotRegion);
 
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
-        plotRegionLayout->setContentsMargins(1,1,1,1);
+        plotRegionLayout->setContentsMargins(0,0,0,0);
         plots["TimeImage1"] = new CairoWidget(*this, drawTimeImage1);
         plots["TimeImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["TimeImage1"]->setToolTip(
+            "Image of the electric field grid: presents a slice of Ex(x,y=0,t),\n"
+            "there the horizontal axis is time, and the vertical axis is position");
         plotRegionLayout->addWidget(plots["TimeImage1"],0,0);
         plots["TimeImage2"] = new CairoWidget(*this, drawTimeImage2);
         plots["TimeImage2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["TimeImage2"]->setToolTip("Image of the electric field grid: presents a slice of Ey(x,y=0,t),\n"
+            "there the horizontal axis is time, and the vertical axis is position");
         plotRegionLayout->addWidget(plots["TimeImage2"],1,0);
         plots["FreqImage1"] = new CairoWidget(*this, drawFourierImage1);
         plots["FreqImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["FreqImage1"]->setToolTip("Plot of the electric field grid in momentum-frequency space: Ex(kx,ky=0,f).\n"
+            "Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx,\n"
+            "and horizontal axis is frequency f.");
         plotRegionLayout->addWidget(plots["FreqImage1"],0,1);
         plots["FreqImage2"] = new CairoWidget(*this, drawFourierImage2);
         plots["FreqImage2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["FreqImage2"],1,1);
+        plots["FreqImage2"]->setToolTip("Plot of the electric field grid in momentum-frequency space:\n"
+            "Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum\n"
+            "kx, and horizontal axis is frequency f.");
 
         plots["TimePlot1"] = new CairoWidget(*this, drawField1Plot);
         plots["TimePlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["TimePlot1"]->setToolTip(
+            "Plot of the on-axis electric field in the x-polarization");
         plotRegionLayout->addWidget(plots["TimePlot1"],2,0);
+
         plots["TimePlot2"] = new CairoWidget(*this, drawField2Plot);
         plots["TimePlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["TimePlot2"]->setToolTip(
+            "Plot of the on-axis electric field in the y-polarization");
         plotRegionLayout->addWidget(plots["TimePlot2"],3,0);
         plots["FreqPlot1"] = new CairoWidget(*this, drawSpectrum1Plot);
         plots["FreqPlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["FreqPlot1"]->setToolTip("Plot of the energy spectrum of the result, x-polarization.");
         plotRegionLayout->addWidget(plots["FreqPlot1"],2,1);
         plots["FreqPlot2"] = new CairoWidget(*this, drawSpectrum2Plot);
         plots["FreqPlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["FreqPlot2"]->setToolTip(
+            "Plot of the energy spectrum of the result, y-polarization.");
         plotRegionLayout->addWidget(plots["FreqPlot2"],3,1);
 
         //Divide the input area into the input grid and the sequence box
@@ -522,11 +541,16 @@ public:
             const QString& label,
             const std::string& entry1, 
             const std::string& entry2,  
-            QVBoxLayout* location){
+            QVBoxLayout* location,
+            const QString& tooltip){
                 QHBoxLayout* rowLayout = getRowBoxLayout(location);
                 labels[entry1] = new QLabel;
+                labels[entry1]->setToolTip(tooltip);
                 textBoxes[entry1] = new QLineEdit;
                 textBoxes[entry2] = new QLineEdit;
+                textBoxes[entry1]->setToolTip(tooltip);
+                textBoxes[entry2]->setToolTip(tooltip);
+                labels[entry1]->setToolTip(tooltip);
                 labels[entry1]->setText(label);
                 labels[entry1]->setFixedSize(labelWidth,textBoxHeight);
                 textBoxes[entry1]->setFixedSize(textBoxWidth,textBoxHeight);
@@ -548,22 +572,48 @@ public:
 
 
         //First column
-        addTextBoxRow("Pulse energy (J)", "Energy1", "Energy2", entryColumn1Layout);
-        addTextBoxRow("Frequency (THz)", "Frequency1", "Frequency2", entryColumn1Layout);
-        addTextBoxRow("Bandwidth (THz)", "Bandwidth1", "Bandwidth2", entryColumn1Layout);
-        addTextBoxRow("SG order", "SGOrder1", "SGOrder2", entryColumn1Layout);
-        addTextBoxRow("CEP/\xcf\x80", "CEP1", "CEP2", entryColumn1Layout);
-        addTextBoxRow("Delay (fs)", "Delay1", "Delay2", entryColumn1Layout);
-        addTextBoxRow("GDD (fs\xc2\xb2)", "GDD1", "GDD2", entryColumn1Layout);
-        addTextBoxRow("TOD (fs\xc2\xb3)", "TOD1", "TOD2", entryColumn1Layout);
-        addTextBoxRow("Phase material", "Material1", "Material2", entryColumn1Layout);
-        addTextBoxRow("Thickness (\xce\xbcm)", "Thickness1", "Thickness2", entryColumn1Layout);
-        addTextBoxRow("Bewamwaist (\xce\xbcm)", "Beamwaist1", "Beamwaist2", entryColumn1Layout);
-        addTextBoxRow("x offset (\xce\xbcm)", "xOffset1", "xOffset2", entryColumn1Layout);
-        addTextBoxRow("z offset (\xce\xbcm)", "zOffset1", "zOffset2", entryColumn1Layout);
-        addTextBoxRow("NC angle (deg)", "NCAngle1", "NCAngle2", entryColumn1Layout);
-        addTextBoxRow("Polarization (deg)", "Polarization1", "Polarization2", entryColumn1Layout);
-        addTextBoxRow("Circularity", "Circularity1", "Circularity2", entryColumn1Layout);
+        addTextBoxRow("Pulse energy (J)", "Energy1", "Energy2", entryColumn1Layout,
+        "The energy contained in the pulses. \nNote that there are two columns, the first controls the primary pulse.\n"
+        " For 2D modes, the intensity will be set as it would be\nfor a round Gaussian beam with that size");
+        addTextBoxRow("Frequency (THz)", "Frequency1", "Frequency2", entryColumn1Layout,
+        "The central frequency of the pulse. Note that the simulation in the UPPE\n"
+        "modes uses a moving frame centered around the group velocity of the\n"
+        "pulse in the first column.");
+        addTextBoxRow("Bandwidth (THz)", "Bandwidth1", "Bandwidth2", entryColumn1Layout,
+        "The bandwidth of the pulses.");
+        addTextBoxRow("SG order", "SGOrder1", "SGOrder2", entryColumn1Layout,
+        "The order of the super-Gaussian spectrum. 2 implies a standard Gaussian, and the spectrum\n"
+        " will be increasingly flattop as the order increases. Higher order will lead to\n"
+        "additional structure outside of the main pulse in the time domain.");
+        addTextBoxRow("CEP/\xcf\x80", "CEP1", "CEP2", entryColumn1Layout,
+        "The carrier-envelope phase of the pulse, in units of pi radians.\n"
+        "Setting this to 1 will flip the field upside-down.");
+        addTextBoxRow("Delay (fs)", "Delay1", "Delay2", entryColumn1Layout,
+        "Temporal delay of the pulses.");
+        addTextBoxRow("GDD (fs\xc2\xb2)", "GDD1", "GDD2", entryColumn1Layout,
+        "Group-delay dispersion of the pulses, i.e. linear chirp.");
+        addTextBoxRow("TOD (fs\xc2\xb3)", "TOD1", "TOD2", entryColumn1Layout,
+        "Third-order dispersion of the pulses.");
+        addTextBoxRow("Phase material", "Material1", "Material2", entryColumn1Layout, 
+        "Select a material number - the numbers come from the Material pulldown menu -\n"
+        "to apply to the pulse before it enters the simulation. For example, you can\n"
+        "add a given amount of fused silica transmission to the pulse to simulate\n"
+        " the effect of scanning a wedge pair in the beam.");
+        addTextBoxRow("Thickness (\xce\xbcm)", "Thickness1", "Thickness2", entryColumn1Layout,
+        "This sets the thickness of the linear propagation through the material selected above.");
+        addTextBoxRow("Bewamwaist (\xce\xbcm)", "Beamwaist1", "Beamwaist2", entryColumn1Layout,
+        "Gaussian beamwaist of the input beam in space. In terms of intensity, this is the 1/e^2 radius");
+        addTextBoxRow("x offset (\xce\xbcm)", "xOffset1", "xOffset2", entryColumn1Layout,
+        "Offset of the beam in the x-direction (up and down on the screen, transverse to propagation).\n"
+        "In 3D radial symmetry mode, this does nothing.");
+        addTextBoxRow("z offset (\xce\xbcm)", "zOffset1", "zOffset2", entryColumn1Layout,
+        "Offset of the beam in the z-direction (the direction of propagation).");
+        addTextBoxRow("NC angle (deg)", "NCAngle1", "NCAngle2", entryColumn1Layout,
+        "Angle of the beam with respect to the z-axis (in the x-z plane), i.e. the noncollinear angle.");
+        addTextBoxRow("Polarization (deg)", "Polarization1", "Polarization2", entryColumn1Layout,
+        "Polarization angle of the beam. With 0: field points along x-axis, 90: along y-axis.");
+        addTextBoxRow("Circularity", "Circularity1", "Circularity2", entryColumn1Layout,
+        "Degree of circularity of the beam. 0: Linear polarization, 1: circular (can be any value in between).");
 
         QHBoxLayout* pulseTypeRow = getRowBoxLayout(entryColumn1Layout);
         labels["source"] = new QLabel;
@@ -575,12 +625,19 @@ public:
         pulldowns["pulse1type"]->addItem("FROG");
         pulldowns["pulse1type"]->addItem("Wave");
         pulldowns["pulse1type"]->addItem("LWE");
+        pulldowns["pulse1type"]->setToolTip(
+            "Determine whether the pulse is defined by the values set above\n"
+            "or using an input file, either:\n"
+            "a FROG .speck file\n"
+            "a waveform in ASCII format (time|normalized amplitude)\n"
+            "A previous LWE result field (a .bin from a result archive)\n");
         addPulldownInContainer(textBoxWidth,mainButtonHeight,pulseTypeRow,"pulse2type");
         pulldowns["pulse2type"]->addItem("Synthetic");
         pulldowns["pulse2type"]->addItem("FROG");
         pulldowns["pulse2type"]->addItem("Wave");
         pulldowns["pulse2type"]->addItem("LWE");
-
+        pulldowns["pulse2type"]->setToolTip(pulldowns["pulse1type"]->toolTip());
+        labels["source"]->setToolTip(pulldowns["pulse1type"]->toolTip());
         QHBoxLayout* loadPulseRow = getRowBoxLayout(entryColumn1Layout);
         labels["sourceFile"] = new QLabel;
         labels["sourceFile"]->setText("Source file");
@@ -594,7 +651,10 @@ public:
         buttons["LoadPulse2"]->setFixedSize(mainButtonWidth,mainButtonHeight);
         buttons["LoadPulse2"]->setFont(emojiFont);
         loadPulseRow->addWidget(buttons["LoadPulse2"]);
-
+        buttons["LoadPulse1"]->setToolTip(
+            "Load the file for describing the electric field, if not using\n"
+            "a synthetic pulse.");
+        buttons["LoadPulse2"]->setToolTip(buttons["LoadPulse1"]->toolTip());
         QHBoxLayout* slurmRow = getRowBoxLayout(entryColumn1Layout);
         labels["slurm"] = new QLabel;
         labels["slurm"]->setText("SLURM script");
@@ -614,7 +674,11 @@ public:
         buttons["saveSLURM"]->setFixedSize(miniButtonWidth,mainButtonHeight);
         buttons["saveSLURM"]->setFont(emojiFont);
         slurmRow->addWidget(buttons["saveSLURM"]);
-
+        pulldowns["slurm"]->setToolTip("Generate a SLURM script package\n"
+        "which can be run on a GPU cluster, such as the ones\n"
+        "managed by the Max Planck Society.");
+        labels["slurm"]->setToolTip(pulldowns["slurm"]->toolTip());
+        buttons["saveSLURM"]->setToolTip(pulldowns["slurm"]->toolTip());
         //Second column
         QHBoxLayout* materialRow = getRowBoxLayout(entryColumn2Layout);
         labels["material"] = new QLabel;
@@ -627,14 +691,38 @@ public:
         materialRow->addWidget(buttons["loadMaterial"]);
         addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,materialRow,"material");
         populateDatabasePulldown();
-
+        pulldowns["material"]->setToolTip(
+            "Select the material to used in propagation. If the name is\n"
+            "followed by an L, it means the 7-Lorentzian formula was used, so\n"
+            "FDTD propagation is possible. If it is followed by G, it uses Gaussian bands\n"
+            "for absorption, with Dawson function shapes of the refractive index.");
+        labels["material"]->setToolTip(pulldowns["material"]->toolTip());
+        buttons["loadMaterial"]->setToolTip("Load a custom crystal database");
         
-        addTextBoxRow("Theta, phi (deg)", "CrystalTheta", "CrystalPhi", entryColumn2Layout);
-        addTextBoxRow("NL absorption", "NLAbsorption", "CrystalBandgap", entryColumn2Layout);
-        addTextBoxRow("Drude: gamma, m", "DrudeGamma", "effectiveMass", entryColumn2Layout);
-        addTextBoxRow("Max x, dx (\xce\xbcm)", "XSize", "dx", entryColumn2Layout);
-        addTextBoxRow("Time span, dt (fs)", "timeSpan", "dt", entryColumn2Layout);
-        addTextBoxRow("Max z, dz (\xce\xbcm, nm)", "ZSize", "dz", entryColumn2Layout);
+        addTextBoxRow("Theta, phi (deg)", "CrystalTheta", "CrystalPhi", entryColumn2Layout, 
+        "These angles define the orientation of the nonlinear crystal.");
+        addTextBoxRow("NL absorption", "NLAbsorption", "CrystalBandgap", entryColumn2Layout,
+        "The first parameter is the nonlinear absorption strength inside of the crystal.\n"
+        "If it's 0, then there will be no nonlinear absorption or plasma generation. Typical\n"
+        "values range from 10^19 to 10^18. The second parameter is the bandgap of the crystal\n"
+        " in eV. This, plus the frequency of the first pulse, determines the order of multiphoton\n"
+        "absorption.");
+        addTextBoxRow("Drude: gamma, m", "DrudeGamma", "effectiveMass", entryColumn2Layout,
+        "The first parameter is the Drude model momentum relaxation rate, gamma, in units of\n"
+        "THz. The second is the reduced effective mass, relative to the electron mass, i.e.\n"
+        "a free electron in vacuum would have a value of 1.");
+        addTextBoxRow("Max x, dx (\xce\xbcm)", "XSize", "dx", entryColumn2Layout,
+        "This gives the parameters of the spatial grid in the direction transverse to beam\n"
+        "propagation. The first parameter gives the size of the grid, and the second is the\n"
+        "size of each pixel.");
+        addTextBoxRow("Time span, dt (fs)", "timeSpan", "dt", entryColumn2Layout,
+        "These parameters define the temporal grid.");
+        addTextBoxRow("Max z, dz (\xce\xbcm, nm)", "ZSize", "dz", entryColumn2Layout,
+        "These parameters define the discretization in the z-direction. This has a different\n"
+        "meaning in UPPE and FDTD modes. In UPPE, the pulse propagates forward in space along the\n"
+        "z-axis - this defines how far to go, and with which propagation step size. In FDTD,\n"
+        "the propagation takes place on a spatial grid, and advances in time. Max z there gives\n"
+        "the crystal thickness, and dz defines how fine the grid mesh is in the z-direction.");
 
         QHBoxLayout* propagationRow = getRowBoxLayout(entryColumn2Layout);
         labels["propagator"] = new QLabel;
@@ -643,10 +731,14 @@ public:
         propagationRow->addWidget(labels["propagator"]);
         addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,propagationRow,"propagator");
         pulldowns["propagator"]->addItem(("2D Cartesian"));
-        pulldowns["propagator"]->addItem(("3D radial symmmetry"));
+        pulldowns["propagator"]->addItem(("3D radial symmetry"));
         pulldowns["propagator"]->addItem(("3D"));
         pulldowns["propagator"]->addItem(("FDTD 2D"));
         pulldowns["propagator"]->addItem(("FDTD 3D"));
+        pulldowns["propagator"]->setToolTip("Choose the propagation mode.\n"
+        "The first three use the UPPE, while the last two use FDTD in cartesian\n"
+        "coordinates.");
+        labels["propagator"]->setToolTip(pulldowns["propagator"]->toolTip());
 
         QHBoxLayout* batch1Row = getRowBoxLayout(entryColumn2Layout);
         labels["batch1"] = new QLabel;
@@ -705,23 +797,47 @@ public:
             pulldowns["batch1"]->addItem(batchModeNames[i]);
             pulldowns["batch2"]->addItem(batchModeNames[i]);
         }
+        pulldowns["batch1"]->setToolTip(
+        "The batch mode allows you to perform a series of simulations\n"
+        "with different values of a given parameter.\n"
+        "You can do two batches at once, creating a 2D dataset of all combinations.");
+        pulldowns["batch1"]->setToolTip(pulldowns["batch1"]->toolTip());
+        labels["batch1"]->setToolTip(pulldowns["batch1"]->toolTip());
+        labels["batch2"]->setToolTip(pulldowns["batch1"]->toolTip());
 
-        addTextBoxRow("Batch end", "batch1end", "batch2end", entryColumn2Layout);
-        addTextBoxRow("Batch steps", "batch1steps", "batch2steps", entryColumn2Layout);
+        addTextBoxRow("Batch end", "batch1end", "batch2end", entryColumn2Layout,
+        "These parameters define the targets of a batch calculation. For example, if\n"
+        "The pulse has a frequency of 200 THz, and 300 is entered in this box, and\n"
+        "'03: frequency 1' is selected from the Batch mode pulldown, the frequency will be\n"
+        "scanned from 200 to 300 THz.");
+        addTextBoxRow("Batch steps", "batch1steps", "batch2steps", entryColumn2Layout,
+        "These give the number of steps to be done in the batch scan. For example, if\n"
+        "frequency is scanned from 200 to 300 THz, a value of 11 will perform simulations at:\n"
+        "200, 210, 220, ..., 290, 300.");
         
         QHBoxLayout* loadRow = getRowBoxLayout(entryColumn2Layout);
         buttons["Load"] = new QPushButton("Load");
         buttons["Load"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["Load"]->setToolTip("Load the results of a previous simulation run.\n"
+            "You should select the associated .zip file. The parameters will be\n"
+            "loaded into the interface, and the data will be plotted.");
         loadRow->addWidget(buttons["Load"]);
         buttons["Stop"] = new QPushButton("Stop");
         buttons["Stop"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["Stop"]->setToolTip("Tell a currently-running simulation to stop.\n"
+            "It might not stop right away; it will only happen once it reaches a break point");
         loadRow->addWidget(buttons["Stop"]);
         buttons["Run"] = new QPushButton("Run");
         buttons["Run"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["Run"]->setToolTip("Run the simulation as currently entered on the\n"
+            "interface. If a sequence is entered in the sequence box below,\n"
+            "that will execute, otherwise, a simulation on the input parameters\n"
+            "above and to the left in a single medium will be performed.");
         loadRow->addWidget(buttons["Run"]);
         buttons["Save"] = new QPushButton("\xf0\x9f\x92\xbe");
         buttons["Save"]->setFixedSize(mainButtonWidth,mainButtonHeight);
         buttons["Save"]->setFont(emojiFont);
+        buttons["Save"]->setToolTip("Save the simulation results.");
         loadRow->addWidget(buttons["Save"]);
 
         QHBoxLayout* fitRow = getRowBoxLayout(entryColumn2Layout);
@@ -731,18 +847,40 @@ public:
         pulldowns["fit"]->addItem(("Maximize Total"));
         pulldowns["fit"]->addItem(("Fit spectrum"));
         pulldowns["fit"]->addItem(("Fit spectrum (log)"));
+        pulldowns["fit"]->setToolTip(
+            "Select the fitting mode. They will either maximize the power in a certain band\n"
+            "and polarization, or match the spectrum to an input file, with weights determined\n"
+            "either linearly or logarithmically");
         buttons["LoadFitting"] = new QPushButton("\xf0\x9f\x93\x82");
         buttons["LoadFitting"]->setFixedSize(mainButtonWidth,mainButtonHeight);
         buttons["LoadFitting"]->setFont(emojiFont);
+        buttons["LoadFitting"]->setToolTip("Load a reference spectrum to fit against");
         fitRow->addWidget(buttons["LoadFitting"]);
         buttons["Fit"] = new QPushButton("Fit");
         buttons["Fit"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["Fit"]->setToolTip("Run the fitting routine");
         fitRow->addWidget(buttons["Fit"]);
 
         fitting = new QTextEdit;
         fitting->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         fitting->setFixedSize(rowWidth,2*rowHeight);
         fitting->setTabChangesFocus(true);
+        fitting->setToolTip("Here you can enter the commands for the fitting routine.\n"
+        "They take the form of a sequence of numbers, in groups of three separated by semicolons\n"
+        "The first three numbers are:\n"
+        "- start frequency of the range of interest\n"
+        "- stop frequency of the ROI\n"
+        "- number of iterations to perform\n"
+        "The next set gives the parameter to optimize and the range to search:\n"
+        "- parameter index (see the batch mode pull downs for the numbers)\n"
+        "- minimum value (same units as the GUI uses)\n"
+        "- maximum value\n"
+        "Example:\n"
+        "720e12 780e12 300;\n"
+        "29 0 90\n"
+        "This will optimize the power in the band from 720-780 THz\n"
+        "by changing the phase matching angle theta, in a range from\n"
+        "0 to 90 degrees, over 300 iterations.");
         entryColumn2Layout->addWidget(fitting);
 
         QSpacerItem* consoleSpacer = new QSpacerItem(rowWidth,1);
@@ -869,7 +1007,8 @@ public:
         sequence->setFixedWidth(2*rowWidth);
         sequence->setTabChangesFocus(true);
         sequenceBoxLayout->addWidget(sequence);
-        
+        sequence->setToolTip("Here you can enter a sequence of events to take place during the simulation\n"
+        "The buttons above will enter the commands for a few common things; there are more in the docs.");
         //Put the control strip below the sequence
         QHBoxLayout* simulationControlStripLayout = new QHBoxLayout(simulationControlStrip);
         squeezeMargins(simulationControlStripLayout);
@@ -877,11 +1016,17 @@ public:
         simulationControlStripLayout->addWidget(progress);
 
         checkboxes["FP64"] = new QCheckBox("FP64");
+        checkboxes["FP64"]->setToolTip("Determine whether the simulation is run using 32-bit (unchecked)\n"
+        "or 64-bit floating point numbers. Checked will be slower but have better precision.");
         simulationControlStripLayout->addWidget(checkboxes["FP64"]);
         addPulldownInContainer(textBoxWidth,mainButtonHeight,simulationControlStripLayout,"primaryHardware");
         addPulldownInContainer(textBoxWidth,mainButtonHeight,simulationControlStripLayout,"secondaryHardware");
+        pulldowns["primaryHardware"]->setToolTip("Determine on which hardware/propagation code to run the simulation");
+        pulldowns["secondaryHardware"]->setToolTip("Pick a second piece of hardware/propagator to offload a number\n"
+        "of simulations in a batch to. For example, if the simulation is running on your GPU, you can give the CPU some work, too");
         textBoxes["offload"] = new QLineEdit;
         textBoxes["offload"]->setFixedSize(textBoxWidth/2,textBoxHeight);
+        textBoxes["offload"]->setToolTip("Number of simulations to offload to the second selected hardware.");
         simulationControlStripLayout->addWidget(textBoxes["offload"]);
 
         QHBoxLayout* plotControlStripLayout = new QHBoxLayout(plotControlStrip);
@@ -893,6 +1038,7 @@ public:
         plotControlStripLayout->addWidget(slider);
         buttons["SVG"] = new QPushButton("SVG");
         buttons["SVG"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        buttons["SVG"]->setToolTip("Save a .svg file of the plots.");
         plotControlStripLayout->addWidget(buttons["SVG"]);
         buttons["xlim"] = new QPushButton("xlim");
         buttons["xlim"]->setFixedSize(miniButtonWidth, textBoxHeight);
