@@ -610,7 +610,6 @@ if(APPLE)
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
     include_directories(${CMAKE_SOURCE_DIR}/../fftw/usr/local/include)
-    find_package(OpenMP)
     link_directories(${CAIRO_LIBRARY_DIRS})
 
     if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/dlib)
@@ -633,7 +632,7 @@ if(APPLE)
     endif()
     add_library(miniz miniz/miniz.c)
 
-    add_compile_options(-std=c++20 -O3 -DCPUONLY -DNOSYCL -Wall -x objective-c++)
+    add_compile_options(-std=c++20 -O3 -DCPUONLY -DNOSYCL -DNDEBUG -Wall -x objective-c++)
     add_executable(LightwaveExplorer MACOSX_BUNDLE 
         Source/Frontend/LightwaveExplorerFrontendQT.cpp 
         Source/LightwaveExplorerUtilities.cpp 
@@ -658,5 +657,4 @@ if(APPLE)
     target_link_libraries(LightwaveExplorer ${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib/libfftw3f.a)
     target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
     target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
-    target_link_libraries(LightwaveExplorer "-framework Cocoa")
 endif()
