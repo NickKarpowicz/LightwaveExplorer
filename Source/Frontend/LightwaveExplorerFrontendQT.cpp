@@ -425,7 +425,7 @@ public:
         const int textBoxWidth = 78;
         const int textBoxHeight = 26;
         const int miniButtonWidth = 30;
-        const int mainButtonHeight = textBoxHeight+6;
+        const int mainButtonHeight = textBoxHeight;
 #else
 
 #endif
