@@ -2345,10 +2345,6 @@ namespace kernelNamespace{
 				beamTotal2 += deviceFPLib::abs(x - beamCenter2) 
 					* modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
 			}
-			beamTotal1 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) 
-				* (*s).dx * (*s).dt * (*s).dt;
-			beamTotal2 *= constProd(vPi<deviceFP>(), 2.0, lightC<deviceFP>(), eps0<deviceFP>()) 
-				* (*s).dx * (*s).dt * (*s).dt;
 
 			//put the values into the output spectrum
 			(*s).gridPolarizationTime1[i] = beamTotal1;
@@ -4326,12 +4322,20 @@ namespace hostFunctions{
 
 		//apply normalization to result of 3D calculation for numerical precision (value may not be
 		//represtentable as a float)
-		if ((*sCPU).is3D && (*sCPU).runType != runTypes::counter) {
+		if ((*sCPU).runType != runTypes::counter) {
+			double volumeElement = constProd(lightC<double>(), 2 * eps0<double>())
+					* (*sCPU).rStep * (*sCPU).tStep * (*sCPU).tStep;
+			if((*sCPU).is3D){
+				volumeElement *= (*sCPU).rStep;
+			} 
+			else{
+				volumeElement *= vPi<double>();
+			}
 			for (int64_t i = 0; i < 3 * (*sCPU).Nfreq; i++) {
-				(*sCPU).totalSpectrum[i] *= constProd(lightC<double>(), 2 * eps0<double>())
-					* (*sCPU).rStep * (*sCPU).rStep * (*sCPU).tStep * (*sCPU).tStep;
+				(*sCPU).totalSpectrum[i] *= volumeElement;
 			}
 		}
+
 		return 0;
 	}
 
