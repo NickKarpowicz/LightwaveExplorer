@@ -77,7 +77,7 @@ signals:
     void sendProgressValue(int value);
 };
 
-class LWEGui : public QObject {
+class LWEGui : public QMainWindow {
     Q_OBJECT
     bool isInputRegionHidden=false;
     QThread* messengerThread;
@@ -410,18 +410,22 @@ public:
         sequence->setText(QString::fromStdString(formattedSequence));
     }
     LWEGui(){
+        setWindowTitle("Lightwave Explorer");
 #if defined(Q_OS_WIN)
         const int textBoxWidth = 78;
         const int textBoxHeight = 26;
         const int miniButtonWidth = 30;
+        const int mainButtonHeight = textBoxHeight;
 #elif defined(Q_OS_MAC)
         const int textBoxWidth = 80;
-        const int textBoxHeight = 32;
-        const int miniButtonWidth = 36;
+        const int textBoxHeight = 26;
+        const int miniButtonWidth = 30;
+        const int mainButtonHeight = textBoxHeight+6;
 #elif defined(Q_OS_LINUX)
         const int textBoxWidth = 78;
         const int textBoxHeight = 26;
         const int miniButtonWidth = 30;
+        const int mainButtonHeight = textBoxHeight+6;
 #else
 
 #endif
@@ -429,14 +433,14 @@ public:
         const int rowHeight = textBoxHeight+2;
         const int rowWidth = labelWidth + 2*textBoxWidth + 10;
         const int mainButtonWidth = rowWidth/4;
-        const int mainButtonHeight = textBoxHeight;
+        
         const int pulldownContainerWidth = labelWidth+4;
         QFont emojiFont = getEmojiFont();
 
         //Divide the main window into a large expanding upper panel and a control strip at the bottom
         auto squeezeMargins = [&](QBoxLayout* layout){
             layout->setSpacing(0);
-            layout->setContentsMargins(1,1,1,1);
+            layout->setContentsMargins(0,0,0,0);
         };
         QWidget *windowBody = new QWidget;
         windowBody->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -539,7 +543,7 @@ public:
         controlStripsLayout->addWidget(simulationControlStrip);
         controlStripsLayout->addWidget(plotControlStrip);
         simulationControlStrip->setFixedSize(2*rowWidth,rowHeight);
-
+        plotControlStrip->setFixedHeight(rowHeight);
         auto getRowBoxLayout = [&](QBoxLayout* location){
             QWidget *rowBox = new QWidget;
             rowBox->setFixedSize(rowWidth,rowHeight);
@@ -572,12 +576,13 @@ public:
                 rowLayout->addWidget(textBoxes[entry2]); 
         };
 
-        auto addPulldownInContainer = [&](int width, int height, QBoxLayout* location, const std::string& entry){
+        auto addPulldownInContainer = [&](int width, QBoxLayout* location, const std::string& entry){
             QWidget* container = new QWidget;
             QHBoxLayout* fitContainerLayout = new QHBoxLayout(container);
+            container->setFixedSize(width,textBoxHeight);
             fitContainerLayout->setContentsMargins(0,0,0,0);
             pulldowns[entry] = new QComboBox;
-            container->setFixedSize(width,height);
+            pulldowns[entry]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             location->addWidget(container);
             fitContainerLayout->addWidget(pulldowns[entry]);
         };
@@ -632,7 +637,7 @@ public:
         labels["source"]->setText("Source");
         labels["source"]->setFixedWidth(labelWidth);
         pulseTypeRow->addWidget(labels["source"]);
-        addPulldownInContainer(textBoxWidth,mainButtonHeight,pulseTypeRow,"pulse1type");
+        addPulldownInContainer(textBoxWidth,pulseTypeRow,"pulse1type");
         pulldowns["pulse1type"]->addItem("Synthetic");
         pulldowns["pulse1type"]->addItem("FROG");
         pulldowns["pulse1type"]->addItem("Wave");
@@ -643,7 +648,7 @@ public:
             "a FROG .speck file\n"
             "a waveform in ASCII format (time|normalized amplitude)\n"
             "A previous LWE result field (a .bin from a result archive)\n");
-        addPulldownInContainer(textBoxWidth,mainButtonHeight,pulseTypeRow,"pulse2type");
+        addPulldownInContainer(textBoxWidth,pulseTypeRow,"pulse2type");
         pulldowns["pulse2type"]->addItem("Synthetic");
         pulldowns["pulse2type"]->addItem("FROG");
         pulldowns["pulse2type"]->addItem("Wave");
@@ -672,7 +677,7 @@ public:
         labels["slurm"]->setText("SLURM script");
         labels["slurm"]->setFixedWidth(labelWidth);
         slurmRow->addWidget(labels["slurm"]);
-        addPulldownInContainer(pulldownContainerWidth-miniButtonWidth,mainButtonHeight,slurmRow,"slurm");
+        addPulldownInContainer(pulldownContainerWidth-miniButtonWidth,slurmRow,"slurm");
         pulldowns["slurm"]->addItem("Cobra 1xR5k");
         pulldowns["slurm"]->addItem("Cobra 2xR5k");
         pulldowns["slurm"]->addItem("Cobra 1xV100");
@@ -701,7 +706,7 @@ public:
         buttons["loadMaterial"]->setFixedSize(miniButtonWidth,mainButtonHeight);
         buttons["loadMaterial"]->setFont(emojiFont);
         materialRow->addWidget(buttons["loadMaterial"]);
-        addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,materialRow,"material");
+        addPulldownInContainer(pulldownContainerWidth,materialRow,"material");
         populateDatabasePulldown();
         pulldowns["material"]->setToolTip(
             "Select the material to used in propagation. If the name is\n"
@@ -741,7 +746,7 @@ public:
         labels["propagator"]->setText("Propagation");
         labels["propagator"]->setFixedWidth(labelWidth);
         propagationRow->addWidget(labels["propagator"]);
-        addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,propagationRow,"propagator");
+        addPulldownInContainer(pulldownContainerWidth,propagationRow,"propagator");
         pulldowns["propagator"]->addItem(("2D Cartesian"));
         pulldowns["propagator"]->addItem(("3D radial symmetry"));
         pulldowns["propagator"]->addItem(("3D"));
@@ -757,14 +762,14 @@ public:
         labels["batch1"]->setText("Batch mode");
         labels["batch1"]->setFixedWidth(labelWidth);
         batch1Row->addWidget(labels["batch1"]);
-        addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,batch1Row,"batch1");
+        addPulldownInContainer(pulldownContainerWidth,batch1Row,"batch1");
 
         QHBoxLayout* batch2Row = getRowBoxLayout(entryColumn2Layout);
         labels["batch2"] = new QLabel;
         labels["batch2"]->setText("Batch 2 mode");
         labels["batch2"]->setFixedWidth(labelWidth);
         batch2Row->addWidget(labels["batch2"]);
-        addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,batch2Row,"batch2");
+        addPulldownInContainer(pulldownContainerWidth,batch2Row,"batch2");
         char batchModeNames[38][64] = {
             "none",
             "01: Energy 1",
@@ -853,7 +858,7 @@ public:
         loadRow->addWidget(buttons["save"]);
 
         QHBoxLayout* fitRow = getRowBoxLayout(entryColumn2Layout);
-        addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,fitRow,"fit");
+        addPulldownInContainer(pulldownContainerWidth,fitRow,"fit");
         pulldowns["fit"]->addItem(("Maximize x"));
         pulldowns["fit"]->addItem(("Maximize y"));
         pulldowns["fit"]->addItem(("Maximize Total"));
@@ -920,7 +925,7 @@ public:
         sequenceButtonBoxLayout->addWidget(labels["sequence"]);
         auto addMiniButton = [&](const QString& icon, const std::string& entry, const QString& tooltip, std::function<void()> action){
             buttons[entry] = new QPushButton(icon);
-            buttons[entry]->setFixedWidth(miniButtonWidth);
+            buttons[entry]->setFixedSize(miniButtonWidth, mainButtonHeight);
             buttons[entry]->setToolTip(tooltip);
             buttons[entry]->setFont(emojiFont);
             sequenceButtonBoxLayout->addWidget(buttons[entry]);
@@ -1025,14 +1030,16 @@ public:
         QHBoxLayout* simulationControlStripLayout = new QHBoxLayout(simulationControlStrip);
         squeezeMargins(simulationControlStripLayout);
         progress = new QProgressBar;
+        simulationControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         simulationControlStripLayout->addWidget(progress);
 
         checkboxes["FP64"] = new QCheckBox("FP64");
         checkboxes["FP64"]->setToolTip("Determine whether the simulation is run using 32-bit (unchecked)\n"
         "or 64-bit floating point numbers. Checked will be slower but have better precision.");
+        simulationControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         simulationControlStripLayout->addWidget(checkboxes["FP64"]);
-        addPulldownInContainer(textBoxWidth,mainButtonHeight,simulationControlStripLayout,"primaryHardware");
-        addPulldownInContainer(textBoxWidth,mainButtonHeight,simulationControlStripLayout,"secondaryHardware");
+        addPulldownInContainer(textBoxWidth,simulationControlStripLayout,"primaryHardware");
+        addPulldownInContainer(textBoxWidth,simulationControlStripLayout,"secondaryHardware");
         pulldowns["primaryHardware"]->setToolTip("Determine on which hardware/propagation code to run the simulation");
         pulldowns["secondaryHardware"]->setToolTip("Pick a second piece of hardware/propagator to offload a number\n"
         "of simulations in a batch to. For example, if the simulation is running on your GPU, you can give the CPU some work, too");
@@ -1042,18 +1049,21 @@ public:
         simulationControlStripLayout->addWidget(textBoxes["offload"]);
 
         QHBoxLayout* plotControlStripLayout = new QHBoxLayout(plotControlStrip);
-        buttons["collapse"] = new QPushButton("\xe2\x86\x94\xef\xb8\x8f");
-        buttons["collapse"]->setFixedSize(miniButtonWidth, textBoxHeight);
-        plotControlStripLayout->addWidget(buttons["collapse"]);
         squeezeMargins(plotControlStripLayout);
+        plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
+        buttons["collapse"] = new QPushButton("\xe2\x86\x94\xef\xb8\x8f");
+        buttons["collapse"]->setFixedSize(miniButtonWidth, mainButtonHeight);
+        plotControlStripLayout->addWidget(buttons["collapse"]);
+        
         slider = new QSlider(Qt::Horizontal);
+        slider->setFixedHeight(mainButtonHeight);
         plotControlStripLayout->addWidget(slider);
         buttons["svg"] = new QPushButton("SVG");
-        buttons["svg"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        buttons["svg"]->setFixedSize(miniButtonWidth+8, mainButtonHeight);
         buttons["svg"]->setToolTip("Save a .svg file of the plots.");
         plotControlStripLayout->addWidget(buttons["svg"]);
         buttons["xlim"] = new QPushButton("xlim");
-        buttons["xlim"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        buttons["xlim"]->setFixedSize(miniButtonWidth+8, mainButtonHeight);
         plotControlStripLayout->addWidget(buttons["xlim"]);
         textBoxes["xlimStart"] = new QLineEdit;
         textBoxes["xlimStart"]->setFixedSize(textBoxWidth/2,textBoxHeight);
@@ -1063,7 +1073,7 @@ public:
         plotControlStripLayout->addWidget(textBoxes["xlimStop"]);
         textBoxes["ylimStart"] = new QLineEdit;
         buttons["ylim"] = new QPushButton("ylim");
-        buttons["ylim"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        buttons["ylim"]->setFixedSize(miniButtonWidth+8, mainButtonHeight);
         plotControlStripLayout->addWidget(buttons["ylim"]);
         textBoxes["ylimStart"]->setFixedSize(textBoxWidth/2,textBoxHeight);
         plotControlStripLayout->addWidget(textBoxes["ylimStart"]);
@@ -1071,8 +1081,12 @@ public:
         textBoxes["ylimStop"]->setFixedSize(textBoxWidth/2,textBoxHeight);
         plotControlStripLayout->addWidget(textBoxes["ylimStop"]);
         checkboxes["Total"] = new QCheckBox("Total");
+        checkboxes["Total"]->setToolTip("Overlay the total spectrum.");
+        plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         plotControlStripLayout->addWidget(checkboxes["Total"]);
+        plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         checkboxes["Log"] = new QCheckBox("Log");
+        checkboxes["Log"]->setToolTip("Plot the spectrum on a log scale. Will look more meaningful if you set y-limits.");
         plotControlStripLayout->addWidget(checkboxes["Log"]);
 
         readDefaultValues(theSim, theDatabase);
