@@ -144,54 +144,54 @@ public:
             value = static_cast<int64_t>((box->text()).toInt());
         };
 
-        setToDouble(textBoxes["Energy1"],sim.base().pulse1.energy);
-        setToDoubleMultiplier(textBoxes["Frequency1"],1e-12,sim.base().pulse1.frequency);
-        setToDoubleMultiplier(textBoxes["Bandwidth1"],1e-12,sim.base().pulse1.bandwidth);
+        setToDouble(textBoxes["energy1"],sim.base().pulse1.energy);
+        setToDoubleMultiplier(textBoxes["frequency1"],1e-12,sim.base().pulse1.frequency);
+        setToDoubleMultiplier(textBoxes["bandwidth1"],1e-12,sim.base().pulse1.bandwidth);
         setToInt(textBoxes["SGOrder1"],sim.base().pulse1.sgOrder);
         setToDouble(textBoxes["CEP1"],sim.base().pulse1.cep);
-        setToDoubleMultiplier(textBoxes["Delay1"],1e15,sim.base().pulse1.delay);
+        setToDoubleMultiplier(textBoxes["delay1"],1e15,sim.base().pulse1.delay);
         setToDoubleMultiplier(textBoxes["GDD1"],1e30,sim.base().pulse1.gdd);
         setToDoubleMultiplier(textBoxes["TOD1"],1e45,sim.base().pulse1.tod);
-        setToInt(textBoxes["Material1"],sim.base().pulse1.phaseMaterial);
-        setToDoubleMultiplier(textBoxes["Thickness1"],1e6,sim.base().pulse1.phaseMaterialThickness);
-        setToDoubleMultiplier(textBoxes["Beamwaist1"],1e6,sim.base().pulse1.beamwaist);
+        setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
+        setToDoubleMultiplier(textBoxes["thickness1"],1e6,sim.base().pulse1.phaseMaterialThickness);
+        setToDoubleMultiplier(textBoxes["beamwaist1"],1e6,sim.base().pulse1.beamwaist);
         setToDoubleMultiplier(textBoxes["xOffset1"],1e6,sim.base().pulse1.x0);
         setToDoubleMultiplier(textBoxes["zOffset1"],1e6,sim.base().pulse1.z0);
         setToDoubleMultiplier(textBoxes["NCAngle1"],rad2Deg<double>(),sim.base().pulse1.beamAngle);
-        setToDoubleMultiplier(textBoxes["Polarization1"],rad2Deg<double>(),sim.base().pulse1.polarizationAngle);
-        setToDouble(textBoxes["Circularity1"],sim.base().pulse1.circularity);
+        setToDoubleMultiplier(textBoxes["polarization1"],rad2Deg<double>(),sim.base().pulse1.polarizationAngle);
+        setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
 
-        setToDouble(textBoxes["Energy2"],sim.base().pulse2.energy);
-        setToDoubleMultiplier(textBoxes["Frequency2"],1e-12,sim.base().pulse2.frequency);
-        setToDoubleMultiplier(textBoxes["Bandwidth2"],1e-12,sim.base().pulse2.bandwidth);
+        setToDouble(textBoxes["energy2"],sim.base().pulse2.energy);
+        setToDoubleMultiplier(textBoxes["frequency2"],1e-12,sim.base().pulse2.frequency);
+        setToDoubleMultiplier(textBoxes["bandwidth2"],1e-12,sim.base().pulse2.bandwidth);
         setToInt(textBoxes["SGOrder2"],sim.base().pulse2.sgOrder);
         setToDouble(textBoxes["CEP2"],sim.base().pulse2.cep);
-        setToDoubleMultiplier(textBoxes["Delay2"],1e15,sim.base().pulse2.delay);
+        setToDoubleMultiplier(textBoxes["delay2"],1e15,sim.base().pulse2.delay);
         setToDoubleMultiplier(textBoxes["GDD2"],1e30,sim.base().pulse2.gdd);
         setToDoubleMultiplier(textBoxes["TOD2"],1e45,sim.base().pulse2.tod);
-        setToInt(textBoxes["Material2"],sim.base().pulse2.phaseMaterial);
-        setToDoubleMultiplier(textBoxes["Thickness2"],1e6,sim.base().pulse2.phaseMaterialThickness);
-        setToDoubleMultiplier(textBoxes["Beamwaist2"],1e6,sim.base().pulse2.beamwaist);
+        setToInt(textBoxes["material2"],sim.base().pulse2.phaseMaterial);
+        setToDoubleMultiplier(textBoxes["thickness2"],1e6,sim.base().pulse2.phaseMaterialThickness);
+        setToDoubleMultiplier(textBoxes["beamwaist2"],1e6,sim.base().pulse2.beamwaist);
         setToDoubleMultiplier(textBoxes["xOffset2"],1e6,sim.base().pulse2.x0);
         setToDoubleMultiplier(textBoxes["zOffset2"],1e6,sim.base().pulse2.z0);
         setToDoubleMultiplier(textBoxes["NCAngle2"],rad2Deg<double>(),sim.base().pulse2.beamAngle);
-        setToDoubleMultiplier(textBoxes["Polarization2"],rad2Deg<double>(),sim.base().pulse2.polarizationAngle);
-        setToDouble(textBoxes["Circularity2"],sim.base().pulse2.circularity);
+        setToDoubleMultiplier(textBoxes["polarization2"],rad2Deg<double>(),sim.base().pulse2.polarizationAngle);
+        setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
         sim.base().pulse1FileType = pulldowns["pulse1type"]->currentIndex();
         sim.base().pulse2FileType = pulldowns["pulse2type"]->currentIndex();
         sim.base().fittingMode = pulldowns["fit"]->currentIndex();
         sim.base().materialIndex = pulldowns["material"]->currentIndex();
-        setToDoubleMultiplier(textBoxes["CrystalTheta"],rad2Deg<double>(),sim.base().crystalTheta);
-        setToDoubleMultiplier(textBoxes["CrystalPhi"],rad2Deg<double>(),sim.base().crystalPhi);
+        setToDoubleMultiplier(textBoxes["crystalTheta"],rad2Deg<double>(),sim.base().crystalTheta);
+        setToDoubleMultiplier(textBoxes["crystalPhi"],rad2Deg<double>(),sim.base().crystalPhi);
         setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
-        setToDouble(textBoxes["CrystalBandgap"],sim.base().bandGapElectronVolts);
+        setToDouble(textBoxes["crystalBandgap"],sim.base().bandGapElectronVolts);
         setToDoubleMultiplier(textBoxes["DrudeGamma"],1e-12,sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);
-        setToDoubleMultiplier(textBoxes["XSize"],1e6,sim.base().spatialWidth);
+        setToDoubleMultiplier(textBoxes["xSize"],1e6,sim.base().spatialWidth);
         setToDoubleMultiplier(textBoxes["dx"],1e6,sim.base().rStep);
         setToDoubleMultiplier(textBoxes["timeSpan"],1e15,sim.base().timeSpan);
         setToDoubleMultiplier(textBoxes["dt"],1e15,sim.base().tStep);
-        setToDoubleMultiplier(textBoxes["ZSize"],1e6,sim.base().crystalThickness);
+        setToDoubleMultiplier(textBoxes["zSize"],1e6,sim.base().crystalThickness);
         setToDoubleMultiplier(textBoxes["dz"],1e9,sim.base().propagationStep);
 
         sim.base().symmetryType = pulldowns["propagator"]->currentIndex();
@@ -344,56 +344,56 @@ public:
             QString s(Sformat(std::string_view("{}"), value).c_str());
             box->setText(s);
         };
-        setToDouble(textBoxes["Energy1"],sim.base().pulse1.energy);
-        setToDouble(textBoxes["Frequency1"],1e-12*sim.base().pulse1.frequency);
-        setToDouble(textBoxes["Bandwidth1"],1e-12*sim.base().pulse1.bandwidth);
+        setToDouble(textBoxes["energy1"],sim.base().pulse1.energy);
+        setToDouble(textBoxes["frequency1"],1e-12*sim.base().pulse1.frequency);
+        setToDouble(textBoxes["bandwidth1"],1e-12*sim.base().pulse1.bandwidth);
         setToDouble(textBoxes["SGOrder1"],sim.base().pulse1.sgOrder);
         setToDouble(textBoxes["CEP1"],sim.base().pulse1.cep);
-        setToDouble(textBoxes["Delay1"],1e15*sim.base().pulse1.delay);
+        setToDouble(textBoxes["delay1"],1e15*sim.base().pulse1.delay);
         setToDouble(textBoxes["GDD1"],1e30*sim.base().pulse1.gdd);
         setToDouble(textBoxes["TOD1"],1e45*sim.base().pulse1.tod);
-        setToInt(textBoxes["Material1"],sim.base().pulse1.phaseMaterial);
-        setToDouble(textBoxes["Thickness1"],1e6*sim.base().pulse1.phaseMaterialThickness);
-        setToDouble(textBoxes["Beamwaist1"],1e6*sim.base().pulse1.beamwaist);
+        setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
+        setToDouble(textBoxes["thickness1"],1e6*sim.base().pulse1.phaseMaterialThickness);
+        setToDouble(textBoxes["beamwaist1"],1e6*sim.base().pulse1.beamwaist);
         setToDouble(textBoxes["xOffset1"],1e6*sim.base().pulse1.x0);
         setToDouble(textBoxes["zOffset1"],1e6*sim.base().pulse1.z0);
         setToDouble(textBoxes["NCAngle1"],rad2Deg<double>()*sim.base().pulse1.beamAngle);
-        setToDouble(textBoxes["Polarization1"],rad2Deg<double>()*sim.base().pulse1.polarizationAngle);
-        setToDouble(textBoxes["Circularity1"],sim.base().pulse1.circularity);
+        setToDouble(textBoxes["polarization1"],rad2Deg<double>()*sim.base().pulse1.polarizationAngle);
+        setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
 
-        setToDouble(textBoxes["Energy2"],sim.base().pulse2.energy);
-        setToDouble(textBoxes["Frequency2"],1e-12*sim.base().pulse2.frequency);
-        setToDouble(textBoxes["Bandwidth2"],1e-12*sim.base().pulse2.bandwidth);
+        setToDouble(textBoxes["energy2"],sim.base().pulse2.energy);
+        setToDouble(textBoxes["frequency2"],1e-12*sim.base().pulse2.frequency);
+        setToDouble(textBoxes["bandwidth2"],1e-12*sim.base().pulse2.bandwidth);
         setToDouble(textBoxes["SGOrder2"],sim.base().pulse2.sgOrder);
         setToDouble(textBoxes["CEP2"],sim.base().pulse2.cep);
-        setToDouble(textBoxes["Delay2"],1e15*sim.base().pulse2.delay);
+        setToDouble(textBoxes["delay2"],1e15*sim.base().pulse2.delay);
         setToDouble(textBoxes["GDD2"],1e30*sim.base().pulse2.gdd);
         setToDouble(textBoxes["TOD2"],1e45*sim.base().pulse2.tod);
-        setToInt(textBoxes["Material2"],sim.base().pulse2.phaseMaterial);
-        setToDouble(textBoxes["Thickness2"],1e6*sim.base().pulse2.phaseMaterialThickness);
-        setToDouble(textBoxes["Beamwaist2"],1e6*sim.base().pulse2.beamwaist);
+        setToInt(textBoxes["material2"],sim.base().pulse2.phaseMaterial);
+        setToDouble(textBoxes["thickness2"],1e6*sim.base().pulse2.phaseMaterialThickness);
+        setToDouble(textBoxes["beamwaist2"],1e6*sim.base().pulse2.beamwaist);
         setToDouble(textBoxes["xOffset2"],1e6*sim.base().pulse2.x0);
         setToDouble(textBoxes["zOffset2"],1e6*sim.base().pulse2.z0);
         setToDouble(textBoxes["NCAngle2"],rad2Deg<double>()*sim.base().pulse2.beamAngle);
-        setToDouble(textBoxes["Polarization2"],rad2Deg<double>()*sim.base().pulse2.polarizationAngle);
-        setToDouble(textBoxes["Circularity2"],sim.base().pulse2.circularity);
+        setToDouble(textBoxes["polarization2"],rad2Deg<double>()*sim.base().pulse2.polarizationAngle);
+        setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
 
         pulldowns["material"]->setCurrentIndex(sim.base().materialIndex);
         pulldowns["batch1"]->setCurrentIndex(sim.base().batchIndex);
         pulldowns["batch2"]->setCurrentIndex(sim.base().batchIndex2);
         pulldowns["propagator"]->setCurrentIndex(sim.base().symmetryType);
 
-        setToDouble(textBoxes["CrystalTheta"],rad2Deg<double>() * sim.base().crystalTheta);
-        setToDouble(textBoxes["CrystalPhi"],rad2Deg<double>() *sim.base().crystalPhi);
+        setToDouble(textBoxes["crystalTheta"],rad2Deg<double>() * sim.base().crystalTheta);
+        setToDouble(textBoxes["crystalPhi"],rad2Deg<double>() *sim.base().crystalPhi);
         setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
-        setToDouble(textBoxes["CrystalBandgap"],sim.base().bandGapElectronVolts);
+        setToDouble(textBoxes["crystalBandgap"],sim.base().bandGapElectronVolts);
         setToDouble(textBoxes["DrudeGamma"],1e-12*sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);
-        setToDouble(textBoxes["XSize"],1e6*sim.base().spatialWidth);
+        setToDouble(textBoxes["xSize"],1e6*sim.base().spatialWidth);
         setToDouble(textBoxes["dx"],1e6*sim.base().rStep);
         setToDouble(textBoxes["timeSpan"],1e15*sim.base().timeSpan);
         setToDouble(textBoxes["dt"],1e15*sim.base().tStep);
-        setToDouble(textBoxes["ZSize"],1e6*sim.base().crystalThickness);
+        setToDouble(textBoxes["zSize"],1e6*sim.base().crystalThickness);
         setToDouble(textBoxes["dz"],1e9*sim.base().propagationStep);
 
         setToDouble(textBoxes["batch1end"],sim.base().batchDestination);
@@ -462,50 +462,50 @@ public:
 
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
         plotRegionLayout->setContentsMargins(0,0,0,0);
-        plots["TimeImage1"] = new CairoWidget(*this, drawTimeImage1);
-        plots["TimeImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["TimeImage1"]->setToolTip(
+        plots["timeImage1"] = new CairoWidget(*this, drawTimeImage1);
+        plots["timeImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["timeImage1"]->setToolTip(
             "Image of the electric field grid: presents a slice of Ex(x,y=0,t),\n"
             "there the horizontal axis is time, and the vertical axis is position");
-        plotRegionLayout->addWidget(plots["TimeImage1"],0,0);
-        plots["TimeImage2"] = new CairoWidget(*this, drawTimeImage2);
-        plots["TimeImage2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["TimeImage2"]->setToolTip("Image of the electric field grid: presents a slice of Ey(x,y=0,t),\n"
+        plotRegionLayout->addWidget(plots["timeImage1"],0,0);
+        plots["timeImage2"] = new CairoWidget(*this, drawTimeImage2);
+        plots["timeImage2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["timeImage2"]->setToolTip("Image of the electric field grid: presents a slice of Ey(x,y=0,t),\n"
             "there the horizontal axis is time, and the vertical axis is position");
-        plotRegionLayout->addWidget(plots["TimeImage2"],1,0);
-        plots["FreqImage1"] = new CairoWidget(*this, drawFourierImage1);
-        plots["FreqImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["FreqImage1"]->setToolTip("Plot of the electric field grid in momentum-frequency space: Ex(kx,ky=0,f).\n"
+        plotRegionLayout->addWidget(plots["timeImage2"],1,0);
+        plots["freqImage1"] = new CairoWidget(*this, drawFourierImage1);
+        plots["freqImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["freqImage1"]->setToolTip("Plot of the electric field grid in momentum-frequency space: Ex(kx,ky=0,f).\n"
             "Is plotted on a logarithmic scale. Vertical axis is transverse momentum kx,\n"
             "and horizontal axis is frequency f.");
-        plotRegionLayout->addWidget(plots["FreqImage1"],0,1);
-        plots["FreqImage2"] = new CairoWidget(*this, drawFourierImage2);
-        plots["FreqImage2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plotRegionLayout->addWidget(plots["FreqImage2"],1,1);
-        plots["FreqImage2"]->setToolTip("Plot of the electric field grid in momentum-frequency space:\n"
+        plotRegionLayout->addWidget(plots["freqImage1"],0,1);
+        plots["freqImage2"] = new CairoWidget(*this, drawFourierImage2);
+        plots["freqImage2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plotRegionLayout->addWidget(plots["freqImage2"],1,1);
+        plots["freqImage2"]->setToolTip("Plot of the electric field grid in momentum-frequency space:\n"
             "Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum\n"
             "kx, and horizontal axis is frequency f.");
 
-        plots["TimePlot1"] = new CairoWidget(*this, drawField1Plot);
-        plots["TimePlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["TimePlot1"]->setToolTip(
+        plots["timePlot1"] = new CairoWidget(*this, drawField1Plot);
+        plots["timePlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["timePlot1"]->setToolTip(
             "Plot of the on-axis electric field in the x-polarization");
-        plotRegionLayout->addWidget(plots["TimePlot1"],2,0);
+        plotRegionLayout->addWidget(plots["timePlot1"],2,0);
 
-        plots["TimePlot2"] = new CairoWidget(*this, drawField2Plot);
-        plots["TimePlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["TimePlot2"]->setToolTip(
+        plots["timePlot2"] = new CairoWidget(*this, drawField2Plot);
+        plots["timePlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["timePlot2"]->setToolTip(
             "Plot of the on-axis electric field in the y-polarization");
-        plotRegionLayout->addWidget(plots["TimePlot2"],3,0);
-        plots["FreqPlot1"] = new CairoWidget(*this, drawSpectrum1Plot);
-        plots["FreqPlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["FreqPlot1"]->setToolTip("Plot of the energy spectrum of the result, x-polarization.");
-        plotRegionLayout->addWidget(plots["FreqPlot1"],2,1);
-        plots["FreqPlot2"] = new CairoWidget(*this, drawSpectrum2Plot);
-        plots["FreqPlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["FreqPlot2"]->setToolTip(
+        plotRegionLayout->addWidget(plots["timePlot2"],3,0);
+        plots["freqPlot1"] = new CairoWidget(*this, drawSpectrum1Plot);
+        plots["freqPlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["freqPlot1"]->setToolTip("Plot of the energy spectrum of the result, x-polarization.");
+        plotRegionLayout->addWidget(plots["freqPlot1"],2,1);
+        plots["freqPlot2"] = new CairoWidget(*this, drawSpectrum2Plot);
+        plots["freqPlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plots["freqPlot2"]->setToolTip(
             "Plot of the energy spectrum of the result, y-polarization.");
-        plotRegionLayout->addWidget(plots["FreqPlot2"],3,1);
+        plotRegionLayout->addWidget(plots["freqPlot2"],3,1);
 
         //Divide the input area into the input grid and the sequence box
         QWidget *inputGrid = new QWidget;
@@ -584,14 +584,14 @@ public:
 
 
         //First column
-        addTextBoxRow("Pulse energy (J)", "Energy1", "Energy2", entryColumn1Layout,
+        addTextBoxRow("Pulse energy (J)", "energy1", "energy2", entryColumn1Layout,
         "The energy contained in the pulses. \nNote that there are two columns, the first controls the primary pulse.\n"
         " For 2D modes, the intensity will be set as it would be\nfor a round Gaussian beam with that size");
-        addTextBoxRow("Frequency (THz)", "Frequency1", "Frequency2", entryColumn1Layout,
+        addTextBoxRow("Frequency (THz)", "frequency1", "frequency2", entryColumn1Layout,
         "The central frequency of the pulse. Note that the simulation in the UPPE\n"
         "modes uses a moving frame centered around the group velocity of the\n"
         "pulse in the first column.");
-        addTextBoxRow("Bandwidth (THz)", "Bandwidth1", "Bandwidth2", entryColumn1Layout,
+        addTextBoxRow("Bandwidth (THz)", "bandwidth1", "bandwidth2", entryColumn1Layout,
         "The bandwidth of the pulses.");
         addTextBoxRow("SG order", "SGOrder1", "SGOrder2", entryColumn1Layout,
         "The order of the super-Gaussian spectrum. 2 implies a standard Gaussian, and the spectrum\n"
@@ -600,20 +600,20 @@ public:
         addTextBoxRow("CEP/\xcf\x80", "CEP1", "CEP2", entryColumn1Layout,
         "The carrier-envelope phase of the pulse, in units of pi radians.\n"
         "Setting this to 1 will flip the field upside-down.");
-        addTextBoxRow("Delay (fs)", "Delay1", "Delay2", entryColumn1Layout,
+        addTextBoxRow("Delay (fs)", "delay1", "delay2", entryColumn1Layout,
         "Temporal delay of the pulses.");
         addTextBoxRow("GDD (fs\xc2\xb2)", "GDD1", "GDD2", entryColumn1Layout,
         "Group-delay dispersion of the pulses, i.e. linear chirp.");
         addTextBoxRow("TOD (fs\xc2\xb3)", "TOD1", "TOD2", entryColumn1Layout,
         "Third-order dispersion of the pulses.");
-        addTextBoxRow("Phase material", "Material1", "Material2", entryColumn1Layout, 
+        addTextBoxRow("Phase material", "material1", "material2", entryColumn1Layout, 
         "Select a material number - the numbers come from the Material pulldown menu -\n"
         "to apply to the pulse before it enters the simulation. For example, you can\n"
         "add a given amount of fused silica transmission to the pulse to simulate\n"
         " the effect of scanning a wedge pair in the beam.");
-        addTextBoxRow("Thickness (\xce\xbcm)", "Thickness1", "Thickness2", entryColumn1Layout,
+        addTextBoxRow("Thickness (\xce\xbcm)", "thickness1", "thickness2", entryColumn1Layout,
         "This sets the thickness of the linear propagation through the material selected above.");
-        addTextBoxRow("Bewamwaist (\xce\xbcm)", "Beamwaist1", "Beamwaist2", entryColumn1Layout,
+        addTextBoxRow("Bewamwaist (\xce\xbcm)", "beamwaist1", "beamwaist2", entryColumn1Layout,
         "Gaussian beamwaist of the input beam in space. In terms of intensity, this is the 1/e^2 radius");
         addTextBoxRow("x offset (\xce\xbcm)", "xOffset1", "xOffset2", entryColumn1Layout,
         "Offset of the beam in the x-direction (up and down on the screen, transverse to propagation).\n"
@@ -622,9 +622,9 @@ public:
         "Offset of the beam in the z-direction (the direction of propagation).");
         addTextBoxRow("NC angle (deg)", "NCAngle1", "NCAngle2", entryColumn1Layout,
         "Angle of the beam with respect to the z-axis (in the x-z plane), i.e. the noncollinear angle.");
-        addTextBoxRow("Polarization (deg)", "Polarization1", "Polarization2", entryColumn1Layout,
+        addTextBoxRow("Polarization (deg)", "polarization1", "polarization2", entryColumn1Layout,
         "Polarization angle of the beam. With 0: field points along x-axis, 90: along y-axis.");
-        addTextBoxRow("Circularity", "Circularity1", "Circularity2", entryColumn1Layout,
+        addTextBoxRow("Circularity", "circularity1", "circularity2", entryColumn1Layout,
         "Degree of circularity of the beam. 0: Linear polarization, 1: circular (can be any value in between).");
 
         QHBoxLayout* pulseTypeRow = getRowBoxLayout(entryColumn1Layout);
@@ -655,18 +655,18 @@ public:
         labels["sourceFile"]->setText("Source file");
         labels["sourceFile"]->setFixedWidth(labelWidth);
         loadPulseRow->addWidget(labels["sourceFile"]);
-        buttons["LoadPulse1"] = new QPushButton("\xf0\x9f\x93\x82");
-        buttons["LoadPulse1"]->setFixedSize(mainButtonWidth,mainButtonHeight);
-        buttons["LoadPulse1"]->setFont(emojiFont);
-        loadPulseRow->addWidget(buttons["LoadPulse1"]);
-        buttons["LoadPulse2"] = new QPushButton("\xf0\x9f\x93\x82");
-        buttons["LoadPulse2"]->setFixedSize(mainButtonWidth,mainButtonHeight);
-        buttons["LoadPulse2"]->setFont(emojiFont);
-        loadPulseRow->addWidget(buttons["LoadPulse2"]);
-        buttons["LoadPulse1"]->setToolTip(
+        buttons["loadPulse1"] = new QPushButton("\xf0\x9f\x93\x82");
+        buttons["loadPulse1"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["loadPulse1"]->setFont(emojiFont);
+        loadPulseRow->addWidget(buttons["loadPulse1"]);
+        buttons["loadPulse2"] = new QPushButton("\xf0\x9f\x93\x82");
+        buttons["loadPulse2"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["loadPulse2"]->setFont(emojiFont);
+        loadPulseRow->addWidget(buttons["loadPulse2"]);
+        buttons["loadPulse1"]->setToolTip(
             "Load the file for describing the electric field, if not using\n"
             "a synthetic pulse.");
-        buttons["LoadPulse2"]->setToolTip(buttons["LoadPulse1"]->toolTip());
+        buttons["loadPulse2"]->setToolTip(buttons["loadPulse1"]->toolTip());
         QHBoxLayout* slurmRow = getRowBoxLayout(entryColumn1Layout);
         labels["slurm"] = new QLabel;
         labels["slurm"]->setText("SLURM script");
@@ -711,9 +711,9 @@ public:
         labels["material"]->setToolTip(pulldowns["material"]->toolTip());
         buttons["loadMaterial"]->setToolTip("Load a custom crystal database");
         
-        addTextBoxRow("Theta, phi (deg)", "CrystalTheta", "CrystalPhi", entryColumn2Layout, 
+        addTextBoxRow("Theta, phi (deg)", "crystalTheta", "crystalPhi", entryColumn2Layout, 
         "These angles define the orientation of the nonlinear crystal.");
-        addTextBoxRow("NL absorption", "NLAbsorption", "CrystalBandgap", entryColumn2Layout,
+        addTextBoxRow("NL absorption", "NLAbsorption", "crystalBandgap", entryColumn2Layout,
         "The first parameter is the nonlinear absorption strength inside of the crystal.\n"
         "If it's 0, then there will be no nonlinear absorption or plasma generation. Typical\n"
         "values range from 10^19 to 10^18. The second parameter is the bandgap of the crystal\n"
@@ -723,13 +723,13 @@ public:
         "The first parameter is the Drude model momentum relaxation rate, gamma, in units of\n"
         "THz. The second is the reduced effective mass, relative to the electron mass, i.e.\n"
         "a free electron in vacuum would have a value of 1.");
-        addTextBoxRow("Max x, dx (\xce\xbcm)", "XSize", "dx", entryColumn2Layout,
+        addTextBoxRow("Max x, dx (\xce\xbcm)", "xSize", "dx", entryColumn2Layout,
         "This gives the parameters of the spatial grid in the direction transverse to beam\n"
         "propagation. The first parameter gives the size of the grid, and the second is the\n"
         "size of each pixel.");
         addTextBoxRow("Time span, dt (fs)", "timeSpan", "dt", entryColumn2Layout,
         "These parameters define the temporal grid.");
-        addTextBoxRow("Max z, dz (\xce\xbcm, nm)", "ZSize", "dz", entryColumn2Layout,
+        addTextBoxRow("Max z, dz (\xce\xbcm, nm)", "zSize", "dz", entryColumn2Layout,
         "These parameters define the discretization in the z-direction. This has a different\n"
         "meaning in UPPE and FDTD modes. In UPPE, the pulse propagates forward in space along the\n"
         "z-axis - this defines how far to go, and with which propagation step size. In FDTD,\n"
@@ -828,29 +828,29 @@ public:
         "200, 210, 220, ..., 290, 300.");
         
         QHBoxLayout* loadRow = getRowBoxLayout(entryColumn2Layout);
-        buttons["Load"] = new QPushButton("Load");
-        buttons["Load"]->setFixedSize(mainButtonWidth,mainButtonHeight);
-        buttons["Load"]->setToolTip("Load the results of a previous simulation run.\n"
+        buttons["load"] = new QPushButton("Load");
+        buttons["load"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["load"]->setToolTip("Load the results of a previous simulation run.\n"
             "You should select the associated .zip file. The parameters will be\n"
             "loaded into the interface, and the data will be plotted.");
-        loadRow->addWidget(buttons["Load"]);
-        buttons["Stop"] = new QPushButton("Stop");
-        buttons["Stop"]->setFixedSize(mainButtonWidth,mainButtonHeight);
-        buttons["Stop"]->setToolTip("Tell a currently-running simulation to stop.\n"
+        loadRow->addWidget(buttons["load"]);
+        buttons["stop"] = new QPushButton("Stop");
+        buttons["stop"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["stop"]->setToolTip("Tell a currently-running simulation to stop.\n"
             "It might not stop right away; it will only happen once it reaches a break point");
-        loadRow->addWidget(buttons["Stop"]);
-        buttons["Run"] = new QPushButton("Run");
-        buttons["Run"]->setFixedSize(mainButtonWidth,mainButtonHeight);
-        buttons["Run"]->setToolTip("Run the simulation as currently entered on the\n"
+        loadRow->addWidget(buttons["stop"]);
+        buttons["run"] = new QPushButton("Run");
+        buttons["run"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["run"]->setToolTip("Run the simulation as currently entered on the\n"
             "interface. If a sequence is entered in the sequence box below,\n"
             "that will execute, otherwise, a simulation on the input parameters\n"
             "above and to the left in a single medium will be performed.");
-        loadRow->addWidget(buttons["Run"]);
-        buttons["Save"] = new QPushButton("\xf0\x9f\x92\xbe");
-        buttons["Save"]->setFixedSize(mainButtonWidth,mainButtonHeight);
-        buttons["Save"]->setFont(emojiFont);
-        buttons["Save"]->setToolTip("Save the simulation results.");
-        loadRow->addWidget(buttons["Save"]);
+        loadRow->addWidget(buttons["run"]);
+        buttons["save"] = new QPushButton("\xf0\x9f\x92\xbe");
+        buttons["save"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["save"]->setFont(emojiFont);
+        buttons["save"]->setToolTip("Save the simulation results.");
+        loadRow->addWidget(buttons["save"]);
 
         QHBoxLayout* fitRow = getRowBoxLayout(entryColumn2Layout);
         addPulldownInContainer(pulldownContainerWidth,mainButtonHeight,fitRow,"fit");
@@ -863,15 +863,15 @@ public:
             "Select the fitting mode. They will either maximize the power in a certain band\n"
             "and polarization, or match the spectrum to an input file, with weights determined\n"
             "either linearly or logarithmically");
-        buttons["LoadFitting"] = new QPushButton("\xf0\x9f\x93\x82");
-        buttons["LoadFitting"]->setFixedSize(mainButtonWidth,mainButtonHeight);
-        buttons["LoadFitting"]->setFont(emojiFont);
-        buttons["LoadFitting"]->setToolTip("Load a reference spectrum to fit against");
-        fitRow->addWidget(buttons["LoadFitting"]);
-        buttons["Fit"] = new QPushButton("Fit");
-        buttons["Fit"]->setFixedSize(mainButtonWidth,mainButtonHeight);
-        buttons["Fit"]->setToolTip("Run the fitting routine");
-        fitRow->addWidget(buttons["Fit"]);
+        buttons["loadFitting"] = new QPushButton("\xf0\x9f\x93\x82");
+        buttons["loadFitting"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["loadFitting"]->setFont(emojiFont);
+        buttons["loadFitting"]->setToolTip("Load a reference spectrum to fit against");
+        fitRow->addWidget(buttons["loadFitting"]);
+        buttons["fit"] = new QPushButton("fit");
+        buttons["fit"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["fit"]->setToolTip("Run the fitting routine");
+        fitRow->addWidget(buttons["fit"]);
 
         fitting = new QTextEdit;
         fitting->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -932,21 +932,21 @@ public:
             if(textBoxes["NLAbsorption"]->text().toDouble() != 0.0){
                 sPrint("plasma({},{},{},{},{},{},{},{},{})\n",
                 pulldowns["material"]->currentIndex(), 
-                textBoxes["CrystalTheta"]->text().toDouble(),
-                textBoxes["CrystalPhi"]->text().toDouble(), 
+                textBoxes["crystalTheta"]->text().toDouble(),
+                textBoxes["crystalPhi"]->text().toDouble(), 
                 textBoxes["NLAbsorption"]->text().toDouble(),
-                textBoxes["CrystalBandgap"]->text().toDouble(), 
+                textBoxes["crystalBandgap"]->text().toDouble(), 
                 textBoxes["DrudeGamma"]->text().toDouble(),
                 textBoxes["effectiveMass"]->text().toDouble(), 
-                textBoxes["ZSize"]->text().toDouble(),
+                textBoxes["zSize"]->text().toDouble(),
                 textBoxes["dz"]->text().toDouble());
             }
             else{
                 sPrint("nonlinear({},{},{},{},{})\n",
                 pulldowns["material"]->currentIndex(), 
-                textBoxes["CrystalTheta"]->text().toDouble(),
-                textBoxes["CrystalPhi"]->text().toDouble(), 
-                textBoxes["ZSize"]->text().toDouble(),
+                textBoxes["crystalTheta"]->text().toDouble(),
+                textBoxes["crystalPhi"]->text().toDouble(), 
+                textBoxes["zSize"]->text().toDouble(),
                 textBoxes["dz"]->text().toDouble());
             }
 
@@ -961,27 +961,27 @@ public:
         addMiniButton("\xf0\x9f\x92\xa1", "addPulse", "Add a new pulse to the grid; values will be set to duplicate "
             "pulse 1 as entered above",[&](){
                 sPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})\n",
-                textBoxes["Energy1"]->text().toDouble(), 
-                textBoxes["Frequency1"]->text().toDouble(),
-                textBoxes["Bandwidth1"]->text().toDouble(), 
+                textBoxes["energy1"]->text().toDouble(), 
+                textBoxes["frequency1"]->text().toDouble(),
+                textBoxes["bandwidth1"]->text().toDouble(), 
                 textBoxes["SGOrder1"]->text().toInt(),
                 textBoxes["CEP1"]->text().toDouble(), 
-                textBoxes["Delay1"]->text().toDouble(), 
+                textBoxes["delay1"]->text().toDouble(), 
                 textBoxes["GDD1"]->text().toDouble(),
                 textBoxes["TOD1"]->text().toDouble(),
-                textBoxes["Material1"]->text().toInt(), 
-                textBoxes["Thickness1"]->text().toDouble(),
-                textBoxes["Beamwaist1"]->text().toDouble(),
+                textBoxes["material1"]->text().toInt(), 
+                textBoxes["thickness1"]->text().toDouble(),
+                textBoxes["beamwaist1"]->text().toDouble(),
                 textBoxes["xOffset1"]->text().toDouble(),
                 0.0,
                 textBoxes["zOffset1"]->text().toDouble(),
                 textBoxes["NCAngle1"]->text().toDouble(),
                 0.0,
-                textBoxes["Polarization1"]->text().toDouble(),
-                textBoxes["Circularity1"]->text().toDouble(),
+                textBoxes["polarization1"]->text().toDouble(),
+                textBoxes["circularity1"]->text().toDouble(),
                 pulldowns["material"]->currentIndex(),
-                textBoxes["CrystalTheta"]->text().toDouble(),
-                textBoxes["CrystalPhi"]->text().toDouble());
+                textBoxes["crystalTheta"]->text().toDouble(),
+                textBoxes["crystalPhi"]->text().toDouble());
             });
         addMiniButton("\xf0\x9f\x94\x8e", "addMirror", "Add a spherical mirror to the beam path, with radius "
             "of curvature in meters",[&](){
@@ -995,9 +995,9 @@ public:
         addMiniButton("\xf0\x9f\x93\x8f", "addLinear", "Add a linear propagation through the crystal entered on the interface",[&](){
             sPrint("linear({},{},{},{},{})\n",
                 pulldowns["material"]->currentIndex(), 
-                textBoxes["CrystalTheta"]->text().toDouble(),
-                textBoxes["CrystalPhi"]->text().toDouble(), 
-                textBoxes["ZSize"]->text().toDouble(),
+                textBoxes["crystalTheta"]->text().toDouble(),
+                textBoxes["crystalPhi"]->text().toDouble(), 
+                textBoxes["zSize"]->text().toDouble(),
                 textBoxes["dz"]->text().toDouble());
             });
         addMiniButton("\xf0\x9f\x8e\xaf", "addAperture", "Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
@@ -1048,10 +1048,10 @@ public:
         squeezeMargins(plotControlStripLayout);
         slider = new QSlider(Qt::Horizontal);
         plotControlStripLayout->addWidget(slider);
-        buttons["SVG"] = new QPushButton("SVG");
-        buttons["SVG"]->setFixedSize(miniButtonWidth, textBoxHeight);
-        buttons["SVG"]->setToolTip("Save a .svg file of the plots.");
-        plotControlStripLayout->addWidget(buttons["SVG"]);
+        buttons["svg"] = new QPushButton("SVG");
+        buttons["svg"]->setFixedSize(miniButtonWidth, textBoxHeight);
+        buttons["svg"]->setToolTip("Save a .svg file of the plots.");
+        plotControlStripLayout->addWidget(buttons["svg"]);
         buttons["xlim"] = new QPushButton("xlim");
         buttons["xlim"]->setFixedSize(miniButtonWidth, textBoxHeight);
         plotControlStripLayout->addWidget(buttons["xlim"]);
@@ -1117,23 +1117,23 @@ public:
         messenger = new GuiMessenger;
         messenger->moveToThread(messengerThread);
         QObject::connect(messenger, &GuiMessenger::sendText, console, &QTextEdit::append);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqPlot1"], &CairoWidget::queueUpdate);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqPlot2"], &CairoWidget::queueUpdate);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimePlot1"], &CairoWidget::queueUpdate);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimePlot2"], &CairoWidget::queueUpdate);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimeImage1"], &CairoWidget::queueUpdate);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["TimeImage2"], &CairoWidget::queueUpdate);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqImage1"], &CairoWidget::queueUpdate);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["FreqImage2"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqPlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqPlot2"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timePlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timePlot2"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timeImage1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timeImage2"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqImage1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqImage2"], &CairoWidget::queueUpdate);
 
-        QObject::connect(slider, &QSlider::valueChanged, plots["FreqPlot1"], &CairoWidget::queueUpdate);
-        QObject::connect(slider, &QSlider::valueChanged, plots["FreqPlot2"], &CairoWidget::queueUpdate);
-        QObject::connect(slider, &QSlider::valueChanged, plots["TimePlot1"], &CairoWidget::queueUpdate);
-        QObject::connect(slider, &QSlider::valueChanged, plots["TimePlot2"], &CairoWidget::queueUpdate);
-        QObject::connect(slider, &QSlider::valueChanged, plots["TimeImage1"], &CairoWidget::queueUpdate);
-        QObject::connect(slider, &QSlider::valueChanged, plots["TimeImage2"], &CairoWidget::queueUpdate);
-        QObject::connect(slider, &QSlider::valueChanged, plots["FreqImage1"], &CairoWidget::queueUpdate);
-        QObject::connect(slider, &QSlider::valueChanged, plots["FreqImage2"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["freqPlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["freqPlot2"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["timePlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["timePlot2"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["timeImage1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["timeImage2"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["freqImage1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["freqImage2"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::moveSlider, slider, &QSlider::setValue);
         QObject::connect(messenger, &GuiMessenger::requestSyncValues, this, &LWEGui::queueSyncValues);
         QObject::connect(messenger, &GuiMessenger::requestSliderUpdate, this, &LWEGui::updateSlider);
@@ -1144,7 +1144,7 @@ public:
         connectButtons();
     }
     void connectButtons(){
-        QObject::connect(buttons["Run"], &QPushButton::clicked, [&](){
+        QObject::connect(buttons["run"], &QPushButton::clicked, [&](){
             if(theSim.base().isRunning) return;
             readParametersFromInterface(theSim);
             theSim.configure();
@@ -1154,7 +1154,7 @@ public:
             std::thread(mainSimThread, std::ref(*this), theRun, theOffloadRun).detach();
         });
 
-        QObject::connect(buttons["Fit"], &QPushButton::clicked, [&](){
+        QObject::connect(buttons["fit"], &QPushButton::clicked, [&](){
             if(theSim.base().isRunning) return;
             readParametersFromInterface(theSim);
             theSim.configure();
@@ -1162,8 +1162,8 @@ public:
             std::thread(fittingThread, std::ref(*this), theRun).detach();
         });
 
-        QObject::connect(buttons["Save"], &QPushButton::clicked, [&](){
-            theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["Save"],"Save LWE result","","LWE Results (*.zip)").toStdString();
+        QObject::connect(buttons["save"], &QPushButton::clicked, [&](){
+            theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["save"],"Save LWE result","","LWE Results (*.zip)").toStdString();
             stripLineBreaks(theSim.base().outputBasePath);
             if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
                 || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
@@ -1188,9 +1188,9 @@ public:
             createRunFile(*this);
         });
 
-        QObject::connect(buttons["Load"], &QPushButton::clicked, [&](){
+        QObject::connect(buttons["load"], &QPushButton::clicked, [&](){
             if(theSim.base().isRunning) return;
-            std::string path = QFileDialog::getOpenFileName(buttons["Load"],"Load LWE result","","LWE Results (*.zip);;LWE Inputs (*.txt)").toStdString();
+            std::string path = QFileDialog::getOpenFileName(buttons["load"],"Load LWE result","","LWE Results (*.zip);;LWE Inputs (*.txt)").toStdString();
             std::thread([&](std::string path){
                 bool isZipFile = (path.length() >= 4 
                 && path.substr(path.length()-4)==".zip");
@@ -1212,20 +1212,20 @@ public:
             },path).detach();
         });
 
-        QObject::connect(buttons["LoadPulse1"], &QPushButton::clicked, [&](){
-            std::string path = QFileDialog::getOpenFileName(buttons["LoadPulse1"],"Load field data","","ASCII data (*.*)").toStdString();
+        QObject::connect(buttons["loadPulse1"], &QPushButton::clicked, [&](){
+            std::string path = QFileDialog::getOpenFileName(buttons["loadPulse1"],"Load field data","","ASCII data (*.*)").toStdString();
             pulse1LoadedData = loadedInputData(path);
             messenger->passString(Sformat("Loaded new file into pulse 1 buffer:\n{}\n", pulse1LoadedData.filePath));
         });
 
-        QObject::connect(buttons["LoadPulse2"], &QPushButton::clicked, [&](){
-            std::string path = QFileDialog::getOpenFileName(buttons["LoadPulse2"],"Load field data","","ASCII data (*.*)").toStdString();
+        QObject::connect(buttons["loadPulse2"], &QPushButton::clicked, [&](){
+            std::string path = QFileDialog::getOpenFileName(buttons["loadPulse2"],"Load field data","","ASCII data (*.*)").toStdString();
             pulse2LoadedData = loadedInputData(path);
             messenger->passString(Sformat("Loaded new file into pulse 2 buffer:\n{}\n", pulse2LoadedData.filePath));
         });
 
-        QObject::connect(buttons["LoadFitting"], &QPushButton::clicked, [&](){
-            std::string path = QFileDialog::getOpenFileName(buttons["LoadFitting"],"Load spectral target data","","ASCII data (*.*)").toStdString();
+        QObject::connect(buttons["loadFitting"], &QPushButton::clicked, [&](){
+            std::string path = QFileDialog::getOpenFileName(buttons["loadFitting"],"Load spectral target data","","ASCII data (*.*)").toStdString();
             fittingLoadedData = loadedInputData(path);
             messenger->passString(Sformat("Loaded new fitting spectral target:\n{}\n", fittingLoadedData.filePath));
         });
@@ -1237,7 +1237,7 @@ public:
             messenger->passString(Sformat("Loaded new crystal database:\n{}\n", path));
         });
 
-        QObject::connect(buttons["Stop"], &QPushButton::clicked, [&](){
+        QObject::connect(buttons["stop"], &QPushButton::clicked, [&](){
             if (theSim.base().isRunning) {
                 theSim.base().cancellationCalled = true;
                 for (int i = 1; i < theSim.base().Nsims; ++i) {
@@ -1271,13 +1271,13 @@ public:
         });
         /*std::ofstream fs(SVGpath);
             fs << SVGstrings[0] << SVGstrings[1] << SVGstrings[2] << SVGstrings[3];*/
-        QObject::connect(buttons["SVG"], &QPushButton::clicked, [&](){
-            std::string SVGpath = QFileDialog::getSaveFileName(buttons["SVG"],"Save SVG file of plots","","Scalable Vector Graphics (*.svg)").toStdString();
+        QObject::connect(buttons["svg"], &QPushButton::clicked, [&](){
+            std::string SVGpath = QFileDialog::getSaveFileName(buttons["svg"],"Save SVG file of plots","","Scalable Vector Graphics (*.svg)").toStdString();
             isMakingSVG = true;
-            plots["TimePlot1"]->repaint();
-            plots["TimePlot2"]->repaint();
-            plots["FreqPlot1"]->repaint();
-            plots["FreqPlot2"]->repaint();
+            plots["timePlot1"]->repaint();
+            plots["timePlot2"]->repaint();
+            plots["freqPlot1"]->repaint();
+            plots["freqPlot2"]->repaint();
             isMakingSVG = false;
             std::ofstream fs(SVGpath);
             fs << SVGStrings[0] << SVGStrings[1] << SVGStrings[2] << SVGStrings[3];
