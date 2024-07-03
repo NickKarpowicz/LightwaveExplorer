@@ -410,7 +410,6 @@ public:
         sequence->setText(QString::fromStdString(formattedSequence));
     }
     LWEGui(){
-        setWindowTitle("Lightwave Explorer");
 #if defined(Q_OS_WIN)
         const int textBoxWidth = 78;
         const int textBoxHeight = 26;
@@ -1312,6 +1311,7 @@ public:
 
 int main(int argc, char **argv){
     QApplication app(argc, argv);
+    app.setApplicationName("Lightwave Explorer");
     LWEGui Gui;
     return app.exec();
 }
