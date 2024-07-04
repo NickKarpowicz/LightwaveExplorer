@@ -41,11 +41,8 @@ public slots:
 class GuiMessenger : public QObject {
     Q_OBJECT
 
-public: 
-    std::mutex m;
 public slots:
     void passString(std::string s){
-        std::unique_lock lock(m);
         emit sendText(QString::fromStdString(s));
     }
     void passDrawRequest(){
@@ -101,6 +98,7 @@ public:
     loadedInputData pulse1LoadedData;
     loadedInputData pulse2LoadedData;
     loadedInputData fittingLoadedData;
+
 //Counter atomics
     std::atomic_uint32_t progressCounter{};
     std::atomic_uint32_t totalSteps{};
@@ -439,7 +437,7 @@ public:
         //Divide the main window into a large expanding upper panel and a control strip at the bottom
         auto squeezeMargins = [&](QBoxLayout* layout){
             layout->setSpacing(0);
-            layout->setContentsMargins(0,0,0,0);
+            layout->setContentsMargins(1,1,1,1);
         };
         QWidget *windowBody = new QWidget;
         windowBody->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -465,6 +463,7 @@ public:
 
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
         plotRegionLayout->setContentsMargins(0,0,0,0);
+        plotRegionLayout->setSpacing(2);
         plots["timeImage1"] = new CairoWidget(*this, drawTimeImage1);
         plots["timeImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["timeImage1"]->setToolTip(

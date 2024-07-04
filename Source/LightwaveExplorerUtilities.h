@@ -734,12 +734,12 @@ public:
         1, 1e12, 1, 1e-6,
         1e-9, 1, 1 };
 
-    [[nodiscard]] constexpr double getByNumberWithMultiplier(const size_t index) {
+    [[nodiscard]] constexpr double getByNumberWithMultiplier(const std::size_t index) {
         if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
         return  getByNumber(index) / multipliers[index];
     }
     
-    constexpr double getByNumber(const size_t index) {
+    constexpr double getByNumber(const std::size_t index) {
         switch (index) {
         case 0:
             return 0.0;
