@@ -669,6 +669,7 @@ if(WIN32)
 
     if(MAKESYCL)   
         #cmake --fresh -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
+        #cmake --build . --config Release
         cmake_minimum_required(VERSION 3.23.0)
         project(LightwaveExplorer LANGUAGES CXX)
         find_package(TBB REQUIRED)
@@ -697,41 +698,37 @@ if(WIN32)
             sycl7.lib OpenCL.lib)
         target_link_libraries(LightwaveExplorerSYCL TBB::tbb)
     else()
-        #cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        #cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
+        #cmake --build . --config Release
         cmake_minimum_required(VERSION 3.23.0)
-        project(LightwaveExplorer LANGUAGES C CXX)
+        project(LightwaveExplorer LANGUAGES CUDA CXX)
         find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
         set(CMAKE_AUTOMOC ON)
         find_package(gcem REQUIRED)
         find_package(miniz REQUIRED)
         find_package(PkgConfig REQUIRED)
+        find_package(CUDAToolkit REQUIRED)
         pkg_check_modules(CAIRO REQUIRED cairo)
         
         find_package(dlib REQUIRED)
-        if(USEFFTW)
-            pkg_check_modules(FFTW REQUIRED fftw3)
-            pkg_check_modules(FFTWF REQUIRED fftw3f)
-            include_directories(${FFTW_INCLUDE_DIRS})
-            link_directories(${FFTW_LIBRARY_DIRS})
-        else()
-            find_package(TBB REQUIRED)
-            find_package(MKL REQUIRED)
-            include_directories(${MKL_ROOT}/include/fftw) 
-            include_directories(${MKL_ROOT}/include)                   
-        endif()
+        find_package(TBB REQUIRED)
+        find_package(MKL REQUIRED)
+        include_directories(${MKL_ROOT}/include/fftw) 
+        include_directories(${MKL_ROOT}/include)                   
         include_directories(${CAIRO_INCLUDE_DIRS})
         link_directories(${CAIRO_LIBRARY_DIRS})
         include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
         set(CMAKE_CXX_STANDARD 20)
         set(CMAKE_CXX_STANDARD_REQUIRED ON)
-        add_compile_options(-DNOCUDA)
         add_executable(LightwaveExplorer WIN32 
             Source/Frontend/LightwaveExplorerFrontendQT.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
-            Source/Devices/LightwaveExplorerCoreCounter.cpp)
+            Source/Devices/LightwaveExplorerCoreCounter.cpp
+            Source/LightwaveExplorerCore.cu 
+            Source/Devices/LightwaveExplorerCoreFP32.cu)
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         if(USEFFTW)
             target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})
@@ -746,6 +743,7 @@ if(WIN32)
         target_link_libraries(LightwaveExplorer miniz::miniz)
         target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
         target_link_libraries(LightwaveExplorer dlib::dlib)
+        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer ${CMAKE_CURRENT_BINARY_DIR}/Release/LightwaveExplorerSYCL.lib)
 
         # Retrieve the Qt bin directory
