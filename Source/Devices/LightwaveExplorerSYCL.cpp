@@ -6,17 +6,17 @@
 #include "LightwaveExplorerCore.cu"
 #include <string>
 #include <vector>
-#if defined __linux__ || defined __APPLE__
+// #if defined __linux__ || defined __APPLE__
 #include<fmt/format.h>
 #define Sformat fmt::format
 #define Svformat fmt::vformat
 #define Smake_format_args fmt::make_format_args
-#else
-#include <format>
-#define Sformat std::format
-#define Svformat std::vformat
-#define Smake_format_args std::make_format_args
-#endif
+// #else
+// #include <format>
+// #define Sformat std::format
+// #define Svformat std::vformat
+// #define Smake_format_args std::make_format_args
+// #endif
 
 void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
     unsigned char cpuCount = 0;
@@ -35,7 +35,7 @@ void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                     != std::end(namelist))) {
                     namelist.push_back(d.get_info<sycl::info::device::name>());
                     cpuCount++;
-                    deviceList.append(Sformat("SYCL found a CPU:\n   <span color=\"#66FFFFFF\">{}</span>\n", d.get_info<sycl::info::device::name>()));
+                    deviceList.append(Sformat("SYCL found a CPU:\n   {}\n", d.get_info<sycl::info::device::name>()));
                 }
             }
             if (d.is_gpu()) {
@@ -48,10 +48,10 @@ void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                     
                     namelist.push_back(d.get_info<sycl::info::device::name>());
                     gpuCount++;
-                    deviceList.append(Sformat("SYCL found a GPU:\n   <span color=\"#66FFFFFF\">{}</span>\n", d.get_info<sycl::info::device::name>()));
+                    deviceList.append(Sformat("SYCL found a GPU:\n   {}\n", d.get_info<sycl::info::device::name>()));
                     if(sizeof(deviceFP) == sizeof(double) && d.get_info<sycl::info::device::double_fp_config>().size() == 0) {
                         //gpuCount--;
-                        deviceList.append(Sformat("   <span color=\"#FF6666\">Warning: doesn't support FP64</span>\n"));
+                        deviceList.append(Sformat("   Warning: doesn't support FP64\n"));
                     }
                     
                 }
