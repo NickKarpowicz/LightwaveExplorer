@@ -667,7 +667,8 @@ if(WIN32)
         )
     endfunction()
 
-    if(MAKESYCL)   
+    if(MAKESYCL)
+        #Build this first to make the LightwaveExplorerSYCL .dll and .lib, then build the main project.   
         #cmake --fresh -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
         #cmake --build . --config Release
         cmake_minimum_required(VERSION 3.23.0)
@@ -683,7 +684,6 @@ if(WIN32)
         include_directories(${CMAKE_SOURCE_DIR}/Source)
         set(CXX_STANDARD 20)
         add_compile_options(-std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -w)
-        add_link_options(-fsycl)
         add_library(LightwaveExplorerSYCL SHARED
             Source/Devices/LightwaveExplorerSYCL.cpp 
             Source/Devices/LightwaveExplorerSYCLFP32.cpp 
@@ -708,11 +708,10 @@ if(WIN32)
         find_package(miniz REQUIRED)
         find_package(PkgConfig REQUIRED)
         find_package(CUDAToolkit REQUIRED)
-        pkg_check_modules(CAIRO REQUIRED cairo)
-        
         find_package(dlib REQUIRED)
         find_package(TBB REQUIRED)
         find_package(MKL REQUIRED)
+        pkg_check_modules(CAIRO REQUIRED cairo)
         include_directories(${MKL_ROOT}/include/fftw) 
         include_directories(${MKL_ROOT}/include)                   
         include_directories(${CAIRO_INCLUDE_DIRS})
@@ -746,11 +745,9 @@ if(WIN32)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer ${CMAKE_CURRENT_BINARY_DIR}/Release/LightwaveExplorerSYCL.lib)
 
-        # Retrieve the Qt bin directory
         get_target_property(Qt6Core_LOCATION Qt6::Core LOCATION)
         get_filename_component(Qt6_BIN_DIR ${Qt6Core_LOCATION} DIRECTORY)
         get_filename_component(Qt6_BIN_DIR ${Qt6_BIN_DIR} DIRECTORY)
-        
         add_custom_command(TARGET LightwaveExplorer POST_BUILD
             COMMAND ${Qt6_BIN_DIR}/bin/windeployqt --qmldir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:LightwaveExplorer>
         )
