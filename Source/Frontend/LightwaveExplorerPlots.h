@@ -8,7 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <gcem.hpp>
-#include <cairo/cairo.h>
+#include <cairo.h>
 #include "../LightwaveExplorerHelpers.h"
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
