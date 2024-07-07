@@ -31,6 +31,11 @@
 #include <QPainter>
 #include <QThread>
 #include <QFileDialog>
+#include <QSettings>
+#include <QPalette>
+#include <QColor>
+#include <QStyleFactory>
+#include <QStyle>
 #include <cairo.h>
 #include "../LightwaveExplorerUtilities.h"
 std::mutex GTKmutex;

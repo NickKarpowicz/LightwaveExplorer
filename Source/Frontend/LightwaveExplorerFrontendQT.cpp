@@ -1311,8 +1311,78 @@ public:
 int main(int argc, char **argv){
     QApplication app(argc, argv);
     app.setApplicationName("Lightwave Explorer");
+    //Win10 dark theme via https://forum.qt.io/topic/101391/windows-10-dark-theme/4
+#ifdef Q_OS_WIN
+    QSettings settings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",QSettings::NativeFormat);
+    if(settings.value("AppsUseLightTheme")==0 && QSysInfo::productVersion().toInt() < 11){
+        app.setStyle(QStyleFactory::create("Fusion"));
+        QPalette darkPalette;
+        QColor darkColor = QColor(45,45,45);
+        QColor disabledColor = QColor(127,127,127);
+        darkPalette.setColor(QPalette::Window, darkColor);
+        darkPalette.setColor(QPalette::WindowText, Qt::white);
+        darkPalette.setColor(QPalette::Base, QColor(18,18,18));
+        darkPalette.setColor(QPalette::AlternateBase, darkColor);
+        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+        darkPalette.setColor(QPalette::Text, Qt::white);
+        darkPalette.setColor(QPalette::Disabled, QPalette::Text, disabledColor);
+        darkPalette.setColor(QPalette::Button, darkColor);
+        darkPalette.setColor(QPalette::ButtonText, Qt::white);
+        darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, disabledColor);
+        darkPalette.setColor(QPalette::BrightText, Qt::red);
+        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+
+        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+        darkPalette.setColor(QPalette::Disabled, QPalette::HighlightedText, disabledColor);
+
+        app.setPalette(darkPalette);
+
+        app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
+    }
+#endif
+
     LWEGui Gui;
     return app.exec();
+}
+
+
+void setSYCLvars(std::string& s) {
+#ifdef _WIN32
+    wchar_t loadBuffer[1024];
+    DWORD envcount = GetEnvironmentVariableW(L"SYCL_CACHE_PERSISTENT", loadBuffer, 16);
+    if (envcount == 0) {
+        STARTUPINFO si;
+        PROCESS_INFORMATION pi;
+
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        ZeroMemory(&pi, sizeof(pi));
+        wchar_t setSYCLpersistent[] = L"setx SYCL_CACHE_PERSISTENT 1";
+        // Start the child process. 
+        CreateProcess(NULL,   // No module name (use command line)
+            setSYCLpersistent,        // Command line
+            NULL,           // Process handle not inheritable
+            NULL,           // Thread handle not inheritable
+            false,          // Set handle inheritance to false
+            CREATE_NO_WINDOW,              // No creation flags
+            NULL,           // Use parent's environment block
+            NULL,           // Use parent's starting directory 
+            &si,            // Pointer to STARTUPINFO structure
+            &pi);           // Pointer to PROCESS_INFORMATION structure
+
+        // Wait until child process exits.
+        WaitForSingleObject(pi.hProcess, INFINITE);
+
+        // Close process and thread handles. 
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        s.append("Note: SYCL cache was disabled, now it's enabled.\n"
+        "I recommend you restart LWE to avoid long delays when you start a simulation.\n"
+        "Now only the first run will be slow.\n");
+    }
+#endif
 }
 
 //ifdef guards are in place to only include CUDA/SYCL when they are being used
@@ -1387,6 +1457,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
         if (syclDevices != 0) {
             s.append(Sformat("{}", syclDeviceList));
         }
+        setSYCLvars(s);
     }
     else {
         s.append(Sformat("Not using SYCL because the Intel DPC++\n"

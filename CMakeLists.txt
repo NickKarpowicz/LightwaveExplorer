@@ -762,7 +762,6 @@ if(WIN32)
         find_package(PkgConfig REQUIRED)
         find_package(CUDAToolkit REQUIRED)
         find_package(dlib REQUIRED)
-        find_package(TBB REQUIRED)
         find_package(MKL REQUIRED)
         pkg_check_modules(CAIRO REQUIRED cairo)
         include_directories(${MKL_ROOT}/include/fftw) 
@@ -780,17 +779,17 @@ if(WIN32)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp
             Source/LightwaveExplorerCore.cu 
-            Source/Devices/LightwaveExplorerCoreFP32.cu)
+            Source/Devices/LightwaveExplorerCoreFP32.cu
+            Source/Frontend/LightwaveExplorerQT.rc)
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         if(USEFFTW)
             target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})
         else()
             target_link_libraries(LightwaveExplorer
                 ${MKL_ROOT}/lib/mkl_intel_ilp64.lib 
-                ${MKL_ROOT}/lib/mkl_tbb_thread.lib
+                ${MKL_ROOT}/lib/mkl_intel_thread.lib
                 ${MKL_ROOT}/lib/mkl_core.lib 
                 ${MKL_ROOT}/../../compiler/latest/lib/libiomp5md.lib)
-            target_link_libraries(LightwaveExplorer TBB::tbb)
         endif()
         target_link_libraries(LightwaveExplorer miniz::miniz)
         target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
@@ -799,16 +798,17 @@ if(WIN32)
         target_link_options(LightwaveExplorer PRIVATE "/DELAYLOAD:nvml.dll")
         target_link_libraries(LightwaveExplorer DelayImp.lib)
         target_link_libraries(LightwaveExplorer ${CMAKE_CURRENT_BINARY_DIR}/Release/LightwaveExplorerSYCL.lib)
-
+        target_link_options(LightwaveExplorer PRIVATE "/DELAYLOAD:LightwaveExplorerSYCL.dll")
         get_target_property(Qt6Core_LOCATION Qt6::Core LOCATION)
         get_filename_component(Qt6_BIN_DIR ${Qt6Core_LOCATION} DIRECTORY)
         get_filename_component(Qt6_BIN_DIR ${Qt6_BIN_DIR} DIRECTORY)
         add_custom_command(TARGET LightwaveExplorer POST_BUILD
-            COMMAND ${Qt6_BIN_DIR}/bin/windeployqt --qmldir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:LightwaveExplorer>
+            COMMAND ${Qt6_BIN_DIR}/bin/windeployqt $<TARGET_FILE_DIR:LightwaveExplorer>/LightwaveExplorer.exe --release --no-translations --skip-plugin-types imageformats,iconengines,tls,networkinformation,generic
         )
         copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/CrystalDatabase.txt)
         copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/Source/BuildResources/DefaultValues.ini)
-
+        copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/Source/BuildResources/Licenses.txt)
+        copy_after_build(LightwaveExplorer ${MKL_ROOT}/../../compiler/latest/bin/libiomp5md.dll)
         #Include CUDA dlls, whatver their current number is
         file(GLOB CUFFT_DLLS "${CUDAToolkit_BIN_DIR}/cufft64*.dll")
         foreach(CUFFT_DLL ${CUFFT_DLLS})
@@ -827,6 +827,10 @@ if(WIN32)
             )
         endforeach()
 
+        #hide the dll files so that one can actually see the thing to click
+        add_custom_command(TARGET LightwaveExplorer POST_BUILD
+            COMMAND cmd /c "attrib +h $<TARGET_FILE_DIR:LightwaveExplorer>\\*.dll"
+        )
         install(TARGETS LightwaveExplorer)
     endif()
 endif()
