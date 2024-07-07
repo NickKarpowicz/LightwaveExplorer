@@ -1328,29 +1328,45 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 #define runDlibFitting runDlibFittingCPU
 #define runDlibFittingSYCL runDlibFittingCPU
 #else
+
+#ifdef _WIN32
+    auto checkDLL = [](const char* name){
+        HMODULE hModule = LoadLibraryA(name);
+        if(hModule){
+            FreeLibrary(hModule);
+            return true;
+        }
+        return false;
+    };
+#else
+    auto checkDLL = []([[maybe_unused]] const char* name){
+        return true;
+    }
+#endif
     
 #ifndef NOCUDA
-	//Find, count, and name the GPUs
-	int CUDAdevice, i;
-	cudaGetDeviceCount(&theSim.base().cudaGPUCount);
-	cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
-	struct cudaDeviceProp activeCUDADeviceProp;
-	//if (cuErr == cudaSuccess) {
+    if(checkDLL("nvml.dll")){
+        int CUDAdevice;
+        cudaGetDeviceCount(&theSim.base().cudaGPUCount);
+        cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
+        struct cudaDeviceProp activeCUDADeviceProp;
 
-	if (theSim.base().cudaGPUCount > 0) {
-        theSim.base().CUDAavailable = true;
-        if (theSim.base().cudaGPUCount == 1) {
-            s.append(Sformat("CUDA found a GPU:\n", theSim.base().cudaGPUCount));
+        if (theSim.base().cudaGPUCount > 0) {
+            theSim.base().CUDAavailable = true;
+            if (theSim.base().cudaGPUCount == 1) {
+                s.append(Sformat("CUDA found a GPU:\n", theSim.base().cudaGPUCount));
+            }
+            else {
+                s.append(Sformat("CUDA found {} GPU(s):\n", theSim.base().cudaGPUCount));
+            }
+            for (int i = 0; i < theSim.base().cudaGPUCount; ++i) {
+                cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+                s.append(Sformat("   {}\n", 
+                    activeCUDADeviceProp.name));
+            }
         }
-        else {
-            s.append(Sformat("CUDA found {} GPU(s):\n", theSim.base().cudaGPUCount));
-        }
-        for (i = 0; i < theSim.base().cudaGPUCount; ++i) {
-            cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-            s.append(Sformat("   {}\n", 
-                activeCUDADeviceProp.name));
-        }
-	}
+    }
+	
 
 #else
 #define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
@@ -1359,10 +1375,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 #endif
 
 #ifndef NOSYCL
-    bool isIntelRuntimeInstalled = true;
-#ifdef _WIN32
-    isIntelRuntimeInstalled = LoadLibraryA("pi_win_proxy_loader.dll"); 
-#endif
+    bool isIntelRuntimeInstalled =checkDLL("pi_win_proxy_loader.dll"); 
     if (isIntelRuntimeInstalled) {
         theSim.base().SYCLavailable = true;
         char syclDeviceList[1024] = { 0 };

@@ -722,7 +722,7 @@ if(WIN32)
 
     if(MAKESYCL)
         #Build this first to make the LightwaveExplorerSYCL .dll and .lib, then build the main project.   
-        #cmake --fresh -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
+        #cmake --fresh -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
         #cmake --build . --config Release
         cmake_minimum_required(VERSION 3.23.0)
         project(LightwaveExplorer LANGUAGES CXX)
@@ -751,7 +751,7 @@ if(WIN32)
             sycl7.lib OpenCL.lib)
         target_link_libraries(LightwaveExplorerSYCL TBB::tbb)
     else()
-        #cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
+        #cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
         #cmake --build . --config Release
         cmake_minimum_required(VERSION 3.23.0)
         project(LightwaveExplorer LANGUAGES CUDA CXX)
@@ -796,6 +796,8 @@ if(WIN32)
         target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
         target_link_libraries(LightwaveExplorer dlib::dlib)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+        target_link_options(LightwaveExplorer PRIVATE "/DELAYLOAD:nvml.dll")
+        target_link_libraries(LightwaveExplorer DelayImp.lib)
         target_link_libraries(LightwaveExplorer ${CMAKE_CURRENT_BINARY_DIR}/Release/LightwaveExplorerSYCL.lib)
 
         get_target_property(Qt6Core_LOCATION Qt6::Core LOCATION)
@@ -806,6 +808,25 @@ if(WIN32)
         )
         copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/CrystalDatabase.txt)
         copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/Source/BuildResources/DefaultValues.ini)
+
+        #Include CUDA dlls, whatver their current number is
+        file(GLOB CUFFT_DLLS "${CUDAToolkit_BIN_DIR}/cufft64*.dll")
+        foreach(CUFFT_DLL ${CUFFT_DLLS})
+            add_custom_command(TARGET LightwaveExplorer POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${CUFFT_DLL}
+                $<TARGET_FILE_DIR:LightwaveExplorer>
+            )
+        endforeach()
+        file(GLOB CUDART_DLLS "${CUDAToolkit_BIN_DIR}/cudart64*.dll")
+        foreach(CUDART_DLL ${CUFFT_DLLS})
+            add_custom_command(TARGET LightwaveExplorer POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${CUDART_DLL}
+                $<TARGET_FILE_DIR:LightwaveExplorer>
+            )
+        endforeach()
+
         install(TARGETS LightwaveExplorer)
     endif()
 endif()
