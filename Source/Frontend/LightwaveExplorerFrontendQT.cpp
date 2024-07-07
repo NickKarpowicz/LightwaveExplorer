@@ -1411,7 +1411,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 #else
     auto checkDLL = []([[maybe_unused]] const char* name){
         return true;
-    }
+    };
 #endif
     
 #ifndef NOCUDA

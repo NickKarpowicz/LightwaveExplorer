@@ -27,6 +27,7 @@ extern "C" void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                     cpuCount++;
                     deviceList.append("SYCL found a CPU:\n");
                     deviceList.append(d.get_info<sycl::info::device::name>());
+                    deviceList.append("\n");
                 }
             }
             if (d.is_gpu()) {
@@ -39,6 +40,7 @@ extern "C" void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                     gpuCount++;
                     deviceList.append("SYCL found a GPU:\n");
                     deviceList.append(d.get_info<sycl::info::device::name>());
+                    deviceList.append("\n");
                 }
             }
         }
