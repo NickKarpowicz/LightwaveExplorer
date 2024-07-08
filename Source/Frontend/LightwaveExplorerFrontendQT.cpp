@@ -1500,6 +1500,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
 
     try {
         for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
+            totalSteps += 1;
             if (theSim.base().isInSequence) {
                 counterVector[j].progressCounter = &totalSteps;
                 counterVector[j].runType = runTypes::counter;
@@ -1583,6 +1584,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
                     "after {} simulations.\n"), j + 1));
                 break;
             }
+            theGui.progressCounter += 1;
         }
     };
     if(theSim.base().NsimsCPU){
