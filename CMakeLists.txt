@@ -422,7 +422,7 @@ if(UNIX AND NOT APPLE)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        set_target_properties(LightwaveExplorer CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+        set_target_properties(LightwaveExplorer PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
         target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL -DLWEFLATPAK)
         target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
         target_link_libraries(LightwaveExplorer CUDA::cudart_static CUDA::cufft_static CUDA::nvml)
