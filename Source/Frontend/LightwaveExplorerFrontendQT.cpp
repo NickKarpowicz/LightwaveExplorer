@@ -1,5 +1,11 @@
 #include "LightwaveExplorerFrontendQT.h"
 
+void blackoutCairoPlot(cairo_t* cr, const int width, const int height){
+    LweColor black(0, 0, 0, 0);
+    cairo_rectangle(cr, 0, 0, width, height);
+    black.setCairo(cr);
+    cairo_fill(cr);
+}
 class CairoWidget : public QWidget {
     Q_OBJECT
     LWEGui& theGui;
@@ -22,10 +28,12 @@ protected:
             image.height(),
             image.bytesPerLine());
         cairo_t* cr = cairo_create(surface);
+
         theFunction(cr,
             image.width(),
             image.height(),
             theGui);
+
         cairo_destroy(cr);
         cairo_surface_destroy(surface);
         QPainter painter(this);
@@ -117,6 +125,8 @@ public:
     QWidget *inputRegion;
     QSlider* slider;
     GuiMessenger* messenger;
+    std::mutex m;
+
     bool isMakingSVG = false;
     std::array<std::string,4> SVGStrings;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
@@ -1158,6 +1168,7 @@ public:
     void connectButtons(){
         QObject::connect(buttons["run"], &QPushButton::clicked, [&](){
             if(theSim.base().isRunning) return;
+            std::unique_lock guiLock(m);
             readParametersFromInterface(theSim);
             theSim.configure();
             updateSlider();
@@ -1168,6 +1179,7 @@ public:
 
         QObject::connect(buttons["fit"], &QPushButton::clicked, [&](){
             if(theSim.base().isRunning) return;
+            std::unique_lock guiLock(m);
             readParametersFromInterface(theSim);
             theSim.configure();
             simulationRun theRun(pulldowns["primaryHardware"]->currentIndex(),checkboxes["FP64"]->isChecked(),theSim);
@@ -1175,6 +1187,8 @@ public:
         });
 
         QObject::connect(buttons["save"], &QPushButton::clicked, [&](){
+            if(!theSim.base().isGridAllocated) return;
+            std::unique_lock guiLock(m);
             theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["save"],"Save LWE result","","LWE Results (*.zip)").toStdString();
             stripLineBreaks(theSim.base().outputBasePath);
             if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
@@ -1184,6 +1198,7 @@ public:
 
             messenger->passString("Saving...");
             auto saveLambda = [&](){
+                std::unique_lock lock(m);
                 theSim.saveDataSet();
                 messenger->passString("done.\n");
             };
@@ -1204,15 +1219,16 @@ public:
             if(theSim.base().isRunning) return;
             std::string path = QFileDialog::getOpenFileName(buttons["load"],"Load LWE result","","LWE Results (*.zip);;LWE Inputs (*.txt)").toStdString();
             std::thread([&](std::string path){
+                std::unique_lock lock(m);
                 bool isZipFile = (path.length() >= 4 
                 && path.substr(path.length()-4)==".zip");
                 messenger->passString("Loading...");
                 int readParameters =
                 theSim.base().readInputParametersFile(theDatabase.db.data(), path);
-                theSim.configure();
+                theSim.configure(true);
                 std::for_each(theSim.mutexes.begin(), theSim.mutexes.end(), 
                         [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
-                if (readParameters == 61) {
+                if (readParameters == 61 && theSim.base().isGridAllocated) {
                     int64_t extensionLoc = path.find_last_of(".");
                     const std::string basePath = path.substr(0, extensionLoc);
                     theSim.base().loadSavedFields(basePath, isZipFile);
@@ -1718,12 +1734,10 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (!theGui.theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
+        blackoutCairoPlot(cr,width,height);
         return;
     }
+    std::unique_lock guiLock(theGui.m);
     LweImage sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
 
@@ -1743,22 +1757,15 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.dataType = 0;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
+    else blackoutCairoPlot(cr, width, height);
 }
 
 void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (!theGui.theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
+        blackoutCairoPlot(cr,width,height);
         return;
     }
+    std::unique_lock guiLock(theGui.m);
     LwePlot sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
 
@@ -1793,23 +1800,15 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
             theGui.SVGStrings[0] = sPlot.SVGString;
         }
     }
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
+    else blackoutCairoPlot(cr, width, height);
 }
 
 void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (!theGui.theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
+        blackoutCairoPlot(cr,width,height);
         return;
     }
+    std::unique_lock guiLock(theGui.m);
     LwePlot sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
@@ -1848,29 +1847,18 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
             theGui.SVGStrings[1] = sPlot.SVGString.substr(SVGbegin);
         }
     }
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
+    else blackoutCairoPlot(cr, width, height);
+    
 }
 
 void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (!theGui.theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
+        blackoutCairoPlot(cr,width,height);
         return;
     }
+    std::unique_lock guiLock(theGui.m);
     LwePlot sPlot;
 
-    bool logPlot = false;
-    if (theGui.checkboxes["Log"]->isChecked()) {
-        logPlot = true;
-    }
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -1888,18 +1876,14 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
-    bool overlayTotal = false;
-    if (theGui.checkboxes["Total"]->isChecked()) {
-        overlayTotal = true;
-    }
-
+ 
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
     sPlot.data = &theGui.theSim.base().totalSpectrum[simIndex * 3 * theGui.theSim.base().Nfreq];
     sPlot.Npts = theGui.theSim.base().Nfreq;
-    sPlot.logScale = logPlot;
+    sPlot.logScale = theGui.checkboxes["Log"]->isChecked();;
     sPlot.forceYmin = forceY;
     sPlot.forceYmax = forceY;
     sPlot.forcedYmax = yMax;
@@ -1913,7 +1897,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
-    if (overlayTotal) {
+    if (theGui.checkboxes["Total"]->isChecked()) {
         sPlot.data2 = &theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq];
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
@@ -1929,29 +1913,17 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
             theGui.SVGStrings[2] = sPlot.SVGString.substr(SVGbegin);
         }
     }
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
+    else blackoutCairoPlot(cr, width, height);
 }
 
 void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (!theGui.theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
+        blackoutCairoPlot(cr,width,height);
         return;
     }
-
+    std::unique_lock guiLock(theGui.m);
     LwePlot sPlot;
-    bool logPlot = false;
-    if (theGui.checkboxes["Log"]->isChecked()) {
-        logPlot = true;
-    }
+
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -1969,17 +1941,14 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
-    bool overlayTotal = false;
-    if (theGui.checkboxes["Total"]->isChecked()) {
-        overlayTotal = true;
-    }
+ 
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
     sPlot.data = &theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq];
     sPlot.Npts = theGui.theSim.base().Nfreq;
-    sPlot.logScale = logPlot;
+    sPlot.logScale = theGui.checkboxes["Log"]->isChecked();
     sPlot.forceYmin = forceY;
     sPlot.forceYmax = forceY;
     sPlot.forcedYmax = yMax;
@@ -1993,7 +1962,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
-    if (overlayTotal) {
+    if (theGui.checkboxes["Total"]->isChecked()) {
         sPlot.data2 = &theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq];
         sPlot.ExtraLines = 1;
         sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
@@ -2009,23 +1978,15 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
             theGui.SVGStrings[3] = sPlot.SVGString.substr(SVGbegin).append("</svg>");
         }
     }
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
+    else blackoutCairoPlot(cr, width, height);
 }
 
 void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (!theGui.theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
+        blackoutCairoPlot(cr,width,height);
         return;
     }
+    std::unique_lock guiLock(theGui.m);
     LweImage sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2044,23 +2005,15 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.dataType = 0;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
+    else blackoutCairoPlot(cr, width, height);
 }
 
 void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (!theGui.theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
+        blackoutCairoPlot(cr,width,height);
         return;
     }
+    std::unique_lock guiLock(theGui.m);
     LweImage sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2083,23 +2036,15 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.logMin = logPlotOffset;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
+    else blackoutCairoPlot(cr, width, height);
 }
 
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (!theGui.theSim.base().isGridAllocated) {
-        LweColor black(0, 0, 0, 0);
-        std::unique_lock<std::mutex> GTKlock(GTKmutex);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
+        blackoutCairoPlot(cr,width,height);
         return;
     }
+    std::unique_lock guiLock(theGui.m);
     LweImage sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
@@ -2123,12 +2068,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.logMin = logPlotOffset;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) sPlot.imagePlot(cr);
-    else {
-        LweColor black(0, 0, 0, 0);
-        cairo_rectangle(cr, 0, 0, width, height);
-        black.setCairo(cr);
-        cairo_fill(cr);
-    }
+    else blackoutCairoPlot(cr, width, height);
 }
 
 
