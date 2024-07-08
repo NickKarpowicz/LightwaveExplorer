@@ -11,6 +11,25 @@ if(UNIX AND NOT APPLE)
             find_package(CUDAToolkit REQUIRED)
             find_package(TBB REQUIRED)
             find_package(MKL REQUIRED)
+
+            if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/dlib)
+            message("Using existing dlib clone")
+            else()
+                execute_process(COMMAND git clone --depth=1 https://github.com/davisking/dlib)
+            endif()
+
+            if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/gcem)
+                message("Using existing gcem clone")
+            else()
+                execute_process(COMMAND git clone --depth=1 https://github.com/kthohr/gcem)
+            endif()
+
+            if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/miniz)
+                message("Using existing miniz download")
+            else()
+                execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
+                execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
+            endif()
             include_directories(${MKL_ROOT}/include/fftw)
             include_directories(${CAIRO_INCLUDE_DIRS})
             include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib) 
@@ -161,7 +180,7 @@ if(UNIX AND NOT APPLE)
             if(USEFFTW)
                 add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -DNDEBUG -Wall)
             else()
-                add_compile_options(-std=c++20 -O3 -qopenmp -DNOCUDA -DNOSYCL -DNDEBUG -Wall)
+                add_compile_options(-std=c++20 -O3 -fopenmp -DNOCUDA -DNOSYCL -DNDEBUG -Wall)
             endif()
 
             execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
@@ -376,8 +395,10 @@ if(UNIX AND NOT APPLE)
         cmake_minimum_required(VERSION 3.23.0)
         project(LightwaveExplorer LANGUAGES CXX)   
         enable_language("CUDA")
+        find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
+        set(CMAKE_AUTOMOC ON)
         find_package(PkgConfig REQUIRED)
-        pkg_check_modules(GTK4 REQUIRED gtk4)
+        pkg_check_modules(CAIRO REQUIRED cairo)
         find_package(CUDAToolkit REQUIRED)
         find_package(OpenMP)
         find_package(TBB PATHS /app/opt/intel/oneapi/tbb/latest/lib/cmake REQUIRED)
@@ -385,15 +406,15 @@ if(UNIX AND NOT APPLE)
         find_package(fmt)
         find_package(miniz)
         include_directories(${CUDA_INCLUDE_DIRS})
-        include_directories(${GTK4_INCLUDE_DIRS})
         include_directories(${MKL_ROOT}/include/fftw)
         include_directories(${MKL_ROOT}/include)
+        include_directories(${CAIRO_INCLUDE_DIRS})
         add_compile_options(-DLWEFLATPAK)
         add_library(LightwaveExplorerCuda 
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu)
         add_executable(LightwaveExplorer 
-            Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
@@ -402,7 +423,8 @@ if(UNIX AND NOT APPLE)
         target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL -DLWEFLATPAK)
         target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
-        target_link_libraries(LightwaveExplorer ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
+        target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt miniz::miniz)
         target_link_libraries(LightwaveExplorer -lm
             -Wl,--start-group 
@@ -415,14 +437,15 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer TBB::tbb)
         add_executable(LightwaveExplorerNoCuda 
-            Source/Frontend/LightwaveExplorerFrontendGTK.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
         target_compile_options(LightwaveExplorerNoCuda PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL -DNOCUDA -DLWEFLATPAK)
-        target_link_libraries(LightwaveExplorerNoCuda ${GTK4_LIBRARIES})
+        target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
+        target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
         target_link_libraries(LightwaveExplorerNoCuda fmt::fmt miniz::miniz)
         target_link_libraries(LightwaveExplorerNoCuda -lm
             -Wl,--start-group 
@@ -433,6 +456,7 @@ if(UNIX AND NOT APPLE)
             ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
             )
         target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
+
         install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
         install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
