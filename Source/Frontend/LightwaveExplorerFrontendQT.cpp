@@ -1330,7 +1330,7 @@ int main(int argc, char **argv){
     //Win10 dark theme via https://forum.qt.io/topic/101391/windows-10-dark-theme/4
 #ifdef Q_OS_WIN
     QSettings settings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",QSettings::NativeFormat);
-    if(settings.value("AppsUseLightTheme")==0 && QSysInfo::productVersion().toInt() < 11){
+    if(QSysInfo::productVersion().toInt() < 11){
         app.setStyle(QStyleFactory::create("Fusion"));
         QPalette darkPalette;
         QColor darkColor = QColor(45,45,45);
