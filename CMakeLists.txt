@@ -424,7 +424,7 @@ if(UNIX AND NOT APPLE)
             Source/Devices/DlibLibraryComponents.cpp)
         target_compile_options(LightwaveExplorer PRIVATE -std=c++20 -O3 -fopenmp -DNOSYCL -DLWEFLATPAK)
         target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
-        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+        target_link_libraries(LightwaveExplorer CUDA::cudart_static CUDA::cufft_static CUDA::nvml)
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
         target_link_libraries(LightwaveExplorer fmt::fmt miniz::miniz)
@@ -436,7 +436,6 @@ if(UNIX AND NOT APPLE)
             -Wl,--end-group
             ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
             )
-        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer TBB::tbb)
         add_executable(LightwaveExplorerNoCuda 
             Source/Frontend/LightwaveExplorerFrontendQT.cpp 

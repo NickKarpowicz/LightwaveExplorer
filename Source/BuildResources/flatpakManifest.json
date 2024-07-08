@@ -33,8 +33,9 @@
         "/opt/cuda/pkgconfig",
         "/opt/cuda/nvvm",
         "/opt/cuda/nvml",
-        "/opt/cuda/nsight-systems-2023.2.3",
-        "/opt/cuda/nsight-compute-2023.2.1",
+        "/opt/cuda/nsight-systems*",
+        "/opt/cuda/nsight-compute*",
+        "/opt/cuda/gds*",
         "/opt/cuda/libnvvp",
         "/opt/cuda/nsightee_plugins",
         "/opt/cuda/libnvvp",
@@ -136,29 +137,25 @@
             "buildsystem": "simple",
             "build-commands":[
                 "mkdir /app/tmp",
-                "sh cuda_12.2.1_535.86.10_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
+                "sh cuda_12.5.1_555.42.06_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
             "sources":[
                 {
                     "type": "file",
-                    "url": "https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run",
-                    "sha256": "c51e814eaa756160a73289b1f35880cc38c18e1ddedc87f46f7ff0d1696bdb95"
+                    "url": "https://developer.download.nvidia.com/compute/cuda/12.5.1/local_installers/cuda_12.5.1_555.42.06_linux.run",
+                    "sha256": "b5e0a779e089c86610051141c4cf498beef431858ec63398107391727ecbdb04"
                 }
             ]
         },
         {
             "name": "LightwaveExplorer",
             "buildsystem": "cmake-ninja",
-            "build-options":{
-                "append-path": "/usr/lib/sdk/llvm15/bin",
-                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib"
-            },
             "config-opts": [
                 "-DMAKECUDAFLATPAK=TRUE",
-                "-DCMAKE_CXX_COMPILER=clang++", 
+                "-DCMAKE_CXX_COMPILER=g++", 
                 "-DCMAKE_CUDA_ARCHITECTURES='75;86;89'", 
                 "-DCUDAToolkit_ROOT=/app/opt/cuda",
                 "-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc",
-                "-DCMAKE_CUDA_HOST_COMPILER=clang++"],
+                "-DCMAKE_CUDA_HOST_COMPILER=g++"],
             "sources": [
                 {
                     "type": "git",
