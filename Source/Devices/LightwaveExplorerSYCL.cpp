@@ -6,17 +6,17 @@
 #include "LightwaveExplorerCore.cu"
 #include <string>
 #include <vector>
-// #if defined __linux__ || defined __APPLE__
+#if defined __linux__ || defined __APPLE__
 #include<fmt/format.h>
 #define Sformat fmt::format
 #define Svformat fmt::vformat
 #define Smake_format_args fmt::make_format_args
-// #else
-// #include <format>
-// #define Sformat std::format
-// #define Svformat std::vformat
-// #define Smake_format_args std::make_format_args
-// #endif
+#else
+#include <format>
+#define Sformat std::format
+#define Svformat std::vformat
+#define Smake_format_args std::make_format_args
+#endif
 
 void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
     unsigned char cpuCount = 0;

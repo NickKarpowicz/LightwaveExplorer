@@ -730,18 +730,17 @@ if(WIN32)
         find_package(MKL REQUIRED)
         find_package(dlib REQUIRED)
         find_package(miniz REQUIRED)
-        find_package(fmt REQUIRED)
         include_directories(${CMAKE_CURRENT_BINARY_DIR})
         include_directories(${MKL_ROOT}/include/fftw) 
         include_directories(${MKL_ROOT}/include)  
         include_directories(${CMAKE_SOURCE_DIR}/Source)
         set(CXX_STANDARD 20)
-        add_compile_options(-std=c++20 -fp-model=precise -O3 -fopenmp -fsycl -w)
+        add_compile_options(-Qstd=c++20 -fp:precise -O3 -openmp -fsycl -DLIGHTWAVEEXPLORERSYCL_EXPORTS)
         add_library(LightwaveExplorerSYCL SHARED
             Source/Devices/LightwaveExplorerSYCL.cpp 
             Source/Devices/LightwaveExplorerSYCLFP32.cpp 
             Source/LightwaveExplorerUtilities.cpp)
-        target_link_libraries(LightwaveExplorerSYCL miniz::miniz fmt::fmt dlib::dlib)
+        target_link_libraries(LightwaveExplorerSYCL miniz::miniz dlib::dlib)
         target_link_libraries(LightwaveExplorerSYCL
             ${MKL_ROOT}/lib/mkl_sycl.lib 
             ${MKL_ROOT}/lib/mkl_intel_ilp64.lib 
@@ -819,7 +818,7 @@ if(WIN32)
             )
         endforeach()
         file(GLOB CUDART_DLLS "${CUDAToolkit_BIN_DIR}/cudart64*.dll")
-        foreach(CUDART_DLL ${CUFFT_DLLS})
+        foreach(CUDART_DLL ${CUDART_DLLS})
             add_custom_command(TARGET LightwaveExplorer POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${CUDART_DLL}

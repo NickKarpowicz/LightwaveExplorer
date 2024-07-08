@@ -46,7 +46,7 @@ namespace deviceLibSYCLFP32{
 	static inline float hypot(const float x, const float y) {
 		return hypotf(x, y);
 	}
-	static sycl::ext::oneapi::experimental::complex<float> pow(const sycl::ext::oneapi::experimental::complex<float> x, const float y){
+	[[maybe_unused]] static sycl::ext::oneapi::experimental::complex<float> pow(const sycl::ext::oneapi::experimental::complex<float> x, const float y){
 		float theta = atan2f(x.imag(), x.real());
 		float rn = powf(x.real() * x.real() + x.imag() * x.imag(), 0.5f*y);
 		return sycl::ext::oneapi::experimental::complex<float>(rn*cosf(y*theta),rn*sinf(y*theta));
@@ -66,7 +66,7 @@ namespace deviceLibSYCLFP32{
 	}
 };
 
-static int hardwareCheck(int* CUDAdeviceCount) {
+[[maybe_unused]] static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
 }
