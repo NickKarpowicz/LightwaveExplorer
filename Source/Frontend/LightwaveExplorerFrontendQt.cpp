@@ -447,7 +447,7 @@ public:
         //Divide the main window into a large expanding upper panel and a control strip at the bottom
         auto squeezeMargins = [&](QBoxLayout* layout){
             layout->setSpacing(0);
-            layout->setContentsMargins(1,1,1,1);
+            layout->setContentsMargins(0,0,0,0);
         };
         QWidget *windowBody = new QWidget;
         windowBody->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -1091,12 +1091,17 @@ public:
         checkboxes["Total"] = new QCheckBox("Total");
         checkboxes["Total"]->setToolTip("Overlay the total spectrum.");
         plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
-        plotControlStripLayout->addWidget(checkboxes["Total"]);
-        plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         checkboxes["Log"] = new QCheckBox("Log");
         checkboxes["Log"]->setToolTip("Plot the spectrum on a log scale. Will look more meaningful if you set y-limits.");
+    #ifdef __APPLE__
+        plotControlStripLayout->addWidget(checkboxes["Total"], 0, Qt::AlignBottom);
+        plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
+        plotControlStripLayout->addWidget(checkboxes["Log"], 0, Qt::AlignBottom);
+    #else
+        plotControlStripLayout->addWidget(checkboxes["Total"]);
+        plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         plotControlStripLayout->addWidget(checkboxes["Log"]);
-
+    #endif
         readDefaultValues(theSim, theDatabase);
         setInterfaceValuesToActiveValues(theSim);
         cPrint(checkLibraryAvailability(theSim));
