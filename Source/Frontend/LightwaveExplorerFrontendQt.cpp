@@ -1188,7 +1188,6 @@ public:
 
         QObject::connect(buttons["save"], &QPushButton::clicked, [&](){
             if(!theSim.base().isGridAllocated) return;
-            std::unique_lock guiLock(m);
             theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["save"],"Save LWE result","","LWE Results (*.zip)").toStdString();
             stripLineBreaks(theSim.base().outputBasePath);
             if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
@@ -1201,6 +1200,7 @@ public:
                 std::unique_lock lock(m);
                 theSim.saveDataSet();
                 messenger->passString("done.\n");
+                messenger->passDrawRequest();
             };
             std::thread(saveLambda).detach();
         });
