@@ -1738,11 +1738,11 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 }
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    std::unique_lock guiLock(theGui.m);
     LweImage sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
 
@@ -1766,11 +1766,11 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    std::unique_lock guiLock(theGui.m);
     LwePlot sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
 
@@ -1809,11 +1809,11 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    std::unique_lock guiLock(theGui.m);
     LwePlot sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
@@ -1857,11 +1857,11 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    std::unique_lock guiLock(theGui.m);
     LwePlot sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
@@ -1922,11 +1922,11 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    std::unique_lock guiLock(theGui.m);
     LwePlot sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
@@ -1987,11 +1987,11 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    std::unique_lock guiLock(theGui.m);
     LweImage sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2014,11 +2014,11 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    std::unique_lock guiLock(theGui.m);
     LweImage sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2045,11 +2045,11 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    std::unique_lock guiLock(theGui.m);
     LweImage sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
