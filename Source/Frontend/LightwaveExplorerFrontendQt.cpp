@@ -1,4 +1,4 @@
-#include "LightwaveExplorerFrontendQT.h"
+#include "LightwaveExplorerFrontendQt.h"
 
 void blackoutCairoPlot(cairo_t* cr, const int width, const int height){
     LweColor black(0, 0, 0, 0);
@@ -2212,4 +2212,4 @@ int formatSequence(std::string& s){
     return 0;
 }
 
-#include "LightwaveExplorerFrontendQT.moc"
+#include "LightwaveExplorerFrontendQt.moc"

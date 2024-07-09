@@ -2,7 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#ifdef CPUONLY
+#ifdef USEFFTW
 #include <fftw3.h>
 #else
 #include <fftw3_mkl.h>

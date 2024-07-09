@@ -2,11 +2,13 @@
 #undef _U_GLIBCXX_ASSERTIONS
 #endif
 #include "../LightwaveExplorerUtilities.h"
-#ifdef CPUONLY
+
+#ifdef USEFFTW
 #include <fftw3.h>
 #else
 #include <fftw3_mkl.h>
 #endif
+
 #include <atomic>
 #include <thread>
 #include <iostream>

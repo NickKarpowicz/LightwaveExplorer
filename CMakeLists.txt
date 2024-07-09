@@ -46,7 +46,7 @@ if(UNIX AND NOT APPLE)
         add_executable(LightwaveExplorer 
             Source/Devices/LightwaveExplorerSYCLLinux.cpp 
             Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
-            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
@@ -63,6 +63,97 @@ if(UNIX AND NOT APPLE)
             -Wl,--end-group
             ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
             -lsycl -lOpenCL)
+        target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
+        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+        target_link_libraries(LightwaveExplorer TBB::tbb)
+        target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
+        
+        configure_file(${CMAKE_SOURCE_DIR}/Source/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
+        add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh)
+        install(TARGETS LightwaveExplorer)
+        install(PROGRAMS ${CMAKE_BINARY_DIR}/LightwaveExplorerLauncher.sh DESTINATION bin)
+        install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
+        install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
+        install(DIRECTORY ${CMAKE_SOURCE_DIR}/Source//BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
+        install(FILES Source/BuildResources/DesktopFileLauncher 
+            DESTINATION share/applications 
+            RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
+    elseif(MAKECUDA)   
+        cmake_minimum_required(VERSION 3.23.0)
+        project(LightwaveExplorer LANGUAGES C CXX CUDA)
+        find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
+        set(CMAKE_AUTOMOC ON)
+        find_package(fmt REQUIRED)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(CAIRO REQUIRED cairo)
+        find_package(CUDAToolkit REQUIRED)
+        find_package(TBB REQUIRED)
+        
+        if(USEFFTW)
+            pkg_check_modules(FFTW REQUIRED fftw3)
+            pkg_check_modules(FFTWF REQUIRED fftw3f)
+            include_directories(${FFTW_INCLUDE_DIRS})
+            link_directories(${FFTW_LIBRARY_DIRS})
+        else()
+            find_package(MKL REQUIRED)
+        endif()
+
+        if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/dlib)
+        message("Using existing dlib clone")
+        else()
+            execute_process(COMMAND git clone --depth=1 https://github.com/davisking/dlib)
+        endif()
+
+        if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/gcem)
+            message("Using existing gcem clone")
+        else()
+            execute_process(COMMAND git clone --depth=1 https://github.com/kthohr/gcem)
+        endif()
+
+        if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/miniz)
+            message("Using existing miniz download")
+        else()
+            execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
+            execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
+        endif()
+        include_directories(${MKL_ROOT}/include/fftw)
+        include_directories(${CAIRO_INCLUDE_DIRS})
+        include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib) 
+        include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
+        include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+        add_library(miniz miniz/miniz.c)
+
+        add_library(LightwaveExplorerCuda 
+            Source/LightwaveExplorerCore.cu 
+            Source/Devices/LightwaveExplorerCoreFP32.cu)
+
+        add_compile_options(-std=c++20 -O3 -fopenmp -DNOSYCL)
+        if(USEFFTW)
+            add_compile_options(-DUSEFFTW)
+        endif()
+        add_executable(LightwaveExplorer 
+            Source/Frontend/LightwaveExplorerFrontendQt.cpp 
+            Source/LightwaveExplorerUtilities.cpp 
+            Source/Devices/LightwaveExplorerCoreCPU.cpp 
+            Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+            Source/Devices/LightwaveExplorerCoreCounter.cpp 
+            Source/Devices/DlibLibraryComponents.cpp)
+        target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
+        target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
+        target_link_libraries(LightwaveExplorer -lgomp)
+
+        if(USEFFTW)
+            target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})
+        else()
+            target_link_libraries(LightwaveExplorer
+                -Wl,--start-group 
+                ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_core.a
+                -Wl,--end-group)
+        endif()
+
         target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
         target_link_libraries(LightwaveExplorer TBB::tbb)
@@ -101,7 +192,7 @@ if(UNIX AND NOT APPLE)
         add_executable(LightwaveExplorer 
             Source/Devices/LightwaveExplorerSYCLLinux.cpp 
             Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
-            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
@@ -241,7 +332,7 @@ if(UNIX AND NOT APPLE)
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu)
         add_executable(LightwaveExplorer 
-            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
@@ -264,7 +355,7 @@ if(UNIX AND NOT APPLE)
             )
         target_link_libraries(LightwaveExplorer TBB::tbb)
         add_executable(LightwaveExplorerNoCuda 
-            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
@@ -314,7 +405,7 @@ if(UNIX AND NOT APPLE)
         include_directories(${FFTW_INCLUDE_DIRS})
         link_directories(${FFTW_LIBRARY_DIRS})
 
-        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL)
+        add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DUSEFFTW -DNOSYCL)
         add_executable(LightwaveExplorer 
             Source/LightwaveExplorerCommandLineMain.cpp 
             Source/LightwaveExplorerUtilities.cpp 
@@ -362,6 +453,7 @@ if(UNIX AND NOT APPLE)
         find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
         set(CMAKE_AUTOMOC ON)
         find_package(fmt REQUIRED)
+        find_package(TBB REQUIRED)
         find_package(PkgConfig REQUIRED)
 
         pkg_check_modules(CAIRO REQUIRED cairo)
@@ -376,7 +468,7 @@ if(UNIX AND NOT APPLE)
             include_directories(${FFTW_INCLUDE_DIRS})
             link_directories(${FFTW_LIBRARY_DIRS})
         else()
-            find_package(TBB REQUIRED)
+            
             find_package(MKL REQUIRED)
             include_directories(${MKL_ROOT}/include/fftw)                   
         endif()
@@ -402,14 +494,14 @@ if(UNIX AND NOT APPLE)
         
         add_library(miniz miniz/miniz.c)
         if(USEFFTW)
-            add_compile_options(-std=c++20 -O3 -fopenmp -DCPUONLY -DNOSYCL -DNDEBUG -Wall)
+            add_compile_options(-std=c++20 -O3 -fopenmp -DUSEFFTW -DNOCUDA -DNOSYCL -DNDEBUG -Wall)
         else()
             add_compile_options(-std=c++20 -O3 -fopenmp -DNOCUDA -DNOSYCL -DNDEBUG -Wall)
         endif()
 
         execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
         add_executable(LightwaveExplorer 
-            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
@@ -423,12 +515,11 @@ if(UNIX AND NOT APPLE)
             target_link_libraries(LightwaveExplorer
                 -Wl,--start-group 
                 ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
-                ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
+                ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
                 ${MKL_ROOT}/lib/intel64/libmkl_core.a 
-                -Wl,--end-group
-                ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a)
-            target_link_libraries(LightwaveExplorer TBB::tbb)
+                -Wl,--end-group)            
         endif()
+        target_link_libraries(LightwaveExplorer TBB::tbb -lgomp)
         target_link_libraries(LightwaveExplorer fmt::fmt miniz)
         target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
 
@@ -487,9 +578,9 @@ if(APPLE)
     endif()
     add_library(miniz miniz/miniz.c)
 
-    add_compile_options(-std=c++20 -O3 -DCPUONLY -DNOSYCL -DNDEBUG -Wall -x objective-c++)
+    add_compile_options(-std=c++20 -O3 -DCPUONLY -DUSEFFTW -DNOSYCL -DNDEBUG -Wall -x objective-c++)
     add_executable(LightwaveExplorer MACOSX_BUNDLE 
-        Source/Frontend/LightwaveExplorerFrontendQT.cpp 
+        Source/Frontend/LightwaveExplorerFrontendQt.cpp 
         Source/LightwaveExplorerUtilities.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
@@ -575,14 +666,14 @@ if(WIN32)
         set(CMAKE_CXX_STANDARD 20)
         set(CMAKE_CXX_STANDARD_REQUIRED ON)
         add_executable(LightwaveExplorer WIN32 
-            Source/Frontend/LightwaveExplorerFrontendQT.cpp 
+            Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu
-            Source/Frontend/LightwaveExplorerQT.rc)
+            Source/Frontend/LightwaveExplorerIcon.rc)
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         if(USEFFTW)
             target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})

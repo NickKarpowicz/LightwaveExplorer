@@ -85,82 +85,75 @@ The application bundle contains all the required files. If you want to edit the 
 
 ---
 ### Compilation on Windows
-You will need Visual Studio 2022. You will also need [vcpkg](https://vcpkg.io), and use that to install dlib (make sure you get the 64-bit version, not the 32-bit one) and miniz.
+You will need: 
+ - [Visual Studio 2022](https://visualstudio.microsoft.com/free-developer-offers/) to get Microsoft's compiler. 
+ - [vcpkg](https://vcpkg.io), and use that to install dlib, gcem, and miniz.
+ - [CMake](https://cmake.org/).
+ - [CUDA development kit](https://developer.nvidia.com/cuda-downloads)
+ - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
+ - [Qt](https://www.qt.io).
 
-Next, install the [CUDA development kit](https://developer.nvidia.com/cuda-downloads) from NVIDIA, and [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
-  
-Next, you'll need a compiled version of [GTK4](http://gtk.org). The resulting compiled thing should be kept in a folder next to the LightwaveExplorer folder (e.g. they're both in the same parent folder).
+If you've cloned the repo, from that folder, first make the SYCL version as a DLL:
+```
+mkdir build
+cd build 
+
+cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
+
+cmake --build . --config Release
+```
+Next build the main application together with the CUDA version:
+```
+cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
+
+cmake --build . --config Release
+```
+
+There's also a powershell script named WinBuild.ps1 in the BuildResources folder that does all of this, so you can just run "./Source/BuildResources/WinBuild.Ps1" from the repo root directory to build the whole thing.
 
 ---
 
-### Compiling the GUI app on Linux (Easy CPU-only version)
-The easiest version to compile on Linux is the GPL3 version, which doesn't include the CUDA or OneAPI propagators. This means it will _only_ run on CPU, but if you don't have a compatible GPU anyway, it makes use of FFTW for the FFTs, which may be faster on your hardware in any case.
+### Compiling the GUI app on Linux
+You'll need the same set of libraries on Linux, however there are a few options so that if you're compiling for your system, you don't have to install the libraries for hardware you won't use.
 
-The prerequisite packages are: gcc, cmake, GTK4, and FFTW (plus git to download the repo). Their exact names in your package manager may vary... 
-
-If you are on an Ubuntu-based distro, you can use this to grab everything:
-
+You will at least need the following (these are what they are called on Fedora/dnf, the names might slightly differ on your repo):
 ```
-sudo apt install gcc git cmake libgtk-4-1 libgtk-4-dev libfftw3-3 libfftw3-dev
+fmt-devel, qt6-qtbase-devel, cairo-devel, tbb-devel
 ```
+Next, choose your FFT libraries:
+ - cuFFT from the [CUDA development kit](https://developer.nvidia.com/cuda-downloads)
+ - MKL from [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html), either the CPU version of SYCL
+ - [FFTW](http://fftw.org/), for CPU
 
-On OpenSUSE Tumbleweed, I needed:
+ You'll need at least one CPU library (i.e. FFTW or MKL) to handle the GUI.
+
+ You can determine which version you get with flags sent to cmake. Here are some useful combinations:
+
+This builds the full thing, requiring both CUDA and the oneAPI toolkit, using MKL for the CPU FFTs (CUDA architecture set to 30 series, and using clang 17 because at the time of writing CUDA won't accept GCC 14 or Clang 18 as host compiler): 
+ ```
+ cmake --fresh -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
+ ```
+
+This builds the CUDA version, without OneAPI, using FFTW for the CPU FFTs
 ```
-sudo zypper install git gcc-c++ cmake gtk4-devel fftw-devel fmt-devel
-```
-
-Once you have that, type the following into the terminal:
-
-```
-git clone https://github.com/NickKarpowicz/LightwaveExplorer
-mkdir LightwaveExplorer/build
-cd LightwaveExplorer/build
-cmake ..
-make
-```
-
-It should then spend a bit of time building and finally produce a LightwaveExplorer executable in the build directory.
-
-You can install the application in your default location (probably /usr/local) with the command:
-
-```
-sudo cmake --install .
+cmake --fresh -DMAKECUDA=1 -DUSEFFTW=1 -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
 ```
 
-If you want to install it somewhere else, append --prefix "/where/you/want/it/to/go"
+This builds the SYCL version, without needing the CUDA toolkit:
+ ```
+ cmake --fresh -DMAKESYCL=TRUE -DCMAKE_CXX_COMPILER=icpx .. -G Ninja
+ ```
 
-Installing will also place the CrystalDatabase.txt and DefaultValues.ini text files in the /share/LightwaveExplorer folder alongside the /bin folder where the binary ends up. You can edit these freely to add crystals or changes the values that populate the program's interface when it starts.
+This will make a CPU-only (FFTW) version that doesn't need CUDA or oneAPI (i.e. it only uses things that are probably in your normal repo):
+```
+cmake -DUSEFFTW=1 .. -G Ninja
+```
 
-### Compiling the GUI app on Linux (CUDA and SYCL version)
-
-  You'll need everything required to build the GPL3 version above, except for FFTW, which isn't used in this version. I'd recommend building the one above first to make sure it works. Next, install the prerequisites for this version:
-
-  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
-
-  - [NVIDIA CUDA](https://developer.nvidia.com/cuda-downloads) - this might already be in your package manager, but I'd recommend at least version 11.6.
-
-  Now that you have everything, in order to build the full version, first you have to set the OneAPI environment variables, typically with:
-  ```
-  . ~/intel/oneapi/setvars.sh
-  ```
-  if you installed OneAPI as a normal user or
-  ```
-  . /opt/intel/oneapi/setvars.sh
-  ```
-  if you installed as root.
-
-  Then, build the executable with:
-  ```
-  git clone https://github.com/NickKarpowicz/LightwaveExplorer
-  mkdir LightwaveExplorer/build
-  cd LightwaveExplorer/build
-  cmake -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 ..
-  make
-  ```
-  
-  Replace the CUDA_ARCHITECTURES number with one that matches your GPU. If it doesn't fail, you should now have an executable file named LightwaveExplorer in the build folder. You can install using the same process as the CPU-only version above.
-
-  Depending on your distro, your version of Clang or GCC might be too new to work with CUDA, in which case you might need to install an older one and specify that in the call to cmake, i.e. -DCMAKE_CUDA_HOST_COMPILER=clang++15 after installing the clang15 package.
+No matter what configuration you pick, you can now just do
+```
+cmake --build . --config Release
+```
+and you should have a binary to run. You should either install it (sudo cmake --install .) or copy the files CrystalDatabase.txt and DefaultValues.ini to the build folder and run it....
 
 ---
 
@@ -196,10 +189,10 @@ curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master
 
   ### Libraries used
 Thanks to the original authors for making their work available! They are all freely available, but of course have their own licenses .etc.
+  - [Qt](https://qt.io): This is how the GUI is built in the newest version, and is why it should now use the native style on Windows, Mac, and Linux.
   - [NVIDIA CUDA](https://developer.nvidia.com/cuda-toolkit): This provides the basic CUDA runtime, compiler, and cuFFT, for running the simulations on NVIDIA GPUs, and is the basis of the fastest version of this code.
   - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html), specifically the [Math Kernel Library](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html#gs.cw3ci4): This is used for performing fast fourier transforms when running in CPU mode. The DPC++ compiler allows the program to run on both CPUs and a wider range of GPUs, including the integrated ones on Intel chips. I found that on my rather old laptop, SYCL on the GPU is several times faster than running on CPU, so it's useful even for systems without dedicated GPUs.
   - [Dlib](http://dlib.net/): This library is the basis of the optimization routines. I make use of the global optimization functions for the fitting/optimization modes. The library is [available on Github](https://github.com/davisking/dlib), and their excellent documentation and further information is on the [main project website](http://dlib.net/).
-  - [GTK](https://www.gtk.org): The new version of the user interface uses GTK 4; this is why it looks pretty much the same on Windows, Linux, and Mac. It was pretty easy to get working cross-platform, which again is nice for the goal that everybody should be able to reproduce calculations in LWE.
   - [FFTW](https://www.fftw.org/): This is used for Fast Fourier Transforms in the GPL 3.0 version (i.e. the CPU-only Linux and Mac versions). On a given CPU this is on average the fastest FFT you can find.
   - [miniz](https://github.com/richgel999/miniz): Nice and easy to use C library for making/reading .zip archives.
   
