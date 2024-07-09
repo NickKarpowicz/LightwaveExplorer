@@ -1327,6 +1327,9 @@ public:
 int main(int argc, char **argv){
     QApplication app(argc, argv);
     app.setApplicationName("Lightwave Explorer");
+    #ifdef __linux__
+    app.setDesktopFileName("io.github.NickKarpowicz.LightwaveExplorer");
+    #endif
     //Win10 dark theme via https://forum.qt.io/topic/101391/windows-10-dark-theme/4
 #ifdef Q_OS_WIN
     QSettings settings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",QSettings::NativeFormat);

@@ -97,9 +97,7 @@ If you've cloned the repo, from that folder, first make the SYCL version as a DL
 ```
 mkdir build
 cd build 
-
 cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
-
 cmake --build . --config Release
 ```
 Next build the main application together with the CUDA version:
@@ -131,17 +129,17 @@ Next, choose your FFT libraries:
 
 This builds the full thing, requiring both CUDA and the oneAPI toolkit, using MKL for the CPU FFTs (CUDA architecture set to 30 series, and using clang 17 because at the time of writing CUDA won't accept GCC 14 or Clang 18 as host compiler): 
  ```
- cmake --fresh -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
+ cmake -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
  ```
 
 This builds the CUDA version, without OneAPI, using FFTW for the CPU FFTs
 ```
-cmake --fresh -DMAKECUDA=1 -DUSEFFTW=1 -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
+cmake -DMAKECUDA=1 -DUSEFFTW=1 -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
 ```
 
 This builds the SYCL version, without needing the CUDA toolkit:
  ```
- cmake --fresh -DMAKESYCL=TRUE -DCMAKE_CXX_COMPILER=icpx .. -G Ninja
+ cmake -DMAKESYCL=TRUE -DCMAKE_CXX_COMPILER=icpx .. -G Ninja
  ```
 
 This will make a CPU-only (FFTW) version that doesn't need CUDA or oneAPI (i.e. it only uses things that are probably in your normal repo):
@@ -204,7 +202,7 @@ Thanks to the original authors for making their work available! They are all fre
 
   Although CUDA was the initial platform and what I use (and test) most extensively, I've added two additional languages for those who don't have an Nvidia graphics card. 
   
-  One is in c++, with multithreading done with OpenMP. 
+  One is in c++, with multithreading done with either with OpenMP or using C++ parallel execution policies. 
   
   The other language is SYCL. This also allows the simulation to run on the CPU and should allow it to run on Intel's graphics cards, as well as the integrated graphics of many Intel CPUs. The same language should be able to run on AMD cards, but support for the DPC++ toolchain with the HipSYCL backend is quite new, and I don't have an AMD card to test it on. 
     
