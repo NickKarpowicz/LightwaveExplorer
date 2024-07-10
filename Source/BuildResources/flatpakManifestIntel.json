@@ -1,0 +1,328 @@
+{
+    "id": "io.github.NickKarpowicz.LightwaveExplorer",
+    "runtime": "org.kde.Platform",
+    "runtime-version": "6.7",
+    "sdk": "org.kde.Sdk",
+    "sdk-extensions":[
+        "org.freedesktop.Sdk.Extension.llvm15"],
+    "command": "flatpakLauncher.sh",
+    "finish-args": [
+        "--share=ipc",
+        "--device=dri",
+        "--socket=wayland",
+        "--socket=fallback-x11"
+    ],
+    "cleanup": [
+        "/include",
+        "/lib/cmake",
+        "/lib/pkgconfig",
+        "/lib/*.la",
+        "/lib/*.a",
+        "/mkspecs",
+        "/share/aclocal",
+        "/share/info",
+        "/share/man",
+        "/opt"
+    ],
+    "modules": [
+        {
+            "name": "khronos-opencl-headers",
+            "buildsystem": "cmake-ninja",
+            "sources": [
+              {
+                "type": "git",
+                "url": "https://github.com/KhronosGroup/OpenCL-Headers",
+                "tag": "v2024.05.08",
+                "commit": "8275634cf9ec31b6484c2e6be756237cb583999d"
+              }
+            ]
+
+        },
+        {
+            "name": "ocl-icd",
+            "config-opts": [
+              "--disable-update-database",
+              "--enable-custom-vendordir=/app/extensions/IntelComputeRuntime/OpenCL/vendors",
+              "--enable-official-khronos-headers"
+            ],
+            "sources": [
+              {
+                "type": "git",
+                "url": "https://github.com/OCL-dev/ocl-icd",
+                "tag": "v2.3.2",
+                "commit": "fdde6677b21329432db8b481e2637cd10f7d3cb2"
+              }
+            ]
+        },
+        {
+            "name": "SPIRV-Headers",
+            "buildsystem": "simple",
+            "build-commands":
+            [
+                "cp -R SPIRV-Headers/include/spirv /app/include/",
+                "cp -R SPIRV-Headers /app/share"
+            ],
+            "sources":[
+                {
+                    "type": "git",
+                    "url": "https://github.com/KhronosGroup/SPIRV-Headers",
+                    "commit": "1c6bb2743599e6eb6f37b2969acc0aef812e32e3",
+                    "dest": "SPIRV-Headers"
+                }
+            ]
+        },
+        {
+            "name":"intel-graphics-compiler",
+            "buildsystem": "cmake-ninja",
+            "build-options": 
+            {
+                "append-path": "/usr/lib/sdk/llvm15/bin",
+                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
+                "env": {
+                    "CC": "clang",
+                    "CXX": "clang++"
+                }
+            },
+            "config-opts":
+            [
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-Wno-dev",
+                "-DLLVM_EXTERNAL_PROJECTS=\"SPIRV-Headers\"",
+                "-DLLVM_EXTERNAL_SPIRV_HEADERS_SOURCE_DIR=/app/share/SPIRV-Headers"
+            ],
+            "builddir": true,
+            "subdir": "igc",
+            "sources":[
+                {
+                    "type": "git",
+                    "url": "https://github.com/intel/intel-graphics-compiler",
+                    "tag": "igc-1.0.16900.23",
+                    "commit": "626c9e4a18b174f2f0f2d5328166f38da4538500",
+                    "dest": "igc"
+                },
+                {
+                    "type": "git",
+                    "url": "https://github.com/intel/vc-intrinsics",
+                    "tag": "v0.18.0",
+                    "commit": "f9c34404d0ea9abad83875a10bd48d88cea90ebd",
+                    "dest": "vc-intrinsics"
+                },
+                {
+                    "type": "git",
+                    "url": "https://github.com/KhronosGroup/SPIRV-Tools",
+                    "tag": "v2023.6.rc1",
+                    "commit": "f0cc85efdbbe3a46eae90e0f915dc1509836d0fc",
+                    "dest": "SPIRV-Tools"
+                },
+                {
+                    "type": "git",
+                    "url": "https://github.com/llvm/llvm-project",
+                    "tag": "llvmorg-14.0.5",
+                    "commit": "c12386ae247c0d46e1d513942e322e3a0510b126",
+                    "dest": "llvm-project"
+                },
+                {
+                    "type": "git",
+                    "url": "https://github.com/intel/opencl-clang",
+                    "commit": "cf95b338d14685e4f3402ab1828bef31d48f1fd6",
+                    "dest": "llvm-project/llvm/projects/opencl-clang"
+                },
+                {
+                    "type": "git",
+                    "url": "https://github.com/KhronosGroup/SPIRV-LLVM-Translator",
+                    "commit": "f6fb55cd7b539ee6a70e3909c963f968cc40c1cd",
+                    "dest": "llvm-project/llvm/projects/llvm-spirv"
+                },
+                {
+                    "type": "git",
+                    "url": "https://github.com/KhronosGroup/SPIRV-Headers",
+                    "commit": "1c6bb2743599e6eb6f37b2969acc0aef812e32e3",
+                    "dest": "SPIRV-Headers"
+                },
+                {
+                    "type": "patch",
+                    "path": "no_git_patching.patch"
+                },
+                {
+                    "type": "shell",
+                    "commands": [
+                        "cat llvm-project/llvm/projects/opencl-clang/patches/{clang,llvm}/*.patch | patch -Np1 -d llvm-project",
+                        "cat llvm-project/llvm/projects/opencl-clang/patches/spirv/*.patch | patch -Np1 -d llvm-project/llvm/projects/llvm-spirv"
+                    ]
+                }
+
+            ]
+        },
+        {
+            "name": "intel-gmmlib",
+            "buildsystem": "cmake-ninja",
+            "builddir": true,
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/intel/gmmlib",
+                    "tag": "intel-gmmlib-22.3.20",
+                    "commit": "0d65e6900073591c8fa1956a6d2c445f79c9be1f"
+                }
+            ]
+        },
+        {
+            "name": "level-zero",
+            "buildsystem": "cmake-ninja",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/oneapi-src/level-zero",
+                    "tag": "v1.17.6",
+                    "commit": "fd459f28041c176df23a0b7b791ff20a7689d237"
+                }
+            ]
+        },
+        {
+            "name": "intel-compute-runtime",
+            "buildsystem": "cmake-ninja",
+            "config-opts":
+                [
+                    "-DCMAKE_BUILD_TYPE=Release",
+                    "-DOCL_ICD_VENDORDIR=/app/etc/OpenCL/vendors",
+                    "-DSKIP_UNIT_TESTS=1",
+                    "-DIGC_DIR=/app"
+                ],
+            "post-install": 
+                [
+                    "ln -s /usr/lib/$(uname -m)-linux-gnu/GL/OpenCL/vendors/*.icd $FLATPAK_DEST/etc/OpenCL/vendors"
+                ],
+            "sources": 
+            [
+                {
+                    "type": "git",
+                    "url": "https://github.com/intel/compute-runtime",
+                    "tag": "24.22.29735.20",
+                    "commit": "6aa72243a0916e05a6c1dbe8a0a46711a96fda98"
+                }
+            ]
+        },
+        {
+            "name": "oneAPI",
+            "buildsystem": "simple",
+            "build-options":{
+                "append-path": "/usr/lib/sdk/llvm15/bin",
+                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib"
+                },
+            "build-commands": [
+                    "chmod +x l_BaseKit_p_2024.2.0.634_offline.sh",
+                    "./l_BaseKit_p_2024.2.0.634_offline.sh -x -f webimage_extracted",
+                    "rm l_BaseKit_p_2024.2.0.634_offline.sh",
+                    "webimage_extracted/l_BaseKit_p_2024.2.0.634_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.tbb.devel:intel.oneapi.lin.dpcpp-cpp-compiler --install-dir=/app/opt/intel/oneapi --eula=accept",
+                    "rm -rf /app/opt/intel/oneapi/compiler/latest/opt/oclfpga/host/linux64/bin/perl/lib",
+                    "mkdir -p /app/lib",
+                    "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbb.so* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbbmalloc.so* /app/lib/",
+                    "rm -rf /app/opt/intel/oneapi/debugger",
+                    "rm -rf /app/opt/intel/oneapi/dev-utilities",
+                    "rm -rf /app/opt/intel/oneapi/diagnostics",
+                    "rm -rf /app/opt/intel/oneapi/mkl/latest/lib32",
+                    "rm /app/opt/intel/oneapi/mkl/latest/lib/libmkl_sycl_vm.*",
+                    "rm /app/opt/intel/oneapi/mkl/latest/lib/libmkl_sycl_sparse.*",
+                    "rm /app/opt/intel/oneapi/mkl/latest/lib/libmkl_sycl_blas.*",
+                    "rm /app/opt/intel/oneapi/mkl/latest/lib/libmkl_sycl_rng.*"
+                    ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/9a98af19-1c68-46ce-9fdd-e249240c7c42/l_BaseKit_p_2024.2.0.634_offline.sh",
+                    "sha256": "ae97f1b7146f610c07232d75cac8d37f6b2998df416411bef9a9f6c9d23591a4"
+        
+                }
+            ],
+            "cleanup":[
+                "/opt/intel/oneapi/mkl/latest/lib/ia32",
+                "/opt/intel/oneapi/mkl/latest/lib/intel64/*.so*",
+                "/opt/intel/oneapi/conda_channel"
+                ]
+        },
+        {
+            "name": "fmt",
+            "config-opts": 
+            [
+                "-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", 
+                "-DFMT_TEST=OFF"
+            ],
+            "buildsystem": "cmake-ninja",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/fmtlib/fmt", 
+                    "tag": "10.1.0",
+                    "commit": "e57ca2e3685b160617d3d95fcd9e789c4e06ca88" } 
+                ]
+        },
+        {
+            "name": "gcem",
+            "buildsystem": "cmake-ninja",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/kthohr/gcem", 
+                    "tag": "v1.17.0",
+                    "commit": "8422f5307b0498d09cf626f38acb03fe9f1efd94" } 
+                ]
+        },
+        {
+            "name": "dlib",
+            "buildsystem": "simple",
+            "build-commands":["cp -R dlib /app/include/"],
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/davisking/dlib", 
+                    "tag": "v19.24.2",
+                    "commit": "39749fba5163d4e25030358f6aa8d91617bfdca2" } 
+                ]
+        },
+        {
+            "name": "miniz",
+            "buildsystem": "cmake-ninja",
+            "sources":[
+                {
+                    "type": "git",
+                    "url": "https://github.com/richgel999/miniz",
+                    "tag": "3.0.2",
+                    "commit": "293d4db1b7d0ffee9756d035b9ac6f7431ef8492"
+                }
+            ]
+        },
+        {
+            "name": "cuda",
+            "buildsystem": "simple",
+            "build-commands":[
+                "mkdir /app/tmp",
+                "sh cuda_12.5.1_555.42.06_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
+            "sources":[
+                {
+                    "type": "file",
+                    "url": "https://developer.download.nvidia.com/compute/cuda/12.5.1/local_installers/cuda_12.5.1_555.42.06_linux.run",
+                    "sha256": "b5e0a779e089c86610051141c4cf498beef431858ec63398107391727ecbdb04"
+                }
+            ]
+        },
+        {
+            "name": "LightwaveExplorer",
+            "buildsystem": "cmake-ninja",
+            "config-opts": [
+                "-DMAKECUDAINTELFLATPAK=TRUE",
+                "-DCMAKE_CXX_COMPILER=/app/opt/intel/oneapi/compiler/latest/linux/bin/icpx", 
+                "-DCMAKE_CUDA_ARCHITECTURES='75;86;89'", 
+                "-DCUDAToolkit_ROOT=/app/opt/cuda",
+                "-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc",
+                "-DCMAKE_CUDA_HOST_COMPILER=g++"],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
+                    "branch": "QT_interface"
+                }
+            ]
+        } 
+    ]
+}
