@@ -311,7 +311,7 @@
             "buildsystem": "cmake-ninja",
             "config-opts": [
                 "-DMAKECUDAINTELFLATPAK=TRUE",
-                "-DCMAKE_CXX_COMPILER=/app/opt/intel/oneapi/compiler/latest/linux/bin/icpx", 
+                "-DCMAKE_CXX_COMPILER=/app/opt/intel/oneapi/compiler/latest/bin/icpx", 
                 "-DCMAKE_CUDA_ARCHITECTURES='75;86;89'", 
                 "-DCUDAToolkit_ROOT=/app/opt/cuda",
                 "-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc",
