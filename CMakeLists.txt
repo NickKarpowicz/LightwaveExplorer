@@ -450,6 +450,7 @@ if(UNIX AND NOT APPLE)
             target_link_libraries(LightwaveExplorerNoCuda ${CAIRO_LIBRARIES})
             target_link_libraries(LightwaveExplorerNoCuda fmt::fmt miniz::miniz)
             target_link_libraries(LightwaveExplorerNoCuda -lm
+                ${MKL_ROOT}/lib/intel64/libmkl_sycl.a 
                 -Wl,--start-group 
                 ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
                 ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
