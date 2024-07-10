@@ -21,8 +21,7 @@
         "/mkspecs",
         "/share/aclocal",
         "/share/info",
-        "/share/man",
-        "/opt"
+        "/share/man"
     ],
     "modules": [
         {
@@ -218,6 +217,7 @@
                     "mkdir -p /app/lib",
                     "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbb.so* /app/lib/",
                     "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbbmalloc.so* /app/lib/",
+                    "cp -a /app/opt/intel/oneapi/compiler/latest/lib/* /app/lib",
                     "rm -rf /app/opt/intel/oneapi/debugger",
                     "rm -rf /app/opt/intel/oneapi/dev-utilities",
                     "rm -rf /app/opt/intel/oneapi/diagnostics",
