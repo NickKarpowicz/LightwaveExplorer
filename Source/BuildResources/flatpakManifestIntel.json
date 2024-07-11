@@ -153,15 +153,6 @@
         {
             "name": "intel-gmmlib",
             "buildsystem": "cmake-ninja",
-            "build-options": 
-            {
-                "append-path": "/usr/lib/sdk/llvm15/bin",
-                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
-                "env": {
-                    "CC": "clang",
-                    "CXX": "clang++"
-                }
-            },
             "builddir": true,
             "sources": [
                 {
@@ -169,27 +160,6 @@
                     "url": "https://github.com/intel/gmmlib",
                     "tag": "intel-gmmlib-22.3.20",
                     "commit": "0d65e6900073591c8fa1956a6d2c445f79c9be1f"
-                }
-            ]
-        },
-        {
-            "name": "level-zero",
-            "buildsystem": "cmake-ninja",
-            "build-options": 
-            {
-                "append-path": "/usr/lib/sdk/llvm15/bin",
-                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
-                "env": {
-                    "CC": "clang",
-                    "CXX": "clang++"
-                }
-            },
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://github.com/oneapi-src/level-zero",
-                    "tag": "v1.17.6",
-                    "commit": "fd459f28041c176df23a0b7b791ff20a7689d237"
                 }
             ]
         },
