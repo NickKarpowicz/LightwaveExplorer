@@ -35,7 +35,6 @@
                 "commit": "8275634cf9ec31b6484c2e6be756237cb583999d"
               }
             ]
-
         },
         {
             "name": "ocl-icd",
@@ -54,140 +53,29 @@
             ]
         },
         {
-            "name": "swig",
-            "config-opts": [
-              "--without-alllang",
-              "--with-python3"
-            ],
-            "cleanup": ["*"],
-            "sources": [
+          "name": "SPIRV-Headers",
+          "buildsystem": "simple",
+          "build-commands":
+          [
+              "cp -R SPIRV-Headers/include/spirv /app/include/",
+              "cp -R SPIRV-Headers /app/share"
+          ],
+          "sources":[
               {
-                "type": "archive",
-                "url": "https://download.sourceforge.net/swig/swig-4.1.1.tar.gz",
-                "sha256": "2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b"
+                  "type": "git",
+                  "url": "https://github.com/KhronosGroup/SPIRV-Headers",
+                  "commit": "1c6bb2743599e6eb6f37b2969acc0aef812e32e3",
+                  "dest": "SPIRV-Headers"
               }
-            ]
-          },
-          {
-            "name": "llvm-stage1",
-            "buildsystem": "cmake-ninja",
-            "subdir": "llvm",
-            "builddir": true,
-            "build-options": {
-              "prefix": "/app/usr/lib/llvm-stage1",
-              "arch": {
-                "aarch64": {
-                  "config-opts": [
-                    "-DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-unknown-linux-gnu"
-                  ]
-                },
-                "x86_64": {
-                  "config-opts": [
-                    "-DLLVM_DEFAULT_TARGET_TRIPLE=x86_64-unknown-linux-gnu"
-                  ]
-                }
-              },
-              "env": {
-                "CFLAGS": "",
-                "CXXFLAGS": "",
-                "LDFLAGS": ""
-              }
-            },
-            "config-opts": [
-              "-DCMAKE_BUILD_TYPE=Release",
-              "-DLLVM_ENABLE_PROJECTS='clang;lld'",
-              "-DLLVM_TARGETS_TO_BUILD='Native'",
-              "-DLLVM_LIBDIR_SUFFIX=''",
-              "-DLLVM_INCLUDE_TESTS:BOOL=OFF",
-              "-DLLVM_INCLUDE_EXAMPLES:BOOL=OFF",
-              "-DLLVM_INCLUDE_DOCS:BOOL=OFF",
-              "-DLLVM_INCLUDE_BENCHMARKS=OFF",
-              "-DLLVM_INSTALL_UTILS:BOOL=ON",
-              "-DLLVM_BINUTILS_INCDIR=/app/usr/include",
-              "-DLLVM_BUILD_RUNTIME:BOOL=OFF",
-              "-DLLVM_TOOL_CLANG_TOOLS_EXTRA_BUILD:BOOL=OFF",
-              "-DCLANG_ENABLE_ARCMT:BOOL=OFF",
-              "-DCLANG_ENABLE_STATIC_ANALYZER:BOOL=OFF",
-              "-Wno-dev"
-            ],
-            "cleanup": [
-                "*"
-            ],
-            "sources": [
-              "llvm-stage1-sources.json"
-            ]
-          },
-          {
-            "name": "llvm",
-            "buildsystem": "cmake-ninja",
-            "subdir": "llvm",
-            "builddir": true,
-            "build-options": {
-              "prepend-path": "/app/usr/lib/llvm-stage1/bin",
-              "arch": {
-                "aarch64": {
-                  "cflags": "-Qunused-arguments",
-                  "cxxflags": "-Qunused-arguments",
-                  "config-opts": [
-                    "-DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-unknown-linux-gnu",
-                    "-DLLVM_TARGETS_TO_BUILD='AArch64;NVPTX;WebAssembly'"
-                  ]
-                },
-                "x86_64": {
-                  "config-opts": [
-                    "-DLLVM_DEFAULT_TARGET_TRIPLE=x86_64-unknown-linux-gnu",
-                    "-DLLVM_TARGETS_TO_BUILD='X86;AMDGPU;NVPTX;WebAssembly'"
-                  ]
-                }
-              },
-              "env": {
-                "CC": "clang",
-                "CXX": "clang++"
-              },
-              "ldflags": "-Wl,--disable-new-dtags"
-            },
-            "config-opts": [
-              "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
-              "-DCMAKE_C_FLAGS_RELWITHDEBINFO='-DNDEBUG'",
-              "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO='-DNDEBUG'",
-              "-DLLVM_TABLEGEN=/app/usr/lib/llvm-stage1/bin/llvm-tblgen",
-              "-DCMAKE_AR=/app/usr/lib/llvm-stage1/bin/llvm-ar",
-              "-DCMAKE_RANLIB=/app/usr/lib/llvm-stage1/bin/llvm-ranlib",
-              "-DLLVM_ENABLE_PROJECTS='clang;clang-tools-extra;compiler-rt;lld;lldb'",
-              "-DLLVM_BUILD_LLVM_DYLIB:BOOL=ON",
-              "-DLLVM_ENABLE_LLD:BOOL=ON",
-              "-DLLVM_LINK_LLVM_DYLIB:BOOL=ON",
-              "-DLLVM_LIBDIR_SUFFIX=''",
-              "-DLLVM_ENABLE_FFI:BOOL=ON",
-              "-DLLVM_ENABLE_RTTI:BOOL=ON",
-              "-DLLVM_INCLUDE_TESTS:BOOL=OFF",
-              "-DLLVM_INCLUDE_EXAMPLES:BOOL=OFF",
-              "-DLLVM_INCLUDE_UTILS:BOOL=ON",
-              "-DLLVM_INSTALL_UTILS:BOOL=ON",
-              "-DLLVM_INCLUDE_DOCS:BOOL=OFF",
-              "-DLLVM_TOOL_LLVM_EXEGESIS_BUILD:BOOL=OFF",
-              "-DLLVM_BINUTILS_INCDIR=/app/usr/include",
-              "-DCLANG_LINK_CLANG_DYLIB=ON",
-              "-DLLDB_USE_SYSTEM_SIX:BOOL=ON",
-              "-DLLDB_ENABLE_PYTHON:BOOL=ON",
-              "-DLLDB_ENABLE_CURSES:BOOL=ON",
-              "-DCURSES_NEED_NCURSES=ON",
-              "-Wno-dev"
-            ],
-            "cleanup": [
-              "/include/clang-tidy",
-              "/include/lld",
-              "/lib/cmake/lld"
-            ],
-            "sources": [
-              "llvm-sources.json"
-            ]
-          },
+          ]
+      },
         {
             "name":"intel-graphics-compiler",
             "buildsystem": "cmake-ninja",
             "build-options": 
             {
+                "append-path": "/usr/lib/sdk/llvm15/bin",
+                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
                 "env": {
                     "CC": "clang",
                     "CXX": "clang++"
@@ -225,6 +113,13 @@
                     "dest": "SPIRV-Tools"
                 },
                 {
+                  "type": "git",
+                  "url": "https://github.com/llvm/llvm-project",
+                  "tag": "llvmorg-14.0.5",
+                  "commit": "c12386ae247c0d46e1d513942e322e3a0510b126",
+                  "dest": "llvm-project"
+                },
+                {
                     "type": "git",
                     "url": "https://github.com/intel/opencl-clang",
                     "commit": "cf95b338d14685e4f3402ab1828bef31d48f1fd6",
@@ -258,6 +153,15 @@
         {
             "name": "intel-gmmlib",
             "buildsystem": "cmake-ninja",
+            "build-options": 
+            {
+                "append-path": "/usr/lib/sdk/llvm15/bin",
+                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
+                "env": {
+                    "CC": "clang",
+                    "CXX": "clang++"
+                }
+            },
             "builddir": true,
             "sources": [
                 {
@@ -271,6 +175,15 @@
         {
             "name": "level-zero",
             "buildsystem": "cmake-ninja",
+            "build-options": 
+            {
+                "append-path": "/usr/lib/sdk/llvm15/bin",
+                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
+                "env": {
+                    "CC": "clang",
+                    "CXX": "clang++"
+                }
+            },
             "sources": [
                 {
                     "type": "git",
@@ -283,6 +196,15 @@
         {
             "name": "intel-compute-runtime",
             "buildsystem": "cmake-ninja",
+            "build-options": 
+            {
+                "append-path": "/usr/lib/sdk/llvm15/bin",
+                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
+                "env": {
+                    "CC": "clang",
+                    "CXX": "clang++"
+                }
+            },
             "config-opts":
                 [
                     "-DCMAKE_BUILD_TYPE=Release",
@@ -301,16 +223,25 @@
                     "url": "https://github.com/intel/compute-runtime",
                     "tag": "24.22.29735.20",
                     "commit": "6aa72243a0916e05a6c1dbe8a0a46711a96fda98"
+                },
+                {
+                    "type": "patch",
+                    "path": "find_igc.patch"
                 }
             ]
         },
         {
             "name": "oneAPI",
             "buildsystem": "simple",
-            "build-options":{
+            "build-options": 
+            {
                 "append-path": "/usr/lib/sdk/llvm15/bin",
-                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib"
-                },
+                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
+                "env": {
+                    "CC": "clang",
+                    "CXX": "clang++"
+                }
+            },
             "build-commands": [
                     "chmod +x l_BaseKit_p_2024.2.0.634_offline.sh",
                     "./l_BaseKit_p_2024.2.0.634_offline.sh -x -f webimage_extracted",
