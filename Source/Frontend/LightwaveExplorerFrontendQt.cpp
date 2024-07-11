@@ -1066,6 +1066,13 @@ public:
         slider = new QSlider(Qt::Horizontal);
         slider->setFixedHeight(mainButtonHeight);
         plotControlStripLayout->addWidget(slider);
+        plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
+        labels["sliderIndex"] = new QLabel("0");
+        labels["sliderIndex"]->setFixedSize(textBoxWidth/2,textBoxHeight);
+        plotControlStripLayout->addWidget(labels["sliderIndex"]);
+        labels["sliderValue"] = new QLabel("0.0");
+        labels["sliderValue"]->setFixedSize(textBoxWidth/2,textBoxHeight);
+        plotControlStripLayout->addWidget(labels["sliderValue"]);
         buttons["svg"] = new QPushButton("SVG");
         buttons["svg"]->setFixedSize(miniButtonWidth+8, mainButtonHeight);
         buttons["svg"]->setToolTip("Save a .svg file of the plots.");
@@ -1161,6 +1168,36 @@ public:
         QObject::connect(slider, &QSlider::valueChanged, plots["timeImage2"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["freqImage1"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["freqImage2"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, this, [&](){
+            int i = slider->value();
+            labels["sliderIndex"]->setText(QString::number(i));
+            
+            if(theSim.base().batchIndex2 == 0){
+                if(theSim.base().Nsims < 2) return;
+                double batchStart = theSim.base().getByNumberWithMultiplier(theSim.base().batchIndex);
+                double batchValue = 
+                batchStart + 
+                i * (theSim.base().batchDestination - batchStart)/(theSim.base().Nsims - 1);
+                labels["sliderValue"]->setFixedWidth(textBoxWidth);
+                labels["sliderValue"]->setText(QString::number(batchValue));
+            }
+            else{
+                if(theSim.base().Nsims < 2 && theSim.base().Nsims2 < 2) return;
+                double batchStart = theSim.base().getByNumberWithMultiplier(theSim.base().batchIndex);
+                double batchValue = 
+                batchStart + 
+                (i % theSim.base().Nsims) * (theSim.base().batchDestination - batchStart)/(theSim.base().Nsims - 1);
+
+                double batchStart2 = theSim.base().getByNumberWithMultiplier(theSim.base().batchIndex2);
+                double batchValue2 = 
+                batchStart2 + 
+                (i / theSim.base().Nsims) * (theSim.base().batchDestination2 - batchStart2)/(theSim.base().Nsims2 - 1);
+                labels["sliderValue"]->setFixedWidth(2*textBoxWidth);
+                labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:2g}, {:2g}",batchValue,batchValue2)));
+            }
+            
+        });
+        
         QObject::connect(messenger, &GuiMessenger::moveSlider, slider, &QSlider::setValue);
         QObject::connect(messenger, &GuiMessenger::requestSyncValues, this, &LWEGui::queueSyncValues);
         QObject::connect(messenger, &GuiMessenger::requestSliderUpdate, this, &LWEGui::updateSlider);
@@ -1325,6 +1362,7 @@ public:
     void updateSlider(){
         slider->setMinimum(0);
         slider->setMaximum(theSim.base().Nsims * theSim.base().Nsims2 - 1);
+        labels["sliderIndex"]->setText(QString::number(slider->value()));
     }
      
 };
@@ -1433,7 +1471,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
         return false;
     };
 #else
-    auto checkDLL = []([[maybe_unused]] const char* name){
+    [[maybe_unused]] auto checkDLL = []([[maybe_unused]] const char* name){
         return true;
     };
 #endif

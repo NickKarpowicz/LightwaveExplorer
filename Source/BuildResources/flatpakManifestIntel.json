@@ -54,19 +54,16 @@
             ]
         },
         {
-            "name": "SPIRV-Headers",
-            "buildsystem": "simple",
-            "build-commands":
-            [
-                "cp -R SPIRV-Headers/include/spirv /app/include/",
-                "cp -R SPIRV-Headers /app/share"
-            ],
+            "name": "llvm14",
+            "buildsystem": "cmake-ninja",
+            "subdir": "llvm",
+            "builddir": true,
             "sources":[
                 {
                     "type": "git",
-                    "url": "https://github.com/KhronosGroup/SPIRV-Headers",
-                    "commit": "1c6bb2743599e6eb6f37b2969acc0aef812e32e3",
-                    "dest": "SPIRV-Headers"
+                    "url": "https://github.com/llvm/llvm-project",
+                    "tag": "llvmorg-14.0.5",
+                    "commit": "c12386ae247c0d46e1d513942e322e3a0510b126"
                 }
             ]
         },
@@ -75,8 +72,6 @@
             "buildsystem": "cmake-ninja",
             "build-options": 
             {
-                "append-path": "/usr/lib/sdk/llvm15/bin",
-                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
                 "env": {
                     "CC": "clang",
                     "CXX": "clang++"
@@ -115,13 +110,6 @@
                 },
                 {
                     "type": "git",
-                    "url": "https://github.com/llvm/llvm-project",
-                    "tag": "llvmorg-14.0.5",
-                    "commit": "c12386ae247c0d46e1d513942e322e3a0510b126",
-                    "dest": "llvm-project"
-                },
-                {
-                    "type": "git",
                     "url": "https://github.com/intel/opencl-clang",
                     "commit": "cf95b338d14685e4f3402ab1828bef31d48f1fd6",
                     "dest": "llvm-project/llvm/projects/opencl-clang"
@@ -149,7 +137,6 @@
                         "cat llvm-project/llvm/projects/opencl-clang/patches/spirv/*.patch | patch -Np1 -d llvm-project/llvm/projects/llvm-spirv"
                     ]
                 }
-
             ]
         },
         {
