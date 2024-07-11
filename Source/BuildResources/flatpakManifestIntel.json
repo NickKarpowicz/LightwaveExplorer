@@ -54,19 +54,135 @@
             ]
         },
         {
-            "name": "llvm14",
+            "name": "swig",
+            "config-opts": [
+              "--without-alllang",
+              "--with-python3"
+            ],
+            "cleanup": ["*"],
+            "sources": [
+              {
+                "type": "archive",
+                "url": "https://download.sourceforge.net/swig/swig-4.1.1.tar.gz",
+                "sha256": "2af08aced8fcd65cdb5cc62426768914bedc735b1c250325203716f78e39ac9b"
+              }
+            ]
+          },
+          {
+            "name": "llvm-stage1",
             "buildsystem": "cmake-ninja",
             "subdir": "llvm",
             "builddir": true,
-            "sources":[
-                {
-                    "type": "git",
-                    "url": "https://github.com/llvm/llvm-project",
-                    "tag": "llvmorg-14.0.5",
-                    "commit": "c12386ae247c0d46e1d513942e322e3a0510b126"
+            "build-options": {
+              "prefix": "/app/usr/lib/llvm-stage1",
+              "arch": {
+                "aarch64": {
+                  "config-opts": [
+                    "-DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-unknown-linux-gnu"
+                  ]
+                },
+                "x86_64": {
+                  "config-opts": [
+                    "-DLLVM_DEFAULT_TARGET_TRIPLE=x86_64-unknown-linux-gnu"
+                  ]
                 }
+              },
+              "env": {
+                "CFLAGS": "",
+                "CXXFLAGS": "",
+                "LDFLAGS": ""
+              }
+            },
+            "config-opts": [
+              "-DCMAKE_BUILD_TYPE=Release",
+              "-DLLVM_ENABLE_PROJECTS='clang;lld'",
+              "-DLLVM_TARGETS_TO_BUILD='Native'",
+              "-DLLVM_LIBDIR_SUFFIX=''",
+              "-DLLVM_INCLUDE_TESTS:BOOL=OFF",
+              "-DLLVM_INCLUDE_EXAMPLES:BOOL=OFF",
+              "-DLLVM_INCLUDE_DOCS:BOOL=OFF",
+              "-DLLVM_INCLUDE_BENCHMARKS=OFF",
+              "-DLLVM_INSTALL_UTILS:BOOL=ON",
+              "-DLLVM_BINUTILS_INCDIR=/app/usr/include",
+              "-DLLVM_BUILD_RUNTIME:BOOL=OFF",
+              "-DLLVM_TOOL_CLANG_TOOLS_EXTRA_BUILD:BOOL=OFF",
+              "-DCLANG_ENABLE_ARCMT:BOOL=OFF",
+              "-DCLANG_ENABLE_STATIC_ANALYZER:BOOL=OFF",
+              "-Wno-dev"
+            ],
+            "cleanup": [
+                "*"
+            ],
+            "sources": [
+              "llvm-stage1-sources.json"
             ]
-        },
+          },
+          {
+            "name": "llvm",
+            "buildsystem": "cmake-ninja",
+            "subdir": "llvm",
+            "builddir": true,
+            "build-options": {
+              "prepend-path": "/app/usr/lib/llvm-stage1/bin",
+              "arch": {
+                "aarch64": {
+                  "cflags": "-Qunused-arguments",
+                  "cxxflags": "-Qunused-arguments",
+                  "config-opts": [
+                    "-DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-unknown-linux-gnu",
+                    "-DLLVM_TARGETS_TO_BUILD='AArch64;NVPTX;WebAssembly'"
+                  ]
+                },
+                "x86_64": {
+                  "config-opts": [
+                    "-DLLVM_DEFAULT_TARGET_TRIPLE=x86_64-unknown-linux-gnu",
+                    "-DLLVM_TARGETS_TO_BUILD='X86;AMDGPU;NVPTX;WebAssembly'"
+                  ]
+                }
+              },
+              "env": {
+                "CC": "clang",
+                "CXX": "clang++"
+              },
+              "ldflags": "-Wl,--disable-new-dtags"
+            },
+            "config-opts": [
+              "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+              "-DCMAKE_C_FLAGS_RELWITHDEBINFO='-DNDEBUG'",
+              "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO='-DNDEBUG'",
+              "-DLLVM_TABLEGEN=/app/usr/lib/llvm-stage1/bin/llvm-tblgen",
+              "-DCMAKE_AR=/app/usr/lib/llvm-stage1/bin/llvm-ar",
+              "-DCMAKE_RANLIB=/app/usr/lib/llvm-stage1/bin/llvm-ranlib",
+              "-DLLVM_ENABLE_PROJECTS='clang;clang-tools-extra;compiler-rt;lld;lldb'",
+              "-DLLVM_BUILD_LLVM_DYLIB:BOOL=ON",
+              "-DLLVM_ENABLE_LLD:BOOL=ON",
+              "-DLLVM_LINK_LLVM_DYLIB:BOOL=ON",
+              "-DLLVM_LIBDIR_SUFFIX=''",
+              "-DLLVM_ENABLE_FFI:BOOL=ON",
+              "-DLLVM_ENABLE_RTTI:BOOL=ON",
+              "-DLLVM_INCLUDE_TESTS:BOOL=OFF",
+              "-DLLVM_INCLUDE_EXAMPLES:BOOL=OFF",
+              "-DLLVM_INCLUDE_UTILS:BOOL=ON",
+              "-DLLVM_INSTALL_UTILS:BOOL=ON",
+              "-DLLVM_INCLUDE_DOCS:BOOL=OFF",
+              "-DLLVM_TOOL_LLVM_EXEGESIS_BUILD:BOOL=OFF",
+              "-DLLVM_BINUTILS_INCDIR=/app/usr/include",
+              "-DCLANG_LINK_CLANG_DYLIB=ON",
+              "-DLLDB_USE_SYSTEM_SIX:BOOL=ON",
+              "-DLLDB_ENABLE_PYTHON:BOOL=ON",
+              "-DLLDB_ENABLE_CURSES:BOOL=ON",
+              "-DCURSES_NEED_NCURSES=ON",
+              "-Wno-dev"
+            ],
+            "cleanup": [
+              "/include/clang-tidy",
+              "/include/lld",
+              "/lib/cmake/lld"
+            ],
+            "sources": [
+              "llvm-sources.json"
+            ]
+          },
         {
             "name":"intel-graphics-compiler",
             "buildsystem": "cmake-ninja",
