@@ -82,6 +82,76 @@ signals:
     void sendProgressValue(int value);
 };
 
+class SequenceValidator : public QSyntaxHighlighter {
+    Q_OBJECT
+
+    struct HighlightingRule{
+        QRegularExpression pattern;
+        QTextCharFormat format;
+    };
+    QTextCharFormat functionFormat;
+    QTextCharFormat openParenthesisFormat;
+    QTextCharFormat numberFormat;
+    QList<HighlightingRule> highlightingRules;
+public:
+    SequenceValidator(QTextDocument* parent = nullptr) : QSyntaxHighlighter(parent){
+        HighlightingRule rule;
+
+        functionFormat.setForeground(QColor(255,255,192,255));
+        functionFormat.setFontWeight(QFont::Bold);
+        const QString functionNames[] = {
+            "for",
+            "plasma",
+            "nonlinear",
+            "linear",
+            "sphericalMirror",
+            "parabolicMirror",
+            "init",
+            "default",
+            "rotate",
+            "set",
+            "plasmaReinject",
+            "save",
+            "savePlasma",
+            "fresnelLoss",
+            "aperture",
+            "farFieldAperture",
+            "farFieldInverseAperture",
+            "energy",
+            "filter",
+            "lorentzian",
+            "addPulse",
+            "fdtd2d",
+            "fdtd",
+            "fdtdGrid",
+            "fdtdGridNearField"
+        };
+
+        for(const QString &fun : functionNames){
+            rule.pattern = QRegularExpression(QString("\\b")+fun+QString("\\b"));
+            rule.format = functionFormat;
+            highlightingRules.append(rule);
+        }
+
+        numberFormat.setForeground(QColor(128,255,128,255));
+        rule.pattern = QRegularExpression("[+-]?(\\d+(\\.\\d*)?|\\.\\d+)([eE][+-]?\\d+)?");
+        rule.format = numberFormat;
+        highlightingRules.append(rule);
+    }
+protected:
+    void highlightBlock(const QString& text) override {
+        for (const HighlightingRule &rule : std::as_const(highlightingRules)) {
+            QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
+            while (matchIterator.hasNext()) {
+                QRegularExpressionMatch match = matchIterator.next();
+                setFormat(match.capturedStart(), match.capturedLength(), rule.format);
+            }
+        }
+    }
+private: 
+};
+
+
 class LWEGui : public QMainWindow {
     Q_OBJECT
     bool isInputRegionHidden=false;
@@ -1034,6 +1104,9 @@ public:
         sequenceBoxLayout->addWidget(sequence);
         sequence->setToolTip("Here you can enter a sequence of events to take place during the simulation\n"
         "The buttons above will enter the commands for a few common things; there are more in the docs.");
+
+        SequenceValidator* contextColors = new SequenceValidator(sequence->document());
+
         //Put the control strip below the sequence
         QHBoxLayout* simulationControlStripLayout = new QHBoxLayout(simulationControlStrip);
         squeezeMargins(simulationControlStripLayout);

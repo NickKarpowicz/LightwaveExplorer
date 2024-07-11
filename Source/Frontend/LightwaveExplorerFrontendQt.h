@@ -36,6 +36,9 @@
 #include <QColor>
 #include <QStyleFactory>
 #include <QStyle>
+#include <QSyntaxHighlighter>
+#include <QRegularExpression>
+#include <QTextCharFormat>
 #include <cairo.h>
 #include "../LightwaveExplorerUtilities.h"
 std::mutex GTKmutex;
