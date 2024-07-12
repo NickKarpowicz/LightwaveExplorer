@@ -100,8 +100,8 @@ class SequenceValidator : public QSyntaxHighlighter {
     };
     const ColorSet darkColors{
         QColor(200,200,255,255),
-        QColor(128,255,128,255),
-        QColor(192,255,255,255),
+        QColor(255,128,255,255),
+        QColor(128,255,255,255),
         QColor(255,0,0,255),
         {
             QColor(255,0,255,255),
@@ -112,13 +112,13 @@ class SequenceValidator : public QSyntaxHighlighter {
     };
 
     const ColorSet lightColors{
-        QColor(64,64,0,255),
-        QColor(0,64,0,255),
-        QColor(0,0,64,255),
+        QColor(128,128,0,255),
+        QColor(0,128,0,255),
+        QColor(0,0,128,255),
         QColor(255,0,0,255),
         {
             QColor(255,0,255,255),
-            QColor(0,255,255,255),
+            QColor(0,200,200,255),
             QColor(255,128,0,255)
         },
         QColor(128,64,0,255)
@@ -1693,8 +1693,6 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
         setSYCLvars(s);
     }
     else {
-        s.append(Sformat("Not using SYCL because the Intel DPC++\n"
-            "Compiler Runtime is not installed.\n"));
         theSim.base().SYCLavailable = false;
     }
 #endif
