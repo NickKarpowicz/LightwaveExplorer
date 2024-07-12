@@ -37,6 +37,7 @@
 #include <QStyleFactory>
 #include <QStyle>
 #include <QStyleHints>
+#include <QStack>
 #include <QSyntaxHighlighter>
 #include <QRegularExpression>
 #include <QTextCharFormat>

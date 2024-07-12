@@ -89,16 +89,47 @@ class SequenceValidator : public QSyntaxHighlighter {
         QRegularExpression pattern;
         QTextCharFormat format;
     };
-    
+
+    struct ColorSet{
+        QColor functionColor;
+        QColor numberColor;
+        QColor variableColor;
+        QColor openParenColor;
+        QVector<QColor> matchedParensColors;
+    };
+    const ColorSet darkColors{
+        QColor(200,200,255,255),
+        QColor(128,255,128,255),
+        QColor(192,255,255,255),
+        QColor(255,0,0,255),
+        {
+            QColor(255,0,255,255),
+            QColor(0,255,255,255),
+            QColor(255,128,0,255)
+        }
+    };
+
+    const ColorSet lightColors{
+        QColor(64,64,0,255),
+        QColor(0,64,0,255),
+        QColor(0,0,64,255),
+        QColor(255,0,0,255),
+        {
+            QColor(255,0,255,255),
+            QColor(0,255,255,255),
+            QColor(255,128,0,255)
+        }
+    };
+
     QList<HighlightingRule> highlightingRulesDark;
     QList<HighlightingRule> highlightingRulesLight;
-    QList<HighlightingRule> generateRules(QColor functionColor, QColor numberColor){
+    QList<HighlightingRule> generateRules(const ColorSet& c){
         QList<HighlightingRule> highlightingRules;
         HighlightingRule rule;
         QTextCharFormat functionFormat;
-        QTextCharFormat openParenthesisFormat;
-        QTextCharFormat numberFormat;
-        functionFormat.setForeground(functionColor);
+
+        //color known function names
+        functionFormat.setForeground(c.functionColor);
         functionFormat.setFontWeight(QFont::Bold);
         const QString functionNames[] = {
             "for",
@@ -127,43 +158,79 @@ class SequenceValidator : public QSyntaxHighlighter {
             "fdtdGrid",
             "fdtdGridNearField"
         };
-
         for(const QString &fun : functionNames){
             rule.pattern = QRegularExpression(QString("\\b")+fun+QString("\\b"));
             rule.format = functionFormat;
             highlightingRules.append(rule);
         }
 
-        numberFormat.setForeground(numberColor);
+        //color number literals
+        QTextCharFormat numberFormat;
+        numberFormat.setForeground(c.numberColor);
         rule.pattern = QRegularExpression("[+-]?(\\d+(\\.\\d*)?|\\.\\d+)([eE][+-]?\\d+)?");
         rule.format = numberFormat;
         highlightingRules.append(rule);
+
+        //color the built-in variables (d, iXX, vXX)
+        QTextCharFormat variableFormat;
+        variableFormat.setForeground(c.variableColor);
+        rule.pattern = QRegularExpression("(?<=\\(|\\s|,)d(?=\\s|,|\\))");
+        rule.format = variableFormat;
+        highlightingRules.append(rule);
+        rule.pattern = QRegularExpression("(?<=\\(|\\s|,)v\\d{2}(?=\\s|,|\\))");
+        highlightingRules.append(rule);
+        rule.pattern = QRegularExpression("(?<=\\(|\\s|,)i\\d{2}(?=\\s|,|\\))");
+        highlightingRules.append(rule);
+
         return highlightingRules;
     }
 public:
     SequenceValidator(QTextDocument* parent = nullptr) : QSyntaxHighlighter(parent){
         highlightingRulesDark = generateRules(
-            QColor(255,255,192,255),
-            QColor(128,255,128,255)
+            darkColors
         );
         highlightingRulesLight = generateRules(
-            QColor(64,64,0,255),
-            QColor(0,64,0,255)
+            lightColors
         );
     }
 protected:
     void highlightBlock(const QString& text) override {
     
         const bool isLightTheme = (QApplication::styleHints()->colorScheme() == Qt::ColorScheme::Light);
-        QList<HighlightingRule>& highlightingRules = 
-        (isLightTheme) ? 
+        QList<HighlightingRule>& highlightingRules = isLightTheme ? 
             highlightingRulesLight : highlightingRulesDark;
+        const ColorSet& c = isLightTheme ? lightColors : darkColors;
         for (const HighlightingRule &rule : std::as_const(highlightingRules)) {
             QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
             while (matchIterator.hasNext()) {
                 QRegularExpressionMatch match = matchIterator.next();
                 setFormat(match.capturedStart(), match.capturedLength(), rule.format);
             }
+        }
+
+        // Set the colors for matched and unmatched parentheses
+        QStack<int> parenthesesStack;
+        QTextCharFormat badParenFormat;
+        badParenFormat.setForeground(c.openParenColor);
+        badParenFormat.setFontWeight(QFont::Bold);
+        for (qsizetype i = 0; i < text.length(); ++i) {
+            QChar currentChar = text[i];
+            if (currentChar == '(') {
+                parenthesesStack.push(i);
+            } else if (currentChar == ')') {
+                if (!parenthesesStack.isEmpty()) {
+                    int openingIndex = parenthesesStack.pop();
+                    int colorIndex = openingIndex % c.matchedParensColors.size();
+                    setFormat(openingIndex, 1, c.matchedParensColors[colorIndex]);
+                    setFormat(i, 1, c.matchedParensColors[colorIndex]);
+                } else {
+                    setFormat(i, 1, badParenFormat);
+                }
+            }
+        }
+        while (!parenthesesStack.isEmpty()) {
+            int openingIndex = parenthesesStack.pop();
+            setFormat(openingIndex, 1, badParenFormat);
         }
     }
 private: 
