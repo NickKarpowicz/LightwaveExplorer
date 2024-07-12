@@ -1,5 +1,5 @@
 #include "LightwaveExplorerFrontendQt.h"
-
+bool isLightTheme = false;
 void blackoutCairoPlot(cairo_t* cr, const int width, const int height){
     LweColor black(0, 0, 0, 0);
     cairo_rectangle(cr, 0, 0, width, height);
@@ -89,15 +89,16 @@ class SequenceValidator : public QSyntaxHighlighter {
         QRegularExpression pattern;
         QTextCharFormat format;
     };
-    QTextCharFormat functionFormat;
-    QTextCharFormat openParenthesisFormat;
-    QTextCharFormat numberFormat;
-    QList<HighlightingRule> highlightingRules;
-public:
-    SequenceValidator(QTextDocument* parent = nullptr) : QSyntaxHighlighter(parent){
+    
+    QList<HighlightingRule> highlightingRulesDark;
+    QList<HighlightingRule> highlightingRulesLight;
+    QList<HighlightingRule> generateRules(QColor functionColor, QColor numberColor){
+        QList<HighlightingRule> highlightingRules;
         HighlightingRule rule;
-
-        functionFormat.setForeground(QColor(255,255,192,255));
+        QTextCharFormat functionFormat;
+        QTextCharFormat openParenthesisFormat;
+        QTextCharFormat numberFormat;
+        functionFormat.setForeground(functionColor);
         functionFormat.setFontWeight(QFont::Bold);
         const QString functionNames[] = {
             "for",
@@ -133,13 +134,30 @@ public:
             highlightingRules.append(rule);
         }
 
-        numberFormat.setForeground(QColor(128,255,128,255));
+        numberFormat.setForeground(numberColor);
         rule.pattern = QRegularExpression("[+-]?(\\d+(\\.\\d*)?|\\.\\d+)([eE][+-]?\\d+)?");
         rule.format = numberFormat;
         highlightingRules.append(rule);
+        return highlightingRules;
+    }
+public:
+    SequenceValidator(QTextDocument* parent = nullptr) : QSyntaxHighlighter(parent){
+        highlightingRulesDark = generateRules(
+            QColor(255,255,192,255),
+            QColor(128,255,128,255)
+        );
+        highlightingRulesLight = generateRules(
+            QColor(64,64,0,255),
+            QColor(0,64,0,255)
+        );
     }
 protected:
     void highlightBlock(const QString& text) override {
+    
+        const bool isLightTheme = (QApplication::styleHints()->colorScheme() == Qt::ColorScheme::Light);
+        QList<HighlightingRule>& highlightingRules = 
+        (isLightTheme) ? 
+            highlightingRulesLight : highlightingRulesDark;
         for (const HighlightingRule &rule : std::as_const(highlightingRules)) {
             QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
             while (matchIterator.hasNext()) {
@@ -1105,7 +1123,7 @@ public:
         sequence->setToolTip("Here you can enter a sequence of events to take place during the simulation\n"
         "The buttons above will enter the commands for a few common things; there are more in the docs.");
 
-        SequenceValidator* contextColors = new SequenceValidator(sequence->document());
+        [[maybe_unused]] SequenceValidator* contextColors = new SequenceValidator(sequence->document());
 
         //Put the control strip below the sequence
         QHBoxLayout* simulationControlStripLayout = new QHBoxLayout(simulationControlStrip);

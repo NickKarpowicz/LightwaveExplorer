@@ -36,6 +36,7 @@
 #include <QColor>
 #include <QStyleFactory>
 #include <QStyle>
+#include <QStyleHints>
 #include <QSyntaxHighlighter>
 #include <QRegularExpression>
 #include <QTextCharFormat>
