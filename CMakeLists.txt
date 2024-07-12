@@ -657,7 +657,7 @@ if(APPLE)
     add_library(miniz miniz/miniz.c)
 
     add_definitions(-DCPUONLY -DUSEFFTW -DNOSYCL -DNDEBUG)
-    add_compile_options(-O3 -Wall -x objective-c++)
+    add_compile_options(-O3 -Wall)
     add_executable(LightwaveExplorer MACOSX_BUNDLE 
         Source/Frontend/LightwaveExplorerFrontendQt.cpp 
         Source/LightwaveExplorerUtilities.cpp 

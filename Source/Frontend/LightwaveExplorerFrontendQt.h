@@ -55,7 +55,6 @@ using CairoFunction = std::function<void(cairo_t*,int,int,LWEGui&)>;
 //Apple libraries
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
-#import<Cocoa/Cocoa.h>
 #endif
 
 //if not running on a cpu-only build load CUDA and SYCL code

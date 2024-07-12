@@ -12,7 +12,6 @@
 #include "../LightwaveExplorerHelpers.h"
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
-#import<Cocoa/Cocoa.h>
 #endif
 
 //temporary set of macros until std::format is on all platforms
