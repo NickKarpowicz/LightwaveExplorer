@@ -97,6 +97,7 @@ class SequenceValidator : public QSyntaxHighlighter {
         QColor openParenColor;
         QVector<QColor> matchedParensColors;
         QColor stringColor;
+        QColor commentColor;
     };
     const ColorSet darkColors{
         QColor(200,200,255,255),
@@ -108,7 +109,8 @@ class SequenceValidator : public QSyntaxHighlighter {
             QColor(0,255,255,255),
             QColor(255,128,0,255)
         },
-        QColor(192,128,0,255)
+        QColor(192,128,0,255),
+        QColor(64,255,64,255)
     };
 
     const ColorSet lightColors{
@@ -121,7 +123,8 @@ class SequenceValidator : public QSyntaxHighlighter {
             QColor(0,200,200,255),
             QColor(255,128,0,255)
         },
-        QColor(128,64,0,255)
+        QColor(128,64,0,255),
+        QColor(0,192,0,255)
     };
 
     QList<HighlightingRule> highlightingRulesDark;
@@ -190,6 +193,13 @@ class SequenceValidator : public QSyntaxHighlighter {
         stringFormat.setForeground(c.stringColor);
         rule.pattern = QRegularExpression("\".*\"");
         rule.format = stringFormat;
+        highlightingRules.append(rule);
+
+        //color comments
+        QTextCharFormat commentFormat;
+        commentFormat.setForeground(c.commentColor);
+        rule.pattern = QRegularExpression("<.*>");
+        rule.format = commentFormat;
         highlightingRules.append(rule);
         
         return highlightingRules;
@@ -2419,7 +2429,7 @@ int indentForDepth(std::string& s){
 int formatSequence(std::string& s){
     if(s.size()==0) return 0;
     insertAfterCharacter(s, '>', std::string("\n"));
-    insertAfterCharacterExcept(s, ')', std::string("\n"), std::string("{;"));
+    insertAfterCharacterExcept(s, ')', std::string("\n"), std::string("^{;"));
     insertAfterCharacter(s, ';', std::string("\n"));
     insertAfterCharacter(s, '{', std::string("\n"));
     insertAfterCharacter(s, '}', std::string("\n"));
