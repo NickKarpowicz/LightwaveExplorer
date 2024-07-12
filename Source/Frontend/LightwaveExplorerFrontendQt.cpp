@@ -96,6 +96,7 @@ class SequenceValidator : public QSyntaxHighlighter {
         QColor variableColor;
         QColor openParenColor;
         QVector<QColor> matchedParensColors;
+        QColor stringColor;
     };
     const ColorSet darkColors{
         QColor(200,200,255,255),
@@ -106,7 +107,8 @@ class SequenceValidator : public QSyntaxHighlighter {
             QColor(255,0,255,255),
             QColor(0,255,255,255),
             QColor(255,128,0,255)
-        }
+        },
+        QColor(192,128,0,255)
     };
 
     const ColorSet lightColors{
@@ -118,7 +120,8 @@ class SequenceValidator : public QSyntaxHighlighter {
             QColor(255,0,255,255),
             QColor(0,255,255,255),
             QColor(255,128,0,255)
-        }
+        },
+        QColor(128,64,0,255)
     };
 
     QList<HighlightingRule> highlightingRulesDark;
@@ -182,6 +185,13 @@ class SequenceValidator : public QSyntaxHighlighter {
         rule.pattern = QRegularExpression("(?<=\\(|\\s|,)i\\d{2}(?=\\s|,|\\))");
         highlightingRules.append(rule);
 
+        //color strings
+        QTextCharFormat stringFormat;
+        stringFormat.setForeground(c.stringColor);
+        rule.pattern = QRegularExpression("\".*\"");
+        rule.format = stringFormat;
+        highlightingRules.append(rule);
+        
         return highlightingRules;
     }
 public:
