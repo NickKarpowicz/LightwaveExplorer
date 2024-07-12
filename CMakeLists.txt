@@ -702,13 +702,13 @@ if(WIN32)
         find_package(MKL REQUIRED)
         find_package(dlib REQUIRED)
         find_package(miniz REQUIRED)
-        find_package(OpenMP REQUIRED)
+        
         include_directories(${CMAKE_CURRENT_BINARY_DIR})
         include_directories(${MKL_ROOT}/include/fftw) 
         include_directories(${MKL_ROOT}/include)  
         include_directories(${CMAKE_SOURCE_DIR}/Source)
         add_definitions(-DLIGHTWAVEEXPLORERSYCL_EXPORTS)
-        add_compile_options(-fp:precise -O3 -${OpenMP_CXX_FLAGS} -fsycl)
+        add_compile_options(-fp:precise -O3 -fsycl)
         add_library(LightwaveExplorerSYCL SHARED
             Source/Devices/LightwaveExplorerSYCL.cpp 
             Source/Devices/LightwaveExplorerSYCLFP32.cpp 
@@ -721,7 +721,7 @@ if(WIN32)
             ${MKL_ROOT}/lib/mkl_core.lib 
             ${MKL_ROOT}/../../compiler/latest/lib/libiomp5md.lib
             sycl7.lib OpenCL.lib)
-        target_link_libraries(LightwaveExplorerSYCL TBB::tbb ${OpenMP_CXX_LIBRARIES})
+        target_link_libraries(LightwaveExplorerSYCL TBB::tbb)
     else()
         #cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
         #cmake --build . --config Release
@@ -741,7 +741,6 @@ if(WIN32)
         include_directories(${CAIRO_INCLUDE_DIRS})
         link_directories(${CAIRO_LIBRARY_DIRS})
         include_directories(${CMAKE_CURRENT_BINARY_DIR})
-        add_compile_options(-O3 ${OpenMP_CXX_FLAGS})
         add_executable(LightwaveExplorer WIN32 
             Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
@@ -751,6 +750,9 @@ if(WIN32)
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu
             Source/Frontend/LightwaveExplorerIcon.rc)
+        target_compile_options(LightwaveExplorer
+            PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${OpenMP_CXX_FLAGS}>
+        )
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         if(USEFFTW)
             target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})
