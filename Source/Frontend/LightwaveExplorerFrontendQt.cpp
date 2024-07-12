@@ -1349,7 +1349,7 @@ public:
                 double batchValue = 
                 batchStart + 
                 i * (theSim.base().batchDestination - batchStart)/(theSim.base().Nsims - 1);
-                labels["sliderValue"]->setFixedWidth(textBoxWidth);
+                labels["sliderValue"]->setFixedWidth(60);
                 labels["sliderValue"]->setText(QString::number(batchValue));
             }
             else{
@@ -1363,8 +1363,8 @@ public:
                 double batchValue2 = 
                 batchStart2 + 
                 (i / theSim.base().Nsims) * (theSim.base().batchDestination2 - batchStart2)/(theSim.base().Nsims2 - 1);
-                labels["sliderValue"]->setFixedWidth(2*textBoxWidth);
-                labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:2g}, {:2g}",batchValue,batchValue2)));
+                labels["sliderValue"]->setFixedWidth(120);
+                labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:.3g}, {:.3g}",batchValue,batchValue2)));
             }
             
         });
