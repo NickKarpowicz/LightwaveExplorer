@@ -1669,7 +1669,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
     if(checkDLL("nvml.dll")){
         int CUDAdevice;
         cudaGetDeviceCount(&theSim.base().cudaGPUCount);
-        cudaError_t cuErr = cudaGetDevice(&CUDAdevice);
+        cudaGetDevice(&CUDAdevice);
         struct cudaDeviceProp activeCUDADeviceProp;
 
         if (theSim.base().cudaGPUCount > 0) {
@@ -1681,7 +1681,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
                 s.append(Sformat("CUDA found {} GPU(s):\n", theSim.base().cudaGPUCount));
             }
             for (int i = 0; i < theSim.base().cudaGPUCount; ++i) {
-                cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
+                cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
                 s.append(Sformat("   {}\n", 
                     activeCUDADeviceProp.name));
             }
