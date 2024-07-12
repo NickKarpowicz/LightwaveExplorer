@@ -22,7 +22,7 @@ static const unsigned int minGridDimension = 8;
 
 std::string     getBasename(const std::string& fullPath);
 double          cModulusSquared(const std::complex<double>& x);
-size_t          findParenthesesClosure(std::string& a);
+std::size_t          findParenthesesClosure(std::string& a);
 double          parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock);
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
@@ -822,7 +822,7 @@ public:
         };
     }
     void setByNumber(const int64_t index, const double value);
-    void setByNumberWithMultiplier(const size_t index, const double value);
+    void setByNumberWithMultiplier(const std::size_t index, const double value);
     int loadSavedFields(const std::string& outputBase, bool isZipFile);
     int loadReferenceSpectrum();
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
