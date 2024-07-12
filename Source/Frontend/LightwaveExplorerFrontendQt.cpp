@@ -586,11 +586,21 @@ public:
 
         std::string formattedFit=sim.base().fittingString;
         insertAfterCharacter(formattedFit,';',std::string("\n"));
-        fitting->setText(QString::fromStdString(formattedFit));
+        if(formattedFit.size() > 4 && formattedFit.substr(0,4) != "None"){
+            fitting->setText(QString::fromStdString(formattedFit));
+        }
+        else{
+            fitting->setText("");
+        }
 
         std::string formattedSequence = sim.base().sequenceString;
         formatSequence(formattedSequence);
-        sequence->setText(QString::fromStdString(formattedSequence));
+        if(formattedSequence.size() > 4 && formattedSequence.substr(4) != "None"){
+            sequence->setText(QString::fromStdString(formattedSequence));
+        }
+        else{
+            sequence->setText("");
+        }
     }
     LWEGui(){
 #if defined(Q_OS_WIN)
@@ -1532,9 +1542,7 @@ public:
             isMakingSVG = false;
             std::ofstream fs(SVGpath);
             fs << SVGStrings[0] << SVGStrings[1] << SVGStrings[2] << SVGStrings[3];
-            
         });
-        
     }
     public slots:
     void queueSyncValues(){
