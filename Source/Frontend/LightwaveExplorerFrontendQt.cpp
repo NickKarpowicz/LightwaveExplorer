@@ -1087,7 +1087,6 @@ public:
         QVBoxLayout* sequenceBoxLayout = new QVBoxLayout(sequenceBox);
         squeezeMargins(sequenceBoxLayout);
         QWidget* sequenceButtonBox = new QWidget;
-        //sequenceButtonBox->setFixedSize(4*textBoxWidth + 2*labelWidth,textBoxHeight);
         sequenceButtonBox->setFixedHeight(textBoxHeight);
         sequenceBoxLayout->addWidget(sequenceButtonBox);
         QHBoxLayout* sequenceButtonBoxLayout = new QHBoxLayout(sequenceButtonBox);
@@ -1200,8 +1199,12 @@ public:
         sequence->setToolTip("Here you can enter a sequence of events to take place during the simulation\n"
         "The buttons above will enter the commands for a few common things; there are more in the docs.");
 
-        [[maybe_unused]] SequenceValidator* contextColors = new SequenceValidator(sequence->document());
-
+        SequenceValidator* contextColors = new SequenceValidator(sequence->document());
+        QObject::connect(QGuiApplication::styleHints(), 
+            &QStyleHints::colorSchemeChanged, 
+            contextColors, 
+            &QSyntaxHighlighter::rehighlight);
+        
         //Put the control strip below the sequence
         QHBoxLayout* simulationControlStripLayout = new QHBoxLayout(simulationControlStrip);
         squeezeMargins(simulationControlStripLayout);
