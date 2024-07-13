@@ -114,9 +114,9 @@ class SequenceValidator : public QSyntaxHighlighter {
     };
 
     const ColorSet lightColors{
-        QColor(128,128,0,255),
+        QColor(64,0,192,255),
         QColor(0,128,0,255),
-        QColor(0,0,128,255),
+        QColor(0,64,128,255),
         QColor(255,0,0,255),
         {
             QColor(255,0,255,255),
@@ -215,8 +215,11 @@ public:
     }
 protected:
     void highlightBlock(const QString& text) override {
-    
+    #ifdef __linux__
+        const bool isLightTheme = (QApplication::palette().windowText().color().lightnessF()<0.5);
+    #else
         const bool isLightTheme = (QApplication::styleHints()->colorScheme() == Qt::ColorScheme::Light);
+    #endif
         QList<HighlightingRule>& highlightingRules = isLightTheme ? 
             highlightingRulesLight : highlightingRulesDark;
         const ColorSet& c = isLightTheme ? lightColors : darkColors;
