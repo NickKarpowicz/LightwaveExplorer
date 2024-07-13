@@ -25,6 +25,71 @@
     ],
     "modules": [
         {
+            "name": "fmt",
+            "config-opts": 
+            [
+                "-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", 
+                "-DFMT_TEST=OFF"
+            ],
+            "buildsystem": "cmake-ninja",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/fmtlib/fmt", 
+                    "tag": "10.1.0",
+                    "commit": "e57ca2e3685b160617d3d95fcd9e789c4e06ca88" } 
+                ]
+        },
+        {
+            "name": "gcem",
+            "buildsystem": "cmake-ninja",
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/kthohr/gcem", 
+                    "tag": "v1.17.0",
+                    "commit": "8422f5307b0498d09cf626f38acb03fe9f1efd94" } 
+                ]
+        },
+        {
+            "name": "dlib",
+            "buildsystem": "simple",
+            "build-commands":["cp -R dlib /app/include/"],
+            "sources": [ 
+                { 
+                    "type": "git", 
+                    "url": "https://github.com/davisking/dlib", 
+                    "tag": "v19.24.2",
+                    "commit": "39749fba5163d4e25030358f6aa8d91617bfdca2" } 
+                ]
+        },
+        {
+            "name": "miniz",
+            "buildsystem": "cmake-ninja",
+            "sources":[
+                {
+                    "type": "git",
+                    "url": "https://github.com/richgel999/miniz",
+                    "tag": "3.0.2",
+                    "commit": "293d4db1b7d0ffee9756d035b9ac6f7431ef8492"
+                }
+            ]
+        },
+        {
+            "name": "cuda",
+            "buildsystem": "simple",
+            "build-commands":[
+                "mkdir /app/tmp",
+                "sh cuda_12.5.1_555.42.06_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
+            "sources":[
+                {
+                    "type": "file",
+                    "url": "https://developer.download.nvidia.com/compute/cuda/12.5.1/local_installers/cuda_12.5.1_555.42.06_linux.run",
+                    "sha256": "b5e0a779e089c86610051141c4cf498beef431858ec63398107391727ecbdb04"
+                }
+            ]
+        },
+        {
             "name": "khronos-opencl-headers",
             "buildsystem": "cmake-ninja",
             "sources": [
@@ -69,6 +134,22 @@
               }
           ]
       },
+      {
+        "name": "level-zero",
+        "buildsystem": "cmake-ninja",
+        "build-commands":[
+            "cmake --build . --target package",
+            "cmake --build . --target install"
+        ],
+        "sources": [
+            {
+                "type": "git",
+                "url": "https://github.com/oneapi-src/level-zero",
+                "tag": "v1.17.6",
+                "commit": "fd459f28041c176df23a0b7b791ff20a7689d237"
+            }
+        ]
+    },
         {
             "name":"intel-graphics-compiler",
             "buildsystem": "cmake-ninja",
@@ -244,71 +325,6 @@
                 "/opt/intel/oneapi/mkl/latest/lib/intel64/*.so*",
                 "/opt/intel/oneapi/conda_channel"
                 ]
-        },
-        {
-            "name": "fmt",
-            "config-opts": 
-            [
-                "-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE", 
-                "-DFMT_TEST=OFF"
-            ],
-            "buildsystem": "cmake-ninja",
-            "sources": [ 
-                { 
-                    "type": "git", 
-                    "url": "https://github.com/fmtlib/fmt", 
-                    "tag": "10.1.0",
-                    "commit": "e57ca2e3685b160617d3d95fcd9e789c4e06ca88" } 
-                ]
-        },
-        {
-            "name": "gcem",
-            "buildsystem": "cmake-ninja",
-            "sources": [ 
-                { 
-                    "type": "git", 
-                    "url": "https://github.com/kthohr/gcem", 
-                    "tag": "v1.17.0",
-                    "commit": "8422f5307b0498d09cf626f38acb03fe9f1efd94" } 
-                ]
-        },
-        {
-            "name": "dlib",
-            "buildsystem": "simple",
-            "build-commands":["cp -R dlib /app/include/"],
-            "sources": [ 
-                { 
-                    "type": "git", 
-                    "url": "https://github.com/davisking/dlib", 
-                    "tag": "v19.24.2",
-                    "commit": "39749fba5163d4e25030358f6aa8d91617bfdca2" } 
-                ]
-        },
-        {
-            "name": "miniz",
-            "buildsystem": "cmake-ninja",
-            "sources":[
-                {
-                    "type": "git",
-                    "url": "https://github.com/richgel999/miniz",
-                    "tag": "3.0.2",
-                    "commit": "293d4db1b7d0ffee9756d035b9ac6f7431ef8492"
-                }
-            ]
-        },
-        {
-            "name": "cuda",
-            "buildsystem": "simple",
-            "build-commands":[
-                "mkdir /app/tmp",
-                "sh cuda_12.5.1_555.42.06_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
-            "sources":[
-                {
-                    "type": "file",
-                    "url": "https://developer.download.nvidia.com/compute/cuda/12.5.1/local_installers/cuda_12.5.1_555.42.06_linux.run",
-                    "sha256": "b5e0a779e089c86610051141c4cf498beef431858ec63398107391727ecbdb04"
-                }
-            ]
         },
         {
             "name": "LightwaveExplorer",
