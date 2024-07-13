@@ -445,6 +445,7 @@ if(UNIX AND NOT APPLE)
                 Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
                 )
             target_compile_options(LightwaveExplorerNoCuda PRIVATE -O3 ${OpenMP_CXX_FLAGS} -fsycl -DNOCUDA -DLWEFLATPAK)
+            target_link_options(LightwaveExplorerNoCuda PRIVATE -fsycl)
             target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
             target_link_libraries(LightwaveExplorerNoCuda ${CAIRO_LIBRARIES})
             target_link_libraries(LightwaveExplorerNoCuda fmt::fmt miniz::miniz)
