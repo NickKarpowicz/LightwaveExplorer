@@ -1212,6 +1212,24 @@ public:
             "Number of times to execute\n   Variable number in which to put the counter",[&](){
                 sPrint("for(10,1){{\n\n}}\n");
             });
+        addMiniButton("\xf0\x9f\xaa\xa9", "applyOptic", "Apply a loaded optic to the field. \nParameters:\n   "
+            "Index to the loaded optic",[&](){
+                sPrint("Nick didn't fix this yet");
+            });
+        addMiniButton("\xf0\x9f\x93\x84", "loadOptic", "Load an optic from a file.\n"
+            "It should have the format: \nWavelength (nm) | Reflectivity (0.0 to 1.0) | Phase (rad)",[&](){
+                std::string path = QFileDialog::getOpenFileName(
+                    buttons["loadOptic"],"Load mirror reflectivity and phase","","Plain text file (*.*)").toStdString();
+                loadedInputData loadedData(path);
+                theSim.base().optics.push_back(loadedData);
+                cPrint("Tried to load {}",path);
+                std::vector<std::complex<double>> d = loadedData.toComplexSpectrum<double>(128,10e12);
+
+                cPrint("It contains:");
+                for(int i = 0; i<d.size(); i++){
+                    cPrint("{:.3g}, {:.3g}, {:.3g}",i*10.0e12,d.at(i).real(),d.at(i).imag());
+                }
+            });
         QSpacerItem* miniButtonSpacer = new QSpacerItem(1,1,QSizePolicy::Expanding,QSizePolicy::Fixed);
         sequenceButtonBoxLayout->addSpacerItem(miniButtonSpacer);
         sequence = new QTextEdit;

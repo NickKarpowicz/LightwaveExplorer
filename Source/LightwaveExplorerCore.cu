@@ -4717,6 +4717,25 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	static int applyOptic(
+		ActiveDevice& d,
+		simulationParameterSet* sCPU,
+		int index){
+		d.deviceMemcpy(
+			d.deviceStruct.gridETime1, 
+			(*sCPU).ExtOut, 
+			2 * d.deviceStruct.Ngrid * sizeof(double), 
+			copyType::ToDevice);
+		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z_1D);
+		//interpret the data
+		//copy the data to the device
+		//d.deviceMemcpy()
+		//call the applyOpticKernel
+		//fft back
+		//copy from device
+		return 0;
+	}
+
 	static int applyLorenzian(
 		ActiveDevice& d, 
 		simulationParameterSet* sCPU, 
@@ -6316,6 +6335,15 @@ namespace hostFunctions{
 				parameters[2], 
 				parameters[3], 
 				parameters[4]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
+		case functionID("applyOptic"):
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			d.reset(sCPU);
+			applyOptic(
+				d, 
+				sCPU, 
+				static_cast<int>(parameters[0]));
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case functionID("addPulse"):
