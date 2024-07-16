@@ -3,25 +3,16 @@ BIN=LightwaveExplorer
 APP=build/${BIN}.app
 BINPATH=${APP}/Contents/MacOS/${BIN}
 
-#install the required packages from homebrew
-brew install --quiet cmake make llvm fftw gtk4 pkgconfig libomp
-
-#Homebrew libraries location
-LIBS="$(brew --prefix)"
-LLVM="$(brew --prefix llvm)"
+#Shared libraries location
+LIBS="/Users"
 
 #build executable
 rm -rf build
 mkdir build
 cd build
-cmake .. -DCMAKE_CXX_COMPILER=${LLVM}/bin/clang++ -DCMAKE_C_COMPILER=${LLVM}/bin/clang
-make
+cmake .. -G Ninja
+ninja
 cd ..
-
-#restore the original source and clean up
-cp BuildResources/AppImage/AppImageCPU/COPYING COPYING
-tar cf GPLsource.tar COPYING *.cu LightwaveExplorerGTK/* LightwaveExplorerDevices/* BuildResources/macplistbase.plist CMakeLists.txt BuildResources/AppIcon.icns
-rm COPYING
 
 #complete the directory structure of the .app
 mkdir $APP/Contents/Resources/
@@ -32,11 +23,12 @@ mkdir $APP/Contents/Resources/share
 
 #copy in the databases and icons
 cp CrystalDatabase.txt $APP/Contents/Resources
-cp BuildResources/DefaultValues.ini $APP/Contents/Resources
-cp BuildResources/AppIcon.icns $APP/Contents/Resources
+cp Source/BuildResources/DefaultValues.ini $APP/Contents/Resources
+cp Source/BuildResources/Licenses.txt $APP/Contents/Resources
+cp Source/BuildResources/AppIcon.icns $APP/Contents/Resources
 
 #Functions:
-
+#The rest of this isn't needed for the current QT build, but I'm leaving it here in case I need it again...
 #for a given binary, copy its dynamic link dependencies to the $APP/Contents/Resources/lib folder
 copySharedLibraries(){
     NLIBS=$(otool -L $1 | grep "$LIBS" | wc -l)
@@ -44,7 +36,6 @@ copySharedLibraries(){
     do
         CURRENT=$(otool -L $1 | grep "$LIBS" | sed 's/([^)]*)//g' | tr -d '[:blank:]' | awk -v i=$i 'FNR==i')
         cp -n $CURRENT $APP/Contents/Resources/lib
-        echo "$CURRENT"
     done
 }
 

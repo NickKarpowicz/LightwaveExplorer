@@ -1,8 +1,8 @@
 {
     "id": "io.github.NickKarpowicz.LightwaveExplorer",
-    "runtime": "org.gnome.Platform",
-    "runtime-version": "45",
-    "sdk": "org.gnome.Sdk",
+    "runtime": "org.kde.Platform",
+    "runtime-version": "6.7",
+    "sdk": "org.kde.Sdk",
     "sdk-extensions":[
         "org.freedesktop.Sdk.Extension.llvm15"],
     "command": "flatpakLauncher.sh",
@@ -22,35 +22,7 @@
         "/share/aclocal",
         "/share/info",
         "/share/man",
-        "/opt/cuda/bin",
-        "/opt/cuda/compute-sanitizer",
-        "/opt/cuda/extras",
-        "/opt/cuda/gds",
-        "/opt/cuda/gds-12.2",
-        "/opt/cuda/tools",
-        "/opt/cuda/src",
-        "/opt/cuda/share",
-        "/opt/cuda/pkgconfig",
-        "/opt/cuda/nvvm",
-        "/opt/cuda/nvml",
-        "/opt/cuda/nsight-systems-2023.2.3",
-        "/opt/cuda/nsight-compute-2023.2.1",
-        "/opt/cuda/libnvvp",
-        "/opt/cuda/nsightee_plugins",
-        "/opt/cuda/libnvvp",
-        "/opt/cuda/targets/x86_64-linux/include",
-        "/opt/cuda/targets/x86_64-linux/res",
-        "/opt/cuda/targets/x86_64-linux/lib/*.a",
-        "/opt/cuda/targets/x86_64-linux/lib/libcublas*",
-        "/opt/cuda/targets/x86_64-linux/lib/libcusparse*",
-        "/opt/cuda/targets/x86_64-linux/lib/libcusolver*",
-        "/opt/cuda/targets/x86_64-linux/lib/libcublas*",
-        "/opt/cuda/targets/x86_64-linux/lib/libcurand*",
-        "/opt/cuda/targets/x86_64-linux/lib/libnppif*",
-        "/opt/cuda/targets/x86_64-linux/lib/libnvrtc*",
-        "/opt/cuda/targets/x86_64-linux/lib/stubs",
-        "/opt/cuda/targets/x86_64-linux/lib/cmake",
-        "/opt/intel"
+        "/opt"
     ],
     "modules": [
         {
@@ -61,10 +33,10 @@
                 "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib"
                 },
             "build-commands": [
-                    "chmod +x l_BaseKit_p_2024.0.1.46_offline.sh",
-                    "./l_BaseKit_p_2024.0.1.46_offline.sh -x -f webimage_extracted",
-                    "rm l_BaseKit_p_2024.0.1.46_offline.sh",
-                    "webimage_extracted/l_BaseKit_p_2024.0.1.46_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.tbb.devel:intel.oneapi.lin.dpcpp-cpp-compiler --install-dir=/app/opt/intel/oneapi --eula=accept",
+                    "chmod +x l_BaseKit_p_2024.2.0.634_offline.sh",
+                    "./l_BaseKit_p_2024.2.0.634_offline.sh -x -f webimage_extracted",
+                    "rm l_BaseKit_p_2024.2.0.634_offline.sh",
+                    "webimage_extracted/l_BaseKit_p_2024.2.0.634_offline/bootstrapper -s --action=install --components=intel.oneapi.lin.mkl.devel:intel.oneapi.lin.tbb.devel:intel.oneapi.lin.dpcpp-cpp-compiler --install-dir=/app/opt/intel/oneapi --eula=accept",
                     "rm -rf /app/opt/intel/oneapi/compiler/latest/opt/oclfpga/host/linux64/bin/perl/lib",
                     "mkdir /app/lib",
                     "cp -a /app/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbb.so* /app/lib/",
@@ -73,8 +45,8 @@
             "sources": [
                 {
                     "type": "file",
-                    "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/163da6e4-56eb-4948-aba3-debcec61c064/l_BaseKit_p_2024.0.1.46_offline.sh",
-                    "sha256": "2f60c99098fe81c7aaab3d92cd0bede777567ac8946c8b5cc74876b4e573e1ea"
+                    "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/9a98af19-1c68-46ce-9fdd-e249240c7c42/l_BaseKit_p_2024.2.0.634_offline.sh",
+                    "sha256": "ae97f1b7146f610c07232d75cac8d37f6b2998df416411bef9a9f6c9d23591a4"
         
                 }
             ],
@@ -136,35 +108,30 @@
             "buildsystem": "simple",
             "build-commands":[
                 "mkdir /app/tmp",
-                "sh cuda_12.2.1_535.86.10_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
+                "sh cuda_12.5.1_555.42.06_linux.run --silent --toolkitpath=/app/opt/cuda --toolkit --override --tmpdir=/app/tmp"],
             "sources":[
                 {
                     "type": "file",
-                    "url": "https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run",
-                    "sha256": "c51e814eaa756160a73289b1f35880cc38c18e1ddedc87f46f7ff0d1696bdb95"
+                    "url": "https://developer.download.nvidia.com/compute/cuda/12.5.1/local_installers/cuda_12.5.1_555.42.06_linux.run",
+                    "sha256": "b5e0a779e089c86610051141c4cf498beef431858ec63398107391727ecbdb04"
                 }
             ]
         },
         {
             "name": "LightwaveExplorer",
             "buildsystem": "cmake-ninja",
-            "build-options":{
-                "append-path": "/usr/lib/sdk/llvm15/bin",
-                "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib"
-            },
             "config-opts": [
                 "-DMAKECUDAFLATPAK=TRUE",
-                "-DCMAKE_CXX_COMPILER=clang++", 
+                "-DCMAKE_CXX_COMPILER=g++", 
                 "-DCMAKE_CUDA_ARCHITECTURES='75;86;89'", 
                 "-DCUDAToolkit_ROOT=/app/opt/cuda",
                 "-DCMAKE_CUDA_COMPILER=/app/opt/cuda/bin/nvcc",
-                "-DCMAKE_CUDA_HOST_COMPILER=clang++"],
+                "-DCMAKE_CUDA_HOST_COMPILER=g++"],
             "sources": [
                 {
                     "type": "git",
                     "url": "https://github.com/NickKarpowicz/LightwaveExplorer",
-                    "tag": "2024.2",
-                    "commit": "8b613cf54e09a7bd5fbc856e6f40f0ef0e16a652"
+                    "branch": "QT_interface"
                 }
             ]
         } 

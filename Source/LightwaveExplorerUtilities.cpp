@@ -2,7 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#ifdef CPUONLY
+#ifdef USEFFTW
 #include <fftw3.h>
 #else
 #include <fftw3_mkl.h>
@@ -12,7 +12,7 @@
 #include <mach-o/dyld.h>
 #endif
 template<typename T>
-void zipIntoMemory(std::string zipPath, std::string filename, T* data, size_t dataSize){
+void zipIntoMemory(std::string zipPath, std::string filename, T* data, std::size_t dataSize){
 	mz_zip_archive zip = {};
 	mz_zip_reader_init_file(&zip, zipPath.c_str(), 0);
 	int fileIndex = mz_zip_reader_locate_file(&zip, filename.c_str(), nullptr, 0);
@@ -96,11 +96,11 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool 
 			fftwSizes, 
 			2, 
 			ExtOut, 
-			NULL, 
+			0, 
 			1, 
 			(int)Ngrid, 
 			(fftw_complex*)EkwOut, 
-			NULL, 
+			0, 
 			1, 
 			(int)NgridC, 
 			FFTW_MEASURE);
@@ -112,11 +112,11 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool 
 			fftwSizes, 
 			2, 
 			ExtOut, 
-			NULL, 
+			0, 
 			1, 
 			(int)Ngrid, 
 			(fftw_complex*)EkwOut, 
-			NULL, 
+			0, 
 			1, 
 			(int)NgridC, 
 			FFTW_MEASURE);
@@ -296,14 +296,14 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	mz_zip_writer_add_mem(&zip, getBasename(scriptPath).c_str(), script.c_str(), script.size(), MZ_DEFAULT_COMPRESSION);
 
 	//scan the sequence for quotes, include the data if something is found
-	size_t startPosition = sequenceString.find_first_of('\"');
+	std::size_t startPosition = sequenceString.find_first_of('\"');
 	std::string workingString = sequenceString;
 	std::string modifiedString = sequenceString;
 	while(startPosition != std::string::npos){
 		workingString = workingString.substr(startPosition+1);
-		size_t endPosition = workingString.find_first_of('\"');
+		std::size_t endPosition = workingString.find_first_of('\"');
 		loadedInputData newData(workingString.substr(0,endPosition));
-		size_t pos = modifiedString.find(newData.filePath);
+		std::size_t pos = modifiedString.find(newData.filePath);
 		modifiedString.replace(pos, newData.filePath.length(), getBasename(newData.filePath));
 		mz_zip_writer_add_mem(&zip, getBasename(newData.filePath).c_str(), newData.fileContents.c_str(), newData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 		workingString = workingString.substr(endPosition+1);
@@ -347,7 +347,7 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 					std::ostringstream oss;
 					oss << std::setprecision(15) << i37[j];
 					std::string replacement = oss.str();
-					size_t pos = arraySim.sequenceString.find("i37");
+					std::size_t pos = arraySim.sequenceString.find("i37");
 					while(pos != std::string::npos){
 						arraySim.sequenceString.replace(pos, 3, replacement);
 						pos = arraySim.sequenceString.find("i37", pos+3);
@@ -357,7 +357,7 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 					std::ostringstream oss;
 					oss << std::setprecision(15) << i37_2[i];
 					std::string replacement = oss.str();
-					size_t pos = arraySim.sequenceString.find("i37");
+					std::size_t pos = arraySim.sequenceString.find("i37");
 					while(pos != std::string::npos){
 						arraySim.sequenceString.replace(pos, 3, replacement);
 						pos = arraySim.sequenceString.find("i37", pos+3);
@@ -597,7 +597,7 @@ void simulationParameterSet::setByNumber(const int64_t index, const double value
 }
 
 void simulationParameterSet::setByNumberWithMultiplier(
-	const size_t index, 
+	const std::size_t index, 
 	const double value) {
 	if (index > multipliers.size()) return;
 	setByNumber(index, value * multipliers[index]);
@@ -912,6 +912,7 @@ void simulationBatch::configure(bool allocateFields) {
 	parameters[0].loadedFullGrid2 = loadedFullGrid2.data();
 	parameters[0].fittingReference = fitReference.data();
 	parameters[0].isGridAllocated = true;
+	parameters[0].optics = optics;
 	loadPulseFiles();
 
 	for (int64_t i = 0; i < Nsims2; i++) {
@@ -1058,6 +1059,20 @@ void simulationBatch::loadPulseFiles() {
 			parameters[0].Ngrid);
 	}
 }
+void simulationBatch::loadOptics(const std::string& zipPath){
+	bool keepLoading = true;
+	std::string base = std::filesystem::path(zipPath).stem().string() + "_optic";
+	int ind = 0;
+	while(keepLoading){
+		std::string currentFile = base + std::to_string(ind) + ".txt";
+		keepLoading = zipContainsFile(zipPath,currentFile);
+		if(!keepLoading) break;
+		if(ind==0) optics.clear();
+		loadedInputData file(zipPath,currentFile);
+		optics.push_back(file);
+		ind++;
+	}
+}
 
 int simulationBatch::saveDataSet() {
 	std::for_each(mutexes.begin(), mutexes.end(),
@@ -1084,6 +1099,12 @@ int simulationBatch::saveDataSet() {
 	}
 	if(parameters[0].fittingLoadedData.hasData){
 		mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(), parameters[0].fittingLoadedData.fileContents.c_str(), parameters[0].fittingLoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+	}
+	if(parameters[0].optics.size()>0){
+		for(int i = 0; i<optics.size(); i++){
+			std::string opticPath = parameters[0].outputBasePath + "_optic" + std::to_string(i) + ".txt";
+			mz_zip_writer_add_mem(&zip, getBasename(opticPath).c_str(), optics[i].fileContents.c_str(), optics[i].fileContents.size(), MZ_DEFAULT_COMPRESSION);
+		}
 	}
 	mz_zip_writer_finalize_archive(&zip);
 	mz_zip_writer_end(&zip);
@@ -1134,7 +1155,7 @@ int removeCharacterFromStringSkippingChars(
 	const std::string& startChars, 
 	const std::string& endChars) {
 	bool removing = true;
-	for (size_t i = 0; i < s.length(); ++i) {
+	for (std::size_t i = 0; i < s.length(); ++i) {
 		if (s[i] == removedChar && removing) {
 			s.erase(i,1);
 			--i;
@@ -1173,14 +1194,14 @@ int interpretParameters(
 		// If an ) is encountered while searching for , throw "too few"
 		// If an , is encountered while searching for ) throw "too many"
 		int numberFound = 0;
-		size_t startArgument = 0;
+		std::size_t startArgument = 0;
 		std::vector<std::string> argTable;
 		argTable.reserve(numberParams);
 		char expectedDelimiter = ',';
 		char wrongDelimiter = ')';
 		int openParens = 0;
 
-		for(int i = 0; i<arguments.size(); ++i){
+		for(std::size_t i = 0; i<arguments.size(); ++i){
 			if(numberFound == numberParams-1) {
 				expectedDelimiter = ')';
 				wrongDelimiter = ',';
@@ -1205,7 +1226,7 @@ int interpretParameters(
 			}
 		}
 
-		for(int i = 0; i<argTable.size(); ++i){
+		for(int i = 0; i<static_cast<int>(argTable.size()); ++i){
 			if(argTable[i].at(0)=='d'){
 				defaultMask[i] = true;
 			}
@@ -1216,10 +1237,10 @@ int interpretParameters(
 		return 0;
 }
 
-size_t findParenthesesClosure(std::string& a){
+std::size_t findParenthesesClosure(std::string& a){
 	int nParen = 0;
 	bool foundFirstParen = false;
-	for(int i = 0; i<a.size(); ++i){
+	for(std::size_t i = 0; i<a.size(); ++i){
 		if(a[i]=='('){
 			nParen++;
 			foundFirstParen = true;
@@ -1241,11 +1262,11 @@ double parameterStringToDouble(
 const std::string& ss, 
 	const double* iBlock, 
 	const double* vBlock) {
-	std::vector<size_t> operatorTable;
+	std::vector<std::size_t> operatorTable;
 	std::vector<double> numberTable;
 	int lastOperator = -1;
 	bool lastNumberWasNotParenthesized = true;
-	for(size_t i = 0; i<ss.size(); ++i){
+	for(std::size_t i = 0; i<ss.size(); ++i){
 		if(
 		  (ss[i] == '+'
 		|| ss[i] == '-'
@@ -1290,12 +1311,12 @@ const std::string& ss,
 	if(lastOperator == -1) {
 		return std::stod(ss);
 	}
-	if(lastOperator+1 < ss.size()){
+	if(lastOperator+1 < static_cast<int>(ss.size())){
 			numberTable.push_back(std::stod(ss.substr(lastOperator+1,std::string::npos)));
 		}
 
 	auto applyOperators = [&](char firstOp, char secondOp){
-		for(int i = 0; i < operatorTable.size(); ++i){
+		for(std::size_t i = 0; i < operatorTable.size(); ++i){
 			if(ss[operatorTable[i]] == firstOp || ss[operatorTable[i]] == secondOp){
 				switch(ss[operatorTable[i]]){
 				case '^':
@@ -1330,7 +1351,7 @@ const std::string& ss,
 
 std::string getBasename(const std::string& fullPath) {
 	std::string pathString = fullPath;
-	int64_t positionOfName = pathString.find_last_of("/\\");
+	std::size_t positionOfName = pathString.find_last_of("/\\");
 	if (positionOfName == std::string::npos) return pathString;
 	return pathString.substr(positionOfName + 1);
 }

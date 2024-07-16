@@ -25,9 +25,9 @@ extern "C" void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                     != std::end(namelist))) {
                     namelist.push_back(d.get_info<sycl::info::device::name>());
                     cpuCount++;
-                    deviceList.append("SYCL found a CPU:\n   <span color=\"#66FFFFFF\">");
+                    deviceList.append("SYCL found a CPU:\n");
                     deviceList.append(d.get_info<sycl::info::device::name>());
-                    deviceList.append("</span>\n");
+                    deviceList.append("\n");
                 }
             }
             if (d.is_gpu()) {
@@ -38,9 +38,9 @@ extern "C" void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
                     != std::end(namelist))) {
                     namelist.push_back(d.get_info<sycl::info::device::name>());
                     gpuCount++;
-                    deviceList.append("SYCL found a GPU:\n   <span color=\"#66FFFFFF\">");
+                    deviceList.append("SYCL found a GPU:\n");
                     deviceList.append(d.get_info<sycl::info::device::name>());
-                    deviceList.append("</span>\n");
+                    deviceList.append("\n");
                 }
             }
         }

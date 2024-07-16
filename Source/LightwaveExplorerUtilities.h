@@ -7,6 +7,8 @@
 #include <atomic>
 #include <mutex>
 #include <algorithm>
+#include <utility>
+#include <filesystem>
 #include "LightwaveExplorerHelpers.h"
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -22,7 +24,7 @@ static const unsigned int minGridDimension = 8;
 
 std::string     getBasename(const std::string& fullPath);
 double          cModulusSquared(const std::complex<double>& x);
-size_t          findParenthesesClosure(std::string& a);
+std::size_t          findParenthesesClosure(std::string& a);
 double          parameterStringToDouble(const std::string& ss, const double* iBlock, const double* vBlock);
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
@@ -597,13 +599,13 @@ public:
         return *this;
     }
 };
-
+#include<iostream>
 class loadedInputData {
     public:
     std::string fileContents;
     std::string filePath;
     bool hasData = false;
-    loadedInputData(){};
+    loadedInputData(){}
     loadedInputData(const std::string& path){
         filePath = path;
         std::ifstream file(filePath);
@@ -612,6 +614,90 @@ class loadedInputData {
         hasData = fileContents.size() > 1;
     }
     loadedInputData(const std::string& zipPath, const std::string& filename);
+
+    //method to output the saved data to a complex spectrum (e.g. reflectivity or transmission)
+    //assuming the data format is: wavelength (nm) | R (0.0 to 1.0) | phase(rad)
+    template<typename deviceFP>
+    std::vector<std::complex<deviceFP>> toComplexSpectrum(const int64_t Nfreq, const double fStep) {
+        std::vector<std::complex<deviceFP>> complexReflectivity(Nfreq, std::complex<deviceFP>(0.0,0.0));
+        if (!hasData) {
+            return complexReflectivity;
+        }
+
+        std::stringstream fs(fileContents);
+        int64_t maxFileSize = 16384;
+        int64_t currentRow = 0;
+        constexpr double c = 1e9 * lightC<double>();
+        struct Reflectivity{
+            double f;
+            std::complex<double> R;
+        };
+
+        std::vector<Reflectivity> loadedReflectivities;
+        loadedReflectivities.reserve(8192);
+        loadedReflectivities.push_back({0.0,{0.0,0.0}});
+        double minFrequency{};
+        double maxFrequency{};
+        while (fs.good() && currentRow < maxFileSize) {
+            double wavelength;
+            double R;
+            double phase;
+            fs >> wavelength >> R >> phase;
+            double f = c/wavelength;
+            //store in complex as {R, phase}
+            loadedReflectivities.push_back({
+                f,
+                std::complex<double>(R,phase)});
+            if (currentRow == 0) {
+                minFrequency = f;
+                maxFrequency = f;
+            }
+            else {
+                maxFrequency = maxN(maxFrequency, f);
+                minFrequency = minN(minFrequency, f);
+            }
+            currentRow++;
+        }
+
+        std::sort(
+            loadedReflectivities.begin(),
+            loadedReflectivities.end(),
+            [](const auto& lhs, const auto& rhs) {
+                return lhs.f < rhs.f;
+            }
+        );
+
+        double currentFrequency = 0;
+        double df;
+        for (int64_t i = 1; i < Nfreq; i++) {
+            currentFrequency = i * fStep;
+            if ((currentFrequency > minFrequency) && (currentFrequency < maxFrequency)) {
+                //find the first frequency greater than the current value
+                int64_t j = 0;
+                while (loadedReflectivities[j].f < currentFrequency) {
+                    j++;
+                }
+                //linear interpolation
+                df = loadedReflectivities[j].f - loadedReflectivities[j-1].f;
+                double t = (currentFrequency - loadedReflectivities[j-1].f)/df;
+                std::complex<double> currentValue = 
+                    (1.0 - t)* loadedReflectivities[j-1].R 
+                    + t * loadedReflectivities[j].R;
+
+                //put in complex representation
+                currentValue = 
+                    std::sqrt(std::abs(currentValue.real())) * 
+                    std::exp(std::complex<double>(0.0,currentValue.imag()));
+                complexReflectivity[i] = std::complex<deviceFP>(
+                    static_cast<deviceFP>(currentValue.real()),
+                    static_cast<deviceFP>(currentValue.imag()));
+            }
+            else{
+                complexReflectivity[i] = {};
+            }
+        }
+        return complexReflectivity;
+    }
 };
 
 //Simulation parameter class containing the complete description of the running simulation
@@ -698,6 +784,7 @@ public:
     double i37 = 0.0;
     int64_t batchLoc1 = 0;
     int64_t batchLoc2 = 0;
+    std::vector<loadedInputData> optics{};
 
     //fitting
     bool isInFittingMode = false;
@@ -734,12 +821,12 @@ public:
         1, 1e12, 1, 1e-6,
         1e-9, 1, 1 };
 
-    [[nodiscard]] constexpr double getByNumberWithMultiplier(const size_t index) {
+    [[nodiscard]] constexpr double getByNumberWithMultiplier(const std::size_t index) {
         if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
         return  getByNumber(index) / multipliers[index];
     }
     
-    constexpr double getByNumber(const size_t index) {
+    constexpr double getByNumber(const std::size_t index) {
         switch (index) {
         case 0:
             return 0.0;
@@ -822,7 +909,7 @@ public:
         };
     }
     void setByNumber(const int64_t index, const double value);
-    void setByNumberWithMultiplier(const size_t index, const double value);
+    void setByNumberWithMultiplier(const std::size_t index, const double value);
     int loadSavedFields(const std::string& outputBase, bool isZipFile);
     int loadReferenceSpectrum();
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
@@ -972,6 +1059,7 @@ class simulationBatch {
     int64_t Ngrid = 0;
     int64_t NgridC = 0;
 public:
+    std::vector<loadedInputData> optics;
     std::vector<simulationParameterSet> parameters;
     std::vector<std::mutex> mutexes = std::vector<std::mutex>(1);
 
@@ -985,6 +1073,7 @@ public:
     void configure(bool allocateFields=true);
     void configureCounter();
     void loadPulseFiles();
+    void loadOptics(const std::string& zipPath);
     int saveDataSet();
     [[nodiscard]] double* getExt(int64_t i) {
         return &Ext.data()[i * Ngrid * 2];
