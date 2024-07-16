@@ -1233,6 +1233,10 @@ public:
                 //     cPrint("{:.3g} {:.3g} {:.3g}",i*40.0e12,d.at(i).real(),d.at(i).imag());
                 // }
             });
+        addMiniButton("\xf0\x9f\x9a\xae", "clearOptics", "Empty out the loaded optics database",[&](){
+                theSim.optics.clear();
+                cPrint("Optics database now empty.");
+            });
         QSpacerItem* miniButtonSpacer = new QSpacerItem(1,1,QSizePolicy::Expanding,QSizePolicy::Fixed);
         sequenceButtonBoxLayout->addSpacerItem(miniButtonSpacer);
         sequence = new QTextEdit;
@@ -1482,6 +1486,7 @@ public:
                 messenger->passString("Loading...");
                 int readParameters =
                 theSim.base().readInputParametersFile(theDatabase.db.data(), path);
+                if(isZipFile) theSim.loadOptics(path);
                 theSim.configure(true);
                 std::for_each(theSim.mutexes.begin(), theSim.mutexes.end(), 
                         [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });

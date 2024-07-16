@@ -1059,6 +1059,20 @@ void simulationBatch::loadPulseFiles() {
 			parameters[0].Ngrid);
 	}
 }
+void simulationBatch::loadOptics(const std::string& zipPath){
+	bool keepLoading = true;
+	std::string base = std::filesystem::path(zipPath).stem().string() + "_optic";
+	int ind = 0;
+	while(keepLoading){
+		std::string currentFile = base + std::to_string(ind) + ".txt";
+		keepLoading = zipContainsFile(zipPath,currentFile);
+		if(!keepLoading) break;
+		if(ind==0) optics.clear();
+		loadedInputData file(zipPath,currentFile);
+		optics.push_back(file);
+		ind++;
+	}
+}
 
 int simulationBatch::saveDataSet() {
 	std::for_each(mutexes.begin(), mutexes.end(),
@@ -1085,6 +1099,12 @@ int simulationBatch::saveDataSet() {
 	}
 	if(parameters[0].fittingLoadedData.hasData){
 		mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(), parameters[0].fittingLoadedData.fileContents.c_str(), parameters[0].fittingLoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+	}
+	if(parameters[0].optics.size()>0){
+		for(int i = 0; i<optics.size(); i++){
+			std::string opticPath = parameters[0].outputBasePath + "_optic" + std::to_string(i) + ".txt";
+			mz_zip_writer_add_mem(&zip, getBasename(opticPath).c_str(), optics[i].fileContents.c_str(), optics[i].fileContents.size(), MZ_DEFAULT_COMPRESSION);
+		}
 	}
 	mz_zip_writer_finalize_archive(&zip);
 	mz_zip_writer_end(&zip);

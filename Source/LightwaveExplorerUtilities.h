@@ -8,6 +8,7 @@
 #include <mutex>
 #include <algorithm>
 #include <utility>
+#include <filesystem>
 #include "LightwaveExplorerHelpers.h"
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -1070,6 +1071,7 @@ public:
     void configure(bool allocateFields=true);
     void configureCounter();
     void loadPulseFiles();
+    void loadOptics(const std::string& zipPath);
     int saveDataSet();
     [[nodiscard]] double* getExt(int64_t i) {
         return &Ext.data()[i * Ngrid * 2];
