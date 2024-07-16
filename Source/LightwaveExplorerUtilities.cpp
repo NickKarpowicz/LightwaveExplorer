@@ -912,6 +912,7 @@ void simulationBatch::configure(bool allocateFields) {
 	parameters[0].loadedFullGrid2 = loadedFullGrid2.data();
 	parameters[0].fittingReference = fitReference.data();
 	parameters[0].isGridAllocated = true;
+	parameters[0].optics = optics;
 	loadPulseFiles();
 
 	for (int64_t i = 0; i < Nsims2; i++) {

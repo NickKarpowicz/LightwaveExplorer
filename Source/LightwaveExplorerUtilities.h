@@ -641,10 +641,10 @@ class loadedInputData {
             double phase;
             fs >> wavelength >> R >> phase;
             double f = c/wavelength;
+            //store in complex as {R, phase}
             loadedReflectivities.push_back({
                 f,
-                std::sqrt(R)
-                *std::exp(std::complex<double>(0.0,phase))});
+                std::complex<double>(R,phase)});
             if (currentRow == 0) {
                 minFrequency = f;
                 maxFrequency = f;
@@ -681,6 +681,10 @@ class loadedInputData {
                     (1.0 - t)* loadedReflectivities[j-1].R 
                     + t * loadedReflectivities[j].R;
 
+                //put in complex representation
+                currentValue = 
+                    std::sqrt(std::abs(currentValue.real())) * 
+                    std::exp(std::complex<double>(0.0,currentValue.imag()));
                 complexReflectivity[i] = std::complex<deviceFP>(
                     static_cast<deviceFP>(currentValue.real()),
                     static_cast<deviceFP>(currentValue.imag()));
@@ -1052,6 +1056,7 @@ class simulationBatch {
     int64_t Ngrid = 0;
     int64_t NgridC = 0;
 public:
+    std::vector<loadedInputData> optics;
     std::vector<simulationParameterSet> parameters;
     std::vector<std::mutex> mutexes = std::vector<std::mutex>(1);
 

@@ -2741,6 +2741,27 @@ namespace kernelNamespace{
 		}
 	};
 
+	class applyOpticKernel { 
+	public:
+		const deviceParameterSet<deviceFP, deviceComplex>* s;
+		const deviceComplex* complexReflectivity;
+		const bool applyX;
+		const bool applyY;
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t col = i / ((*s).Nfreq - 1); //spatial coordinate
+			const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
+			i = j + col * (*s).Nfreq;
+			if(applyX) (*s).gridEFrequency1[i] *= complexReflectivity[j]/(*s).Ntime;
+			else (*s).gridEFrequency1[i] /= (*s).Ntime;
+			if(applyY) (*s).gridEFrequency2[i] *= complexReflectivity[j]/(*s).Ntime;
+			else (*s).gridEFrequency2[i] /= (*s).Ntime;
+			if(j==1){
+				(*s).gridEFrequency1[i-1] = {};
+				(*s).gridEFrequency2[i-1] = {};
+			}
+		}
+	};
+
 	//apply a lorentzian gain or loss in a certain cross-section of the beam.
 	// amplitude - strength of the copy of the pulse applied
 	// f0 - resonance frequency of the Lorentzian (THz)
@@ -4719,20 +4740,42 @@ namespace hostFunctions{
 
 	static int applyOptic(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
-		int index){
+		simulationParameterSet& sCPU,
+		const int index,
+		const bool applyX,
+		const bool applyY){
 		d.deviceMemcpy(
 			d.deviceStruct.gridETime1, 
-			(*sCPU).ExtOut, 
+			sCPU.ExtOut, 
 			2 * d.deviceStruct.Ngrid * sizeof(double), 
 			copyType::ToDevice);
 		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z_1D);
-		//interpret the data
-		//copy the data to the device
-		//d.deviceMemcpy()
-		//call the applyOpticKernel
-		//fft back
-		//copy from device
+		std::vector<std::complex<deviceFP>> complexReflectivity = 
+			sCPU.optics[index].toComplexSpectrum<deviceFP>(sCPU.Nfreq,sCPU.fStep);
+		d.deviceMemcpy(
+			d.deviceStruct.gridPropagationFactor1, 
+			complexReflectivity.data(), 
+			sCPU.Nfreq*sizeof(deviceComplex), 
+			copyType::ToDevice
+		);
+		d.deviceLaunch(
+			d.deviceStruct.Nblock/2,
+			d.deviceStruct.Nthread,
+			applyOpticKernel{d.dParamsDevice,d.deviceStruct.gridPropagationFactor1, applyX, applyY}
+		);
+		d.fft(d.deviceStruct.gridEFrequency1, d.deviceStruct.gridETime1, deviceFFT::Z2D_1D);
+		d.fft(d.deviceStruct.gridETime1, d.deviceStruct.gridEFrequency1, deviceFFT::D2Z);
+		d.deviceMemcpy(
+			sCPU.EkwOut, 
+			d.deviceStruct.gridEFrequency1, 
+			2 * d.deviceStruct.NgridC * sizeof(std::complex<double>), 
+			copyType::ToHost);
+		d.deviceMemcpy(
+			sCPU.ExtOut, 
+			d.deviceStruct.gridETime1, 
+			2 * sCPU.Ngrid * sizeof(double), 
+			copyType::ToHost);
+		getTotalSpectrum(d);
 		return 0;
 	}
 
@@ -6340,11 +6383,50 @@ namespace hostFunctions{
 		case functionID("applyOptic"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
+			if((*sCPU).optics.size() < static_cast<int>(parameters[0])+1){
+				throw std::runtime_error("applyOptic: optic is not loaded");
+			}
 			applyOptic(
 				d, 
-				sCPU, 
-				static_cast<int>(parameters[0]));
+				*sCPU, 
+				static_cast<int>(parameters[0]),
+				true,
+				true);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
+		case functionID("applyOpticX"):
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			d.reset(sCPU);
+			if((*sCPU).optics.size() < static_cast<int>(parameters[0])+1){
+				throw std::runtime_error("applyOpticX: optic is not loaded");
+			}
+			applyOptic(
+				d, 
+				*sCPU, 
+				static_cast<int>(parameters[0]),
+				true,
+				false);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
+		case functionID("applyOpticY"):
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			d.reset(sCPU);
+			if((*sCPU).optics.size() < static_cast<int>(parameters[0])+1){
+				throw std::runtime_error("applyOpticY: optic is not loaded");
+			}
+			applyOptic(
+				d, 
+				*sCPU, 
+				static_cast<int>(parameters[0]),
+				false,
+				true);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
+		case functionID("loadOptic"):{
+				loadedInputData file(cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
+				if(file.hasData) (*sCPU).optics.push_back(file);
+				else throw std::runtime_error("loadOptic failed, check the file path. If you are using the Flatpak version, load the optic using the load optic button.");
+			}
 			break;
 		case functionID("addPulse"):
 			if ((*sCPU).runType == runTypes::counter) break;
@@ -6504,6 +6586,7 @@ namespace hostFunctions{
 
 			currentString = currentString.substr(1, std::string::npos);
 			backupSet.isFollowerInSequence = (*sCPU).isFollowerInSequence;
+			backupSet.optics = (*sCPU).optics;
 			*sCPU = backupSet;
 		}
 		*sCPU = backupSet;
