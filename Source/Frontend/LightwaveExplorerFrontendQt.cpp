@@ -1225,13 +1225,9 @@ public:
                 std::string path = QFileDialog::getOpenFileName(
                     buttons["loadOptic"],"Load mirror reflectivity and phase","","Plain text file (*.*)").toStdString();
                 loadedInputData loadedData(path);
+                if(!loadedData.hasData) return;
                 theSim.optics.push_back(loadedData);
                 cPrint("Loaded {}\ninto index {}",path,theSim.optics.size()-1);
-                // std::vector<std::complex<double>> d = loadedData.toComplexSpectrum<double>(32,40e12);
-                // cPrint("It contains:");
-                // for(int i = 0; i<d.size(); i++){
-                //     cPrint("{:.3g} {:.3g} {:.3g}",i*40.0e12,d.at(i).real(),d.at(i).imag());
-                // }
             });
         addMiniButton("\xf0\x9f\x9a\xae", "clearOptics", "Empty out the loaded optics database",[&](){
                 theSim.optics.clear();

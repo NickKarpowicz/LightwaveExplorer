@@ -615,8 +615,10 @@ class loadedInputData {
     }
     loadedInputData(const std::string& zipPath, const std::string& filename);
 
+    //method to output the saved data to a complex spectrum (e.g. reflectivity or transmission)
+    //assuming the data format is: wavelength (nm) | R (0.0 to 1.0) | phase(rad)
     template<typename deviceFP>
-    std::vector<std::complex<deviceFP>> toComplexSpectrum(const int64_t Nfreq, double fStep) {
+    std::vector<std::complex<deviceFP>> toComplexSpectrum(const int64_t Nfreq, const double fStep) {
         std::vector<std::complex<deviceFP>> complexReflectivity(Nfreq, std::complex<deviceFP>(0.0,0.0));
         if (!hasData) {
             return complexReflectivity;
