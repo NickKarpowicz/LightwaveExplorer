@@ -164,7 +164,7 @@ and you should have a binary to run. You should either install it (sudo cmake --
   Apple Silicon (M1, M2, .etc) version:
 
   ```
-  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/QT_interface/Source/BuildResources/macAutoBuild.sh | zsh -s
+  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuild.sh | zsh -s
   ```
 
   Intel version:
