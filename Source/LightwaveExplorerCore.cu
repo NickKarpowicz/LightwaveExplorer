@@ -1940,9 +1940,12 @@ namespace deviceFunctions {
 		deviceFP kx1 = (lightC<deviceFP>() 
 			/ (twoPi<deviceFP>() * f)) 
 			* (j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace));
-		deviceFP ky1 = (lightC<deviceFP>() 
+		deviceFP ky1 = (*s).is3D ? 
+			(lightC<deviceFP>() 
 			/ (twoPi<deviceFP>() * f)) 
-			* (k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2));
+			* (k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2))
+			:
+			deviceFP{};
 		//alpha is deviation from crystal Theta (x2 polarizations)
 		//beta is deviation from crystal Phi
 		//

@@ -908,5 +908,39 @@ None
 Nonlinear reference frequencies:
 0 0 0 0 0 0 0
 ~~~crystal end~~~
-
+Name:
+BiBO L
+Type:
+2
+Sellmeier equation:
+1
+1st axis coefficients:
+1.97616 2.3e+28 1.0816e+32 45.4212 6.94916e+24 3.24e+28 0.111029 1.9e+28 1.44e+32 374524 7.14198e+24 1e+28 0.202241 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+1.7505 2.296e+28 1.0816e+32 7.09512e+09 1.48205e+24 3.61e+28 1.81721e+10 3.39791e+28 1.46531e+32 5.53069e+09 1.69512e+25 2.7225e+28 0.196454 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+1.67986 2.3e+28 1.0816e+32 2.52303e+09 1.84423e+21 3.8416e+28 1.94065e+13 5.8e+28 1.42803e+32 8.57531e+09 2.30604e+25 2.7225e+28 0.00718396 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007), fit with Lorentzians
+chi2 type:
+1
+d:
+2.53 2.93 -1.93 1.63 0 0  
+0 0 0 0 1.67 3.48
+0 0 0 0 -1.58 1.67
+d reference:
+M. Ghotbi and M. Ebrahim-Zadeh, Optics Express 12, 6002-6019 (2004).
+chi3 type:
+2
+chi3:
+1.87e-21 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0
+chi3 reference:
+Miller et al, Optical Materials 30, 1469-1472 (2008).
+Spectral file:
+None
+Nonlinear reference frequencies:
+370e12 370e12 740e12 282e12 282e12 282e12 282e12
+~~~crystal end~~~
 
