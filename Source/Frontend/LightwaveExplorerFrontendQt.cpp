@@ -1216,6 +1216,20 @@ public:
             "Number of times to execute\n   Variable number in which to put the counter",[&](){
                 sPrint("for(10,1){{\n\n}}\n");
             });
+        addMiniButton("\xf0\x9f\x97\x82\xef\xb8\x8f", "filePath", "Choose a file and insert its path as a string",[&](){
+                std::string path = QFileDialog::getOpenFileName(
+                    buttons["filePath"],"Choose the file you want","","Plain text file (*.*)").toStdString();
+                if(path.empty()) return;
+                sPrint("\"{}\"",path);
+            });
+        addMiniButton("\xf0\x9f\x97\xba\xef\xb8\x8f", "fdtdGrid", "Run an FDTD simulation on a custom grid."
+                "Parameters:\n    file path\n    Time divider: factor by which to divide the\n    time step relative to the time step of the output.\n    observation point(m): position at which to\n    record the time-dependent field.",
+                [&](){
+                std::string path = QFileDialog::getOpenFileName(
+                    buttons["filePath"],"Choose the file you want","","Plain text file (*.*)").toStdString();
+                if(path.empty()) sPrint("fdtdGrid(\"(insert file path here)\", 16, 3.0e-6)");
+                else sPrint("fdtdGrid(\"{}\", 16, 3.0e-6)",path);
+            });
         addMiniButton("\xf0\x9f\xaa\xa9", "applyOptic", "Apply a loaded optic to the field. \nParameters:\n   "
             "Index to the loaded optic",[&](){
                 sPrint("applyOptic(0)");
@@ -1445,7 +1459,9 @@ public:
 
         QObject::connect(buttons["save"], &QPushButton::clicked, [&](){
             if(!theSim.base().isGridAllocated) return;
-            theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["save"],"Save LWE result","","LWE Results (*.zip)").toStdString();
+            std::string path = QFileDialog::getSaveFileName(buttons["save"],"Save LWE result","","LWE Results (*.zip)").toStdString();
+            if(path.empty()) return;
+            theSim.base().outputBasePath = path;
             stripLineBreaks(theSim.base().outputBasePath);
             if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
                 || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
@@ -1463,7 +1479,9 @@ public:
         });
         QObject::connect(buttons["saveSLURM"], &QPushButton::clicked, [&](){
             if(theSim.base().isRunning) return;
-            theSim.base().outputBasePath = QFileDialog::getSaveFileName(buttons["saveSLURM"],"Save cluster script","","LWE Results (*.zip)").toStdString();
+            std::string path = QFileDialog::getSaveFileName(buttons["saveSLURM"],"Save cluster script","","LWE Results (*.zip)").toStdString();
+            if(path.empty()) return;
+            theSim.base().outputBasePath = path;
             stripLineBreaks(theSim.base().outputBasePath);
             if ((theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".txt")
                 || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
@@ -1475,6 +1493,7 @@ public:
         QObject::connect(buttons["load"], &QPushButton::clicked, [&](){
             if(theSim.base().isRunning) return;
             std::string path = QFileDialog::getOpenFileName(buttons["load"],"Load LWE result","","LWE Results (*.zip);;LWE Inputs (*.txt)").toStdString();
+            if(path.empty()) return;
             std::thread([&](std::string path){
                 std::unique_lock lock(m);
                 bool isZipFile = (path.length() >= 4 
@@ -1500,24 +1519,28 @@ public:
 
         QObject::connect(buttons["loadPulse1"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["loadPulse1"],"Load field data","","ASCII data (*.*)").toStdString();
+            if(path.empty()) return;
             pulse1LoadedData = loadedInputData(path);
             messenger->passString(Sformat("Loaded new file into pulse 1 buffer:\n{}\n", pulse1LoadedData.filePath));
         });
 
         QObject::connect(buttons["loadPulse2"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["loadPulse2"],"Load field data","","ASCII data (*.*)").toStdString();
+            if(path.empty()) return;
             pulse2LoadedData = loadedInputData(path);
             messenger->passString(Sformat("Loaded new file into pulse 2 buffer:\n{}\n", pulse2LoadedData.filePath));
         });
 
         QObject::connect(buttons["loadFitting"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["loadFitting"],"Load spectral target data","","ASCII data (*.*)").toStdString();
+            if(path.empty()) return;
             fittingLoadedData = loadedInputData(path);
             messenger->passString(Sformat("Loaded new fitting spectral target:\n{}\n", fittingLoadedData.filePath));
         });
 
         QObject::connect(buttons["loadMaterial"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["LoadMaterial"],"Load crystal database","","ASCII data (*.*)").toStdString();
+            if(path.empty()) return;
             theDatabase = crystalDatabase(path);
             populateDatabasePulldown();
             messenger->passString(Sformat("Loaded new crystal database:\n{}\n", path));
@@ -1559,6 +1582,7 @@ public:
             fs << SVGstrings[0] << SVGstrings[1] << SVGstrings[2] << SVGstrings[3];*/
         QObject::connect(buttons["svg"], &QPushButton::clicked, [&](){
             std::string SVGpath = QFileDialog::getSaveFileName(buttons["svg"],"Save SVG file of plots","","Scalable Vector Graphics (*.svg)").toStdString();
+            if(SVGpath.empty()) return;
             isMakingSVG = true;
             plots["timePlot1"]->repaint();
             plots["timePlot2"]->repaint();
