@@ -103,7 +103,6 @@ cmake --build . --config Release
 Next build the main application together with the CUDA version:
 ```
 cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
-
 cmake --build . --config Release
 ```
 
@@ -144,7 +143,7 @@ This builds the SYCL version, without needing the CUDA toolkit:
 
 This will make a CPU-only (FFTW) version that doesn't need CUDA or oneAPI (i.e. it only uses things that are probably in your normal repo):
 ```
-cmake -DUSEFFTW=1 .. -G Ninja
+cmake .. -G Ninja
 ```
 
 No matter what configuration you pick, you can now just do
@@ -160,6 +159,9 @@ and you should have a binary to run. You should either install it (sudo cmake --
   The first thing you'll need is [Homebrew](https://brew.sh/). If you go there, you'll see a command that you have to run in the terminal. Just paste it and follow the instructions.
 
   I also made a build script that you can run in the same way; just copy and paste the command below that matches your system and it will compile everything it needs and put the application in your Applications folder. It will take a while, so go get a coffee!
+
+  (Please note that what's happening here is a shell script from the internet piped into the terminal. Never do this if you don't trust the developer, and even then it's a good idea to check the contents of the script by pasting the URL into your browser. Essentially, this is like letting me type into your Mac's terminal. I'm using it to compile the code and copy the resulting app, but someone at your terminal can also delete or copy your files.)
+
 
   Apple Silicon (M1, M2, .etc) version:
 
