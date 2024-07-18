@@ -1408,7 +1408,7 @@ public:
                 batchStart + 
                 i * (theSim.base().batchDestination - batchStart)/(theSim.base().Nsims - 1);
                 labels["sliderValue"]->setFixedWidth(60);
-                labels["sliderValue"]->setText(QString::number(batchValue));
+                labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:.3g}",batchValue)));
             }
             else{
                 if(theSim.base().Nsims < 2 && theSim.base().Nsims2 < 2) return;
