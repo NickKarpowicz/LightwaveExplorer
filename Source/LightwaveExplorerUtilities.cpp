@@ -389,6 +389,12 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	if(fittingLoadedData.hasData){
 		mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(), fittingLoadedData.fileContents.c_str(), fittingLoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 	}
+	if(!optics.empty()){
+		for(int i = 0; i<optics.size(); i++){
+			std::string opticPath = outputBasePath + "_optic" + std::to_string(i) + ".txt";
+			mz_zip_writer_add_mem(&zip, getBasename(opticPath).c_str(), optics[i].fileContents.c_str(), optics[i].fileContents.size(), MZ_DEFAULT_COMPRESSION);
+		}
+	}
 
 	mz_zip_writer_finalize_archive(&zip);
 	mz_zip_writer_end(&zip);
@@ -494,7 +500,7 @@ std::string simulationParameterSet::settingsString(){
 		}
 		fs << '\x0A';
 	}
-	fs << "Code version: 2023.10";
+	fs << "Code version: 2024.3";
 	fs << '\x0A';
 	return fs.str();
 }

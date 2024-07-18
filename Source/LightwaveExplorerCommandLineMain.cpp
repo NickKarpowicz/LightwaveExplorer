@@ -47,6 +47,15 @@ int main(int argc, char* argv[]){
 		std::cout << "Could not read input file." << std::endl;
 		return 13;
 	}
+
+	// read optics files if there are any
+	int opticCount = 0;
+	while(true){
+		loadedInputData newOptic(theSim.base().outputBasePath + "_optic" + std::to_string(opticCount) + ".txt");
+		if(newOptic.hasData) theSim.optics.push_back(newOptic);
+		else break;
+		opticCount++;
+	}
 	
 	if ((theSim.sCPU()->sequenceString[0] != 'N') && theSim.sCPU()->sequenceString[0] != 0) theSim.sCPU()->isInSequence = true;
 	theSim.configure();

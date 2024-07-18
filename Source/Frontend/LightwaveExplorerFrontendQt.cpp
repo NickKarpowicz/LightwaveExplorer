@@ -1487,6 +1487,7 @@ public:
                 || (theSim.base().outputBasePath.length() > 4 && theSim.base().outputBasePath.substr(theSim.base().outputBasePath.length() - 4) == ".zip")) {
                 theSim.base().outputBasePath = theSim.base().outputBasePath.substr(0, theSim.base().outputBasePath.length() - 4);
             }
+            theSim.base().optics = theSim.optics;
             createRunFile(*this);
         });
 
