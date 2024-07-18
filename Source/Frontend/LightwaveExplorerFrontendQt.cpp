@@ -187,9 +187,9 @@ class SequenceValidator : public QSyntaxHighlighter {
         rule.pattern = QRegularExpression("(?<=\\(|\\s|,)d(?=\\s|,|\\))");
         rule.format = variableFormat;
         highlightingRules.append(rule);
-        rule.pattern = QRegularExpression("(?<=\\(|\\s|,)v\\d{2}(?=\\s|,|\\))");
+        rule.pattern = QRegularExpression("(?<=[\\(,\\s\\+\\*\\-\\/\\^])v\\d{2}(?=[\\s,\\)\\+\\*\\-\\/\\^])");
         highlightingRules.append(rule);
-        rule.pattern = QRegularExpression("(?<=\\(|\\s|,)i\\d{2}(?=\\s|,|\\))");
+        rule.pattern = QRegularExpression("(?<=[\\(,\\s\\+\\*\\-\\/\\^])i\\d{2}(?=[\\s,\\)\\+\\*\\-\\/\\^])");
         highlightingRules.append(rule);
 
         //color strings
