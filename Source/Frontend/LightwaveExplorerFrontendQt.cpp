@@ -1258,11 +1258,12 @@ public:
         "The buttons above will enter the commands for a few common things; there are more in the docs.");
 
         SequenceValidator* contextColors = new SequenceValidator(sequence->document());
+    #if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
         QObject::connect(QGuiApplication::styleHints(), 
             &QStyleHints::colorSchemeChanged, 
             contextColors, 
             &QSyntaxHighlighter::rehighlight);
-        
+    #endif
         //Put the control strip below the sequence
         QHBoxLayout* simulationControlStripLayout = new QHBoxLayout(simulationControlStrip);
         squeezeMargins(simulationControlStripLayout);
