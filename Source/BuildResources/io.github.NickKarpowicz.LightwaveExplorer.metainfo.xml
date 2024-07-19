@@ -11,6 +11,18 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="2024.03" date="2024-07-19" urgency="high">
+  <description>
+  <p>This release moves the GUI from GTK4 to Qt, and has additional improvements such as:</p>
+  <ul>
+  <li>New applyOptic function: load and apply custom optics in a sequence</li>
+  <li>Easier acccess to the FDTD material grid mode</li>
+  <li>Improved syntax highlighting and autoformmating for sequences</li>
+  <li>Tooltips everywhere</li>
+  <li>Slider shows the batch mode values associated with the shown data</li>
+  <li>Bug fixes and optimizations, especially for biaxial crystals</li>
+  </ul>
+  </description>
   <release version="2024.02" date="2024-02-18" urgency="high">
   <description>
   <p>This release adds the following fixes and improvements:</p>
