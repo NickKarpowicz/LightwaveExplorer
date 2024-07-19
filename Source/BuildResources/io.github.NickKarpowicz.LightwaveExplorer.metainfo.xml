@@ -23,6 +23,7 @@
   <li>Bug fixes and optimizations, especially for biaxial crystals</li>
   </ul>
   </description>
+  </release>
   <release version="2024.02" date="2024-02-18" urgency="high">
   <description>
   <p>This release adds the following fixes and improvements:</p>
