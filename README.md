@@ -15,21 +15,20 @@ Tutorials on YouTube!
 - Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
 
 ---
-### Latest release: 2024.02
+### Latest release: 2024.03
 Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3.0/LightwaveExplorerWin64.zip)
 
 Mac: [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3.0/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
 Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
-  <p>This release adds the following fixes and improvements:</p>
+ <p>This release moves the GUI from GTK4 to Qt, and has additional improvements such as:</p>
   <ul>
-  <li>FDTD mode now supports importing a user-generated multi-material grid (tutorial upcoming).</li>
-  <li>New compressed file format (produces self-contained .zip files).</li>
-  <li>Saving and loading of files now done entirely through standard system file dialogs.</li>
-  <li>File access now supports XDG portals; Flatpak no longer needs nor requests home folder access.</li>
-  <li>Improved interaction with clusters/SLURM script generation.</li>
-  <li>Made the user interface more compact and organized.</li>
-  <li>Support dynamic loading of new crystal database files.</li>
+  <li>New applyOptic function: load and apply custom optics in a sequence</li>
+  <li>Easier acccess to the FDTD material grid mode</li>
+  <li>Improved syntax highlighting and autoformmating for sequences</li>
+  <li>Tooltips everywhere</li>
+  <li>Slider shows the batch mode values associated with the shown data</li>
+  <li>Bug fixes and optimizations, especially for biaxial crystals</li>
   </ul>
   
 ---
