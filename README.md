@@ -16,9 +16,9 @@ Tutorials on YouTube!
 
 ---
 ### Latest release: 2024.02
-Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3/LightwaveExplorerWin64.zip)
+Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3.0/LightwaveExplorerWin64.zip)
 
-Mac: [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
+Mac: [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3.0/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
 Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
   <p>This release adds the following fixes and improvements:</p>
@@ -75,7 +75,7 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ---
 ### Installation on Mac
 
-The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3/LightwaveExplorerMacOS.dmg). The first time you run it, you have to right-click (or command-click) on it and select "open". You have to do this because of how Apple expects developers to pay them a subscription to release applications on their platform, and I'd rather not. For the same reason, if you want the M1,M2,M3 .etc native version, you need to compile it on your machine using the directions below.
+The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3.0/LightwaveExplorerMacOS.dmg). The first time you run it, you have to right-click (or command-click) on it and select "open". You have to do this because of how Apple expects developers to pay them a subscription to release applications on their platform, and I'd rather not. For the same reason, if you want the M1,M2,M3 .etc native version, you need to compile it on your machine using the directions below.
 
 This version makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
 
