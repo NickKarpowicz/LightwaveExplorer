@@ -432,7 +432,7 @@ if(UNIX AND NOT APPLE)
                 ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
                 )
             target_link_libraries(LightwaveExplorer TBB::tbb)
-
+            
             add_link_options(-fsycl)
             add_executable(LightwaveExplorerNoCuda 
                 Source/Frontend/LightwaveExplorerFrontendQt.cpp 
@@ -444,7 +444,7 @@ if(UNIX AND NOT APPLE)
                 Source/Devices/LightwaveExplorerSYCLLinux.cpp 
                 Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
                 )
-            target_compile_options(LightwaveExplorerNoCuda PRIVATE -O3 ${OpenMP_CXX_FLAGS} -fsycl -DNOCUDA -DLWEFLATPAK)
+            target_compile_options(LightwaveExplorerNoCuda PRIVATE -O3 ${OpenMP_CXX_FLAGS} -fsycl -fsycl-targets=spir64_x86_64,x86_64,spir64_gen -DNOCUDA -DLWEFLATPAK)
             target_link_options(LightwaveExplorerNoCuda PRIVATE -fsycl)
             target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
             target_link_libraries(LightwaveExplorerNoCuda ${CAIRO_LIBRARIES})
