@@ -406,43 +406,7 @@ if(UNIX AND NOT APPLE)
             include_directories(${MKL_ROOT}/include)
             include_directories(${CAIRO_INCLUDE_DIRS})
             add_definitions(-DLWEFLATPAK)
-            add_library(LightwaveExplorerCuda 
-                Source/LightwaveExplorerCore.cu 
-                Source/Devices/LightwaveExplorerCoreFP32.cu)
-            add_executable(LightwaveExplorer 
-                Source/Frontend/LightwaveExplorerFrontendQt.cpp 
-                Source/LightwaveExplorerUtilities.cpp 
-                Source/Devices/LightwaveExplorerCoreCPU.cpp 
-                Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
-                Source/Devices/LightwaveExplorerCoreCounter.cpp 
-                Source/Devices/DlibLibraryComponents.cpp)
-            set_target_properties(LightwaveExplorer PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-            target_compile_options(LightwaveExplorer PRIVATE -O3 ${OpenMP_CXX_FLAGS} -DNOSYCL -DLWEFLATPAK)
-            target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
-            target_link_libraries(LightwaveExplorer CUDA::cudart_static CUDA::cufft_static CUDA::nvml)
-            target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
-            target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
-            target_link_libraries(LightwaveExplorer fmt::fmt miniz::miniz)
-            target_link_libraries(LightwaveExplorer -lm
-                -Wl,--start-group 
-                ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
-                ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
-                ${MKL_ROOT}/lib/intel64/libmkl_core.a 
-                -Wl,--end-group
-                ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
-                )
-            target_link_libraries(LightwaveExplorer TBB::tbb)
             
-            add_executable(LightwaveExplorerNoCuda 
-                Source/Frontend/LightwaveExplorerFrontendQt.cpp 
-                Source/LightwaveExplorerUtilities.cpp 
-                Source/Devices/LightwaveExplorerCoreCPU.cpp 
-                Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
-                Source/Devices/LightwaveExplorerCoreCounter.cpp 
-                Source/Devices/DlibLibraryComponents.cpp
-                Source/Devices/LightwaveExplorerSYCLLinux.cpp 
-                Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
-                )
             target_compile_options(LightwaveExplorerNoCuda PRIVATE -O3 ${OpenMP_CXX_FLAGS} -fsycl -fsycl-targets=spir64_x86_64,x86_64,spir64_gen -DNOCUDA -DLWEFLATPAK)
             target_link_options(LightwaveExplorerNoCuda PRIVATE -fsycl -fsycl-link)
             target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
@@ -460,7 +424,7 @@ if(UNIX AND NOT APPLE)
                 )
             target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
     
-            install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
+            #install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
             install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
             install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
             install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
