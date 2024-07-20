@@ -433,7 +433,7 @@ if(UNIX AND NOT APPLE)
                 )
             target_link_libraries(LightwaveExplorer TBB::tbb)
             
-            add_link_options(-fsycl)
+            add_link_options(-fsycl -fsycl-link)
             add_executable(LightwaveExplorerNoCuda 
                 Source/Frontend/LightwaveExplorerFrontendQt.cpp 
                 Source/LightwaveExplorerUtilities.cpp 
