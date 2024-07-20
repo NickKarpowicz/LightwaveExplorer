@@ -406,7 +406,16 @@ if(UNIX AND NOT APPLE)
             include_directories(${MKL_ROOT}/include)
             include_directories(${CAIRO_INCLUDE_DIRS})
             add_definitions(-DLWEFLATPAK)
-            
+            add_executable(LightwaveExplorerNoCuda 
+                Source/Frontend/LightwaveExplorerFrontendQt.cpp 
+                Source/LightwaveExplorerUtilities.cpp 
+                Source/Devices/LightwaveExplorerCoreCPU.cpp 
+                Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
+                Source/Devices/LightwaveExplorerCoreCounter.cpp 
+                Source/Devices/DlibLibraryComponents.cpp
+                Source/Devices/LightwaveExplorerSYCLLinux.cpp 
+                Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
+                )
             target_compile_options(LightwaveExplorerNoCuda PRIVATE -O3 ${OpenMP_CXX_FLAGS} -fsycl -fsycl-targets=spir64_x86_64,x86_64,spir64_gen -DNOCUDA -DLWEFLATPAK)
             target_link_options(LightwaveExplorerNoCuda PRIVATE -fsycl -fsycl-link)
             target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
@@ -424,7 +433,7 @@ if(UNIX AND NOT APPLE)
                 )
             target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
     
-            #install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
+            install(TARGETS LightwaveExplorerNoCuda DESTINATION bin)
             install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
             install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
             install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
