@@ -216,6 +216,18 @@
             ]
         },
         {
+            "name": "level-zero",
+            "buildsystem": "cmake-ninja",
+            "sources":[
+                {
+                    "type": "git",
+                    "url": "https://github.com/oneapi-src/level-zero",
+                    "tag": "v1.17.19",
+                    "commit": "a4afcb39ee265e595d3f0aa57b25b5e845fb494c"
+                }
+            ]
+        },
+        {
             "name": "intel-compute-runtime",
             "buildsystem": "cmake-ninja",
             "build-options": 
@@ -231,7 +243,16 @@
                 [
                     "-DCMAKE_BUILD_TYPE=Release",
                     "-DOCL_ICD_VENDORDIR=/app/etc/OpenCL/vendors",
-                    "-DIGC_DIR=/app"
+                    "-DIGC_DIR=/app",
+                    "-DNEO_DISABLE_LD_GOLD:BOOL=ON",
+                    "-DNEO_OCL_VERSION_MAJOR=24",
+                    "-DNEO_OCL_VERSION_MINOR=22",
+                    "-DNEO_VERSION_BUILD=297395",
+                    "-DSUPPORT_DG1=ON",
+                    "-DSUPPORT_DG2=ON",
+                    "-DKHRONOS_GL_HEADERS_DIR=/app/include",
+                    "-DKHRONOS_HEADERS_DIR=/app/include",
+                    "-DSKIP_UNIT_TESTS=1"
                 ],
             "post-install": 
                 [
