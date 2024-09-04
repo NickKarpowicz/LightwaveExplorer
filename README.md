@@ -16,7 +16,7 @@ Tutorials on YouTube!
 
 ---
 ### Latest release: 2024.03
-Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3.0/LightwaveExplorerWin64.zip)
+Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3.0/LightwaveExplorerWin64.zip) (You might need the latest [Microsoft C++ Runtime](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) if it fails to start).
 
 Mac: [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/download/2024.3.0/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
