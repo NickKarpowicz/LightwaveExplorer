@@ -3511,9 +3511,9 @@ namespace kernelNamespace{
 						P[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
 						P[a] += (*s).chi2Tensor[3 + a] * E3[1] * E3[1];
 						P[a] += (*s).chi2Tensor[6 + a] * E3[2] * E3[2];
-						P[a] += (*s).chi2Tensor[9 + a] * E3[1] * E3[2];
-						P[a] += (*s).chi2Tensor[12 + a] * E3[0] * E3[2];
-						P[a] += (*s).chi2Tensor[15 + a] * E3[0] * E3[1];
+						P[a] += 2.0f * (*s).chi2Tensor[9 + a] * E3[1] * E3[2];
+						P[a] += 2.0f * (*s).chi2Tensor[12 + a] * E3[0] * E3[2];
+						P[a] += 2.0f * (*s).chi2Tensor[15 + a] * E3[0] * E3[1];
 					}
 				}
 
