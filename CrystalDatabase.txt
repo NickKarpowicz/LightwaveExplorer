@@ -155,11 +155,11 @@ Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2
 chi2 type:
 1
 d:
-2.53 2.93 -1.93 1.63 0 0  
-0 0 0 0 1.67 3.48
-0 0 0 0 -1.58 1.67
+0 0 0 2.36 0 2.55
+2.55 2.53 -1.1 0 2.36 0
+0 0 0 -1.1 0 2.36
 d reference:
-M. Ghotbi and M. Ebrahim-Zadeh, Optics Express 12, 6002-6019 (2004).
+H. Hellwig, J. Liebertz, L. Bohaty, Solid State Communications 109, 249-251 (1998).
 chi3 type:
 2
 chi3:
