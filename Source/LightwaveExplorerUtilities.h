@@ -1021,7 +1021,7 @@ public:
         }
 
         for (int j = 0; j < 18; ++j) {
-            (*s).chi2Tensor[j] = (deviceFP)(2e-12 * chi2Tensor[j]); //go from d in pm/V to chi2 in m/V
+            (*s).chi2Tensor[j] = static_cast<deviceFP>(2e-12 * chi2Tensor[j]); //go from d in pm/V to chi2 in m/V
             if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
         }
 
@@ -1030,15 +1030,15 @@ public:
         }
 
         for (int64_t i = 0; i < 81; i++) {
-            (*s).chi3Tensor[i] = (deviceFP)chi3Tensor[i];
+            (*s).chi3Tensor[i] = static_cast<deviceFP>(chi3Tensor[i]);
         }
 
         for (int64_t i = 0; i < 6; i++) {
-            (*s).absorptionParameters[i] = (deviceFP)absorptionParameters[i];
+            (*s).absorptionParameters[i] = static_cast<deviceFP>(absorptionParameters[i]);
         }
 
         for (int64_t i = 0; i < 6; i++) {
-            (*s).plasmaParameters[i] = (deviceFP)plasmaParametersCPU[i];
+            (*s).plasmaParameters[i] = static_cast<deviceFP>(plasmaParametersCPU[i]);
         }
     }
 };
