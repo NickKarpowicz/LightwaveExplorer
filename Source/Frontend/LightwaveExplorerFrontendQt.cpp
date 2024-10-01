@@ -572,7 +572,9 @@ public:
         pulldowns["batch1"]->setCurrentIndex(sim.base().batchIndex);
         pulldowns["batch2"]->setCurrentIndex(sim.base().batchIndex2);
         pulldowns["propagator"]->setCurrentIndex(sim.base().symmetryType);
-
+        pulldowns["pulse1type"]->setCurrentIndex(sim.base().pulse1FileType);
+        pulldowns["pulse2type"]->setCurrentIndex(sim.base().pulse2FileType);
+        
         setToDouble(textBoxes["crystalTheta"],rad2Deg<double>() * sim.base().crystalTheta);
         setToDouble(textBoxes["crystalPhi"],rad2Deg<double>() *sim.base().crystalPhi);
         setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
@@ -1511,6 +1513,14 @@ public:
                     int64_t extensionLoc = path.find_last_of(".");
                     const std::string basePath = path.substr(0, extensionLoc);
                     theSim.base().loadSavedFields(basePath, isZipFile);
+                    if(theSim.base().pulse1LoadedData.hasData){
+                        pulse1LoadedData = theSim.base().pulse1LoadedData;
+                        messenger->passString("Loaded stored pulse 1 file into buffer.");
+                    }
+                    if(theSim.base().pulse2LoadedData.hasData){
+                        pulse2LoadedData = theSim.base().pulse2LoadedData;
+                        messenger->passString("Loaded stored pulse 2 file into buffer.");
+                    }
                 }
                 messenger->requestUpdate();
                 messenger->passSyncValues();
