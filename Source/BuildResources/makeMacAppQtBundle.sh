@@ -24,3 +24,4 @@ cp Source/BuildResources/DefaultValues.ini $APP/Contents/Resources
 cp Source/BuildResources/Licenses.txt $APP/Contents/Resources
 cp Source/BuildResources/AppIcon.icns $APP/Contents/Resources
 ${QTPATH}/macdeployqt ${APP} -dmg
+mv build/${BIN}.dmg build/${BIN}MacOS.dmg
