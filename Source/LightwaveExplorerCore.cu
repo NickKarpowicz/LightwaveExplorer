@@ -5457,6 +5457,7 @@ namespace hostFunctions{
 		// nonlinear polarization and plasma are fft-ed separately to accommodate larger
 		// systems.
 		else if ((*sH).isNonLinear) {
+			//TODO: if non-ortho biaxial, rotate into physical system
 			//perform inverse FFT to get time-space electric field
 			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFT::Z2D);
 			//Plasma/multiphoton absorption
@@ -5469,6 +5470,7 @@ namespace hostFunctions{
 					(unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension), 
 					minGridDimension, 
 					plasmaCurrentKernel_twoStage_B_simultaneous{ sD });
+				//TODO: if non-ortho biaxial, rotate into optical system
 				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
 				d.deviceLaunch(
 					(*sH).Nblock / 2, 
@@ -5481,7 +5483,11 @@ namespace hostFunctions{
 				(*sH).Nthread, 
 				nonlinearPolarizationKernel{ sD });
 			d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
+
+			//TODO: if non-ortho biaxial, rotate polarization in workspace1 into optical system
 		}
+
+
 
 		//advance an RK4 step
 		switch (stepNumber) {
@@ -5510,6 +5516,7 @@ namespace hostFunctions{
 				rkKernel3{ sD });
 			break;
 		}
+		
 		return 0;
 	}
 
