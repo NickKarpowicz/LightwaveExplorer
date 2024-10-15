@@ -609,6 +609,7 @@ public:
 		deviceFree((*s).workspace1);
 		deviceFree((*s).gridEFrequency1);
 		deviceFree((*s).gridPropagationFactor1);
+		deviceFree((*s).gridBiaxialDelta);
 		if ((*s).isCylindric) {
 			deviceFree((*s).gridPropagationFactor1Rho1);
 			deviceFree((*s).gridRadialLaplacian1);
@@ -716,7 +717,8 @@ public:
 			&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
 		memErrors += deviceCalloc((void**)
 			&(*s).k1, 2 * (*s).NgridC, sizeof(std::complex<deviceFP>));
-
+		memErrors += deviceCalloc((void**)
+			&(*s).gridBiaxialDelta, (*s).NgridC, sizeof(deviceFP));
 		//cylindric sym grids
 		if ((*s).isCylindric) {
 			memErrors += deviceCalloc((void**)

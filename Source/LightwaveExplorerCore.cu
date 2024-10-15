@@ -3383,7 +3383,7 @@ namespace kernelNamespace{
 			const deviceFP dk = static_cast<deviceFP>(j) * (*s).dk1 - static_cast<deviceFP>(j >= ((*s).Nspace / 2)) 
 				* ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
 			deviceComplex ne, no;
-			sellmeierDevice(
+			deviceFP delta = sellmeierDevice(
 				&ne, 
 				&no, 
 				sellmeierCoefficients, 
@@ -3392,6 +3392,7 @@ namespace kernelNamespace{
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
+			if((*s).axesNumber==2) (*s).gridBiaxialDelta[i] = delta;
 			//if the refractive index was returned weird, then the index isn't valid, 
 			//so set the propagator to zero for that frequency
 			if (minN(ne.real(), no.real()) < 0.95f 
@@ -3770,7 +3771,7 @@ namespace kernelNamespace{
 
 				deviceFP cosDelta = deviceFPLib::cos(sP->gridBiaxialDelta[i]);
 				deviceFP sinDelta = deviceFPLib::sin(sP->gridBiaxialDelta[i]);
-				if(!backwards) sinDelta = -sinDelta;
+				if(backwards) sinDelta = -sinDelta;
 
 				deviceComplex newX = cosDelta * x[i] - sinDelta * y[i];
 				y[i] = sinDelta * x[i] + cosDelta * y[i];
