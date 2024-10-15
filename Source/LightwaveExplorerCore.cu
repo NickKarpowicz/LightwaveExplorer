@@ -1939,7 +1939,7 @@ namespace deviceFunctions {
 	// Use OGM1; D. Kim, J.A. Fessler, 
 	// Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static void findBirefringentCrystalIndex(
+	deviceFunction static deviceFP findBirefringentCrystalIndex(
 		const deviceParameterSet<deviceFP, deviceComplex>* s, 
 		const deviceFP* sellmeierCoefficients, 
 		const int64_t i, 
@@ -1979,7 +1979,7 @@ namespace deviceFunctions {
 		if ((*s).axesNumber == 0) {
 			*n1 = n[0][0];
 			*n2 = n[0][1];
-			return;
+			return deviceFP{};
 		}
 
 		deviceFP gradient[2][2]{};
@@ -2022,7 +2022,7 @@ namespace deviceFunctions {
 				|| isComplexNaN(n[1][0])) {
 				*n1 = deviceComplex{};
 				*n2 = deviceComplex{};
-				return;
+				return deviceFP{};
 			}
 			errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
 			errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
@@ -2033,7 +2033,7 @@ namespace deviceFunctions {
 					|| isComplexNaN(n[1][0])) {
 					*n1 = deviceComplex{};
 					*n2 = deviceComplex{};
-					return;
+					return deviceFP{};
 				}
 				if (deviceFPLib::abs(gradient[0][0]) > gradientTol) {
 					alpha[0] -= 0.5f * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
@@ -2083,7 +2083,7 @@ namespace deviceFunctions {
 				(*s).sellmeierType);
 			*n1 = n[0][0];
 			*n2 = n[1][1];
-			return;
+			return deviceFP{};
 		}
 
 		if ((*s).axesNumber == 2) {
@@ -2161,7 +2161,7 @@ namespace deviceFunctions {
 				|| isComplexNaN(n[1][0])) {
 				*n1 = n[0][0];
 				*n2 = n[0][1];
-				return;
+				return deviceFP{};
 			}
 			errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
 			errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
@@ -2181,7 +2181,7 @@ namespace deviceFunctions {
 					|| isComplexNaN(n[1][0])) {
 					*n1 = deviceComplex{};
 					*n2 = deviceComplex{};
-					return;
+					return deviceFP{};
 				}
 				if (deviceFPLib::abs(gradient[0][0]) > 1e-2f) alpha[0] 
 					-= 0.25f * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
@@ -2285,7 +2285,7 @@ namespace deviceFunctions {
 				gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
 				gradient[1][1] = gradientFactor * (errArray[2][1] - errArray[3][1]);
 			}
-			sellmeierDevice(
+			deviceFP d = sellmeierDevice(
 				&n[0][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2304,8 +2304,9 @@ namespace deviceFunctions {
 				(*s).sellmeierType);
 			*n1 = n[0][0];
 			*n2 = n[1][1];
-			return;
+			return d;
 		}
+		return deviceFP{};
 	}
 }
 using namespace deviceFunctions;
@@ -3027,7 +3028,9 @@ namespace kernelNamespace{
 			//frequency being resolved by current thread
 			const deviceFP f = h * (*s).fStep;
 			const deviceFP omega = twoPi<deviceFP>() * f;
-			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			deviceFP delta = findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			if(s->axesNumber==2 && i<s->NgridC) s->gridBiaxialDelta[i] = delta;
+
 			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 			deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 			if (!(*s).is3D)dk2 = 0.0f;
@@ -3085,8 +3088,8 @@ namespace kernelNamespace{
 			const deviceFP dk = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) 
 				* ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
 			deviceComplex ne, no;
-			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-			
+			deviceFP d = findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			if(s->axesNumber==2 && i < s->NgridC) s->gridBiaxialDelta[i] = d;
 			//if the refractive index was returned weird, 
 			//then the index isn't valid, so set the propagator to zero for that frequency
 			if (minN(ne.real(), no.real()) < 0.9f 
@@ -3176,7 +3179,8 @@ namespace kernelNamespace{
 				* ((*s).dk2 * (*s).Nspace2); //frequency grid in y direction
 
 			deviceComplex ne, no;
-			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			deviceFP d = findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			if(s->axesNumber==2 && i<s->NgridC) s->gridBiaxialDelta[i] = d;
 			if (minN(ne.real(), no.real()) < 0.9f 
 				|| isComplexNaN(ne) 
 				|| isComplexNaN(no)) {
@@ -3752,6 +3756,27 @@ namespace kernelNamespace{
 			(*sP).k2[gridIndex] += 
 				(*sP).gridPolarizationFactor2[gridIndex] * (*sP).workspace2P[fftIndex];
 		}
+	};
+
+	class biaxialRotationKernel {
+		public:
+			const deviceParameterSet<deviceFP, deviceComplex>* sP;
+			deviceComplex* x;
+			bool backwards;
+			deviceFunction void operator()(const int64_t gridIndex) const {
+				deviceComplex* y = x + sP->NgridC;
+				const int64_t freqIndex = 1 + gridIndex % ((*sP).Nfreq - 1); //frequency coordinate
+				const int64_t i = freqIndex + (gridIndex / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+
+				deviceFP cosDelta = deviceFPLib::cos(sP->gridBiaxialDelta[i]);
+				deviceFP sinDelta = deviceFPLib::sin(sP->gridBiaxialDelta[i]);
+				if(!backwards) sinDelta = -sinDelta;
+
+				deviceComplex newX = cosDelta * x[i] - sinDelta * y[i];
+				y[i] = sinDelta * x[i] + cosDelta * y[i];
+				x[i] = newX;
+
+			}
 	};
 
 	//Slightly different kernels for the four stages of RK4. 
@@ -4613,12 +4638,23 @@ namespace hostFunctions{
 			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
 		}
 		
+		if((*sc).axesNumber==2){
+			d.deviceLaunch(
+				(*sc).Nblock / 2,
+				(*sc).Nthread,
+				biaxialRotationKernel {d.dParamsDevice,(*sc).gridEFrequency1,true}
+			);
+		}
+
 		//Copy the field into the temporary array
 		d.deviceMemcpy(
 			(void*)(*sc).gridEFrequency1Next1, 
 			(void*)(*sc).gridEFrequency1, 
 			2 * (*sc).NgridC * sizeof(deviceComplex), 
 			copyType::OnDevice);
+
+
+		
 
 		//set the propagation grids how they should be at the beginning of the next step
 		d.deviceLaunch(
@@ -5474,6 +5510,14 @@ namespace hostFunctions{
 		// systems.
 		else if ((*sH).isNonLinear) {
 			//perform inverse FFT to get time-space electric field
+			if((*sH).axesNumber==2){
+				//undo delta rotation if biaxial
+				d.deviceLaunch(
+					(*sH).Nblock / 2,
+					(*sH).Nthread,
+					biaxialRotationKernel {sD,(*sH).workspace1,false}
+				);
+			}
 			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFT::Z2D);
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
@@ -5497,6 +5541,14 @@ namespace hostFunctions{
 				(*sH).Nthread, 
 				nonlinearPolarizationKernel{ sD });
 			d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
+			//rotate nonlinear polarization into the delta frame if biaxial
+			if((*sH).axesNumber==2){
+				d.deviceLaunch(
+					(*sH).Nblock / 2,
+					(*sH).Nthread,
+					biaxialRotationKernel {sD,(*sH).workspace1,true}
+				);
+			}
 		}
 
 		//advance an RK4 step
@@ -5563,6 +5615,13 @@ namespace hostFunctions{
 		}
 		if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
 
+		if(d.deviceStruct.axesNumber==2){
+			d.deviceLaunch(
+				d.s->Nblock / 2,
+				d.s->Nthread,
+				biaxialRotationKernel {d.dParamsDevice,d.deviceStruct.gridEFrequency1,false}
+			);
+		}
 		//take final spectra and transfer the results to the CPU
 		d.deviceMemcpy(
 			(*sCPU).EkwOut, 

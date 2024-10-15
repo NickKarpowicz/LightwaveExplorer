@@ -278,6 +278,7 @@ public:
     deviceComplex* gridEFrequency1Next2 = 0;
     deviceComplex* gridPlasmaCurrentFrequency1 = 0;
     deviceComplex* gridPlasmaCurrentFrequency2 = 0;
+    deviceFP* gridBiaxialDelta = 0;
     deviceComplex* chiLinear1 = 0;
     deviceComplex* chiLinear2 = 0;
     deviceFP* inverseChiLinear1 = 0;
