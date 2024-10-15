@@ -5359,6 +5359,38 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	static void rotateBiaxial(
+		ActiveDevice& d,
+		simulationParameterSet* sCPU,
+		int materialIndex,
+		double theta,
+		double phi,
+		double frequency,
+		bool forward
+		){
+		double ls = 1e6*lightC<double>()/frequency;
+		ls *= ls;
+		double omega = twoPi<double>()*frequency;
+		if((*sCPU).crystalDatabase[materialIndex].axisType != 2) return;
+		std::complex<double> na = hostSellmeierFunc(ls, omega, &((*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients[0]), (*sCPU).crystalDatabase[materialIndex].sellmeierType);
+		std::complex<double> nb = hostSellmeierFunc(ls, omega, &((*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients[22]), (*sCPU).crystalDatabase[materialIndex].sellmeierType);
+		std::complex<double> nc = hostSellmeierFunc(ls, omega, &((*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients[44]), (*sCPU).crystalDatabase[materialIndex].sellmeierType);
+		na *= na;
+		nb *= nb;
+		nc *= nc;
+		double cp = std::cos(phi);
+		double sp = std::sin(phi);
+		double ct = std::cos(theta);
+		double st = std::sin(theta);
+
+		double delta = (na == nb) ? 
+		double{} : 
+		0.5 * std::atan(std::sin(2*phi) * ct / 
+		(((1.0/nb.real() - 1.0/nc.real())/(1.0/na.real() - 1.0/nb.real())) * st*st - cp*cp * ct*ct + sp*sp));
+		if(!forward) delta *= -1;
+		rotateField(d, sCPU, delta);
+	}
+
 	static void savePlasma(
 		ActiveDevice& d, 
 		int64_t saveloc, 
@@ -6160,6 +6192,28 @@ namespace hostFunctions{
 			d.reset(sCPU);
 			rotateField(d, sCPU, deg2Rad<deviceFP>() * parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
+		case functionID("rotateIntoBiaxial"):
+			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			rotateBiaxial(
+				d, 
+				sCPU, 
+				defaultMask[0] ? (*sCPU).materialIndex : static_cast<int>(parameters[0]), 
+				defaultMask[1] ? (*sCPU).crystalTheta : deg2Rad<deviceFP>() * parameters[1],
+				defaultMask[2] ? (*sCPU).crystalPhi : deg2Rad<deviceFP>() * parameters[2],
+				defaultMask[3] ? (*sCPU).pulse1.frequency : 1e12 * parameters[3],
+				true);
+			break;
+		case functionID("rotateFromBiaxial"):
+			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			rotateBiaxial(
+				d, 
+				sCPU, 
+				defaultMask[0] ? (*sCPU).materialIndex : static_cast<int>(parameters[0]), 
+				defaultMask[1] ? (*sCPU).crystalTheta : deg2Rad<deviceFP>() * parameters[1],
+				defaultMask[2] ? (*sCPU).crystalPhi : deg2Rad<deviceFP>() * parameters[2],
+				defaultMask[3] ? (*sCPU).pulse1.frequency : 1e12 * parameters[3],
+				false);
 			break;
 		case functionID("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);

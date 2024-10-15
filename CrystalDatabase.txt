@@ -139,19 +139,19 @@ Nonlinear reference frequencies:
 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14
 ~~~crystal end~~~
 Name:
-BiBO
+BiBO (mod)
 Type:
 2
 Sellmeier equation:
 0
 1st axis coefficients:
-3.07403 0.03231 0 -0.03163 0 0 1 0 0 1 0 0 1 -0.013376 0 0 0 0 0 0 0 0
-2nd axis coefficients:
-3.16940 0.03717 0 -0.03483 0 0 1 0 0 1 0 0 1 -0.01827 0 0 0 0 0 0 0 0
-3rd axis coefficients:
 3.6545 0.05112 0 -0.03713 0 0 1 0 0 1 0 0 1 -0.02261 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+3.07403 0.03231 0 -0.03163 0 0 1 0 0 1 0 0 1 -0.013376 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+3.16940 0.03717 0 -0.03483 0 0 1 0 0 1 0 0 1 -0.01827 0 0 0 0 0 0 0 0
 Sellmeier reference:
-Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007)
+Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007), reordered to match crystal axes
 chi2 type:
 1
 d:
