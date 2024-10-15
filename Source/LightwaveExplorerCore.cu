@@ -1808,7 +1808,7 @@ namespace deviceFunctions {
 
 	//Sellmeier equation for refractive indices
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static deviceComplex sellmeierDevice(
+	deviceFunction static deviceFP sellmeierDevice(
 		deviceComplex* ne, 
 		deviceComplex* no, 
 		const deviceFP* a, 
@@ -1822,7 +1822,7 @@ namespace deviceFunctions {
 		if (f == 0.0f) {
 			*ne = cOne<deviceComplex>(); 
 			*no = cOne<deviceComplex>(); 
-			return cOne<deviceComplex>();
+			return deviceFP{};
 		} //exit immediately for f=0
 		deviceFP ls = 2.99792458e14f / f; //wavelength in microns
 		ls *= ls; //only wavelength^2 is ever used
@@ -1832,7 +1832,7 @@ namespace deviceFunctions {
 		if (type == 0) {
 			*ne = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn, takeSqrt);
 			*no = *ne;
-			return *ne;
+			return deviceFP{};
 		}
 		
 		//option 1: uniaxial
@@ -1853,30 +1853,46 @@ namespace deviceFunctions {
 				*no = na;
 				*ne = (na * nb) / (nb * cosT + na * sinT);
 			}
-			return *ne;
+			return deviceFP{};
 		}
 		//option 2: biaxial
 		else {
 			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn, false);
 			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn, false);
 			deviceComplex nc = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[44], eqn, false);
+			na *= na;
+			nb *= nb;
+			nc *= nc;
 			deviceFP cp = deviceFPLib::cos(phi);
-			cp *= cp;
 			deviceFP sp = deviceFPLib::sin(phi);
-			sp *= sp;
 			deviceFP ct = deviceFPLib::cos(theta);
-			ct *= ct;
 			deviceFP st = deviceFPLib::sin(theta);
-			st *= st;
-			*ne = na * nb * nc /
-				(na * nb * st + na * nc * sp * ct + nb * nc * cp * ct);
-			*no = na * nb /
-				(na * cp + nb * sp);
+
+			deviceFP d = (na == nb) ? 
+			deviceFP{} : 
+			0.5f * deviceFPLib::atan(deviceFPLib::sin(2*phi) * ct / 
+			(((1.0f/nb.real() - 1.0f/nc.real())/(1.0f/na.real() - 1.0f/nb.real())) * st*st - cp*cp * ct*ct + sp*sp));
+			deviceFP cd = deviceFPLib::cos(d);
+			deviceFP sd = deviceFPLib::sin(d);
+
+			deviceComplex nTop = na * nb * nc;
+
+			*ne = nTop / 
+			(na*nb*st*st*cd*cd 
+			+ na*nc * deviceFPLib::pow(sd*cp + sp*cd*ct,2) 
+			+ nb*nc * deviceFPLib::pow(sd*sp - cd*cp*ct,2));
+
+			*no = nTop / 
+			(na*nb*st*st*sd*sd
+			+ na*nc * deviceFPLib::pow(sd*sp*ct - cd*cp,2)
+			+ nb*nc * deviceFPLib::pow(sd*cp*ct + sp*cd,2));
+
+
 			if (takeSqrt) {
 				*ne = deviceLib::sqrt(*ne);
 				*no = deviceLib::sqrt(*no);
 			}
-			return *ne;
+			return d;
 		}
 	}
 
