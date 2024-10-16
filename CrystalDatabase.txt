@@ -145,21 +145,21 @@ Type:
 Sellmeier equation:
 0
 1st axis coefficients:
-3.6545 0.05112 0 -0.03713 0 0 1 0 0 1 0 0 1 -0.02261 0 0 0 0 0 0 0 0
-2nd axis coefficients:
 3.07403 0.03231 0 -0.03163 0 0 1 0 0 1 0 0 1 -0.013376 0 0 0 0 0 0 0 0
-3rd axis coefficients:
+2nd axis coefficients:
 3.16940 0.03717 0 -0.03483 0 0 1 0 0 1 0 0 1 -0.01827 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+3.6545 0.05112 0 -0.03713 0 0 1 0 0 1 0 0 1 -0.02261 0 0 0 0 0 0 0 0
 Sellmeier reference:
 Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007), reordered to match crystal axes
 chi2 type:
 1
 d:
-0 0 0 2.36 0 2.55
-2.55 2.53 -1.1 0 2.36 0
-0 0 0 -1.1 0 2.36
+2.53 3.2 -1.76 1.66 0 0
+0 0 0 0 1.66 3.2
+0 0 0 0 -1.76 1.66
 d reference:
-H. Hellwig, J. Liebertz, L. Bohaty, Solid State Communications 109, 249-251 (1998).
+V. Petrov et al, Laser and Photon. Review 4, 54 (2010) 10.1002/lpor.200810075
 chi3 type:
 2
 chi3:
@@ -925,11 +925,11 @@ Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2
 chi2 type:
 1
 d:
-0 0 0 2.36 0 2.55
-2.55 2.53 -1.1 0 2.36 0
-0 0 0 -1.1 0 2.36
+2.53 3.2 -1.76 1.66 0 0
+0 0 0 0 1.66 3.2
+0 0 0 0 -1.76 1.66
 d reference:
-H. Hellwig, J. Liebertz, L. Bohaty, Solid State Communications 109, 249-251 (1998).
+V. Petrov et al, Laser and Photon. Review 4, 54 (2010) 10.1002/lpor.200810075
 chi3 type:
 2
 chi3:
