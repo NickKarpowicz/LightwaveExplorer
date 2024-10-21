@@ -139,7 +139,7 @@ Nonlinear reference frequencies:
 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14
 ~~~crystal end~~~
 Name:
-BiBO (mod)
+BiBO (rot 47deg)
 Type:
 2
 Sellmeier equation:
@@ -151,7 +151,7 @@ Sellmeier equation:
 3rd axis coefficients:
 3.6545 0.05112 0 -0.03713 0 0 1 0 0 1 0 0 1 -0.02261 0 0 0 0 0 0 0 0
 Sellmeier reference:
-Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007), reordered to match crystal axes
+Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007), rotated relative to crystal axes
 chi2 type:
 1
 d:
@@ -909,7 +909,7 @@ Nonlinear reference frequencies:
 0 0 0 0 0 0 0
 ~~~crystal end~~~
 Name:
-BiBO L
+BiBO L (rot 47deg)
 Type:
 2
 Sellmeier equation:
@@ -921,7 +921,7 @@ Sellmeier equation:
 3rd axis coefficients:
 1.67986 2.3e+28 1.0816e+32 2.52303e+09 1.84423e+21 3.8416e+28 1.94065e+13 5.8e+28 1.42803e+32 8.57531e+09 2.30604e+25 2.7225e+28 0.00718396 0 0 0 0 0 0 0 0 0
 Sellmeier reference:
-Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007), fit with Lorentzians
+Nobuhiro Umemura, Kentaro Miyata, Kiyoshi Kato, Optical Materials 30, 532-534 (2007), fit with Lorentzians, rotated to effective orthorhombic
 chi2 type:
 1
 d:
@@ -943,4 +943,41 @@ None
 Nonlinear reference frequencies:
 370e12 370e12 740e12 282e12 282e12 282e12 282e12
 ~~~crystal end~~~
+Name:
+LBO L
+Type:
+2
+Sellmeier equation:
+1
+1st axis coefficients:
+1.9857 5e+27 3.26911e+32 1.21584e+12 1.9e+28 1.44e+32 2.51775e+10 1.5e+25 1e+28 0.114288 3e+23 3.45869e+29 1e+12 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+2.01106 7.74069e+27 3.26911e+32 2.4747e+12 2.05192e+28 1.44e+32 0.980577 2.04789e+25 7.3396e+27 0.0111951 3e+23 3.45869e+29 1e+12 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+2.04772 7.4305e+27 3.26911e+32 4.37672e+10 2.1151e+28 1.44e+32 117264 2.07295e+25 4.99027e+27 0.00597422 3e+23 3.45869e+29 1e+12 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+K. Kato, IEEE J. Quant. Electr. 30 , 2950 (1994)
+chi2 type:
+1
+d:
+0.0 0.0 0.0 0.0 0.0 -2.405
+-2.405 0.15 2.605 0.0 0.0 0.0
+0.0 0.0 0.0 2.605 0.0 0.0
+d reference:
+S. Lin et al., Journal of Applied Physics 67, 634 (1990)
+chi3 type:
+2
+chi3:
+1.9410874346289752e-22
+0
+0
+chi3 reference:
+B. Maingot, et al., Optics Letters 48, 3243 (2023)
+Spectral file:
+None
+Nonlinear reference frequencies:
+277800000000000.0 277800000000000.0 555700000000000.0 289900000000000.0 289900000000000.0 289900000000000.0 289900000000000.0
+~~~crystal end~~~
+
+
 
