@@ -425,6 +425,63 @@ def normaM(v: np.ndarray):
         out[i,:] = norma(v[i,:])
     return out
 
+def chi2axisSwap(d: np.ndarray, ax1: int, ax2:int, ax3:int):
+    """
+    Swap the axes in the second order nonlinear reduced tensor to a new order.
+    You might need to do this if a crystal (probably biaxial) has a different
+    arrangement between the optic x,y,z vs the crystal a,b,c axes.
+
+    :param d: the second order tensor, in 3x6 reduced format
+    :param ax1: the first axis (1 means unchanged)
+    :param ax2: the second axis (2 means unchanged)
+    :param ax3: the third axis (3 means unchanged)
+
+    :return: the rearranged tensor
+    :rtype: np.ndarray
+    """
+    lookupVector = [9, 9, 5, 4, 9, 9, 3]
+    index = np.zeros((6,1),dtype=int)
+    index[0] = ax1-1
+    index[1] = ax2-1
+    index[2] = ax3-1
+    index[3] = lookupVector[ax2*ax3]
+    index[4] = lookupVector[ax1*ax3]
+    index[5] = lookupVector[ax1*ax2]
+    d_swap = np.array(d)
+    for i in range(3):
+        for j in range(6):
+            d_swap[i,j] = d[index[i],index[j]]
+    return d_swap
+
+def chi2rotateY(d: np.ndarray, psi: float):
+
+
+    #rotate field into d frame
+    def newRow(oldRow, ang):
+        s = np.sin(ang)
+        c = np.cos(ang)
+        row = ([
+            oldRow[0],
+            oldRow[1]*c*c + oldRow[2]*s*s - oldRow[3]*c*s,
+            oldRow[2]*c*c + oldRow[1]*s*s + oldRow[3]*c*s,
+            2*oldRow[1]*c*s - 2*oldRow[2]*s*c + oldRow[3]*(c*c-s*s),
+            oldRow[5]*s + oldRow[4]*c,
+            oldRow[5]*c - oldRow[4]*s,
+        ])
+        return row
+    d_rot = np.array([newRow(d[0,:],-psi),
+             newRow(d[1,:],-psi),
+             newRow(d[2,:],-psi)])
+    
+    #rotate d-frame polarization into field frame
+    #normal rotation matrix by phi
+    # d_rot = np.array([
+    #     d_rot[0,:],
+    #     (d_rot[1,:] * np.cos(psi) - d_rot[2,:] * np.sin(psi)),
+    #     (d_rot[1,:] * np.sin(psi) + d_rot[2,:] * np.cos(psi))
+    # ])
+    return d_rot
+
 def printSellmeier(sc: np.ndarray, highPrecision=False):
     """
     print an array containing LWE sellmeier coefficients in a format
