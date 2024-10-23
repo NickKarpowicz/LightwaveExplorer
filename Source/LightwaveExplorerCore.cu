@@ -1808,7 +1808,7 @@ namespace deviceFunctions {
 
 	//Sellmeier equation for refractive indices
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static deviceComplex sellmeierDevice(
+	deviceFunction static deviceFP sellmeierDevice(
 		deviceComplex* ne, 
 		deviceComplex* no, 
 		const deviceFP* a, 
@@ -1822,7 +1822,7 @@ namespace deviceFunctions {
 		if (f == 0.0f) {
 			*ne = cOne<deviceComplex>(); 
 			*no = cOne<deviceComplex>(); 
-			return cOne<deviceComplex>();
+			return deviceFP{};
 		} //exit immediately for f=0
 		deviceFP ls = 2.99792458e14f / f; //wavelength in microns
 		ls *= ls; //only wavelength^2 is ever used
@@ -1832,7 +1832,7 @@ namespace deviceFunctions {
 		if (type == 0) {
 			*ne = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn, takeSqrt);
 			*no = *ne;
-			return *ne;
+			return deviceFP{};
 		}
 		
 		//option 1: uniaxial
@@ -1853,30 +1853,46 @@ namespace deviceFunctions {
 				*no = na;
 				*ne = (na * nb) / (nb * cosT + na * sinT);
 			}
-			return *ne;
+			return deviceFP{};
 		}
 		//option 2: biaxial
 		else {
 			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn, false);
 			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn, false);
 			deviceComplex nc = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[44], eqn, false);
+			na *= na;
+			nb *= nb;
+			nc *= nc;
 			deviceFP cp = deviceFPLib::cos(phi);
-			cp *= cp;
 			deviceFP sp = deviceFPLib::sin(phi);
-			sp *= sp;
 			deviceFP ct = deviceFPLib::cos(theta);
-			ct *= ct;
 			deviceFP st = deviceFPLib::sin(theta);
-			st *= st;
-			*ne = na * nb * nc /
-				(na * nb * st + na * nc * sp * ct + nb * nc * cp * ct);
-			*no = na * nb /
-				(na * cp + nb * sp);
+
+			deviceFP d = (na == nb) ? 
+			deviceFP{} : 
+			0.5f * deviceFPLib::atan(deviceFPLib::sin(2*phi) * ct / 
+			(((1.0f/nb.real() - 1.0f/nc.real())/(1.0f/na.real() - 1.0f/nb.real())) * st*st - cp*cp * ct*ct + sp*sp));
+			deviceFP cd = deviceFPLib::cos(d);
+			deviceFP sd = deviceFPLib::sin(d);
+
+			deviceComplex nTop = na * nb * nc;
+
+			*ne = nTop / 
+			(na*nb*st*st*cd*cd 
+			+ na*nc * deviceFPLib::pow(sd*cp + sp*cd*ct,2) 
+			+ nb*nc * deviceFPLib::pow(sd*sp - cd*cp*ct,2));
+
+			*no = nTop / 
+			(na*nb*st*st*sd*sd
+			+ na*nc * deviceFPLib::pow(sd*sp*ct - cd*cp,2)
+			+ nb*nc * deviceFPLib::pow(sd*cp*ct + sp*cd,2));
+
+
 			if (takeSqrt) {
 				*ne = deviceLib::sqrt(*ne);
 				*no = deviceLib::sqrt(*no);
 			}
-			return *ne;
+			return d;
 		}
 	}
 
@@ -1923,7 +1939,7 @@ namespace deviceFunctions {
 	// Use OGM1; D. Kim, J.A. Fessler, 
 	// Optimized first-order methods for smooth convex minimization, arXiv:1406.5468
 	template<typename deviceFP, typename deviceComplex>
-	deviceFunction static void findBirefringentCrystalIndex(
+	deviceFunction static deviceFP findBirefringentCrystalIndex(
 		const deviceParameterSet<deviceFP, deviceComplex>* s, 
 		const deviceFP* sellmeierCoefficients, 
 		const int64_t i, 
@@ -1963,7 +1979,7 @@ namespace deviceFunctions {
 		if ((*s).axesNumber == 0) {
 			*n1 = n[0][0];
 			*n2 = n[0][1];
-			return;
+			return deviceFP{};
 		}
 
 		deviceFP gradient[2][2]{};
@@ -2006,7 +2022,7 @@ namespace deviceFunctions {
 				|| isComplexNaN(n[1][0])) {
 				*n1 = deviceComplex{};
 				*n2 = deviceComplex{};
-				return;
+				return deviceFP{};
 			}
 			errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
 			errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
@@ -2017,7 +2033,7 @@ namespace deviceFunctions {
 					|| isComplexNaN(n[1][0])) {
 					*n1 = deviceComplex{};
 					*n2 = deviceComplex{};
-					return;
+					return deviceFP{};
 				}
 				if (deviceFPLib::abs(gradient[0][0]) > gradientTol) {
 					alpha[0] -= 0.5f * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
@@ -2067,7 +2083,7 @@ namespace deviceFunctions {
 				(*s).sellmeierType);
 			*n1 = n[0][0];
 			*n2 = n[1][1];
-			return;
+			return deviceFP{};
 		}
 
 		if ((*s).axesNumber == 2) {
@@ -2145,7 +2161,7 @@ namespace deviceFunctions {
 				|| isComplexNaN(n[1][0])) {
 				*n1 = n[0][0];
 				*n2 = n[0][1];
-				return;
+				return deviceFP{};
 			}
 			errArray[0][0] = deviceFPLib::sin(alpha[0] + gradientStep) * n[0][0].real() - kx1;
 			errArray[1][0] = deviceFPLib::sin(alpha[0] - gradientStep) * n[1][0].real() - kx1;
@@ -2165,7 +2181,7 @@ namespace deviceFunctions {
 					|| isComplexNaN(n[1][0])) {
 					*n1 = deviceComplex{};
 					*n2 = deviceComplex{};
-					return;
+					return deviceFP{};
 				}
 				if (deviceFPLib::abs(gradient[0][0]) > 1e-2f) alpha[0] 
 					-= 0.25f * (errArray[0][0] + errArray[1][0]) / gradient[0][0];
@@ -2269,7 +2285,7 @@ namespace deviceFunctions {
 				gradient[0][1] = gradientFactor * (errArray[0][1] - errArray[1][1]);
 				gradient[1][1] = gradientFactor * (errArray[2][1] - errArray[3][1]);
 			}
-			sellmeierDevice(
+			deviceFP d = sellmeierDevice(
 				&n[0][0], 
 				&nW, 
 				sellmeierCoefficients, 
@@ -2288,8 +2304,9 @@ namespace deviceFunctions {
 				(*s).sellmeierType);
 			*n1 = n[0][0];
 			*n2 = n[1][1];
-			return;
+			return d;
 		}
+		return deviceFP{};
 	}
 }
 using namespace deviceFunctions;
@@ -3011,7 +3028,9 @@ namespace kernelNamespace{
 			//frequency being resolved by current thread
 			const deviceFP f = h * (*s).fStep;
 			const deviceFP omega = twoPi<deviceFP>() * f;
-			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			deviceFP delta = findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			if(s->axesNumber==2 && i<s->NgridC) s->gridBiaxialDelta[i] = delta;
+
 			const deviceFP dk1 = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
 			deviceFP dk2 = k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
 			if (!(*s).is3D)dk2 = 0.0f;
@@ -3069,8 +3088,8 @@ namespace kernelNamespace{
 			const deviceFP dk = j * (*s).dk1 - (j >= ((*s).Nspace / 2)) 
 				* ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
 			deviceComplex ne, no;
-			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
-			
+			deviceFP d = findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			if(s->axesNumber==2 && i < s->NgridC) s->gridBiaxialDelta[i] = d;
 			//if the refractive index was returned weird, 
 			//then the index isn't valid, so set the propagator to zero for that frequency
 			if (minN(ne.real(), no.real()) < 0.9f 
@@ -3160,7 +3179,8 @@ namespace kernelNamespace{
 				* ((*s).dk2 * (*s).Nspace2); //frequency grid in y direction
 
 			deviceComplex ne, no;
-			findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			deviceFP d = findBirefringentCrystalIndex(s, sellmeierCoefficients, localIndex, &ne, &no);
+			if(s->axesNumber==2 && i<s->NgridC) s->gridBiaxialDelta[i] = d;
 			if (minN(ne.real(), no.real()) < 0.9f 
 				|| isComplexNaN(ne) 
 				|| isComplexNaN(no)) {
@@ -3363,7 +3383,7 @@ namespace kernelNamespace{
 			const deviceFP dk = static_cast<deviceFP>(j) * (*s).dk1 - static_cast<deviceFP>(j >= ((*s).Nspace / 2)) 
 				* ((*s).dk1 * (*s).Nspace); //frequency grid in transverse direction
 			deviceComplex ne, no;
-			sellmeierDevice(
+			deviceFP delta = sellmeierDevice(
 				&ne, 
 				&no, 
 				sellmeierCoefficients, 
@@ -3372,6 +3392,7 @@ namespace kernelNamespace{
 				(*s).crystalPhi, 
 				(*s).axesNumber, 
 				(*s).sellmeierType);
+			if((*s).axesNumber==2) (*s).gridBiaxialDelta[i] = delta;
 			//if the refractive index was returned weird, then the index isn't valid, 
 			//so set the propagator to zero for that frequency
 			if (minN(ne.real(), no.real()) < 0.95f 
@@ -3736,6 +3757,27 @@ namespace kernelNamespace{
 			(*sP).k2[gridIndex] += 
 				(*sP).gridPolarizationFactor2[gridIndex] * (*sP).workspace2P[fftIndex];
 		}
+	};
+
+	class biaxialRotationKernel {
+		public:
+			const deviceParameterSet<deviceFP, deviceComplex>* sP;
+			deviceComplex* x;
+			bool backwards;
+			deviceFunction void operator()(const int64_t gridIndex) const {
+				deviceComplex* y = x + sP->NgridC;
+				const int64_t freqIndex = 1 + gridIndex % ((*sP).Nfreq - 1); //frequency coordinate
+				const int64_t i = freqIndex + (gridIndex / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
+
+				deviceFP cosDelta = deviceFPLib::cos(sP->gridBiaxialDelta[i]);
+				deviceFP sinDelta = deviceFPLib::sin(sP->gridBiaxialDelta[i]);
+				if(backwards) sinDelta = -sinDelta;
+
+				deviceComplex newX = cosDelta * x[i] - sinDelta * y[i];
+				y[i] = sinDelta * x[i] + cosDelta * y[i];
+				x[i] = newX;
+
+			}
 	};
 
 	//Slightly different kernels for the four stages of RK4. 
@@ -4597,12 +4639,23 @@ namespace hostFunctions{
 			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
 		}
 		
+		if((*sc).axesNumber==2){
+			d.deviceLaunch(
+				(*sc).Nblock / 2,
+				(*sc).Nthread,
+				biaxialRotationKernel {d.dParamsDevice,(*sc).gridEFrequency1,true}
+			);
+		}
+
 		//Copy the field into the temporary array
 		d.deviceMemcpy(
 			(void*)(*sc).gridEFrequency1Next1, 
 			(void*)(*sc).gridEFrequency1, 
 			2 * (*sc).NgridC * sizeof(deviceComplex), 
 			copyType::OnDevice);
+
+
+		
 
 		//set the propagation grids how they should be at the beginning of the next step
 		d.deviceLaunch(
@@ -5306,6 +5359,38 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	static void rotateBiaxial(
+		ActiveDevice& d,
+		simulationParameterSet* sCPU,
+		int materialIndex,
+		double theta,
+		double phi,
+		double frequency,
+		bool forward
+		){
+		double ls = 1e6*lightC<double>()/frequency;
+		ls *= ls;
+		double omega = twoPi<double>()*frequency;
+		if((*sCPU).crystalDatabase[materialIndex].axisType != 2) return;
+		std::complex<double> na = hostSellmeierFunc(ls, omega, &((*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients[0]), (*sCPU).crystalDatabase[materialIndex].sellmeierType);
+		std::complex<double> nb = hostSellmeierFunc(ls, omega, &((*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients[22]), (*sCPU).crystalDatabase[materialIndex].sellmeierType);
+		std::complex<double> nc = hostSellmeierFunc(ls, omega, &((*sCPU).crystalDatabase[materialIndex].sellmeierCoefficients[44]), (*sCPU).crystalDatabase[materialIndex].sellmeierType);
+		na *= na;
+		nb *= nb;
+		nc *= nc;
+		double cp = std::cos(phi);
+		double sp = std::sin(phi);
+		double ct = std::cos(theta);
+		double st = std::sin(theta);
+
+		double delta = (na == nb) ? 
+		double{} : 
+		0.5 * std::atan(std::sin(2*phi) * ct / 
+		(((1.0/nb.real() - 1.0/nc.real())/(1.0/na.real() - 1.0/nb.real())) * st*st - cp*cp * ct*ct + sp*sp));
+		if(!forward) delta *= -1;
+		rotateField(d, sCPU, delta);
+	}
+
 	static void savePlasma(
 		ActiveDevice& d, 
 		int64_t saveloc, 
@@ -5458,6 +5543,14 @@ namespace hostFunctions{
 		// systems.
 		else if ((*sH).isNonLinear) {
 			//perform inverse FFT to get time-space electric field
+			if((*sH).axesNumber==2){
+				//undo delta rotation if biaxial
+				d.deviceLaunch(
+					(*sH).Nblock / 2,
+					(*sH).Nthread,
+					biaxialRotationKernel {sD,(*sH).workspace1,false}
+				);
+			}
 			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFT::Z2D);
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
@@ -5481,6 +5574,14 @@ namespace hostFunctions{
 				(*sH).Nthread, 
 				nonlinearPolarizationKernel{ sD });
 			d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
+			//rotate nonlinear polarization into the delta frame if biaxial
+			if((*sH).axesNumber==2){
+				d.deviceLaunch(
+					(*sH).Nblock / 2,
+					(*sH).Nthread,
+					biaxialRotationKernel {sD,(*sH).workspace1,true}
+				);
+			}
 		}
 
 		//advance an RK4 step
@@ -5547,6 +5648,13 @@ namespace hostFunctions{
 		}
 		if ((*sCPU).isInFittingMode && !(*sCPU).isInSequence)(*(*sCPU).progressCounter)++;
 
+		if(d.deviceStruct.axesNumber==2){
+			d.deviceLaunch(
+				d.s->Nblock / 2,
+				d.s->Nthread,
+				biaxialRotationKernel {d.dParamsDevice,d.deviceStruct.gridEFrequency1,false}
+			);
+		}
 		//take final spectra and transfer the results to the CPU
 		d.deviceMemcpy(
 			(*sCPU).EkwOut, 
@@ -6084,6 +6192,28 @@ namespace hostFunctions{
 			d.reset(sCPU);
 			rotateField(d, sCPU, deg2Rad<deviceFP>() * parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
+		case functionID("rotateIntoBiaxial"):
+			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			rotateBiaxial(
+				d, 
+				sCPU, 
+				defaultMask[0] ? (*sCPU).materialIndex : static_cast<int>(parameters[0]), 
+				defaultMask[1] ? (*sCPU).crystalTheta : deg2Rad<deviceFP>() * parameters[1],
+				defaultMask[2] ? (*sCPU).crystalPhi : deg2Rad<deviceFP>() * parameters[2],
+				defaultMask[3] ? (*sCPU).pulse1.frequency : 1e12 * parameters[3],
+				true);
+			break;
+		case functionID("rotateFromBiaxial"):
+			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			rotateBiaxial(
+				d, 
+				sCPU, 
+				defaultMask[0] ? (*sCPU).materialIndex : static_cast<int>(parameters[0]), 
+				defaultMask[1] ? (*sCPU).crystalTheta : deg2Rad<deviceFP>() * parameters[1],
+				defaultMask[2] ? (*sCPU).crystalPhi : deg2Rad<deviceFP>() * parameters[2],
+				defaultMask[3] ? (*sCPU).pulse1.frequency : 1e12 * parameters[3],
+				false);
 			break;
 		case functionID("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);

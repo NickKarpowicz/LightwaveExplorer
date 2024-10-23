@@ -278,6 +278,7 @@ public:
     deviceComplex* gridEFrequency1Next2 = 0;
     deviceComplex* gridPlasmaCurrentFrequency1 = 0;
     deviceComplex* gridPlasmaCurrentFrequency2 = 0;
+    deviceFP* gridBiaxialDelta = 0;
     deviceComplex* chiLinear1 = 0;
     deviceComplex* chiLinear2 = 0;
     deviceFP* inverseChiLinear1 = 0;
@@ -352,6 +353,7 @@ public:
     std::array<double,6> absorptionParameters = {};
     std::string spectralFile;
     std::array<double,7> nonlinearReferenceFrequencies = {};
+    std::array<double,132> offDiagonalCoefficients = {};
 };
 
 //Crystal database class; primarily holds a std::vector of crystalEntry elements
@@ -446,7 +448,14 @@ public:
             }
             std::getline(fs, line);
 
-            std::getline(fs, line); //Sellmeier reference:
+            std::getline(fs, line); //Sellmeier reference:, or if it has Monoclinic values, read them
+            if(line=="Off-diagonal susceptibility coefficients:"){
+                for(int k = 0; k<132; ++k){
+                    fs >> newEntry.offDiagonalCoefficients[k];
+                }
+                std::getline(fs,line);
+                std::getline(fs,line);
+            }
             std::getline(fs, line);
             newEntry.sellmeierReference = line;
 

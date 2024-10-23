@@ -166,7 +166,9 @@ class SequenceValidator : public QSyntaxHighlighter {
             "applyOptic",
             "applyOpticX",
             "applyOpticY",
-            "loadOptic"
+            "loadOptic",
+            "rotateIntoBiaxial",
+            "rotateFromBiaxial"
         };
         for(const QString &fun : functionNames){
             rule.pattern = QRegularExpression(QString("\\b")+fun+QString("\\b"));
