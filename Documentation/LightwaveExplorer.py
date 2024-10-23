@@ -453,34 +453,77 @@ def chi2axisSwap(d: np.ndarray, ax1: int, ax2:int, ax3:int):
             d_swap[i,j] = d[index[i],index[j]]
     return d_swap
 
-def chi2rotateY(d: np.ndarray, psi: float):
+def chi2rotate(d: np.ndarray, psi: float, axis: int):
+    """
+    Rotate the nonlinear crystal's system of coordinates around either the X or Y axis
+    and give the effective second order nonlinear tensor that results from bringing
+    the field into and back out of this system.
+    May be used to rotate monoclinic systems into an effective orthorhombic one, with the
+    approximation that one is neglecting the wavelength-dependence of the rotation angle.
 
+    :param d: The nonlinear tensor in the crystal frame
+    :param psi: The angle by which the dielectric frame is rotated relative to the crystal one (i.e. we are UNDOING this rotation)
+    :param axis: X-axis-> 1, Y-axis->2, anything else will emit an error.
 
-    #rotate field into d frame
-    def newRow(oldRow, ang):
+    :return: the rotated tensor
+    """
+    #These functions will rotate a row of the tensor and provide the new row
+    #based on the field that has been rotated into the crystalline frame
+    def newRowX(r, ang):
         s = np.sin(ang)
         c = np.cos(ang)
         row = ([
-            oldRow[0],
-            oldRow[1]*c*c + oldRow[2]*s*s - oldRow[3]*c*s,
-            oldRow[2]*c*c + oldRow[1]*s*s + oldRow[3]*c*s,
-            2*oldRow[1]*c*s - 2*oldRow[2]*s*c + oldRow[3]*(c*c-s*s),
-            oldRow[5]*s + oldRow[4]*c,
-            oldRow[5]*c - oldRow[4]*s,
+            r[0],
+            r[1]*c*c + r[2]*s*s + 2*r[3]*c*s,
+            r[1]*s*s + r[2]*c*c - 2*r[3]*c*s,
+            -r[1]*s*c + r[2]*s*c + r[3]*(c*c-s*s),
+            r[4]*c - r[5]*s,
+            r[4]*s + r[5]*c            
         ])
         return row
-    d_rot = np.array([newRow(d[0,:],-psi),
-             newRow(d[1,:],-psi),
-             newRow(d[2,:],-psi)])
     
-    #rotate d-frame polarization into field frame
-    #normal rotation matrix by phi
-    # d_rot = np.array([
-    #     d_rot[0,:],
-    #     (d_rot[1,:] * np.cos(psi) - d_rot[2,:] * np.sin(psi)),
-    #     (d_rot[1,:] * np.sin(psi) + d_rot[2,:] * np.cos(psi))
-    # ])
-    return d_rot
+    def newRowY(r, ang):
+        s = np.sin(ang)
+        c = np.cos(ang)
+        row = ([
+            r[0]*c*c + r[2]*s*s - 2*r[4]*c*s,
+            r[1],
+            r[0]*s*s + r[2]*c*c + 2*r[4]*c*s,
+            r[3]*c + r[5]*s,
+            r[0]*c*s - r[2]*c*s + r[4]*(c*c - s*s),
+            -r[3]*s + r[5]*c
+        ])
+        return row
+    
+    if axis == 1:
+        d_rot = np.array([newRowX(d[0,:],-psi),
+                newRowX(d[1,:],-psi),
+                newRowX(d[2,:],-psi)])
+        
+        #rotate d-frame polarization into field frame
+        #normal X rotation matrix by phi
+        d_rot = np.array([
+            d_rot[0,:],
+            (d_rot[1,:] * np.cos(psi) - d_rot[2,:] * np.sin(psi)),
+            (d_rot[1,:] * np.sin(psi) + d_rot[2,:] * np.cos(psi))
+        ])
+        return d_rot
+    
+    if axis == 2:
+        d_rot = np.array([newRowY(d[0,:],-psi),
+            newRowY(d[1,:],-psi),
+            newRowY(d[2,:],-psi)])
+        
+        #rotate d-frame polarization into field frame
+        #normal Y rotation matrix by phi
+        d_rot = np.array([
+            d_rot[0,:]*np.cos(psi) + d_rot[2,:]*np.sin(psi),
+            d_rot[1,:],
+            (-d_rot[0,:] * np.sin(psi) + d_rot[2,:] * np.cos(psi))
+        ])
+        return d_rot
+    
+    assert False, "axis must be 1 or 2"
 
 def printSellmeier(sc: np.ndarray, highPrecision=False):
     """
