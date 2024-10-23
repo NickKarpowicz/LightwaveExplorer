@@ -29,6 +29,7 @@ Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.Lig
   <li>Tooltips everywhere</li>
   <li>Slider shows the batch mode values associated with the shown data</li>
   <li>Bug fixes and optimizations, especially for biaxial crystals</li>
+  <li>Additional point updates: further work on making biaxial crystals more reliable.</li>
   </ul>
   
 ---
