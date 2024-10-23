@@ -7,6 +7,8 @@ import yaml
 import urllib.request
 import zipfile
 import tempfile
+import matplotlib.pyplot as plt
+
 class lightwaveExplorerResult:
     """
     A class which contains the result of a Lightwave Explorer simulation
@@ -425,106 +427,6 @@ def normaM(v: np.ndarray):
         out[i,:] = norma(v[i,:])
     return out
 
-def chi2axisSwap(d: np.ndarray, ax1: int, ax2:int, ax3:int):
-    """
-    Swap the axes in the second order nonlinear reduced tensor to a new order.
-    You might need to do this if a crystal (probably biaxial) has a different
-    arrangement between the optic x,y,z vs the crystal a,b,c axes.
-
-    :param d: the second order tensor, in 3x6 reduced format
-    :param ax1: the first axis (1 means unchanged)
-    :param ax2: the second axis (2 means unchanged)
-    :param ax3: the third axis (3 means unchanged)
-
-    :return: the rearranged tensor
-    :rtype: np.ndarray
-    """
-    lookupVector = [9, 9, 5, 4, 9, 9, 3]
-    index = np.zeros((6,1),dtype=int)
-    index[0] = ax1-1
-    index[1] = ax2-1
-    index[2] = ax3-1
-    index[3] = lookupVector[ax2*ax3]
-    index[4] = lookupVector[ax1*ax3]
-    index[5] = lookupVector[ax1*ax2]
-    d_swap = np.array(d)
-    for i in range(3):
-        for j in range(6):
-            d_swap[i,j] = d[index[i],index[j]]
-    return d_swap
-
-def chi2rotate(d: np.ndarray, psi: float, axis: int):
-    """
-    Rotate the nonlinear crystal's system of coordinates around either the X or Y axis
-    and give the effective second order nonlinear tensor that results from bringing
-    the field into and back out of this system.
-    May be used to rotate monoclinic systems into an effective orthorhombic one, with the
-    approximation that one is neglecting the wavelength-dependence of the rotation angle.
-
-    :param d: The nonlinear tensor in the crystal frame
-    :param psi: The angle by which the dielectric frame is rotated relative to the crystal one (i.e. we are UNDOING this rotation)
-    :param axis: X-axis-> 1, Y-axis->2, anything else will emit an error.
-
-    :return: the rotated tensor
-    """
-    #These functions will rotate a row of the tensor and provide the new row
-    #based on the field that has been rotated into the crystalline frame
-    def newRowX(r, ang):
-        s = np.sin(ang)
-        c = np.cos(ang)
-        row = ([
-            r[0],
-            r[1]*c*c + r[2]*s*s + 2*r[3]*c*s,
-            r[1]*s*s + r[2]*c*c - 2*r[3]*c*s,
-            -r[1]*s*c + r[2]*s*c + r[3]*(c*c-s*s),
-            r[4]*c - r[5]*s,
-            r[4]*s + r[5]*c            
-        ])
-        return row
-    
-    def newRowY(r, ang):
-        s = np.sin(ang)
-        c = np.cos(ang)
-        row = ([
-            r[0]*c*c + r[2]*s*s - 2*r[4]*c*s,
-            r[1],
-            r[0]*s*s + r[2]*c*c + 2*r[4]*c*s,
-            r[3]*c + r[5]*s,
-            r[0]*c*s - r[2]*c*s + r[4]*(c*c - s*s),
-            -r[3]*s + r[5]*c
-        ])
-        return row
-    
-    if axis == 1:
-        d_rot = np.array([newRowX(d[0,:],-psi),
-                newRowX(d[1,:],-psi),
-                newRowX(d[2,:],-psi)])
-        
-        #rotate d-frame polarization into field frame
-        #normal X rotation matrix by phi
-        d_rot = np.array([
-            d_rot[0,:],
-            (d_rot[1,:] * np.cos(psi) - d_rot[2,:] * np.sin(psi)),
-            (d_rot[1,:] * np.sin(psi) + d_rot[2,:] * np.cos(psi))
-        ])
-        return d_rot
-    
-    if axis == 2:
-        d_rot = np.array([newRowY(d[0,:],-psi),
-            newRowY(d[1,:],-psi),
-            newRowY(d[2,:],-psi)])
-        
-        #rotate d-frame polarization into field frame
-        #normal Y rotation matrix by phi
-        d_rot = np.array([
-            d_rot[0,:]*np.cos(psi) + d_rot[2,:]*np.sin(psi),
-            d_rot[1,:],
-            (-d_rot[0,:] * np.sin(psi) + d_rot[2,:] * np.cos(psi))
-        ])
-        return d_rot
-    
-    assert False, "axis must be 1 or 2"
-
 def printSellmeier(sc: np.ndarray, highPrecision=False):
     """
     print an array containing LWE sellmeier coefficients in a format
@@ -765,6 +667,172 @@ def EOS(s: lightwaveExplorerResult, bandpass=None, filterTransmissionNanometers=
     else:
         EOSsignal = np.sum((totalResponse*(s.spectrum_x-s.spectrum_y)), axis=1)
     return EOSsignal
+
+def chi2axisSwap(d: np.ndarray, ax1: int, ax2:int, ax3:int):
+    """
+    Swap the axes in the second order nonlinear reduced tensor to a new order.
+    You might need to do this if a crystal (probably biaxial) has a different
+    arrangement between the optic x,y,z vs the crystal a,b,c axes.
+
+    :param d: the second order tensor, in 3x6 reduced format
+    :param ax1: the first axis (1 means unchanged)
+    :param ax2: the second axis (2 means unchanged)
+    :param ax3: the third axis (3 means unchanged)
+
+    :return: the rearranged tensor
+    :rtype: np.ndarray
+    """
+    lookupVector = [9, 9, 5, 4, 9, 9, 3]
+    index = np.zeros((6,1),dtype=int)
+    index[0] = ax1-1
+    index[1] = ax2-1
+    index[2] = ax3-1
+    index[3] = lookupVector[ax2*ax3]
+    index[4] = lookupVector[ax1*ax3]
+    index[5] = lookupVector[ax1*ax2]
+    d_swap = np.array(d)
+    for i in range(3):
+        for j in range(6):
+            d_swap[i,j] = d[index[i],index[j]]
+    return d_swap
+
+def chi2rotate(d: np.ndarray, psi: float, axis: int):
+    """
+    Rotate the nonlinear crystal's system of coordinates around either the X or Y axis
+    and give the effective second order nonlinear tensor that results from bringing
+    the field into and back out of this system.
+    May be used to rotate monoclinic systems into an effective orthorhombic one, with the
+    approximation that one is neglecting the wavelength-dependence of the rotation angle.
+
+    :param d: The nonlinear tensor in the crystal frame
+    :param psi: The angle by which the dielectric frame is rotated relative to the crystal one (i.e. we are UNDOING this rotation)
+    :param axis: X-axis-> 1, Y-axis->2, anything else will emit an error.
+
+    :return: the rotated tensor
+    """
+    #These functions will rotate a row of the tensor and provide the new row
+    #based on the field that has been rotated into the crystalline frame
+    def newRowX(r, ang):
+        s = np.sin(ang)
+        c = np.cos(ang)
+        row = ([
+            r[0],
+            r[1]*c*c + r[2]*s*s + 2*r[3]*c*s,
+            r[1]*s*s + r[2]*c*c - 2*r[3]*c*s,
+            -r[1]*s*c + r[2]*s*c + r[3]*(c*c-s*s),
+            r[4]*c - r[5]*s,
+            r[4]*s + r[5]*c            
+        ])
+        return row
+    
+    def newRowY(r, ang):
+        s = np.sin(ang)
+        c = np.cos(ang)
+        row = ([
+            r[0]*c*c + r[2]*s*s - 2*r[4]*c*s,
+            r[1],
+            r[0]*s*s + r[2]*c*c + 2*r[4]*c*s,
+            r[3]*c + r[5]*s,
+            r[0]*c*s - r[2]*c*s + r[4]*(c*c - s*s),
+            -r[3]*s + r[5]*c
+        ])
+        return row
+    
+    if axis == 1:
+        d_rot = np.array([newRowX(d[0,:],-psi),
+                newRowX(d[1,:],-psi),
+                newRowX(d[2,:],-psi)])
+        
+        #rotate d-frame polarization into field frame
+        #normal X rotation matrix by phi
+        d_rot = np.array([
+            d_rot[0,:],
+            (d_rot[1,:] * np.cos(psi) - d_rot[2,:] * np.sin(psi)),
+            (d_rot[1,:] * np.sin(psi) + d_rot[2,:] * np.cos(psi))
+        ])
+        return d_rot
+    
+    if axis == 2:
+        d_rot = np.array([newRowY(d[0,:],-psi),
+            newRowY(d[1,:],-psi),
+            newRowY(d[2,:],-psi)])
+        
+        #rotate d-frame polarization into field frame
+        #normal Y rotation matrix by phi
+        d_rot = np.array([
+            d_rot[0,:]*np.cos(psi) + d_rot[2,:]*np.sin(psi),
+            d_rot[1,:],
+            (-d_rot[0,:] * np.sin(psi) + d_rot[2,:] * np.cos(psi))
+        ])
+        return d_rot
+    
+    assert False, "axis must be 1 or 2"
+
+def plotTransmission(coeffs, equation: int, frequency_min: float = 1e12, frequency_max: float = 3000e12, thickness: float = 1e-2):
+    """
+    Plot the transmission of a set of sellmeier coefficients
+    """
+    f_wide = np.linspace(frequency_min,frequency_max,4096)
+    lam_wide = 1e6*2.9979e8/f_wide
+    n_wide = sellmeier(lam_wide, coeffs, equation)
+    k = 2*np.pi*f_wide*n_wide/2.9979e8
+    transmission = np.abs(np.exp(-1j*k*thickness))**2
+    fig,ax = plt.subplots(1,1)
+    ax.semilogx(lam_wide,100*transmission)
+    ax.set_xlabel("Wavelength (microns)")
+    ax.set_ylabel("Transmission (%)")
+    ax.set_title("Transmission through " + f"{thickness*1e3:.2f}"+"mm")
+    return fig
+
+def plotSellmeierIntialGuess(tabulatednk, initialGuess, SellmeierEquation):
+    """
+    Plot an intial guess to a set of tabulated data (for setting up a calculation using fittSellmeierWithTabulatedData)
+    """
+    nFit = sellmeier(tabulatednk[:,0],initialGuess,SellmeierEquation)
+    fig = plotFittedSellmeier(tabulatednk, nFit)
+    if SellmeierEquation > 0:
+        plotTransmission(initialGuess, SellmeierEquation)
+    return fig
+
+def fitSellmeierWithTabulatedData(tabulatednk, initialGuess, fittedValues, SellmeierEquation: int, absorptionWeight: float = 0.5):
+    """
+    Fit a set of Sellmeier coefficients to tabulated data.
+
+    :param tabulatednk: An Nx3 array containing a refractive index dataset. tabulatednk[:,0] is the wavelength in microns, [:,1] is the refractive index, and [:,2] is the magnitude of the imaginary part kappa.
+    :param initialGuess: The initial guess to the coefficients, in the format corresponding to the equation you're using.
+    :param SellmeierEquation: The form of the equation to use, defined in the paper. 0: flexible fitting form, 1: Lorentzians, 2: Gaussians
+    :param absorptionWeight: weight factor to be applied to the imaginary part of the refractive index. Can be used to nudge the fitting out of a local minimum...
+    """
+    #call the fitting routine
+    scFit,nFit = sellmeierFit(tabulatednk[:,0], initialGuess, fittedValues, SellmeierEquation, tabulatednk[:,1]-1j*tabulatednk[:,2], absorptionWeight)
+    plotFittedSellmeier(tabulatednk, nFit)
+
+    if SellmeierEquation > 0:
+        plotTransmission(scFit,SellmeierEquation)
+    return scFit
+
+def plotFittedSellmeier(tabulatednk, nFit):
+    """
+    Compare a fitted refractive index vs tabulated n and k
+    """
+    fig,ax = plt.subplots(3,1,figsize=(6,12))
+    ax[0].plot(tabulatednk[:,0],np.real(nFit),label="Fitted")
+    ax[0].plot(tabulatednk[:,0],np.real(tabulatednk[:,1]), label="Data")
+    ax[0].set_xlabel("Wavelength (microns)")
+    ax[0].set_ylabel("n")
+    ax[0].legend()
+    ax[1].plot(tabulatednk[:,0], np.abs(np.real(tabulatednk[:,1])-np.real(nFit)))
+    ax[1].set_xlabel("Wavelength (microns)")
+    ax[1].set_ylabel("residual")
+    ax[2].semilogy(tabulatednk[:,0],-(np.imag(nFit)),label="Fitted")
+    ax[2].plot(tabulatednk[:,0],tabulatednk[:,2],label="Data")
+    ax[2].set_ylim(1e-10,1)
+    ax[2].set_xlabel("Wavelength (microns)")
+    ax[2].set_ylabel("k")
+    residval = np.sqrt(np.mean((np.real(tabulatednk[:,1])-np.real(nFit))**2))
+    print("rms deviation:")
+    print(residval)
+    return fig
 
 def sellmeierFit(wavelengthMicrons, startingCoefficients, activeElements: np.array, eqnType: int, nTarget, imaginaryWeight):
     """
