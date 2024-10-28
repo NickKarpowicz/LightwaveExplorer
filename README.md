@@ -13,6 +13,7 @@ Publication!
 Tutorials on YouTube!
 - Tutorial 1: <a href="https://youtu.be/J1-dh6V5flQ">Introduction and quick start, with walkthrough of simulating SHG and OPA</a></li>
 - Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
+- Tutorial 3: (new!) <a href="https://youtu.be/qlcy_RBLGoU">Adding a crystal to the database</a>
 
 ---
 ### Latest release: 2024.03
