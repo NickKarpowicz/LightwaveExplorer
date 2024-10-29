@@ -2486,6 +2486,30 @@ namespace kernelNamespace{
 		}
 	};
 
+	class rotateField90Kernel {
+	public:
+		const deviceComplex* Ein1;
+		const deviceComplex* Ein2;
+		deviceComplex* Eout1;
+		deviceComplex* Eout2;
+		deviceFunction void operator()(const int64_t i) const {
+			Eout1[i] = -Ein2[i];
+			Eout2[i] = Ein1[i];
+		}
+	};
+
+	class rotateField180Kernel {
+	public:
+		const deviceComplex* Ein1;
+		const deviceComplex* Ein2;
+		deviceComplex* Eout1;
+		deviceComplex* Eout2;
+		deviceFunction void operator()(const int64_t i) const {
+			Eout1[i] = -Ein1[i];
+			Eout2[i] = -Ein2[i];
+		}
+	};
+
 	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/rho d/drho)
 	class radialLaplacianKernel {
 	public:
@@ -5330,10 +5354,25 @@ namespace hostFunctions{
 			(*sCPU).EkwOut, 
 			2 * (*sCPU).NgridC * sizeof(std::complex<double>), 
 			copyType::ToDevice);
-		d.deviceLaunch(
-			static_cast<unsigned int>(d.deviceStruct.NgridC / minGridDimension), 
-			minGridDimension, 
-			rotateFieldKernel{ Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle });
+
+		if(rotationAngle == deg2Rad<deviceFP>()*90.0){
+			d.deviceLaunch(
+				static_cast<unsigned int>(d.deviceStruct.NgridC / minGridDimension), 
+				minGridDimension, 
+				rotateField90Kernel{ Ein1, Ein2, Eout1, Eout2});
+		}
+		else if(rotationAngle == deg2Rad<deviceFP>()*180.0){
+			d.deviceLaunch(
+				static_cast<unsigned int>(d.deviceStruct.NgridC / minGridDimension), 
+				minGridDimension, 
+				rotateField180Kernel{ Ein1, Ein2, Eout1, Eout2});
+		}
+		else {
+			d.deviceLaunch(
+				static_cast<unsigned int>(d.deviceStruct.NgridC / minGridDimension), 
+				minGridDimension, 
+				rotateFieldKernel{ Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle });
+		}
 		d.deviceMemcpy(
 			(*sCPU).EkwOut, 
 			Eout1, 
