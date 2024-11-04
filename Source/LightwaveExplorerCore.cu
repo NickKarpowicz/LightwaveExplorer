@@ -1804,7 +1804,11 @@ namespace deviceFunctions {
 		default: return cOne<deviceComplex>();
 		}
 		return cOne<deviceComplex>();
-	};
+	}
+	
+	deviceFunction static inline deviceFP square(const deviceFP x){
+		return x*x;
+	}
 
 	//Sellmeier equation for refractive indices
 	template<typename deviceFP, typename deviceComplex>
@@ -1860,15 +1864,12 @@ namespace deviceFunctions {
 			deviceComplex na = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, a, eqn, false);
 			deviceComplex nb = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[22], eqn, false);
 			deviceComplex nc = sellmeierFunc<deviceFP, deviceComplex>(ls, omega, &a[44], eqn, false);
-			na *= na;
-			nb *= nb;
-			nc *= nc;
 			deviceFP cp = deviceFPLib::cos(phi);
 			deviceFP sp = deviceFPLib::sin(phi);
 			deviceFP ct = deviceFPLib::cos(theta);
 			deviceFP st = deviceFPLib::sin(theta);
 
-			deviceFP d = (na == nb) ? 
+			deviceFP d = (na.real() == nb.real()) ? 
 			deviceFP{} : 
 			0.5f * deviceFPLib::atan(deviceFPLib::sin(2*phi) * ct / 
 			(((1.0f/nb.real() - 1.0f/nc.real())/(1.0f/na.real() - 1.0f/nb.real())) * st*st - cp*cp * ct*ct + sp*sp));
@@ -1879,13 +1880,14 @@ namespace deviceFunctions {
 
 			*ne = nTop / 
 			(na*nb*st*st*cd*cd 
-			+ na*nc * deviceFPLib::pow(sd*cp + sp*cd*ct,2) 
-			+ nb*nc * deviceFPLib::pow(sd*sp - cd*cp*ct,2));
+			+ na*nc * square(sd*cp + sp*cd*ct) 
+			+ nb*nc * square(sd*sp - cd*cp*ct));
 
 			*no = nTop / 
 			(na*nb*st*st*sd*sd
-			+ na*nc * deviceFPLib::pow(sd*sp*ct - cd*cp,2)
-			+ nb*nc * deviceFPLib::pow(sd*cp*ct + sp*cd,2));
+			+ na*nc * square(sd*sp*ct - cd*cp)
+			+ nb*nc * square(sd*cp*ct + sp*cd));
+
 
 
 			if (takeSqrt) {
