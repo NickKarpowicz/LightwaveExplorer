@@ -16,22 +16,16 @@ Tutorials on YouTube!
 - Tutorial 3: (new!) <a href="https://youtu.be/qlcy_RBLGoU">Adding a crystal to the database</a>
 
 ---
-### Latest release: 2024.03
+### Latest release: 2024.05
 Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip) (You might need the latest [Microsoft C++ Runtime](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) if it fails to start).
 
 Mac: [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
 Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
- <p>This release moves the GUI from GTK4 to Qt, and has additional improvements such as:</p>
-  <ul>
-  <li>New applyOptic function: load and apply custom optics in a sequence</li>
-  <li>Easier acccess to the FDTD material grid mode</li>
-  <li>Improved syntax highlighting and autoformmating for sequences</li>
-  <li>Tooltips everywhere</li>
-  <li>Slider shows the batch mode values associated with the shown data</li>
-  <li>Bug fixes and optimizations, especially for biaxial crystals</li>
-  <li>Additional point updates: further work on making biaxial crystals more reliable.</li>
-  </ul>
+
+This version fixes issues with biaxial crystals, and introduces a pair of sequence functions, rotateIntoBiaxial() and rotateFromBiaxial() to move in and out of the refractive index ellipse minor and major axes, even for arbitrary crystal orientations.
+
+It also includes a fix for a bug where files could not be loaded if their names were changed.
   
 ---
 
