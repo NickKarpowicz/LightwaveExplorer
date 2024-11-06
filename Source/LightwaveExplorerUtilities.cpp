@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <filesystem>
 #ifdef USEFFTW
 #include <fftw3.h>
 #else
@@ -44,6 +45,19 @@ bool zipContainsFile(std::string zipPath, std::string filename){
 	return fileIndex > 0;
 }
 
+std::string zipGetBasename(const std::string& zipPath){
+	mz_zip_archive zip = {};
+	mz_zip_reader_init_file(&zip, zipPath.c_str(), 0);
+	auto nfiles = mz_zip_reader_get_num_files(&zip);
+	if(nfiles > 0){
+		char name[1024]={};
+		mz_zip_reader_get_filename(&zip, 0, name, 1024);
+		std::string interiorName(name);
+		return std::filesystem::path(interiorName).stem().string();
+	}
+	else return "ERROR";
+}
+
 loadedInputData::loadedInputData(const std::string& zipPath, const std::string& filename){
 	if(zipContainsFile(zipPath, filename)){
 		std::vector<char> data;
@@ -58,17 +72,18 @@ loadedInputData::loadedInputData(const std::string& zipPath, const std::string& 
 int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool isZipFile) {
 	if(isZipFile){
 		std::string zipPath = outputBase + ".zip";
+		std::string trueBase = zipGetBasename(zipPath);
 		zipIntoMemory(zipPath,
-			getBasename(outputBase)+"_Ext.dat",
+			trueBase+"_Ext.dat",
 			ExtOut,
 			2 * (Ngrid * Nsims * Nsims2) * sizeof(double));
 		zipIntoMemory(zipPath,
-			getBasename(outputBase)+"_spectrum.dat",
+			trueBase+"_spectrum.dat",
 			totalSpectrum,
 			Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
-		pulse1LoadedData = loadedInputData(zipPath,getBasename(outputBase)+"_pulse1.dat");
-		pulse2LoadedData = loadedInputData(zipPath,getBasename(outputBase)+"_pulse2.dat");
-		fittingLoadedData = loadedInputData(zipPath,getBasename(outputBase)+"_fittingTarget.dat");
+		pulse1LoadedData = loadedInputData(zipPath,trueBase+"_pulse1.dat");
+		pulse2LoadedData = loadedInputData(zipPath,trueBase+"_pulse2.dat");
+		fittingLoadedData = loadedInputData(zipPath,trueBase+"_fittingTarget.dat");
 	}
 	else{
 		std::string Epath = outputBase;
@@ -500,7 +515,7 @@ std::string simulationParameterSet::settingsString(){
 		}
 		fs << '\x0A';
 	}
-	fs << "Code version: 2024.3";
+	fs << "Code version: 2024.5";
 	fs << '\x0A';
 	return fs.str();
 }
@@ -616,8 +631,8 @@ int simulationParameterSet::readInputParametersFile(
 	if(filePath.length() >= 4 
         && filePath.substr(filePath.length()-4)==".zip") {
 			std::vector<char> dataVector;
-			std::string textPath = getBasename(filePath);
-			textPath = textPath.substr(0,textPath.length()-4) + ".txt";
+			std::string textPath = zipGetBasename(filePath);
+			textPath = textPath + ".txt";
 			zipIntoMemory(filePath, textPath, dataVector);
 			dataVector.push_back(0);
             contents = std::string(dataVector.data(), dataVector.size());
@@ -1067,7 +1082,7 @@ void simulationBatch::loadPulseFiles() {
 }
 void simulationBatch::loadOptics(const std::string& zipPath){
 	bool keepLoading = true;
-	std::string base = std::filesystem::path(zipPath).stem().string() + "_optic";
+	std::string base = zipGetBasename(zipPath) + "_optic";
 	int ind = 0;
 	while(keepLoading){
 		std::string currentFile = base + std::to_string(ind) + ".txt";

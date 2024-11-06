@@ -29,7 +29,7 @@ double          parameterStringToDouble(const std::string& ss, const double* iBl
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
 int             interpretParameters(const std::string& cc, const int n, const double *iBlock, const double *vBlock, double *parameters, bool* defaultMask);
-
+std::string     zipGetBasename(const std::string& zipPath);
 
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)

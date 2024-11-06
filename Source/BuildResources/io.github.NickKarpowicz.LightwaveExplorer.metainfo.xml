@@ -11,6 +11,12 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="2024.05" date="2024-11-06" urgency="high">
+  <description>
+  <p>This version fixes issues with biaxial crystals, and introduces a pair of sequence functions, rotateIntoBiaxial() and rotateFromBiaxial() to move in and out of the refractive index ellipse minor and major axes, even for arbitrary crystal orientations.</p>
+  <p>It also includes a fix for a bug where files could not be loaded if their names were changed.</p>
+  </description>
+  </release>
   <release version="2024.04" date="2024-09-19" urgency="high">
   <description>
   <p>This is a bug-fix release, which corrects a missing factor of 2 in UPPE propagation, and corrects the BiBO second order nonlinear tensor</p>
@@ -84,4 +90,10 @@
       <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot.png</image>
     </screenshot>
   </screenshots>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#bbffff</color>
+    <color type="primary" scheme_preference="dark">#613583</color>
+  </branding>
+
 </component>
