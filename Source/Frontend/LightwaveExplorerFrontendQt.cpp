@@ -925,7 +925,7 @@ public:
         addTextBoxRow("NL absorption", "NLAbsorption", "crystalBandgap", entryColumn2Layout,
         "The first parameter is the nonlinear absorption strength inside of the crystal.\n"
         "If it's 0, then there will be no nonlinear absorption or plasma generation. Typical\n"
-        "values range from 10^19 to 10^18. The second parameter is the bandgap of the crystal\n"
+        "values range from 10^-19 to 10^-18. The second parameter is the bandgap of the crystal\n"
         " in eV. This, plus the frequency of the first pulse, determines the order of multiphoton\n"
         "absorption.");
         addTextBoxRow("Drude: gamma, m", "DrudeGamma", "effectiveMass", entryColumn2Layout,
