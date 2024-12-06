@@ -3,7 +3,7 @@
 #include <sycl/ext/oneapi/experimental/complex/complex.hpp>
 #include <sycl/sycl.hpp>   
 #include <sycl/atomic.hpp>
-#include <oneapi/mkl/dfti.hpp>
+#include <oneapi/mkl/dft.hpp>
 using std::isnan;
 
 template <typename deviceFP>
@@ -271,7 +271,7 @@ public:
 		fftPlan1DD2Z = 
 			new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>((*s).Ntime);
 		fftPlan1DD2Z->set_value(
-			oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+			oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
 		std::int64_t outputStrides[3] = { 0, 1 };
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, outputStrides);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, outputStrides);
@@ -284,7 +284,7 @@ public:
 			fftPlanD2Z = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>
 				(std::vector<std::int64_t>{(*s).Nspace2, (*s).Nspace, (*s).Ntime});
 			fftPlanD2Z->set_value(
-				oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+				oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
 
 			std::int64_t forwardStride3D[5] = { 0, (*s).Nspace * (*s).Ntime, (*s).Nfreq, 1 };
@@ -298,7 +298,7 @@ public:
 			fftPlanD2Z = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
 				std::vector<std::int64_t>{(*s).Nspace, (*s).Ntime});
 			fftPlanD2Z->set_value(
-				oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+				oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
 			std::int64_t backwardStride2D[4] = { 0, (*s).Nfreq, 1 };
 			std::int64_t forwardStride2D[4] = { 0, (*s).Ntime, 1 };
@@ -313,7 +313,7 @@ public:
 					new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
 					std::vector<std::int64_t>{2 * (*s).Nspace, (*s).Ntime});
 				doublePolfftPlan->set_value(
-					oneapi::mkl::dft::config_param::PLACEMENT, DFTI_CONFIG_VALUE::DFTI_NOT_INPLACE);
+					oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
 				doublePolfftPlan->set_value(
 					oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2 + 2*(*s).hasPlasma);
 				doublePolfftPlan->set_value(

@@ -13,7 +13,16 @@ if(UNIX AND NOT APPLE)
         find_package(CUDAToolkit REQUIRED)
         find_package(TBB REQUIRED)
         find_package(MKL REQUIRED)
-
+        include(FetchContent)
+        set(BUILD_FUNCTIONAL_TESTS False)
+        set(BUILD_EXAMPLES False)
+        set(ENABLE_CUFFT_BACKEND True)
+        FetchContent_Declare(
+                onemkl_interface_library
+                GIT_REPOSITORY https://github.com/uxlfoundation/oneMath.git
+                GIT_TAG v0.6
+        )
+        FetchContent_MakeAvailable(onemkl_interface_library)
         if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/dlib)
         message("Using existing dlib clone")
         else()
@@ -44,8 +53,10 @@ if(UNIX AND NOT APPLE)
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu)
 
-        add_compile_options(-fp-model=precise -O3 ${OpenMP_CXX_FLAGS} -fsycl)
-        add_link_options(-fsycl)
+        add_compile_options(-fp-model=precise -O3 ${OpenMP_CXX_FLAGS}
+            -fsycl 
+            -fsycl-targets=nvptx64-nvidia-cuda,spir64,spir64_x86_64)
+        add_link_options(-fsycl -fsycl-targets=nvptx64-nvidia-cuda,spir64,spir64_x86_64)
         add_executable(LightwaveExplorer 
             Source/Devices/LightwaveExplorerSYCLLinux.cpp 
             Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
@@ -58,16 +69,16 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
         target_link_libraries(LightwaveExplorer
-            ${MKL_ROOT}/lib/intel64/libmkl_sycl.a 
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
             ${MKL_ROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group
             -lsycl -lOpenCL)
+        target_link_libraries(LightwaveExplorer TBB::tbb MKL::MKL_SYCL onemkl)
         target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
-        target_link_libraries(LightwaveExplorer TBB::tbb ${OpenMP_CXX_LIBRARIES})
+        target_link_libraries(LightwaveExplorer ${OpenMP_CXX_LIBRARIES})
         target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
         
         configure_file(${CMAKE_SOURCE_DIR}/Source/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
