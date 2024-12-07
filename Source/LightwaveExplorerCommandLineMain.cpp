@@ -11,8 +11,8 @@
 	#include "Devices/LightwaveExplorerCoreCPU.h"
 	#include "Devices/LightwaveExplorerCoreCPUFP32.h"
 #elif defined RUNONSYCL
-	#include "Devices/LightwaveExplorerSYCL.h"
-	#include "Devices/LightwaveExplorerSYCLFP32.h"
+	#include "Devices/LightwaveExplorerSYCLLinux.h"
+	#include "Devices/LightwaveExplorerSYCLLinuxFP32.h"
 #endif
 
 int main(int argc, char* argv[]){

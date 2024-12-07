@@ -97,14 +97,10 @@ if(UNIX AND NOT APPLE)
         find_package(CUDAToolkit REQUIRED)
         find_package(TBB REQUIRED)
         find_package(MKL REQUIRED)
-
+        include_directories(${MKL_ROOT}/include/fftw)
         linux_ui_packages()
         conditionally_fetch_dependencies()
-
-        
         add_oneapi_interfaces()
-        
-        include_directories(${MKL_ROOT}/include/fftw)
         
         add_library(miniz miniz/miniz.c)
 
@@ -205,7 +201,6 @@ if(UNIX AND NOT APPLE)
         find_package(MKL REQUIRED)
         conditionally_fetch_dependencies()
         linux_ui_packages()
-        set(ENABLE_CUFFT_BACKEND True)
         add_oneapi_interfaces()
         include_directories(${MKL_ROOT}/include/fftw)
 
@@ -450,6 +445,48 @@ if(UNIX AND NOT APPLE)
             -Wl,--end-group
             )
         target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+    elseif(CLISYCL)   
+        project(LightwaveExplorer LANGUAGES C CXX)
+        find_package(TBB REQUIRED)
+        find_package(MKL REQUIRED)
+        conditionally_fetch_dependencies()
+        add_oneapi_interfaces()
+        include_directories(${MKL_ROOT}/include/fftw)
+
+        add_library(miniz miniz/miniz.c)
+        add_definitions(-DNOCUDA)
+        add_definitions(-DRUNONSYCL)
+        
+        add_compile_options(
+            -fp-model=precise 
+            -O3 
+            ${OpenMP_CXX_FLAGS}
+            -fsycl 
+            -fsycl-targets=${SYCL_TARGETS_STRING}
+            -w)
+
+        add_link_options(-fsycl -fsycl-targets=${SYCL_TARGETS_STRING})
+
+        if(FP32)
+            add_definitions(-DLWEFLOATINGPOINT=32)
+            add_executable(LightwaveExplorer 
+                Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
+                Source/LightwaveExplorerCommandLineMain.cpp 
+                Source/LightwaveExplorerUtilities.cpp 
+                Source/Devices/DlibLibraryComponents.cpp)
+        else()
+            add_executable(LightwaveExplorer 
+                Source/Devices/LightwaveExplorerSYCLLinux.cpp 
+                Source/LightwaveExplorerCommandLineMain.cpp 
+                Source/LightwaveExplorerUtilities.cpp 
+                Source/Devices/DlibLibraryComponents.cpp)
+        endif()
+
+        target_link_libraries(LightwaveExplorer MKL::MKL_SYCL onemkl)
+        target_link_libraries(LightwaveExplorer -lsycl -lOpenCL)
+        target_link_libraries(LightwaveExplorer -lm miniz)
+        target_link_libraries(LightwaveExplorer TBB::tbb)
+        target_link_libraries(LightwaveExplorer ${OpenMP_CXX_LIBRARIES})
     else()
     #if nothing specified, build CPU version. specify -DUSEMKL to use MKL.
         project(LightwaveExplorer LANGUAGES C CXX)
