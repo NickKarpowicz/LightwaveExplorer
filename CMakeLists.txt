@@ -81,6 +81,7 @@ macro(add_oneapi_interfaces)
     include(FetchContent)
     set(BUILD_FUNCTIONAL_TESTS False)
     set(BUILD_EXAMPLES False)
+    set(BUILD_SHARED_LIBS OFF)
     FetchContent_Declare(
             onemkl_interface_library
             GIT_REPOSITORY https://github.com/uxlfoundation/oneMath.git
@@ -224,7 +225,7 @@ if(UNIX AND NOT APPLE)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer MKL::MKL_SYCL onemkl)
+        target_link_libraries(LightwaveExplorer MKL::MKL_SYCL libonemkl_dft_mklcpu.a libonemkl_dft_mklgpu.a)
         target_link_libraries(LightwaveExplorer -lsycl -lOpenCL)
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
