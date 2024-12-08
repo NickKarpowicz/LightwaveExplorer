@@ -81,7 +81,6 @@ macro(add_oneapi_interfaces)
     include(FetchContent)
     set(BUILD_FUNCTIONAL_TESTS False)
     set(BUILD_EXAMPLES False)
-    set(BUILD_SHARED_LIBS OFF)
     FetchContent_Declare(
             onemkl_interface_library
             GIT_REPOSITORY https://github.com/uxlfoundation/oneMath.git
@@ -103,9 +102,9 @@ if(UNIX AND NOT APPLE)
         conditionally_fetch_dependencies()
         add_oneapi_interfaces()
         
-        add_library(miniz miniz/miniz.c)
+        add_library(miniz STATIC miniz/miniz.c)
 
-        add_library(LightwaveExplorerCuda 
+        add_library(LightwaveExplorerCuda STATIC
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu)
 
@@ -139,7 +138,7 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
 
         linux_install_launchscript()
-        
+        install(TARGETS onemkl)
     elseif(MAKECUDA)   
         project(LightwaveExplorer LANGUAGES C CXX CUDA)
         
@@ -157,9 +156,9 @@ if(UNIX AND NOT APPLE)
             include_directories(${MKL_ROOT}/include/fftw)
         endif()
         
-        add_library(miniz miniz/miniz.c)
+        add_library(miniz STATIC miniz/miniz.c)
 
-        add_library(LightwaveExplorerCuda 
+        add_library(LightwaveExplorerCuda STATIC
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu)
         add_definitions(-DNOSYCL)
@@ -205,7 +204,7 @@ if(UNIX AND NOT APPLE)
         add_oneapi_interfaces()
         include_directories(${MKL_ROOT}/include/fftw)
 
-        add_library(miniz miniz/miniz.c)
+        add_library(miniz STATIC miniz/miniz.c)
         add_definitions(-DNOCUDA)
         add_compile_options(
             -fp-model=precise 
@@ -225,7 +224,7 @@ if(UNIX AND NOT APPLE)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer MKL::MKL_SYCL libonemkl_dft_mklcpu.a libonemkl_dft_mklgpu.a)
+        target_link_libraries(LightwaveExplorer MKL::MKL_SYCL onemkl)
         target_link_libraries(LightwaveExplorer -lsycl -lOpenCL)
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
@@ -239,7 +238,7 @@ if(UNIX AND NOT APPLE)
         target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
         
         linux_install_launchscript()
-
+        install(TARGETS onemkl)
     elseif(MAKECUDAFLATPAK)
     #Flatpak using CUDA, and CPU calculations with FFTs in MKL. 
     #Current release version of the Flatpak.
@@ -262,7 +261,7 @@ if(UNIX AND NOT APPLE)
         include_directories(${MKL_ROOT}/include)
         include_directories(${CAIRO_INCLUDE_DIRS})
         add_definitions(-DLWEFLATPAK)
-        add_library(LightwaveExplorerCuda 
+        add_library(LightwaveExplorerCuda STATIC
             Source/LightwaveExplorerCore.cu 
             Source/Devices/LightwaveExplorerCoreFP32.cu)
         add_executable(LightwaveExplorer 
@@ -340,7 +339,7 @@ if(UNIX AND NOT APPLE)
             include_directories(${MKL_ROOT}/include)
             include_directories(${CAIRO_INCLUDE_DIRS})
             add_definitions(-DLWEFLATPAK)
-            add_library(LightwaveExplorerCuda 
+            add_library(LightwaveExplorerCuda STATIC
                 Source/LightwaveExplorerCore.cu 
                 Source/Devices/LightwaveExplorerCoreFP32.cu)
             add_executable(LightwaveExplorer 
@@ -428,7 +427,7 @@ if(UNIX AND NOT APPLE)
         find_package(CUDAToolkit)
         include_directories(${MKL_ROOT}/include/fftw)
         include_directories(${MKL_ROOT}/include)
-        add_library(miniz miniz/miniz.c)
+        add_library(miniz STATIC miniz/miniz.c)
         add_definitions(-DRUNONCUDA)
         add_compile_options(-O3)
         add_executable(LightwaveExplorer 
@@ -454,7 +453,7 @@ if(UNIX AND NOT APPLE)
         add_oneapi_interfaces()
         include_directories(${MKL_ROOT}/include/fftw)
 
-        add_library(miniz miniz/miniz.c)
+        add_library(miniz STATIC miniz/miniz.c)
         add_definitions(-DNOCUDA)
         add_definitions(-DRUNONSYCL)
         
@@ -504,7 +503,7 @@ if(UNIX AND NOT APPLE)
             include_directories(${FFTW_INCLUDE_DIRS})
             link_directories(${FFTW_LIBRARY_DIRS})         
         endif()        
-        add_library(miniz miniz/miniz.c)
+        add_library(miniz STATIC miniz/miniz.c)
         add_compile_options(-O3 ${OpenMP_CXX_FLAGS} -Wall)
         add_definitions(-DNOCUDA -DNOSYCL -DNDEBUG)
         if(NOT DEFINED USEMKL)
@@ -554,7 +553,7 @@ if(APPLE)
     link_directories(${CAIRO_LIBRARY_DIRS})
     link_directories(${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib)
     conditionally_fetch_dependencies()
-    add_library(miniz miniz/miniz.c)
+    add_library(miniz STATIC miniz/miniz.c)
 
     add_definitions(-DCPUONLY -DUSEFFTW -DNOSYCL -DNDEBUG)
     add_compile_options(-O3 -Wall)
