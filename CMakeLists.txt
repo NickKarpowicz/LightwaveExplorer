@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.23.0)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(NOT DEFINED EXECUTABLE_NAME)
+    set(EXECUTABLE_NAME "LightwaveExplorer")
+endif()
+
 macro(conditionally_fetch_dependencies)
     if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/dlib)
     message("Using existing dlib clone")
@@ -33,8 +37,8 @@ endmacro()
 
 macro(linux_install_launchscript)
     configure_file(${CMAKE_SOURCE_DIR}/Source/BuildResources/makeLaunchScript.sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh COPYONLY)
-    add_custom_command(TARGET LightwaveExplorer POST_BUILD COMMAND sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh)
-    install(TARGETS LightwaveExplorer)
+    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD COMMAND sh ${CMAKE_BINARY_DIR}/makeLaunchScript.sh)
+    install(TARGETS ${EXECUTABLE_NAME})
     install(PROGRAMS ${CMAKE_BINARY_DIR}/LightwaveExplorerLauncher.sh DESTINATION bin)
     install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
     install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
@@ -45,7 +49,7 @@ macro(linux_install_launchscript)
 endmacro()
 
 macro(linux_install_nolaunchscript)
-    install(TARGETS LightwaveExplorer)
+    install(TARGETS ${EXECUTABLE_NAME})
     install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
     install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/Source//BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
@@ -237,7 +241,7 @@ if(UNIX AND NOT APPLE)
         )
         endif()
 
-        add_executable(LightwaveExplorer 
+        add_executable(${EXECUTABLE_NAME} 
             Source/Devices/LightwaveExplorerSYCLLinux.cpp 
             Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
             Source/Frontend/LightwaveExplorerFrontendQt.cpp 
@@ -246,18 +250,18 @@ if(UNIX AND NOT APPLE)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer onemkl)
-        target_link_libraries(LightwaveExplorer -lsycl -lOpenCL)
-        target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
-        target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
-        target_link_libraries(LightwaveExplorer
+        target_link_libraries(${EXECUTABLE_NAME}  onemkl)
+        target_link_libraries(${EXECUTABLE_NAME}  -lsycl -lOpenCL)
+        target_link_libraries(${EXECUTABLE_NAME}  Qt6::Widgets Qt6::DBus)
+        target_link_libraries(${EXECUTABLE_NAME}  fmt::fmt -lm miniz)
+        target_link_libraries(${EXECUTABLE_NAME} 
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
             ${MKL_ROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group)
-        target_link_libraries(LightwaveExplorer TBB::tbb)
-        target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+        target_link_libraries(${EXECUTABLE_NAME}  TBB::tbb)
+        target_link_libraries(${EXECUTABLE_NAME}  ${CAIRO_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
         
         linux_install_launchscript()
         install(TARGETS onemkl)
@@ -293,14 +297,14 @@ if(UNIX AND NOT APPLE)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        set_target_properties(LightwaveExplorer PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-        target_compile_options(LightwaveExplorer PRIVATE -O3 ${OpenMP_CXX_FLAGS} -DNOSYCL -DLWEFLATPAK)
-        target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
-        target_link_libraries(LightwaveExplorer CUDA::cudart_static CUDA::cufft_static CUDA::nvml)
-        target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
-        target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
-        target_link_libraries(LightwaveExplorer fmt::fmt miniz::miniz)
-        target_link_libraries(LightwaveExplorer -lm
+        set_target_properties(${EXECUTABLE_NAME} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+        target_compile_options(${EXECUTABLE_NAME} PRIVATE -O3 ${OpenMP_CXX_FLAGS} -DNOSYCL -DLWEFLATPAK)
+        target_link_libraries(${EXECUTABLE_NAME} LightwaveExplorerCuda)
+        target_link_libraries(${EXECUTABLE_NAME} CUDA::cudart_static CUDA::cufft_static CUDA::nvml)
+        target_link_libraries(${EXECUTABLE_NAME} Qt6::Widgets Qt6::DBus)
+        target_link_libraries(${EXECUTABLE_NAME} ${CAIRO_LIBRARIES})
+        target_link_libraries(${EXECUTABLE_NAME} fmt::fmt miniz::miniz)
+        target_link_libraries(${EXECUTABLE_NAME} -lm
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
             ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
@@ -308,7 +312,7 @@ if(UNIX AND NOT APPLE)
             -Wl,--end-group
             ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
             )
-        target_link_libraries(LightwaveExplorer TBB::tbb)
+        target_link_libraries(${EXECUTABLE_NAME} TBB::tbb)
         add_executable(LightwaveExplorerNoCuda 
             Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
@@ -330,7 +334,7 @@ if(UNIX AND NOT APPLE)
             )
         target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
 
-        install(TARGETS LightwaveExplorer LightwaveExplorerNoCuda DESTINATION bin)
+        install(TARGETS ${EXECUTABLE_NAME} LightwaveExplorerNoCuda DESTINATION bin)
         install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
         install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
         install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
@@ -433,13 +437,13 @@ if(UNIX AND NOT APPLE)
         link_directories(${FFTW_LIBRARY_DIRS})
         add_definitions( -DCPUONLY -DUSEFFTW -DNOSYCL)
         add_compile_options(-O3 ${OpenMP_CXX_FLAGS})
-        add_executable(LightwaveExplorer 
+        add_executable(${EXECUTABLE_NAME} 
             Source/LightwaveExplorerCommandLineMain.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer ${OpenMP_CXX_LIBRARIES} miniz)
-        target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES})
+        target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES} miniz)
+        target_link_libraries(${EXECUTABLE_NAME} ${FFTW_LIBRARIES})
     elseif(CLICUDA)
     #. /opt/intel/oneapi/setvars.sh
     #cmake --fresh -DCLICUDA=1 -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 .. -G Ninja
@@ -452,21 +456,21 @@ if(UNIX AND NOT APPLE)
         add_library(miniz STATIC miniz/miniz.c)
         add_definitions(-DRUNONCUDA)
         add_compile_options(-O3)
-        add_executable(LightwaveExplorer 
+        add_executable(${EXECUTABLE_NAME} 
         Source/LightwaveExplorerCore.cu
         Source/LightwaveExplorerCommandLineMain.cu
         Source/LightwaveExplorerUtilities.cpp 
         Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer miniz)
-        target_link_libraries(LightwaveExplorer -lm)
-        target_link_libraries(LightwaveExplorer
+        target_link_libraries(${EXECUTABLE_NAME} miniz)
+        target_link_libraries(${EXECUTABLE_NAME} -lm)
+        target_link_libraries(${EXECUTABLE_NAME}
             -Wl,--start-group 
             ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
             ${MKL_ROOT}/lib/intel64/libmkl_sequential.a 
             ${MKL_ROOT}/lib/intel64/libmkl_core.a 
             -Wl,--end-group
             )
-        target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
+        target_link_libraries(${EXECUTABLE_NAME} CUDA::cudart CUDA::cufft CUDA::nvml)
     elseif(CLISYCL)   
         project(LightwaveExplorer LANGUAGES C CXX)
         find_package(TBB REQUIRED)
@@ -491,24 +495,24 @@ if(UNIX AND NOT APPLE)
 
         if(FP32)
             add_definitions(-DLWEFLOATINGPOINT=32)
-            add_executable(LightwaveExplorer 
+            add_executable(${EXECUTABLE_NAME} 
                 Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
                 Source/LightwaveExplorerCommandLineMain.cpp 
                 Source/LightwaveExplorerUtilities.cpp 
                 Source/Devices/DlibLibraryComponents.cpp)
         else()
-            add_executable(LightwaveExplorer 
+            add_executable(${EXECUTABLE_NAME} 
                 Source/Devices/LightwaveExplorerSYCLLinux.cpp 
                 Source/LightwaveExplorerCommandLineMain.cpp 
                 Source/LightwaveExplorerUtilities.cpp 
                 Source/Devices/DlibLibraryComponents.cpp)
         endif()
 
-        target_link_libraries(LightwaveExplorer MKL::MKL_SYCL onemkl)
-        target_link_libraries(LightwaveExplorer -lsycl -lOpenCL)
-        target_link_libraries(LightwaveExplorer -lm miniz)
-        target_link_libraries(LightwaveExplorer TBB::tbb)
-        target_link_libraries(LightwaveExplorer ${OpenMP_CXX_LIBRARIES})
+        target_link_libraries(${EXECUTABLE_NAME} MKL::MKL_SYCL onemkl)
+        target_link_libraries(${EXECUTABLE_NAME} -lsycl -lOpenCL)
+        target_link_libraries(${EXECUTABLE_NAME} -lm miniz)
+        target_link_libraries(${EXECUTABLE_NAME} TBB::tbb)
+        target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES})
     else()
     #if nothing specified, build CPU version. specify -DUSEMKL to use MKL.
         project(LightwaveExplorer LANGUAGES C CXX)
@@ -533,28 +537,28 @@ if(UNIX AND NOT APPLE)
             execute_process(COMMAND echo "NOTE: Building CPU only version since OneAPI not specified. This version uses FFTW for performing Fourier transforms and is licensed under the GPL v3.0")
         endif()
 
-        add_executable(LightwaveExplorer 
+        add_executable(${EXECUTABLE_NAME} 
             Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/LightwaveExplorerUtilities.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
-        target_link_libraries(LightwaveExplorer ${OpenMP_CXX_LIBRARIES})
+        target_link_libraries(${EXECUTABLE_NAME} Qt6::Widgets Qt6::DBus)
+        target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES})
         if(USEMKL)
-            target_link_libraries(LightwaveExplorer
+            target_link_libraries(${EXECUTABLE_NAME}
                 -Wl,--start-group 
                 ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
                 ${MKL_ROOT}/lib/intel64/libmkl_gnu_thread.a 
                 ${MKL_ROOT}/lib/intel64/libmkl_core.a 
                 -Wl,--end-group)  
         else()
-            target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})          
+            target_link_libraries(${EXECUTABLE_NAME} ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})          
         endif()
-        target_link_libraries(LightwaveExplorer TBB::tbb)
-        target_link_libraries(LightwaveExplorer fmt::fmt miniz)
-        target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
+        target_link_libraries(${EXECUTABLE_NAME} TBB::tbb)
+        target_link_libraries(${EXECUTABLE_NAME} fmt::fmt miniz)
+        target_link_libraries(${EXECUTABLE_NAME} ${CAIRO_LIBRARIES})
 
         linux_install_nolaunchscript()
     endif()
