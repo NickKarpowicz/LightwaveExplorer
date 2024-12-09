@@ -58,23 +58,27 @@ macro(linux_ui_packages)
     find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
     set(CMAKE_AUTOMOC ON)
     find_package(fmt REQUIRED)
-    find_package(OpenMP REQUIRED)
+    if(NOT DEFINED BACKEND_ROCM)
+        find_package(OpenMP REQUIRED)
+    endif()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(CAIRO REQUIRED cairo)
     include_directories(${CAIRO_INCLUDE_DIRS})
 endmacro()
 
 macro(add_oneapi_interfaces)
-    set(SYCL_TARGETS "spir64")
+    if(BACKEND_ROCM)
+        set(ENABLE_ROCFFT_BACKEND True)
+        set(ENABLE_MKLCPU_BACKEND False)
+        set(ENABLE_MKLGPU_BACKEND False)
+        list(APPEND SYCL_TARGETS "amdgcn-amd-amdhsa")
+    else()
+        set(SYCL_TARGETS "spir64")
+    endif()
 
     if(BACKEND_CUDA)
         set(ENABLE_CUFFT_BACKEND True)
         list(APPEND SYCL_TARGETS "nvptx64-nvidia-cuda")
-    endif()
-
-    if(BACKEND_ROCM)
-        set(ENABLE_ROCFFT_BACKEND True)
-        list(APPEND SYCL_TARGETS "amdgcn-amd-amdhsa")
     endif()
 
     list(JOIN SYCL_TARGETS "," SYCL_TARGETS_STRING)
@@ -199,6 +203,7 @@ if(UNIX AND NOT APPLE)
         project(LightwaveExplorer LANGUAGES C CXX)
         find_package(TBB REQUIRED)
         find_package(MKL REQUIRED)
+
         conditionally_fetch_dependencies()
         linux_ui_packages()
         add_oneapi_interfaces()
@@ -207,14 +212,31 @@ if(UNIX AND NOT APPLE)
         add_library(miniz STATIC miniz/miniz.c)
         add_definitions(-DNOCUDA)
         add_compile_options(
-            -fp-model=precise 
+            -ffp-model=precise 
             -O3 
             ${OpenMP_CXX_FLAGS}
             -fsycl 
             -fsycl-targets=${SYCL_TARGETS_STRING}
             -w)
 
-        add_link_options(-fsycl -fsycl-targets=${SYCL_TARGETS_STRING})
+        if(BACKEND_ROCM)
+        add_compile_options(
+            -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=${BACKEND_ROCM}
+            --rocm-device-lib-path=${ROCM_LIB_PATH}
+        )
+        endif()
+
+        add_link_options(
+            -fsycl 
+            -fsycl-targets=${SYCL_TARGETS_STRING})
+
+        if(BACKEND_ROCM)
+        add_link_options(
+            -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=${BACKEND_ROCM}
+            --rocm-device-lib-path=${ROCM_LIB_PATH}
+        )
+        endif()
+
         add_executable(LightwaveExplorer 
             Source/Devices/LightwaveExplorerSYCLLinux.cpp 
             Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
@@ -224,7 +246,7 @@ if(UNIX AND NOT APPLE)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp 
             Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(LightwaveExplorer MKL::MKL_SYCL onemkl)
+        target_link_libraries(LightwaveExplorer onemkl)
         target_link_libraries(LightwaveExplorer -lsycl -lOpenCL)
         target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
         target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
