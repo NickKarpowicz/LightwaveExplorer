@@ -29,7 +29,7 @@ if(USE_CUDA AND USE_SYCL)
     target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
     target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
     link_fft_library(LightwaveExplorer)
-    target_link_libraries(LightwaveExplorer -lsycl -lOpenCL)
+    target_link_libraries(LightwaveExplorer -lsycl)
     target_link_libraries(LightwaveExplorer TBB::tbb onemkl)
     target_link_libraries(LightwaveExplorer LightwaveExplorerCuda)
     target_link_libraries(LightwaveExplorer CUDA::cudart CUDA::cufft CUDA::nvml)
@@ -94,7 +94,7 @@ elseif(AMDLIBRARY)
         Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp )
     target_link_libraries(${LIBRARY_NAME} ${UTILITY_LIBRARY_NAME})
     target_link_libraries(${LIBRARY_NAME}  onemkl)
-    target_link_libraries(${LIBRARY_NAME}  -lsycl -lOpenCL)
+    target_link_libraries(${LIBRARY_NAME}  -lsycl)
     target_link_libraries(${LIBRARY_NAME}  -lm)
     target_link_libraries(${LIBRARY_NAME}  TBB::tbb)
 
@@ -106,7 +106,7 @@ elseif(AMDLIBRARY)
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
             Source/Devices/LightwaveExplorerCoreCounter.cpp)
         target_link_libraries(${EXECUTABLE_NAME}  ${LIBRARY_NAME} onemkl)
-        target_link_libraries(${EXECUTABLE_NAME}  -lsycl -lOpenCL)
+        target_link_libraries(${EXECUTABLE_NAME}  -lsycl)
         target_link_libraries(${EXECUTABLE_NAME}  Qt6::Widgets Qt6::DBus)
         target_link_libraries(${EXECUTABLE_NAME}  fmt::fmt -lm miniz)
         link_fft_library(${EXECUTABLE_NAME})
@@ -137,7 +137,7 @@ elseif(USE_SYCL)
         Source/Devices/LightwaveExplorerCoreCounter.cpp 
         Source/Devices/DlibLibraryComponents.cpp)
     target_link_libraries(${EXECUTABLE_NAME}  onemkl)
-    target_link_libraries(${EXECUTABLE_NAME}  -lsycl -lOpenCL)
+    target_link_libraries(${EXECUTABLE_NAME}  -lsycl)
     target_link_libraries(${EXECUTABLE_NAME}  Qt6::Widgets Qt6::DBus)
     target_link_libraries(${EXECUTABLE_NAME}  fmt::fmt -lm miniz)
     link_fft_library(${EXECUTABLE_NAME})
@@ -149,77 +149,8 @@ elseif(USE_SYCL)
     
     linux_install_launchscript()
     install(TARGETS onemkl)
-   
-elseif(CLI)
-    if(USE_CUDA)
-        #. /opt/intel/oneapi/setvars.sh
-        #cmake --fresh -DCLICUDA=1 -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 .. -G Ninja
-        conditionally_fetch_dependencies()
-        include_directories(${MKL_ROOT}/include/fftw)
-        include_directories(${MKL_ROOT}/include)
-        add_definitions(-DRUNONCUDA)
-        add_compile_options(-O3)
-        add_executable(${EXECUTABLE_NAME} 
-        Source/LightwaveExplorerCore.cu
-        Source/LightwaveExplorerCommandLineMain.cu
-        Source/LightwaveExplorerUtilities.cpp 
-        Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(${EXECUTABLE_NAME} miniz)
-        target_link_libraries(${EXECUTABLE_NAME} -lm)
-        target_link_libraries(${EXECUTABLE_NAME}
-            -Wl,--start-group 
-            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
-            ${MKL_ROOT}/lib/intel64/libmkl_sequential.a 
-            ${MKL_ROOT}/lib/intel64/libmkl_core.a 
-            -Wl,--end-group
-            )
-        target_link_libraries(${EXECUTABLE_NAME} CUDA::cudart CUDA::cufft CUDA::nvml)
-    elseif(USE_SYCL)
-        find_package(TBB REQUIRED)
-        find_package(MKL REQUIRED)
-        conditionally_fetch_dependencies()
-        add_oneapi_interfaces()
-        include_directories(${MKL_ROOT}/include/fftw)
-        add_definitions(-DNOCUDA)
-        add_definitions(-DRUNONSYCL)
-        set_sycl_compile_flags()
-
-        if(FP32)
-            add_definitions(-DLWEFLOATINGPOINT=32)
-            add_executable(${EXECUTABLE_NAME} 
-                Source/Devices/LightwaveExplorerSYCLLinuxFP32.cpp 
-                Source/LightwaveExplorerCommandLineMain.cpp 
-                Source/LightwaveExplorerUtilities.cpp 
-                Source/Devices/DlibLibraryComponents.cpp)
-        else()
-            add_executable(${EXECUTABLE_NAME} 
-                Source/Devices/LightwaveExplorerSYCLLinux.cpp 
-                Source/LightwaveExplorerCommandLineMain.cpp 
-                Source/LightwaveExplorerUtilities.cpp 
-                Source/Devices/DlibLibraryComponents.cpp)
-        endif()
-
-        target_link_libraries(${EXECUTABLE_NAME} MKL::MKL_SYCL onemkl)
-        target_link_libraries(${EXECUTABLE_NAME} -lsycl -lOpenCL)
-        target_link_libraries(${EXECUTABLE_NAME} -lm miniz)
-        target_link_libraries(${EXECUTABLE_NAME} TBB::tbb)
-        target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES})
-    else()
-        find_package(OpenMP REQUIRED)
-        resolve_fft_library()
-        conditionally_fetch_dependencies()
-        add_definitions( -DCPUONLY -DNOSYCL)
-        add_compile_options(-O3 ${OpenMP_CXX_FLAGS})
-        add_executable(${EXECUTABLE_NAME} 
-            Source/LightwaveExplorerCommandLineMain.cpp 
-            Source/LightwaveExplorerUtilities.cpp 
-            Source/Devices/LightwaveExplorerCoreCPU.cpp 
-            Source/Devices/DlibLibraryComponents.cpp)
-        target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES} miniz)
-        link_fft_library(${EXECUTABLE_NAME})
-    endif()
 else()
-#if nothing specified, build CPU version. specify -DUSE_MKL to use MKL.
+#if nothing specified, build CPU version.
     find_package(TBB REQUIRED)
     find_package(OpenMP REQUIRED)
     conditionally_fetch_dependencies()
