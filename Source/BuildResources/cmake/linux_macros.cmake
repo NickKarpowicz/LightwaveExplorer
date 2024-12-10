@@ -57,7 +57,7 @@ macro(linux_ui_packages)
     set(CMAKE_AUTOMOC ON)
     find_package(fmt REQUIRED)
     if(NOT DEFINED BACKEND_ROCM)
-        find_package(OpenMP REQUIRED)
+        find_package(OpenMP)
     endif()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(CAIRO REQUIRED cairo)
@@ -65,18 +65,29 @@ macro(linux_ui_packages)
 endmacro()
 
 macro(add_oneapi_interfaces)
+    set(SYCL_TARGETS "")
     if(BACKEND_ROCM)
+        if(NOT BACKEND_ROCM MATCHES "^gfx[0-9]+")
+            message(FATAL_ERROR "BACKEND_ROCM is set to an invalid value: ${BACKEND_ROCM}. It should be an AMD GPU architecture, for example, gfx906 or gfx1030. Note that only one architecture can be built in a single binary.")
+        endif()
         set(ENABLE_ROCFFT_BACKEND True)
         set(ENABLE_MKLCPU_BACKEND False)
         set(ENABLE_MKLGPU_BACKEND False)
         list(APPEND SYCL_TARGETS "amdgcn-amd-amdhsa")
-    else()
-        set(SYCL_TARGETS "spir64")
     endif()
-
     if(BACKEND_CUDA)
         set(ENABLE_CUFFT_BACKEND True)
+        set(ENABLE_MKLCPU_BACKEND False)
+        set(ENABLE_MKLGPU_BACKEND False)
         list(APPEND SYCL_TARGETS "nvptx64-nvidia-cuda")
+    endif()
+    if(BACKEND_INTEL)
+        set(ENABLE_MKLCPU_BACKEND True)
+        set(ENABLE_MKLGPU_BACKEND True)
+        list(APPEND SYCL_TARGETS "spir64")
+    endif()
+    if(NOT SYCL_TARGETS)
+        message(FATAL_ERROR "At least one of BACKEND_INTEL, BACKEND_CUDA, or BACKEND_ROCM must be set for SYCL to be used.")
     endif()
 
     list(JOIN SYCL_TARGETS "," SYCL_TARGETS_STRING)
@@ -97,11 +108,12 @@ macro(set_sycl_compile_flags)
     add_compile_options(
         -ffp-model=precise 
         -O3 
-        ${OpenMP_CXX_FLAGS}
         -fsycl 
         -fsycl-targets=${SYCL_TARGETS_STRING}
         -w)
-
+    if(OpenMP_FOUND)
+        add_compile_options(${OpenMP_CXX_FLAGS})
+    endif()
     if(BACKEND_ROCM)
         add_compile_options(
             -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=${BACKEND_ROCM}
