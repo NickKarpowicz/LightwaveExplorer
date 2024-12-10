@@ -5,8 +5,6 @@ if(USE_CUDA)
 endif()
 
 if(USE_CUDA)
-    #. /opt/intel/oneapi/setvars.sh
-    #cmake --fresh -DCLICUDA=1 -DCMAKE_CUDA_HOST_COMPILER=clang++ -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=75 .. -G Ninja
     conditionally_fetch_dependencies()
     resolve_fft_library()
     add_definitions(-DRUNONCUDA)

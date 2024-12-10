@@ -112,40 +112,65 @@ You will at least need the following (these are what they are called on Fedora/d
 ```
 fmt-devel, qt6-qtbase-devel, cairo-devel, tbb-devel
 ```
-Next, choose your FFT libraries:
- - cuFFT from the [CUDA development kit](https://developer.nvidia.com/cuda-downloads)
- - MKL from [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html), either the CPU version of SYCL
- - [FFTW](http://fftw.org/), for CPU
 
- You'll need at least one CPU library (i.e. FFTW or MKL) to handle the GUI.
 
- You can determine which version you get with flags sent to cmake. Here are some useful combinations:
+Next, you need a CPU-based FFT library, options are:
+ - MKL from [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
+ - [FFTW](http://fftw.org/)
 
-This builds the full thing, requiring both CUDA and the oneAPI toolkit, using MKL for the CPU FFTs (CUDA architecture set to 30 series, and using clang 17 because at the time of writing CUDA won't accept GCC 14 or Clang 18 as host compiler): 
- ```
- cmake -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
- ```
+FFTW is likely available in your distribution, e.g. fftw-devel.
 
-This builds the CUDA version, without OneAPI, using FFTW for the CPU FFTs
+Next, the basic command is to use cmake in the usual way:
+
 ```
-cmake -DMAKECUDA=1 -DUSEFFTW=1 -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
-```
-
-This builds the SYCL version, without needing the CUDA toolkit:
- ```
- cmake -DMAKESYCL=TRUE -DCMAKE_CXX_COMPILER=icpx .. -G Ninja
- ```
-
-This will make a CPU-only (FFTW) version that doesn't need CUDA or oneAPI (i.e. it only uses things that are probably in your normal repo):
-```
-cmake .. -G Ninja
-```
-
-No matter what configuration you pick, you can now just do
-```
+mkdir build && cd build
+cmake ..
 cmake --build . --config Release
 ```
-and you should have a binary to run. You should either install it (sudo cmake --install .) or copy the files CrystalDatabase.txt and DefaultValues.ini to the build folder and run it....
+and you should have a binary to run. You should either install it (sudo cmake --install .) or copy the files CrystalDatabase.txt and DefaultValues.ini to the build folder and run it. If you don't copy the files and run without them, it'll crash :)
+
+The basic build will run on your CPU only.
+
+In order to run on a GPU, the options are either CUDA (Nvidia) or SYCL (Intel, AMD or Nvidia).
+
+#### CUDA
+
+To enable CUDA, you need additional flags. Here's an example:
+```
+cmake -DUSE_CUDA=1 -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=86 ..
+```
+ - USE_CUDA should just be set to 1.
+ - Your CUDA_HOST_COMPILER should be a version of g++ or clang++ compatible with your version of CUDA
+ - Your CUDA_ARCHITECTURES should match your card (on consumer boards, 75 for 20-series, 86 for 30-series, 89 for 40-series)
+
+First, -DUSE_CUDA=1.
+
+#### SYCL
+A different set of flags will let you compile to use SYCL. You'll need a SYCL compiler. For Intel, you should use the one in the OneAPI basekit. For AMD, use the [open source version](https://github.com/intel/llvm).
+
+Here's an example for AMD:
+```
+cmake -DUSE_SYCL=1 -DBACKEND_ROCM=gfx906 -DROCM_LIB_PATH=/usr/lib/clang/18/amdgcn/bitcode -DCMAKE_CXX_COMPILER=clang++ ..
+```
+  - USE_SYCL should be 1
+  - BACKEND_ROCM should be set to the board architecture you want to use. This case was with a Radeon VII.
+  - ROCM_LIB_PATH might not be necessary for your system, but on Fedora it was. You have to locate the bitcode folder of the ROCM install.
+  - the compiler is the special version of clang++ from the [DPC++ project](https://github.com/intel/llvm)
+  - rocm, hip, and rocfft must be installed on your system.
+
+Here's an example for Intel:
+```
+cmake -DUSE_SYCL=1 -DBACKEND_INTEL=1 -DCMAKE_CXX_COMPILER=icpx ..
+```
+  - The Intel backend just has to be enabled
+  - Use the Intel compiler provided by the OneAPI Base Toolkit (icpx). 
+  - You will need to source the OneAPI setvars.sh script first.
+
+You can also use -DBACKEND_CUDA=1 to use SYCL on an Nvidia GPU.
+
+Additional compiler flags:
+  - USE_FFTW, set to 1 if it uses MKL and you don't want it to
+  - CLI, set to 1 to build a command line version
 
 ---
 
