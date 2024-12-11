@@ -76,43 +76,13 @@ This version makes use of the FFTW library for Fourier transforms and is therefo
 
 The application bundle contains all the required files. If you want to edit the crystal database or default settings, open the app as a folder (right click or control-click on the app and select "show package contents") - You will find them in the Resources folder.
 
-
-
----
-### Compilation on Windows
-You will need: 
- - [Visual Studio 2022](https://visualstudio.microsoft.com/free-developer-offers/) to get Microsoft's compiler. 
- - [vcpkg](https://vcpkg.io), and use that to install dlib, gcem, and miniz.
- - [CMake](https://cmake.org/).
- - [CUDA development kit](https://developer.nvidia.com/cuda-downloads)
- - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
- - [Qt](https://www.qt.io).
-
-If you've cloned the repo, from that folder, first make the SYCL version as a DLL:
-```
-mkdir build
-cd build 
-cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
-cmake --build . --config Release
-```
-Next build the main application together with the CUDA version:
-```
-cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
-cmake --build . --config Release
-```
-
-There's also a powershell script named WinBuild.ps1 in the BuildResources folder that does all of this, so you can just run "./Source/BuildResources/WinBuild.Ps1" from the repo root directory to build the whole thing.
-
 ---
 
 ### Compiling the GUI app on Linux
-You'll need the same set of libraries on Linux, however there are a few options so that if you're compiling for your system, you don't have to install the libraries for hardware you won't use.
-
-You will at least need the following (these are what they are called on Fedora/dnf, the names might slightly differ on your repo):
+You will at least need the development versions of following installed: fmt, Qt, Cairo, and TBB (these are what they are called on Fedora/dnf, the names might slightly differ on your repo):
 ```
 fmt-devel, qt6-qtbase-devel, cairo-devel, tbb-devel
 ```
-
 
 Next, you need a CPU-based FFT library, options are:
  - MKL from [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
@@ -127,7 +97,7 @@ mkdir build && cd build
 cmake ..
 cmake --build . --config Release
 ```
-and you should have a binary to run. You should either install it (sudo cmake --install .) or copy the files CrystalDatabase.txt and DefaultValues.ini to the build folder and run it. If you don't copy the files and run without them, it'll crash :)
+and you should have a binary to run. You should either install it (sudo cmake --install .) or copy the files CrystalDatabase.txt and DefaultValues.ini to the build folder and run it.
 
 The basic build will run on your CPU only.
 
@@ -141,9 +111,7 @@ cmake -DUSE_CUDA=1 -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=/
 ```
  - USE_CUDA should just be set to 1.
  - Your CUDA_HOST_COMPILER should be a version of g++ or clang++ compatible with your version of CUDA
- - Your CUDA_ARCHITECTURES should match your card (on consumer boards, 75 for 20-series, 86 for 30-series, 89 for 40-series)
-
-First, -DUSE_CUDA=1.
+ - Your CUDA_ARCHITECTURES should match your card (on consumer boards: 75 for 20-series, 86 for 30-series, 89 for 40-series)
 
 #### SYCL
 A different set of flags will let you compile to use SYCL. You'll need a SYCL compiler. For Intel, you should use the one in the OneAPI basekit. For AMD, use the [open source version](https://github.com/intel/llvm).
@@ -160,11 +128,14 @@ cmake -DUSE_SYCL=1 -DBACKEND_ROCM=gfx906 -DROCM_LIB_PATH=/usr/lib/clang/18/amdgc
 
 Here's an example for Intel:
 ```
-cmake -DUSE_SYCL=1 -DBACKEND_INTEL=1 -DCMAKE_CXX_COMPILER=icpx ..
+cmake -DUSE_SYCL=1 -DCMAKE_CXX_COMPILER=icpx ..
 ```
-  - The Intel backend just has to be enabled
+  - The Intel (SPIR-V) backend is the default, so that's what you get if nothing else is specified
   - Use the Intel compiler provided by the OneAPI Base Toolkit (icpx). 
-  - You will need to source the OneAPI setvars.sh script first.
+  - You will need to source the OneAPI setvars.sh script first. e.g.
+  ```
+  . /opt/intel/oneapi/setvars.sh
+  ```
 
 You can also use -DBACKEND_CUDA=1 to use SYCL on an Nvidia GPU.
 
@@ -193,7 +164,6 @@ Additional compiler flags:
   ```
   curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuildIntel.sh | zsh -s
   ```
-  
 ---
   ### Compilation on clusters
   
@@ -207,6 +177,32 @@ curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master
 
  ---
 
+### Compilation on Windows
+You will need: 
+ - [Visual Studio 2022](https://visualstudio.microsoft.com/free-developer-offers/) to get Microsoft's compiler. 
+ - [vcpkg](https://vcpkg.io), and use that to install dlib, gcem, and miniz.
+ - [CMake](https://cmake.org/).
+ - [CUDA development kit](https://developer.nvidia.com/cuda-downloads)
+ - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
+ - [Qt](https://www.qt.io).
+
+If you've cloned the repo, from that folder, first make the SYCL version as a DLL:
+```
+mkdir build
+cd build 
+cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
+cmake --build . --config Release
+```
+Next build the main application together with the CUDA version:
+```
+cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
+cmake --build . --config Release
+```
+
+There's also a powershell script named WinBuild.ps1 in the BuildResources folder that does all of this, so you can just run "./Source/BuildResources/WinBuild.Ps1" from the repo root directory to build the whole thing.
+
+
+ ---
   ### Libraries used
 Thanks to the original authors for making their work available! They are all freely available, but of course have their own licenses .etc.
   - [Qt](https://qt.io): This is how the GUI is built in the newest version, and is why it should now use the native style on Windows, Mac, and Linux.
