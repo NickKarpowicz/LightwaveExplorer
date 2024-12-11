@@ -33,7 +33,7 @@ if(MAKESYCL)
         ${MKL_ROOT}/lib/mkl_tbb_thread.lib 
         ${MKL_ROOT}/lib/mkl_core.lib 
         ${MKL_ROOT}/../../compiler/latest/lib/libiomp5md.lib
-        sycl7.lib OpenCL.lib)
+        sycl8.lib OpenCL.lib)
     target_link_libraries(LightwaveExplorerSYCL TBB::tbb)
 else()
     #cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
