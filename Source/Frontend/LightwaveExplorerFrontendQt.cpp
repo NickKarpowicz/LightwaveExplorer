@@ -1759,7 +1759,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 #endif
 
 #ifndef NOSYCL
-    bool isIntelRuntimeInstalled =checkDLL("pi_win_proxy_loader.dll"); 
+    bool isIntelRuntimeInstalled = checkDLL("sycl8.dll"); 
     if (isIntelRuntimeInstalled) {
         theSim.base().SYCLavailable = true;
         char syclDeviceList[1024] = { 0 };

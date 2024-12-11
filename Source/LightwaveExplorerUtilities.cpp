@@ -405,7 +405,7 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 		mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(), fittingLoadedData.fileContents.c_str(), fittingLoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 	}
 	if(!optics.empty()){
-		for(int i = 0; i<optics.size(); i++){
+		for(int i = 0; i<static_cast<int>(optics.size()); i++){
 			std::string opticPath = outputBasePath + "_optic" + std::to_string(i) + ".txt";
 			mz_zip_writer_add_mem(&zip, getBasename(opticPath).c_str(), optics[i].fileContents.c_str(), optics[i].fileContents.size(), MZ_DEFAULT_COMPRESSION);
 		}
@@ -1122,7 +1122,7 @@ int simulationBatch::saveDataSet() {
 		mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(), parameters[0].fittingLoadedData.fileContents.c_str(), parameters[0].fittingLoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 	}
 	if(parameters[0].optics.size()>0){
-		for(int i = 0; i<optics.size(); i++){
+		for(int i = 0; i< static_cast<int>(optics.size()); i++){
 			std::string opticPath = parameters[0].outputBasePath + "_optic" + std::to_string(i) + ".txt";
 			mz_zip_writer_add_mem(&zip, getBasename(opticPath).c_str(), optics[i].fileContents.c_str(), optics[i].fileContents.size(), MZ_DEFAULT_COMPRESSION);
 		}

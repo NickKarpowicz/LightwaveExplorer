@@ -76,9 +76,107 @@ This version makes use of the FFTW library for Fourier transforms and is therefo
 
 The application bundle contains all the required files. If you want to edit the crystal database or default settings, open the app as a folder (right click or control-click on the app and select "show package contents") - You will find them in the Resources folder.
 
+---
 
+### Compiling the GUI app on Linux
+You will at least need the development versions of following installed: fmt, Qt, Cairo, and TBB (these are what they are called on Fedora/dnf, the names might slightly differ on your repo):
+```
+fmt-devel, qt6-qtbase-devel, cairo-devel, tbb-devel
+```
+
+Next, you need a CPU-based FFT library, options are:
+ - MKL from [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
+ - [FFTW](http://fftw.org/)
+
+FFTW is likely available in your distribution, e.g. fftw-devel.
+
+Next, the basic command is to use cmake in the usual way:
+
+```
+mkdir build && cd build
+cmake ..
+cmake --build . --config Release
+```
+and you should have a binary to run. You should either install it (sudo cmake --install .) or copy the files CrystalDatabase.txt and DefaultValues.ini to the build folder and run it.
+
+The basic build will run on your CPU only.
+
+In order to run on a GPU, the options are either CUDA (Nvidia) or SYCL (Intel, AMD or Nvidia).
+
+#### CUDA
+
+To enable CUDA, you need additional flags. Here's an example:
+```
+cmake -DUSE_CUDA=1 -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES=86 ..
+```
+ - USE_CUDA should just be set to 1.
+ - Your CUDA_HOST_COMPILER should be a version of g++ or clang++ compatible with your version of CUDA
+ - Your CUDA_ARCHITECTURES should match your card (on consumer boards: 75 for 20-series, 86 for 30-series, 89 for 40-series)
+
+#### SYCL
+A different set of flags will let you compile to use SYCL. You'll need a SYCL compiler. For Intel, you should use the one in the OneAPI basekit. For AMD, use the [open source version](https://github.com/intel/llvm).
+
+Here's an example for AMD:
+```
+cmake -DUSE_SYCL=1 -DBACKEND_ROCM=gfx906 -DROCM_LIB_PATH=/usr/lib/clang/18/amdgcn/bitcode -DCMAKE_CXX_COMPILER=clang++ ..
+```
+  - USE_SYCL should be 1
+  - BACKEND_ROCM should be set to the board architecture you want to use. This case was with a Radeon VII.
+  - ROCM_LIB_PATH might not be necessary for your system, but on Fedora it was. You have to locate the bitcode folder of the ROCM install.
+  - the compiler is the special version of clang++ from the [DPC++ project](https://github.com/intel/llvm)
+  - rocm, hip, and rocfft must be installed on your system.
+
+Here's an example for Intel:
+```
+cmake -DUSE_SYCL=1 -DCMAKE_CXX_COMPILER=icpx ..
+```
+  - The Intel (SPIR-V) backend is the default, so that's what you get if nothing else is specified
+  - Use the Intel compiler provided by the OneAPI Base Toolkit (icpx). 
+  - You will need to source the OneAPI setvars.sh script first. e.g.
+  ```
+  . /opt/intel/oneapi/setvars.sh
+  ```
+
+You can also use -DBACKEND_CUDA=1 to use SYCL on an Nvidia GPU.
+
+Additional compiler flags:
+  - USE_FFTW, set to 1 if it uses MKL and you don't want it to
+  - CLI, set to 1 to build a command line version
 
 ---
+
+  ### Compiling on Mac
+
+  The first thing you'll need is [Homebrew](https://brew.sh/). If you go there, you'll see a command that you have to run in the terminal. Just paste it and follow the instructions.
+
+  I also made a build script that you can run in the same way; just copy and paste the command below that matches your system and it will compile everything it needs and put the application in your Applications folder. It will take a while, so go get a coffee!
+
+  (Please note that what's happening here is a shell script from the internet piped into the terminal. Never do this if you don't trust the developer, and even then it's a good idea to check the contents of the script by pasting the URL into your browser. Essentially, this is like letting me type into your Mac's terminal. I'm using it to compile the code and copy the resulting app, but someone at your terminal can also delete or copy your files.)
+
+
+  Apple Silicon (M1, M2, .etc) version:
+
+  ```
+  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuild.sh | zsh -s
+  ```
+
+  Intel version:
+  ```
+  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuildIntel.sh | zsh -s
+  ```
+---
+  ### Compilation on clusters
+  
+  A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, the following command should work:
+  ```
+curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/compileCommandLineLWEfromRepos.sh | tcsh -s
+ ```
+ On other clusters you might have to instead dowload the script (e.g. with wget) and change it to suit that system before you run it.
+
+ If you have the GUI version installed locally, you can set up your calculation and then generate a SLURM script to run on the cluster (it will tell you what to do).
+
+ ---
+
 ### Compilation on Windows
 You will need: 
  - [Visual Studio 2022](https://visualstudio.microsoft.com/free-developer-offers/) to get Microsoft's compiler. 
@@ -103,85 +201,8 @@ cmake --build . --config Release
 
 There's also a powershell script named WinBuild.ps1 in the BuildResources folder that does all of this, so you can just run "./Source/BuildResources/WinBuild.Ps1" from the repo root directory to build the whole thing.
 
----
-
-### Compiling the GUI app on Linux
-You'll need the same set of libraries on Linux, however there are a few options so that if you're compiling for your system, you don't have to install the libraries for hardware you won't use.
-
-You will at least need the following (these are what they are called on Fedora/dnf, the names might slightly differ on your repo):
-```
-fmt-devel, qt6-qtbase-devel, cairo-devel, tbb-devel
-```
-Next, choose your FFT libraries:
- - cuFFT from the [CUDA development kit](https://developer.nvidia.com/cuda-downloads)
- - MKL from [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html), either the CPU version of SYCL
- - [FFTW](http://fftw.org/), for CPU
-
- You'll need at least one CPU library (i.e. FFTW or MKL) to handle the GUI.
-
- You can determine which version you get with flags sent to cmake. Here are some useful combinations:
-
-This builds the full thing, requiring both CUDA and the oneAPI toolkit, using MKL for the CPU FFTs (CUDA architecture set to 30 series, and using clang 17 because at the time of writing CUDA won't accept GCC 14 or Clang 18 as host compiler): 
- ```
- cmake -DMAKEFULL=TRUE -DCMAKE_CXX_COMPILER=icpx -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
- ```
-
-This builds the CUDA version, without OneAPI, using FFTW for the CPU FFTs
-```
-cmake -DMAKECUDA=1 -DUSEFFTW=1 -DCMAKE_CUDA_HOST_COMPILER=clang++-17 -DCMAKE_CUDA_COMPILER=nvcc -DCMAKE_CUDA_ARCHITECTURES=86 .. -G Ninja
-```
-
-This builds the SYCL version, without needing the CUDA toolkit:
- ```
- cmake -DMAKESYCL=TRUE -DCMAKE_CXX_COMPILER=icpx .. -G Ninja
- ```
-
-This will make a CPU-only (FFTW) version that doesn't need CUDA or oneAPI (i.e. it only uses things that are probably in your normal repo):
-```
-cmake .. -G Ninja
-```
-
-No matter what configuration you pick, you can now just do
-```
-cmake --build . --config Release
-```
-and you should have a binary to run. You should either install it (sudo cmake --install .) or copy the files CrystalDatabase.txt and DefaultValues.ini to the build folder and run it....
-
----
-
-  ### Compiling on Mac
-
-  The first thing you'll need is [Homebrew](https://brew.sh/). If you go there, you'll see a command that you have to run in the terminal. Just paste it and follow the instructions.
-
-  I also made a build script that you can run in the same way; just copy and paste the command below that matches your system and it will compile everything it needs and put the application in your Applications folder. It will take a while, so go get a coffee!
-
-  (Please note that what's happening here is a shell script from the internet piped into the terminal. Never do this if you don't trust the developer, and even then it's a good idea to check the contents of the script by pasting the URL into your browser. Essentially, this is like letting me type into your Mac's terminal. I'm using it to compile the code and copy the resulting app, but someone at your terminal can also delete or copy your files.)
-
-
-  Apple Silicon (M1, M2, .etc) version:
-
-  ```
-  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuild.sh | zsh -s
-  ```
-
-  Intel version:
-  ```
-  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuildIntel.sh | zsh -s
-  ```
-  
----
-  ### Compilation on clusters
-  
-  A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, the following command should work:
-  ```
-curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/compileCommandLineLWEfromRepos.sh | tcsh -s
- ```
- On other clusters you might have to instead dowload the script (e.g. with wget) and change it to suit that system before you run it.
-
- If you have the GUI version installed locally, you can set up your calculation and then generate a SLURM script to run on the cluster (it will tell you what to do).
 
  ---
-
   ### Libraries used
 Thanks to the original authors for making their work available! They are all freely available, but of course have their own licenses .etc.
   - [Qt](https://qt.io): This is how the GUI is built in the newest version, and is why it should now use the native style on Windows, Mac, and Linux.

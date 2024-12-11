@@ -27,7 +27,7 @@
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceFP32
 	#endif
 #elif defined RUNONSYCL
-	#include <oneapi/mkl/dfti.hpp>
+	#include <oneapi/mkl/dft.hpp>
 	#include <sycl/sycl.hpp>
 	const auto dftPrecision = (LWEFLOATINGPOINT == 32) ? 
 		oneapi::mkl::dft::precision::SINGLE 

@@ -6557,7 +6557,7 @@ namespace hostFunctions{
 		case functionID("applyOptic"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
-			if((*sCPU).optics.size() < static_cast<int>(parameters[0])+1){
+			if((*sCPU).optics.size() < static_cast<std::size_t>(parameters[0])+1){
 				throw std::runtime_error("applyOptic: optic is not loaded");
 			}
 			applyOptic(
@@ -6571,7 +6571,7 @@ namespace hostFunctions{
 		case functionID("applyOpticX"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
-			if((*sCPU).optics.size() < static_cast<int>(parameters[0])+1){
+			if((*sCPU).optics.size() < static_cast<std::size_t>(parameters[0])+1){
 				throw std::runtime_error("applyOpticX: optic is not loaded");
 			}
 			applyOptic(
@@ -6585,7 +6585,7 @@ namespace hostFunctions{
 		case functionID("applyOpticY"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
-			if((*sCPU).optics.size() < static_cast<int>(parameters[0])+1){
+			if((*sCPU).optics.size() < static_cast<std::size_t>(parameters[0])+1){
 				throw std::runtime_error("applyOpticY: optic is not loaded");
 			}
 			applyOptic(

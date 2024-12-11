@@ -8,12 +8,13 @@
 # NOTE THAT THIS WILL DELETE THE LightwaveExplorer FOLDER WHEN DONE
 
 # load modules (you probably don't need this if you're not on the cluster
-# but you will need to set MKL_HOME to the location of MKL)
+
 module purge
-module load gcc/12
-module load mkl/2024.0
-module load cuda/12.2
-module load cmake/3.28
+module load gcc/13
+module load fftw-serial/3.3.10
+module load cuda/12.6
+module load cmake/3.30
+module load ninja/1.11
 
 echo "Cloning LWE repo... "
 git clone https://github.com/NickKarpowicz/LightwaveExplorer >& /dev/null
@@ -22,13 +23,17 @@ mkdir build
 cd build
 
 echo "Starting to compile, this will take a couple of minutes... "
-cmake -DCMAKE_CXX_COMPILER=gcc -DCLICUDA=True -DMKL_ROOT=$MKLROOT -DCMAKE_CUDA_ARCHITECTURES=80 .. --fresh
-make
+cmake -DCMAKE_CXX_COMPILER=gcc -DCLI=1 -DUSE_CUDA=1 -DCMAKE_CUDA_ARCHITECTURES=80 .. -GNinja
+cmake --build . --config Release
 echo "Cleaning up"
 cp LightwaveExplorer ../../lwe
 cd ..
 
-cp Source/BuildResources/ClusterScripts/lweget.sh ../lweget.sh
+cp Source/BuildResources/ClusterScripts/lweget.sh ../
+cp Source/BuildResources/ClusterScripts/fileget.sh ../
+cp Source/BuildResources/ClusterScripts/filesend.sh ../
 cd ..
 chmod +x lweget.sh
+chmod +x fileget.sh
+chmod +x filesend.sh
 rm -rf LightwaveExplorer
