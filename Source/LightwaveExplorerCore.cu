@@ -5766,6 +5766,10 @@ namespace hostFunctions{
 				(maxCalc.frontBuffer + nGroup * maxCalc.crystalThickness + 10 * maxCalc.zStep) 
 				/ (lightC<double>() * maxCalc.tStep);
 			maxCalc.waitFrames = maxCalc.tGridFactor * (maxCalc.waitFrames / maxCalc.tGridFactor);
+
+			if(maxCalc.observationPoint < static_cast<int>(maxCalc.frontBuffer/maxCalc.zStep)){
+				maxCalc.waitFrames = 0;
+			}
 			maxCalc.Nt = maxCalc.waitFrames + (*sCPU).Ntime * maxCalc.tGridFactor;
 		}
 		
