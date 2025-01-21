@@ -6313,14 +6313,15 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 			break;
 		case functionID("fdtd"):
-			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			error = solveFDTD(
 				d, 
 				sCPU, 
 				static_cast<int64_t>(parameters[0]), 
 				parameters[1], 
 				parameters[2], 
-				parameters[3]);
+				parameters[3],
+				parameters[4]);
 			break;
 		case functionID("fdtdGrid"):
 			{std::string filepath = cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1);
