@@ -336,6 +336,27 @@ public:
             value = static_cast<int64_t>((box->text()).toInt());
         };
 
+        enum class SecondValueDefault {Default_zero = 0, Default_same = 1};
+        auto setTwoDoublesIfThereIsASemicolon = [](QLineEdit* box, double& value1, double& value2, SecondValueDefault defaultType, double multiplier = 1.0){
+            QString input = box -> text(); 
+            int semicolonIndex = input.indexOf(';');
+            if(semicolonIndex == -1){
+                value1 = multiplier * input.toDouble();
+                switch(defaultType){
+                    case SecondValueDefault::Default_zero:
+                        value2 = 0.0;
+                        break;
+                    case SecondValueDefault::Default_same:
+                        value2 = value1;
+                        break;
+                }
+            }
+            else{
+                value1 = multiplier * input.left(semicolonIndex).toDouble();
+                value2 = multiplier * input.mid(semicolonIndex+1).toDouble();
+            }
+        };
+
         setToDouble(textBoxes["energy1"],sim.base().pulse1.energy);
         setToDoubleMultiplier(textBoxes["frequency1"],1e-12,sim.base().pulse1.frequency);
         setToDoubleMultiplier(textBoxes["bandwidth1"],1e-12,sim.base().pulse1.bandwidth);
@@ -347,9 +368,9 @@ public:
         setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
         setToDoubleMultiplier(textBoxes["thickness1"],1e6,sim.base().pulse1.phaseMaterialThickness);
         setToDoubleMultiplier(textBoxes["beamwaist1"],1e6,sim.base().pulse1.beamwaist);
-        setToDoubleMultiplier(textBoxes["xOffset1"],1e6,sim.base().pulse1.x0);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset1"], sim.base().pulse1.x0, sim.base().pulse1.y0, SecondValueDefault::Default_zero, 1e-6);
         setToDoubleMultiplier(textBoxes["zOffset1"],1e6,sim.base().pulse1.z0);
-        setToDoubleMultiplier(textBoxes["NCAngle1"],rad2Deg<double>(),sim.base().pulse1.beamAngle);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle1"], sim.base().pulse1.beamAngle, sim.base().pulse1.beamAnglePhi, SecondValueDefault::Default_zero, deg2Rad<double>());
         setToDoubleMultiplier(textBoxes["polarization1"],rad2Deg<double>(),sim.base().pulse1.polarizationAngle);
         setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
 
@@ -364,11 +385,12 @@ public:
         setToInt(textBoxes["material2"],sim.base().pulse2.phaseMaterial);
         setToDoubleMultiplier(textBoxes["thickness2"],1e6,sim.base().pulse2.phaseMaterialThickness);
         setToDoubleMultiplier(textBoxes["beamwaist2"],1e6,sim.base().pulse2.beamwaist);
-        setToDoubleMultiplier(textBoxes["xOffset2"],1e6,sim.base().pulse2.x0);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset2"], sim.base().pulse2.x0, sim.base().pulse2.y0, SecondValueDefault::Default_zero, 1e-6);
         setToDoubleMultiplier(textBoxes["zOffset2"],1e6,sim.base().pulse2.z0);
-        setToDoubleMultiplier(textBoxes["NCAngle2"],rad2Deg<double>(),sim.base().pulse2.beamAngle);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle2"], sim.base().pulse2.beamAngle, sim.base().pulse2.beamAnglePhi, SecondValueDefault::Default_zero, deg2Rad<double>());
         setToDoubleMultiplier(textBoxes["polarization2"],rad2Deg<double>(),sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
+
         sim.base().pulse1FileType = pulldowns["pulse1type"]->currentIndex();
         sim.base().pulse2FileType = pulldowns["pulse2type"]->currentIndex();
         sim.base().fittingMode = pulldowns["fit"]->currentIndex();
@@ -379,7 +401,7 @@ public:
         setToDouble(textBoxes["crystalBandgap"],sim.base().bandGapElectronVolts);
         setToDoubleMultiplier(textBoxes["DrudeGamma"],1e-12,sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);
-        setToDoubleMultiplier(textBoxes["xSize"],1e6,sim.base().spatialWidth);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["xSize"], sim.base().spatialWidth, sim.base().spatialHeight, SecondValueDefault::Default_same, 1e-6);
         setToDoubleMultiplier(textBoxes["dx"],1e6,sim.base().rStep);
         setToDoubleMultiplier(textBoxes["timeSpan"],1e15,sim.base().timeSpan);
         setToDoubleMultiplier(textBoxes["dt"],1e15,sim.base().tStep);
@@ -536,6 +558,36 @@ public:
             QString s(Sformat(std::string_view("{}"), value).c_str());
             box->setText(s);
         };
+
+        enum class NoSemicolonIf{zero = 0, same = 1, same_or_zero = 2};
+        auto setToTwoDoubles = [](QLineEdit* box, const double value1, const double value2, NoSemicolonIf oneValueCondition){
+            bool setBoth = true;
+            switch(oneValueCondition){
+                case NoSemicolonIf::zero:
+                    if(value2==0.0){
+                        setBoth = false;
+                    }
+                    break;
+                case NoSemicolonIf::same:
+                    if(value1==value2){
+                        setBoth = false;
+                    }
+                    break;
+                case NoSemicolonIf::same_or_zero:
+                    if(value1==value2 || value2==0.0){
+                        setBoth = false;
+                    }
+            }
+            if(setBoth){
+                QString s(Sformat(std::string_view("{:g}; {:g}"), value1, value2).c_str());
+                box->setText(s);
+            }
+            else{
+                QString s(Sformat(std::string_view("{:g}"), value1).c_str());
+                box->setText(s);
+            }
+        };
+
         setToDouble(textBoxes["energy1"],sim.base().pulse1.energy);
         setToDouble(textBoxes["frequency1"],1e-12*sim.base().pulse1.frequency);
         setToDouble(textBoxes["bandwidth1"],1e-12*sim.base().pulse1.bandwidth);
@@ -547,9 +599,9 @@ public:
         setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
         setToDouble(textBoxes["thickness1"],1e6*sim.base().pulse1.phaseMaterialThickness);
         setToDouble(textBoxes["beamwaist1"],1e6*sim.base().pulse1.beamwaist);
-        setToDouble(textBoxes["xOffset1"],1e6*sim.base().pulse1.x0);
+        setToTwoDoubles(textBoxes["xOffset1"], 1e6*sim.base().pulse1.x0, 1e6*sim.base().pulse1.y0, NoSemicolonIf::zero);
         setToDouble(textBoxes["zOffset1"],1e6*sim.base().pulse1.z0);
-        setToDouble(textBoxes["NCAngle1"],rad2Deg<double>()*sim.base().pulse1.beamAngle);
+        setToTwoDoubles(textBoxes["NCAngle1"],rad2Deg<double>()*sim.base().pulse1.beamAngle, rad2Deg<double>()*sim.base().pulse1.beamAnglePhi, NoSemicolonIf::zero);
         setToDouble(textBoxes["polarization1"],rad2Deg<double>()*sim.base().pulse1.polarizationAngle);
         setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
 
@@ -564,9 +616,9 @@ public:
         setToInt(textBoxes["material2"],sim.base().pulse2.phaseMaterial);
         setToDouble(textBoxes["thickness2"],1e6*sim.base().pulse2.phaseMaterialThickness);
         setToDouble(textBoxes["beamwaist2"],1e6*sim.base().pulse2.beamwaist);
-        setToDouble(textBoxes["xOffset2"],1e6*sim.base().pulse2.x0);
+        setToTwoDoubles(textBoxes["xOffset2"], 1e6*sim.base().pulse2.x0, 1e6*sim.base().pulse2.y0, NoSemicolonIf::zero);
         setToDouble(textBoxes["zOffset2"],1e6*sim.base().pulse2.z0);
-        setToDouble(textBoxes["NCAngle2"],rad2Deg<double>()*sim.base().pulse2.beamAngle);
+        setToTwoDoubles(textBoxes["NCAngle2"],rad2Deg<double>()*sim.base().pulse2.beamAngle, rad2Deg<double>()*sim.base().pulse2.beamAnglePhi, NoSemicolonIf::zero);
         setToDouble(textBoxes["polarization2"],rad2Deg<double>()*sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
 
@@ -583,7 +635,7 @@ public:
         setToDouble(textBoxes["crystalBandgap"],sim.base().bandGapElectronVolts);
         setToDouble(textBoxes["DrudeGamma"],1e-12*sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);
-        setToDouble(textBoxes["xSize"],1e6*sim.base().spatialWidth);
+        setToTwoDoubles(textBoxes["xSize"],1e6*sim.base().spatialWidth, 1e6*sim.base().spatialHeight, NoSemicolonIf::same_or_zero);
         setToDouble(textBoxes["dx"],1e6*sim.base().rStep);
         setToDouble(textBoxes["timeSpan"],1e15*sim.base().timeSpan);
         setToDouble(textBoxes["dt"],1e15*sim.base().tStep);
