@@ -874,7 +874,7 @@ public:
         " the effect of scanning a wedge pair in the beam.");
         addTextBoxRow("Thickness (\xce\xbcm)", "thickness1", "thickness2", entryColumn1Layout,
         "This sets the thickness of the linear propagation through the material selected above.");
-        addTextBoxRow("Bewamwaist (\xce\xbcm)", "beamwaist1", "beamwaist2", entryColumn1Layout,
+        addTextBoxRow("Beamwaist (\xce\xbcm)", "beamwaist1", "beamwaist2", entryColumn1Layout,
         "Gaussian beamwaist of the input beam in space. In terms of intensity, this is the 1/e^2 radius");
         addTextBoxRow("x offset (\xce\xbcm)", "xOffset1", "xOffset2", entryColumn1Layout,
         "Offset of the beam in the x-direction (up and down on the screen, transverse to propagation).\n"
