@@ -4329,7 +4329,8 @@ namespace hostFunctions{
 		deviceFP backBuffer,
 		deviceFP observationPoint = 0.0,
 		const std::string& materialMapPath = "",
-		bool preserveNearField = false);
+		bool preserveNearField = false,
+		int64_t manualWaitFrames = -1);
 
 	static std::complex<double> hostSellmeierFunc(
 		double ls, 
@@ -5762,14 +5763,14 @@ namespace hostFunctions{
 				0, twoPi<double>() * (2e11 + sCPU->pulse1.frequency), 
 				(*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].sellmeierCoefficients.data(), 1).real();
 			double nGroup = n0 + sCPU->pulse1.frequency * (np1 - nm1) / 4.0e11;
-			maxCalc.waitFrames = 
-				(maxCalc.frontBuffer + nGroup * maxCalc.crystalThickness + 10 * maxCalc.zStep) 
-				/ (lightC<double>() * maxCalc.tStep);
-			maxCalc.waitFrames = maxCalc.tGridFactor * (maxCalc.waitFrames / maxCalc.tGridFactor);
 
-			if(maxCalc.observationPoint < static_cast<int>(maxCalc.frontBuffer/maxCalc.zStep)){
-				maxCalc.waitFrames = 0;
+			if(maxCalc.waitFrames == -1){
+				maxCalc.waitFrames = 
+					(maxCalc.frontBuffer + nGroup * maxCalc.crystalThickness + 10 * maxCalc.zStep) 
+					/ (lightC<double>() * maxCalc.tStep);
+				maxCalc.waitFrames = maxCalc.tGridFactor * (maxCalc.waitFrames / maxCalc.tGridFactor);
 			}
+
 			maxCalc.Nt = maxCalc.waitFrames + (*sCPU).Ntime * maxCalc.tGridFactor;
 		}
 		
@@ -6081,7 +6082,8 @@ namespace hostFunctions{
 		deviceFP backBuffer,
 		deviceFP observationPoint,
 		const std::string& materialMapPath,
-		bool preserveNearField) {
+		bool preserveNearField,
+		int64_t manualWaitFrames) {
 		
 		//initialize the grid if necessary
 		if (!sCPU->isFollowerInSequence) {
@@ -6121,6 +6123,8 @@ namespace hostFunctions{
 				throw std::runtime_error("Invalid observation point in FDTD\n");
 			}
 		}
+		maxCalc.waitFrames = manualWaitFrames;
+
 		prepareFDTD(d, sCPU, maxCalc, materialMapPath);
 		
 		//RK loop
@@ -6327,6 +6331,30 @@ namespace hostFunctions{
 				parameters[3],
 				parameters[4]);
 			break;
+		case functionID("fdtdReflection"):
+    		interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
+    		{
+				int64_t timeFactor = static_cast<int64_t>(parameters[0]);
+				//the front buffer is delta (small distance from front of grid) + enough space
+            	//for the time grid to fit
+                double delta = 64*(sCPU->propagationStep);
+                double frontBuffer = 0.5 * (sCPU->timeSpan)*lightC<double>();
+                double backBuffer = 1e-6;
+                int64_t waitFrames = static_cast<int64_t>(std::round((delta + 2 * frontBuffer) / (lightC<double>() * (sCPU->tStep)/timeFactor)));
+
+                error = solveFDTD(
+    			d,
+    			sCPU,
+    			timeFactor,
+    			parameters[1],
+    			delta+frontBuffer,
+    			backBuffer,
+                delta,
+                "",
+                false,
+                waitFrames);
+            }
+            break;
 		case functionID("fdtdGrid"):
 			{std::string filepath = cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1);
 			std::string newParameterString =cc.substr(cc.find('"', cc.find('"') + 1)+1,std::string::npos);
