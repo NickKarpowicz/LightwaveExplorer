@@ -4327,7 +4327,7 @@ namespace hostFunctions{
 		deviceFP frontBuffer, 
 		deviceFP backBuffer,
 		deviceFP observationPoint = 0.0,
-		const std::string& materialMapPath = "",
+		int gridIndex = -1,
 		bool preserveNearField = false,
 		int64_t manualWaitFrames = -1);
 
@@ -5920,16 +5920,16 @@ namespace hostFunctions{
 		ActiveDevice& d, 
 		const simulationParameterSet* sCPU, 
 		maxwell3D& maxCalc,
-		const std::string& materialMapPath = "") {
+		const int gridIndex = -1) {
 
 		//Check if there is a material map and allocate/load it if necessary
-		if (materialMapPath != "" && (*sCPU).runType != runTypes::counter && (*sCPU).runType != runTypes::cluster) {
+		if (gridIndex != -1 && (*sCPU).runType != runTypes::counter && (*sCPU).runType != runTypes::cluster) {
 			//throw std::runtime_error(std::string("path string:\n").append(materialMapPath));
 			maxCalc.hasMaterialMap = false;
 			int64_t NmaterialPoints = 0;
 			std::vector<int8_t> materialMapCPU(maxCalc.Ngrid, 0);
 			std::vector<int64_t> oscillatorIndexMapCPU(maxCalc.Ngrid, 0);
-			std::ifstream fs(materialMapPath);
+			std::stringstream fs(sCPU->optics[gridIndex].fileContents);
 
 			if (fs.good()) {
 				auto moveToColon = [&]() {
@@ -5977,6 +5977,20 @@ namespace hostFunctions{
 				for (int i = 0; i < NmaterialMax; i++) {
 					fs >> maxCalc.kCarrierGeneration[i];
 				}
+				//Eighth: Initial carriers
+				moveToColon();
+				for (int i = 0; i < NmaterialMax; i++) {
+					fs >> maxCalc.kStartingCarriers[i];
+				}
+				//9th: Dimensions
+				int64_t fileNx{};
+				int64_t fileNy{};
+				int64_t fileNz{};
+				moveToColon();
+				fs >> fileNx >> fileNy >> fileNz;
+				if(fileNx != maxCalc.Nx) throw std::runtime_error("Nx of grid doesn't match file");
+				if(fileNy != maxCalc.Ny) throw std::runtime_error("Ny of grid doesn't match file");
+				if(fileNz != maxCalc.Nz) throw std::runtime_error("Nz of grid doesn't match file: "+std::to_string(fileNz)+" vs. "+std::to_string(maxCalc.Nz));
 				//Eighth: start data
 				int64_t gridCount{};
 				while (fs.good() && gridCount < maxCalc.Ngrid) {
@@ -6085,7 +6099,7 @@ namespace hostFunctions{
 		deviceFP frontBuffer, 
 		deviceFP backBuffer,
 		deviceFP observationPoint,
-		const std::string& materialMapPath,
+		int gridIndex,
 		bool preserveNearField,
 		int64_t manualWaitFrames) {
 		
@@ -6127,7 +6141,7 @@ namespace hostFunctions{
 		}
 		maxCalc.waitFrames = manualWaitFrames;
 
-		prepareFDTD(d, sCPU, maxCalc, materialMapPath);
+		prepareFDTD(d, sCPU, maxCalc, gridIndex);
 		
 		//RK loop
 		for (int64_t i = 0; i < maxCalc.Nt; i++) {
@@ -6321,7 +6335,7 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 			break;
 		case functionID("fdtd"):
-			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
+			interpretParameters(cc, 8, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t timeFactor = 5;
 				if(!defaultMask[0]) timeFactor = static_cast<int64_t>(parameters[0]);
@@ -6333,14 +6347,20 @@ namespace hostFunctions{
 				if(!defaultMask[2]) frontBuffer = parameters[2];
 
 				double backBuffer = 1e-6;
-				if(!defaultMask[3]) frontBuffer = parameters[3];
+				if(!defaultMask[3]) backBuffer = parameters[3];
 
 				double observationPoint = 0.0;
-				if(!defaultMask[4]) frontBuffer = parameters[4];
+				if(!defaultMask[4]) observationPoint = parameters[4];
 
 				double dt = (sCPU->tStep)/timeFactor;
 				int64_t waitFrames = -1;
 				if(!defaultMask[5]) waitFrames = static_cast<int64_t>(round(parameters[5]/dt)); 
+
+				bool preserveNearField = false;
+				if(!defaultMask[6]) preserveNearField = (parameters[6]==1.0);
+
+				int gridIndex = -1;
+				if(!defaultMask[7]) gridIndex = static_cast<int>(parameters[7]);
 
 				error = solveFDTD(
 					d, 
@@ -6350,8 +6370,8 @@ namespace hostFunctions{
 					frontBuffer, 
 					backBuffer,
 					observationPoint,
-					"",
-					false,
+					gridIndex,
+					preserveNearField,
 					waitFrames);
 			}
 			break;
@@ -6363,14 +6383,16 @@ namespace hostFunctions{
 
 				double dz = sCPU->propagationStep;
 				if(!defaultMask[1]) dz = parameters[1];
-				//the front buffer is offset (small distance from front of grid) + enough space
-            	//for the time grid to fit
+
+				//Set the front buffer size to fit the input field
                 double offset = 1e-6;
                 double frontBuffer = 0.5 * (sCPU->timeSpan)*lightC<double>();
+
+				//Set the wait time so that the first moment of the input field
+				//reaches the observation plane after reflecting
 				double dt = (sCPU->tStep)/timeFactor;
                 double waitTime = (offset + 2 * frontBuffer)/lightC<double>();
 				int64_t waitFrames = static_cast<int64_t>(round(waitTime/dt));
-
 
                 error = solveFDTD(
     			d,
@@ -6380,25 +6402,11 @@ namespace hostFunctions{
     			frontBuffer + offset,
     			offset,
                 offset,
-                "",
-                false,
+                -1,
+                true,
                 waitFrames);
             }
             break;
-		case functionID("fdtdGrid"):
-			{std::string filepath = cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1);
-			std::string newParameterString =cc.substr(cc.find('"', cc.find('"') + 1)+1,std::string::npos);
-			newParameterString[0] = '(';
-			interpretParameters(newParameterString, 2, iBlock, vBlock, parameters, defaultMask);}
-			error = solveFDTD(d,
-				sCPU,
-				static_cast<int>(parameters[0]),
-				(*sCPU).propagationStep,
-				0.0,
-				0.0,
-				parameters[1],
-				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
-			break;
 		case functionID("default"):
 			d.reset(sCPU);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
