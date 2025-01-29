@@ -5988,8 +5988,8 @@ namespace hostFunctions{
 				int64_t fileNz{};
 				moveToColon();
 				fs >> fileNx >> fileNy >> fileNz;
-				if(fileNx != maxCalc.Nx) throw std::runtime_error("Nx of grid doesn't match file");
-				if(fileNy != maxCalc.Ny) throw std::runtime_error("Ny of grid doesn't match file");
+				if(fileNx != maxCalc.Nx) throw std::runtime_error("Nx of grid doesn't match file: "+std::to_string(fileNx)+" vs. "+std::to_string(maxCalc.Nx));
+				if(fileNy != maxCalc.Ny) throw std::runtime_error("Ny of grid doesn't match file: "+std::to_string(fileNy)+" vs. "+std::to_string(maxCalc.Ny));
 				if(fileNz != maxCalc.Nz) throw std::runtime_error("Nz of grid doesn't match file: "+std::to_string(fileNz)+" vs. "+std::to_string(maxCalc.Nz));
 				//Eighth: start data
 				int64_t gridCount{};
