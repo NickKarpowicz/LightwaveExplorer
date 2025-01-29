@@ -11,11 +11,11 @@
 //convention: if there are multiple types as inputs, 
 //return type is the type of the first argument
 template<typename T>
-hostOrDevice static consteval T constProd(const T x) {
+hostOrDevice static constexpr T constProd(const T x) {
     return x;
 }
 template<typename T, typename... Args>
-hostOrDevice static consteval T constProd(const T x, const Args... args) {
+hostOrDevice static constexpr T constProd(const T x, const Args... args) {
     return static_cast<T>(x * constProd(args...));
 }
 
@@ -30,11 +30,11 @@ hostOrDevice static constexpr inline T minN(const T a, const U b) {
 }
 //pi to stupid digits
 template <typename T>
-hostOrDevice static consteval T vPi() {
+hostOrDevice static constexpr T vPi() {
     return (T)3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384L;
 }
 template <typename T>
-hostOrDevice static consteval T twoPi() {
+hostOrDevice static constexpr T twoPi() {
     return (T)(2.0 * vPi<T>());
 }
 template <typename T>
@@ -42,15 +42,15 @@ hostOrDevice static consteval T sqrtTwo() {
     return (T)(1.4142135623730951);
 }
 template <typename T>
-hostOrDevice static consteval T invSqrtPi() {
+hostOrDevice static constexpr T invSqrtPi() {
     return (T)(0.56418958354775627928034964497783221304416656494141L);
 }
 template <typename T>
-hostOrDevice static consteval T deg2Rad() {
+hostOrDevice static constexpr T deg2Rad() {
     return (T)(vPi<T>() / 180.0);
 }
 template <typename T>
-hostOrDevice static consteval T rad2Deg() {
+hostOrDevice static constexpr T rad2Deg() {
     return (T)(180.0 / vPi<T>());
 }
 template <typename T>
@@ -70,7 +70,7 @@ hostOrDevice static consteval T mu0() {
     return (T)1.2566370614e-6;
 }
 template <typename T>
-hostOrDevice static consteval T inverseMu0() {
+hostOrDevice static constexpr T inverseMu0() {
     return (T)(1.0/1.2566370614e-6);
 }
 template <typename T>
@@ -82,15 +82,15 @@ hostOrDevice static consteval T inverseZo() {
     return 0.0026544187287534486;
 }
 template <typename T>
-hostOrDevice static consteval T sixth() {
+hostOrDevice static constexpr T sixth() {
     return (T)((T)1.0 / 6.0);
 }
 template <typename T>
-hostOrDevice static consteval T sixtieth() {
+hostOrDevice static constexpr T sixtieth() {
     return (T)((T)1.0 / 60.0);
 }
 template <typename T>
-hostOrDevice static consteval T third() {
+hostOrDevice static constexpr T third() {
     return (T)((T)1.0 / 3.0);
 }
 template <typename T>
@@ -122,7 +122,7 @@ hostOrDevice static consteval T eVtoHz() {
     return elCharge<T>() / planckConstant<T>();
 }
 template<typename T>
-hostOrDevice static consteval T firstDerivativeStencil(const int i){
+hostOrDevice static constexpr T firstDerivativeStencil(const int i){
     switch(i){
         case -3: return static_cast<T>(-1./60.);
         case -2: return static_cast<T>(3./20.);
