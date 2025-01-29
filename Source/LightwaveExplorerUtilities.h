@@ -1167,6 +1167,8 @@ public:
     int64_t NMaterialGrid{};
     int Noscillators{};
     int64_t NtIO{};
+    int64_t fftSize{};
+    int64_t Ninjection{};
     int64_t frequencyLimit{};
     int64_t tGridFactor=1;
     int64_t materialStart{};
@@ -1214,6 +1216,8 @@ public:
         materialStart = frontBuffer / zStep;
         materialStop = materialStart + (crystalThickness / zStep);
         observationPoint = materialStop + 10;
+        Ninjection = NtIO * timeFactor;
+        fftSize = NtIO / 2 + 1;
         tGridFactor = timeFactor;
         Ngrid = Nz * Ny * Nx;
         fillRotationMatricies((*s).crystalTheta, (*s).crystalPhi, 0);

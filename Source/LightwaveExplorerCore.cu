@@ -1542,15 +1542,14 @@ namespace deviceFunctions {
 			return;
 		}
 		//at the front of the grid, run the injection routine
-		else if (zIndex == 0) {
+		else if (zIndex == 0 && (t < s->Ninjection)) {
 			deviceFP tCurrent = s->tStep * t + 0.5f * isAtMidpoint * s->tStep;
 			deviceComplex* fftDataY = (deviceComplex*)s->inputEyFFT;
 			deviceComplex* fftDataX = (deviceComplex*)s->inputExFFT;
-			int64_t fftSize = s->NtIO / 2 + 1;
 			fourierInterpolation(tCurrent, 
-				&fftDataX[xIndex * fftSize], 
-				&fftDataY[xIndex * fftSize], 
-				fftSize, 
+				&fftDataX[xIndex * s->fftSize], 
+				&fftDataY[xIndex * s->fftSize], 
+				s->fftSize, 
 				s->omegaStep, 
 				s->frequencyLimit, 
 				k);
@@ -6334,22 +6333,28 @@ namespace hostFunctions{
 		case functionID("fdtdReflection"):
     		interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
     		{
-				int64_t timeFactor = static_cast<int64_t>(parameters[0]);
-				//the front buffer is delta (small distance from front of grid) + enough space
+				int64_t timeFactor = 6;
+				if(!defaultMask[0]) timeFactor = static_cast<int64_t>(parameters[0]);
+
+				double dz = sCPU->propagationStep;
+				if(!defaultMask[1]) dz = parameters[1];
+				//the front buffer is offset (small distance from front of grid) + enough space
             	//for the time grid to fit
-                double delta = 64*(sCPU->propagationStep);
+                double offset = 1e-6;
                 double frontBuffer = 0.5 * (sCPU->timeSpan)*lightC<double>();
-                double backBuffer = 1e-6;
-                int64_t waitFrames = static_cast<int64_t>(std::round((delta + 2 * frontBuffer) / (lightC<double>() * (sCPU->tStep)/timeFactor)));
+				double dt = (sCPU->tStep)/timeFactor;
+                double waitTime = (offset + 2 * frontBuffer)/lightC<double>();
+				int64_t waitFrames = static_cast<int64_t>(round(waitTime/dt));
+
 
                 error = solveFDTD(
     			d,
     			sCPU,
     			timeFactor,
-    			parameters[1],
-    			delta+frontBuffer,
-    			backBuffer,
-                delta,
+    			dz,
+    			frontBuffer + offset,
+    			offset,
+                offset,
                 "",
                 false,
                 waitFrames);
