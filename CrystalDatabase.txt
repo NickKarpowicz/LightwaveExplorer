@@ -978,6 +978,38 @@ None
 Nonlinear reference frequencies:
 277800000000000.0 277800000000000.0 555700000000000.0 289900000000000.0 289900000000000.0 289900000000000.0 289900000000000.0
 ~~~crystal end~~~
-
-
-
+Name:
+TiO2 L
+Type:
+1
+Sellmeier equation:
+1
+1st axis coefficients:
+3.71556 3.48692e+28 3.56293e+31 4e+10 1.87354e+28 1.44e+32 2.5e+10 4.85098e+25 2.1947e+26 1e+09 1e+23 7.6176e+28 1e+13 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+3.46014 2.35839e+28 3.56293e+31 4e+10 1.78038e+28 1.44e+32 2.5e+10 2.21899e+25 3.0706e+28 1e+09 1e+23 7.6176e+28 1e+13 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+3.46014 2.35839e+28 3.56293e+31 4e+10 1.78038e+28 1.44e+32 2.5e+10 2.21899e+25 3.0706e+28 1e+09 1e+23 7.6176e+28 1e+13 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+M. Kowalczyk et al., Optica 10, 801 (2023).
+chi2 type:
+0
+d:
+0.0 0.0 0.0 0.0 0.0 0.0
+0.0 0.0 0.0 0.0 0.0 0.0
+0.0 0.0 0.0 0.0 0.0 0.0
+d reference:
+none
+chi3 type:
+2
+chi3:
+2.65e-20
+0
+0
+chi3 reference:
+M. Kowalczyk et al., Optica 10, 801 (2023).
+Spectral file:
+None
+Nonlinear reference frequencies:
+2.778e+14 2.778e+14 5.557e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14
+~~~crystal end~~~
