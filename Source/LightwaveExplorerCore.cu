@@ -6104,8 +6104,6 @@ namespace hostFunctions{
 			sCPUcopy.chi3Tensor = sCPUcopy.crystalDatabase[0].chi3.data();
 			sCPUcopy.nonlinearSwitches = 
 				sCPUcopy.crystalDatabase[0].nonlinearSwitches;
-			sCPUcopy.absorptionParameters = 
-				sCPUcopy.crystalDatabase[0].absorptionParameters.data();
 			sCPUcopy.sellmeierCoefficients = 
 				sCPUcopy.crystalDatabase[0].sellmeierCoefficients.data();
 
@@ -6293,7 +6291,6 @@ namespace hostFunctions{
 			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
 			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
 			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
@@ -6315,7 +6312,6 @@ namespace hostFunctions{
 			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
 			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
 			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
@@ -6459,7 +6455,6 @@ namespace hostFunctions{
 			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
 			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
 			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
@@ -6482,7 +6477,6 @@ namespace hostFunctions{
 				(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
 				(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
 				(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
-				(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
 				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 				(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 				(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;

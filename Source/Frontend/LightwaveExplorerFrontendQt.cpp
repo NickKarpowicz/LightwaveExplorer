@@ -534,8 +534,6 @@ public:
             theDatabase.db[sim.base().materialIndex].chi3.data();
         sim.base().nonlinearSwitches = 
             theDatabase.db[sim.base().materialIndex].nonlinearSwitches;
-        sim.base().absorptionParameters = 
-            theDatabase.db[sim.base().materialIndex].absorptionParameters.data();
         sim.base().sellmeierCoefficients = 
             theDatabase.db[sim.base().materialIndex].sellmeierCoefficients.data();
         sim.base().sellmeierType = 

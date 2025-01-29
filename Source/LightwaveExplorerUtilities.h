@@ -332,7 +332,6 @@ public:
     PlasmaParameters<deviceFP> plasmaParameters = {}; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
     deviceFP chi2Tensor[18] = { 0 };
     deviceFP chi3Tensor[81] = { 0 };
-    deviceFP absorptionParameters[6] = { 0 };
     deviceFP rotationForward[9] = { 0 };
     deviceFP rotationBackward[9] = { 0 };
     NonlinearPropertyFlags nonlinearSwitches{};
@@ -380,7 +379,6 @@ public:
     std::string dReference;
     std::array<double,81> chi3 = {};
     std::string chi3Reference;
-    std::array<double,6> absorptionParameters = {};
     std::string spectralFile;
     std::array<double,7> nonlinearReferenceFrequencies = {};
     std::array<double,132> offDiagonalCoefficients = {};
@@ -785,7 +783,6 @@ public:
     double* chi2Tensor = 0;
     double* chi3Tensor = 0;
     double* sellmeierCoefficients = 0;
-    double* absorptionParameters = 0;
     int sellmeierType = 0;
     int axesNumber = 0;
     NonlinearPropertyFlags nonlinearSwitches = {};
@@ -1075,9 +1072,7 @@ public:
             (*s).chi3Tensor[i] = static_cast<deviceFP>(chi3Tensor[i]);
         }
 
-        for (int64_t i = 0; i < 6; i++) {
-            (*s).absorptionParameters[i] = static_cast<deviceFP>(absorptionParameters[i]);
-        }
+
         (*s).plasmaParameters = plasmaParameters;
     }
 };
