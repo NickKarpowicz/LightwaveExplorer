@@ -3541,7 +3541,7 @@ namespace kernelNamespace{
 			const deviceFP Ex = (*s).gridETime1[i];
 			const deviceFP Ey = (*s).gridETime2[i];
 
-			if ((*s).nonlinearSwitches[0] == 1 || (*s).nonlinearSwitches[1] == 1) {
+			if ((*s).nonlinearSwitches.hasChi2 || (*s).nonlinearSwitches.hasChi3) {
 
 				deviceFP P[3]{};
 
@@ -3552,7 +3552,7 @@ namespace kernelNamespace{
 
 				// second order nonlinearity, element-by-element in the reduced tensor
 				//note that for historical reasons, chi2 is column-order and chi3 is row-order...
-				if ((*s).nonlinearSwitches[0] == 1) {
+				if ((*s).nonlinearSwitches.hasChi2) {
 					for (auto a = 0; a < 3; ++a) {
 						P[a] += (*s).chi2Tensor[0 + a] * E3[0] * E3[0];
 						P[a] += (*s).chi2Tensor[3 + a] * E3[1] * E3[1];
@@ -3564,7 +3564,7 @@ namespace kernelNamespace{
 				}
 
 				// resolve the full chi3 matrix when (*s).nonlinearSwitches[1]==1
-				if ((*s).nonlinearSwitches[1] == 1) {
+				if ((*s).nonlinearSwitches.hasChi3 && !((*s).nonlinearSwitches.assumeCentrosymmetric)) {
 					// loop over tensor element X_abcd
 					// i hope the compiler unrolls this, but no way am I writing that out by hand
 					for (auto a = 0; a < 3; ++a) {
@@ -3589,7 +3589,7 @@ namespace kernelNamespace{
 					+ (*s).rotationBackward[5] * P[2];
 
 				//using only one value of chi3, under assumption of centrosymmetry when nonlinearSwitches[1]==2
-				if ((*s).nonlinearSwitches[1] == 2) {
+				if ((*s).nonlinearSwitches.assumeCentrosymmetric) {
 					const deviceFP Esquared = (*s).chi3Tensor[0] * (Ex * Ex + Ey * Ey);
 					(*s).gridPolarizationTime1[i] += Ex * Esquared;
 					(*s).gridPolarizationTime2[i] += Ey * Esquared;
@@ -3632,12 +3632,12 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t i) const {
-			const int pMax = static_cast<int>((*s).nonlinearSwitches[3]);
+			const int pMax = (*s).plasmaParameters.fieldExponent;
 
 			//save values in workspaces, casting to deviceFP
 			deviceFP* dN = (deviceFP*)(*s).workspace1;
 			const deviceFP Esquared = 
-				(*s).plasmaParameters[0] 
+				(*s).plasmaParameters.nonlinearAbsorption
 				* ((*s).gridETime1[i] * (*s).gridETime1[i] 
 					+ (*s).gridETime2[i] * (*s).gridETime2[i]);
 			deviceFP EtoThe2N = Esquared;
@@ -3646,7 +3646,7 @@ namespace kernelNamespace{
 			}
 			(*s).gridPolarizationTime1[i] = EtoThe2N * (*s).gridETime1[i];
 			(*s).gridPolarizationTime2[i] = EtoThe2N * (*s).gridETime2[i];
-			dN[i] = (*s).plasmaParameters[2] * (
+			dN[i] = (*s).plasmaParameters.integrationFactor * (
 				(*s).gridPolarizationTime1[i] * (*s).gridETime1[i] 
 				+ (*s).gridPolarizationTime2[i] * (*s).gridETime2[i]);
 		}
@@ -5817,12 +5817,17 @@ namespace hostFunctions{
 			}
 		}
 		
-		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[0]) 
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches.hasChi2) 
 			maxCalc.hasChi2[mapValue] = true;
-		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[1] == 1) 
-			maxCalc.hasFullChi3[mapValue] = true;
-		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches[1] == 2) 
-			maxCalc.hasSingleChi3[mapValue] = true;
+		if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches.hasChi3) {
+			if ((*sCPU).crystalDatabase[maxCalc.materialKeys[mapValue]].nonlinearSwitches.assumeCentrosymmetric) {
+				maxCalc.hasSingleChi3[mapValue] = true;
+			}
+			else{
+				maxCalc.hasFullChi3[mapValue] = true;
+			}
+		}
+			
 
 		//perform millers rule normalization on the nonlinear coefficients while copying the values
 		double millersRuleFactorChi2 = 2e-12;
@@ -6098,7 +6103,7 @@ namespace hostFunctions{
 			sCPUcopy.chi2Tensor = sCPUcopy.crystalDatabase[0].d.data();
 			sCPUcopy.chi3Tensor = sCPUcopy.crystalDatabase[0].chi3.data();
 			sCPUcopy.nonlinearSwitches = 
-				sCPUcopy.crystalDatabase[0].nonlinearSwitches.data();
+				sCPUcopy.crystalDatabase[0].nonlinearSwitches;
 			sCPUcopy.absorptionParameters = 
 				sCPUcopy.crystalDatabase[0].absorptionParameters.data();
 			sCPUcopy.sellmeierCoefficients = 
@@ -6287,7 +6292,7 @@ namespace hostFunctions{
 			if (!defaultMask[8])(*sCPU).propagationStep = 1e-9 * parameters[8];
 			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
 			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
 			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
@@ -6309,7 +6314,7 @@ namespace hostFunctions{
 			(*sCPU).nonlinearAbsorptionStrength = 0.0;
 			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
 			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
 			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
@@ -6321,19 +6326,43 @@ namespace hostFunctions{
 			break;
 		case functionID("fdtd"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
-			error = solveFDTD(
-				d, 
-				sCPU, 
-				static_cast<int64_t>(parameters[0]), 
-				parameters[1], 
-				parameters[2], 
-				parameters[3],
-				parameters[4]);
+			{
+				int64_t timeFactor = 5;
+				if(!defaultMask[0]) timeFactor = static_cast<int64_t>(parameters[0]);
+
+				double dz = sCPU->propagationStep;
+				if(!defaultMask[1]) dz = parameters[1];
+
+				double frontBuffer = 1e-6;
+				if(!defaultMask[2]) frontBuffer = parameters[2];
+
+				double backBuffer = 1e-6;
+				if(!defaultMask[3]) frontBuffer = parameters[3];
+
+				double observationPoint = 0.0;
+				if(!defaultMask[4]) frontBuffer = parameters[4];
+
+				double dt = (sCPU->tStep)/timeFactor;
+				int64_t waitFrames = -1;
+				if(!defaultMask[5]) waitFrames = static_cast<int64_t>(round(parameters[5]/dt)); 
+
+				error = solveFDTD(
+					d, 
+					sCPU, 
+					timeFactor, 
+					dz, 
+					frontBuffer, 
+					backBuffer,
+					observationPoint,
+					"",
+					false,
+					waitFrames);
+			}
 			break;
 		case functionID("fdtdReflection"):
     		interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
     		{
-				int64_t timeFactor = 6;
+				int64_t timeFactor = 5;
 				if(!defaultMask[0]) timeFactor = static_cast<int64_t>(parameters[0]);
 
 				double dz = sCPU->propagationStep;
@@ -6373,21 +6402,6 @@ namespace hostFunctions{
 				0.0,
 				parameters[1],
 				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
-			break;
-		case functionID("fdtdGridNearField"):
-			{std::string filepath = cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1);
-			std::string newParameterString =cc.substr(cc.find('"', cc.find('"') + 1)+1,std::string::npos);
-			newParameterString[0] = '(';
-			interpretParameters(newParameterString, 2, iBlock, vBlock, parameters, defaultMask);}
-			error = solveFDTD(d,
-				sCPU,
-				static_cast<int>(parameters[0]),
-				(*sCPU).propagationStep,
-				0.0,
-				0.0,
-				parameters[1],
-				cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1),
-				true);
 			break;
 		case functionID("default"):
 			d.reset(sCPU);
@@ -6444,7 +6458,7 @@ namespace hostFunctions{
 			(*sCPU).nonlinearAbsorptionStrength = 0.0;
 			(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
 			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
-			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
 			(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 
@@ -6467,7 +6481,7 @@ namespace hostFunctions{
 				(*sCPU).nonlinearAbsorptionStrength = 0.0;
 				(*sCPU).chi2Tensor = db[(*sCPU).materialIndex].d.data();
 				(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
-				(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches.data();
+				(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
 				(*sCPU).absorptionParameters = db[(*sCPU).materialIndex].absorptionParameters.data();
 				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
 				(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;

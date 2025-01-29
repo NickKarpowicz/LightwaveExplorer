@@ -251,6 +251,36 @@ public:
     }
 };
 
+template<typename deviceFP>
+class PlasmaParameters{
+    public:
+    deviceFP nonlinearAbsorption = {};
+    deviceFP bandgap = {};
+    deviceFP drudeGamma = {};
+    deviceFP effectiveMass = {};
+    deviceFP initialDensity = {};
+    deviceFP integrationFactor = {};
+    int fieldExponent = {};
+
+    PlasmaParameters() = default;
+
+    PlasmaParameters(const PlasmaParameters<double>& other){
+        nonlinearAbsorption = static_cast<deviceFP>(other.nonlinearAbsorption);
+        bandgap = static_cast<deviceFP>(other.bandgap);
+        drudeGamma = static_cast<deviceFP>(other.drudeGamma);
+        effectiveMass = static_cast<deviceFP>(other.effectiveMass);
+        initialDensity = static_cast<deviceFP>(other.initialDensity);
+        integrationFactor = static_cast<deviceFP>(other.integrationFactor);
+        fieldExponent = other.fieldExponent;
+    }
+};
+
+class NonlinearPropertyFlags{
+    public:
+    bool hasChi2 = false;
+    bool hasChi3 = false;
+    bool assumeCentrosymmetric = false;
+};
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
 //with all of the platforms involved, and because it is transferred
@@ -299,13 +329,13 @@ public:
     deviceFP* gridPlasmaCurrent2 = 0;
 
     //fixed length arrays
-    deviceFP plasmaParameters[6] = { 0 }; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
+    PlasmaParameters<deviceFP> plasmaParameters = {}; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
     deviceFP chi2Tensor[18] = { 0 };
     deviceFP chi3Tensor[81] = { 0 };
     deviceFP absorptionParameters[6] = { 0 };
     deviceFP rotationForward[9] = { 0 };
     deviceFP rotationBackward[9] = { 0 };
-    int nonlinearSwitches[4] = { 0 };
+    NonlinearPropertyFlags nonlinearSwitches{};
 
     bool isCylindric = 0;
     bool is3D = 0;
@@ -343,7 +373,7 @@ public:
     std::string crystalName;
     int axisType = 0;
     int sellmeierType = 0;
-    std::array<int,4> nonlinearSwitches = {};
+    NonlinearPropertyFlags nonlinearSwitches = {};
     std::array<double,66> sellmeierCoefficients = {};
     std::string sellmeierReference;
     std::array<double,18> d = {};
@@ -415,6 +445,7 @@ public:
     void loadFromFilestream(std::ifstream& fs){
         std::string line;
         if (!fs.is_open())return;
+        int tempInt = 0;
         while (!fs.eof() && fs.good()) {
             crystalEntry newEntry;
             std::getline(fs, line);//Name:
@@ -460,7 +491,8 @@ public:
             newEntry.sellmeierReference = line;
 
             std::getline(fs, line); // chi2 type:
-            fs >> newEntry.nonlinearSwitches[0];
+            fs >> tempInt;
+            newEntry.nonlinearSwitches.hasChi2 = tempInt == 1;
             std::getline(fs, line);
 
             std::getline(fs, line); //d:
@@ -474,22 +506,24 @@ public:
             newEntry.dReference = line;
 
             std::getline(fs, line); //chi3 type:
-            fs >> newEntry.nonlinearSwitches[1];
+            fs >> tempInt;
             std::getline(fs, line);
-
             std::getline(fs, line); //chi3:
-            
-            switch (newEntry.nonlinearSwitches[1]) {
+            switch (tempInt) {
             case 0: //no chi3, skip all three lines
                 std::getline(fs, line);
                 std::getline(fs, line);
                 std::getline(fs, line);
+                newEntry.nonlinearSwitches.hasChi3 = false;
+                newEntry.nonlinearSwitches.assumeCentrosymmetric = false;
                 break;
             case 1: //read full chi3
                 for (int k = 0; k < 81; ++k) {
                     fs >> newEntry.chi3[k]; //row-order!
                 }
                 std::getline(fs, line);
+                newEntry.nonlinearSwitches.hasChi3 = true;
+                newEntry.nonlinearSwitches.assumeCentrosymmetric = false;
                 break;
 
             case 2: //assume centrosymmetric, just read chi3_1111, then skip
@@ -497,6 +531,9 @@ public:
                 std::getline(fs, line);
                 std::getline(fs, line);
                 std::getline(fs, line);
+
+                newEntry.nonlinearSwitches.hasChi3 = true;
+                newEntry.nonlinearSwitches.assumeCentrosymmetric = true;
                 break;
             }
 
@@ -740,6 +777,7 @@ public:
     double bandGapElectronVolts = 0;
     double effectiveMass = 0;
     double nonlinearAbsorptionStrength = 0;
+    double startingCarrierDensity = 0;
     double drudeGamma = 0;
     double crystalTheta = 0;
     double crystalPhi = 0;
@@ -750,7 +788,7 @@ public:
     double* absorptionParameters = 0;
     int sellmeierType = 0;
     int axesNumber = 0;
-    int* nonlinearSwitches = 0;
+    NonlinearPropertyFlags nonlinearSwitches = {};
     bool isCylindric = 0;
     bool is3D = 0;
     bool isFDTD = 0;
@@ -955,7 +993,7 @@ public:
         (*s).NblockC = static_cast<int>((*s).NgridC / threadsPerBlock);
         (*s).isCylindric = isCylindric;
         (*s).forceLinear = forceLinear;
-        (*s).isNonLinear = (nonlinearSwitches[0] + nonlinearSwitches[1]) > 0;
+        (*s).isNonLinear = (nonlinearSwitches.hasChi2 || nonlinearSwitches.hasChi3);
         (*s).isUsingMillersRule = (crystalDatabase[materialIndex].nonlinearReferenceFrequencies[0]) != 0.0;
 
         if (nonlinearAbsorptionStrength > 0.) {
@@ -1014,19 +1052,16 @@ public:
         (*s).gridPropagationFactor2 = (*s).gridPropagationFactor1 + (*s).NgridC;
         (*s).gridEFrequency2 = (*s).gridEFrequency1 + (*s).NgridC;
 
-        //set nonlinearSwitches[3] to the number of photons needed to overcome bandgap
-        nonlinearSwitches[3] = (int)ceil(bandGapElectronVolts * 241.79893e12 / pulse1.frequency) - 2;
-        double plasmaParametersCPU[6] = { 0 };
-
-
-        plasmaParametersCPU[0] = nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
-        plasmaParametersCPU[1] = drudeGamma; //gamma
+        PlasmaParameters<double> plasmaParameters = {};
+        plasmaParameters.fieldExponent = static_cast<int>(ceil(bandGapElectronVolts * 241.79893e12 / pulse1.frequency) - 2);
+        plasmaParameters.nonlinearAbsorption = nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
+        plasmaParameters.drudeGamma = drudeGamma; //gamma
         if (nonlinearAbsorptionStrength > 0.) {
-            plasmaParametersCPU[2] = tStep * tStep
+            plasmaParameters.integrationFactor = tStep * tStep
                 * 2.817832e-08 / (1.6022e-19 * bandGapElectronVolts * effectiveMass); // (dt^2)*e* e / (m * band gap));
         }
         else {
-            plasmaParametersCPU[2] = 0;
+            plasmaParameters.integrationFactor = 0.0;
         }
 
         for (int j = 0; j < 18; ++j) {
@@ -1034,9 +1069,7 @@ public:
             if (j > 8) (*s).chi2Tensor[j] *= 2.0; //multiply cross-terms by 2 for consistency with convention
         }
 
-        for (int i = 0; i < 4; ++i) {
-            (*s).nonlinearSwitches[i] = nonlinearSwitches[i];
-        }
+        (*s).nonlinearSwitches = nonlinearSwitches;
 
         for (int64_t i = 0; i < 81; i++) {
             (*s).chi3Tensor[i] = static_cast<deviceFP>(chi3Tensor[i]);
@@ -1045,10 +1078,7 @@ public:
         for (int64_t i = 0; i < 6; i++) {
             (*s).absorptionParameters[i] = static_cast<deviceFP>(absorptionParameters[i]);
         }
-
-        for (int64_t i = 0; i < 6; i++) {
-            (*s).plasmaParameters[i] = static_cast<deviceFP>(plasmaParametersCPU[i]);
-        }
+        (*s).plasmaParameters = plasmaParameters;
     }
 };
 
@@ -1136,6 +1166,7 @@ public:
     deviceFP kDrude[NmaterialMax]{};
     deviceFP gammaDrude[NmaterialMax]{};
     deviceFP kCarrierGeneration[NmaterialMax]{};
+    deviceFP kStartingCarriers[NmaterialMax]{};
     deviceFP rotateForward[9][NmaterialMax]{};
     deviceFP rotateBackward[9][NmaterialMax]{};
     bool hasChi2[NmaterialMax]{};

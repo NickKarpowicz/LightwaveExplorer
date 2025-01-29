@@ -159,7 +159,6 @@ class SequenceValidator : public QSyntaxHighlighter {
             "filter",
             "lorentzian",
             "addPulse",
-            "fdtd2d",
             "fdtd",
             "fdtdGrid",
             "fdtdGridNearField",
@@ -534,7 +533,7 @@ public:
         sim.base().chi3Tensor = 
             theDatabase.db[sim.base().materialIndex].chi3.data();
         sim.base().nonlinearSwitches = 
-            theDatabase.db[sim.base().materialIndex].nonlinearSwitches.data();
+            theDatabase.db[sim.base().materialIndex].nonlinearSwitches;
         sim.base().absorptionParameters = 
             theDatabase.db[sim.base().materialIndex].absorptionParameters.data();
         sim.base().sellmeierCoefficients = 

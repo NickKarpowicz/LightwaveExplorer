@@ -866,7 +866,7 @@ int simulationParameterSet::readInputParametersFile(
 	crystalDatabase = crystalDatabasePtr;
 	chi2Tensor = crystalDatabasePtr[materialIndex].d.data();
 	chi3Tensor = crystalDatabasePtr[materialIndex].chi3.data();
-	nonlinearSwitches = crystalDatabasePtr[materialIndex].nonlinearSwitches.data();
+	nonlinearSwitches = crystalDatabasePtr[materialIndex].nonlinearSwitches;
 	absorptionParameters = crystalDatabasePtr[materialIndex].absorptionParameters.data();
 	sellmeierCoefficients = crystalDatabasePtr[materialIndex].sellmeierCoefficients.data();
 	sellmeierType = crystalDatabasePtr[materialIndex].sellmeierType;
