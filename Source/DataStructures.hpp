@@ -244,7 +244,8 @@ class PlasmaParameters{
 
     PlasmaParameters() = default;
 
-    PlasmaParameters(const PlasmaParameters<double>& other){
+    template<typename otherFP>
+    PlasmaParameters(const PlasmaParameters<otherFP>& other){
         nonlinearAbsorption = static_cast<deviceFP>(other.nonlinearAbsorption);
         bandgap = static_cast<deviceFP>(other.bandgap);
         drudeGamma = static_cast<deviceFP>(other.drudeGamma);
