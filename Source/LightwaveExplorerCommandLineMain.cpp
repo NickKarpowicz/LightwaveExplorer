@@ -1,5 +1,6 @@
 #include "LightwaveExplorerTrilingual.h"	
 #include "LightwaveExplorerUtilities.h"
+#include "LightwaveExplorerInterfaceClasses.hpp"
 #include <iostream>
 #include <chrono>
 #include <thread>

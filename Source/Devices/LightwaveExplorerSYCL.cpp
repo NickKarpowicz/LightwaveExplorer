@@ -2,6 +2,7 @@
 #define RUNONSYCL
 #define LWEFLOATINGPOINT 64
 #include "../LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerInterfaceClasses.hpp"
 #include "LightwaveExplorerSYCL.h"
 #include "LightwaveExplorerCore.cu"
 #include <string>
