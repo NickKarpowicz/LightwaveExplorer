@@ -55,7 +55,7 @@ static bool zipContainsFile(std::string zipPath, std::string filename){
 	return fileIndex > 0;
 }
 
-static std::string zipGetBasename(const std::string& zipPath){
+[[maybe_unused]] static std::string zipGetBasename(const std::string& zipPath){
 	mz_zip_archive zip = {};
 	mz_zip_reader_init_file(&zip, zipPath.c_str(), 0);
 	auto nfiles = mz_zip_reader_get_num_files(&zip);

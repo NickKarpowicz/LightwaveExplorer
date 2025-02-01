@@ -49,7 +49,7 @@ elseif(USE_CUDA)
         Source/LightwaveExplorerCore.cu 
         Source/Devices/LightwaveExplorerCoreFP32.cu)
     add_definitions(-DNOSYCL)
-    add_compile_options(-O3 -Wpedantic)
+    add_compile_options(-O3 -Wpedantic -Wall)
     if(OpenMP_FOUND)
         add_compile_options(${OpenMP_CXX_FLAGS})
     endif()

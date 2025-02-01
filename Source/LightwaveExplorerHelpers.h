@@ -135,16 +135,6 @@ hostOrDevice static constexpr T firstDerivativeStencil(const int i){
     return static_cast<T>(0.0);
 }
 
-//this is a job for std::erase, but when running the code on the cluster, everything
-//is done with nvcc, with only an old version of cmake available. This means I can't
-//use c++20 features there. So if it's compiled with c++17, use the more complicated
-//function, otherwise just inline to std::erase.
-#if __cplusplus<=201703L
-inline void removeCharacterFromString(std::string& s, const char removedChar) {
-    s.erase(std::remove(s.begin(), s.end(), removedChar), s.end());
-}
-#else
 inline void removeCharacterFromString(std::string& s, const char removedChar) {
 	std::erase(s, removedChar);
 }
-#endif
