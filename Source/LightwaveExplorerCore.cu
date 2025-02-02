@@ -1593,7 +1593,7 @@ namespace hostFunctions{
 				maxCalc.Noscillators++;
 				maxCalc.hasPlasma[mapValue] = true;
 				maxCalc.kCarrierGeneration[mapValue] = 2.0 / ((*sCPU).bandGapElectronVolts);
-				maxCalc.kDrude[mapValue] = - eps0<double>() * elCharge<double>() 
+				maxCalc.kDrude[mapValue] = - elCharge<double>() * elCharge<double>() 
 					/ ((*sCPU).effectiveMass * elMass<double>());
 				maxCalc.gammaDrude[mapValue] = (*sCPU).drudeGamma;
 				maxCalc.kNonlinearAbsorption[mapValue] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;

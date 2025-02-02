@@ -424,6 +424,7 @@ public:
         plasmaParameters.fieldExponent = static_cast<int>(ceil(bandGapElectronVolts * 241.79893e12 / pulse1.frequency) - 2);
         plasmaParameters.nonlinearAbsorption = nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
         plasmaParameters.drudeGamma = drudeGamma; //gamma
+        plasmaParameters.initialDensity = startingCarrierDensity;
         if (nonlinearAbsorptionStrength > 0.) {
             plasmaParameters.integrationFactor = tStep * tStep
                 * 2.817832e-08 / (1.6022e-19 * bandGapElectronVolts * effectiveMass); // (dt^2)*e* e / (m * band gap));

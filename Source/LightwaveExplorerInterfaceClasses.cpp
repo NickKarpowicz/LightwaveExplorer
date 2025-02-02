@@ -413,7 +413,7 @@ std::string simulationParameterSet::settingsString(){
 	fs << "Thickness (m): " << crystalThickness << '\x0A';
 	fs << "dz (m): " << propagationStep << '\x0A';
 	fs << "Nonlinear absorption parameter: " << nonlinearAbsorptionStrength << '\x0A';
-	fs << "Starting carrier density: " << startingCarrierDensity << '\x0A';
+	fs << "Initial carrier density (m^-3): " << startingCarrierDensity << '\x0A';
 	fs << "Band gap (eV): " << bandGapElectronVolts << '\x0A';
 	fs << "Effective mass (relative): " << effectiveMass << '\x0A';
 	fs << "Drude gamma (Hz): " << drudeGamma << '\x0A';

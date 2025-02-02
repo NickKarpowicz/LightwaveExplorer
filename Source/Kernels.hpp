@@ -1367,7 +1367,7 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t i) const {
 			const int64_t j = (i) * (*s).Ntime;
-			deviceFP N{};
+			deviceFP N=s->plasmaParameters.initialDensity;
 			deviceFP integralx{};
 			deviceFP integraly{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
