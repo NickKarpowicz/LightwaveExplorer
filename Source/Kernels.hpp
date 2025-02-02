@@ -1727,6 +1727,34 @@ namespace kernelNamespace{
 		}
 	};
 
+	class maxwellSetInitialCarrierDensity{
+		public:
+		maxwell3D* s;
+		deviceFunction void operator()(int64_t i) const {
+			const int64_t xIndex = i / s->Nz;
+			const int64_t zIndex = i - s->Nz * xIndex;
+			bool solveMaterialEquations = s->hasMaterialMap ?
+				s->materialMap[i] > 0
+				: zIndex >= s->materialStart && zIndex < s->materialStop;
+
+			if (solveMaterialEquations) {
+				const int64_t oscillatorIndex = s->hasMaterialMap ?
+					s->oscillatorIndexMap[i] * s->Noscillators
+					: (zIndex - s->materialStart) * s->Noscillators 
+					+ xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
+				const int oscillatorType = s->hasMaterialMap ?
+					s->materialMap[i] - 1
+					: 0;
+				if(s->hasPlasma[oscillatorType]){
+					s->materialGrid[oscillatorIndex + s->Noscillators - 1].P.x = s->startingCarriers[oscillatorType];
+					s->materialGridEstimate[oscillatorIndex + s->Noscillators - 1].P.x = s->startingCarriers[oscillatorType];
+					s->materialGridEstimate2[oscillatorIndex + s->Noscillators - 1].P.x = s->startingCarriers[oscillatorType];
+					s->materialGridNext[oscillatorIndex + s->Noscillators - 1].P.x = s->startingCarriers[oscillatorType];
+				}
+			}
+		}
+	};
+
 	class beamNormalizeKernel {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;

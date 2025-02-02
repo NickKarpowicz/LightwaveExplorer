@@ -1781,6 +1781,12 @@ namespace hostFunctions{
 			sizeof(maxwell3D), 
 			copyType::ToDevice);
 		maxCalc.deviceCopy = maxCalcDevice;
+
+		//if there is an initial plasma population, set the values in the material grid
+		d.deviceLaunch(
+				maxCalc.Ngrid / 64, 
+				64, 
+				maxwellSetInitialCarrierDensity{ maxCalc.deviceCopy});
 	}
 
 	static unsigned long int solveFDTD(
