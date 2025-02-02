@@ -364,7 +364,7 @@ public:
         (*s).isNonLinear = (nonlinearSwitches.hasChi2 || nonlinearSwitches.hasChi3);
         (*s).isUsingMillersRule = (crystalDatabase[materialIndex].nonlinearReferenceFrequencies[0]) != 0.0;
 
-        if (nonlinearAbsorptionStrength > 0.) {
+        if (nonlinearAbsorptionStrength > 0. || startingCarrierDensity > 0) {
             (*s).hasPlasma = true;
             (*s).isNonLinear = true;
         }

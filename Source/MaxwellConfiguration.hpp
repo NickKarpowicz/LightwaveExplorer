@@ -31,7 +31,7 @@ public:
     deviceFP kDrude[NmaterialMax]{};
     deviceFP gammaDrude[NmaterialMax]{};
     deviceFP kCarrierGeneration[NmaterialMax]{};
-    deviceFP kStartingCarriers[NmaterialMax]{};
+    deviceFP startingCarriers[NmaterialMax]{};
     deviceFP rotateForward[9][NmaterialMax]{};
     deviceFP rotateBackward[9][NmaterialMax]{};
     bool hasChi2[NmaterialMax]{};

@@ -413,6 +413,7 @@ std::string simulationParameterSet::settingsString(){
 	fs << "Thickness (m): " << crystalThickness << '\x0A';
 	fs << "dz (m): " << propagationStep << '\x0A';
 	fs << "Nonlinear absorption parameter: " << nonlinearAbsorptionStrength << '\x0A';
+	fs << "Starting carrier density: " << startingCarrierDensity << '\x0A';
 	fs << "Band gap (eV): " << bandGapElectronVolts << '\x0A';
 	fs << "Effective mass (relative): " << effectiveMass << '\x0A';
 	fs << "Drude gamma (Hz): " << drudeGamma << '\x0A';
@@ -584,135 +585,99 @@ int simulationParameterSet::readInputParametersFile(
 	
 	std::string line;
 	std::stringstream fs(contents);
-	
-	
 	if (fs.fail()) return 1;
 
-	auto moveToColon = [&]() {
-		char x = 0;
-		while (x != ':' && fs.good()) {
-			fs >> x;
-		}
-		return 0;
+	auto moveToColon = [&fs]() {
+		fs.ignore(std::numeric_limits<std::streamsize>::max(), ':');
 	};
 
-	moveToColon();
-	fs >> pulse1.energy;
-	moveToColon();
-	fs >> pulse2.energy;
-	moveToColon();
-	fs >> pulse1.frequency;
-	moveToColon();
-	fs >> pulse2.frequency;
-	moveToColon();
-	fs >> pulse1.bandwidth;
-	moveToColon();
-	fs >> pulse2.bandwidth;
-	moveToColon();
-	fs >> pulse1.sgOrder;
-	moveToColon();
-	fs >> pulse2.sgOrder;
-	moveToColon();
-	fs >> pulse1.cep;
-	moveToColon();
-	fs >> pulse2.cep;
-	moveToColon();
-	fs >> pulse1.delay;
-	moveToColon();
-	fs >> pulse2.delay;
-	moveToColon();
-	fs >> pulse1.gdd;
-	moveToColon();
-	fs >> pulse2.gdd;
-	moveToColon();
-	fs >> pulse1.tod;
-	moveToColon();
-	fs >> pulse2.tod;
-	moveToColon();
-	fs >> pulse1.phaseMaterial;
-	moveToColon();
-	fs >> pulse2.phaseMaterial;
-	moveToColon();
-	fs >> pulse1.phaseMaterialThickness;
-	moveToColon();
-	fs >> pulse2.phaseMaterialThickness;
-	moveToColon();
-	moveToColon();
-	fs >> pulse1.beamwaist;
-	moveToColon();
-	fs >> pulse2.beamwaist;
-	moveToColon();
-	fs >> pulse1.x0;
-	moveToColon();
-	fs >> pulse2.x0;
-	moveToColon();
-	fs >> pulse1.y0;
-	moveToColon();
-	fs >> pulse2.y0;
-	moveToColon();
-	fs >> pulse1.z0;
-	moveToColon();
-	fs >> pulse2.z0;
-	moveToColon();
-	fs >> pulse1.beamAngle;
-	moveToColon();
-	fs >> pulse2.beamAngle;
-	moveToColon();
-	fs >> pulse1.beamAnglePhi;
-	moveToColon();
-	fs >> pulse2.beamAnglePhi;
-	moveToColon();
-	fs >> pulse1.polarizationAngle;
-	moveToColon();
-	fs >> pulse2.polarizationAngle;
-	moveToColon();
-	fs >> pulse1.circularity;
-	moveToColon();
-	fs >> pulse2.circularity;
-	moveToColon();
-	fs >> materialIndex;
-	moveToColon();
-	fs >> materialIndexAlternate;
-	moveToColon();
-	fs >> crystalTheta;
-	moveToColon();
-	fs >> crystalPhi;
-	moveToColon();
-	fs >> spatialWidth;
-	moveToColon();
-	fs >> spatialHeight;
-	moveToColon();
-	fs >> rStep;
-	moveToColon();
-	fs >> timeSpan;
-	moveToColon();
-	fs >> tStep;
-	moveToColon();
-	fs >> crystalThickness;
-	moveToColon();
-	fs >> propagationStep;
-	moveToColon();
-	fs >> nonlinearAbsorptionStrength;
-	moveToColon();
-	fs >> bandGapElectronVolts;
-	moveToColon();
-	fs >> effectiveMass;
-	moveToColon();
-	fs >> drudeGamma;
-	moveToColon();
-	fs >> symmetryType;
-	moveToColon();
-	fs >> batchIndex;
-	moveToColon();
-	fs >> batchDestination;
-	moveToColon();
-	fs >> Nsims;
-	moveToColon();
-	fs >> batchIndex2;
-	moveToColon();
-	fs >> batchDestination2;
-	moveToColon();
-	fs >> Nsims2;
+	//Check if the next line in the stream contains the label expectedLabel followed by a colon
+	//if it does, return the number that follows as a number
+	//if there's no colon, or the label isn't what was expected,
+	//return the stream to the starting position and return the default value
+	auto checkLineName = [&fs](const std::string& expectedLabel, double defaultValue){
+		std::string line;
+		std::streampos startingPosition = fs.tellg();
+		std::getline(fs, line);
+		std::size_t colon = line.find(':');
+		if(colon == std::string::npos) {
+			fs.seekg(startingPosition);
+			return defaultValue;
+		}
+		std::string label = line.substr(0,colon);
+		std::string value = line.substr(colon+1);
+		std::size_t firstNonWhitespace = value.find_first_not_of(" \t");
+		if(firstNonWhitespace != std::string::npos && firstNonWhitespace != 0){
+			value.erase(0,firstNonWhitespace);
+		}
+		value.erase(value.find_last_not_of(" \t")+1);
+		if (label == expectedLabel){
+			return std::stod(value);
+		}
+		fs.seekg(startingPosition);
+		return defaultValue;
+	};
+
+	pulse1.energy = checkLineName("Pulse energy 1 (J)", 0.0);
+	pulse2.energy = checkLineName("Pulse energy 2 (J)", 0.0);
+	pulse1.frequency = checkLineName("Frequency 1 (Hz)", 0.0);
+	pulse2.frequency = checkLineName("Frequency 2 (Hz)", 0.0);
+	pulse1.bandwidth = checkLineName("Bandwidth 1 (Hz)", 0.0);
+	pulse2.bandwidth = checkLineName("Bandwidth 2 (Hz)", 0.0);
+	pulse1.sgOrder = checkLineName("SG order 1", 6);
+	pulse2.sgOrder = checkLineName("SG order 2", 6);
+	pulse1.cep = checkLineName("CEP 1 (rad)", 0.0);
+	pulse2.cep = checkLineName("CEP 2 (rad)", 0.0);
+	pulse1.delay = checkLineName("Delay 1 (s)", 0.0);
+	pulse2.delay = checkLineName("Delay 2 (s)", 0.0);
+	pulse1.gdd = checkLineName("GDD 1 (s^-2)", 0.0);
+	pulse2.gdd = checkLineName("GDD 2 (s^-2)", 0.0);
+	pulse1.tod = checkLineName("TOD 1 (s^-3)", 0.0);
+	pulse2.tod = checkLineName("TOD 2 (s^-3)", 0.0);
+	pulse1.phaseMaterial = checkLineName("Phase material 1 index", 0.0);
+	pulse2.phaseMaterial = checkLineName("Phase material 2 index", 0.0);
+	pulse1.phaseMaterialThickness = checkLineName("Phase material thickness 1 (mcr.)", 0.0);
+	pulse2.phaseMaterialThickness = checkLineName("Phase material thickness 2 (mcr.)", 0.0);
+	checkLineName("Beam mode placeholder", 0.0);
+	pulse1.beamwaist = checkLineName("Beamwaist 1 (m)", 0.0);
+	pulse2.beamwaist = checkLineName("Beamwaist 2 (m)", 0.0);
+	pulse1.x0 = checkLineName("x offset 1 (m)", 0.0);
+	pulse2.x0 = checkLineName("x offset 2 (m)", 0.0);
+	pulse1.y0 = checkLineName("y offset 1 (m)", 0.0);
+	pulse2.y0 = checkLineName("y offset 2 (m)", 0.0);
+	pulse1.z0 = checkLineName("z offset 1 (m)", 0.0);
+	pulse2.z0 = checkLineName("z offset 2 (m)", 0.0);
+	pulse1.beamAngle = checkLineName("NC angle 1 (rad)", 0.0);
+	pulse2.beamAngle = checkLineName("NC angle 2 (rad)", 0.0);
+	pulse1.beamAnglePhi = checkLineName("NC angle phi 1 (rad)", 0.0);
+	pulse2.beamAnglePhi = checkLineName("NC angle phi 2 (rad)", 0.0);
+	pulse1.polarizationAngle = checkLineName("Polarization 1 (rad)", 0.0);
+	pulse2.polarizationAngle = checkLineName("Polarization 2 (rad)", 0.0);
+	pulse1.circularity = checkLineName("Circularity 1", 0.0);
+	pulse2.circularity = checkLineName("Circularity 2", 0.0);
+	materialIndex = checkLineName("Material index", 0.0);
+	materialIndexAlternate = checkLineName("Alternate material index", 0.0);
+	crystalTheta = checkLineName("Crystal theta (rad)", 0.0);
+	crystalPhi = checkLineName("Crystal phi (rad)", 0.0);
+	spatialWidth = checkLineName("Grid width (m)", 0.0);
+	spatialHeight = checkLineName("Grid height (m)", 0.0);
+	rStep = checkLineName("dx (m)", 0.0);
+	timeSpan = checkLineName("Time span (s)", 0.0);
+	tStep = checkLineName("dt (s)", 0.0);
+	crystalThickness = checkLineName("Thickness (m)", 0.0);
+	propagationStep = checkLineName("dz (m)", 0.0);
+	nonlinearAbsorptionStrength = checkLineName("Nonlinear absorption parameter", 0.0);
+	startingCarrierDensity = checkLineName("Initial carrier density (m^-3)", 0.0);
+	bandGapElectronVolts = checkLineName("Band gap (eV)", 0.0);
+	effectiveMass = checkLineName("Effective mass (relative)", 0.0);
+	drudeGamma = checkLineName("Drude gamma (Hz)", 0.0);
+	symmetryType = checkLineName("Propagation mode", 0.0);
+	batchIndex = checkLineName("Batch mode", 0.0);
+	batchDestination = checkLineName("Batch destination", 0.0);
+	Nsims = checkLineName("Batch steps", 0.0);
+	batchIndex2 = checkLineName("Batch mode 2", 0.0);
+	batchDestination2 = checkLineName("Batch destination 2", 0.0);
+	Nsims2 = checkLineName("Batch steps 2", 0.0);
 
 	moveToColon();
 	std::getline(fs, line);

@@ -397,7 +397,7 @@ public:
         sim.base().materialIndex = pulldowns["material"]->currentIndex();
         setToDoubleMultiplier(textBoxes["crystalTheta"],rad2Deg<double>(),sim.base().crystalTheta);
         setToDoubleMultiplier(textBoxes["crystalPhi"],rad2Deg<double>(),sim.base().crystalPhi);
-        setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength, sim.base().startingCarrierDensity, SecondValueDefault::Default_zero);
         setToDouble(textBoxes["crystalBandgap"],sim.base().bandGapElectronVolts);
         setToDoubleMultiplier(textBoxes["DrudeGamma"],1e-12,sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);
@@ -629,7 +629,7 @@ public:
         
         setToDouble(textBoxes["crystalTheta"],rad2Deg<double>() * sim.base().crystalTheta);
         setToDouble(textBoxes["crystalPhi"],rad2Deg<double>() *sim.base().crystalPhi);
-        setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
+        setToTwoDoubles(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength, sim.base().startingCarrierDensity, NoSemicolonIf::zero);
         setToDouble(textBoxes["crystalBandgap"],sim.base().bandGapElectronVolts);
         setToDouble(textBoxes["DrudeGamma"],1e-12*sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);

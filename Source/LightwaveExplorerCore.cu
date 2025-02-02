@@ -1589,7 +1589,7 @@ namespace hostFunctions{
 			}
 
 			//collect plasma properties
-			if ((*sCPU).nonlinearAbsorptionStrength > 0.0) {
+			if ((*sCPU).nonlinearAbsorptionStrength > 0.0 || (*sCPU).startingCarrierDensity > 0.0) {
 				maxCalc.Noscillators++;
 				maxCalc.hasPlasma[mapValue] = true;
 				maxCalc.kCarrierGeneration[mapValue] = 2.0 / ((*sCPU).bandGapElectronVolts);
@@ -1597,6 +1597,7 @@ namespace hostFunctions{
 					/ ((*sCPU).effectiveMass * elMass<double>());
 				maxCalc.gammaDrude[mapValue] = (*sCPU).drudeGamma;
 				maxCalc.kNonlinearAbsorption[mapValue] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;
+				maxCalc.startingCarriers[mapValue] = (*sCPU).startingCarrierDensity;
 				maxCalc.nonlinearAbsorptionOrder[mapValue] = static_cast<int>(
 					std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts 
 						/ (*sCPU).pulse1.frequency)) - 1;
@@ -1651,7 +1652,7 @@ namespace hostFunctions{
 				moveToColon();
 				for (int i = 0; i < NmaterialMax; i++) {
 					fs >> maxCalc.kNonlinearAbsorption[i];
-					maxCalc.hasPlasma[i] = maxCalc.kNonlinearAbsorption[i] > 0.0;
+					maxCalc.hasPlasma[i] = (maxCalc.kNonlinearAbsorption[i] > 0.0) || (maxCalc.startingCarriers[i] > 0);
 				}
 				//Fifth: bandgap
 				moveToColon();
@@ -1671,7 +1672,7 @@ namespace hostFunctions{
 				//Eighth: Initial carriers
 				moveToColon();
 				for (int i = 0; i < NmaterialMax; i++) {
-					fs >> maxCalc.kStartingCarriers[i];
+					fs >> maxCalc.startingCarriers[i];
 				}
 				//9th: Dimensions
 				int64_t fileNx{};
@@ -2191,6 +2192,7 @@ namespace hostFunctions{
 				if (!defaultMask[3])(*sCPU).crystalThickness = 1e-6 * parameters[3];
 				if (d.hasPlasma) {
 					(*sCPU).nonlinearAbsorptionStrength = 0.0;
+					(*sCPU).startingCarrierDensity = 0.0;
 					(*sCPU).forceLinear = true;
 				}
 				(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
