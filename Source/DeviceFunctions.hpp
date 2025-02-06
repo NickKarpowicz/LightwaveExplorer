@@ -758,4 +758,14 @@ namespace deviceFunctions {
 		}
 		return deviceFP{};
 	}
+
+	template<typename deviceFP>
+	deviceFunction inline void simpson_step(deviceFP integralValues[3], deviceFP integrandValues[3], deviceFP newIntegrandValue){
+		integrandValues[0] = integrandValues[1];
+		integrandValues[1] = integrandValues[2];
+		integrandValues[2] = newIntegrandValue;
+		integralValues[2] = integralValues[0] + third<deviceFP>() * (integrandValues[0] + 4.0f * integrandValues[1] + integrandValues[2]);
+		integralValues[0] = integralValues[1];
+		integralValues[1] = integralValues[2];
+	}
 }

@@ -425,9 +425,10 @@ public:
         plasmaParameters.nonlinearAbsorption = nonlinearAbsorptionStrength; //nonlinear absorption strength parameter
         plasmaParameters.drudeGamma = drudeGamma; //gamma
         plasmaParameters.initialDensity = startingCarrierDensity;
+        plasmaParameters.energyFactor = tStep / (elCharge<double>() * bandGapElectronVolts);
         if (nonlinearAbsorptionStrength > 0.) {
-            plasmaParameters.integrationFactor = tStep * tStep
-                * 2.817832e-08 / (1.6022e-19 * bandGapElectronVolts * effectiveMass); // (dt^2)*e* e / (m * band gap));
+            plasmaParameters.integrationFactor = tStep
+                * 2.817832e-08 / (effectiveMass * eps0<double>()); // dt*e* e / epsilon0*m;
         }
         else {
             plasmaParameters.integrationFactor = 0.0;

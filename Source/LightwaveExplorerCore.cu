@@ -2143,6 +2143,9 @@ namespace hostFunctions{
 					&& saveLoc != 0 
 					&& (*sCPU).runType != runTypes::counter) 
 					savePlasma(d, saveLoc, plasmaLoc);
+				else if ((*sCPU).runType == runTypes::counter){
+					return error;
+				}
 				else {
 					throw std::runtime_error(
 						std::string("Attempted out-of-bounds savePlasma() to index ")

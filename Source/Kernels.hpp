@@ -983,7 +983,7 @@ namespace kernelNamespace{
 
 				(*s).chiLinear1[i] = ne - 1.0f;
 				(*s).chiLinear2[i] = no - 1.0f;
-				if ((*s).chiLinear1[i].real() != 0.0f && (*s).chiLinear2[i].real() != 0.0f) {
+				if (i > 0 && i < ((*s).Nfreq-1) &&(*s).chiLinear1[i].real() != 0.0f && (*s).chiLinear2[i].real() != 0.0f) {
 					(*s).inverseChiLinear1[i] = 1.0f / (*s).chiLinear1[i].real();
 					(*s).inverseChiLinear2[i] = 1.0f / (*s).chiLinear2[i].real();
 				}
@@ -1337,7 +1337,7 @@ namespace kernelNamespace{
 			}
 			(*s).gridPolarizationTime1[i] = EtoThe2N * (*s).gridETime1[i];
 			(*s).gridPolarizationTime2[i] = EtoThe2N * (*s).gridETime2[i];
-			dN[i] = (*s).plasmaParameters.integrationFactor * (
+			dN[i] = (*s).plasmaParameters.energyFactor * (
 				(*s).gridPolarizationTime1[i] * (*s).gridETime1[i] 
 				+ (*s).gridPolarizationTime2[i] * (*s).gridETime2[i]);
 		}
@@ -1347,17 +1347,23 @@ namespace kernelNamespace{
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t i) const {
-			const int64_t j = i * (*s).Ntime;
-			deviceFP N = s->plasmaParameters.initialDensity;
-			deviceFP integralx{};
+			const int64_t j = (i) * (*s).Ntime;
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-			const deviceFP* dN = (j % (*s).Ngrid) + (deviceFP*)(*s).workspace1;
+			const deviceFP* dN = j + reinterpret_cast<deviceFP*>((*s).workspace1);
 			const deviceFP* E = &(*s).gridETime1[j];
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
+			deviceFP integrand_N[3]{};
+			deviceFP integral_N[3]{ s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity};
+			deviceFP integrand_x[3]{};
+			deviceFP integral_x[3]{};
+
+
 			for (int64_t k{}; k < (*s).Ntime; ++k) {
-				N += dN[k];
-				integralx += N * (*s).expGammaT[k] * E[k];
-				P[k] += expMinusGammaT[k] * integralx;
+				simpson_step(integral_N, integrand_N, dN[k]);
+				deviceFP plasmaFactor = integral_N[2] * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
+				simpson_step(integral_x, integrand_x, plasmaFactor * E[k]);
+				P[k] += expMinusGammaT[k] * integral_x[2];
+
 			}
 		}
 	};
@@ -1367,22 +1373,28 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t i) const {
 			const int64_t j = (i) * (*s).Ntime;
-			deviceFP N=s->plasmaParameters.initialDensity;
-			deviceFP integralx{};
-			deviceFP integraly{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-			const deviceFP* dN = j + (deviceFP*)(*s).workspace1;
+			const deviceFP* dN = j + reinterpret_cast<deviceFP*>((*s).workspace1);
 			const deviceFP* E = &(*s).gridETime1[j];
 			const deviceFP* Ey = E + (*s).Ngrid;
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
 			deviceFP* P2 = P + (*s).Ngrid;
+			
+			deviceFP integrand_N[3]{};
+			deviceFP integral_N[3]{ s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity};
+			deviceFP integrand_x[3]{};
+			deviceFP integral_x[3]{};
+			deviceFP integrand_y[3]{};
+			deviceFP integral_y[3]{};
+
 			for (int64_t k{}; k < (*s).Ntime; ++k) {
-				N += dN[k];
-				const deviceFP plasmaFactor = N * (*s).expGammaT[k];
-				integralx += plasmaFactor * E[k];
-				integraly += plasmaFactor * Ey[k];
-				P[k] += expMinusGammaT[k] * integralx;
-				P2[k] += expMinusGammaT[k] * integraly;
+				simpson_step(integral_N, integrand_N, dN[k]);
+				deviceFP plasmaFactor = integral_N[2] * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
+				simpson_step(integral_x, integrand_x, plasmaFactor * E[k]);
+				simpson_step(integral_y, integrand_y, plasmaFactor * Ey[k]);
+
+				P[k] += expMinusGammaT[k] * integral_x[2];
+				P2[k] += expMinusGammaT[k] * integral_y[2];
 			}
 		}
 	};
@@ -1392,9 +1404,6 @@ namespace kernelNamespace{
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
 		deviceFunction void operator()(const int64_t i) const {
 			const int64_t j = (i) * (*s).Ntime;
-			deviceFP N{};
-			deviceFP integralx{};
-			deviceFP integraly{};
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
 			const deviceFP* dN = j + reinterpret_cast<deviceFP*>((*s).workspace1);
 			const deviceFP* E = &(*s).gridETime1[j];
@@ -1403,13 +1412,23 @@ namespace kernelNamespace{
 			deviceFP* P2 = P + (*s).Ngrid;
 			deviceFP* Ndest = reinterpret_cast<deviceFP*>((*s).gridEFrequency1);
 			Ndest += j;
-			for (auto k = 0; k < (*s).Ntime; ++k) {
-				N += dN[k];
-				integralx += N * (*s).expGammaT[k] * E[k];
-				integraly += N * (*s).expGammaT[k] * Ey[k];
-				P[k] += expMinusGammaT[k] * integralx;
-				P2[k] += expMinusGammaT[k] * integraly;
-				Ndest[k] = N/(*s).dt;
+			
+			deviceFP integrand_N[3]{};
+			deviceFP integral_N[3]{ s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity};
+			deviceFP integrand_x[3]{};
+			deviceFP integral_x[3]{};
+			deviceFP integrand_y[3]{};
+			deviceFP integral_y[3]{};
+
+			for (int64_t k{}; k < (*s).Ntime; ++k) {
+				simpson_step(integral_N, integrand_N, dN[k]);
+				deviceFP plasmaFactor = integral_N[2] * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
+				simpson_step(integral_x, integrand_x, plasmaFactor * E[k]);
+				simpson_step(integral_y, integrand_y, plasmaFactor * Ey[k]);
+
+				P[k] += expMinusGammaT[k] * integral_x[2];
+				P2[k] += expMinusGammaT[k] * integral_y[2];
+				Ndest[k] = integral_N[2];
 			}
 		}
 	};
@@ -1436,7 +1455,7 @@ namespace kernelNamespace{
 		deviceFunction void operator()(const int64_t i) const {
 			int64_t h = 1 + i % ((*sP).Nfreq - 1); //temporal coordinate
 			const int64_t j = i / ((*sP).Nfreq - 1); //spatial coordinate
-			const deviceFP jfac = -1.0f / (h * (*sP).fStep);
+			const deviceFP jfac = -1.0f / (twoPi<deviceFP>() * h * (*sP).fStep);
 			h += j * (*sP).Nfreq;
 			(*sP).k1[h] += deviceComplex{-jfac * (*sP).gridPolarizationFactor1[h].imag(), jfac * (*sP).gridPolarizationFactor1[h].real()} 
 				* (*sP).workspace1[h] * (*sP).inverseChiLinear1[h % ((*sP).Nfreq)];
@@ -1451,7 +1470,7 @@ namespace kernelNamespace{
 		deviceFunction void operator()(const int64_t i) const {
 			const int64_t spaceIndex = i / ((*sP).Nfreq - 1);
 			int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
-			const deviceFP jfac = -1.0f/(freqIndex * (*sP).fStep);
+			const deviceFP jfac = -1.0f/(twoPi<deviceFP>() * freqIndex * (*sP).fStep);
 			const int64_t gridIndex = freqIndex + spaceIndex * ((*sP).Nfreq);
 			int64_t fftIndex = freqIndex +
 				(spaceIndex + ((spaceIndex > ((*sP).Nspace / 2))) * (*sP).Nspace) * (*sP).Nfreq;

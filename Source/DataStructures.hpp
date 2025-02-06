@@ -240,6 +240,7 @@ class PlasmaParameters{
     deviceFP effectiveMass = {};
     deviceFP initialDensity = {};
     deviceFP integrationFactor = {};
+    deviceFP energyFactor = {};
     int fieldExponent = {};
 
     PlasmaParameters() = default;
@@ -252,6 +253,7 @@ class PlasmaParameters{
         effectiveMass = static_cast<deviceFP>(other.effectiveMass);
         initialDensity = static_cast<deviceFP>(other.initialDensity);
         integrationFactor = static_cast<deviceFP>(other.integrationFactor);
+        energyFactor = static_cast<deviceFP>(other.energyFactor);
         fieldExponent = other.fieldExponent;
     }
 };
