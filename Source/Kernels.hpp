@@ -1343,11 +1343,6 @@ namespace kernelNamespace{
 			const deviceFP* dN = j + reinterpret_cast<deviceFP*>((*s).workspace1);
 			const deviceFP* E = &(*s).gridETime1[j];
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
-			deviceFP integrand_N[3]{};
-			deviceFP integral_N[3]{ s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity};
-			deviceFP integrand_x[3]{};
-			deviceFP integral_x[3]{};
-
 			SimpsonIntegrator<deviceFP> N(s->plasmaParameters.initialDensity);
 			SimpsonIntegrator<deviceFP> integral;
 			for (int64_t k{}; k < (*s).Ntime; ++k) {
