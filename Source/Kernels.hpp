@@ -1303,22 +1303,13 @@ namespace kernelNamespace{
 	//Plasma response with time-dependent carrier density
 	//This polarization needs a different factor in the nonlinear wave equation
 	//to account for the integration
-	//plasmaParameters vector:
-	// 0    e^2/m_eff
-	// 1    gamma_drude
-	// 2    ionization rate/E^N
-	// 3    absorption strength
 	//equation for the plasma current:
 	//J_drude(t) = (e/m)*exp(-gamma*t)*\int_-infty^t dt' exp(gamma*t)*N(t)*E(t)
-	//J_absorption(t) = beta*E^(2*Nphot-2)*E
-	//plasmaParameters[0] is the nonlinear absorption parameter
-		//nonlinearSwitches[3] is Nphotons-2
-		//plasmaParameters[2] is the 1/photon energy, translating the loss of power
-		//from the field to the number of free carriers
-		//extra factor of (dt^2e^2/(m*photon energy*eo) included as it is needed for the amplitude
-		//of the plasma current
+	//J_absorption(t) = (beta*E^2)^(Nphot-1)*E
+	//The energy factor sets the amplitude based on the bandgap of the crystal, such that the
+	//integral of E*J_absorption is carrier density
 	//applied in 3 parts due to the different patterns of calculating ionization rate (A)
-	//and integrating over trajectories (B). Added to RK4 propagation array afterwards.
+	//and integrating over trajectories (B). Added to RK4 propagation array afterwards (C).
 	class plasmaCurrentKernel_twoStage_A {
 	public:
 		const deviceParameterSet<deviceFP, deviceComplex>* s;
@@ -1357,13 +1348,13 @@ namespace kernelNamespace{
 			deviceFP integrand_x[3]{};
 			deviceFP integral_x[3]{};
 
-
+			SimpsonIntegrator<deviceFP> N(s->plasmaParameters.initialDensity);
+			SimpsonIntegrator<deviceFP> integral;
 			for (int64_t k{}; k < (*s).Ntime; ++k) {
-				simpson_step(integral_N, integrand_N, dN[k]);
-				deviceFP plasmaFactor = integral_N[2] * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
-				simpson_step(integral_x, integrand_x, plasmaFactor * E[k]);
-				P[k] += expMinusGammaT[k] * integral_x[2];
-
+				N.step(dN[k]);
+				deviceFP plasmaFactor = N.current_integral() * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
+				integral.step(plasmaFactor*E[k]);
+				P[k] += expMinusGammaT[k] * integral.current_integral();
 			}
 		}
 	};
@@ -1379,22 +1370,17 @@ namespace kernelNamespace{
 			const deviceFP* Ey = E + (*s).Ngrid;
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
 			deviceFP* P2 = P + (*s).Ngrid;
-			
-			deviceFP integrand_N[3]{};
-			deviceFP integral_N[3]{ s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity};
-			deviceFP integrand_x[3]{};
-			deviceFP integral_x[3]{};
-			deviceFP integrand_y[3]{};
-			deviceFP integral_y[3]{};
 
+			SimpsonIntegrator<deviceFP> N(s->plasmaParameters.initialDensity);
+			SimpsonIntegrator<deviceFP> integral_x;
+			SimpsonIntegrator<deviceFP> integral_y;
 			for (int64_t k{}; k < (*s).Ntime; ++k) {
-				simpson_step(integral_N, integrand_N, dN[k]);
-				deviceFP plasmaFactor = integral_N[2] * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
-				simpson_step(integral_x, integrand_x, plasmaFactor * E[k]);
-				simpson_step(integral_y, integrand_y, plasmaFactor * Ey[k]);
-
-				P[k] += expMinusGammaT[k] * integral_x[2];
-				P2[k] += expMinusGammaT[k] * integral_y[2];
+				N.step(dN[k]);
+				deviceFP plasmaFactor = N.current_integral() * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
+				integral_x.step(plasmaFactor*E[k]);
+				integral_y.step(plasmaFactor*Ey[k]);
+				P[k] += expMinusGammaT[k] * integral_x.current_integral();
+				P2[k] += expMinusGammaT[k] * integral_y.current_integral();
 			}
 		}
 	};
@@ -1412,23 +1398,18 @@ namespace kernelNamespace{
 			deviceFP* P2 = P + (*s).Ngrid;
 			deviceFP* Ndest = reinterpret_cast<deviceFP*>((*s).gridEFrequency1);
 			Ndest += j;
-			
-			deviceFP integrand_N[3]{};
-			deviceFP integral_N[3]{ s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity, s->plasmaParameters.initialDensity};
-			deviceFP integrand_x[3]{};
-			deviceFP integral_x[3]{};
-			deviceFP integrand_y[3]{};
-			deviceFP integral_y[3]{};
 
+			SimpsonIntegrator<deviceFP> N(s->plasmaParameters.initialDensity);
+			SimpsonIntegrator<deviceFP> integral_x;
+			SimpsonIntegrator<deviceFP> integral_y;
 			for (int64_t k{}; k < (*s).Ntime; ++k) {
-				simpson_step(integral_N, integrand_N, dN[k]);
-				deviceFP plasmaFactor = integral_N[2] * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
-				simpson_step(integral_x, integrand_x, plasmaFactor * E[k]);
-				simpson_step(integral_y, integrand_y, plasmaFactor * Ey[k]);
-
-				P[k] += expMinusGammaT[k] * integral_x[2];
-				P2[k] += expMinusGammaT[k] * integral_y[2];
-				Ndest[k] = integral_N[2];
+				N.step(dN[k]);
+				deviceFP plasmaFactor = N.current_integral() * (*s).expGammaT[k] * (*s).plasmaParameters.integrationFactor;
+				integral_x.step(plasmaFactor*E[k]);
+				integral_y.step(plasmaFactor*Ey[k]);
+				P[k] += expMinusGammaT[k] * integral_x.current_integral();
+				P2[k] += expMinusGammaT[k] * integral_y.current_integral();
+				Ndest[k] = N.current_integral();
 			}
 		}
 	};

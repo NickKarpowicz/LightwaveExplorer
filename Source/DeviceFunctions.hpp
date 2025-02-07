@@ -760,12 +760,29 @@ namespace deviceFunctions {
 	}
 
 	template<typename deviceFP>
-	deviceFunction inline void simpson_step(deviceFP integralValues[3], deviceFP integrandValues[3], deviceFP newIntegrandValue){
-		integrandValues[0] = integrandValues[1];
-		integrandValues[1] = integrandValues[2];
-		integrandValues[2] = newIntegrandValue;
-		integralValues[2] = integralValues[0] + third<deviceFP>() * (integrandValues[0] + 4.0f * integrandValues[1] + integrandValues[2]);
-		integralValues[0] = integralValues[1];
-		integralValues[1] = integralValues[2];
-	}
+	class SimpsonIntegrator{
+		deviceFP integrandValues[3]{};
+		deviceFP integralValues[3]{};
+
+		public:
+
+		deviceFunction SimpsonIntegrator(){}
+		deviceFunction SimpsonIntegrator(const deviceFP initialValue){
+			integralValues[0] = initialValue;
+			integralValues[1] = initialValue;
+			integralValues[2] = initialValue;
+		}
+		deviceFunction inline void step(const deviceFP newIntegrandValue){
+			integrandValues[0] = integrandValues[1];
+			integrandValues[1] = integrandValues[2];
+			integrandValues[2] = newIntegrandValue;
+			integralValues[2] = integralValues[0] + third<deviceFP>() * (integrandValues[0] + 4.0f * integrandValues[1] + integrandValues[2]);
+			integralValues[0] = integralValues[1];
+			integralValues[1] = integralValues[2];
+		}
+
+		deviceFunction inline deviceFP current_integral() {
+			return integralValues[2];
+		}
+	};
 }
