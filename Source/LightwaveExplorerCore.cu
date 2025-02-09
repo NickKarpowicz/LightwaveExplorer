@@ -1593,10 +1593,10 @@ namespace hostFunctions{
 				maxCalc.Noscillators++;
 				maxCalc.hasPlasma[mapValue] = true;
 				maxCalc.kCarrierGeneration[mapValue] = 2.0 / ((*sCPU).bandGapElectronVolts);
-				maxCalc.kDrude[mapValue] = - elCharge<double>() * elCharge<double>() 
+				maxCalc.kDrude[mapValue] = - elCharge<double>() 
 					/ ((*sCPU).effectiveMass * elMass<double>());
 				maxCalc.gammaDrude[mapValue] = (*sCPU).drudeGamma;
-				maxCalc.kNonlinearAbsorption[mapValue] = 0.5 * (*sCPU).nonlinearAbsorptionStrength;
+				maxCalc.kNonlinearAbsorption[mapValue] =  0.5 * (*sCPU).nonlinearAbsorptionStrength;
 				maxCalc.startingCarriers[mapValue] = (*sCPU).startingCarrierDensity;
 				maxCalc.nonlinearAbsorptionOrder[mapValue] = static_cast<int>(
 					std::ceil(eVtoHz<double>() * (*sCPU).bandGapElectronVolts 

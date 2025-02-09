@@ -1741,10 +1741,11 @@ namespace kernelNamespace{
 					s->materialMap[i] - 1
 					: 0;
 				if(s->hasPlasma[oscillatorType]){
-					s->materialGrid[oscillatorIndex + s->Noscillators - 1].P.x = s->startingCarriers[oscillatorType];
-					s->materialGridEstimate[oscillatorIndex + s->Noscillators - 1].P.x = s->startingCarriers[oscillatorType];
-					s->materialGridEstimate2[oscillatorIndex + s->Noscillators - 1].P.x = s->startingCarriers[oscillatorType];
-					s->materialGridNext[oscillatorIndex + s->Noscillators - 1].P.x = s->startingCarriers[oscillatorType];
+					const deviceFP rho = elCharge<deviceFP>() * s->startingCarriers[oscillatorType];
+					s->materialGrid[oscillatorIndex + s->Noscillators - 1].P.x = rho;
+					s->materialGridEstimate[oscillatorIndex + s->Noscillators - 1].P.x = rho;
+					s->materialGridEstimate2[oscillatorIndex + s->Noscillators - 1].P.x = rho;
+					s->materialGridNext[oscillatorIndex + s->Noscillators - 1].P.x = rho;
 				}
 			}
 		}

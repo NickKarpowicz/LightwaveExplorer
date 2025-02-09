@@ -1475,12 +1475,12 @@ namespace deviceFunctions{
 
 			//resolve the plasma nonlinearity
 			deviceFP absorptionCurrent = (s->hasPlasma[oscillatorType]) ?
-				2.0f * deviceFPLib::pow(
+				deviceFPLib::pow(
 					dotProduct(P, P) * s->kNonlinearAbsorption[oscillatorType],
 					s->nonlinearAbsorptionOrder[oscillatorType])
 				: 0.0f;
 			if (s->hasPlasma[oscillatorType]) {
-				maxwellPoint<deviceFP> absorption = -twoPi<deviceFP>() * absorptionCurrent * crystalField;
+				maxwellPoint<deviceFP> absorption = -0.25f * inverseEps0<deviceFP>() * absorptionCurrent * crystalField;
 				absorption += currentGridIn[oscillatorIndex + s->Noscillators - 1].J * inverseEps0<deviceFP>();
 				absorption /= s->sellmeierEquations[0][oscillatorType];
 				kE += absorption;
@@ -1501,7 +1501,7 @@ namespace deviceFunctions{
 				oscillator<deviceFP>{
 					currentGridIn[oscillatorIndex + j].P.x * s->kDrude[oscillatorType] * crystalField
 					- s->gammaDrude[oscillatorType] * currentGridIn[oscillatorIndex + j].J,
-					maxwellPoint<deviceFP>{absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[oscillatorType],
+					maxwellPoint<deviceFP>{2.0f * absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[oscillatorType],
 					deviceFP{},
 					deviceFP{} } };
 				//note that k.P.x is used to store the carrier density
