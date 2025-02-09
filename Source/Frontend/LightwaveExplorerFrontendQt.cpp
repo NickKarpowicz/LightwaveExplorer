@@ -1247,7 +1247,7 @@ public:
             });
         addMiniButton("\xf0\x9f\x98\x8e", "addFilter", "Add a spectral filter to the beam path. "
             "Parameters:\n   central frequency (THz)\n   bandwidth (THz)\n   supergaussian order\n   "
-            "in-band amplitude\n   out-of-band amplitude\n",[&](){
+            "in-band amplitude\n   out-of-band amplitude",[&](){
                 sPrint("filter(130, 20, 4, 1, 0)\n");
             });
         addMiniButton("\xf0\x9f\x93\x8f", "addLinear", "Add a linear propagation through the crystal entered on the interface",[&](){
@@ -1259,7 +1259,7 @@ public:
                 textBoxes["dz"]->text().toDouble());
             });
         addMiniButton("\xf0\x9f\x8e\xaf", "addAperture", "Add an aperture to the beam. Parameters:\n   diameter (m)\n   "
-            "activation parameter\n",[&](){
+            "activation parameter",[&](){
                 sPrint("aperture(0.001, 2)\n");
             });
         addMiniButton("\xe2\x9b\xb3", "addFarFieldAperture", "Filter the beam with a far-field aperture. Parameters:\n   "
@@ -1270,20 +1270,32 @@ public:
             "Number of times to execute\n   Variable number in which to put the counter",[&](){
                 sPrint("for(10,1){{\n\n}}\n");
             });
-        addMiniButton("\xf0\x9f\x97\x82\xef\xb8\x8f", "filePath", "Choose a file and insert its path as a string",[&](){
-                std::string path = QFileDialog::getOpenFileName(
-                    buttons["filePath"],"Choose the file you want","","Plain text file (*.*)").toStdString();
-                if(path.empty()) return;
-                sPrint("\"{}\"",path);
-            });
-        addMiniButton("\xf0\x9f\x97\xba\xef\xb8\x8f", "fdtdGrid", "Run an FDTD simulation on a custom grid."
-                "Parameters:\n    file path\n    Time divider: factor by which to divide the\n    time step relative to the time step of the output.\n    observation point(m): position at which to\n    record the time-dependent field.",
+        addMiniButton("\xf0\x9f\x97\xba\xef\xb8\x8f", "fdtd", "Run an FDTD simulation, also on a custom grid if you want to.\n"
+                "Parameters:\n    "
+                "Time divider: factor by which to divide the\n"
+                "    time step relative to the time step of the output.\n"
+                "    dz (m): custom z-step\n"
+                "    front buffer (m): vacuum to insert before the crystal\n"
+                "    rear buffer (m): vacuum to insert after the crystal\n"
+                "    observation point(m): position at which to\n"
+                "        record the time-dependent field.\n"
+                "    wait time (s): time to wait before beginning to\n"
+                "        record the field in the observation plane\n"
+                "    preserve near-field: 0 will remove components which\n"
+                "        would not propagate to the far-field. 1 keeps them.\n"
+                "    grid index: index in the optics database of a custom grid,\n"
+                "        set to d for no custom grid and instead insert a crystal\n"
+                "        with the thickness set by the interface.",
                 [&](){
-                std::string path = QFileDialog::getOpenFileName(
-                    buttons["filePath"],"Choose the file you want","","Plain text file (*.*)").toStdString();
-                if(path.empty()) sPrint("fdtdGrid(\"(insert file path here)\", 16, 3.0e-6)");
-                else sPrint("fdtdGrid(\"{}\", 16, 3.0e-6)",path);
+                sPrint("fdtd(d,d, 1e-6, 1e-6, 2e-6, 20e-15, 1, d)");
             });
+        addMiniButton("\xe2\x87\x8c", "fdtdReflection", "Calculate a nonlinear reflection from a surface\n"
+            "Parameters:\n"
+            "    time step relative to the time step of the output.\n"
+            "    dz (m): custom z-step"
+            ,[&](){
+                    sPrint("fdtdReflection(d,d)");
+                });
         addMiniButton("\xf0\x9f\xaa\xa9", "applyOptic", "Apply a loaded optic to the field. \nParameters:\n   "
             "Index to the loaded optic",[&](){
                 sPrint("applyOptic(0)");
