@@ -1,5 +1,5 @@
-// define a compiler-specific device class and set of macros
-
+#pragma once
+#include "MaxwellConfiguration.hpp"
 #ifndef LWEFLOATINGPOINT
 #define LWEFLOATINGPOINT 64
 #endif
@@ -94,3 +94,6 @@
 	#endif
 #endif
 
+typedef 
+maxwellCalculation<deviceFP, maxwellPoint<deviceFP>, maxwellPoint<deviceFP>, oscillator<deviceFP>> 
+maxwell3D;

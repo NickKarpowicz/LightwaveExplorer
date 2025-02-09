@@ -159,7 +159,6 @@ class SequenceValidator : public QSyntaxHighlighter {
             "filter",
             "lorentzian",
             "addPulse",
-            "fdtd2d",
             "fdtd",
             "fdtdGrid",
             "fdtdGridNearField",
@@ -168,7 +167,8 @@ class SequenceValidator : public QSyntaxHighlighter {
             "applyOpticY",
             "loadOptic",
             "rotateIntoBiaxial",
-            "rotateFromBiaxial"
+            "rotateFromBiaxial",
+            "fdtdReflection"
         };
         for(const QString &fun : functionNames){
             rule.pattern = QRegularExpression(QString("\\b")+fun+QString("\\b"));
@@ -397,7 +397,7 @@ public:
         sim.base().materialIndex = pulldowns["material"]->currentIndex();
         setToDoubleMultiplier(textBoxes["crystalTheta"],rad2Deg<double>(),sim.base().crystalTheta);
         setToDoubleMultiplier(textBoxes["crystalPhi"],rad2Deg<double>(),sim.base().crystalPhi);
-        setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength, sim.base().startingCarrierDensity, SecondValueDefault::Default_zero);
         setToDouble(textBoxes["crystalBandgap"],sim.base().bandGapElectronVolts);
         setToDoubleMultiplier(textBoxes["DrudeGamma"],1e-12,sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);
@@ -533,9 +533,7 @@ public:
         sim.base().chi3Tensor = 
             theDatabase.db[sim.base().materialIndex].chi3.data();
         sim.base().nonlinearSwitches = 
-            theDatabase.db[sim.base().materialIndex].nonlinearSwitches.data();
-        sim.base().absorptionParameters = 
-            theDatabase.db[sim.base().materialIndex].absorptionParameters.data();
+            theDatabase.db[sim.base().materialIndex].nonlinearSwitches;
         sim.base().sellmeierCoefficients = 
             theDatabase.db[sim.base().materialIndex].sellmeierCoefficients.data();
         sim.base().sellmeierType = 
@@ -631,7 +629,7 @@ public:
         
         setToDouble(textBoxes["crystalTheta"],rad2Deg<double>() * sim.base().crystalTheta);
         setToDouble(textBoxes["crystalPhi"],rad2Deg<double>() *sim.base().crystalPhi);
-        setToDouble(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength);
+        setToTwoDoubles(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength, sim.base().startingCarrierDensity, NoSemicolonIf::zero);
         setToDouble(textBoxes["crystalBandgap"],sim.base().bandGapElectronVolts);
         setToDouble(textBoxes["DrudeGamma"],1e-12*sim.base().drudeGamma);
         setToDouble(textBoxes["effectiveMass"],sim.base().effectiveMass);

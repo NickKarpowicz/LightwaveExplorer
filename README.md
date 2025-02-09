@@ -17,16 +17,19 @@ Tutorials on YouTube!
 - Tutorial 4: (new!) <a href="https://youtu.be/v5O0UOUdfKE">Birefringence</a>
 
 ---
-### Latest release: 2024.05
-Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip) (You might need the latest [Microsoft C++ Runtime](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) if it fails to start).
+### Latest release: 2025.0
+Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
 
 Mac: [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
 Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
 
-This version fixes issues with biaxial crystals, and introduces a pair of sequence functions, rotateIntoBiaxial() and rotateFromBiaxial() to move in and out of the refractive index ellipse minor and major axes, even for arbitrary crystal orientations.
+Changes in this version:
 
-It also includes a fix for a bug where files could not be loaded if their names were changed.
+ - FDTD mode is more accessible: besides the options for crystals in the Propagation pulldown menu, you can also load a custom grid containing different nonlinear materials at different positions using the fdtd() function
+ - FDTD reflection mode for nonlinear reflection from a surface, using the fdtdReflection() sequence command.
+ - Improved convergence for the nonlinear absorption/plasma response. Note that the changes I made here will re-scale the values of the nonlinear absorption parameter (now they are consistent with what was in the paper). The conversion factor for older values is $\left(\frac{1}{2\pi\epsilon_0}\right)^{\frac{1}{N_p-1}}$ where $N_p$ is the number of photons in the multiphoton transition (divide the old value by this number).
+
   
 ---
 
