@@ -1287,14 +1287,14 @@ public:
                 "        set to d for no custom grid and instead insert a crystal\n"
                 "        with the thickness set by the interface.",
                 [&](){
-                sPrint("fdtd(d,d, 1e-6, 1e-6, 2e-6, 20e-15, 1, d)");
+                sPrint("fdtd(d,d, 1e-6, 1e-6, 2e-6, 20e-15, 1, d)\n");
             });
         addMiniButton("\xe2\x87\x8c", "fdtdReflection", "Calculate a nonlinear reflection from a surface\n"
             "Parameters:\n"
             "    time step relative to the time step of the output.\n"
             "    dz (m): custom z-step"
             ,[&](){
-                    sPrint("fdtdReflection(d,d)");
+                    sPrint("fdtdReflection(d,d)\n");
                 });
         addMiniButton("\xf0\x9f\xaa\xa9", "applyOptic", "Apply a loaded optic to the field. \nParameters:\n   "
             "Index to the loaded optic",[&](){
