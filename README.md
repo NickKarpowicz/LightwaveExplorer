@@ -14,7 +14,8 @@ Tutorials on YouTube!
 - Tutorial 1: <a href="https://youtu.be/J1-dh6V5flQ">Introduction and quick start, with walkthrough of simulating SHG and OPA</a></li>
 - Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
 - Tutorial 3: <a href="https://youtu.be/qlcy_RBLGoU">Adding a crystal to the database</a>
-- Tutorial 4: (new!) <a href="https://youtu.be/v5O0UOUdfKE">Birefringence</a>
+- Tutorial 4: <a href="https://youtu.be/v5O0UOUdfKE">Birefringence</a>
+- Tutorial 5: (new!) <a href="https://www.youtube.com/watch?v=4njswvog4bo">FDTD</a>
 
 ---
 ### Latest release: 2025.0
