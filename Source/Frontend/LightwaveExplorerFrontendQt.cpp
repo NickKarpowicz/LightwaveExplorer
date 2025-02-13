@@ -2134,7 +2134,7 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
-
+    sPlot.fontSize = 14.0 * (theGui.screen()->logicalDotsPerInch() / theGui.screen()->physicalDotsPerInch());
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2180,7 +2180,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     int64_t cubeMiddle = 
         theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-
+    sPlot.fontSize = 14.0 * (theGui.screen()->logicalDotsPerInch() / theGui.screen()->physicalDotsPerInch());
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2237,6 +2237,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         forceY = true;
     }
  
+    sPlot.fontSize = 14.0 * (theGui.screen()->logicalDotsPerInch() / theGui.screen()->physicalDotsPerInch());
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2301,7 +2302,8 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
- 
+
+    sPlot.fontSize = 14.0 * (theGui.screen()->logicalDotsPerInch() / theGui.screen()->physicalDotsPerInch());
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;

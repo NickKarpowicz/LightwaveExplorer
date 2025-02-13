@@ -174,9 +174,9 @@ public:
         //Fixed parameters affecting aesthetics
         double radius = 2;
         double lineWidth = 1.5;
-        double axisSpaceX = 75.0;
-        double axisSpaceY = 35.0;
-        double axisLabelSpaceX = 21.0;
+        double axisSpaceX = 5.36 * fontSize;
+        double axisSpaceY = 2.5 * fontSize;
+        double axisLabelSpaceX = 1.5 * fontSize;
 
         //get limits and make the plotting arrays
         double maxY = -1.0e300;
