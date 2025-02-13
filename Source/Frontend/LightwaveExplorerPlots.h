@@ -118,6 +118,7 @@ public:
     bool markers = true;
     double width = 0;
     double height = 0;
+    double fontSize = 14.0;
     double* data = nullptr;
     int ExtraLines = 0;
     double* data2 = nullptr;
@@ -160,7 +161,6 @@ public:
         int64_t iMax = Npts;
         cairo_font_extents_t fe{};
         cairo_text_extents_t te{};
-        double fontSize = 14.0;
         cairo_set_font_size(cr, fontSize);
         cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
         cairo_font_extents(cr, &fe);
