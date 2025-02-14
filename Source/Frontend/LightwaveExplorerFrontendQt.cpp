@@ -18,8 +18,8 @@ public:
     
 protected:
     void paintEvent(QPaintEvent* event) override {
-        qreal ratio = devicePixelRatioF();
-        QImage image(ratio*size(), QImage::Format_ARGB32);
+        qreal ratio = devicePixelRatio();
+        QImage image(ratio * size(), QImage::Format_ARGB32);
         image.setDevicePixelRatio(ratio);
         cairo_surface_t* surface = cairo_image_surface_create_for_data(
             image.bits(),
@@ -28,10 +28,10 @@ protected:
             image.height(),
             image.bytesPerLine());
         cairo_t* cr = cairo_create(surface);
-
+        cairo_scale(cr, ratio, ratio);
         theFunction(cr,
-            image.width(),
-            image.height(),
+            image.width()/ratio,
+            image.height()/ratio,
             theGui);
 
         cairo_destroy(cr);
@@ -2134,7 +2134,6 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
-    sPlot.fontSize = 14.0 * (theGui.screen()->logicalDotsPerInch() / theGui.screen()->physicalDotsPerInch());
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2180,7 +2179,6 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     int64_t cubeMiddle = 
         theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    sPlot.fontSize = 14.0 * (theGui.screen()->logicalDotsPerInch() / theGui.screen()->physicalDotsPerInch());
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2237,7 +2235,6 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         forceY = true;
     }
  
-    sPlot.fontSize = 14.0 * (theGui.screen()->logicalDotsPerInch() / theGui.screen()->physicalDotsPerInch());
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2303,7 +2300,6 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         forceY = true;
     }
 
-    sPlot.fontSize = 14.0 * (theGui.screen()->logicalDotsPerInch() / theGui.screen()->physicalDotsPerInch());
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
