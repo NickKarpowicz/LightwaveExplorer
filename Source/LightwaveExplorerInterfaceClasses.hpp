@@ -503,6 +503,98 @@ public:
     }
 };
 
+
+template <typename deviceFP, typename deviceComplex>
+struct UPPEAllocation{
+    bool hasPlasma = false;
+    bool isCylindric = false;
+    int64_t beamExpansionFactor = 1;
+    int64_t Ngrid = 0;
+    int64_t Ntime = 0;
+    int64_t Nfreq = 0;
+    int64_t Ngrid_complex = 0;
+
+    LWEBuffer<deviceComplex> workspace;
+    LWEBuffer<deviceFP> gridETime;
+    LWEBuffer<deviceFP> gridPolarizationTime;
+    LWEBuffer<deviceComplex> gridEFrequency;
+    LWEBuffer<deviceComplex> gridEFrequencyNext;
+    LWEBuffer<deviceComplex> gridPropagationFactor;
+    LWEBuffer<deviceComplex> gridPropagationFactorRho;
+    LWEBuffer<deviceFP> gridRadialLaplacian;
+    LWEBuffer<deviceComplex> gridPolarizationFactor;
+    LWEBuffer<deviceComplex> k;
+    LWEBuffer<deviceFP> gridBiaxialDelta;
+    LWEBuffer<deviceComplex> chiLinear;
+    LWEBuffer<deviceFP> inverseChiLinear;
+    LWEBuffer<deviceFP> fieldFactor;
+    LWEBuffer<deviceFP> expGammaT;
+
+    deviceParameterSet<deviceFP, deviceComplex> parameterSet;
+    LWEBuffer<deviceParameterSet<deviceFP, deviceComplex>> parameterSet_deviceCopy;
+    
+    UPPEAllocation(){}
+
+    UPPEAllocation(LWEDevice* d, simulationParameterSet* sCPU) : 
+    hasPlasma(sCPU->nonlinearAbsorptionStrength > 0.0 || sCPU->startingCarrierDensity > 0.0),
+    isCylindric(sCPU->isCylindric),
+    beamExpansionFactor(1 + isCylindric + 2 * isCylindric * hasPlasma),
+    Ngrid(sCPU->Ngrid),
+    Ntime(sCPU->Ntime),
+    Nfreq(sCPU->Nfreq),
+    Ngrid_complex(sCPU->NgridC),
+    workspace(d, beamExpansionFactor * 2 * Ngrid_complex, sizeof(deviceComplex)),
+    gridETime(d, 2 * Ngrid, sizeof(deviceFP)),
+    gridPolarizationTime(d, 2 * Ngrid, sizeof(deviceFP)),
+    gridEFrequency(d, 2 * Ngrid_complex, sizeof(deviceComplex)),
+    gridEFrequencyNext(d, 2 * Ngrid_complex, sizeof(deviceComplex)),
+    gridPropagationFactor(d, 2 * Ngrid_complex, sizeof(deviceComplex)),
+    gridPolarizationFactor(d, 2 * Ngrid_complex, sizeof(deviceComplex)),
+    gridBiaxialDelta(d, Ngrid_complex, sizeof(deviceComplex)),
+    gridPropagationFactorRho(d, isCylindric * 4 * Ngrid_complex, sizeof(deviceComplex)),
+    gridRadialLaplacian(d, isCylindric * beamExpansionFactor * 2 * Ngrid, sizeof(deviceComplex)),
+    k(d, 2 *Ngrid_complex, sizeof(deviceComplex)),
+    chiLinear(d, 2 * Nfreq, sizeof(deviceComplex)),
+    inverseChiLinear(d, 2 * Nfreq, sizeof(deviceFP)),
+    fieldFactor(d, 2 * Nfreq, sizeof(deviceFP)),
+    expGammaT(d, 2 * Ntime, sizeof(double)),
+    parameterSet_deviceCopy(d, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>))
+    {
+        sCPU->initializeDeviceParameters(&parameterSet);
+        parameterSet.workspace1 = workspace.device_ptr();
+        parameterSet.gridETime1 = gridETime.device_ptr();
+        parameterSet.gridPolarizationTime1 = gridPolarizationTime.device_ptr();
+        parameterSet.gridEFrequency1 = gridEFrequency.device_ptr();
+        parameterSet.gridEFrequency1Next1 = gridEFrequencyNext.device_ptr();
+        parameterSet.gridPropagationFactor1 = gridPropagationFactor.device_ptr();
+        parameterSet.gridPolarizationFactor1 = gridPolarizationFactor.device_ptr();
+        parameterSet.gridBiaxialDelta = gridBiaxialDelta.device_ptr();
+        parameterSet.gridPropagationFactor1Rho1 = gridPropagationFactorRho.device_ptr();
+        parameterSet.gridRadialLaplacian1 = gridRadialLaplacian.device_ptr();
+        parameterSet.k1 = k.device_ptr();
+        parameterSet.chiLinear1 = chiLinear.device_ptr();
+        parameterSet.inverseChiLinear1 = inverseChiLinear.device_ptr();
+        parameterSet.fieldFactor1 = fieldFactor.device_ptr();
+        parameterSet.expGammaT = expGammaT.device_ptr();
+
+        sCPU->fillRotationMatricies(&parameterSet);
+
+
+        std::vector<deviceFP> expGammaTCPU(2 * Ntime);
+		for (int64_t i = 0; i < Ntime; ++i) {
+			expGammaTCPU[i] = static_cast<deviceFP>(exp(sCPU->tStep * i * sCPU->drudeGamma));
+			expGammaTCPU[i + sCPU->Ntime] = static_cast<deviceFP>(exp(-sCPU->tStep * i * sCPU->drudeGamma));
+		}
+        d->deviceMemcpy(expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * Ntime, copyType::ToDevice);
+        
+        
+        sCPU->finishConfiguration(&parameterSet);
+        d->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
+    }
+};
+
+
+
 int				loadFrogSpeck(const loadedInputData& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
 int             loadWaveformFile(const loadedInputData& waveformFile, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);
 int             loadSavedGridFile(const loadedInputData& file, std::vector<double>& outputGrid, int64_t Ngrid);

@@ -3,6 +3,7 @@
 #include <array>
 #include <vector>
 #include <fstream>
+#include <iostream>
 #include <complex>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -278,6 +279,49 @@ class LWEDevice{
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
     virtual void fftInitialize() = 0;
 };
+
+template<typename T>
+class LWEBuffer{
+    LWEDevice* d = nullptr;
+    size_t count = 0;
+    size_t bytes = 0;
+public:
+    T* buffer = nullptr;
+
+    LWEBuffer(){}
+    LWEBuffer(const LWEBuffer&) = delete;
+    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize) : 
+    d(d),
+    count(N),
+    bytes(N*elementSize)
+    {
+        int error = d->deviceCalloc((void**)&buffer, count, elementSize);
+        if(error){
+            throw std::runtime_error("Allocation of LWE buffer failed with error");
+        }
+    }
+    LWEBuffer(LWEDevice* d, const std::vector<T> v) : 
+    d(d),
+    count(v.size()),
+    bytes(count * sizeof(T)){
+        int error = d->deviceCalloc((void**)&buffer, count, sizeof(T));
+        if(error){
+            throw std::runtime_error("Allocation of LWE buffer failed with error");
+        }
+        d->deviceMemcpy(buffer, v.data(), count, copyType::ToDevice);
+    }
+    
+    ~LWEBuffer(){
+        if(bytes) d->deviceFree(buffer);
+    }
+    T* device_ptr() const {
+        if(bytes == 0) throw std::runtime_error("Attempted to access empty LWEBuffer");
+        return buffer;
+    }
+};
+
+
+
 
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
