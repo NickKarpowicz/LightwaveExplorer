@@ -264,6 +264,21 @@ class NonlinearPropertyFlags{
     bool hasChi3 = false;
     bool assumeCentrosymmetric = false;
 };
+
+class LWEDevice{
+    public:
+    virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
+    virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
+    virtual void deviceMemcpy(
+		void* dst, 
+		const void* src, 
+		size_t count, 
+		copyType kind) = 0;
+    virtual void deviceFree(void* block) = 0;
+    virtual void fft(const void* input, void* output, deviceFFT type) = 0;
+    virtual void fftInitialize() = 0;
+};
+
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
 //with all of the platforms involved, and because it is transferred

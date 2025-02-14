@@ -148,7 +148,7 @@ __global__ static void deviceLaunchFunctorWrapper(const T functor) {
 }
 
 template<typename deviceFP, typename deviceComplex>
-class CUDADevice {
+class CUDADevice : public LWEDevice {
 private:
 	bool configuredFFT = false;
 	bool isCylindric = false;
@@ -247,20 +247,20 @@ public:
 	}
 
 
-	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
+	int deviceCalloc(void** ptr, size_t N, size_t elementSize) override {
 		int err = cudaMalloc(ptr, N * elementSize);
 		cudaMemset(*ptr, 0, N * elementSize);
 		return err;
 	}
 
-	void deviceMemset(void* ptr, int value, size_t count) {
+	void deviceMemset(void* ptr, int value, size_t count) override {
 		cudaMemset(ptr, value, count);
 	}
 	void deviceMemcpy(
 		void* dst, 
 		const void* src, 
 		size_t count, 
-		copyType kind) {
+		copyType kind) override {
 		cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 	}
 	void deviceMemcpy(
@@ -329,11 +329,11 @@ public:
 	}
 
 
-	void deviceFree(void* block) {
+	void deviceFree(void* block) override {
 		cudaFree(block);
 	}
 
-	void fftInitialize() {
+	void fftInitialize() override {
 		if (configuredFFT) {
 			fftDestroy();
 		}
@@ -383,7 +383,7 @@ public:
 		configuredFFT = 1;
 	}
 
-	void fft(const void* input, void* output, deviceFFT type) {
+	void fft(const void* input, void* output, deviceFFT type) override {
 		if(sizeof(deviceFP) == sizeof(double)){
 			switch (type){
 			case deviceFFT::D2Z:
