@@ -591,6 +591,23 @@ struct UPPEAllocation{
         sCPU->finishConfiguration(&parameterSet);
         d->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
     }
+
+    void zero_initialize_grids(){
+        workspace.initialize_to_zero();
+        gridETime.initialize_to_zero();
+        gridPolarizationTime.initialize_to_zero();
+        gridEFrequency.initialize_to_zero();
+        gridEFrequencyNext.initialize_to_zero();
+        gridPropagationFactor.initialize_to_zero();
+        gridPropagationFactorRho.initialize_to_zero();
+        gridPolarizationFactor.initialize_to_zero();
+        gridBiaxialDelta.initialize_to_zero();
+        gridRadialLaplacian.initialize_to_zero();
+        k.initialize_to_zero();
+        chiLinear.initialize_to_zero();
+        inverseChiLinear.initialize_to_zero();
+        fieldFactor.initialize_to_zero();
+    }
 };
 
 

@@ -204,20 +204,11 @@ public:
 		deviceSetError(cudaSetDevice(sCPU->assignedGPU)),
 		streamGenerationError(cudaStreamCreate(&stream))
 	{
-		cParams = sCPU;
-		hasPlasma= sCPU->nonlinearAbsorptionStrength > 0.0 || sCPU->startingCarrierDensity > 0.0;
-		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
-		deviceStruct = allocation->parameterSet;
-		s = &deviceStruct;
-		fftInitialize();
-		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
-		memoryStatus = 0;
+		allocateSet(sCPU);
 	}
 
 	~CUDADevice() {
 		fftDestroy();
-		//deallocateSet();
-		//deviceFree(dParamsDevice);
 		cudaStreamDestroy(stream);
 	}
 
@@ -231,9 +222,6 @@ public:
 		int64_t zStepDivisor) {
 		fftDestroy();
 		deallocateSet();
-
-		//allocate space grids
-		
 	}
 	void endMaxwell() {
 
@@ -429,60 +417,34 @@ public:
 		}
 	}
 	void deallocateSet() {
-
+		allocation = nullptr;
+		dParamsDevice = nullptr;
+		memoryStatus = -1;
 	}
 	void reset(simulationParameterSet* sCPU) {
-		if((*s).hasPlasma != ((*sCPU).nonlinearAbsorptionStrength != 0.0)){
+		bool plasmaMismatch = (*s).hasPlasma != (((*sCPU).nonlinearAbsorptionStrength != 0.0) || (*sCPU).startingCarrierDensity != 0.0);
+		bool timeDifference = allocation->Ntime != sCPU->Ntime;
+		bool sizeDifference = allocation->Ngrid != sCPU->Ngrid;
+		if(plasmaMismatch || timeDifference || sizeDifference){
 			deallocateSet();
 			memoryStatus = allocateSet(sCPU);
 		}
 		else{
 			sCPU->initializeDeviceParameters(s);
 			hasPlasma = s->hasPlasma;
+			allocation->zero_initialize_grids();
 		}
-		sCPU->fillRotationMatricies(s);
-		int64_t beamExpansionFactor = 1;
-		if ((*s).isCylindric) {
-			beamExpansionFactor = 2;
-			if ((*s).hasPlasma) beamExpansionFactor = 4;
-		}
-		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
-		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
-		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridPropagationFactor1, 0,  2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-
-		//cylindric sym grids
-		if ((*s).isCylindric) {
-			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(deviceComplex));
-			deviceMemset(
-				(*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(deviceComplex));
-		}
-
-		//smaller helper grids
-		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(deviceFP));
-		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceComplex));
-		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
-		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
-
-		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
-		for (int64_t i = 0; i < (*s).Ntime; ++i) {
-			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
-			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
-		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-
-		sCPU->finishConfiguration(s);
-		deviceMemcpy(dParamsDevice, 
-			s, 
-			sizeof(deviceParameterSet<deviceFP, deviceComplex>), 
-			copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
-		
+		cParams = sCPU;
+		hasPlasma= sCPU->nonlinearAbsorptionStrength > 0.0 || sCPU->startingCarrierDensity > 0.0;
+		if(memoryStatus == 0) allocation = nullptr;
+		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
+		deviceStruct = allocation->parameterSet;
+		s = &deviceStruct;
+		fftInitialize();
+		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
+		memoryStatus = 0;
 		return 0;
 	}
 

@@ -283,17 +283,17 @@ class LWEDevice{
 template<typename T>
 class LWEBuffer{
     LWEDevice* d = nullptr;
-    size_t count = 0;
-    size_t bytes = 0;
+
 public:
     T* buffer = nullptr;
-
+    size_t count = 0;
+    size_t bytes = 0;
     LWEBuffer(){}
     LWEBuffer(const LWEBuffer&) = delete;
     LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize) : 
     d(d),
-    count(N),
-    bytes(N*elementSize)
+    count(maxN(N,1)),
+    bytes(count*elementSize)
     {
         int error = d->deviceCalloc((void**)&buffer, count, elementSize);
         if(error){
@@ -317,6 +317,10 @@ public:
     T* device_ptr() const {
         if(bytes == 0) throw std::runtime_error("Attempted to access empty LWEBuffer");
         return buffer;
+    }
+
+    void initialize_to_zero(){
+        if(bytes) d->deviceMemset(buffer, 0, bytes);
     }
 };
 
