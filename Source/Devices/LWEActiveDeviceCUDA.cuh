@@ -430,9 +430,19 @@ public:
 			memoryStatus = allocateSet(sCPU);
 		}
 		else{
+			cParams = sCPU;
 			sCPU->initializeDeviceParameters(s);
 			hasPlasma = s->hasPlasma;
 			allocation->zero_initialize_grids();
+			sCPU->fillRotationMatricies(s);
+			std::vector<deviceFP> expGammaTCPU(2 * sCPU->Ntime);
+			for (int64_t i = 0; i < sCPU->Ntime; ++i) {
+				expGammaTCPU[i] = static_cast<deviceFP>(exp(sCPU->tStep * i * sCPU->drudeGamma));
+				expGammaTCPU[i + sCPU->Ntime] = static_cast<deviceFP>(exp(-sCPU->tStep * i * sCPU->drudeGamma));
+			}
+			deviceMemcpy(allocation->expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * sCPU->Ntime, copyType::ToDevice);
+			sCPU->finishConfiguration(s);
+			deviceMemcpy(allocation->parameterSet_deviceCopy.device_ptr(), s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
 		}
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
