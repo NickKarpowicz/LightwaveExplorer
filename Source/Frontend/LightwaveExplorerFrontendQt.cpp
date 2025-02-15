@@ -30,8 +30,8 @@ protected:
         cairo_t* cr = cairo_create(surface);
         cairo_scale(cr, ratio, ratio);
         theFunction(cr,
-            image.width()/ratio,
-            image.height()/ratio,
+            ceil(image.width()/ratio),
+            ceil(image.height()/ratio),
             theGui);
 
         cairo_destroy(cr);
