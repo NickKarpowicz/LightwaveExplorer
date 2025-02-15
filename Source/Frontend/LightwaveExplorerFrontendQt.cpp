@@ -1624,9 +1624,8 @@ public:
 
         QObject::connect(buttons["stop"], &QPushButton::clicked, [&](){
             if (theSim.base().isRunning) {
-                theSim.base().cancellationCalled = true;
-                for (int i = 1; i < theSim.base().Nsims; ++i) {
-                    theSim.base().cancellationCalled = true;
+                for(simulationParameterSet& sim : theSim.parameters){
+                    sim.cancellationCalled = true;
                 }
             }
         });

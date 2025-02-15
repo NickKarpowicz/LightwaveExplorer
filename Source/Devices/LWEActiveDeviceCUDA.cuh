@@ -1,7 +1,6 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cufft.h>
-#include <nvml.h>
 #include <thrust/complex.h>
 #include <iostream>
 #include "../LightwaveExplorerUtilities.h"
@@ -150,8 +149,6 @@ __global__ static void deviceLaunchFunctorWrapper(const T functor) {
 template<typename deviceFP, typename deviceComplex>
 class CUDADevice : public LWEDevice {
 private:
-
-	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
 	cudaError_t deviceSetError;
 	cudaError_t streamGenerationError;
 	cufftHandle fftPlanD2Z;
@@ -160,42 +157,22 @@ private:
 	cufftHandle fftPlan1DZ2D;
 	cufftHandle doublePolfftPlan;
 
-	int checkDeviceMemory(simulationParameterSet* sCPU) {
-		nvmlDevice_t nvmlDevice = 0;
-		nvmlMemory_t nvmlMemoryInfo;
-		nvmlInit_v2();
-		nvmlDeviceGetHandleByIndex_v2((*sCPU).assignedGPU, &nvmlDevice);
-		nvmlDeviceGetMemoryInfo(nvmlDevice, &nvmlMemoryInfo);
-		size_t memoryEstimate = sizeof(deviceFP) * 
-			((*s).Ngrid * 2 * 2 
-				+ 2 * (*s).NgridC * 6 * 2 
-				+ 2 * (*s).isCylindric * 5 * 2 
-				+ 2 * (*s).Ntime 
-				+ 2 * (*s).Nfreq + 81 + 65536);
-		nvmlShutdown();
-		if (nvmlMemoryInfo.free < memoryEstimate) {
-			(*sCPU).memoryError = -1;
-			return 1;
-		}
-		return 0;
-	}
-
 	void fftDestroy() override {
 		cufftDestroy(fftPlanD2Z);
 		cufftDestroy(fftPlanZ2D);
 		cufftDestroy(fftPlan1DD2Z);
 		cufftDestroy(fftPlan1DZ2D);
-		if (isCylindric) {
+		if (s->isCylindric) {
 			cufftDestroy(doublePolfftPlan);
 		}
 		configuredFFT = 0;
 	}
+
 public:
 	cudaStream_t stream;
-	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
-
+	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
 	deviceFP canaryPixel = 0.0;
 	CUDADevice(simulationParameterSet* sCPU) :
 		deviceSetError(cudaSetDevice(sCPU->assignedGPU)),
@@ -311,8 +288,7 @@ public:
 		if (configuredFFT) {
 			fftDestroy();
 		}
-		isCylindric = 0;
-		hasPlasma = (*s).hasPlasma;
+
 		size_t workSize;
 		cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_fwd, 2 * (int)((*s).Nspace * (*s).Nspace2));
 		cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_bwd, 2 * (int)((*s).Nspace * (*s).Nspace2));
@@ -340,7 +316,6 @@ public:
 			cufftMakePlanMany(fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_bwd, 2, &workSize);
 
 			if ((*s).isCylindric) {
-				isCylindric = 1;
 				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
 				cufftCreate(&doublePolfftPlan);
 				cufftGetSizeMany(
@@ -397,23 +372,16 @@ public:
 			}
 		}
 	}
-	void deallocateSet() {
-		allocation = nullptr;
-		dParamsDevice = nullptr;
-		memoryStatus = -1;
-	}
+
 	void reset(simulationParameterSet* sCPU) {
 		allocation->useNewParameterSet(sCPU);
-		deviceStruct = allocation->parameterSet;
-		s = &deviceStruct;
+		s = &(allocation->parameterSet);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
-		hasPlasma= sCPU->nonlinearAbsorptionStrength > 0.0 || sCPU->startingCarrierDensity > 0.0;
 		if(memoryStatus == 0) allocation = nullptr;
 		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
-		deviceStruct = allocation->parameterSet;
-		s = &deviceStruct;
+		s = &(allocation->parameterSet);
 		fftInitialize();
 		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
 		memoryStatus = 0;

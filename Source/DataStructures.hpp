@@ -274,9 +274,7 @@ class LWEDevice{
     public:
     simulationParameterSet* cParams;
 	int memoryStatus = -1;
-	bool hasPlasma = false;
 	bool configuredFFT = false;
-	bool isCylindric = false;
     virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
     virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
     virtual void deviceMemcpy(
