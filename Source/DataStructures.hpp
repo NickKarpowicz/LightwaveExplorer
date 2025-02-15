@@ -269,7 +269,6 @@ class NonlinearPropertyFlags{
     bool assumeCentrosymmetric = false;
 };
 
-
 class LWEDevice{
     public:
     simulationParameterSet* cParams;
@@ -306,7 +305,7 @@ public:
     {
         int error = d->deviceCalloc((void**)&buffer, count, elementSize);
         if(error){
-            throw std::runtime_error("Allocation of LWE buffer failed with error");
+            throw std::runtime_error("Couldn't allocate enough memory.");
         }
     }
     LWEBuffer(LWEDevice* d, const std::vector<T> v) : 
@@ -315,7 +314,7 @@ public:
     bytes(count * sizeof(T)){
         int error = d->deviceCalloc((void**)&buffer, count, sizeof(T));
         if(error){
-            throw std::runtime_error("Allocation of LWE buffer failed with error");
+            throw std::runtime_error("Couldn't allocate enough memory.");
         }
         d->deviceMemcpy(buffer, v.data(), count, copyType::ToDevice);
     }

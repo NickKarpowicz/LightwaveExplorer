@@ -329,7 +329,7 @@ public:
 		}
 		cufftSetStream(fftPlanD2Z, stream);
 		cufftSetStream(fftPlanZ2D, stream);
-		configuredFFT = 1;
+		configuredFFT = true;
 	}
 
 	void fft(const void* input, void* output, deviceFFT type) override {
