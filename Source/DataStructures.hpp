@@ -12,6 +12,9 @@
 #include <unistd.h>
 #endif
 #include "LightwaveExplorerHelpers.h"
+
+//Forward declarations of interface classes
+class simulationParameterSet;
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)
 // Z2D: complex to real (f to t)
@@ -266,8 +269,14 @@ class NonlinearPropertyFlags{
     bool assumeCentrosymmetric = false;
 };
 
+
 class LWEDevice{
     public:
+    simulationParameterSet* cParams;
+	int memoryStatus = -1;
+	bool hasPlasma = false;
+	bool configuredFFT = false;
+	bool isCylindric = false;
     virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
     virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
     virtual void deviceMemcpy(
@@ -278,6 +287,7 @@ class LWEDevice{
     virtual void deviceFree(void* block) = 0;
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
     virtual void fftInitialize() = 0;
+    virtual void fftDestroy() = 0;
 };
 
 template<typename T>
@@ -290,6 +300,7 @@ public:
     size_t bytes = 0;
     LWEBuffer(){}
     LWEBuffer(const LWEBuffer&) = delete;
+    LWEBuffer& operator=(const LWEBuffer&) = delete;
     LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize) : 
     d(d),
     count(maxN(N,1)),
@@ -321,6 +332,23 @@ public:
 
     void initialize_to_zero(){
         if(bytes) d->deviceMemset(buffer, 0, bytes);
+    }
+
+    void resize(int64_t newCount){
+        if(buffer != nullptr) d->deviceFree(buffer);
+        int error = d->deviceCalloc((void**)&buffer, newCount, sizeof(T));
+        if(error){
+            throw std::runtime_error("Resize of LWE buffer failed with error");
+        }
+        count = newCount;
+        bytes = count * sizeof(T);
+    }
+
+    void deallocate(){
+        if(buffer != nullptr) d->deviceFree(buffer);
+        buffer = nullptr;
+        count = 0;
+        bytes = 0;
     }
 };
 

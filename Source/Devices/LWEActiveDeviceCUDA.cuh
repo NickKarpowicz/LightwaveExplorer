@@ -150,9 +150,7 @@ __global__ static void deviceLaunchFunctorWrapper(const T functor) {
 template<typename deviceFP, typename deviceComplex>
 class CUDADevice : public LWEDevice {
 private:
-	bool configuredFFT = false;
-	bool isCylindric = false;
-	deviceFP canaryPixel = 0.0;
+
 	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
 	cudaError_t deviceSetError;
 	cudaError_t streamGenerationError;
@@ -182,7 +180,7 @@ private:
 		return 0;
 	}
 
-	void fftDestroy() {
+	void fftDestroy() override {
 		cufftDestroy(fftPlanD2Z);
 		cufftDestroy(fftPlanZ2D);
 		cufftDestroy(fftPlan1DD2Z);
@@ -197,9 +195,8 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
-	simulationParameterSet* cParams;
-	int memoryStatus = -1;
-	bool hasPlasma = false;
+
+	deviceFP canaryPixel = 0.0;
 	CUDADevice(simulationParameterSet* sCPU) :
 		deviceSetError(cudaSetDevice(sCPU->assignedGPU)),
 		streamGenerationError(cudaStreamCreate(&stream))
@@ -212,20 +209,6 @@ public:
 		cudaStreamDestroy(stream);
 	}
 
-	void startMaxwell(
-		simulationParameterSet* sCPU, 
-		deviceFP lengthZ, 
-		deviceFP startZ, 
-		deviceFP endZ, 
-		deviceFP observationPlane, 
-		int64_t timeStepDivisor, 
-		int64_t zStepDivisor) {
-		fftDestroy();
-		deallocateSet();
-	}
-	void endMaxwell() {
-
-	}
 	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
 		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(deviceFP), cudaMemcpyDeviceToHost);
 		return(isnan(canaryPixel));
@@ -238,7 +221,6 @@ public:
 		const T& functor) const {
 		deviceLaunchFunctorWrapper<<<Nblock, Nthread, 0, stream>>>(functor);
 	}
-
 
 	int deviceCalloc(void** ptr, size_t N, size_t elementSize) override {
 		int err = cudaMalloc(ptr, N * elementSize);
@@ -320,7 +302,6 @@ public:
 			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 		delete[] copyBuffer;
 	}
-
 
 	void deviceFree(void* block) override {
 		cudaFree(block);
@@ -422,28 +403,9 @@ public:
 		memoryStatus = -1;
 	}
 	void reset(simulationParameterSet* sCPU) {
-		bool plasmaMismatch = (*s).hasPlasma != (((*sCPU).nonlinearAbsorptionStrength != 0.0) || (*sCPU).startingCarrierDensity != 0.0);
-		bool timeDifference = allocation->Ntime != sCPU->Ntime;
-		bool sizeDifference = allocation->Ngrid != sCPU->Ngrid;
-		if(plasmaMismatch || timeDifference || sizeDifference){
-			deallocateSet();
-			memoryStatus = allocateSet(sCPU);
-		}
-		else{
-			cParams = sCPU;
-			sCPU->initializeDeviceParameters(s);
-			hasPlasma = s->hasPlasma;
-			allocation->zero_initialize_grids();
-			sCPU->fillRotationMatricies(s);
-			std::vector<deviceFP> expGammaTCPU(2 * sCPU->Ntime);
-			for (int64_t i = 0; i < sCPU->Ntime; ++i) {
-				expGammaTCPU[i] = static_cast<deviceFP>(exp(sCPU->tStep * i * sCPU->drudeGamma));
-				expGammaTCPU[i + sCPU->Ntime] = static_cast<deviceFP>(exp(-sCPU->tStep * i * sCPU->drudeGamma));
-			}
-			deviceMemcpy(allocation->expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * sCPU->Ntime, copyType::ToDevice);
-			sCPU->finishConfiguration(s);
-			deviceMemcpy(allocation->parameterSet_deviceCopy.device_ptr(), s, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
-		}
+		allocation->useNewParameterSet(sCPU);
+		deviceStruct = allocation->parameterSet;
+		s = &deviceStruct;
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;

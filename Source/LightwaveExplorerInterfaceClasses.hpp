@@ -513,7 +513,7 @@ struct UPPEAllocation{
     int64_t Ntime = 0;
     int64_t Nfreq = 0;
     int64_t Ngrid_complex = 0;
-
+    LWEDevice* parentDevice;
     LWEBuffer<deviceComplex> workspace;
     LWEBuffer<deviceFP> gridETime;
     LWEBuffer<deviceFP> gridPolarizationTime;
@@ -543,6 +543,7 @@ struct UPPEAllocation{
     Ntime(sCPU->Ntime),
     Nfreq(sCPU->Nfreq),
     Ngrid_complex(sCPU->NgridC),
+    parentDevice(d),
     workspace(d, beamExpansionFactor * 2 * Ngrid_complex, sizeof(deviceComplex)),
     gridETime(d, 2 * Ngrid, sizeof(deviceFP)),
     gridPolarizationTime(d, 2 * Ngrid, sizeof(deviceFP)),
@@ -576,20 +577,15 @@ struct UPPEAllocation{
         parameterSet.inverseChiLinear1 = inverseChiLinear.device_ptr();
         parameterSet.fieldFactor1 = fieldFactor.device_ptr();
         parameterSet.expGammaT = expGammaT.device_ptr();
-
         sCPU->fillRotationMatricies(&parameterSet);
-
-
         std::vector<deviceFP> expGammaTCPU(2 * Ntime);
 		for (int64_t i = 0; i < Ntime; ++i) {
 			expGammaTCPU[i] = static_cast<deviceFP>(exp(sCPU->tStep * i * sCPU->drudeGamma));
 			expGammaTCPU[i + sCPU->Ntime] = static_cast<deviceFP>(exp(-sCPU->tStep * i * sCPU->drudeGamma));
 		}
-        d->deviceMemcpy(expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * Ntime, copyType::ToDevice);
-        
-        
+        parentDevice->deviceMemcpy(expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * Ntime, copyType::ToDevice);
         sCPU->finishConfiguration(&parameterSet);
-        d->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
+        parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
     }
 
     void zero_initialize_grids(){
@@ -607,6 +603,42 @@ struct UPPEAllocation{
         chiLinear.initialize_to_zero();
         inverseChiLinear.initialize_to_zero();
         fieldFactor.initialize_to_zero();
+    }
+    void changeExpansionFactor(bool newIsCylindric, bool newHasPlasma){
+        beamExpansionFactor = 1 + newIsCylindric + 2 * newIsCylindric * newHasPlasma;
+        isCylindric = newIsCylindric;
+        hasPlasma = newHasPlasma;
+        workspace.resize(beamExpansionFactor * 2 * Ngrid_complex);
+        gridRadialLaplacian.resize(isCylindric * beamExpansionFactor * 2 * Ngrid);
+    }
+    void useNewParameterSet(simulationParameterSet* sCPU){
+        bool newSetHasPlasma = ((sCPU->nonlinearAbsorptionStrength != 0.0) || sCPU->startingCarrierDensity != 0.0);
+        bool newSetIsCylindric = sCPU->isCylindric;
+        bool plasmaMismatch = hasPlasma != newSetHasPlasma;
+        bool symmetryMismatch = isCylindric != newSetIsCylindric;
+        bool timeDifference = Ntime != sCPU->Ntime;
+        bool sizeDifference = Ngrid != sCPU->Ngrid;
+
+        if(plasmaMismatch || symmetryMismatch){
+            changeExpansionFactor(newSetIsCylindric, newSetHasPlasma);
+		}
+
+        if(timeDifference || sizeDifference){
+            throw std::runtime_error("New parameter set doesn't match grid shape of existing one!");
+        }
+
+        zero_initialize_grids();
+        sCPU->initializeDeviceParameters(&parameterSet);
+        sCPU->fillRotationMatricies(&parameterSet);
+
+        std::vector<deviceFP> expGammaTCPU(2 * Ntime);
+        for (int64_t i = 0; i < Ntime; ++i) {
+            expGammaTCPU[i] = static_cast<deviceFP>(exp(sCPU->tStep * i * sCPU->drudeGamma));
+            expGammaTCPU[i + Ntime] = static_cast<deviceFP>(exp(-sCPU->tStep * i * sCPU->drudeGamma));
+        }
+        parentDevice->deviceMemcpy(expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * Ntime, copyType::ToDevice);
+        sCPU->finishConfiguration(&parameterSet);
+        parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
     }
 };
 
