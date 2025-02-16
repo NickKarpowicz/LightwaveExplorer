@@ -61,71 +61,34 @@ int hardwareCheck(int* CUDAdeviceCount) {
 }
 
 template <typename deviceFP, typename deviceComplex>
-class counterDevice {
+class counterDevice : public LWEDevice {
 private:
-	bool configuredFFT = 0;
-	bool isCylindric = 0;
 	deviceParameterSet<deviceFP, deviceComplex> dParamslocal;
-	void fftDestroy() {
-	}
-
 public:
-	int stream;
-	int memoryStatus;
-	bool hasPlasma;
 	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
-	simulationParameterSet* cParams;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	counterDevice(simulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memoryStatus = 0;
-		stream = 0;
-		configuredFFT = 0;
-		isCylindric = 0;
+		configuredFFT = true;
 		cParams = sCPU;
 		dParamsDevice = &dParamslocal;
 		sCPU->initializeDeviceParameters(s);
-		hasPlasma = s->hasPlasma;
-	}
-
-	~counterDevice() {
 	}
 	template<typename T>
-	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, T functor) {
-	}
+	void deviceLaunch(const unsigned int Nblock, const unsigned int Nthread, T functor) {}
 
-	int deviceCalloc(void** ptr, const int64_t N, const int64_t elementSize) {
-		return 0;
-	}
-
-	void deviceMemset(void* ptr, const int value, const int64_t count) {
-	}
-
-	void deviceMemcpy(void* dst, const void* src, const int64_t count, const copyType kind) {
-	}
-
-	void deviceFree(const void* block) {
-	}
-
+	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) override {return 0;}
+	void deviceMemset(void* ptr, int value, size_t count) override {}
+	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, copyType kind) override {}
+	void deviceFree(void* block) override {}
+	void fft(const void* input, void* output, deviceFFT type) override {}
 	bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
 		return false;
 	}
 
-	void fft(const void* input, const void* output, const deviceFFT type) {
-	}
-
-	void fftInitialize() {
-		hasPlasma = (*s).hasPlasma;
-		configuredFFT = 1;
-	}
-	void deallocateSet() {
-	}
 	void reset(simulationParameterSet* sCPU) {
 		sCPU->initializeDeviceParameters(s);
-		hasPlasma = s->hasPlasma;
-	}
-	int allocateSet(simulationParameterSet* sCPU) {
-		return 0;
 	}
 };
