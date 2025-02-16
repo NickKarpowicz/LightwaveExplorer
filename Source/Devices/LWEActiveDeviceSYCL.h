@@ -123,14 +123,14 @@ private:
 	void fftDestroy() {
 		delete fftPlan1DD2Z;
 		delete fftPlanD2Z;
-		if (isCylindric) delete doublePolfftPlan;
+		if (s->isCylindric) delete doublePolfftPlan;
 	}
 public:
 	sycl::queue stream;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
-
+	using LWEDevice::deviceMemcpy;
 	SYCLDevice(simulationParameterSet* sCPU) {
 		memoryStatus = allocateSet(sCPU);
 		s = &(allocation->parameterSet);
@@ -182,7 +182,21 @@ public:
 		stream.wait();
 	}
 
-	//TODO: deleted implementations waited for stream before memcpy - might have to add a wait function to some cases...
+	void deviceMemcpy(
+		std::complex<double>* dst, 
+		const sycl::ext::oneapi::experimental::complex<float>* src, 
+		size_t count, 
+		copyType kind) {
+		deviceMemcpy(dst, reinterpret_cast<const std::complex<float>*>(src),count,kind);
+	}
+
+	void deviceMemcpy(
+		sycl::ext::oneapi::experimental::complex<float>* dst, 
+		const std::complex<double>* src, 
+		const size_t count, 
+		const copyType kind) {
+		deviceMemcpy(reinterpret_cast<std::complex<float>*>(dst),src,count,kind);
+	}
 
 	void deviceFree(void* block) override {
 		stream.wait();
@@ -233,7 +247,6 @@ public:
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, (*s).Nfreq * (*s).Nspace);
 
 			if ((*s).isCylindric) {
-				isCylindric = 1;
 				doublePolfftPlan = 
 					new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
 					std::vector<std::int64_t>{2 * (*s).Nspace, (*s).Ntime});
@@ -255,7 +268,7 @@ public:
 		fftPlan1DD2Z->commit(stream);
 		fftPlanD2Z->commit(stream);
 		if (s->isCylindric) doublePolfftPlan->commit(stream);
-		configuredFFT = 1;
+		configuredFFT = true;
 	}
 
 	void fft(const void* input, void* output, const deviceFFT type) override {
@@ -278,11 +291,15 @@ public:
 		}
 	}
 
-	void reset(simulationParameterSet* sCPU) {
+	void reset(simulationParameterSet* sCPU) override {
+		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
 		allocation->useNewParameterSet(sCPU);
+		if(resetFFT){
+			fftInitialize();
+		}
 	}
-	int allocateSet(simulationParameterSet* sCPU) {
-		
+
+	int allocateSet(simulationParameterSet* sCPU) {	
 		if ((*sCPU).assignedGPU) {
 			try {
 				sycl::queue gpuStream{ sycl::gpu_selector_v, { sycl::property::queue::in_order() } };
@@ -310,15 +327,12 @@ public:
 			}
 			
 		}
-
-		
 		cParams = sCPU;
 		if(memoryStatus == 0) allocation = nullptr;
 		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
 		s = &(allocation->parameterSet);
 		fftInitialize();
 		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
-
 		return 0;
 	}
 };

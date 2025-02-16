@@ -240,6 +240,10 @@ public:
         if (index == 0 || index == 36 || index >= multipliers.size()) return 0.0;
         return  getByNumber(index) / multipliers[index];
     }
+
+    [[nodiscard]] constexpr bool hasPlasma() const {
+        return nonlinearAbsorptionStrength > 0.0 || startingCarrierDensity > 0.0;
+    }
     
     constexpr double getByNumber(const std::size_t index) {
         switch (index) {

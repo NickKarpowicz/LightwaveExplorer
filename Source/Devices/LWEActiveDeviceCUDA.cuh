@@ -321,8 +321,12 @@ public:
 		}
 	}
 
-	void reset(simulationParameterSet* sCPU) {
+	void reset(simulationParameterSet* sCPU) override {
+		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
 		allocation->useNewParameterSet(sCPU);
+		if(resetFFT){
+			fftInitialize();
+		}
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;

@@ -535,16 +535,20 @@ public:
 		configuredFFT = true;
 	}
 
-	void reset(simulationParameterSet* sCPU) {
+	void reset(simulationParameterSet* sCPU) override {
+		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
 		allocation->useNewParameterSet(sCPU);
+		if(resetFFT){
+			fftInitialize();
+		}
 	#if defined _WIN32 || defined __linux__
 		if(indices.size() < static_cast<std::size_t>(4 * (*s).NgridC)){
 			indices = std::vector<int64_t>(4 * (*s).NgridC);
 			std::iota(indices.begin(), indices.end(), 0);
 		}
 	#endif
-		
 	}
+
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
 		if(memoryStatus == 0) allocation = nullptr;

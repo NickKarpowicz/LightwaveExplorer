@@ -283,7 +283,8 @@ class LWEDevice{
 		copyType kind) = 0;
     virtual void deviceFree(void* block) = 0;
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
-
+    virtual void reset(simulationParameterSet* sCPU) = 0;
+    
     void deviceMemcpy(
 		void* dst, 
 		const void* src, 
