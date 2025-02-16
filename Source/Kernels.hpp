@@ -1340,7 +1340,7 @@ namespace kernelNamespace{
 		deviceFunction void operator()(const int64_t i) const {
 			const int64_t j = (i) * (*s).Ntime;
 			const deviceFP* expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-			const deviceFP* dN = j + reinterpret_cast<deviceFP*>((*s).workspace1);
+			const deviceFP* dN = (j % (*s).Ngrid) + reinterpret_cast<deviceFP*>((*s).workspace1);
 			const deviceFP* E = &(*s).gridETime1[j];
 			deviceFP* P = &(*s).gridPolarizationTime1[j];
 			SimpsonIntegrator<deviceFP> N(s->plasmaParameters.initialDensity);
