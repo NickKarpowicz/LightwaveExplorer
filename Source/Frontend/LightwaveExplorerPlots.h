@@ -112,10 +112,229 @@ public:
     void setCairoA(cairo_t* cr) const { cairo_set_source_rgba(cr, r, g, b, a); }
 };
 
+class LweImage {
+    public:
+        int width = 0;
+        int height = 0;
+        double* data = nullptr;
+        int64_t dataXdim = 0;
+        int64_t dataYdim = 0;
+        std::complex<double>* complexData = nullptr;
+        int colorMap = 4;
+        bool logScale = false;
+        double logMin = 0;
+        int dataType = 0;
+        std::vector<uint8_t> pixels;
+    
+        void imagePlot(cairo_t* cr) {
+            int64_t plotSize = static_cast<int64_t>(width) * static_cast<int64_t>(height);
+            std::vector<float> plotarr2(plotSize);
+            switch (dataType) {
+            case 0:
+                if (data == nullptr) break;
+                linearRemapDoubleToFloat(
+                    data, 
+                    static_cast<int>(dataYdim), 
+                    static_cast<int>(dataXdim),
+                    plotarr2.data(),
+                    height,
+                    width);
+                drawArrayAsBitmap(cr, width, height, plotarr2.data(), colorMap);
+                break;
+            case 1:
+                if (complexData == nullptr) break;
+                linearRemapZToLogFloatShift(
+                    complexData, 
+                    static_cast<int>(dataYdim),
+                    static_cast<int>(dataXdim),
+                    plotarr2.data(),
+                    height,
+                    width,
+                    logMin);
+                drawArrayAsBitmap(cr, width, height, plotarr2.data(), colorMap);
+                break;
+            }
+        }
+    
+        void render() {
+            int64_t plotSize = static_cast<int64_t>(width) * static_cast<int64_t>(height);
+            std::vector<float> plotarr2(plotSize);
+            switch (dataType) {
+            case 0:
+                if (data == nullptr) break;
+                linearRemapDoubleToFloat(
+                    data, 
+                    static_cast<int>(dataYdim), 
+                    static_cast<int>(dataXdim),
+                    plotarr2.data(),
+                    height,
+                    width);
+                createBitmapFromArray(width, height, plotarr2.data(), colorMap);
+                break;
+            case 1:
+                if (complexData == nullptr) break;
+                linearRemapZToLogFloatShift(
+                    complexData, 
+                    static_cast<int>(dataYdim),
+                    static_cast<int>(dataXdim),
+                    plotarr2.data(),
+                    height,
+                    width,
+                    logMin);
+                createBitmapFromArray(width, height, plotarr2.data(), colorMap);
+                break;
+            }
+        }
+    
+        [[nodiscard]] constexpr double cModulusSquared(const std::complex<double>& x) const {
+            return x.real() * x.real() + x.imag() * x.imag();
+        }
+    
+        void linearRemapZToLogFloatShift(
+            const std::complex<double>* A, 
+            const int nax, 
+            const int nay, 
+            float* B, 
+            const int nbx, 
+            const int nby, 
+            const double logMin) {
+            const int div2 = nax / 2;
+    #pragma omp parallel for num_threads(interfaceThreads)
+            for (int i = 0; i < nbx; ++i) {
+                float f = i * (nax / (float)nbx);
+                int nx0 = minN((int)f, nax);
+                nx0 -= div2 * ((nx0 >= div2) - (nx0 < div2));
+                nx0 *= nay;
+                for (int j = 0; j < nby; ++j) {
+                    f = (j * (nay / (float)nby));
+                    int ny0 = minN(nay, (int)f);
+                    B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
+                }
+            }
+        }
+    
+        void linearRemapZToLogFloat(
+            const std::complex<double>* A, 
+            const int nax, 
+            const int nay, 
+            float* B, 
+            const int nbx, 
+            const int nby, 
+            const double logMin) {
+    #pragma omp parallel for num_threads(interfaceThreads)
+            for (int i = 0; i < nbx; ++i) {
+                float f = i * (nax / (float)nbx);
+                int Ni = (int)f;
+                int nx0 = nay * minN(Ni, nax);
+                for (int j = 0; j < nby; ++j) {
+                    f = (j * (nay / (float)nby));
+                    int Nj = (int)f;
+                    int ny0 = minN(nay, Nj);
+                    B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
+                }
+            }
+        }
+    
+        void linearRemapDoubleToFloat(
+            const double* A, 
+            const int nax, 
+            const int nay, 
+            float* B, 
+            const int nbx, 
+            const int nby) {
+    #pragma omp parallel for num_threads(interfaceThreads)
+            for (int i = 0; i < nbx; ++i) {
+                int Ni = (int)(i * (nax / (float)nbx));
+                int nx0 = nay * minN(Ni, nax);
+                for (int j = 0; j < nby; ++j) {
+                    int Nj = (int)((j * (nay / (float)nby)));
+                    int ny0 = minN(nay, Nj);
+                    B[i * nby + j] = (float)A[ny0 + nx0];
+                }
+            }
+        }
+    
+        void createBitmapFromArray(
+            const int Nx,
+            const int Ny,
+            const float* data,
+            const int cm){
+            // creating input
+            const int64_t Ntot = static_cast<int64_t>(Nx) * static_cast<int64_t>(Ny);
+            pixels.resize(4 * Ntot);
+    
+            const std::array<std::array<uint8_t, 3>, 256> colorMap = LweColorMaps[cm];
+            constexpr int stride = 4;
+            //Find the image maximum and minimum
+            float imin = data[0];
+            float imax = data[0];
+            for (int64_t i = 1; i < Ntot; ++i) {
+                if (data[i] > imax) imax = data[i];
+                if (data[i] < imin) imin = data[i];
+            }
+            if (cm == 4) {
+                imax = maxN(imax, -imin);
+                imin = minN(imin, -imax);
+            }
+    
+            if (imin != imax) {
+    #pragma omp parallel for num_threads(interfaceThreads)
+                for (int p = 0; p < Ntot; p++) {
+                    uint8_t currentValue = 
+                        static_cast<uint8_t>(255.0 * (data[p] - imin) / (imax - imin));
+                    pixels[stride * p] = colorMap[currentValue][0];
+                    pixels[stride * p + 1] = colorMap[currentValue][1];
+                    pixels[stride * p + 2] = colorMap[currentValue][2];
+                }
+            }
+        }
+        void drawArrayAsBitmap(
+            cairo_t* cr, 
+            const int Nx, 
+            const int Ny, 
+            const float* data, 
+            const int cm,
+            const double x_offset = 0.0,
+            const double y_offset = 0.0) {
+            if (Nx * Ny == 0) return;
+            createBitmapFromArray(Nx, Ny, data, cm);
+            std::unique_lock GTKlock(GTKmutex);
+            const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
+            cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
+                pixels.data(),
+                CAIRO_FORMAT_RGB24, 
+                Nx, Ny, 
+                caiStride);
+            cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
+            cairo_paint(cr);
+            cairo_surface_finish(cSurface);
+            cairo_surface_destroy(cSurface);
+        }
+
+        void drawRenderedPixels(
+            cairo_t* cr, 
+            const double x_offset = 0.0,
+            const double y_offset = 0.0) {
+            if (height * width == 0) return;
+            const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, width);
+            cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
+                pixels.data(),
+                CAIRO_FORMAT_RGB24, 
+                width, height, 
+                caiStride);
+            cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
+            cairo_paint(cr);
+            cairo_surface_finish(cSurface);
+            cairo_surface_destroy(cSurface);
+        }
+};
+
+
 class LwePlot {
 public:
     bool makeSVG = false;
     bool markers = true;
+    
     double width = 0;
     double height = 0;
     double fontSize = 14.0;
@@ -125,6 +344,9 @@ public:
     double* data3 = nullptr;
     double* data4 = nullptr;
     double* dataX = nullptr;
+    double* imagedata = nullptr;
+    LweImage* image = nullptr;
+    bool drawImage = false;
     const char* xLabel = nullptr;
     const char* yLabel = nullptr;
     bool hasDataX = false;
@@ -154,6 +376,8 @@ public:
     std::string SVGPath;
 
     int plot(cairo_t* cr) {
+        if (image != nullptr) drawImage = true;
+        if (drawImage) Npts = 5;
         if (Npts == 0) return 1;
         std::unique_lock GTKlock(GTKmutex);
         if (SVGPath.length() > 5) makeSVG = true;
@@ -186,56 +410,69 @@ public:
         double currentY;
         double currentX;
         std::vector<double> xValues(Npts + 2, 0.0);
-        for (int i = 0; i < Npts; ++i) {
-            if (hasDataX) currentX = (double)dataX[i];
-            else { currentX = (double)(i * dx + x0); }
-            if (i == 0) {
-                minX = currentX;
-                maxX = currentX;
+        if(!drawImage){
+            for (int i = 0; i < Npts; ++i) {
+                if (hasDataX) currentX = (double)dataX[i];
+                else { currentX = (double)(i * dx + x0); }
+                if (i == 0) {
+                    minX = currentX;
+                    maxX = currentX;
+                }
+                xValues[i] = currentX;
+                if (forceXmin && (currentX < forcedXmin)) {
+                    iMin = i + 1;
+                }
+                if (forceXmax && (currentX > forcedXmax)) {
+                    iMax = i;
+                    break;
+                }
+                maxX = maxN(currentX, maxX);
+                minX = minN(currentX, minX);
             }
-            xValues[i] = currentX;
-            if (forceXmin && (currentX < forcedXmin)) {
-                iMin = i + 1;
-            }
-            if (forceXmax && (currentX > forcedXmax)) {
-                iMax = i;
-                break;
-            }
-            maxX = maxN(currentX, maxX);
-            minX = minN(currentX, minX);
-        }
-        if (iMin >= iMax || iMin >= Npts) return -1;
-        for (int64_t i = iMin; i < iMax; ++i) {
-            if (logScale) { currentY = (double)log10(data[i]); }
-            else { currentY = (double)data[i]; }
-            maxY = maxN(currentY, maxY);
-            minY = minN(currentY, minY);
-            if (ExtraLines > 0) {
-                if (logScale) { currentY = (double)log10(data2[i]); }
-                else { currentY = (double)data2[i]; }
+            if (iMin >= iMax || iMin >= Npts) return -1;
+            for (int64_t i = iMin; i < iMax; ++i) {
+                if (logScale) { currentY = (double)log10(data[i]); }
+                else { currentY = (double)data[i]; }
                 maxY = maxN(currentY, maxY);
                 minY = minN(currentY, minY);
+                if (ExtraLines > 0) {
+                    if (logScale) { currentY = (double)log10(data2[i]); }
+                    else { currentY = (double)data2[i]; }
+                    maxY = maxN(currentY, maxY);
+                    minY = minN(currentY, minY);
+                }
+            }
+    
+            if (minY == maxY) {
+                minY = -1;
+                maxY = 1;
+            }
+
+            if (forceYmin) {
+                minY = (double)forcedYmin * unitY;
+                if (logScale) minY = log10(minY);
+            }
+            if (forceYmax) {
+                maxY = (double)forcedYmax * unitY;
+                if (logScale) maxY = log10(maxY);
+            }
+            if (forceXmin) {
+                minX = (double)forcedXmin;
+            }
+            if (forceXmax) {
+                maxX = (double)forcedXmax;
             }
         }
+        else{
+            //drawing an image: require input x and y limits
+            minX = forcedXmin;
+            maxX = forcedXmax;
+            maxY = forcedYmax * unitY;
+            minY = forcedYmin * unitY;
+        }
+        
 
-        if (minY == maxY) {
-            minY = -1;
-            maxY = 1;
-        }
-        if (forceYmin) {
-            minY = (double)forcedYmin * unitY;
-            if (logScale) minY = log10(minY);
-        }
-        if (forceYmax) {
-            maxY = (double)forcedYmax * unitY;
-            if (logScale) maxY = log10(maxY);
-        }
-        if (forceXmin) {
-            minX = (double)forcedXmin;
-        }
-        if (forceXmax) {
-            maxX = (double)forcedXmax;
-        }
+
 
         //Tickmark labels
         constexpr int NyTicks = 3;
@@ -262,12 +499,18 @@ public:
                 "\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
                 SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
         }
-
+        
         cairo_rectangle(cr, 0, 0, width, height);
         backgroundColor.setCairo(cr);
         cairo_fill(cr);
         width -= axisSpaceX;
         height -= axisSpaceY;
+        if(drawImage){
+            image->width = width;
+            image->height = height;
+            image->render();
+            image->drawRenderedPixels(cr,axisSpaceX,0.0);
+        }
         double scaleX = width / ((double)(maxX - minX));
         double scaleY = height / ((double)(maxY - minY));
         LweColor currentColor = textColor;
@@ -393,8 +636,6 @@ public:
             if (i == 1) layoutTop -= 6.0f;
             layoutBottom = layoutTop + axisSpaceY;
             layoutRight = axisSpaceX;
-
-
             cairoRightText();
             SVGlefttext();
         }
@@ -473,6 +714,8 @@ public:
             SVGstdline();
         }
         SVGendgroup();
+
+
 
         //Lambdas for plotting a line
         std::vector<double> scaledX(Npts);
@@ -630,14 +873,17 @@ public:
         }
 
         //Plot the main line
-        getNewScaledXY(xValues, data);
-        currentColor = color;
-        plotCairoPolyline();
-        if (markers)plotCairoDots();
-        if (makeSVG) {
-            plotSVGPolyline();
-            if (markers)plotSVGDots();
+        if(!drawImage){
+            getNewScaledXY(xValues, data);
+            currentColor = color;
+            plotCairoPolyline();
+            if (markers)plotCairoDots();
+            if (makeSVG) {
+                plotSVGPolyline();
+                if (markers)plotSVGDots();
+            }
         }
+
 
         if (makeSVG) {
             SVGString.append("</svg>");
@@ -650,163 +896,3 @@ public:
     }
 };
 
-class LweImage {
-public:
-    int width = 0;
-    int height = 0;
-    double* data = nullptr;
-    int64_t dataXdim = 0;
-    int64_t dataYdim = 0;
-    std::complex<double>* complexData = nullptr;
-    int colorMap = 4;
-    bool logScale = false;
-    double logMin = 0;
-    int dataType = 0;
-
-    void imagePlot(cairo_t* cr) {
-        int64_t plotSize = static_cast<int64_t>(width) * static_cast<int64_t>(height);
-        std::vector<float> plotarr2(plotSize);
-        switch (dataType) {
-        case 0:
-            if (data == nullptr) break;
-            linearRemapDoubleToFloat(
-                data, 
-                static_cast<int>(dataYdim), 
-                static_cast<int>(dataXdim),
-                plotarr2.data(),
-                height,
-                width);
-            drawArrayAsBitmap(cr, width, height, plotarr2.data(), colorMap);
-            break;
-        case 1:
-            if (complexData == nullptr) break;
-            linearRemapZToLogFloatShift(
-                complexData, 
-                static_cast<int>(dataYdim),
-                static_cast<int>(dataXdim),
-                plotarr2.data(),
-                height,
-                width,
-                logMin);
-            drawArrayAsBitmap(cr, width, height, plotarr2.data(), colorMap);
-            break;
-        }
-    }
-
-    [[nodiscard]] constexpr double cModulusSquared(const std::complex<double>& x) const {
-        return x.real() * x.real() + x.imag() * x.imag();
-    }
-
-    void linearRemapZToLogFloatShift(
-        const std::complex<double>* A, 
-        const int nax, 
-        const int nay, 
-        float* B, 
-        const int nbx, 
-        const int nby, 
-        const double logMin) {
-        const int div2 = nax / 2;
-#pragma omp parallel for num_threads(interfaceThreads)
-        for (int i = 0; i < nbx; ++i) {
-            float f = i * (nax / (float)nbx);
-            int nx0 = minN((int)f, nax);
-            nx0 -= div2 * ((nx0 >= div2) - (nx0 < div2));
-            nx0 *= nay;
-            for (int j = 0; j < nby; ++j) {
-                f = (j * (nay / (float)nby));
-                int ny0 = minN(nay, (int)f);
-                B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
-            }
-        }
-    }
-
-    void linearRemapZToLogFloat(
-        const std::complex<double>* A, 
-        const int nax, 
-        const int nay, 
-        float* B, 
-        const int nbx, 
-        const int nby, 
-        const double logMin) {
-#pragma omp parallel for num_threads(interfaceThreads)
-        for (int i = 0; i < nbx; ++i) {
-            float f = i * (nax / (float)nbx);
-            int Ni = (int)f;
-            int nx0 = nay * minN(Ni, nax);
-            for (int j = 0; j < nby; ++j) {
-                f = (j * (nay / (float)nby));
-                int Nj = (int)f;
-                int ny0 = minN(nay, Nj);
-                B[i * nby + j] = (float)log10(cModulusSquared(A[ny0 + nx0]) + logMin);
-            }
-        }
-    }
-
-    void linearRemapDoubleToFloat(
-        const double* A, 
-        const int nax, 
-        const int nay, 
-        float* B, 
-        const int nbx, 
-        const int nby) {
-#pragma omp parallel for num_threads(interfaceThreads)
-        for (int i = 0; i < nbx; ++i) {
-            int Ni = (int)(i * (nax / (float)nbx));
-            int nx0 = nay * minN(Ni, nax);
-            for (int j = 0; j < nby; ++j) {
-                int Nj = (int)((j * (nay / (float)nby)));
-                int ny0 = minN(nay, Nj);
-                B[i * nby + j] = (float)A[ny0 + nx0];
-            }
-        }
-    }
-
-    void drawArrayAsBitmap(
-        cairo_t* cr, 
-        const int Nx, 
-        const int Ny, 
-        const float* data, 
-        const int cm) {
-        if (Nx * Ny == 0) return;
-        
-        // creating input
-        const int64_t Ntot = static_cast<int64_t>(Nx) * static_cast<int64_t>(Ny);
-        std::vector<uint8_t> pixels(4 * Ntot, 0);
-
-        const std::array<std::array<uint8_t, 3>, 256> colorMap = LweColorMaps[cm];
-        constexpr int stride = 4;
-        //Find the image maximum and minimum
-        float imin = data[0];
-        float imax = data[0];
-        for (int64_t i = 1; i < Ntot; ++i) {
-            if (data[i] > imax) imax = data[i];
-            if (data[i] < imin) imin = data[i];
-        }
-        if (cm == 4) {
-            imax = maxN(imax, -imin);
-            imin = minN(imin, -imax);
-        }
-
-        if (imin != imax) {
-#pragma omp parallel for num_threads(interfaceThreads)
-            for (int p = 0; p < Ntot; p++) {
-                uint8_t currentValue = 
-                    static_cast<uint8_t>(255.0 * (data[p] - imin) / (imax - imin));
-                pixels[stride * p] = colorMap[currentValue][0];
-                pixels[stride * p + 1] = colorMap[currentValue][1];
-                pixels[stride * p + 2] = colorMap[currentValue][2];
-            }
-        }
-        std::unique_lock GTKlock(GTKmutex);
-        const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
-        cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
-            pixels.data(),
-            CAIRO_FORMAT_RGB24, 
-            Nx, Ny, 
-            caiStride);
-        cairo_set_source_surface(cr, cSurface, 0, 0);
-        cairo_paint(cr);
-        cairo_surface_finish(cSurface);
-        cairo_surface_destroy(cSurface);
-    }
-};

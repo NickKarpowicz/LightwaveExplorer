@@ -2097,25 +2097,38 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage sPlot;
-    int64_t simIndex = maxN(0,theGui.slider->value());
 
+    int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
-
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    sPlot.data =
-        &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
-    sPlot.dataXdim = theGui.theSim.base().Ntime;
-    sPlot.dataYdim = theGui.theSim.base().Nspace;
+    LweImage image;
+    image.data = &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
+    image.dataXdim = theGui.theSim.base().Ntime;
+    image.dataYdim = theGui.theSim.base().Nspace;
+    image.height = height;
+    image.width = width;
+    image.colorMap = 4;
+    image.dataType = 0;
+
+    LwePlot sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.colorMap = 4;
-    sPlot.dataType = 0;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Time (fs)";
+    sPlot.yLabel = "x (mm)";
+    sPlot.unitY = 1e3;
+    sPlot.forcedXmax = 0.5e15 * theGui.theSim.base().Ntime * theGui.theSim.base().tStep;
+    sPlot.forcedXmin = -sPlot.forcedXmax;
+    sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
+    sPlot.forcedYmax = -sPlot.forcedYmin;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+    }
     else blackoutCairoPlot(cr, width, height);
 }
 
@@ -2344,7 +2357,7 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage sPlot;
+
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -2352,16 +2365,31 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    sPlot.data =
-    &theGui.theSim.base().ExtOut[theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
-    sPlot.dataYdim = theGui.theSim.base().Nspace;
-    sPlot.dataXdim = theGui.theSim.base().Ntime;
+    LweImage image;
+    image.data = &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + theGui.theSim.base().Ngrid + cubeMiddle];
+    image.dataXdim = theGui.theSim.base().Ntime;
+    image.dataYdim = theGui.theSim.base().Nspace;
+    image.height = height;
+    image.width = width;
+    image.colorMap = 4;
+    image.dataType = 0;
+
+    LwePlot sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.colorMap = 4;
-    sPlot.dataType = 0;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Time (fs)";
+    sPlot.yLabel = "x (mm)";
+    sPlot.unitY = 1e3;
+    sPlot.forcedXmax = 0.5e15 * theGui.theSim.base().Ntime * theGui.theSim.base().tStep;
+    sPlot.forcedXmin = -sPlot.forcedXmax;
+    sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
+    sPlot.forcedYmax = -sPlot.forcedYmin;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+    }
     else blackoutCairoPlot(cr, width, height);
 }
 
@@ -2371,7 +2399,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage sPlot;
+    LweImage image;
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -2382,18 +2410,35 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
             (double)(1e-4 
                 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
-    sPlot.complexData =
+    image.complexData =
         &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2];
-    sPlot.dataXdim = theGui.theSim.base().Nfreq;
-    sPlot.dataYdim = theGui.theSim.base().Nspace;
+
+    image.dataXdim = theGui.theSim.base().Nfreq;
+    image.dataYdim = theGui.theSim.base().Nspace;
+    image.height = height;
+    image.width = width;
+    image.colorMap = 3;
+    image.dataType = 1;
+    image.logMin = logPlotOffset;
+    LwePlot sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dataType = 1;
-    sPlot.colorMap = 3;
-    sPlot.logMin = logPlotOffset;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Transverse k (1/\xce\xbcm)";
+    sPlot.unitY = 1;
+    sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
+    sPlot.forcedXmin = 0;
+    sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
+    sPlot.forcedYmax = -sPlot.forcedYmin;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+    }
     else blackoutCairoPlot(cr, width, height);
+
+    
 }
 
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
@@ -2402,7 +2447,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage sPlot;
+    LweImage image;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2414,17 +2459,31 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         logPlotOffset = (double)(1e-4 
             / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
-    sPlot.complexData =
+    image.complexData =
         &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2 + theGui.theSim.base().NgridC];
-    sPlot.dataXdim = theGui.theSim.base().Nfreq;
-    sPlot.dataYdim = theGui.theSim.base().Nspace;
+    image.dataXdim = theGui.theSim.base().Nfreq;
+    image.dataYdim = theGui.theSim.base().Nspace;
+    image.height = height;
+    image.width = width;
+    image.colorMap = 3;
+    image.dataType = 1;
+    image.logMin = logPlotOffset;
+    LwePlot sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.colorMap = 3;
-    sPlot.dataType = 1;
-    sPlot.logMin = logPlotOffset;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Transverse k (1/\xce\xbcm)";
+    sPlot.unitY = 1;
+    sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
+    sPlot.forcedXmin = 0;
+    sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
+    sPlot.forcedYmax = -sPlot.forcedYmin;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+    }
     else blackoutCairoPlot(cr, width, height);
 }
 
