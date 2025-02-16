@@ -283,8 +283,6 @@ class LWEDevice{
 		copyType kind) = 0;
     virtual void deviceFree(void* block) = 0;
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
-    virtual void fftInitialize() = 0;
-    virtual void fftDestroy() = 0;
 
     void deviceMemcpy(
 		void* dst, 
@@ -389,7 +387,7 @@ public:
     LWEBuffer& operator=(const LWEBuffer&) = delete;
     LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize) : 
     d(d),
-    count(maxN(N,1)),
+    count(maxN(N,static_cast<size_t>(1))),
     bytes(count*elementSize)
     {
         int error = d->deviceCalloc((void**)&buffer, count, elementSize);

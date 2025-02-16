@@ -520,16 +520,15 @@ struct UPPEAllocation{
     LWEBuffer<deviceComplex> gridEFrequency;
     LWEBuffer<deviceComplex> gridEFrequencyNext;
     LWEBuffer<deviceComplex> gridPropagationFactor;
+    LWEBuffer<deviceComplex> gridPolarizationFactor;
+    LWEBuffer<deviceFP> gridBiaxialDelta;
     LWEBuffer<deviceComplex> gridPropagationFactorRho;
     LWEBuffer<deviceFP> gridRadialLaplacian;
-    LWEBuffer<deviceComplex> gridPolarizationFactor;
     LWEBuffer<deviceComplex> k;
-    LWEBuffer<deviceFP> gridBiaxialDelta;
     LWEBuffer<deviceComplex> chiLinear;
     LWEBuffer<deviceFP> inverseChiLinear;
     LWEBuffer<deviceFP> fieldFactor;
     LWEBuffer<deviceFP> expGammaT;
-
     deviceParameterSet<deviceFP, deviceComplex> parameterSet;
     LWEBuffer<deviceParameterSet<deviceFP, deviceComplex>> parameterSet_deviceCopy;
     

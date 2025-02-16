@@ -157,7 +157,7 @@ private:
 	cufftHandle fftPlan1DZ2D;
 	cufftHandle doublePolfftPlan;
 
-	void fftDestroy() override {
+	void fftDestroy() {
 		cufftDestroy(fftPlanD2Z);
 		cufftDestroy(fftPlanZ2D);
 		cufftDestroy(fftPlan1DD2Z);
@@ -232,7 +232,7 @@ public:
 		cudaFree(block);
 	}
 
-	void fftInitialize() override {
+	void fftInitialize() {
 		if (configuredFFT) {
 			fftDestroy();
 		}
