@@ -276,7 +276,7 @@ class LWEDevice{
 	bool configuredFFT = false;
     virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
     virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
-    virtual void deviceMemcpy(
+    virtual void deviceMemcpyImplementation(
 		void* dst, 
 		const void* src, 
 		size_t count, 
@@ -285,6 +285,95 @@ class LWEDevice{
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
     virtual void fftInitialize() = 0;
     virtual void fftDestroy() = 0;
+
+    void deviceMemcpy(
+		void* dst, 
+		const void* src, 
+		size_t count, 
+		copyType kind) {
+			deviceMemcpyImplementation(dst, src, count, kind);
+	}
+
+    void deviceMemcpy(
+		void* dst, 
+		void* src, 
+		size_t count, 
+		copyType kind) {
+            if(src==dst) return;
+			deviceMemcpyImplementation(dst, src, count, kind);
+	}
+
+	void deviceMemcpy(
+		double* dst, 
+		const float* src, 
+		size_t count, 
+		copyType kind) {
+            float* copyBuffer = new float[count / sizeof(double)];
+            deviceMemcpyImplementation(
+                static_cast<void*>(copyBuffer), 
+                static_cast<const void*>(src), 
+                count/2, 
+                kind);
+            for (size_t i = 0; i < count / sizeof(double); i++) {
+                dst[i] = copyBuffer[i];
+            }
+            delete[] copyBuffer;
+	}
+	
+	void deviceMemcpy(
+		float* dst, 
+		const double* src, 
+		size_t count, 
+		copyType kind) {
+            float* copyBuffer = new float[count / sizeof(double)];
+            for (size_t i = 0; i < count / sizeof(double); i++) {
+                copyBuffer[i] = (float)src[i];
+            }
+            deviceMemcpyImplementation(
+                static_cast<void*>(dst), 
+                static_cast<void*>(copyBuffer), 
+                count / 2, 
+                kind);
+            delete[] copyBuffer;
+	}
+
+    void deviceMemcpy(
+		std::complex<double>* dst, 
+		const std::complex<float>* src, 
+		size_t count, 
+		copyType kind) {
+		std::complex<float>* copyBuffer = 
+			new std::complex<float>[count / sizeof(std::complex<double>)];
+		deviceMemcpyImplementation(
+			static_cast<void*>(copyBuffer), 
+			static_cast<const void*>(src), 
+			count/2, 
+			kind);
+		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
+		}
+		delete[] copyBuffer;
+	}
+
+	void deviceMemcpy(
+		std::complex<float>* dst, 
+		const std::complex<double>* src, 
+		size_t count, 
+		copyType kind) {
+		std::complex<float>* copyBuffer = 
+			new std::complex<float>[count / sizeof(std::complex<double>)];
+		
+		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+			copyBuffer[i] = 
+				std::complex<float>((float)src[i].real(), (float)src[i].imag());
+		}
+		deviceMemcpyImplementation(
+			static_cast<void*>(dst), 
+			static_cast<void*>(copyBuffer), 
+			count / 2, 
+			kind);
+		delete[] copyBuffer;
+	}
 };
 
 template<typename T>
@@ -323,7 +412,7 @@ public:
         if(bytes) d->deviceFree(buffer);
     }
     T* device_ptr() const {
-        if(bytes == 0) throw std::runtime_error("Attempted to access empty LWEBuffer");
+        if(bytes == 0 || buffer == nullptr) throw std::runtime_error("Attempted to access empty LWEBuffer");
         return buffer;
     }
 

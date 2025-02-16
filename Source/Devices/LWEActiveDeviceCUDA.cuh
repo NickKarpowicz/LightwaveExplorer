@@ -174,6 +174,7 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
 	deviceFP canaryPixel = 0.0;
+	using LWEDevice::deviceMemcpy;
 	CUDADevice(simulationParameterSet* sCPU) :
 		deviceSetError(cudaSetDevice(sCPU->assignedGPU)),
 		streamGenerationError(cudaStreamCreate(&stream))
@@ -204,81 +205,28 @@ public:
 		cudaMemset(*ptr, 0, N * elementSize);
 		return err;
 	}
-
 	void deviceMemset(void* ptr, int value, size_t count) override {
 		cudaMemset(ptr, value, count);
 	}
-	void deviceMemcpy(
-		void* dst, 
-		const void* src, 
-		size_t count, 
-		copyType kind) override {
+	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, copyType kind) override {
 		cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 	}
-	void deviceMemcpy(
-		double* dst, 
-		const float* src, 
-		size_t count, 
-		copyType kind) {
-		float* copyBuffer = new float[count / sizeof(double)];
-		cudaMemcpy(copyBuffer, src, count/2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
-		for (size_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = copyBuffer[i];
-		}
-		delete[] copyBuffer;
-	}
-	void deviceMemcpy(
-		std::complex<double>* dst, 
-		const thrust::complex<float>* src, 
-		size_t count, 
-		copyType kind) {
-		thrust::complex<float>* copyBuffer = 
-			new thrust::complex<float>[count / sizeof(std::complex<double>)];
-		cudaMemcpy(
-			copyBuffer, 
-			src, 
-			count/2, 
-			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
-		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
-		}
-		delete[] copyBuffer;
-	}
 
-	void deviceMemcpy(
+	void inline deviceMemcpy(
 		thrust::complex<float>* dst, 
 		const std::complex<double>* src, 
 		size_t count, 
 		copyType kind) {
-		thrust::complex<float>* copyBuffer = 
-			new thrust::complex<float>[count / sizeof(std::complex<double>)];
-		
-		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			copyBuffer[i] = 
-				thrust::complex<float>((float)src[i].real(), (float)src[i].imag());
+			deviceMemcpy(reinterpret_cast<std::complex<float>*>(dst), src, count, kind);
 		}
-		cudaMemcpy(
-			dst, 
-			copyBuffer, 
-			count / 2, 
-			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
-		delete[] copyBuffer;
-	}
-	void deviceMemcpy(
-		float* dst, 
-		const double* src, 
+
+	void inline deviceMemcpy(
+		std::complex<double>* dst, 
+		const thrust::complex<float>* src, 
 		size_t count, 
 		copyType kind) {
-		float* copyBuffer = new float[count / sizeof(double)];
-		for (size_t i = 0; i < count / sizeof(double); i++) {
-			copyBuffer[i] = (float)src[i];
+			deviceMemcpy(dst, reinterpret_cast<const std::complex<float>*>(src), count, kind);
 		}
-		cudaMemcpy(dst, 
-			copyBuffer, 
-			count / 2, 
-			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
-		delete[] copyBuffer;
-	}
 
 	void deviceFree(void* block) override {
 		cudaFree(block);
@@ -375,7 +323,6 @@ public:
 
 	void reset(simulationParameterSet* sCPU) {
 		allocation->useNewParameterSet(sCPU);
-		s = &(allocation->parameterSet);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
