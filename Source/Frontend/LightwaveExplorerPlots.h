@@ -384,7 +384,7 @@ class LweImage {
                 auto pngString = encodeBase64(png);
                 std::string tag = Sformat(
                     "<image x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" "
-                    "xlink:href=\"data:image/png;base64,{}\"/>", 
+                    "preserveAspectRatio=\"none\" xlink:href=\"data:image/png;base64,{}\"/>", 
                     x_offset, 
                     y_offset, 
                     width_in_svg, 
@@ -570,17 +570,18 @@ public:
         width -= axisSpaceX;
         height -= axisSpaceY;
         if(drawImage){
-            image->width = width;
-            image->height = height;
-            image->render();
-            image->drawRenderedPixels(cr,axisSpaceX,0.0);
             if(makeSVG){
                 image->width = image->dataXdim;
                 image->height = image->dataYdim;
                 image->render();
                 std::string imagePNG = image->pngFromRenderedPixels(cr,axisSpaceX,0.0,width,height);
                 SVGString.append(imagePNG);
-            }   
+            } 
+            image->width = width;
+            image->height = height;
+            image->render();
+            image->drawRenderedPixels(cr,axisSpaceX,0.0);
+  
         }
         double scaleX = width / (maxX - minX);
         double scaleY = height / (maxY - minY);
