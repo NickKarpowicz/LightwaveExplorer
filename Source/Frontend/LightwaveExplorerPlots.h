@@ -112,6 +112,13 @@ public:
     void setCairoA(cairo_t* cr) const { cairo_set_source_rgba(cr, r, g, b, a); }
 };
 
+//function to stream png data into a vector
+static cairo_status_t cairoWritePNGtoVector(void *closure, const unsigned char *data, unsigned int length) {
+    std::vector<uint8_t> *vector = static_cast<std::vector<unsigned char>*>(closure);
+    vector->insert(vector->end(), data, data + length);
+    return CAIRO_STATUS_SUCCESS;
+}
+
 class LweImage {
     public:
         int width = 0;
@@ -327,6 +334,50 @@ class LweImage {
             cairo_surface_finish(cSurface);
             cairo_surface_destroy(cSurface);
         }
+
+        std::string encodeBase64(const std::vector<uint8_t>& data) {
+            static const char* base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            std::string encoded;
+            size_t i = 0;
+            while (i < data.size()) {
+                uint32_t value = 0;
+                size_t bytes = std::min(size_t(3), data.size() - i);
+                for (size_t j = 0; j < bytes; ++j) {
+                    value |= static_cast<uint32_t>(data[i + j]) << (16 - j * 8);
+                }
+                for (size_t j = 0; j < 4; ++j) {
+                    if (j <= bytes) {
+                        encoded += base64_chars[(value >> (18 - j * 6)) & 0x3F];
+                    } else {
+                        encoded += '=';
+                    }
+                }
+                i += bytes;
+            }
+            return encoded;
+        }
+
+
+        std::string pngFromRenderedPixels(
+            cairo_t* cr,
+            const double x_offset = 0.0,
+            const double y_offset = 0.0){
+                std::vector<uint8_t> png;
+                const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, width);
+                cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
+                    pixels.data(),
+                    CAIRO_FORMAT_RGB24, 
+                    width, height, 
+                    caiStride);
+                cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
+                cairo_paint(cr);
+                cairo_surface_write_to_png_stream(cSurface, cairoWritePNGtoVector, &png);
+                cairo_surface_finish(cSurface);
+                cairo_surface_destroy(cSurface);
+                auto pngString = encodeBase64(png);
+                std::string tag = Sformat("<image x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" xlink:href=\"data:image/png;base64,{}\"/>", x_offset, y_offset, width, height, pngString);
+                return tag;
+        }
 };
 
 
@@ -334,10 +385,9 @@ class LwePlot {
 public:
     bool makeSVG = false;
     bool markers = true;
-    
     double width = 0;
     double height = 0;
-    double fontSize = 14.0;
+    double fontSize = 12.0;
     double* data = nullptr;
     int ExtraLines = 0;
     double* data2 = nullptr;
@@ -510,6 +560,10 @@ public:
             image->height = height;
             image->render();
             image->drawRenderedPixels(cr,axisSpaceX,0.0);
+            if(makeSVG){
+                std::string imagePNG = image->pngFromRenderedPixels(cr,axisSpaceX,0.0);
+                SVGString.append(imagePNG);
+            }   
         }
         double scaleX = width / ((double)(maxX - minX));
         double scaleY = height / ((double)(maxY - minY));
