@@ -700,7 +700,7 @@ public:
             else {
                 messageBuffer = Sformat("{:4.4f}", ytVal);
             }
-
+            if(messageBuffer=="0.0e+00") messageBuffer = "0";
             layoutLeft = axisLabelSpaceX;
             layoutTop = (i * (0.5 * (height)));
             if (i == 2) layoutTop -= 8.0f;
@@ -744,6 +744,7 @@ public:
         //x-axis tick labels
         for (int i = 0; i < 3; ++i) {
             messageBuffer.assign(Sformat("{}", (int)round(xTicks1[i])));
+            if(messageBuffer=="0.0e+00") messageBuffer = "0";
             layoutLeft = axisSpaceX + 0.25 * width * ((int64_t)(i)+1) - 0.5 * axisSpaceX;
             layoutTop = height + 3;
             layoutBottom = height + axisSpaceY;
