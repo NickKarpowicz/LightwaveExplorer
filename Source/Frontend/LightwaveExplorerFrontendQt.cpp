@@ -1703,9 +1703,9 @@ public:
             appendPlot(5,0,3);
             appendPlot(6,1,2);
             appendPlot(7,1,3);
-
             SVGStrings[7].append("</svg>");
             isMakingSVG = false;
+            
             std::ofstream fs(SVGpath);
             for(std::string& str : SVGStrings){
                 fs << str;

@@ -113,8 +113,11 @@ public:
 };
 
 //function to stream png data into a vector
-static cairo_status_t cairoWritePNGtoVector(void *closure, const unsigned char *data, unsigned int length) {
-    std::vector<uint8_t> *vector = static_cast<std::vector<unsigned char>*>(closure);
+static cairo_status_t cairoWritePNGtoVector(
+    void *closure, 
+    const unsigned char *data, 
+    unsigned int length) {
+    std::vector<uint8_t> *vector = static_cast<std::vector<uint8_t>*>(closure);
     vector->insert(vector->end(), data, data + length);
     return CAIRO_STATUS_SUCCESS;
 }
@@ -336,7 +339,8 @@ class LweImage {
         }
 
         std::string encodeBase64(const std::vector<uint8_t>& data) {
-            static const char* base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            static const char* base64_chars = 
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
             std::string encoded;
             size_t i = 0;
             while (i < data.size()) {
@@ -361,13 +365,16 @@ class LweImage {
         std::string pngFromRenderedPixels(
             cairo_t* cr,
             const double x_offset = 0.0,
-            const double y_offset = 0.0){
+            const double y_offset = 0.0,
+            const int width_in_svg = 320,
+            const int height_in_svg = 240){
                 std::vector<uint8_t> png;
                 const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, width);
                 cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
                     pixels.data(),
                     CAIRO_FORMAT_RGB24, 
-                    width, height, 
+                    width, 
+                    height, 
                     caiStride);
                 cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
                 cairo_paint(cr);
@@ -375,7 +382,14 @@ class LweImage {
                 cairo_surface_finish(cSurface);
                 cairo_surface_destroy(cSurface);
                 auto pngString = encodeBase64(png);
-                std::string tag = Sformat("<image x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" xlink:href=\"data:image/png;base64,{}\"/>", x_offset, y_offset, width, height, pngString);
+                std::string tag = Sformat(
+                    "<image x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" "
+                    "xlink:href=\"data:image/png;base64,{}\"/>", 
+                    x_offset, 
+                    y_offset, 
+                    width_in_svg, 
+                    height_in_svg, 
+                    pngString);
                 return tag;
         }
 };
@@ -561,7 +575,10 @@ public:
             image->render();
             image->drawRenderedPixels(cr,axisSpaceX,0.0);
             if(makeSVG){
-                std::string imagePNG = image->pngFromRenderedPixels(cr,axisSpaceX,0.0);
+                image->width = image->dataXdim;
+                image->height = image->dataYdim;
+                image->render();
+                std::string imagePNG = image->pngFromRenderedPixels(cr,axisSpaceX,0.0,width,height);
                 SVGString.append(imagePNG);
             }   
         }
