@@ -582,8 +582,8 @@ public:
                 SVGString.append(imagePNG);
             }   
         }
-        double scaleX = width / ((double)(maxX - minX));
-        double scaleY = height / ((double)(maxY - minY));
+        double scaleX = width / (maxX - minX);
+        double scaleY = height / (maxY - minY);
         LweColor currentColor = textColor;
         currentColor = textColor;
 
