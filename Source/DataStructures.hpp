@@ -3,6 +3,7 @@
 #include <array>
 #include <vector>
 #include <fstream>
+#include <iostream>
 #include <complex>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -11,6 +12,9 @@
 #include <unistd.h>
 #endif
 #include "LightwaveExplorerHelpers.h"
+
+//Forward declarations of interface classes
+class simulationParameterSet;
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)
 // Z2D: complex to real (f to t)
@@ -264,6 +268,178 @@ class NonlinearPropertyFlags{
     bool hasChi3 = false;
     bool assumeCentrosymmetric = false;
 };
+
+class LWEDevice{
+    public:
+    simulationParameterSet* cParams;
+	int memoryStatus = -1;
+	bool configuredFFT = false;
+    virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
+    virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
+    virtual void deviceMemcpyImplementation(
+		void* dst, 
+		const void* src, 
+		size_t count, 
+		copyType kind) = 0;
+    virtual void deviceFree(void* block) = 0;
+    virtual void fft(const void* input, void* output, deviceFFT type) = 0;
+    virtual void reset(simulationParameterSet* sCPU) = 0;
+    
+    void deviceMemcpy(
+		void* dst, 
+		const void* src, 
+		size_t count, 
+		copyType kind) {
+			deviceMemcpyImplementation(dst, src, count, kind);
+	}
+
+    void deviceMemcpy(
+		void* dst, 
+		void* src, 
+		size_t count, 
+		copyType kind) {
+            if(src==dst) return;
+			deviceMemcpyImplementation(dst, src, count, kind);
+	}
+
+	void deviceMemcpy(
+		double* dst, 
+		const float* src, 
+		size_t count, 
+		copyType kind) {
+            float* copyBuffer = new float[count / sizeof(double)];
+            deviceMemcpyImplementation(
+                static_cast<void*>(copyBuffer), 
+                static_cast<const void*>(src), 
+                count/2, 
+                kind);
+            for (size_t i = 0; i < count / sizeof(double); i++) {
+                dst[i] = copyBuffer[i];
+            }
+            delete[] copyBuffer;
+	}
+	
+	void deviceMemcpy(
+		float* dst, 
+		const double* src, 
+		size_t count, 
+		copyType kind) {
+            float* copyBuffer = new float[count / sizeof(double)];
+            for (size_t i = 0; i < count / sizeof(double); i++) {
+                copyBuffer[i] = (float)src[i];
+            }
+            deviceMemcpyImplementation(
+                static_cast<void*>(dst), 
+                static_cast<void*>(copyBuffer), 
+                count / 2, 
+                kind);
+            delete[] copyBuffer;
+	}
+
+    void deviceMemcpy(
+		std::complex<double>* dst, 
+		const std::complex<float>* src, 
+		size_t count, 
+		copyType kind) {
+		std::complex<float>* copyBuffer = 
+			new std::complex<float>[count / sizeof(std::complex<double>)];
+		deviceMemcpyImplementation(
+			static_cast<void*>(copyBuffer), 
+			static_cast<const void*>(src), 
+			count/2, 
+			kind);
+		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
+		}
+		delete[] copyBuffer;
+	}
+
+	void deviceMemcpy(
+		std::complex<float>* dst, 
+		const std::complex<double>* src, 
+		size_t count, 
+		copyType kind) {
+		std::complex<float>* copyBuffer = 
+			new std::complex<float>[count / sizeof(std::complex<double>)];
+		
+		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
+			copyBuffer[i] = 
+				std::complex<float>((float)src[i].real(), (float)src[i].imag());
+		}
+		deviceMemcpyImplementation(
+			static_cast<void*>(dst), 
+			static_cast<void*>(copyBuffer), 
+			count / 2, 
+			kind);
+		delete[] copyBuffer;
+	}
+};
+
+template<typename T>
+class LWEBuffer{
+    LWEDevice* d = nullptr;
+
+public:
+    T* buffer = nullptr;
+    size_t count = 0;
+    size_t bytes = 0;
+    LWEBuffer(){}
+    LWEBuffer(const LWEBuffer&) = delete;
+    LWEBuffer& operator=(const LWEBuffer&) = delete;
+    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize) : 
+    d(d),
+    count(maxN(N,static_cast<size_t>(1))),
+    bytes(count*elementSize)
+    {
+        int error = d->deviceCalloc((void**)&buffer, count, elementSize);
+        if(error){
+            throw std::runtime_error("Couldn't allocate enough memory.");
+        }
+    }
+    LWEBuffer(LWEDevice* d, const std::vector<T> v) : 
+    d(d),
+    count(v.size()),
+    bytes(count * sizeof(T)){
+        int error = d->deviceCalloc((void**)&buffer, count, sizeof(T));
+        if(error){
+            throw std::runtime_error("Couldn't allocate enough memory.");
+        }
+        d->deviceMemcpy(buffer, v.data(), count, copyType::ToDevice);
+    }
+    
+    ~LWEBuffer(){
+        if(bytes) d->deviceFree(buffer);
+    }
+    T* device_ptr() const {
+        if(bytes == 0 || buffer == nullptr) throw std::runtime_error("Attempted to access empty LWEBuffer");
+        return buffer;
+    }
+
+    void initialize_to_zero(){
+        if(bytes) d->deviceMemset(buffer, 0, bytes);
+    }
+
+    void resize(int64_t newCount){
+        if(buffer != nullptr) d->deviceFree(buffer);
+        int error = d->deviceCalloc((void**)&buffer, newCount, sizeof(T));
+        if(error){
+            throw std::runtime_error("Resize of LWE buffer failed with error");
+        }
+        count = newCount;
+        bytes = count * sizeof(T);
+    }
+
+    void deallocate(){
+        if(buffer != nullptr) d->deviceFree(buffer);
+        buffer = nullptr;
+        count = 0;
+        bytes = 0;
+    }
+};
+
+
+
+
 //class holding the device data structures
 //note that it uses c-style arrays-- this is for compatibility
 //with all of the platforms involved, and because it is transferred

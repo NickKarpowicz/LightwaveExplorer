@@ -11,6 +11,18 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="2025.1" date="2025-02-17" urgency="high">
+  <description>
+  <p>Changes in this version:</p>
+  <ul>
+  <li>Fixed a bug introduced in 2025.0 where on CUDA the plasma would not affect fields in the y-direction</li>
+  <li>Fixed a bug where cancelling a batch job caused the subsequent batch to cancel itself</li>
+  <li>Axes and scales are now shown on the space and momentum images, and they're also saved when an SVG is produced.</li>
+  <li>Plot font size scaling works better with high-DPI displays</li>
+  <li>Refactored device structures to more efficiently and consistently allocate memory</li>
+  </ul>
+  </description>
+  </release>
   <release version="2025.0" date="2025-02-08" urgency="high">
   <description>
   <p>Changes in this version:</p>

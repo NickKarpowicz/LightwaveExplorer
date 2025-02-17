@@ -18,20 +18,27 @@ Tutorials on YouTube!
 - Tutorial 5: (new!) <a href="https://www.youtube.com/watch?v=4njswvog4bo">FDTD</a>
 
 ---
-### Latest release: 2025.0
+### Latest release: 2025.1
 Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
 
 Mac: [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
 Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
 
-Changes in this version:
+Changes in 2025.1:
+- Fixed a bug introduced in 2025.0 where on CUDA the plasma would not affect fields in the y-direction
+- Fixed a bug where cancelling a batch job caused the subsequent batch to cancel itself
+- Axes and scales are now shown on the space and momentum images, and they're also saved when an SVG is produced.
+- Plot font size scaling works better with high-DPI displays
+- Refactored device structures to more efficiently and consistently allocate memory
+
+Changes in 2025.0:
 
  - FDTD mode is more accessible: besides the options for crystals in the Propagation pulldown menu, you can also load a custom grid containing different nonlinear materials at different positions using the fdtd() function
  - FDTD reflection mode for nonlinear reflection from a surface, using the fdtdReflection() sequence command.
  - Improved convergence for the nonlinear absorption/plasma response. Note that the changes I made here will re-scale the values of the nonlinear absorption parameter (now they are consistent with what was in the paper). The conversion factor for older values is $\left(\frac{1}{2\pi\epsilon_0}\right)^{\frac{1}{N_p-1}}$ where $N_p$ is the number of photons in the multiphoton transition (divide the old value by this number).
 
-  
+
 ---
 
 

@@ -864,6 +864,7 @@ void simulationBatch::configure(bool allocateFields) {
 			parameters[j + currentRow].EkwOut = getEkw((j + currentRow));
 			parameters[j + currentRow].totalSpectrum = getTotalSpectrum((j + currentRow));
 			parameters[j + currentRow].isFollowerInSequence = false;
+			parameters[j + currentRow].cancellationCalled = false;
 			parameters[j + currentRow].setByNumberWithMultiplier(
 				parameters[0].batchIndex, 
 				parameters[0].getByNumberWithMultiplier(

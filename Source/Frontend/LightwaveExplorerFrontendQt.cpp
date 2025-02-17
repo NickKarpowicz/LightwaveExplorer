@@ -1,5 +1,5 @@
 #include "LightwaveExplorerFrontendQt.h"
-
+#include <regex>
 void blackoutCairoPlot(cairo_t* cr, const int width, const int height){
     LweColor black(0, 0, 0, 0);
     cairo_rectangle(cr, 0, 0, width, height);
@@ -18,8 +18,8 @@ public:
     
 protected:
     void paintEvent(QPaintEvent* event) override {
-        qreal ratio = devicePixelRatioF();
-        QImage image(ratio*size(), QImage::Format_ARGB32);
+        qreal ratio = devicePixelRatio();
+        QImage image(ratio * size(), QImage::Format_ARGB32);
         image.setDevicePixelRatio(ratio);
         cairo_surface_t* surface = cairo_image_surface_create_for_data(
             image.bits(),
@@ -28,10 +28,10 @@ protected:
             image.height(),
             image.bytesPerLine());
         cairo_t* cr = cairo_create(surface);
-
+        cairo_scale(cr, ratio, ratio);
         theFunction(cr,
-            image.width(),
-            image.height(),
+            ceil(image.width()/ratio),
+            ceil(image.height()/ratio),
             theGui);
 
         cairo_destroy(cr);
@@ -312,7 +312,7 @@ public:
     std::mutex m;
 
     bool isMakingSVG = false;
-    std::array<std::string,4> SVGStrings;
+    std::array<std::string,8> SVGStrings;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
         console->append(s.c_str());
@@ -1624,9 +1624,8 @@ public:
 
         QObject::connect(buttons["stop"], &QPushButton::clicked, [&](){
             if (theSim.base().isRunning) {
-                theSim.base().cancellationCalled = true;
-                for (int i = 1; i < theSim.base().Nsims; ++i) {
-                    theSim.base().cancellationCalled = true;
+                for(simulationParameterSet& sim : theSim.parameters){
+                    sim.cancellationCalled = true;
                 }
             }
         });
@@ -1654,19 +1653,63 @@ public:
         QObject::connect(checkboxes["Total"], &QCheckBox::clicked, [&](){
             messenger->passDrawRequest();
         });
-        /*std::ofstream fs(SVGpath);
-            fs << SVGstrings[0] << SVGstrings[1] << SVGstrings[2] << SVGstrings[3];*/
+        
         QObject::connect(buttons["svg"], &QPushButton::clicked, [&](){
             std::string SVGpath = QFileDialog::getSaveFileName(buttons["svg"],"Save SVG file of plots","","Scalable Vector Graphics (*.svg)").toStdString();
             if(SVGpath.empty()) return;
             isMakingSVG = true;
-            plots["timePlot1"]->repaint();
-            plots["timePlot2"]->repaint();
-            plots["freqPlot1"]->repaint();
-            plots["freqPlot2"]->repaint();
+            plots["freqPlot1"] -> repaint();
+            plots["freqPlot2"] -> repaint();
+            plots["timePlot1"] -> repaint();
+            plots["timePlot2"] -> repaint();
+            plots["timeImage1"] -> repaint();
+            plots["timeImage2"] -> repaint();
+            plots["freqImage1"] -> repaint();
+            plots["freqImage2"] -> repaint();
+
+            //get dimensions lambda
+            int width = 0;
+            int height = 0;
+            auto getDimensions = [&width, &height](const std::string& SVGstr) {
+                std::regex width_regex("width=\"(\\d+)\"");
+                std::regex height_regex("height=\"(\\d+)\"");
+                std::smatch width_match, height_match;
+            
+                std::regex_search(SVGstr, width_match, width_regex);
+                std::regex_search(SVGstr, height_match, height_regex);
+                width = std::stoi(width_match[1].str());
+                height = std::stoi(height_match[1].str());   
+            };
+            getDimensions(SVGStrings[0]);
+
+            std::size_t SVGbegin = SVGStrings[0].find("<svg");
+            SVGStrings[0].insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+                "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
+                "\"http://www.w3.org/1999/xlink\">\n",
+                2*width, 4*height, 2*width, 4*height));
+
+            auto appendPlot = [&](int index, int x, int y){
+                SVGbegin = SVGStrings[index].find("width=");
+                SVGStrings[index].insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+                x * width, y * height));
+                SVGbegin = SVGStrings[index].find("<svg");
+                SVGStrings[index] = SVGStrings[index].substr(SVGbegin);
+            };
+            
+            appendPlot(1,0,1);
+            appendPlot(2,1,0);
+            appendPlot(3,1,1);
+            appendPlot(4,0,2);
+            appendPlot(5,0,3);
+            appendPlot(6,1,2);
+            appendPlot(7,1,3);
+            SVGStrings[7].append("</svg>");
             isMakingSVG = false;
+            
             std::ofstream fs(SVGpath);
-            fs << SVGStrings[0] << SVGStrings[1] << SVGStrings[2] << SVGStrings[3];
+            for(std::string& str : SVGStrings){
+                fs << str;
+            }
         });
     }
     public slots:
@@ -2098,25 +2141,42 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage sPlot;
-    int64_t simIndex = maxN(0,theGui.slider->value());
 
+    int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
-
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    sPlot.data =
-        &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
-    sPlot.dataXdim = theGui.theSim.base().Ntime;
-    sPlot.dataYdim = theGui.theSim.base().Nspace;
+    LweImage image;
+    image.data = &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
+    image.dataXdim = theGui.theSim.base().Ntime;
+    image.dataYdim = theGui.theSim.base().Nspace;
+    image.height = height;
+    image.width = width;
+    image.colorMap = 4;
+    image.dataType = 0;
+
+    LwePlot sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.colorMap = 4;
-    sPlot.dataType = 0;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Time (fs)";
+    sPlot.yLabel = "x (mm)";
+    sPlot.unitY = 1e3;
+    sPlot.forcedXmax = 0.5e15 * theGui.theSim.base().Ntime * theGui.theSim.base().tStep;
+    sPlot.forcedXmin = -sPlot.forcedXmax;
+    sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
+    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.makeSVG = theGui.isMakingSVG;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(theGui.isMakingSVG){
+            theGui.SVGStrings[0] = sPlot.SVGString;
+        }
+    }
     else blackoutCairoPlot(cr, width, height);
 }
 
@@ -2134,7 +2194,6 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
-
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2152,12 +2211,7 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
-            std::size_t SVGbegin = sPlot.SVGString.find("<svg");
-            sPlot.SVGString.insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
-                "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
-                "\"http://www.w3.org/1999/xlink\">\n",
-                2*width, 2*height, 2*width, 2*height));
-            theGui.SVGStrings[0] = sPlot.SVGString;
+            theGui.SVGStrings[4] = sPlot.SVGString;
         }
     }
     else blackoutCairoPlot(cr, width, height);
@@ -2180,7 +2234,6 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     int64_t cubeMiddle = 
         theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2200,11 +2253,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
-            std::size_t SVGbegin = sPlot.SVGString.find("width=");
-            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-                0, height));
-            SVGbegin = sPlot.SVGString.find("<svg");
-            theGui.SVGStrings[1] = sPlot.SVGString.substr(SVGbegin);
+            theGui.SVGStrings[5] = sPlot.SVGString;
         }
     }
     else blackoutCairoPlot(cr, width, height);
@@ -2266,11 +2315,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
-            std::size_t SVGbegin = sPlot.SVGString.find("width=");
-            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-                width, 0));
-            SVGbegin = sPlot.SVGString.find("<svg");
-            theGui.SVGStrings[2] = sPlot.SVGString.substr(SVGbegin);
+            theGui.SVGStrings[6] = sPlot.SVGString;
         }
     }
     else blackoutCairoPlot(cr, width, height);
@@ -2301,7 +2346,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
- 
+
     sPlot.makeSVG = theGui.isMakingSVG;
     sPlot.height = height;
     sPlot.width = width;
@@ -2331,11 +2376,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
-            std::size_t SVGbegin = sPlot.SVGString.find("width=");
-            sPlot.SVGString.insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-                width, height));
-            SVGbegin = sPlot.SVGString.find("<svg");
-            theGui.SVGStrings[3] = sPlot.SVGString.substr(SVGbegin).append("</svg>");
+            theGui.SVGStrings[7] = sPlot.SVGString;
         }
     }
     else blackoutCairoPlot(cr, width, height);
@@ -2347,7 +2388,7 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage sPlot;
+
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -2355,16 +2396,35 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    sPlot.data =
-    &theGui.theSim.base().ExtOut[theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
-    sPlot.dataYdim = theGui.theSim.base().Nspace;
-    sPlot.dataXdim = theGui.theSim.base().Ntime;
+    LweImage image;
+    image.data = &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + theGui.theSim.base().Ngrid + cubeMiddle];
+    image.dataXdim = theGui.theSim.base().Ntime;
+    image.dataYdim = theGui.theSim.base().Nspace;
+    image.height = height;
+    image.width = width;
+    image.colorMap = 4;
+    image.dataType = 0;
+
+    LwePlot sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.colorMap = 4;
-    sPlot.dataType = 0;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Time (fs)";
+    sPlot.yLabel = "x (mm)";
+    sPlot.unitY = 1e3;
+    sPlot.forcedXmax = 0.5e15 * theGui.theSim.base().Ntime * theGui.theSim.base().tStep;
+    sPlot.forcedXmin = -sPlot.forcedXmax;
+    sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
+    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.makeSVG = theGui.isMakingSVG;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(theGui.isMakingSVG){
+            theGui.SVGStrings[1] = sPlot.SVGString;
+        }
+    }
     else blackoutCairoPlot(cr, width, height);
 }
 
@@ -2374,7 +2434,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage sPlot;
+    LweImage image;
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -2385,18 +2445,39 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
             (double)(1e-4 
                 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
-    sPlot.complexData =
+    image.complexData =
         &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2];
-    sPlot.dataXdim = theGui.theSim.base().Nfreq;
-    sPlot.dataYdim = theGui.theSim.base().Nspace;
+
+    image.dataXdim = theGui.theSim.base().Nfreq;
+    image.dataYdim = theGui.theSim.base().Nspace;
+    image.height = height;
+    image.width = width;
+    image.colorMap = 3;
+    image.dataType = 1;
+    image.logMin = logPlotOffset;
+    LwePlot sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dataType = 1;
-    sPlot.colorMap = 3;
-    sPlot.logMin = logPlotOffset;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Transverse k (1/\xce\xbcm)";
+    sPlot.unitY = 1;
+    sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
+    sPlot.forcedXmin = 0;
+    sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
+    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.makeSVG = theGui.isMakingSVG;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(theGui.isMakingSVG){
+            theGui.SVGStrings[2] = sPlot.SVGString;
+        }
+    }
     else blackoutCairoPlot(cr, width, height);
+
+    
 }
 
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
@@ -2405,7 +2486,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage sPlot;
+    LweImage image;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2417,17 +2498,35 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         logPlotOffset = (double)(1e-4 
             / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
-    sPlot.complexData =
+    image.complexData =
         &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2 + theGui.theSim.base().NgridC];
-    sPlot.dataXdim = theGui.theSim.base().Nfreq;
-    sPlot.dataYdim = theGui.theSim.base().Nspace;
+    image.dataXdim = theGui.theSim.base().Nfreq;
+    image.dataYdim = theGui.theSim.base().Nspace;
+    image.height = height;
+    image.width = width;
+    image.colorMap = 3;
+    image.dataType = 1;
+    image.logMin = logPlotOffset;
+    LwePlot sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.colorMap = 3;
-    sPlot.dataType = 1;
-    sPlot.logMin = logPlotOffset;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
-    if (dataLock.owns_lock()) sPlot.imagePlot(cr);
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "Frequency (THz)";
+    sPlot.yLabel = "Transverse k (1/\xce\xbcm)";
+    sPlot.unitY = 1;
+    sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
+    sPlot.forcedXmin = 0;
+    sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
+    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.makeSVG = theGui.isMakingSVG;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(theGui.isMakingSVG){
+            theGui.SVGStrings[3] = sPlot.SVGString;
+        }
+    }
     else blackoutCairoPlot(cr, width, height);
 }
 

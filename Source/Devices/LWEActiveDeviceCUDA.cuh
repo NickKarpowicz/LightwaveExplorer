@@ -1,7 +1,6 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cufft.h>
-#include <nvml.h>
 #include <thrust/complex.h>
 #include <iostream>
 #include "../LightwaveExplorerUtilities.h"
@@ -148,91 +147,46 @@ __global__ static void deviceLaunchFunctorWrapper(const T functor) {
 }
 
 template<typename deviceFP, typename deviceComplex>
-class CUDADevice {
+class CUDADevice : public LWEDevice {
 private:
-	bool configuredFFT = false;
-	bool isCylindric = false;
-	deviceFP canaryPixel = 0.0;
-	
+	cudaError_t deviceSetError;
+	cudaError_t streamGenerationError;
 	cufftHandle fftPlanD2Z;
 	cufftHandle fftPlanZ2D;
 	cufftHandle fftPlan1DD2Z;
 	cufftHandle fftPlan1DZ2D;
 	cufftHandle doublePolfftPlan;
 
-	int checkDeviceMemory(simulationParameterSet* sCPU) {
-		nvmlDevice_t nvmlDevice = 0;
-		nvmlMemory_t nvmlMemoryInfo;
-		nvmlInit_v2();
-		nvmlDeviceGetHandleByIndex_v2((*sCPU).assignedGPU, &nvmlDevice);
-		nvmlDeviceGetMemoryInfo(nvmlDevice, &nvmlMemoryInfo);
-		size_t memoryEstimate = sizeof(deviceFP) * 
-			((*s).Ngrid * 2 * 2 
-				+ 2 * (*s).NgridC * 6 * 2 
-				+ 2 * (*s).isCylindric * 5 * 2 
-				+ 2 * (*s).Ntime 
-				+ 2 * (*s).Nfreq + 81 + 65536);
-		nvmlShutdown();
-		if (nvmlMemoryInfo.free < memoryEstimate) {
-			(*sCPU).memoryError = -1;
-			return 1;
-		}
-		return 0;
-	}
-
 	void fftDestroy() {
 		cufftDestroy(fftPlanD2Z);
 		cufftDestroy(fftPlanZ2D);
 		cufftDestroy(fftPlan1DD2Z);
 		cufftDestroy(fftPlan1DZ2D);
-		if (isCylindric) {
+		if (s->isCylindric) {
 			cufftDestroy(doublePolfftPlan);
 		}
 		configuredFFT = 0;
 	}
+
 public:
 	cudaStream_t stream;
-	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
-	simulationParameterSet* cParams;
-	int memoryStatus;
-	bool hasPlasma;
-	CUDADevice(simulationParameterSet* sCPU) {
-		s = &deviceStruct;
-		memoryStatus = -1;
-		configuredFFT = 0;
-		isCylindric = 0;
-		cudaSetDevice((*sCPU).assignedGPU);
-		cudaStreamCreate(&stream);
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
-		memoryStatus = allocateSet(sCPU);
+	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
+	deviceFP canaryPixel = 0.0;
+	using LWEDevice::deviceMemcpy;
+	CUDADevice(simulationParameterSet* sCPU) :
+		deviceSetError(cudaSetDevice(sCPU->assignedGPU)),
+		streamGenerationError(cudaStreamCreate(&stream))
+	{
+		allocateSet(sCPU);
 	}
 
 	~CUDADevice() {
 		fftDestroy();
-		deallocateSet();
-		deviceFree(dParamsDevice);
 		cudaStreamDestroy(stream);
 	}
 
-	void startMaxwell(
-		simulationParameterSet* sCPU, 
-		deviceFP lengthZ, 
-		deviceFP startZ, 
-		deviceFP endZ, 
-		deviceFP observationPlane, 
-		int64_t timeStepDivisor, 
-		int64_t zStepDivisor) {
-		fftDestroy();
-		deallocateSet();
-
-		//allocate space grids
-		
-	}
-	void endMaxwell() {
-
-	}
 	bool isTheCanaryPixelNaN(deviceFP* canaryPointer) {
 		cudaMemcpyAsync(&canaryPixel, canaryPointer, sizeof(deviceFP), cudaMemcpyDeviceToHost);
 		return(isnan(canaryPixel));
@@ -246,90 +200,35 @@ public:
 		deviceLaunchFunctorWrapper<<<Nblock, Nthread, 0, stream>>>(functor);
 	}
 
-
-	int deviceCalloc(void** ptr, size_t N, size_t elementSize) {
+	int deviceCalloc(void** ptr, size_t N, size_t elementSize) override {
 		int err = cudaMalloc(ptr, N * elementSize);
 		cudaMemset(*ptr, 0, N * elementSize);
 		return err;
 	}
-
-	void deviceMemset(void* ptr, int value, size_t count) {
+	void deviceMemset(void* ptr, int value, size_t count) override {
 		cudaMemset(ptr, value, count);
 	}
-	void deviceMemcpy(
-		void* dst, 
-		const void* src, 
-		size_t count, 
-		copyType kind) {
+	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, copyType kind) override {
 		cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 	}
-	void deviceMemcpy(
-		double* dst, 
-		const float* src, 
-		size_t count, 
-		copyType kind) {
-		float* copyBuffer = new float[count / sizeof(double)];
-		cudaMemcpy(copyBuffer, src, count/2, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
-		for (size_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = copyBuffer[i];
-		}
-		delete[] copyBuffer;
-	}
-	void deviceMemcpy(
-		std::complex<double>* dst, 
-		const thrust::complex<float>* src, 
-		size_t count, 
-		copyType kind) {
-		thrust::complex<float>* copyBuffer = 
-			new thrust::complex<float>[count / sizeof(std::complex<double>)];
-		cudaMemcpy(
-			copyBuffer, 
-			src, 
-			count/2, 
-			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
-		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
-		}
-		delete[] copyBuffer;
-	}
 
-	void deviceMemcpy(
+	void inline deviceMemcpy(
 		thrust::complex<float>* dst, 
 		const std::complex<double>* src, 
 		size_t count, 
 		copyType kind) {
-		thrust::complex<float>* copyBuffer = 
-			new thrust::complex<float>[count / sizeof(std::complex<double>)];
-		
-		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			copyBuffer[i] = 
-				thrust::complex<float>((float)src[i].real(), (float)src[i].imag());
+			deviceMemcpy(reinterpret_cast<std::complex<float>*>(dst), src, count, kind);
 		}
-		cudaMemcpy(
-			dst, 
-			copyBuffer, 
-			count / 2, 
-			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
-		delete[] copyBuffer;
-	}
-	void deviceMemcpy(
-		float* dst, 
-		const double* src, 
+
+	void inline deviceMemcpy(
+		std::complex<double>* dst, 
+		const thrust::complex<float>* src, 
 		size_t count, 
 		copyType kind) {
-		float* copyBuffer = new float[count / sizeof(double)];
-		for (size_t i = 0; i < count / sizeof(double); i++) {
-			copyBuffer[i] = (float)src[i];
+			deviceMemcpy(dst, reinterpret_cast<const std::complex<float>*>(src), count, kind);
 		}
-		cudaMemcpy(dst, 
-			copyBuffer, 
-			count / 2, 
-			static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
-		delete[] copyBuffer;
-	}
 
-
-	void deviceFree(void* block) {
+	void deviceFree(void* block) override {
 		cudaFree(block);
 	}
 
@@ -337,8 +236,7 @@ public:
 		if (configuredFFT) {
 			fftDestroy();
 		}
-		isCylindric = 0;
-		hasPlasma = (*s).hasPlasma;
+
 		size_t workSize;
 		cufftPlan1d(&fftPlan1DD2Z, (int)(*s).Ntime, CUFFT_fwd, 2 * (int)((*s).Nspace * (*s).Nspace2));
 		cufftPlan1d(&fftPlan1DZ2D, (int)(*s).Ntime, CUFFT_bwd, 2 * (int)((*s).Nspace * (*s).Nspace2));
@@ -366,7 +264,6 @@ public:
 			cufftMakePlanMany(fftPlanZ2D, 2, cufftSizes1, NULL, 0, 0, 0, 0, 0, CUFFT_bwd, 2, &workSize);
 
 			if ((*s).isCylindric) {
-				isCylindric = 1;
 				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
 				cufftCreate(&doublePolfftPlan);
 				cufftGetSizeMany(
@@ -380,10 +277,10 @@ public:
 		}
 		cufftSetStream(fftPlanD2Z, stream);
 		cufftSetStream(fftPlanZ2D, stream);
-		configuredFFT = 1;
+		configuredFFT = true;
 	}
 
-	void fft(const void* input, void* output, deviceFFT type) {
+	void fft(const void* input, void* output, deviceFFT type) override {
 		if(sizeof(deviceFP) == sizeof(double)){
 			switch (type){
 			case deviceFFT::D2Z:
@@ -423,155 +320,22 @@ public:
 			}
 		}
 	}
-	void deallocateSet() {
-		deviceFree((*s).gridETime1);
-		deviceFree((*s).workspace1);
-		deviceFree((*s).gridEFrequency1);
-		deviceFree((*s).gridPropagationFactor1);
-		deviceFree((*s).gridBiaxialDelta);
-		if ((*s).isCylindric) {
-			deviceFree((*s).gridPropagationFactor1Rho1);
-			deviceFree((*s).gridRadialLaplacian1);
-		}
-		deviceFree((*s).gridPolarizationFactor1);
-		deviceFree((*s).gridEFrequency1Next1);
-		deviceFree((*s).k1);
-		deviceFree((*s).gridPolarizationTime1);
-		deviceFree((*s).expGammaT);
-		deviceFree((*s).chiLinear1);
-		deviceFree((*s).fieldFactor1);
-		deviceFree((*s).inverseChiLinear1);
-	}
-	void reset(simulationParameterSet* sCPU) {
-		if((*s).hasPlasma != ((*sCPU).nonlinearAbsorptionStrength != 0.0)){
-			deallocateSet();
-			memoryStatus = allocateSet(sCPU);
-		}
-		else{
-			sCPU->initializeDeviceParameters(s);
-			hasPlasma = s->hasPlasma;
-		}
-		sCPU->fillRotationMatricies(s);
-		int64_t beamExpansionFactor = 1;
-		if ((*s).isCylindric) {
-			beamExpansionFactor = 2;
-			if ((*s).hasPlasma) beamExpansionFactor = 4;
-		}
-		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
-		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
-		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridPropagationFactor1, 0,  2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
 
-		//cylindric sym grids
-		if ((*s).isCylindric) {
-			deviceMemset((*s).gridPropagationFactor1Rho1, 0, 4 * (*s).NgridC * sizeof(deviceComplex));
-			deviceMemset(
-				(*s).gridRadialLaplacian1, 0, 2 * beamExpansionFactor * (*s).Ngrid * sizeof(deviceComplex));
+	void reset(simulationParameterSet* sCPU) override {
+		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
+		allocation->useNewParameterSet(sCPU);
+		if(resetFFT){
+			fftInitialize();
 		}
-
-		//smaller helper grids
-		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(deviceFP));
-		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceComplex));
-		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
-		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
-
-		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
-		for (int64_t i = 0; i < (*s).Ntime; ++i) {
-			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
-			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
-		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-
-		sCPU->finishConfiguration(s);
-		deviceMemcpy(dParamsDevice, 
-			s, 
-			sizeof(deviceParameterSet<deviceFP, deviceComplex>), 
-			copyType::ToDevice);
 	}
 	int allocateSet(simulationParameterSet* sCPU) {
 		cParams = sCPU;
-		cudaSetDevice((*sCPU).assignedGPU);
-		sCPU->initializeDeviceParameters(s);
-		hasPlasma=s->hasPlasma;
+		if(memoryStatus == 0) allocation = nullptr;
+		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
+		s = &(allocation->parameterSet);
 		fftInitialize();
-		if (checkDeviceMemory(sCPU)) {
-			fftDestroy();
-			return 1;
-		}
-
-		int memErrors = 0;
-		
-
-		int64_t beamExpansionFactor = 1;
-		if ((*s).isCylindric) {
-			beamExpansionFactor = 2;
-			if ((*s).hasPlasma) beamExpansionFactor = 4;
-		}
-
-		sCPU->fillRotationMatricies(s);
-
-		//GPU allocations
-		//
-		// currently 8 large grids, meaning memory use is approximately
-		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
-		// plus a little bit for additional constants/workspaces/etc
-		memErrors += deviceCalloc((void**)
-			&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)
-			&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).k1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridBiaxialDelta, (*s).NgridC, sizeof(deviceFP));
-		//cylindric sym grids
-		if ((*s).isCylindric) {
-			memErrors += deviceCalloc((void**)
-				&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(deviceComplex));
-			memErrors += deviceCalloc((void**)
-				&(*s).gridRadialLaplacian1, 2 * beamExpansionFactor * (*s).Ngrid, sizeof(deviceComplex));
-		}
-
-		//smaller helper grids
-		memErrors += deviceCalloc((void**)
-			&(*s).expGammaT, 2 * (*s).Ntime, sizeof(double));
-		memErrors += deviceCalloc((void**)
-			&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)
-			&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
-
-		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
-		for (int64_t i = 0; i < (*s).Ntime; ++i) {
-			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
-			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
-		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-
-		(*sCPU).memoryError = memErrors;
-		if (memErrors > 0) {
-			return memErrors;
-		}
-		sCPU->finishConfiguration(s);
-		deviceMemcpy(
-			dParamsDevice, 
-			s, 
-			sizeof(deviceParameterSet<deviceFP, deviceComplex>), 
-			copyType::ToDevice);
+		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
+		memoryStatus = 0;
 		return 0;
 	}
 

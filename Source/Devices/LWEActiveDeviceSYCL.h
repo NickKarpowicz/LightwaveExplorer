@@ -113,10 +113,8 @@ static constexpr float j0Device(const float x) {
 }
 
 template<typename deviceFP, typename deviceComplex>
-class SYCLDevice {
+class SYCLDevice : public LWEDevice {
 private:
-	bool configuredFFT = false;
-	bool isCylindric = false;
 	deviceFP canaryPixel = 0.0;
 	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlanD2Z;
 	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlan1DD2Z;
@@ -125,30 +123,22 @@ private:
 	void fftDestroy() {
 		delete fftPlan1DD2Z;
 		delete fftPlanD2Z;
-		if (isCylindric) delete doublePolfftPlan;
+		if (s->isCylindric) delete doublePolfftPlan;
 	}
 public:
 	sycl::queue stream;
-	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
-	simulationParameterSet* cParams;
-	int memoryStatus;
-	bool hasPlasma = false;
-
+	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
+	using LWEDevice::deviceMemcpy;
 	SYCLDevice(simulationParameterSet* sCPU) {
-		memoryStatus = -1;
-		configuredFFT = 0;
-		isCylindric = 0;
-		s = &deviceStruct;
 		memoryStatus = allocateSet(sCPU);
+		s = &(allocation->parameterSet);
 	}
 
 	~SYCLDevice() {
 		stream.wait();
 		fftDestroy();
-		deallocateSet();
-		deviceFree(dParamsDevice);
 	}
 
 	bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
@@ -166,7 +156,7 @@ public:
 			});
 }
 
-	int deviceCalloc(void** ptr, const int64_t N, const int64_t elementSize) {
+	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) override {
 		(*ptr) = sycl::aligned_alloc_device(
 			2 * sizeof(deviceFP), 
 			N * elementSize, 
@@ -177,86 +167,38 @@ public:
 		return 0;
 	}
 
-	void deviceMemset(void* ptr, int value, int64_t count) {
+	void deviceMemset(void* ptr, int value, size_t count) override {
 		stream.wait();
 		stream.memset(ptr, value, count);
 	}
 
-	void deviceMemcpy(
+	void deviceMemcpyImplementation(
 		void* dst, 
 		const void* src, 
-		const int64_t count, 
-		const copyType kind) {
+		const size_t count, 
+		const copyType kind) override {
 		stream.wait();
 		stream.memcpy(dst, src, count);
 		stream.wait();
 	}
 
 	void deviceMemcpy(
-		double* dst, 
-		const float* src, 
-		const int64_t count, 
-		const copyType kind) {
-		stream.wait();
-		float* copyBuffer = new float[count / sizeof(double)]();
-		stream.memcpy(copyBuffer, src, count/2);
-		stream.wait();
-		for (int64_t i = 0; i < count / sizeof(double); i++) {
-			dst[i] = static_cast<double>(copyBuffer[i]);
-		}
-		delete[] copyBuffer;
-	}
-
-	void deviceMemcpy(
 		std::complex<double>* dst, 
 		const sycl::ext::oneapi::experimental::complex<float>* src, 
-		int64_t count, 
+		size_t count, 
 		copyType kind) {
-		stream.wait();
-		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
-		stream.memcpy(copyBuffer, src, count/2);
-		stream.wait();
-		for (int64_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			dst[i] = std::complex<double>(
-				static_cast<float>(copyBuffer[i].real()), 
-				static_cast<float>(copyBuffer[i].imag()));
-		}
-		delete[] copyBuffer;
+		deviceMemcpy(dst, reinterpret_cast<const std::complex<float>*>(src),count,kind);
 	}
 
 	void deviceMemcpy(
 		sycl::ext::oneapi::experimental::complex<float>* dst, 
 		const std::complex<double>* src, 
-		const int64_t count, 
+		const size_t count, 
 		const copyType kind) {
-		stream.wait();
-		std::complex<float>* copyBuffer = new std::complex<float>[count / sizeof(std::complex<double>)]();
-		for (int64_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			copyBuffer[i] = std::complex<float>(
-				static_cast<float>(src[i].real()), 
-				static_cast<float>(src[i].imag()));
-		}
-		stream.memcpy(dst, copyBuffer, count / 2);
-		stream.wait();
-		delete[] copyBuffer;
+		deviceMemcpy(reinterpret_cast<std::complex<float>*>(dst),src,count,kind);
 	}
 
-	void deviceMemcpy(
-		float* dst, 
-		const double* src, 
-		const int64_t count, 
-		const copyType kind) {
-		stream.wait();
-		float* copyBuffer = new float[count / sizeof(double)]();
-		for (int64_t i = 0; i < count / sizeof(double); i++) {
-			copyBuffer[i] = static_cast<float>(src[i]);
-		}
-		stream.memcpy(dst, copyBuffer, count / 2);
-		stream.wait();
-		delete[] copyBuffer;
-	}
-
-	void deviceFree(void* block) {
+	void deviceFree(void* block) override {
 		stream.wait();
 		sycl::free(block, stream);
 	}
@@ -265,9 +207,6 @@ public:
 		if (configuredFFT) {
 			fftDestroy();
 		}
-		isCylindric = 0;
-		hasPlasma = (*s).hasPlasma;
-
 		fftPlan1DD2Z = 
 			new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>((*s).Ntime);
 		fftPlan1DD2Z->set_value(
@@ -308,7 +247,6 @@ public:
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, (*s).Nfreq * (*s).Nspace);
 
 			if ((*s).isCylindric) {
-				isCylindric = 1;
 				doublePolfftPlan = 
 					new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
 					std::vector<std::int64_t>{2 * (*s).Nspace, (*s).Ntime});
@@ -329,11 +267,11 @@ public:
 
 		fftPlan1DD2Z->commit(stream);
 		fftPlanD2Z->commit(stream);
-		if (isCylindric) doublePolfftPlan->commit(stream);
-		configuredFFT = 1;
+		if (s->isCylindric) doublePolfftPlan->commit(stream);
+		configuredFFT = true;
 	}
 
-	void fft(const void* input, void* output, const deviceFFT type) const {
+	void fft(const void* input, void* output, const deviceFFT type) override {
 		switch (type) {
 		case deviceFFT::D2Z:
 			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (std::complex<deviceFP>*)output);
@@ -352,84 +290,16 @@ public:
 			break;
 		}
 	}
-	void deallocateSet() {
-		stream.wait();
-		deviceFree((*s).gridETime1);
-		deviceFree((*s).workspace1);
-		deviceFree((*s).gridEFrequency1);
-		deviceFree((*s).gridPropagationFactor1);
-		deviceFree((*s).gridBiaxialDelta);
-		if ((*s).isCylindric) {
-			deviceFree((*s).gridPropagationFactor1Rho1);
-			deviceFree((*s).gridRadialLaplacian1);
+
+	void reset(simulationParameterSet* sCPU) override {
+		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
+		allocation->useNewParameterSet(sCPU);
+		if(resetFFT){
+			fftInitialize();
 		}
-		deviceFree((*s).gridPolarizationFactor1);
-		deviceFree((*s).gridEFrequency1Next1);
-		deviceFree((*s).k1);
-		deviceFree((*s).gridPolarizationTime1);
-		deviceFree((*s).expGammaT);
-		deviceFree((*s).chiLinear1);
-		deviceFree((*s).fieldFactor1);
-		deviceFree((*s).inverseChiLinear1);
 	}
-	void reset(simulationParameterSet* sCPU) {
-		if((*s).hasPlasma != ((*sCPU).nonlinearAbsorptionStrength != 0.0)){
-			deallocateSet();
-			memoryStatus = allocateSet(sCPU);
-		}
-		else{
-			sCPU->initializeDeviceParameters(s);
-			hasPlasma = s->hasPlasma;
-		}
-		sCPU->fillRotationMatricies(s);
-		int64_t beamExpansionFactor = 1;
-		if ((*s).isCylindric) {
-			beamExpansionFactor = 2;
-			if ((*s).hasPlasma) beamExpansionFactor = 4;
-		}
-		deviceMemset((*s).gridETime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
-		deviceMemset((*s).gridPolarizationTime1, 0, 2 * (*s).Ngrid * sizeof(deviceFP));
-		deviceMemset((*s).workspace1, 0, beamExpansionFactor * 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridEFrequency1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridPropagationFactor1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridPolarizationFactor1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).gridEFrequency1Next1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
-		deviceMemset((*s).k1, 0, 2 * (*s).NgridC * sizeof(deviceComplex));
 
-		//cylindric sym grids
-		if ((*s).isCylindric) {
-			deviceMemset(
-				(*s).gridPropagationFactor1Rho1, 
-				0, 
-				4 * (*s).NgridC * sizeof(deviceComplex));
-			deviceMemset(
-				(*s).gridRadialLaplacian1, 
-				0, 
-				2 * beamExpansionFactor * (*s).Ngrid * sizeof(deviceComplex));
-		}
-
-		//smaller helper grids
-		deviceMemset((*s).expGammaT, 0, 2 * (*s).Ntime * sizeof(deviceFP));
-		deviceMemset((*s).chiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceComplex));
-		deviceMemset((*s).fieldFactor1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
-		deviceMemset((*s).inverseChiLinear1, 0, 2 * (*s).Nfreq * sizeof(deviceFP));
-
-		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
-		for (int64_t i = 0; i < (*s).Ntime; ++i) {
-			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
-			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
-		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-
-		sCPU->finishConfiguration(s);
-		deviceMemcpy(
-			dParamsDevice, 
-			s, 
-			sizeof(deviceParameterSet<deviceFP, deviceComplex>), 
-			copyType::ToDevice);
-	}
-	int allocateSet(simulationParameterSet* sCPU) {
-		
+	int allocateSet(simulationParameterSet* sCPU) {	
 		if ((*sCPU).assignedGPU) {
 			try {
 				sycl::queue gpuStream{ sycl::gpu_selector_v, { sycl::property::queue::in_order() } };
@@ -457,77 +327,12 @@ public:
 			}
 			
 		}
-		deviceCalloc((void**)&dParamsDevice, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>));
-		
 		cParams = sCPU;
-		sCPU->initializeDeviceParameters(s);
-		hasPlasma = s->hasPlasma;
+		if(memoryStatus == 0) allocation = nullptr;
+		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
+		s = &(allocation->parameterSet);
 		fftInitialize();
-		int memErrors = 0;
-
-		int64_t beamExpansionFactor = 1;
-		if ((*s).isCylindric) {
-			beamExpansionFactor = 2;
-			if ((*s).hasPlasma) beamExpansionFactor = 4;
-		}
-
-		sCPU->fillRotationMatricies(s);
-		//GPU allocations
-		//
-		// currently 8 large grids, meaning memory use is approximately
-		// 64 bytes per grid point (8 grids x 2 polarizations x 4ouble precision)
-		// plus a little bit for additional constants/workspaces/etc
-		memErrors += deviceCalloc((void**)
-			&(*s).gridETime1, 2 * (*s).Ngrid, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridPolarizationTime1, 2 * (*s).Ngrid, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)
-			&(*s).workspace1, beamExpansionFactor * 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridEFrequency1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridPropagationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridPolarizationFactor1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridEFrequency1Next1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).k1, 2 * (*s).NgridC, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).gridBiaxialDelta, (*s).NgridC, sizeof(deviceFP));
-		//cylindric sym grids
-		if ((*s).isCylindric) {
-			memErrors += deviceCalloc((void**)
-				&(*s).gridPropagationFactor1Rho1, 4 * (*s).NgridC, sizeof(deviceComplex));
-			memErrors += deviceCalloc((void**)
-				&(*s).gridRadialLaplacian1, beamExpansionFactor * 2 * (*s).Ngrid, sizeof(deviceComplex));
-		}
-
-		//smaller helper grids
-		memErrors += deviceCalloc((void**)
-			&(*s).expGammaT, 2 * (*s).Ntime, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)
-			&(*s).chiLinear1, 2 * (*s).Nfreq, sizeof(deviceComplex));
-		memErrors += deviceCalloc((void**)
-			&(*s).fieldFactor1, 2 * (*s).Nfreq, sizeof(deviceFP));
-		memErrors += deviceCalloc((void**)
-			&(*s).inverseChiLinear1, 2 * (*s).Nfreq, sizeof(deviceFP));
-		std::vector<double> expGammaTCPU(2 * (*s).Ntime);
-		for (int64_t i = 0; i < (*s).Ntime; ++i) {
-			expGammaTCPU[i] = exp((*s).dt * i * (*sCPU).drudeGamma);
-			expGammaTCPU[i + (*s).Ntime] = exp(-(*s).dt * i * (*sCPU).drudeGamma);
-		}
-		deviceMemcpy((*s).expGammaT, expGammaTCPU.data(), 2 * sizeof(double) * (*s).Ntime, copyType::ToDevice);
-		(*sCPU).memoryError = memErrors;
-		if (memErrors > 0) {
-			return memErrors;
-		}
-		sCPU->finishConfiguration(s);
-		deviceMemcpy(
-			dParamsDevice, 
-			s, 
-			sizeof(deviceParameterSet<deviceFP, deviceComplex>), 
-			copyType::ToDevice);
+		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
 		return 0;
 	}
 };
