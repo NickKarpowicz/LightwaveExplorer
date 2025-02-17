@@ -306,7 +306,8 @@ public:
     QTextEdit* console;
     QTextEdit* fitting;
     QProgressBar* progress;
-    QWidget *inputRegion;
+    QWidget* inputRegion;
+    QWidget* plotControlRegion;
     QSlider* slider;
     GuiMessenger* messenger;
     std::mutex m;
@@ -680,8 +681,9 @@ public:
         const int miniButtonWidth = 30;
         const int mainButtonHeight = textBoxHeight;
 #else
-
 #endif
+        const int plotTextBoxWidth = 40;
+        const int plotLabelWidth = 80;
         const int labelWidth = 2*textBoxWidth;
         const int rowHeight = textBoxHeight+2;
         const int rowWidth = labelWidth + 2*textBoxWidth + 10;
@@ -709,17 +711,23 @@ public:
         //Divide the large window area into an input area and a plot area
         inputRegion = new QWidget;
         QWidget *plotRegion = new QWidget;
-
+        //add a plot control region to show when the input area is collapsed
+        plotControlRegion = new QWidget;
         QHBoxLayout *mainAreaLayout = new QHBoxLayout(mainArea);
         squeezeMargins(mainAreaLayout);
         inputRegion->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
         plotRegion->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plotControlRegion->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
         mainAreaLayout->addWidget(inputRegion);
         mainAreaLayout->addWidget(plotRegion);
-
+        mainAreaLayout->addWidget(plotControlRegion);
+        plotControlRegion->hide();
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
         plotRegionLayout->setContentsMargins(0,0,0,0);
         plotRegionLayout->setSpacing(2);
+        
+        QVBoxLayout* plotControlRegionLayout = new QVBoxLayout(plotControlRegion);
+
         plots["timeImage1"] = new CairoWidget(*this, drawTimeImage1);
         plots["timeImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["timeImage1"]->setToolTip(
@@ -828,6 +836,34 @@ public:
                 rowLayout->addWidget(labels[entry1]);
                 rowLayout->addWidget(textBoxes[entry1]);
                 rowLayout->addWidget(textBoxes[entry2]); 
+        };
+        
+        auto addTextBoxRowForPlots = [&](
+            const QString& label,
+            const std::string& entry1, 
+            const std::string& entry2,  
+            const std::string& entry3,
+            QVBoxLayout* location,
+            const QString& tooltip){
+                QHBoxLayout* rowLayout = getRowBoxLayout(location);
+                labels[entry1] = new QLabel;
+                labels[entry1]->setToolTip(tooltip);
+                textBoxes[entry1] = new QLineEdit;
+                textBoxes[entry2] = new QLineEdit;
+                textBoxes[entry3] = new QLineEdit;
+                textBoxes[entry1]->setToolTip(tooltip);
+                textBoxes[entry2]->setToolTip(tooltip);
+                textBoxes[entry3]->setToolTip(tooltip);
+                labels[entry1]->setToolTip(tooltip);
+                labels[entry1]->setText(label);
+                labels[entry1]->setFixedSize(plotLabelWidth,textBoxHeight);
+                textBoxes[entry1]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                textBoxes[entry2]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                textBoxes[entry3]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                rowLayout->addWidget(labels[entry1]);
+                rowLayout->addWidget(textBoxes[entry1]);
+                rowLayout->addWidget(textBoxes[entry2]); 
+                rowLayout->addWidget(textBoxes[entry3]); 
         };
 
         auto addPulldownInContainer = [&](int width, QBoxLayout* location, const std::string& entry){
@@ -1405,6 +1441,27 @@ public:
         plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         plotControlStripLayout->addWidget(checkboxes["Log"]);
     #endif
+
+    //Layout of plot control area
+        checkboxes["ShowSpaceTime"] = new QCheckBox("Show Space/Time field");
+        checkboxes["ShowSpaceTime"]->setChecked(true);
+        checkboxes["ShowSpaceTime"]->setToolTip("Show or hide the space/time view.");
+        plotControlRegionLayout->addWidget(checkboxes["ShowSpaceTime"]);
+        QObject::connect(checkboxes["ShowSpaceTime"], &QCheckBox::clicked, [&](){
+            if(checkboxes["ShowSpaceTime"]->isChecked()){
+                plots["timeImage1"]->show();
+                plots["timeImage2"]->show();
+            }
+            else{
+                plots["timeImage1"]->hide();
+                plots["timeImage2"]->hide();
+            }
+            
+        });
+        squeezeMargins(plotControlRegionLayout);
+        addTextBoxRowForPlots("Red (f, \xcf\x83, I)", "Red_frequency", "Red_sigma", "Red_strength", plotControlRegionLayout,
+        "Control the red color channel in the beam view.\n");
+
         readDefaultValues(theSim, theDatabase);
         setInterfaceValuesToActiveValues(theSim);
         cPrint(checkLibraryAvailability(theSim));
@@ -1634,10 +1691,13 @@ public:
             if(isInputRegionHidden){
                 inputRegion->show();
                 isInputRegionHidden = false;
+
+                plotControlRegion->hide();
             }
             else{
                 inputRegion->hide();
                 isInputRegionHidden = true;
+                plotControlRegion->show();
             }
         });
 
@@ -1711,6 +1771,7 @@ public:
                 fs << str;
             }
         });
+        
     }
     public slots:
     void queueSyncValues(){
@@ -2201,8 +2262,14 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
     sPlot.data = &theGui.theSim.base().ExtOut[
         simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
+
     sPlot.Npts = theGui.theSim.base().Ntime;
     sPlot.color = LweColor(0, 1, 1, 1);
+    // sPlot.color2 = LweColor(1, 0, 1, 1);
+    // sPlot.data2 = &theGui.theSim.base().ExtOut[
+    //     theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
+    //         + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
+    sPlot.ExtraLines = 1;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ex (GV/m)";
