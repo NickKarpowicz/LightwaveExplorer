@@ -386,7 +386,7 @@ public:
     LWEBuffer(){}
     LWEBuffer(const LWEBuffer&) = delete;
     LWEBuffer& operator=(const LWEBuffer&) = delete;
-    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize) : 
+    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize = sizeof(T)) : 
     d(d),
     count(maxN(N,static_cast<size_t>(1))),
     bytes(count*elementSize)
@@ -420,6 +420,10 @@ public:
     }
 
     void resize(int64_t newCount){
+        if(newCount == count && buffer != nullptr){
+            initialize_to_zero();
+            return;
+        }
         if(buffer != nullptr) d->deviceFree(buffer);
         int error = d->deviceCalloc((void**)&buffer, newCount, sizeof(T));
         if(error){

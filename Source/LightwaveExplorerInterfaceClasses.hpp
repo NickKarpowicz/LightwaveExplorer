@@ -507,6 +507,73 @@ public:
     }
 };
 
+template <typename deviceComplex>
+struct visualizationAllocation{
+    int64_t width = 0;
+    int64_t height = 0;
+    int64_t Nimage = 0;
+    int64_t Ngrid = 0;
+    int64_t Ngrid_complex = 0;
+    bool frequencyGridMomentum = true;
+    LWEBuffer<float> gridTimeSpace;
+    LWEBuffer<deviceComplex> gridFrequency;
+    LWEBuffer<uint8_t> imageGPU;
+    LWEDevice* parentDevice;
+    std::vector<uint8_t> image;
+    deviceParameterSet<float, deviceComplex> parameterSet;
+    LWEBuffer<deviceParameterSet<float, deviceComplex>> parameterSet_deviceCopy;
+
+    visualizationAllocation(){}
+
+    visualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, simulationParameterSet* sCPU) : 
+        parentDevice(d),
+        width(init_width),
+        height(init_height),
+        Nimage(width * height * 3),
+        Ngrid(sCPU->Ngrid),
+        Ngrid_complex(sCPU->NgridC),
+        gridTimeSpace(d, 2*Ngrid,sizeof(float)),
+        gridFrequency(d, 2*Ngrid_complex, sizeof(deviceComplex)),
+        imageGPU(d, Nimage, sizeof(uint8_t)),
+        image(Nimage){
+            parentDevice->deviceMemcpy(
+                gridTimeSpace.device_ptr(), 
+                sCPU->ExtOut, 2 * Ngrid * sizeof(float), 
+                copyType::ToDevice);
+            parentDevice->deviceMemcpy(
+                gridFrequency.device_ptr(), 
+                sCPU->EkwOut, 2 * Ngrid_complex * sizeof(deviceComplex), 
+                copyType::ToDevice);
+        }
+
+    void setImageDimensions(int64_t new_width, int64_t new_height){
+        int64_t newNimage = new_width * new_height * 3;
+        if(imageGPU.count < newNimage){
+            imageGPU.resize(newNimage);
+            image.resize(newNimage);
+        }
+        Nimage = newNimage;
+        height = new_height;
+        width = new_width;
+    }
+
+    void setSimulationDimensions(simulationParameterSet* sCPU){
+        Ngrid = sCPU->Ngrid;
+        Ngrid_complex = sCPU->NgridC;
+        gridTimeSpace.resize(2 * Ngrid);
+        gridFrequency.resize(2 * Ngrid_complex);
+    }
+
+    void initializeParameterSet(simulationParameterSet* sCPU){
+        sCPU->initializeDeviceParameters(&parameterSet);
+        sCPU->fillRotationMatricies(&parameterSet);
+        sCPU->finishConfiguration(&parameterSet);
+        parentDevice->deviceMemcpy(
+            parameterSet_deviceCopy.device_ptr(), 
+            &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), 
+            copyType::ToDevice);
+    }
+};
 
 template <typename deviceFP, typename deviceComplex>
 struct UPPEAllocation{
