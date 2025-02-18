@@ -4,6 +4,7 @@
 #include <vector>
 #include <array>
 #include <string>
+#include <optional>
 #include <algorithm>
 #include <thread>
 #include <mutex>
@@ -122,92 +123,71 @@ static cairo_status_t cairoWritePNGtoVector(
     return CAIRO_STATUS_SUCCESS;
 }
 
+template <typename T, std::size_t dimension>
+struct DataSlice{
+    T* data = nullptr;
+    std::array<size_t,dimension> shape = {};
+};
+
+template <typename T>
 class LweImage {
     public:
         int width = 0;
         int height = 0;
-        double* data = nullptr;
-        int64_t dataXdim = 0;
-        int64_t dataYdim = 0;
-        std::complex<double>* complexData = nullptr;
+        std::optional<DataSlice<T,2>> data;
+        std::optional<DataSlice<std::complex<T>,2>> complexData;
         int colorMap = 4;
         bool logScale = false;
-        double logMin = 0;
-        int dataType = 0;
+        T logMin = 0;
         std::vector<uint8_t> pixels;
-    
-        void imagePlot(cairo_t* cr) {
-            int64_t plotSize = static_cast<int64_t>(width) * static_cast<int64_t>(height);
-            std::vector<float> plotarr2(plotSize);
-            switch (dataType) {
-            case 0:
-                if (data == nullptr) break;
-                linearRemapDoubleToFloat(
-                    data, 
-                    static_cast<int>(dataYdim), 
-                    static_cast<int>(dataXdim),
-                    plotarr2.data(),
-                    height,
-                    width);
-                drawArrayAsBitmap(cr, width, height, plotarr2.data(), colorMap);
-                break;
-            case 1:
-                if (complexData == nullptr) break;
-                linearRemapZToLogFloatShift(
-                    complexData, 
-                    static_cast<int>(dataYdim),
-                    static_cast<int>(dataXdim),
-                    plotarr2.data(),
-                    height,
-                    width,
-                    logMin);
-                drawArrayAsBitmap(cr, width, height, plotarr2.data(), colorMap);
-                break;
-            }
+        size_t yDim(){
+            if (data.has_value()) return data.value().shape[1];
+            else if (complexData.has_value()) return complexData.value().shape[1];
+            else return 0;
         }
-    
+        size_t xDim(){
+            if (data.has_value()) return data.value().shape[0];
+            else if (complexData.has_value()) return complexData.value().shape[0];
+            else return 0;
+        }
         void render() {
             int64_t plotSize = static_cast<int64_t>(width) * static_cast<int64_t>(height);
             std::vector<float> plotarr2(plotSize);
-            switch (dataType) {
-            case 0:
-                if (data == nullptr) break;
+            if(data.has_value()){
                 linearRemapDoubleToFloat(
-                    data, 
-                    static_cast<int>(dataYdim), 
-                    static_cast<int>(dataXdim),
+                    data.value().data, 
+                    static_cast<int>(data.value().shape[1]), 
+                    static_cast<int>(data.value().shape[0]),
                     plotarr2.data(),
                     height,
                     width);
                 createBitmapFromArray(width, height, plotarr2.data(), colorMap);
-                break;
-            case 1:
-                if (complexData == nullptr) break;
+            }
+            else if(complexData.has_value()){
                 linearRemapZToLogFloatShift(
-                    complexData, 
-                    static_cast<int>(dataYdim),
-                    static_cast<int>(dataXdim),
+                    complexData.value().data, 
+                    static_cast<int>(complexData.value().shape[1]),
+                    static_cast<int>(complexData.value().shape[0]),
                     plotarr2.data(),
                     height,
                     width,
                     logMin);
                 createBitmapFromArray(width, height, plotarr2.data(), colorMap);
-                break;
             }
         }
     
-        [[nodiscard]] constexpr double cModulusSquared(const std::complex<double>& x) const {
+        [[nodiscard]] constexpr T cModulusSquared(const std::complex<T>& x) const {
             return x.real() * x.real() + x.imag() * x.imag();
         }
     
         void linearRemapZToLogFloatShift(
-            const std::complex<double>* A, 
+            const std::complex<T>* A, 
             const int nax, 
             const int nay, 
             float* B, 
             const int nbx, 
             const int nby, 
-            const double logMin) {
+            const T logMin) {
             const int div2 = nax / 2;
     #pragma omp parallel for num_threads(interfaceThreads)
             for (int i = 0; i < nbx; ++i) {
@@ -224,13 +204,13 @@ class LweImage {
         }
     
         void linearRemapZToLogFloat(
-            const std::complex<double>* A, 
+            const std::complex<T>* A, 
             const int nax, 
             const int nay, 
             float* B, 
             const int nbx, 
             const int nby, 
-            const double logMin) {
+            const T logMin) {
     #pragma omp parallel for num_threads(interfaceThreads)
             for (int i = 0; i < nbx; ++i) {
                 float f = i * (nax / (float)nbx);
@@ -246,7 +226,7 @@ class LweImage {
         }
     
         void linearRemapDoubleToFloat(
-            const double* A, 
+            const T* A, 
             const int nax, 
             const int nay, 
             float* B, 
@@ -394,7 +374,7 @@ class LweImage {
         }
 };
 
-
+template<typename T>
 class LwePlot {
 public:
     bool makeSVG = false;
@@ -402,40 +382,32 @@ public:
     double width = 0;
     double height = 0;
     double fontSize = 12.0;
-    std::vector<double*> data;
-    std::vector<double*> dataX;
-    LweImage* image = nullptr;
-    bool drawImage = false;
+    std::vector<T*> data;
+    std::vector<T*> dataX;
+    std::optional<LweImage<T>*> image;
     std::string xLabel;
     std::string yLabel;
     bool logScale = false;
-    double logMin = 0;
+    T logMin = 0;
     int dataType = 0;
-    double dx = 1.0;
-    double x0 = 0.0;
+    T dx = 1.0;
+    T x0 = 0.0;
     int64_t Npts = 0;
-    double unitY = 1.0;
-    bool forceYmin = false;
-    double forcedYmin = 0.0;
-    bool forceYmax = false;
-    double forcedYmax = 0.0;
-    bool forceXmin = false;
-    double forcedXmin = 0.0;
-    bool forceXmax = false;
-    double forcedXmax = 0.0;
+    T unitY = 1.0;
+    std::optional<T> forcedYmin;
+    std::optional<T> forcedYmax;
+    std::optional<T> forcedXmin;
+    std::optional<T> forcedXmax;
     LweColor axisColor = LweColor(0.5, 0.5, 0.5, 0.5);
     LweColor textColor = LweColor(0.8, 0.8, 0.8, 0.8);
     LweColor backgroundColor = LweColor(0.0, 0.0, 0.0, 0.0);
     std::vector<LweColor> lineColors;
     std::string SVGString;
-    std::string SVGPath;
 
     int plot(cairo_t* cr) {
-        if (image != nullptr) drawImage = true;
-        if (drawImage) Npts = 5;
+        if (image.has_value()) Npts = 5;
         if (Npts == 0) return 1;
         std::unique_lock GTKlock(GTKmutex);
-        if (SVGPath.length() > 5) makeSVG = true;
         int64_t iMin = 0;
         int64_t iMax = Npts;
         cairo_font_extents_t fe{};
@@ -443,7 +415,7 @@ public:
         cairo_set_font_size(cr, fontSize);
         cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
         cairo_font_extents(cr, &fe);
-        double x1, y1, x2, y2;
+        T x1, y1, x2, y2;
 
         double layoutTop = 0.0;
         double layoutBottom = 0.0;
@@ -458,14 +430,14 @@ public:
         double axisLabelSpaceX = 1.5 * fontSize;
 
         //get limits and make the plotting arrays
-        double maxY = -1.0e300;
-        double minY = 0.0;
-        double maxX = 0.0;
-        double minX = 0.0;
-        double currentY;
-        double currentX;
+        T maxY = -1.0e300;
+        T minY = 0.0;
+        T maxX = 0.0;
+        T minX = 0.0;
+        T currentY;
+        T currentX;
         std::vector<double> xValues(Npts + 2, 0.0);
-        if(!drawImage){
+        if(!image.has_value()){
             for (int i = 0; i < Npts; ++i) {
                 if (dataX.size()) currentX = (double)dataX[0][i];
                 else { currentX = (double)(i * dx + x0); }
@@ -474,10 +446,10 @@ public:
                     maxX = currentX;
                 }
                 xValues[i] = currentX;
-                if (forceXmin && (currentX < forcedXmin)) {
+                if (forcedXmin.has_value() && (currentX < forcedXmin.value())) {
                     iMin = i + 1;
                 }
-                if (forceXmax && (currentX > forcedXmax)) {
+                if (forcedXmax.has_value() && (currentX > forcedXmax.value())) {
                     iMax = i;
                     break;
                 }
@@ -499,31 +471,39 @@ public:
                 maxY = 1;
             }
 
-            if (forceYmin) {
-                minY = (double)forcedYmin * unitY;
+            if (forcedYmin.has_value()) {
+                minY = forcedYmin.value() * unitY;
                 if (logScale) minY = log10(minY);
             }
-            if (forceYmax) {
-                maxY = (double)forcedYmax * unitY;
+            if (forcedYmax.has_value()) {
+                maxY = forcedYmax.value() * unitY;
                 if (logScale) maxY = log10(maxY);
             }
-            if (forceXmin) {
-                minX = (double)forcedXmin;
+            if (forcedXmin.has_value()) {
+                minX = forcedXmin.value();
             }
-            if (forceXmax) {
-                maxX = (double)forcedXmax;
+            if (forcedXmax.has_value()) {
+                maxX = forcedXmax.value();
             }
         }
         else{
             //drawing an image: require input x and y limits
-            minX = forcedXmin;
-            maxX = forcedXmax;
-            maxY = forcedYmax * unitY;
-            minY = forcedYmin * unitY;
+            if(forcedXmin.has_value() 
+            && forcedXmin.has_value()
+            && forcedYmin.has_value()
+            && forcedYmax.has_value()){
+                minX = forcedXmin.value();
+                maxX = forcedXmax.value();
+                maxY = forcedYmax.value() * unitY;
+                minY = forcedYmin.value() * unitY;
+            }
+            else{
+                minX = -1.0;
+                maxX = 1.0;
+                minY = -1.0;
+                maxY = 1.0;
+            }
         }
-        
-
-
 
         //Tickmark labels
         constexpr int NyTicks = 3;
@@ -556,19 +536,18 @@ public:
         cairo_fill(cr);
         width -= axisSpaceX;
         height -= axisSpaceY;
-        if(drawImage){
+        if(image.has_value()){
             if(makeSVG){
-                image->width = image->dataXdim;
-                image->height = image->dataYdim;
-                image->render();
-                std::string imagePNG = image->pngFromRenderedPixels(cr,axisSpaceX,0.0,width,height);
+                image.value()->width = image.value()->xDim();
+                image.value()->height = image.value()->yDim();
+                image.value()->render();
+                std::string imagePNG = image.value()->pngFromRenderedPixels(cr,axisSpaceX,0.0,width,height);
                 SVGString.append(imagePNG);
             } 
-            image->width = width;
-            image->height = height;
-            image->render();
-            image->drawRenderedPixels(cr,axisSpaceX,0.0);
-  
+            image.value()->width = width;
+            image.value()->height = height;
+            image.value()->render();
+            image.value()->drawRenderedPixels(cr,axisSpaceX,0.0);
         }
         double scaleX = width / (maxX - minX);
         double scaleY = height / (maxY - minY);
@@ -593,7 +572,7 @@ public:
                 currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
         };
 
-        auto SVGaddXYtoPolyLine = [&](double& a, double& b) {
+        auto SVGaddXYtoPolyLine = [&](const double a, const double b) {
             SVGString.append(Sformat("{},{} ", a, b));
         };
 
@@ -775,12 +754,10 @@ public:
         }
         SVGendgroup();
 
-
-
         //Lambdas for plotting a line
         std::vector<double> scaledX(Npts);
         std::vector<double> scaledY(Npts);
-        auto getNewScaledXY = [&](const std::vector<double>& xValues, const double* y) {
+        auto getNewScaledXY = [&](const std::vector<double>& xValues, const T* y) {
             if (logScale) {
 #pragma omp parallel for num_threads(interfaceThreads)
                 for (int i = 0; i < Npts; i++) {
@@ -901,7 +878,7 @@ public:
         };
 
         //Plot the lines
-        if(!drawImage){
+        if(!image.has_value()){
             for(size_t i = 0; i<data.size(); ++i){
                 getNewScaledXY(xValues, data[i]);
                 currentColor = lineColors[i % lineColors.size()];
@@ -916,10 +893,6 @@ public:
 
         if (makeSVG) {
             SVGString.append("</svg>");
-            if(SVGPath.length()>5){
-                std::ofstream fs(SVGPath);
-                fs << SVGString;
-            }
         }
         return 0;
     }

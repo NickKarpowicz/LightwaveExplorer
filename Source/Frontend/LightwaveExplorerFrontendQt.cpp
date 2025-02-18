@@ -2240,16 +2240,16 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    LweImage image;
-    image.data = &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
-    image.dataXdim = theGui.theSim.base().Ntime;
-    image.dataYdim = theGui.theSim.base().Nspace;
+    LweImage<double> image;
+    image.data = DataSlice<double,2>{&theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle],
+        {static_cast<size_t>(theGui.theSim.base().Ntime), static_cast<size_t>(theGui.theSim.base().Nspace)}};
+
     image.height = height;
     image.width = width;
     image.colorMap = 4;
-    image.dataType = 0;
 
-    LwePlot sPlot;
+
+    LwePlot<double> sPlot;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2258,9 +2258,9 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.yLabel = "x (mm)";
     sPlot.unitY = 1e3;
     sPlot.forcedXmax = 0.5e15 * theGui.theSim.base().Ntime * theGui.theSim.base().tStep;
-    sPlot.forcedXmin = -sPlot.forcedXmax;
+    sPlot.forcedXmin = -sPlot.forcedXmax.value();
     sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
-    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
@@ -2278,7 +2278,7 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
 
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2323,7 +2323,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
 
@@ -2366,7 +2366,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2402,20 +2402,19 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         &theGui.theSim.base().totalSpectrum[simIndex * 3 * theGui.theSim.base().Nfreq]);
     sPlot.Npts = theGui.theSim.base().Nfreq;
     sPlot.logScale = theGui.checkboxes["Log"]->isChecked();;
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
     sPlot.lineColors.push_back(LweColor(0.5, 0, 1, 1));
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
     sPlot.yLabel = "Sx (J/THz)";
     sPlot.unitY = 1.0e-12;
-    sPlot.forceXmax = forceX;
-    sPlot.forceXmin = forceX;
-    sPlot.forcedXmax = xMax;
-    sPlot.forcedXmin = xMin;
-    
+    if(forceX){
+        sPlot.forcedXmax = xMax;
+        sPlot.forcedXmin = xMin;
+    }
+    if (forceY){
+        sPlot.forcedYmin = yMin;
+        sPlot.forcedYmax = yMax;
+    }
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
@@ -2432,7 +2431,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2466,18 +2465,18 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq]);
     sPlot.Npts = theGui.theSim.base().Nfreq;
     sPlot.logScale = theGui.checkboxes["Log"]->isChecked();
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
     sPlot.yLabel = "Sy (J/THz)";
     sPlot.unitY = 1.0e-12;
-    sPlot.forceXmax = forceX;
-    sPlot.forceXmin = forceX;
-    sPlot.forcedXmax = xMax;
-    sPlot.forcedXmin = xMin;
+    if(forceX){
+        sPlot.forcedXmax = xMax;
+        sPlot.forcedXmin = xMin;
+    }
+    if (forceY){
+        sPlot.forcedYmin = yMin;
+        sPlot.forcedYmax = yMax;
+    }
     
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
@@ -2503,16 +2502,17 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    LweImage image;
-    image.data = &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + theGui.theSim.base().Ngrid + cubeMiddle];
-    image.dataXdim = theGui.theSim.base().Ntime;
-    image.dataYdim = theGui.theSim.base().Nspace;
+    LweImage<double> image;
+    image.data = DataSlice<double,2>{
+        &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + theGui.theSim.base().Ngrid + cubeMiddle],
+        {static_cast<size_t>(theGui.theSim.base().Ntime),
+        static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
     image.colorMap = 4;
-    image.dataType = 0;
 
-    LwePlot sPlot;
+
+    LwePlot<double> sPlot;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2521,9 +2521,9 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.yLabel = "x (mm)";
     sPlot.unitY = 1e3;
     sPlot.forcedXmax = 0.5e15 * theGui.theSim.base().Ntime * theGui.theSim.base().tStep;
-    sPlot.forcedXmin = -sPlot.forcedXmax;
+    sPlot.forcedXmin = -sPlot.forcedXmax.value();
     sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
-    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
@@ -2541,7 +2541,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage image;
+    LweImage<double> image;
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -2553,16 +2553,15 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
                 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
     image.complexData =
-        &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2];
-
-    image.dataXdim = theGui.theSim.base().Nfreq;
-    image.dataYdim = theGui.theSim.base().Nspace;
+        DataSlice<std::complex<double>,2>{
+            &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2],
+            {static_cast<size_t>(theGui.theSim.base().Nfreq),
+            static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
     image.colorMap = 3;
-    image.dataType = 1;
     image.logMin = logPlotOffset;
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2573,7 +2572,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
     sPlot.forcedXmin = 0;
     sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
-    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
@@ -2593,7 +2592,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage image;
+    LweImage<double> image;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2605,16 +2604,15 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         logPlotOffset = (double)(1e-4 
             / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
-    image.complexData =
-        &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2 + theGui.theSim.base().NgridC];
-    image.dataXdim = theGui.theSim.base().Nfreq;
-    image.dataYdim = theGui.theSim.base().Nspace;
+    image.complexData = DataSlice<std::complex<double>,2>{
+        &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2 + theGui.theSim.base().NgridC],
+        {static_cast<size_t>(theGui.theSim.base().Nfreq),
+        static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
     image.colorMap = 3;
-    image.dataType = 1;
     image.logMin = logPlotOffset;
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2625,7 +2623,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
     sPlot.forcedXmin = 0;
     sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
-    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
