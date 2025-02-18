@@ -75,6 +75,7 @@ class lightwaveExplorerResult:
                           "crystalThickness",
                           "propagationStep",
                           "nonlinearAbsorptionStrength",
+			  "initialCarrierDensity",
                           "bandGapElectronVolts",
                           "effectiveMass",
                           "drudeGamma",
