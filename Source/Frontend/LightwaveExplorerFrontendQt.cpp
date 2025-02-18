@@ -1443,21 +1443,52 @@ public:
     #endif
 
     //Layout of plot control area
-        checkboxes["ShowSpaceTime"] = new QCheckBox("Show Space/Time field");
-        checkboxes["ShowSpaceTime"]->setChecked(true);
-        checkboxes["ShowSpaceTime"]->setToolTip("Show or hide the space/time view.");
-        plotControlRegionLayout->addWidget(checkboxes["ShowSpaceTime"]);
-        QObject::connect(checkboxes["ShowSpaceTime"], &QCheckBox::clicked, [&](){
-            if(checkboxes["ShowSpaceTime"]->isChecked()){
+        checkboxes["showSpaceTime"] = new QCheckBox("Space/time field");
+        checkboxes["showSpaceTime"]->setChecked(true);
+        checkboxes["showSpaceTime"]->setToolTip("Show or hide the space/time view.");
+        plotControlRegionLayout->addWidget(checkboxes["showSpaceTime"]);
+        QObject::connect(checkboxes["showSpaceTime"], &QCheckBox::clicked, [&](){
+            if(checkboxes["showSpaceTime"]->isChecked()){
                 plots["timeImage1"]->show();
                 plots["timeImage2"]->show();
             }
             else{
                 plots["timeImage1"]->hide();
                 plots["timeImage2"]->hide();
-            }
-            
+            } 
         });
+
+        checkboxes["showMomentumFrequency"] = new QCheckBox("Momentum/frequency distribution");
+        checkboxes["showMomentumFrequency"]->setChecked(true);
+        checkboxes["showMomentumFrequency"]->setToolTip("Show or hide the momentum/frequency view.");
+        plotControlRegionLayout->addWidget(checkboxes["showMomentumFrequency"]);
+        QObject::connect(checkboxes["showMomentumFrequency"], &QCheckBox::clicked, [&](){
+            if(checkboxes["showMomentumFrequency"]->isChecked()){
+                plots["freqImage1"]->show();
+                plots["freqImage2"]->show();
+            }
+            else{
+                plots["freqImage1"]->hide();
+                plots["freqImage2"]->hide();
+            } 
+        });
+
+        checkboxes["combinePolarizations"] = new QCheckBox("Combine polarizations");
+        checkboxes["combinePolarizations"]->setChecked(false);
+        checkboxes["combinePolarizations"]->setToolTip(
+            "Combine the waveform and spectra plots, showing the two polarization components together");
+        plotControlRegionLayout->addWidget(checkboxes["combinePolarizations"]);
+        QObject::connect(checkboxes["combinePolarizations"], &QCheckBox::clicked, [&](){
+            if(checkboxes["combinePolarizations"]->isChecked()){
+                plots["timePlot2"]->hide();
+                plots["freqPlot2"]->hide();
+            }
+            else{
+                plots["timePlot2"]->show();
+                plots["freqPlot2"]->show();
+            }  
+        });
+        
         squeezeMargins(plotControlRegionLayout);
         addTextBoxRowForPlots("Red (f, \xcf\x83, I)", "Red_frequency", "Red_sigma", "Red_strength", plotControlRegionLayout,
         "Control the red color channel in the beam view.\n");
@@ -2260,19 +2291,21 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().tStep / 1e-15;
     sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = &theGui.theSim.base().ExtOut[
-        simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
+    sPlot.data.push_back(&theGui.theSim.base().ExtOut[
+        simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
 
     sPlot.Npts = theGui.theSim.base().Ntime;
-    sPlot.color = LweColor(0, 1, 1, 1);
-    // sPlot.color2 = LweColor(1, 0, 1, 1);
-    // sPlot.data2 = &theGui.theSim.base().ExtOut[
-    //     theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
-    //         + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
-    sPlot.ExtraLines = 1;
+    sPlot.lineColors = {LweColor(0, 1, 1, 1)};
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ex (GV/m)";
+    if(theGui.checkboxes["combinePolarizations"]->isChecked()){
+        sPlot.lineColors.push_back(LweColor(1, 0, 1, 1));
+        sPlot.data.push_back(&theGui.theSim.base().ExtOut[
+        theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
+            + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
+        sPlot.yLabel = "E (GV/m)";
+    }
     sPlot.unitY = 1e9;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
@@ -2306,12 +2339,12 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().tStep / 1e-15;
     sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = 
+    sPlot.data.push_back( 
         &theGui.theSim.base().ExtOut[
         theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
-            + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
+            + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
     sPlot.Npts = theGui.theSim.base().Ntime;
-    sPlot.color = LweColor(1, 0, 1, 1);
+    sPlot.lineColors = {LweColor(1, 0, 1, 1)};
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ey (GV/m)";
@@ -2357,14 +2390,23 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
-    sPlot.data = &theGui.theSim.base().totalSpectrum[simIndex * 3 * theGui.theSim.base().Nfreq];
+    if (theGui.checkboxes["Total"]->isChecked()) {
+        sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq]);
+        sPlot.lineColors.push_back(LweColor(1.0, 0.5, 0.0, 0));
+    }
+    if (theGui.checkboxes["combinePolarizations"]->isChecked()) {
+        sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq]);
+        sPlot.lineColors.push_back(LweColor(1, 0, 0.5, 0.0));
+    }
+    sPlot.data.push_back(
+        &theGui.theSim.base().totalSpectrum[simIndex * 3 * theGui.theSim.base().Nfreq]);
     sPlot.Npts = theGui.theSim.base().Nfreq;
     sPlot.logScale = theGui.checkboxes["Log"]->isChecked();;
     sPlot.forceYmin = forceY;
     sPlot.forceYmax = forceY;
     sPlot.forcedYmax = yMax;
     if (forceY)sPlot.forcedYmin = yMin;
-    sPlot.color = LweColor(0.5, 0, 1, 1);
+    sPlot.lineColors.push_back(LweColor(0.5, 0, 1, 1));
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
     sPlot.yLabel = "Sx (J/THz)";
@@ -2373,11 +2415,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
-    if (theGui.checkboxes["Total"]->isChecked()) {
-        sPlot.data2 = &theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq];
-        sPlot.ExtraLines = 1;
-        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
-    }
+    
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
@@ -2418,14 +2456,20 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
-    sPlot.data = &theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq];
+    if (theGui.checkboxes["Total"]->isChecked()) {
+        sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq]);
+        sPlot.lineColors = {LweColor(1.0, 0.5, 0.0, 0), LweColor(1, 0, 0.5, 0.0)};
+    }
+    else{
+        sPlot.lineColors = {LweColor(1, 0, 0.5, 0.0)};
+    }
+    sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq]);
     sPlot.Npts = theGui.theSim.base().Nfreq;
     sPlot.logScale = theGui.checkboxes["Log"]->isChecked();
     sPlot.forceYmin = forceY;
     sPlot.forceYmax = forceY;
     sPlot.forcedYmax = yMax;
     if (forceY)sPlot.forcedYmin = yMin;
-    sPlot.color = LweColor(1, 0, 0.5, 0.0);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
     sPlot.yLabel = "Sy (J/THz)";
@@ -2434,11 +2478,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forceXmin = forceX;
     sPlot.forcedXmax = xMax;
     sPlot.forcedXmin = xMin;
-    if (theGui.checkboxes["Total"]->isChecked()) {
-        sPlot.data2 = &theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq];
-        sPlot.ExtraLines = 1;
-        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
-    }
+    
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
