@@ -202,6 +202,7 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
+	std::unique_ptr<visualizationAllocation<deviceComplex>> visualization;
 	using LWEDevice::deviceMemcpy;
 	CPUDevice(simulationParameterSet* sCPU) {
 		memoryStatus = allocateSet(sCPU);
@@ -209,6 +210,20 @@ public:
 	#ifdef __APPLE__
 		queue = dispatch_queue_create("Kernel", DISPATCH_QUEUE_CONCURRENT);
 	#endif
+	}
+
+	CPUDevice(int64_t width, int64_t height, simulationParameterSet* sCPU){
+		cParams = sCPU;
+		visualization = std::make_unique<visualizationAllocation<deviceComplex>>(this, width, height, sCPU);
+		s = &(visualization->parameterSet);
+		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
+		#if defined _WIN32 || defined __linux__
+			indices = std::vector<int64_t>(4 * (*s).NgridC);
+			std::iota(indices.begin(), indices.end(), 0);
+		#endif
+		#ifdef __APPLE__
+			queue = dispatch_queue_create("Kernel", DISPATCH_QUEUE_CONCURRENT);
+		#endif
 	}
 
 	~CPUDevice() {
