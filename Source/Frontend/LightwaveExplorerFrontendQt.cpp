@@ -752,26 +752,32 @@ public:
             "Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum\n"
             "kx, and horizontal axis is frequency f.");
 
+        plots["beamView"] = new CairoWidget(*this, drawFourierImage2);
+        plots["beamView"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plotRegionLayout->addWidget(plots["beamView"],2,0,1,2);
+        plots["beamView"]->setToolTip("Face-on view of the output light.");
+        //plots["beamView"]->hide();
+
         plots["timePlot1"] = new CairoWidget(*this, drawField1Plot);
         plots["timePlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["timePlot1"]->setToolTip(
             "Plot of the on-axis electric field in the x-polarization");
-        plotRegionLayout->addWidget(plots["timePlot1"],2,0);
+        plotRegionLayout->addWidget(plots["timePlot1"],4,0);
 
         plots["timePlot2"] = new CairoWidget(*this, drawField2Plot);
         plots["timePlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["timePlot2"]->setToolTip(
             "Plot of the on-axis electric field in the y-polarization");
-        plotRegionLayout->addWidget(plots["timePlot2"],3,0);
+        plotRegionLayout->addWidget(plots["timePlot2"],5,0);
         plots["freqPlot1"] = new CairoWidget(*this, drawSpectrum1Plot);
         plots["freqPlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["freqPlot1"]->setToolTip("Plot of the energy spectrum of the result, x-polarization.");
-        plotRegionLayout->addWidget(plots["freqPlot1"],2,1);
+        plotRegionLayout->addWidget(plots["freqPlot1"],4,1);
         plots["freqPlot2"] = new CairoWidget(*this, drawSpectrum2Plot);
         plots["freqPlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["freqPlot2"]->setToolTip(
             "Plot of the energy spectrum of the result, y-polarization.");
-        plotRegionLayout->addWidget(plots["freqPlot2"],3,1);
+        plotRegionLayout->addWidget(plots["freqPlot2"],5,1);
 
         //Divide the input area into the input grid and the sequence box
         QWidget *inputGrid = new QWidget;
@@ -1443,35 +1449,38 @@ public:
     #endif
 
     //Layout of plot control area
-        checkboxes["showSpaceTime"] = new QCheckBox("Space/time field");
-        checkboxes["showSpaceTime"]->setChecked(true);
-        checkboxes["showSpaceTime"]->setToolTip("Show or hide the space/time view.");
-        plotControlRegionLayout->addWidget(checkboxes["showSpaceTime"]);
-        QObject::connect(checkboxes["showSpaceTime"], &QCheckBox::clicked, [&](){
-            if(checkboxes["showSpaceTime"]->isChecked()){
+        checkboxes["showSpaceTimeMomentumFrequency"] = new QCheckBox("Slice images");
+        checkboxes["showSpaceTimeMomentumFrequency"]->setChecked(true);
+        checkboxes["showSpaceTimeMomentumFrequency"]->setToolTip("Show or hide the space/time and momentum/frequency view.");
+        plotControlRegionLayout->addWidget(checkboxes["showSpaceTimeMomentumFrequency"]);
+        QObject::connect(checkboxes["showSpaceTimeMomentumFrequency"], &QCheckBox::clicked, [&](){
+            if(checkboxes["showSpaceTimeMomentumFrequency"]->isChecked()){
                 plots["timeImage1"]->show();
                 plots["timeImage2"]->show();
-            }
-            else{
-                plots["timeImage1"]->hide();
-                plots["timeImage2"]->hide();
-            } 
-        });
-
-        checkboxes["showMomentumFrequency"] = new QCheckBox("Momentum/frequency distribution");
-        checkboxes["showMomentumFrequency"]->setChecked(true);
-        checkboxes["showMomentumFrequency"]->setToolTip("Show or hide the momentum/frequency view.");
-        plotControlRegionLayout->addWidget(checkboxes["showMomentumFrequency"]);
-        QObject::connect(checkboxes["showMomentumFrequency"], &QCheckBox::clicked, [&](){
-            if(checkboxes["showMomentumFrequency"]->isChecked()){
                 plots["freqImage1"]->show();
                 plots["freqImage2"]->show();
             }
             else{
+                plots["timeImage1"]->hide();
+                plots["timeImage2"]->hide();
                 plots["freqImage1"]->hide();
                 plots["freqImage2"]->hide();
             } 
         });
+
+        checkboxes["showBeamView"] = new QCheckBox("Beam view");
+        checkboxes["showBeamView"]->setChecked(true);
+        checkboxes["showBeamView"]->setToolTip("Show or hide the beam view.");
+        plotControlRegionLayout->addWidget(checkboxes["showBeamView"]);
+        QObject::connect(checkboxes["showBeamView"], &QCheckBox::clicked, [&](){
+            if(checkboxes["showBeamView"]->isChecked()){
+                plots["beamView"]->show();
+            }
+            else{
+                plots["beamView"]->hide();
+            } 
+        });
+
 
         checkboxes["combinePolarizations"] = new QCheckBox("Combine polarizations");
         checkboxes["combinePolarizations"]->setChecked(false);
