@@ -419,7 +419,7 @@ public:
         if(bytes) d->deviceMemset(buffer, 0, bytes);
     }
 
-    void resize(int64_t newCount){
+    void resize(size_t newCount){
         if(newCount == count && buffer != nullptr){
             initialize_to_zero();
             return;

@@ -522,7 +522,7 @@ struct visualizationAllocation{
     std::vector<uint8_t> image;
     deviceParameterSet<float, deviceComplex> parameterSet;
     LWEBuffer<deviceParameterSet<float, deviceComplex>> parameterSet_deviceCopy;
-
+    std::mutex memoryMutex;
     visualizationAllocation(){}
 
     visualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, simulationParameterSet* sCPU) : 
@@ -720,7 +720,14 @@ struct UPPEAllocation{
     }
 };
 
+enum class VisualizationType{
+    beamPower,
+    beamFalseColor
+};
 
+struct VisualizationConfig{
+    VisualizationType type;
+};
 
 int				loadFrogSpeck(const loadedInputData& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
 int             loadWaveformFile(const loadedInputData& waveformFile, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);

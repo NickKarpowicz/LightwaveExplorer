@@ -25,6 +25,7 @@
 		#define runDlibFittingX runDlibFittingFP32
 		#define solveNonlinearWaveEquationX solveNonlinearWaveEquationFP32
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceFP32
+		#define renderVisualizationX renderVisualizationCUDA
 	#endif
 #elif defined RUNONSYCL
 	#include <oneapi/mkl/dft.hpp>
@@ -56,6 +57,7 @@
 		#define runDlibFittingX runDlibFittingSYCLFP32
 		#define solveNonlinearWaveEquationX solveNonlinearWaveEquationSYCLFP32
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceSYCLFP32
+		#define renderVisualizationX renderVisualizationSYCLFP32
 	#endif
 #elif defined RUNSTEPCOUNTER
 	#include "Devices/LWEAciveDeviceCounter.h"
@@ -81,6 +83,7 @@
 		#define runDlibFittingX runDlibFittingCPUFP32
 		#define solveNonlinearWaveEquationX solveNonlinearWaveEquationCPUFP32
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPUFP32
+		#define renderVisualizationX renderVisualizationCPU
 	#else
 		namespace deviceFPLib = std;
 		namespace deviceLib = std;
