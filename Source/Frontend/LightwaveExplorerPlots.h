@@ -37,53 +37,67 @@
 const int interfaceThreads = 
 maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
 
-constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
+constexpr inline uint8_t clampcast(const double d){
+    return static_cast<uint8_t>(std::clamp(d, 0.0, 255.0));
+}
+enum ColorMap {
+    greyscale = 0,
+    jet = 1,
+    jet_white = 2,
+    purple = 3,
+    cyan_magenta = 4
+};
+
+consteval std::array<std::array<uint8_t, 3>, 256> createColormap(const ColorMap cm) {
     std::array<std::array<uint8_t, 3>, 256> colorMap{};
     constexpr double oneOver255 = 1.0 / 255.0;
     for (int j = 0; j < 256; ++j) {
         const double nval = static_cast<double>(j) * oneOver255;
         switch (cm) {
-        case 0:
+        case ColorMap::greyscale:
             colorMap[j][0] = static_cast<uint8_t>(j);
             colorMap[j][1] = static_cast<uint8_t>(j);
             colorMap[j][2] = static_cast<uint8_t>(j);
             break;
-        case 1:
-            colorMap[j][0] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * nval / 2.));
-            colorMap[j][1] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
-            colorMap[j][2] = static_cast<uint8_t>(255. * gcem::sin(vPi<double>() * nval / 2.));
+        case ColorMap::jet:
+            colorMap[j][0] = clampcast(255. * gcem::cos(vPi<double>() * nval / 2.));
+            colorMap[j][1] = clampcast(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
+            colorMap[j][2] = clampcast(255. * gcem::sin(vPi<double>() * nval / 2.));
             break;
-        case 2:
-            colorMap[j][0] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * nval / 2.));
-            colorMap[j][1] = static_cast<uint8_t>(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
-            colorMap[j][2] = static_cast<uint8_t>(255. * gcem::sin(vPi<double>() * nval / 2.));
+        case ColorMap::jet_white:
+            colorMap[j][0] = clampcast(255. * gcem::cos(vPi<double>() * nval / 2.));
+            colorMap[j][1] = clampcast(255. * gcem::cos(vPi<double>() * (nval - 0.5)));
+            colorMap[j][2] = clampcast(255. * gcem::sin(vPi<double>() * nval / 2.));
             if (nval < 0.02) {
-                colorMap[j][0] = 255;
-                colorMap[j][1] = 128;
-                colorMap[j][2] = 128;
+                colorMap[j][0] = 255u;
+                colorMap[j][1] = 128u;
+                colorMap[j][2] = 128u;
             }
             if (nval < 0.01) {
-                colorMap[j][0] = 255;
-                colorMap[j][1] = 255;
-                colorMap[j][2] = 255;
+                colorMap[j][0] = 255u;
+                colorMap[j][1] = 255u;
+                colorMap[j][2] = 255u;
             }
             break;
-        case 3:
-            colorMap[j][0] = static_cast<uint8_t>(255. *
-                (0.998 * gcem::exp(-gcem::pow(7.7469e-03 * (j - 160.), 6))
-                    + 0.22 * gcem::exp(-gcem::pow(0.016818 * (j - 305.), 4))));
-            colorMap[j][1] = static_cast<uint8_t>(255. *
-                (0.022 * gcem::exp(-gcem::pow(0.042045 * (j - 25.), 4))
-                    + 0.11 * gcem::exp(-gcem::pow(0.015289 * (j - 120.), 4))
-                    + 1 * gcem::exp(-gcem::pow(4.6889e-03 * (j - 400.), 6))));
-            colorMap[j][2] = static_cast<uint8_t>(255. *
-                (gcem::exp(-gcem::pow(3.1101e-03 * (j - 415), 10))));
+        case ColorMap::purple:
+            {
+            double dj = static_cast<double>(j);
+            colorMap[j][0] = clampcast(255. *
+                (0.998 * gcem::exp(-gcem::pow(7.7469e-03 * (dj - 160.), 6))
+                    + 0.22 * gcem::exp(-gcem::pow(0.016818 * (dj - 305.), 4))));
+            colorMap[j][1] = clampcast(255. *
+                (0.022 * gcem::exp(-gcem::pow(0.042045 * (dj - 25.), 4))
+                    + 0.11 * gcem::exp(-gcem::pow(0.015289 * (dj - 120.), 4))
+                    + 1 * gcem::exp(-gcem::pow(4.6889e-03 * (dj - 400.), 6))));
+            colorMap[j][2] = clampcast(255. *
+                (gcem::exp(-gcem::pow(3.1101e-03 * (dj - 415.), 10))));
+            }
             break;
-        case 4:
-            colorMap[j][0] = static_cast<uint8_t>(255. * (1.0 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
+        case ColorMap::cyan_magenta:
+            colorMap[j][0] = clampcast(255. * (1.0 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
                 + 1.00 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
-            colorMap[j][1] = static_cast<uint8_t>(255. * (0.95 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
-            colorMap[j][2] = static_cast<uint8_t>(255. * (0.9 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
+            colorMap[j][1] = clampcast(255. * (0.95 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
+            colorMap[j][2] = clampcast(255. * (0.9 * gcem::exp(-gcem::pow(4.5 * (nval - 0.05), 2))
                 + 0.2 * gcem::exp(-gcem::pow(3.5 * (nval - 1.05), 2))));
         }
     }
@@ -91,11 +105,13 @@ constexpr std::array<std::array<uint8_t, 3>, 256> createColormap(const int cm) {
 }
 
 static constexpr std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColorMaps{
-        createColormap(0), 
-        createColormap(1), 
-        createColormap(2), 
-        createColormap(3), 
-        createColormap(4)};
+        createColormap(ColorMap::greyscale), 
+        createColormap(ColorMap::jet), 
+        createColormap(ColorMap::jet_white), 
+        createColormap(ColorMap::purple), 
+        createColormap(ColorMap::cyan_magenta)};
+
+
 
 class LweColor {
 public:
@@ -136,7 +152,7 @@ class LweImage {
         int height = 0;
         std::optional<DataSlice<T,2>> data;
         std::optional<DataSlice<std::complex<T>,2>> complexData;
-        int colorMap = 4;
+        ColorMap colorMap = ColorMap::purple;
         bool logScale = false;
         T logMin = 0;
         std::vector<uint8_t> pixels;
@@ -271,7 +287,7 @@ class LweImage {
     #pragma omp parallel for num_threads(interfaceThreads)
                 for (int p = 0; p < Ntot; p++) {
                     uint8_t currentValue = 
-                        static_cast<uint8_t>(255.0 * (data[p] - imin) / (imax - imin));
+                        clampcast(255.0 * (data[p] - imin) / (imax - imin));
                     pixels[stride * p] = colorMap[currentValue][0];
                     pixels[stride * p + 1] = colorMap[currentValue][1];
                     pixels[stride * p + 2] = colorMap[currentValue][2];
@@ -381,7 +397,7 @@ public:
     bool markers = true;
     double width = 0;
     double height = 0;
-    double fontSize = 12.0;
+    double fontSize = 14.0;
     std::vector<T*> data;
     std::vector<T*> dataX;
     std::optional<LweImage<T>*> image;

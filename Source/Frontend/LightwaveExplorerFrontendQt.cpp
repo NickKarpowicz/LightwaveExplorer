@@ -2246,7 +2246,7 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     image.height = height;
     image.width = width;
-    image.colorMap = 4;
+    image.colorMap = ColorMap::cyan_magenta;
 
 
     LwePlot<double> sPlot;
@@ -2509,7 +2509,7 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
-    image.colorMap = 4;
+    image.colorMap = ColorMap::cyan_magenta;
 
 
     LwePlot<double> sPlot;
@@ -2559,7 +2559,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
             static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
-    image.colorMap = 3;
+    image.colorMap = ColorMap::purple;
     image.logMin = logPlotOffset;
     LwePlot<double> sPlot;
     sPlot.height = height;
@@ -2610,7 +2610,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
-    image.colorMap = 3;
+    image.colorMap = ColorMap::purple;
     image.logMin = logPlotOffset;
     LwePlot<double> sPlot;
     sPlot.height = height;
