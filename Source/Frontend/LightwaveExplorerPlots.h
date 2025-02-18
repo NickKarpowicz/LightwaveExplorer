@@ -402,18 +402,12 @@ public:
     double width = 0;
     double height = 0;
     double fontSize = 12.0;
-    double* data = nullptr;
-    int ExtraLines = 0;
-    double* data2 = nullptr;
-    double* data3 = nullptr;
-    double* data4 = nullptr;
-    double* dataX = nullptr;
-    double* imagedata = nullptr;
+    std::vector<double*> data;
+    std::vector<double*> dataX;
     LweImage* image = nullptr;
     bool drawImage = false;
-    const char* xLabel = nullptr;
-    const char* yLabel = nullptr;
-    bool hasDataX = false;
+    std::string xLabel;
+    std::string yLabel;
     bool logScale = false;
     double logMin = 0;
     int dataType = 0;
@@ -432,10 +426,7 @@ public:
     LweColor axisColor = LweColor(0.5, 0.5, 0.5, 0.5);
     LweColor textColor = LweColor(0.8, 0.8, 0.8, 0.8);
     LweColor backgroundColor = LweColor(0.0, 0.0, 0.0, 0.0);
-    LweColor color = LweColor(1, 1, 1, 1);
-    LweColor color2 = LweColor(1, 1, 1, 1);
-    LweColor color3 = LweColor(1, 1, 1, 1);
-    LweColor color4 = LweColor(1, 1, 1, 1);
+    std::vector<LweColor> lineColors;
     std::string SVGString;
     std::string SVGPath;
 
@@ -476,7 +467,7 @@ public:
         std::vector<double> xValues(Npts + 2, 0.0);
         if(!drawImage){
             for (int i = 0; i < Npts; ++i) {
-                if (hasDataX) currentX = (double)dataX[i];
+                if (dataX.size()) currentX = (double)dataX[0][i];
                 else { currentX = (double)(i * dx + x0); }
                 if (i == 0) {
                     minX = currentX;
@@ -494,14 +485,10 @@ public:
                 minX = minN(currentX, minX);
             }
             if (iMin >= iMax || iMin >= Npts) return -1;
-            for (int64_t i = iMin; i < iMax; ++i) {
-                if (logScale) { currentY = (double)log10(data[i]); }
-                else { currentY = (double)data[i]; }
-                maxY = maxN(currentY, maxY);
-                minY = minN(currentY, minY);
-                if (ExtraLines > 0) {
-                    if (logScale) { currentY = (double)log10(data2[i]); }
-                    else { currentY = (double)data2[i]; }
+            for(size_t j=0; j<data.size(); ++j){
+                for (int64_t i = iMin; i < iMax; ++i) {
+                    if (logScale) { currentY = (double)log10(data[j][i]); }
+                    else { currentY = (double)data[j][i]; }
                     maxY = maxN(currentY, maxY);
                     minY = minN(currentY, minY);
                 }
@@ -712,8 +699,8 @@ public:
             SVGlefttext();
         }
         //y-axis name
-        if (yLabel) {
-            messageBuffer = std::string(yLabel);
+        if (yLabel.size()) {
+            messageBuffer.assign(yLabel);
             layoutLeft = 0;
             layoutTop = height;
             layoutBottom = height + axisSpaceY;
@@ -732,7 +719,7 @@ public:
         }
 
         //x-axis name
-        if (xLabel) {
+        if (xLabel.size()) {
             layoutLeft = axisSpaceX;
             layoutTop = height + 2.8 * fontSize;
             layoutBottom = height + axisSpaceY;
@@ -913,50 +900,19 @@ public:
             SVGendgroup();
         };
 
-        //Optional overlay curves
-        if (ExtraLines > 0 && data2 != nullptr) {
-            getNewScaledXY(xValues, data2);
-            currentColor = color2;
-            plotCairoPolyline();
-            if (markers)plotCairoDots();
-            if (makeSVG) {
-                plotSVGPolyline();
-                if (markers)plotSVGDots();
-            }
-        }
-        if (ExtraLines > 1 && data3 != nullptr) {
-            getNewScaledXY(xValues, data3);
-            currentColor = color3;
-            plotCairoPolyline();
-            if (markers)plotCairoDots();
-            if (makeSVG) {
-                plotSVGPolyline();
-                if (markers)plotSVGDots();
-            }
-        }
-        if (ExtraLines > 2 && data4 != nullptr) {
-            getNewScaledXY(xValues, data4);
-            currentColor = color4;
-            plotCairoPolyline();
-            if (markers)plotCairoDots();
-            if (makeSVG) {
-                plotSVGPolyline();
-                if (markers)plotSVGDots();
-            }
-        }
-
-        //Plot the main line
+        //Plot the lines
         if(!drawImage){
-            getNewScaledXY(xValues, data);
-            currentColor = color;
-            plotCairoPolyline();
-            if (markers)plotCairoDots();
-            if (makeSVG) {
-                plotSVGPolyline();
-                if (markers)plotSVGDots();
+            for(size_t i = 0; i<data.size(); ++i){
+                getNewScaledXY(xValues, data[i]);
+                currentColor = lineColors[i % lineColors.size()];
+                plotCairoPolyline();
+                if (markers)plotCairoDots();
+                if (makeSVG) {
+                    plotSVGPolyline();
+                    if (markers)plotSVGDots();
+                }
             }
         }
-
 
         if (makeSVG) {
             SVGString.append("</svg>");
