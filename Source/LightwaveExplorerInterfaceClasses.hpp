@@ -545,6 +545,14 @@ struct visualizationAllocation{
                 sCPU->EkwOut, 2 * Ngrid_complex * sizeof(deviceComplex), 
                 copyType::ToDevice);
         }
+        
+    void syncImages(){
+        parentDevice->deviceMemcpy(
+            image.data(), 
+            imageGPU.device_ptr(),
+            Nimage, 
+            copyType::ToHost);
+    }
 
     void setImageDimensions(int64_t new_width, int64_t new_height){
         int64_t newNimage = new_width * new_height * 3;
