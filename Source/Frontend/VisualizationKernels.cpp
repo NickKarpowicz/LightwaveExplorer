@@ -22,7 +22,7 @@ struct beamPowerRenderKernel{
         //const int64_t y_field = 0;
         const int64_t x_image = x_field;
         //const int64_t y_image = i / (config.Nx * config.Nt);
-        atomicAdd(&workspace[x_image], Et[i]*Et[i]);
+        atomicAdd(&workspace[x_image], Et[i]*Et[i] + Et[i + config.Ngrid] * Et[i + config.Ngrid]);
     }
 };
 
@@ -59,7 +59,6 @@ namespace {
             d.visualization->imageGPU.device_ptr(),
             config});
         d.visualization->syncImages();
-        std::cout << "out: " << d.visualization->gridTimeSpace.device_ptr() + 2 * config.Ngrid * config.simIndex << std::endl;
     }
 }
 unsigned long renderVisualizationX(VisualizationConfig config){

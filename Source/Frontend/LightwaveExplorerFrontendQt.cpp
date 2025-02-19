@@ -2279,7 +2279,6 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     image.hasFullSizeRenderedImage = true;
     VisualizationConfig config(&(theGui.theSim.base()), VisualizationType::beamPower);
     config.simIndex = simIndex;
-    std::cout << simIndex << std::endl;
     config.result_pixels = &image.pixels;
     renderVisualizationCPU(config);
 
