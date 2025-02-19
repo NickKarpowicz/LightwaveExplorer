@@ -154,19 +154,21 @@ class LweImage {
         std::optional<DataSlice<std::complex<T>,2>> complexData;
         ColorMap colorMap = ColorMap::purple;
         bool logScale = false;
+        bool hasFullSizeRenderedImage = false;
         T logMin = 0;
         std::vector<uint8_t> pixels;
         size_t yDim(){
             if (data.has_value()) return data.value().shape[1];
             else if (complexData.has_value()) return complexData.value().shape[1];
-            else return 0;
+            else return height;
         }
         size_t xDim(){
             if (data.has_value()) return data.value().shape[0];
             else if (complexData.has_value()) return complexData.value().shape[0];
-            else return 0;
+            else return width;
         }
         void render() {
+            if(hasFullSizeRenderedImage) return;
             int64_t plotSize = static_cast<int64_t>(width) * static_cast<int64_t>(height);
             std::vector<float> plotarr2(plotSize);
             if(data.has_value()){
@@ -320,16 +322,34 @@ class LweImage {
         void drawRenderedPixels(
             cairo_t* cr, 
             const double x_offset = 0.0,
-            const double y_offset = 0.0) {
+            const double y_offset = 0.0,
+            int drawingwidth = 0,
+            int drawingheight = 0) {
             if (height * width == 0) return;
+            bool reshapeImage = drawingwidth != 0 || drawingheight != 0;
             const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, width);
             cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
                 pixels.data(),
                 CAIRO_FORMAT_RGB24, 
                 width, height, 
                 caiStride);
-            cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
-            cairo_paint(cr);
+            if(reshapeImage){
+                cairo_save(cr);
+                double x_scale = static_cast<double>(drawingwidth)/width;
+                double y_scale = static_cast<double>(drawingheight)/height;
+                cairo_scale(
+                    cr, 
+                    x_scale, 
+                    y_scale);
+                    cairo_set_source_surface(cr, cSurface, x_offset/x_scale, y_offset/y_scale);
+                    cairo_paint(cr);
+                    cairo_restore(cr);
+                }
+                else{
+                    cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
+                    cairo_paint(cr);
+                }
+
             cairo_surface_finish(cSurface);
             cairo_surface_destroy(cSurface);
         }
@@ -559,11 +579,17 @@ public:
                 image.value()->render();
                 std::string imagePNG = image.value()->pngFromRenderedPixels(cr,axisSpaceX,0.0,width,height);
                 SVGString.append(imagePNG);
+            }
+            if(image.value()->hasFullSizeRenderedImage){
+                image.value()->drawRenderedPixels(cr,axisSpaceX,0.0,width,height);
             } 
-            image.value()->width = width;
-            image.value()->height = height;
-            image.value()->render();
-            image.value()->drawRenderedPixels(cr,axisSpaceX,0.0);
+            else{
+                image.value()->width = width;
+                image.value()->height = height;
+                image.value()->render();
+                image.value()->drawRenderedPixels(cr,axisSpaceX,0.0);
+            }
+
         }
         double scaleX = width / (maxX - minX);
         double scaleY = height / (maxY - minY);

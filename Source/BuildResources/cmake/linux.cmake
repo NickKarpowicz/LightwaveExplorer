@@ -59,7 +59,8 @@ elseif(USE_CUDA)
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCounter.cpp 
-        Source/Devices/DlibLibraryComponents.cpp)
+        Source/Devices/DlibLibraryComponents.cpp
+        Source/Frontend/LWEVisualizationsCPU.cpp)
     target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
     target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
     if(OpenMP_FOUND)
