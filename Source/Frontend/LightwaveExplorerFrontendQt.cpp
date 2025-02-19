@@ -1481,6 +1481,27 @@ public:
             } 
         });
 
+        checkboxes["showWavesAndSpectra"] = new QCheckBox("Show waves and spectra");
+        checkboxes["showWavesAndSpectra"]->setChecked(true);
+        checkboxes["showWavesAndSpectra"]->setToolTip(
+            "show the waveforms and spectra");
+        plotControlRegionLayout->addWidget(checkboxes["showWavesAndSpectra"]);
+        QObject::connect(checkboxes["showWavesAndSpectra"], &QCheckBox::clicked, [&](){
+            if(checkboxes["showWavesAndSpectra"]->isChecked()){
+                if(!checkboxes["combinePolarizations"]->isChecked()){
+                    plots["timePlot2"]->show();
+                    plots["freqPlot2"]->show();
+                }
+                plots["timePlot1"]->show();
+                plots["freqPlot1"]->show();
+            }
+            else{
+                plots["timePlot1"]->hide();
+                plots["freqPlot1"]->hide();
+                plots["timePlot2"]->hide();
+                plots["freqPlot2"]->hide();
+            }  
+        });
 
         checkboxes["combinePolarizations"] = new QCheckBox("Combine polarizations");
         checkboxes["combinePolarizations"]->setChecked(false);
@@ -1492,7 +1513,7 @@ public:
                 plots["timePlot2"]->hide();
                 plots["freqPlot2"]->hide();
             }
-            else{
+            else if(checkboxes["showWavesAndSpectra"]->isChecked()){
                 plots["timePlot2"]->show();
                 plots["freqPlot2"]->show();
             }  
@@ -2257,6 +2278,8 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     image.colorMap = ColorMap::cyan_magenta;
     image.hasFullSizeRenderedImage = true;
     VisualizationConfig config(&(theGui.theSim.base()), VisualizationType::beamPower);
+    config.simIndex = simIndex;
+    std::cout << simIndex << std::endl;
     config.result_pixels = &image.pixels;
     renderVisualizationCPU(config);
 
