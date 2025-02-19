@@ -752,7 +752,7 @@ public:
             "Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum\n"
             "kx, and horizontal axis is frequency f.");
 
-        plots["beamView"] = new CairoWidget(*this, drawFourierImage2);
+        plots["beamView"] = new CairoWidget(*this, drawBeamImage);
         plots["beamView"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["beamView"],2,0,1,2);
         plots["beamView"]->setToolTip("Face-on view of the output light.");
@@ -1545,6 +1545,7 @@ public:
         messenger->moveToThread(messengerThread);
         QObject::connect(messenger, &GuiMessenger::sendText, console, &QTextEdit::append);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqPlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["beamView"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqPlot2"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timePlot1"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timePlot2"], &CairoWidget::queueUpdate);
@@ -1554,6 +1555,7 @@ public:
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqImage2"], &CairoWidget::queueUpdate);
 
         QObject::connect(slider, &QSlider::valueChanged, plots["freqPlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, plots["beamView"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["freqPlot2"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["timePlot1"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["timePlot2"], &CairoWidget::queueUpdate);
@@ -1762,6 +1764,7 @@ public:
             plots["freqPlot2"] -> repaint();
             plots["timePlot1"] -> repaint();
             plots["timePlot2"] -> repaint();
+            plots["beamView"] -> repaint();
             plots["timeImage1"] -> repaint();
             plots["timeImage2"] -> repaint();
             plots["freqImage1"] -> repaint();
@@ -2234,6 +2237,49 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 #else
 		sim.sCPU()->readInputParametersFile(db.db.data(), "DefaultValues.ini");
 #endif
+}
+
+void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+        blackoutCairoPlot(cr,width,height);
+        return;
+    }
+
+    int64_t simIndex = maxN(0,theGui.slider->value());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    LweImage<double> image;
+    image.height = theGui.theSim.base().Nspace;
+    image.width = theGui.theSim.base().Nspace;
+    image.colorMap = ColorMap::cyan_magenta;
+    image.hasFullSizeRenderedImage = true;
+    VisualizationConfig config(&(theGui.theSim.base()), VisualizationType::beamPower);
+    config.result_pixels = &image.pixels;
+    renderVisualizationCPU(config);
+
+    LwePlot<double> sPlot;
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.image = &image;
+    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
+    sPlot.xLabel = "x (mum)";
+    sPlot.yLabel = "y (mum)";
+    sPlot.forcedXmax = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
+    sPlot.forcedXmin = -sPlot.forcedXmax.value();
+    sPlot.forcedYmin = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    sPlot.makeSVG = theGui.isMakingSVG;
+    if (dataLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(theGui.isMakingSVG){
+            theGui.SVGStrings[0] = sPlot.SVGString;
+        }
+    }
+    else blackoutCairoPlot(cr, width, height);
 }
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {

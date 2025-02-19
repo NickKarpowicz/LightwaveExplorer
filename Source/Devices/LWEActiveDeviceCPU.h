@@ -216,9 +216,8 @@ public:
 		cParams = sCPU;
 		visualization = std::make_unique<VisualizationAllocation<deviceComplex>>(this, width, height, sCPU);
 		s = &(visualization->parameterSet);
-		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
 		#if defined _WIN32 || defined __linux__
-			indices = std::vector<int64_t>(4 * (*s).NgridC);
+			indices = std::vector<int64_t>(4 * sCPU->NgridC);
 			std::iota(indices.begin(), indices.end(), 0);
 		#endif
 		#ifdef __APPLE__

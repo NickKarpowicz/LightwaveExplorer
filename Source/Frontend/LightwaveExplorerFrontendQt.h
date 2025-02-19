@@ -48,6 +48,7 @@ std::mutex GTKmutex;
 #include "../Devices/LightwaveExplorerCoreCPU.h"
 #include "../Devices/LightwaveExplorerCoreCounter.h"
 #include "../Devices/LightwaveExplorerCoreCPUFP32.h"
+#include "LWEVisualizationsCPU.hpp"
 class LWEGui;
 using CairoFunction = std::function<void(cairo_t*,int,int,LWEGui&)>;
 
@@ -110,6 +111,7 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db);
 void loadFromPath(const std::string path);
 void saveThread();
 bool updateDisplay();
+void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui);

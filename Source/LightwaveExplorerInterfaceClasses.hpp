@@ -509,6 +509,7 @@ public:
 
 template <typename deviceComplex>
 struct VisualizationAllocation{
+    LWEDevice* parentDevice;
     int64_t width = 0;
     int64_t height = 0;
     int64_t Nimage = 0;
@@ -518,7 +519,7 @@ struct VisualizationAllocation{
     LWEBuffer<float> gridTimeSpace;
     LWEBuffer<deviceComplex> gridFrequency;
     LWEBuffer<uint8_t> imageGPU;
-    LWEDevice* parentDevice;
+    
     std::vector<uint8_t> image;
     deviceParameterSet<float, deviceComplex> parameterSet;
     LWEBuffer<deviceParameterSet<float, deviceComplex>> parameterSet_deviceCopy;
@@ -529,13 +530,15 @@ struct VisualizationAllocation{
         parentDevice(d),
         width(init_width),
         height(init_height),
-        Nimage(width * height * 3),
+        Nimage(width * height * 4),
         Ngrid(sCPU->Ngrid),
         Ngrid_complex(sCPU->NgridC),
         gridTimeSpace(d, 2*Ngrid,sizeof(float)),
         gridFrequency(d, 2*Ngrid_complex, sizeof(deviceComplex)),
         imageGPU(d, Nimage, sizeof(uint8_t)),
-        image(Nimage){
+        image(Nimage),
+        parameterSet_deviceCopy(d, 1, sizeof(deviceParameterSet<float, deviceComplex>))
+        {
             parentDevice->deviceMemcpy(
                 gridTimeSpace.device_ptr(), 
                 sCPU->ExtOut, 2 * Ngrid * sizeof(float), 
@@ -544,6 +547,12 @@ struct VisualizationAllocation{
                 gridFrequency.device_ptr(), 
                 sCPU->EkwOut, 2 * Ngrid_complex * sizeof(deviceComplex), 
                 copyType::ToDevice);
+
+                sCPU->initializeDeviceParameters(&parameterSet);
+                sCPU->fillRotationMatricies(&parameterSet);
+                sCPU->finishConfiguration(&parameterSet);
+                parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), copyType::ToDevice);
+            
         }
         
     void syncImages(){
@@ -555,7 +564,7 @@ struct VisualizationAllocation{
     }
 
     void setImageDimensions(int64_t new_width, int64_t new_height){
-        int64_t newNimage = new_width * new_height * 3;
+        int64_t newNimage = new_width * new_height * 4;
         if(imageGPU.count < newNimage){
             imageGPU.resize(newNimage);
             image.resize(newNimage);
@@ -570,16 +579,6 @@ struct VisualizationAllocation{
         Ngrid_complex = sCPU->NgridC;
         gridTimeSpace.resize(2 * Ngrid);
         gridFrequency.resize(2 * Ngrid_complex);
-    }
-
-    void initializeParameterSet(simulationParameterSet* sCPU){
-        sCPU->initializeDeviceParameters(&parameterSet);
-        sCPU->fillRotationMatricies(&parameterSet);
-        sCPU->finishConfiguration(&parameterSet);
-        parentDevice->deviceMemcpy(
-            parameterSet_deviceCopy.device_ptr(), 
-            &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), 
-            copyType::ToDevice);
     }
 };
 
@@ -726,12 +725,15 @@ enum class VisualizationType{
 };
 
 enum class CoordinateMode{
-    radialSymmetry,
     cartesian2D,
-    cartesian3D
+    radialSymmetry,
+    cartesian3D,
+    FDTD2D,
+    FDTD3D
 };
 
 struct VisualizationConfig{
+    simulationParameterSet* sCPU;
     VisualizationType type;
     float amplification = 1.0f;
     float dt = 0.0f;
@@ -745,6 +747,21 @@ struct VisualizationConfig{
     int width = 0;
     int height = 0; 
     CoordinateMode mode = CoordinateMode::cartesian2D;
+    std::vector<uint8_t>* result_pixels = nullptr;
+    VisualizationConfig(simulationParameterSet* sCPU_in, VisualizationType type_in) : 
+        sCPU(sCPU_in),
+        type(type_in),
+        dt(sCPU->tStep),
+        dx(sCPU->rStep),
+        dy(dx),
+        Nx(sCPU->Nspace),
+        Ny(sCPU->Nspace2),
+        Nt(sCPU->Ntime),
+        Ngrid(sCPU->Ngrid),
+        Ngrid_complex(sCPU->NgridC),
+        width(Nx),
+        height(Nx),
+        mode(static_cast<CoordinateMode>(sCPU->symmetryType)){}
 };
 
 int				loadFrogSpeck(const loadedInputData& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
