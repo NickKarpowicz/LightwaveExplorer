@@ -508,7 +508,7 @@ public:
 };
 
 template <typename deviceComplex>
-struct visualizationAllocation{
+struct VisualizationAllocation{
     int64_t width = 0;
     int64_t height = 0;
     int64_t Nimage = 0;
@@ -523,9 +523,9 @@ struct visualizationAllocation{
     deviceParameterSet<float, deviceComplex> parameterSet;
     LWEBuffer<deviceParameterSet<float, deviceComplex>> parameterSet_deviceCopy;
     std::mutex memoryMutex;
-    visualizationAllocation(){}
+    VisualizationAllocation(){}
 
-    visualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, simulationParameterSet* sCPU) : 
+    VisualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, simulationParameterSet* sCPU) : 
         parentDevice(d),
         width(init_width),
         height(init_height),
@@ -725,8 +725,26 @@ enum class VisualizationType{
     beamFalseColor
 };
 
+enum class CoordinateMode{
+    radialSymmetry,
+    cartesian2D,
+    cartesian3D
+};
+
 struct VisualizationConfig{
     VisualizationType type;
+    float amplification = 1.0f;
+    float dt = 0.0f;
+    float dx = 0.0f;
+    float dy = 0.0f;
+    int64_t Nx = 0;
+    int64_t Ny = 0;
+    int64_t Nt = 0;
+    int64_t Ngrid = 0;
+    int64_t Ngrid_complex = 0;
+    int width = 0;
+    int height = 0; 
+    CoordinateMode mode = CoordinateMode::cartesian2D;
 };
 
 int				loadFrogSpeck(const loadedInputData& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);

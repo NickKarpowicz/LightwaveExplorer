@@ -202,7 +202,7 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
-	std::unique_ptr<visualizationAllocation<deviceComplex>> visualization;
+	std::unique_ptr<VisualizationAllocation<deviceComplex>> visualization;
 	using LWEDevice::deviceMemcpy;
 	CPUDevice(simulationParameterSet* sCPU) {
 		memoryStatus = allocateSet(sCPU);
@@ -214,7 +214,7 @@ public:
 
 	CPUDevice(int64_t width, int64_t height, simulationParameterSet* sCPU){
 		cParams = sCPU;
-		visualization = std::make_unique<visualizationAllocation<deviceComplex>>(this, width, height, sCPU);
+		visualization = std::make_unique<VisualizationAllocation<deviceComplex>>(this, width, height, sCPU);
 		s = &(visualization->parameterSet);
 		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
 		#if defined _WIN32 || defined __linux__
