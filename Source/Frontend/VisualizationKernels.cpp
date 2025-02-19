@@ -50,7 +50,7 @@ namespace {
         d.visualization->gridFrequency.initialize_to_zero();
         d.deviceLaunch(config.Ngrid/64, 64, 
         beamPowerRenderKernel{
-                d.visualization->gridTimeSpace.device_ptr(), 
+                d.visualization->gridTimeSpace.device_ptr() + 2*config.Ngrid*config.simIndex, 
                 reinterpret_cast<float*>(d.visualization->gridFrequency.device_ptr()),
                  config});
         d.deviceLaunch((config.width * config.height) / 64, 64, 
@@ -58,11 +58,8 @@ namespace {
             reinterpret_cast<const float*>(d.visualization->gridFrequency.device_ptr()), 
             d.visualization->imageGPU.device_ptr(),
             config});
-        d.deviceMemcpy(
-            d.visualization->image.data(), 
-            d.visualization->imageGPU.device_ptr(), 
-            config.width * config.height * 4 * sizeof(uint8_t), 
-            copyType::ToHost);
+        d.visualization->syncImages();
+        std::cout << "out: " << d.visualization->gridTimeSpace.device_ptr() + 2 * config.Ngrid * config.simIndex << std::endl;
     }
 }
 unsigned long renderVisualizationX(VisualizationConfig config){

@@ -515,6 +515,8 @@ struct VisualizationAllocation{
     int64_t Nimage = 0;
     int64_t Ngrid = 0;
     int64_t Ngrid_complex = 0;
+    int64_t Nsims = 1;
+    int64_t Nsims2 = 1;
     bool frequencyGridMomentum = true;
     LWEBuffer<float> gridTimeSpace;
     LWEBuffer<deviceComplex> gridFrequency;
@@ -533,19 +535,21 @@ struct VisualizationAllocation{
         Nimage(width * height * 4),
         Ngrid(sCPU->Ngrid),
         Ngrid_complex(sCPU->NgridC),
-        gridTimeSpace(d, 2*Ngrid,sizeof(float)),
-        gridFrequency(d, 2*Ngrid_complex, sizeof(deviceComplex)),
+        Nsims(sCPU->Nsims),
+        Nsims2(sCPU->Nsims2),
+        gridTimeSpace(d, 2*Ngrid*Nsims*Nsims2,sizeof(float)),
+        gridFrequency(d, 2*Ngrid_complex*Nsims*Nsims2, sizeof(deviceComplex)),
         imageGPU(d, Nimage, sizeof(uint8_t)),
         image(Nimage),
         parameterSet_deviceCopy(d, 1, sizeof(deviceParameterSet<float, deviceComplex>))
         {
             parentDevice->deviceMemcpy(
                 gridTimeSpace.device_ptr(), 
-                sCPU->ExtOut, 2 * Ngrid * sizeof(float), 
+                sCPU->ExtOut, 2 * Ngrid * Nsims * Nsims2 * sizeof(double), 
                 copyType::ToDevice);
             parentDevice->deviceMemcpy(
                 gridFrequency.device_ptr(), 
-                sCPU->EkwOut, 2 * Ngrid_complex * sizeof(deviceComplex), 
+                sCPU->EkwOut, 4 * Ngrid_complex * Nsims * Nsims2 * sizeof(double), 
                 copyType::ToDevice);
 
                 sCPU->initializeDeviceParameters(&parameterSet);
@@ -744,6 +748,9 @@ struct VisualizationConfig{
     int64_t Nt = 0;
     int64_t Ngrid = 0;
     int64_t Ngrid_complex = 0;
+    int64_t Nsims = 1;
+    int64_t Nsims2 = 1;
+    int64_t simIndex = 0;
     int width = 0;
     int height = 0; 
     CoordinateMode mode = CoordinateMode::cartesian2D;
@@ -759,6 +766,8 @@ struct VisualizationConfig{
         Nt(sCPU->Ntime),
         Ngrid(sCPU->Ngrid),
         Ngrid_complex(sCPU->NgridC),
+        Nsims(sCPU->Nsims),
+        Nsims2(sCPU->Nsims2),
         width(Nx),
         height(Nx),
         mode(static_cast<CoordinateMode>(sCPU->symmetryType)){}
