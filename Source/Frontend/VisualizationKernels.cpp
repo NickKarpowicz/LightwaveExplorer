@@ -19,60 +19,138 @@ namespace deviceFunctions{
             static_cast<float>(Nspace)/2.0f + r + 0.25f));
 		return index;
 	}
+
+    deviceFunction static inline float findCenter(const int64_t Nspace, const int64_t stride, const float* data){
+        			//find beam centers
+        float beamTotal{};
+        float beamCenter{};
+            for (int64_t j{}; j < Nspace; ++j) {
+                float a = (data[j * stride]);
+                beamTotal += a;
+                beamCenter += static_cast<float>(j) * a;
+            }
+            if (beamTotal > 0.0f) {
+                beamCenter /= beamTotal;
+            }
+            return beamCenter;
+    }
 }
 using namespace deviceFunctions;
 
 namespace kernelNamespace{
-struct beamPowerRenderKernel{
-    const float* Et;
-    float* red;
-    float* green;
-    float* blue;
-    const VisualizationConfig config;
-    deviceFunction void operator()(const int64_t i) const {
-        //i has range Ngrid * 2
-        //each thread deals with one point in field
-        //get the two field polarization components, square and add
-        //atomic add this to correct pixel.
-        //const int64_t t_field = i % config.Nt;
-        const int64_t x_field = i / config.Nt;
-        //const int64_t y_field = 0;
-        const int64_t x_image = x_field;
-        //const int64_t y_image = i / (config.Nx * config.Nt);
-        atomicAdd(&red[x_image], Et[i]*Et[i]);
-        atomicAdd(&green[x_image], Et[i + config.Ngrid] * Et[i + config.Ngrid]);
-        atomicAdd(&blue[x_image], Et[i]*Et[i] + Et[i + config.Ngrid] * Et[i + config.Ngrid]);
-    }
-};
 
-struct floatLinetoImageKernel{
-    const float* red;
-    const float* green;
-    const float* blue;
-    uint8_t* image;
-    const VisualizationConfig config;
-    deviceFunction void operator()(const int64_t i) const {
-        const float mid = static_cast<float>(config.Nx)/2.0f;
-        const float x = static_cast<float>(i % config.Nx)-mid;
-        const float y = static_cast<float>(i / config.Nx)-mid;
-        const float r = abs(hypotf(x,y));
-        const int64_t idx = std::clamp(expandCylindricalBeamAtRadius(r, config.Nx),int64_t{},config.Nx);
-        //stride in image is 4, r g b a
+// struct findBeamCentersKernel{
 
-        image[4*i] = static_cast<uint8_t>(
-            std::clamp(
-                1e-18f * blue[idx],
-                 0.f, 255.f));;
-        image[4*i + 1] = static_cast<uint8_t>(
-            std::clamp(
-                1e-18f * green[idx],
-                 0.f, 255.f));;
-        image[4*i + 2] = static_cast<uint8_t>(
-            std::clamp(
-                1e-18f * red[idx],
-                 0.f, 255.f));;
-    }
-};
+// };
+    struct beamPowerRenderKernel2D{
+        const float* Et;
+        float* red;
+        float* green;
+        float* blue;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            const int64_t x_field = (i / config.Nt) * (config.width/config.Nx);
+            atomicAdd(&red[x_field], Et[i]*Et[i]);
+            atomicAdd(&green[x_field], Et[i + config.Ngrid] * Et[i + config.Ngrid]);
+            atomicAdd(&blue[x_field], Et[i]*Et[i] + Et[i + config.Ngrid] * Et[i + config.Ngrid]);
+        }
+    };
+
+    struct floatLinetoImageKernel{
+        const float* red;
+        const float* green;
+        const float* blue;
+        uint8_t* image;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            const float mid = static_cast<float>(config.Nx)/2.0f;
+            const float x = static_cast<float>(i % config.Nx)-mid;
+            const float y = static_cast<float>(i / config.Nx)-mid;
+            const float r = abs(hypotf(x,y));
+            const int64_t idx = std::clamp(expandCylindricalBeamAtRadius(r, config.Nx),int64_t{},config.Nx);
+            //stride in image is 4, r g b a
+
+            image[4*i] = static_cast<uint8_t>(
+                std::clamp(
+                    1e-18f * blue[idx],
+                    0.f, 255.f));;
+            image[4*i + 1] = static_cast<uint8_t>(
+                std::clamp(
+                    1e-18f * green[idx],
+                    0.f, 255.f));;
+            image[4*i + 2] = static_cast<uint8_t>(
+                std::clamp(
+                    1e-18f * red[idx],
+                    0.f, 255.f));;
+        }
+    };
+
+    struct floatLinetoImageKernelCartesian{
+        const float* red;
+        const float* green;
+        const float* blue;
+        uint8_t* image;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            const float mid = static_cast<float>(config.Nx)/2.0f;
+            const float center = findCenter(config.Nx, 1, blue);
+            const float x = static_cast<float>(i % config.Nx)-center;
+            const float y = static_cast<float>(i / config.Nx)-mid;
+            const float r = abs(hypotf(x,y));
+            const int64_t idx1 = static_cast<int64_t>(roundf(r+center));
+            const int64_t idx2 = static_cast<int64_t>(roundf(r-center));
+            bool idx1Valid = idx1 < config.Nx && idx1>=0;
+            bool idx2Valid = idx2 < config.Nx && idx2>=0;
+            if(idx1Valid && idx2Valid){
+                image[4*i] = static_cast<uint8_t>(
+                    std::clamp(
+                        0.5e-18f * (blue[idx1]+ blue[idx2]),
+                        0.f, 255.f));;
+                image[4*i + 1] = static_cast<uint8_t>(
+                    std::clamp(
+                        0.5e-18f * (green[idx1]+green[idx2]),
+                        0.f, 255.f));;
+                image[4*i + 2] = static_cast<uint8_t>(
+                    std::clamp(
+                        0.5e-18f * (red[idx1] + red[idx2]),
+                        0.f, 255.f));;
+            }
+            else if(idx1Valid){
+                image[4*i] = static_cast<uint8_t>(
+                    std::clamp(
+                        1e-18f * (blue[idx1]),
+                        0.f, 255.f));;
+                image[4*i + 1] = static_cast<uint8_t>(
+                    std::clamp(
+                        1e-18f * (green[idx1]),
+                        0.f, 255.f));;
+                image[4*i + 2] = static_cast<uint8_t>(
+                    std::clamp(
+                        1e-18f * (red[idx1]),
+                        0.f, 255.f));;
+            }
+            else if(idx2Valid){
+                image[4*i] = static_cast<uint8_t>(
+                    std::clamp(
+                        1e-18f * (blue[idx2]),
+                        0.f, 255.f));;
+                image[4*i + 1] = static_cast<uint8_t>(
+                    std::clamp(
+                        1e-18f * (green[idx2]),
+                        0.f, 255.f));;
+                image[4*i + 2] = static_cast<uint8_t>(
+                    std::clamp(
+                        1e-18f * (red[idx2]),
+                        0.f, 255.f));;
+            }
+            else{
+                image[4*i] = {};
+                image[4*i+1] = {};
+                image[4*i+2] = {};
+            }
+
+        }
+    };
 };
 using namespace kernelNamespace;
 
@@ -80,14 +158,14 @@ namespace {
     void renderBeamPower(ActiveDevice& d, const VisualizationConfig config){
         d.visualization->gridFrequency.initialize_to_zero();
         d.deviceLaunch(config.Ngrid/64, 64, 
-        beamPowerRenderKernel{
+        beamPowerRenderKernel2D{
                 d.visualization->gridTimeSpace.device_ptr(), 
                 d.visualization->red.device_ptr(),
                 d.visualization->green.device_ptr(),
                 d.visualization->blue.device_ptr(),
                  config});
         d.deviceLaunch((config.width * config.height) / 64, 64, 
-        floatLinetoImageKernel{
+        floatLinetoImageKernelCartesian{
             d.visualization->red.device_ptr(),
             d.visualization->green.device_ptr(),
             d.visualization->blue.device_ptr(),
