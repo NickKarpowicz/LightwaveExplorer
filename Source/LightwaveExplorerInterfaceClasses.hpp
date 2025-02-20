@@ -521,7 +521,9 @@ struct VisualizationAllocation{
     LWEBuffer<float> gridTimeSpace;
     LWEBuffer<deviceComplex> gridFrequency;
     LWEBuffer<uint8_t> imageGPU;
-    
+    LWEBuffer<float> red;
+    LWEBuffer<float> green;
+    LWEBuffer<float> blue;
     std::vector<uint8_t> image;
     deviceParameterSet<float, deviceComplex> parameterSet;
     LWEBuffer<deviceParameterSet<float, deviceComplex>> parameterSet_deviceCopy;
@@ -537,21 +539,15 @@ struct VisualizationAllocation{
         Ngrid_complex(sCPU->NgridC),
         Nsims(sCPU->Nsims),
         Nsims2(sCPU->Nsims2),
-        gridTimeSpace(d, 2*Ngrid*Nsims*Nsims2,sizeof(float)),
-        gridFrequency(d, 2*Ngrid_complex*Nsims*Nsims2, sizeof(deviceComplex)),
+        gridTimeSpace(d, 2*Ngrid,sizeof(float)),
+        gridFrequency(d, 2*Ngrid_complex, sizeof(deviceComplex)),
         imageGPU(d, Nimage, sizeof(uint8_t)),
+        red(d, height*width, sizeof(float)),
+        green(d, height*width, sizeof(float)),
+        blue(d, height*width, sizeof(float)),
         image(Nimage),
         parameterSet_deviceCopy(d, 1, sizeof(deviceParameterSet<float, deviceComplex>))
         {
-            parentDevice->deviceMemcpy(
-                gridTimeSpace.device_ptr(), 
-                sCPU->ExtOut, 2 * Ngrid * Nsims * Nsims2 * sizeof(double), 
-                copyType::ToDevice);
-            parentDevice->deviceMemcpy(
-                gridFrequency.device_ptr(), 
-                sCPU->EkwOut, 4 * Ngrid_complex * Nsims * Nsims2 * sizeof(double), 
-                copyType::ToDevice);
-
                 sCPU->initializeDeviceParameters(&parameterSet);
                 sCPU->fillRotationMatricies(&parameterSet);
                 sCPU->finishConfiguration(&parameterSet);
@@ -565,6 +561,18 @@ struct VisualizationAllocation{
             imageGPU.device_ptr(),
             Nimage, 
             copyType::ToHost);
+    }
+
+    void fetchSim(simulationParameterSet* sCPU, int64_t simIndex){
+        parentDevice->deviceMemcpy(
+            gridTimeSpace.device_ptr(), 
+            sCPU->ExtOut + 2*Ngrid*simIndex, 2 * Ngrid * sizeof(double), 
+            copyType::ToDevice);
+        parentDevice->deviceMemcpy(
+            gridFrequency.device_ptr(), 
+            sCPU->EkwOut+ 2*Ngrid_complex*simIndex, 4 * Ngrid_complex * sizeof(double), 
+            copyType::ToDevice);
+
     }
 
     void setImageDimensions(int64_t new_width, int64_t new_height){
