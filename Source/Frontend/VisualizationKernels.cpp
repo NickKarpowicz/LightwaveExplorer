@@ -25,7 +25,9 @@ using namespace deviceFunctions;
 namespace kernelNamespace{
 struct beamPowerRenderKernel{
     const float* Et;
-    float* workspace;
+    float* red;
+    float* green;
+    float* blue;
     const VisualizationConfig config;
     deviceFunction void operator()(const int64_t i) const {
         //i has range Ngrid * 2
@@ -37,12 +39,16 @@ struct beamPowerRenderKernel{
         //const int64_t y_field = 0;
         const int64_t x_image = x_field;
         //const int64_t y_image = i / (config.Nx * config.Nt);
-        atomicAdd(&workspace[x_image], Et[i]*Et[i] + Et[i + config.Ngrid] * Et[i + config.Ngrid]);
+        atomicAdd(&red[x_image], Et[i]*Et[i]);
+        atomicAdd(&green[x_image], Et[i + config.Ngrid] * Et[i + config.Ngrid]);
+        atomicAdd(&blue[x_image], Et[i]*Et[i] + Et[i + config.Ngrid] * Et[i + config.Ngrid]);
     }
 };
 
 struct floatLinetoImageKernel{
-    const float* line;
+    const float* red;
+    const float* green;
+    const float* blue;
     uint8_t* image;
     const VisualizationConfig config;
     deviceFunction void operator()(const int64_t i) const {
@@ -52,13 +58,19 @@ struct floatLinetoImageKernel{
         const float r = abs(hypotf(x,y));
         const int64_t idx = std::clamp(expandCylindricalBeamAtRadius(r, config.Nx),int64_t{},config.Nx);
         //stride in image is 4, r g b a
-        uint8_t pt = static_cast<uint8_t>(
+
+        image[4*i] = static_cast<uint8_t>(
             std::clamp(
-                1e-18f * line[idx],
-                 0.f, 255.f));
-        image[4*i] = pt;
-        image[4*i + 1] = 0U;
-        image[4*i + 2] = pt;
+                1e-18f * blue[idx],
+                 0.f, 255.f));;
+        image[4*i + 1] = static_cast<uint8_t>(
+            std::clamp(
+                1e-18f * green[idx],
+                 0.f, 255.f));;
+        image[4*i + 2] = static_cast<uint8_t>(
+            std::clamp(
+                1e-18f * red[idx],
+                 0.f, 255.f));;
     }
 };
 };
@@ -69,12 +81,16 @@ namespace {
         d.visualization->gridFrequency.initialize_to_zero();
         d.deviceLaunch(config.Ngrid/64, 64, 
         beamPowerRenderKernel{
-                d.visualization->gridTimeSpace.device_ptr() + 2*config.Ngrid*config.simIndex, 
-                reinterpret_cast<float*>(d.visualization->gridFrequency.device_ptr()),
+                d.visualization->gridTimeSpace.device_ptr(), 
+                d.visualization->red.device_ptr(),
+                d.visualization->green.device_ptr(),
+                d.visualization->blue.device_ptr(),
                  config});
         d.deviceLaunch((config.width * config.height) / 64, 64, 
         floatLinetoImageKernel{
-            reinterpret_cast<const float*>(d.visualization->gridFrequency.device_ptr()), 
+            d.visualization->red.device_ptr(),
+            d.visualization->green.device_ptr(),
+            d.visualization->blue.device_ptr(),
             d.visualization->imageGPU.device_ptr(),
             config});
         d.visualization->syncImages();
@@ -83,6 +99,7 @@ namespace {
 unsigned long renderVisualizationX(VisualizationConfig config){
     ActiveDevice d(config.width, config.height, config.sCPU);
     std::lock_guard<std::mutex> lock(d.visualization->memoryMutex);
+    d.visualization->fetchSim(config.sCPU, config.simIndex);
     switch(config.type){
         case VisualizationType::beamPower:
             renderBeamPower(d,config);
