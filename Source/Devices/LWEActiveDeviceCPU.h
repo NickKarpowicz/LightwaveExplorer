@@ -216,6 +216,7 @@ public:
 		cParams = sCPU;
 		visualization = std::make_unique<VisualizationAllocation<deviceComplex>>(this, width, height, sCPU);
 		s = &(visualization->parameterSet);
+		fftInitialize();
 		#if defined _WIN32 || defined __linux__
 			indices = std::vector<int64_t>(4 * sCPU->NgridC);
 			std::iota(indices.begin(), indices.end(), 0);
