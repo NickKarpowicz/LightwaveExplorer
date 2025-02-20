@@ -3,11 +3,13 @@
 #endif
 #define LWEFLOATINGPOINT 32
 #include "../LightwaveExplorerTrilingual.h"
-#include "../DeviceFunctions.hpp"
+
 #include "../LightwaveExplorerInterfaceClasses.hpp"
 
 namespace deviceFunctions{
-
+    deviceFunction static inline float deviceNorm(const deviceComplex& x){
+        return x.real() * x.real() + x.imag() * x.imag();
+    }
 	deviceFunction static inline int64_t expandCylindricalBeamAtRadius(
 		const float r, 
 		const int64_t Nspace) {
@@ -38,7 +40,7 @@ namespace deviceFunctions{
         float beamTotal{};
         float beamCenter{};
             for (int64_t j{}; j < Nspace; ++j) {
-                float a = cModulusSquared(data[j * stride]);
+                float a = deviceNorm(data[j * stride]);
                 beamTotal += a;
                 beamCenter += static_cast<float>(j) * a;
             }
@@ -69,17 +71,125 @@ namespace kernelNamespace{
         }
     };
 
-    struct falseColorKernel2D{
+    struct falseColorPrerenderKernel2D{
         const deviceComplex* Ef;
+        float* workspace;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            const float f = (i+1) * config.df;
+
+            const float filter_red = 1e-18 * config.df * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
+            const float filter_green = 1e-18 * config.df * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
+            const float filter_blue = 1e-18 * config.df * config.red_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+            
+            int64_t dataSize = (config.Nt/2)*(config.Nx);
+            float* red = workspace + i;
+            float* green = red + dataSize;
+            float* blue = green + dataSize;
+            float* red_centers = blue + dataSize;
+            float* green_centers = red_centers + config.Nt/2;
+            float* blue_centers = green_centers + config.Nt/2;
+
+            for(int j{}; j<config.Nx; ++j){
+                float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf]);// + deviceNorm(Ef[(i+1) + j*config.Nf + config.Ngrid_complex]);
+                int offset = j * config.Nt/2;
+                red[offset] = filter_red * Ef2;
+                green[offset]= filter_green * Ef2;
+                blue[offset] = filter_blue * Ef2;
+            }
+            red_centers[0] = findCenter(config.Nx, config.Nt/2, red);
+            green_centers[0] = findCenter(config.Nx, config.Nt/2, green);
+            blue_centers[0] = findCenter(config.Nx, config.Nt/2, blue);
+        }
+    };
+
+    struct falseColorPrerenderKernelCylindrical{
+        const deviceComplex* Ef;
+        float* workspace;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            const float f = (i+1) * config.df;
+
+            const float filter_red = 1e-18 * config.df * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
+            const float filter_green = 1e-18 * config.df * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
+            const float filter_blue = 1e-18 * config.df * config.red_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+            
+            int64_t dataSize = (config.Nt/2)*(config.Nx);
+            float* red_line = workspace;
+            float* green_line = red_line + config.Nx;
+            float* blue_line = green_line + config.Nx; 
+
+            for(int j{}; j<config.Nx; ++j){
+                float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf]);// + deviceNorm(Ef[(i+1) + j*config.Nf + config.Ngrid_complex]);
+                atomicAdd(&red_line[j], filter_red * Ef2);
+                atomicAdd(&green_line[j], filter_green * Ef2);
+                atomicAdd(&blue_line[j], filter_blue * Ef2);
+            }
+        }
+    };
+
+    struct falseColorRender2DCartesianKernel{
         float* red;
         float* green;
         float* blue;
+        float* workspace;
         const VisualizationConfig config;
         deviceFunction void operator()(const int64_t i) const {
-            float f = (i+1) * config.df;
-            
+            //i range 0..Nx*Nx*Nt/2
+            const float mid = static_cast<float>(config.Nx)/2.0f;
+            const int64_t Nf = config.Nt/2; //not +1 because I skip 0
+            const int64_t f_ind = i % Nf;
+            const int64_t x_ind = (i / Nf) % config.Nx;
+            const int64_t y_ind = (i / Nf) / config.Nx;
+            const int64_t img_ind = x_ind * y_ind;
+            if(img_ind > (config.Nx * config.Nx)) return;
+            const float y = static_cast<float>(y_ind)-mid;
+            int64_t dataSize = Nf*(config.Nx);
+            float* red_data = workspace;
+            float* green_data = red_data + dataSize;
+            float* blue_data = green_data + dataSize;
+            float* red_centers = blue_data + dataSize;
+            float* green_centers = red_centers + config.Nt/2;
+            float* blue_centers = green_centers + config.Nt/2;
+
+            //auto getIndex = [](int64_t Nx, int64_t x_ind, float y){
+                const float center = mid;//centers[f_ind];
+                const float x = static_cast<float>(x_ind)-center;
+                const float r = std::sqrt(x*x + y*y);
+                const int64_t idx1 = static_cast<int64_t>((r+center));
+                const int64_t idx2 = static_cast<int64_t>((r-center));
+                const bool idx1Valid = (idx1 < config.Nx) && (idx1>=0);
+                const bool idx2Valid = (idx2 < config.Nx) && (idx2>=0);
+
+                if(idx1Valid && idx2Valid){
+                    atomicAdd(&red[0], red_data[f_ind + idx1*(config.Nt/2)] + red_data[f_ind + idx2*(config.Nt/2)]); 
+                }
+                // else if(idx1Valid){
+                //     atomicAdd(&red[img_ind], red_data[f_ind + idx1*(config.Nt/2)]); 
+                // }
+                // else if(idx2Valid){
+                //     atomicAdd(&red[img_ind], red_data[f_ind + idx2*(config.Nt/2)]); 
+                // }
+            //};
+
+            // getIndex(config.Nx, x_ind, y);
+            // getIndex(green_centers, green, green_data);
+            // getIndex(blue_centers, blue, blue_data);
         }
-    }
+    };
+
+    struct floatImagesToPixelsKernel{
+        const float* red;
+        const float* green;
+        const float* blue;
+        uint8_t* pixels;
+        float multiplier = 1.0f;
+        deviceFunction void operator()(const int64_t i) const {
+            pixels[4*i] = static_cast<uint8_t>(std::clamp(blue[i], 0.0f, 255.f));
+            pixels[4*i + 1] = static_cast<uint8_t>(std::clamp(green[i], 0.0f, 255.f));
+            pixels[4*i + 2] = static_cast<uint8_t>(std::clamp(red[i], 0.0f, 255.f));
+        }
+    };
 
     struct floatLinetoImageKernel{
         const float* red;
@@ -118,7 +228,7 @@ namespace kernelNamespace{
         const VisualizationConfig config;
         deviceFunction void operator()(const int64_t i) const {
             const float mid = static_cast<float>(config.Nx)/2.0f;
-            const float center = findCenter(config.Nx, 1, blue);
+            const float center = config.Nx/2;//findCenter(config.Nx, 1, blue);
             const float x = static_cast<float>(i % config.Nx)-center;
             const float y = static_cast<float>(i / config.Nx)-mid;
             const float r = abs(hypotf(x,y));
@@ -180,10 +290,57 @@ namespace kernelNamespace{
 using namespace kernelNamespace;
 
 namespace {
+    static void floatImageToPixels(ActiveDevice& d, const VisualizationConfig config, float multiplier=1.0f){
+        d.deviceLaunch((config.width * config.height)/64, 64, 
+            floatImagesToPixelsKernel{
+                    d.visualization->red.device_ptr(), 
+                    d.visualization->green.device_ptr(),
+                    d.visualization->blue.device_ptr(),
+                    d.visualization->imageGPU.device_ptr(),});
+    }
     static void renderFalseColor(ActiveDevice& d, const VisualizationConfig config){
+
         d.fft(d.visualization->gridTimeSpace.device_ptr(),
             d.visualization->gridFrequency.device_ptr(),
             deviceFFT::D2Z_1D);
+        d.visualization->gridTimeSpace.initialize_to_zero();
+        switch(config.mode){
+            case CoordinateMode::cartesian2D:
+            std::cout << "prerender" << std::endl;
+                d.deviceLaunch(config.Nt/8, 4, 
+                    falseColorPrerenderKernel2D{
+                            d.visualization->gridFrequency.device_ptr(), 
+                            d.visualization->gridTimeSpace.device_ptr(),
+                            config});
+            std::cout << "render" << std::endl;
+                d.deviceLaunch((config.Nx * (config.Nt/2)) / 64, 2, 
+                    falseColorRender2DCartesianKernel{
+                            d.visualization->red.device_ptr(),
+                            d.visualization->green.device_ptr(),
+                            d.visualization->blue.device_ptr(),
+                            d.visualization->gridTimeSpace.device_ptr(),
+                            config});
+            std::cout << "done" << std::endl;
+                break;
+            case CoordinateMode::radialSymmetry:
+                d.deviceLaunch(config.Nt/8, 4, 
+                    falseColorPrerenderKernelCylindrical{
+                            d.visualization->gridFrequency.device_ptr(), 
+                            d.visualization->gridTimeSpace.device_ptr(),
+                            config});
+                d.deviceLaunch((config.width * config.height) / 64, 64, 
+                floatLinetoImageKernelCartesian{
+                    d.visualization->gridTimeSpace.device_ptr(),
+                    d.visualization->gridTimeSpace.device_ptr() + config.Nx,
+                    d.visualization->gridTimeSpace.device_ptr() + 2*config.Nx,
+                    d.visualization->imageGPU.device_ptr(),
+                config});
+                break;
+            default:
+                break;
+
+            //floatImageToPixels(d, config, 1.0e18f);
+        }
     }
     static void renderBeamPower(ActiveDevice& d, const VisualizationConfig config){
         d.visualization->gridFrequency.initialize_to_zero();
@@ -197,13 +354,13 @@ namespace {
                             d.visualization->green.device_ptr(),
                             d.visualization->blue.device_ptr(),
                             config});
-                    d.deviceLaunch((config.width * config.height) / 64, 64, 
-                        floatLinetoImageKernelCartesian{
-                            d.visualization->red.device_ptr(),
-                            d.visualization->green.device_ptr(),
-                            d.visualization->blue.device_ptr(),
-                            d.visualization->imageGPU.device_ptr(),
-                            config});
+                d.deviceLaunch((config.width * config.height) / 64, 64, 
+                    floatLinetoImageKernelCartesian{
+                        d.visualization->red.device_ptr(),
+                        d.visualization->green.device_ptr(),
+                        d.visualization->blue.device_ptr(),
+                        d.visualization->imageGPU.device_ptr(),
+                        config});
                 break;
             case CoordinateMode::radialSymmetry:
                 d.deviceLaunch(config.Ngrid/64, 64, 
@@ -224,9 +381,6 @@ namespace {
             default:
                 break;
         }
-
-
-        d.visualization->syncImages();
     }
 }
 unsigned long renderVisualizationX(VisualizationConfig config){
@@ -235,15 +389,13 @@ unsigned long renderVisualizationX(VisualizationConfig config){
     d.visualization->fetchSim(config.sCPU, config.simIndex);
     switch(config.type){
         case VisualizationType::beamPower:
-            renderBeamPower(d,config);
+            renderFalseColor(d,config);
             break;
         case VisualizationType::beamFalseColor:
             break;
         default:
             return 1;
     }
-    if(config.result_pixels != nullptr){
-        config.result_pixels->assign(d.visualization->image.begin(), d.visualization->image.end());
-    }
+    d.visualization->syncImages(config.result_pixels);
     return 0;
 }

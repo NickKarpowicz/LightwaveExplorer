@@ -555,6 +555,15 @@ struct VisualizationAllocation{
             
         }
         
+    void syncImages(std::vector<uint8_t>* target){
+        if(target == nullptr) return;
+        target->resize(Nimage);
+        parentDevice->deviceMemcpy(
+            target->data(), 
+            imageGPU.device_ptr(),
+            Nimage, 
+            copyType::ToHost);
+    }
     void syncImages(){
         parentDevice->deviceMemcpy(
             image.data(), 
@@ -562,6 +571,8 @@ struct VisualizationAllocation{
             Nimage, 
             copyType::ToHost);
     }
+
+    
 
     void fetchSim(simulationParameterSet* sCPU, int64_t simIndex){
         parentDevice->deviceMemcpy(
@@ -756,6 +767,7 @@ struct VisualizationConfig{
     int64_t Nx = 0;
     int64_t Ny = 0;
     int64_t Nt = 0;
+    int64_t Nf = 0;
     int64_t Ngrid = 0;
     int64_t Ngrid_complex = 0;
     int64_t Nsims = 1;
@@ -768,10 +780,10 @@ struct VisualizationConfig{
     float red_sigma = 50e12f;
     float red_amplitude = 1.0f;
     float green_f0 = 550e12f;
-    float green_sigma = 500.0f;
+    float green_sigma = 50e12f;
     float green_amplitude = 1.0f;
     float blue_f0 = 650e12f;
-    float blue_sigma = 50.0f;
+    float blue_sigma = 50e12f;
     float blue_amplitude = 1.0f;
     std::vector<uint8_t>* result_pixels = nullptr;
     VisualizationConfig(simulationParameterSet* sCPU_in, VisualizationType type_in) : 
@@ -785,6 +797,7 @@ struct VisualizationConfig{
         Nx(sCPU->Nspace),
         Ny(sCPU->Nspace2),
         Nt(sCPU->Ntime),
+        Nf(sCPU->Nfreq),
         Ngrid(sCPU->Ngrid),
         Ngrid_complex(sCPU->NgridC),
         Nsims(sCPU->Nsims),
