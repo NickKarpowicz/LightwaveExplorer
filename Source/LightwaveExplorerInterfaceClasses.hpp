@@ -751,6 +751,8 @@ struct VisualizationConfig{
     float dt = 0.0f;
     float dx = 0.0f;
     float dy = 0.0f;
+    float df = 0.0f;
+    float dk = 0.0f;
     int64_t Nx = 0;
     int64_t Ny = 0;
     int64_t Nt = 0;
@@ -762,6 +764,15 @@ struct VisualizationConfig{
     int width = 0;
     int height = 0; 
     CoordinateMode mode = CoordinateMode::cartesian2D;
+    float red_f0 = 440e12f;
+    float red_sigma = 50e12f;
+    float red_amplitude = 1.0f;
+    float green_f0 = 550e12f;
+    float green_sigma = 500.0f;
+    float green_amplitude = 1.0f;
+    float blue_f0 = 650e12f;
+    float blue_sigma = 50.0f;
+    float blue_amplitude = 1.0f;
     std::vector<uint8_t>* result_pixels = nullptr;
     VisualizationConfig(simulationParameterSet* sCPU_in, VisualizationType type_in) : 
         sCPU(sCPU_in),
@@ -769,6 +780,8 @@ struct VisualizationConfig{
         dt(sCPU->tStep),
         dx(sCPU->rStep),
         dy(dx),
+        df(sCPU->fStep),
+        dk(sCPU->kStep),
         Nx(sCPU->Nspace),
         Ny(sCPU->Nspace2),
         Nt(sCPU->Ntime),

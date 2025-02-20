@@ -21,11 +21,24 @@ namespace deviceFunctions{
 	}
 
     deviceFunction static inline float findCenter(const int64_t Nspace, const int64_t stride, const float* data){
-        			//find beam centers
         float beamTotal{};
         float beamCenter{};
             for (int64_t j{}; j < Nspace; ++j) {
                 float a = (data[j * stride]);
+                beamTotal += a;
+                beamCenter += static_cast<float>(j) * a;
+            }
+            if (beamTotal > 0.0f) {
+                beamCenter /= beamTotal;
+            }
+            return beamCenter;
+    }
+
+    deviceFunction static inline float findCenter(const int64_t Nspace, const int64_t stride, const deviceComplex* data){
+        float beamTotal{};
+        float beamCenter{};
+            for (int64_t j{}; j < Nspace; ++j) {
+                float a = cModulusSquared(data[j * stride]);
                 beamTotal += a;
                 beamCenter += static_cast<float>(j) * a;
             }
@@ -55,6 +68,18 @@ namespace kernelNamespace{
             atomicAdd(&blue[x_field], Et[i]*Et[i] + Et[i + config.Ngrid] * Et[i + config.Ngrid]);
         }
     };
+
+    struct falseColorKernel2D{
+        const deviceComplex* Ef;
+        float* red;
+        float* green;
+        float* blue;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            float f = (i+1) * config.df;
+            
+        }
+    }
 
     struct floatLinetoImageKernel{
         const float* red;
@@ -155,7 +180,12 @@ namespace kernelNamespace{
 using namespace kernelNamespace;
 
 namespace {
-    void renderBeamPower(ActiveDevice& d, const VisualizationConfig config){
+    static void renderFalseColor(ActiveDevice& d, const VisualizationConfig config){
+        d.fft(d.visualization->gridTimeSpace.device_ptr(),
+            d.visualization->gridFrequency.device_ptr(),
+            deviceFFT::D2Z_1D);
+    }
+    static void renderBeamPower(ActiveDevice& d, const VisualizationConfig config){
         d.visualization->gridFrequency.initialize_to_zero();
 
         switch(config.mode){
