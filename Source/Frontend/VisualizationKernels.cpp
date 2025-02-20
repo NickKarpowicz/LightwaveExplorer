@@ -157,20 +157,45 @@ using namespace kernelNamespace;
 namespace {
     void renderBeamPower(ActiveDevice& d, const VisualizationConfig config){
         d.visualization->gridFrequency.initialize_to_zero();
-        d.deviceLaunch(config.Ngrid/64, 64, 
-        beamPowerRenderKernel2D{
-                d.visualization->gridTimeSpace.device_ptr(), 
-                d.visualization->red.device_ptr(),
-                d.visualization->green.device_ptr(),
-                d.visualization->blue.device_ptr(),
-                 config});
-        d.deviceLaunch((config.width * config.height) / 64, 64, 
-        floatLinetoImageKernelCartesian{
-            d.visualization->red.device_ptr(),
-            d.visualization->green.device_ptr(),
-            d.visualization->blue.device_ptr(),
-            d.visualization->imageGPU.device_ptr(),
-            config});
+
+        switch(config.mode){
+            case CoordinateMode::cartesian2D:
+                d.deviceLaunch(config.Ngrid/64, 64, 
+                    beamPowerRenderKernel2D{
+                            d.visualization->gridTimeSpace.device_ptr(), 
+                            d.visualization->red.device_ptr(),
+                            d.visualization->green.device_ptr(),
+                            d.visualization->blue.device_ptr(),
+                            config});
+                    d.deviceLaunch((config.width * config.height) / 64, 64, 
+                        floatLinetoImageKernelCartesian{
+                            d.visualization->red.device_ptr(),
+                            d.visualization->green.device_ptr(),
+                            d.visualization->blue.device_ptr(),
+                            d.visualization->imageGPU.device_ptr(),
+                            config});
+                break;
+            case CoordinateMode::radialSymmetry:
+                d.deviceLaunch(config.Ngrid/64, 64, 
+                    beamPowerRenderKernel2D{
+                            d.visualization->gridTimeSpace.device_ptr(), 
+                            d.visualization->red.device_ptr(),
+                            d.visualization->green.device_ptr(),
+                            d.visualization->blue.device_ptr(),
+                            config});
+                    d.deviceLaunch((config.width * config.height) / 64, 64, 
+                        floatLinetoImageKernel{
+                            d.visualization->red.device_ptr(),
+                            d.visualization->green.device_ptr(),
+                            d.visualization->blue.device_ptr(),
+                            d.visualization->imageGPU.device_ptr(),
+                            config});
+                break;
+            default:
+                break;
+        }
+
+
         d.visualization->syncImages();
     }
 }
