@@ -6,7 +6,22 @@
 #include "../DeviceFunctions.hpp"
 #include "../LightwaveExplorerInterfaceClasses.hpp"
 
+namespace deviceFunctions{
+
+	deviceFunction static inline int64_t expandCylindricalBeamAtRadius(
+		const float r, 
+		const int64_t Nspace) {
+
+        //is remainder of r closer to 1/4 or 3/4
+        bool negativeSide = fmodf(r,1.0f)-0.5 > 0.0f;
+        int64_t index = static_cast<int64_t>((negativeSide ? 
+            static_cast<float>(Nspace)/2.0f - r + 0.25f:
+            static_cast<float>(Nspace)/2.0f + r + 0.25f));
+		return index;
+	}
+}
 using namespace deviceFunctions;
+
 namespace kernelNamespace{
 struct beamPowerRenderKernel{
     const float* Et;
@@ -31,12 +46,16 @@ struct floatLinetoImageKernel{
     uint8_t* image;
     const VisualizationConfig config;
     deviceFunction void operator()(const int64_t i) const {
-        const int64_t x = i % config.Nx;
-        const int64_t y = i / config.Nx;
-        float mid = static_cast<float>(config.Nx)/2.0f;
-        const int64_t r = static_cast<int64_t>(mid + deviceFPLib::hypot(static_cast<float>(x) - mid, static_cast<float>(y) - mid)); 
+        const float mid = static_cast<float>(config.Nx)/2.0f;
+        const float x = static_cast<float>(i % config.Nx)-mid;
+        const float y = static_cast<float>(i / config.Nx)-mid;
+        const float r = abs(hypotf(x,y));
+        const int64_t idx = std::clamp(expandCylindricalBeamAtRadius(r, config.Nx),int64_t{},config.Nx);
         //stride in image is 4, r g b a
-        uint8_t pt = (r < config.Nx) ? static_cast<uint8_t>(std::clamp(1e-18f * line[r], 0.f, 255.f)) : 0U;
+        uint8_t pt = static_cast<uint8_t>(
+            std::clamp(
+                1e-18f * line[idx],
+                 0.f, 255.f));
         image[4*i] = pt;
         image[4*i + 1] = 0U;
         image[4*i + 2] = pt;
