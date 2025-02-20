@@ -161,6 +161,7 @@ else()
     add_definitions(-DNOCUDA -DNOSYCL -DNDEBUG)
     add_executable(${EXECUTABLE_NAME} 
         Source/Frontend/LightwaveExplorerFrontendQt.cpp 
+        Source/Frontend/LWEVisualizationsCPU.cpp
         Source/LightwaveExplorerUtilities.cpp 
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
