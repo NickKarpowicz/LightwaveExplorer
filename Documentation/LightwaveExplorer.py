@@ -100,12 +100,91 @@ class lightwaveExplorerResult:
             fileBase = os.path.splitext(filePath)
         lines = settingsFile.readlines()
 
-        def readLine(line: str):
-            rr = re.findall(r"[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", line)
-            return float(rr[-1])
+        # Elements in searchList are used to find the correct attribute for a value saved in a result. The elements of searchList  can be a string or a list of strings (for backwards compatability).
+        # If the beginning of a saved line matches an element in searchList (capitalization is ignored), the value given in the line is added as an attribute. The label of the attribute is the string in parameterNames with the same index as the match in searchList. 
+        # If multiple lines match an attribute or multiple attributes match a line an error is raised.
+        searchList = ["Pulse energy 1",
+                          "Pulse energy 2",
+                          "Frequency 1",
+                          "Frequency 2",
+                          "Bandwidth 1",
+                          "Bandwidth 2",
+                          "SG order 1",
+                          "SG order 2",
+                          "CEP 1",
+                          "CEP 2",
+                          "Delay 1",
+                          "Delay 2",
+                          "GDD 1",
+                          "GDD 2",
+                          "TOD 1",
+                          "TOD 2",
+                          "Phase material 1 index",
+                          "Phase material 2 index",
+                          "Phase material thickness 1",
+                          "Phase material thickness 2",
+                          "Beam mode placeholder",
+                          "Beamwaist 1",
+                          "Beamwaist 2",
+                          "x offset 1",
+                          "x offset 2",
+                          "y offset 1",
+                          "y offset 2",
+                          "z offset 1",
+                          "z offset 2",
+                          "NC angle 1",
+                          "NC angle 2",
+                          "NC angle phi 1",
+                          "NC angle phi 2",
+                          "Polarization 1",
+                          "Polarization 2",
+                          "Circularity 1",
+                          "Circularity 2",
+                          "Material index",
+                          "Alternate material index",
+                          "Crystal theta",
+                          "Crystal phi",
+                          "Grid width",
+                          "Grid height",
+                          "dx",
+                          "Time span",
+                          "dt",
+                          "Thickness",
+                          "dz",
+                          "Nonlinear absorption parameter",
+                          "Initial carrier density",
+                          "Band gap",
+                          "Effective mass",
+                          "Drude gamma",
+                          "Propagation mode",
+                          "Batch mode:",
+                          "Batch destination:",
+                          "Batch steps:",
+                          "Batch mode 2",
+                          "Batch destination 2",
+                          "Batch steps 2"]
 
-        for i in range(len(parameterNames)):
-            setattr(self, parameterNames[i], readLine(lines[i]))
+        for line in lines:
+            foundSearchStr = None
+            for searchStr,attributeName in zip(searchList,parameterNames,strict=True):
+                if isinstance(searchStr,str): # String case
+                    if searchStr.lower() == line[:len(searchStr)].lower():
+                        if foundSearchStr != None:
+                            raise Exception(f'Imported parameters can\'t be associated uniquely: "{foundSearchStr}" and "{searchStr}" are identified in beginning of "{line}"')
+                        value = float(line[line.rfind(":")+1:].strip())
+                        foundSearchStr = searchStr
+                        assert hasattr(self, attributeName) == False, f'Multiple imported parameter lines are matching for search string "{searchStr}" for attribute "{attributeName}". The second matching line is "{line}"'
+                        setattr(self,attributeName,value)
+                else:
+                    for subSearchStr in searchStr:  # List case
+                        if subSearchStr.lower() == line[:len(subSearchStr)].lower():
+                            if foundSearchStr != None:
+                                raise Exception(f'Imported parameters can\'t be associated uniquely: "{foundSearchStr}" and "{subSearchStr}" are identified in beginning of "{line}"')
+                            value = float(line[line.rfind(":")+1:].strip())
+                            foundSearchStr = searchStr
+                            assert hasattr(self, attributeName) == False, f'Multiple imported parameter lines are matching for search string "{searchStr}" for attribute "{attributeName}". The second matching line is "{line}"'
+                            setattr(self,attributeName,value)
+                            break
 
         #correct type of integer parameters
         self.Nsims = int(self.Nsims)
