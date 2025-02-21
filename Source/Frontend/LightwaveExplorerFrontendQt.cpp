@@ -1523,7 +1523,10 @@ public:
             plotControlRegionLayout,
             "Control the red color channel in the beam view.\n",
             680, 80, 1);
-
+        buttons["render"] = new QPushButton("Render");
+        buttons["render"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["render"]->setToolTip("Render the beam view with these parameters");
+        plotControlRegionLayout->addWidget(buttons["render"]);
         checkboxes["showWavesAndSpectra"] = new QCheckBox("Show waves and spectra");
         checkboxes["showWavesAndSpectra"]->setChecked(true);
         checkboxes["showWavesAndSpectra"]->setToolTip(
@@ -1618,7 +1621,7 @@ public:
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqImage2"], &CairoWidget::queueUpdate);
 
         QObject::connect(slider, &QSlider::valueChanged, plots["freqPlot1"], &CairoWidget::queueUpdate);
-        QObject::connect(slider, &QSlider::valueChanged, plots["beamView"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, this, &LWEGui::renderBeamView);
         QObject::connect(slider, &QSlider::valueChanged, plots["freqPlot2"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["timePlot1"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["timePlot2"], &CairoWidget::queueUpdate);
@@ -1808,6 +1811,10 @@ public:
             }
         });
 
+        QObject::connect(buttons["render"], &QPushButton::clicked, [&](){
+            messenger->passBeamViewRender();
+        });
+
         QObject::connect(buttons["ylim"], &QPushButton::clicked, [&](){
             messenger->passDrawRequest();
         });
@@ -1891,8 +1898,9 @@ public:
         labels["sliderIndex"]->setText(QString::number(slider->value()));
     }
     void renderBeamView(){
-        std::thread(drawBeamThread,std::ref(*this)).detach();
-        std::cout<<"render"<<std::endl;
+        if(plots["beamView"]->isVisible()){
+            std::thread(drawBeamThread,std::ref(*this)).detach();
+        }
     }
     void updateBeamView(){
         plots["beamView"]->repaint();
@@ -2103,7 +2111,6 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
         return;
     }
     theGui.messenger->passProgressRange(0,static_cast<int>(totalSteps));
-    theGui.messenger->requestBeamViewRender();
     theSim.base().isRunning = true;
     auto progressThread = [&](){
         while(theSim.base().isRunning){
@@ -2155,6 +2162,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
                 if (error) break;
                 theGui.messenger->passSliderPosition(j);
                 theGui.messenger->requestUpdate();
+                
             if (theSim.base().cancellationCalled) {
                 theGui.messenger->passString(Sformat((
                     "Warning: series cancelled, stopping\n"
@@ -2336,7 +2344,7 @@ void drawBeamThread(LWEGui& theGui){
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     std::unique_lock imageLock(theGui.beamViewMutex);
     renderVisualizationCPU(config);
-    theGui.messenger->requestBeamViewUpdate();
+    theGui.messenger->requestUpdate();
 }
 void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     std::unique_lock guiLock(theGui.m, std::try_to_lock);
