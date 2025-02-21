@@ -3,7 +3,6 @@
 #endif
 #define LWEFLOATINGPOINT 32
 #include "../LightwaveExplorerTrilingual.h"
-
 #include "../LightwaveExplorerInterfaceClasses.hpp"
 
 namespace deviceFunctions{
@@ -65,9 +64,11 @@ namespace kernelNamespace{
         const VisualizationConfig config;
         deviceFunction void operator()(const int64_t i) const {
             const int64_t x_field = (i / config.Nt) * (config.width/config.Nx);
-            atomicAdd(&red[x_field], Et[i]*Et[i]);
-            atomicAdd(&green[x_field], Et[i + config.Ngrid] * Et[i + config.Ngrid]);
-            atomicAdd(&blue[x_field], Et[i]*Et[i] + Et[i + config.Ngrid] * Et[i + config.Ngrid]);
+            const float A2 = Et[i]*Et[i];
+            const float B2 = Et[i + config.Ngrid] * Et[i + config.Ngrid];
+            atomicAdd(&red[x_field], A2);
+            atomicAdd(&green[x_field], B2);
+            atomicAdd(&blue[x_field], A2 + B2);
         }
     };
 
@@ -78,9 +79,10 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             const float f = (i+1) * config.df;
 
-            const float filter_red = 1e-18 * config.df * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
-            const float filter_green = 1e-18 * config.df * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
-            const float filter_blue = 1e-18 * config.df * config.red_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+            const float scale = 1e-18 * config.df / (config.Nt);
+            const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
+            const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
+            const float filter_blue = scale * config.red_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
             
             int64_t dataSize = (config.Nt/2)*(config.Nx);
             float* red = workspace + i;
@@ -91,7 +93,8 @@ namespace kernelNamespace{
             float* blue_centers = green_centers + config.Nt/2;
 
             for(int j{}; j<config.Nx; ++j){
-                float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf]);// + deviceNorm(Ef[(i+1) + j*config.Nf + config.Ngrid_complex]);
+                float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf]) 
+                + deviceNorm(Ef[(i+1) + j*config.Nf + config.Ngrid_complex]);
                 int offset = j * config.Nt/2;
                 red[offset] = filter_red * Ef2;
                 green[offset]= filter_green * Ef2;
@@ -110,9 +113,10 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             const float f = (i+1) * config.df;
 
-            const float filter_red = 1e-18 * config.df * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
-            const float filter_green = 1e-18 * config.df * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
-            const float filter_blue = 1e-18 * config.df * config.red_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+            const float scale = 1e-18 * config.df / (config.Nt);
+            const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
+            const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
+            const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
             
             int64_t dataSize = (config.Nt/2)*(config.Nx);
             float* red_line = workspace;
@@ -120,7 +124,8 @@ namespace kernelNamespace{
             float* blue_line = green_line + config.Nx; 
 
             for(int j{}; j<config.Nx; ++j){
-                float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf]);// + deviceNorm(Ef[(i+1) + j*config.Nf + config.Ngrid_complex]);
+                float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf])
+                 + deviceNorm(Ef[(i+1) + j*config.Nf + config.Ngrid_complex]);
                 atomicAdd(&red_line[j], filter_red * Ef2);
                 atomicAdd(&green_line[j], filter_green * Ef2);
                 atomicAdd(&blue_line[j], filter_blue * Ef2);
@@ -139,11 +144,7 @@ namespace kernelNamespace{
             const float mid = static_cast<float>(config.Nx)/2.0f;
             const int64_t Nf = config.Nt/2; //not +1 because I skip 0
             const int64_t f_ind = i % Nf;
-            const int64_t x_ind = (i / Nf) % config.Nx;
-            const int64_t y_ind = (i / Nf) / config.Nx;
-            const int64_t img_ind = x_ind * y_ind;
-            if(img_ind > (config.Nx * config.Nx)) return;
-            const float y = static_cast<float>(y_ind)-mid;
+            
             int64_t dataSize = Nf*(config.Nx);
             float* red_data = workspace;
             float* green_data = red_data + dataSize;
@@ -151,30 +152,35 @@ namespace kernelNamespace{
             float* red_centers = blue_data + dataSize;
             float* green_centers = red_centers + config.Nt/2;
             float* blue_centers = green_centers + config.Nt/2;
+            auto addPoint = [&](float* channel, const float* data, const float* centers, const int x_ind, const float y, const int64_t img_ind){
+                    const float center = centers[f_ind];
+                    const float x = static_cast<float>(x_ind)-center;
+                    const float r = hypotf(x,y);
+                    const int64_t idx1 = static_cast<int64_t>((r+center));
+                    const int64_t idx2 = static_cast<int64_t>((r-center));
+                    const bool idx1Valid = (idx1 < config.Nx) && (idx1>=0);
+                    const bool idx2Valid = (idx2 < config.Nx) && (idx2>=0);
 
-            //auto getIndex = [](int64_t Nx, int64_t x_ind, float y){
-                const float center = mid;//centers[f_ind];
-                const float x = static_cast<float>(x_ind)-center;
-                const float r = std::sqrt(x*x + y*y);
-                const int64_t idx1 = static_cast<int64_t>((r+center));
-                const int64_t idx2 = static_cast<int64_t>((r-center));
-                const bool idx1Valid = (idx1 < config.Nx) && (idx1>=0);
-                const bool idx2Valid = (idx2 < config.Nx) && (idx2>=0);
-
-                if(idx1Valid && idx2Valid){
-                    atomicAdd(&red[0], red_data[f_ind + idx1*(config.Nt/2)] + red_data[f_ind + idx2*(config.Nt/2)]); 
+                    if(idx1Valid && idx2Valid){
+                        atomicAdd(&channel[img_ind], data[f_ind + idx1*(config.Nt/2)] + data[f_ind + idx2*(config.Nt/2)]); 
+                    }
+                    else if(idx1Valid){
+                        atomicAdd(&channel[img_ind], data[f_ind + idx1*(config.Nt/2)]); 
+                    }
+                    else if(idx2Valid){
+                        atomicAdd(&channel[img_ind], data[f_ind + idx2*(config.Nt/2)]); 
+                    }
+            };
+            
+            for(int x_ind{}; x_ind<config.Nx; ++x_ind){
+                for(int y_ind{}; y_ind<config.Nx; ++y_ind){
+                    const float y = static_cast<float>(y_ind)-mid;
+                    const int64_t img_ind = x_ind + y_ind * config.Nx;
+                    addPoint(red, red_data, red_centers, x_ind, y, img_ind);
+                    addPoint(green, green_data, green_centers, x_ind, y, img_ind);
+                    addPoint(blue, blue_data, blue_centers, x_ind, y, img_ind);
                 }
-                // else if(idx1Valid){
-                //     atomicAdd(&red[img_ind], red_data[f_ind + idx1*(config.Nt/2)]); 
-                // }
-                // else if(idx2Valid){
-                //     atomicAdd(&red[img_ind], red_data[f_ind + idx2*(config.Nt/2)]); 
-                // }
-            //};
-
-            // getIndex(config.Nx, x_ind, y);
-            // getIndex(green_centers, green, green_data);
-            // getIndex(blue_centers, blue, blue_data);
+            }
         }
     };
 
@@ -306,21 +312,19 @@ namespace {
         d.visualization->gridTimeSpace.initialize_to_zero();
         switch(config.mode){
             case CoordinateMode::cartesian2D:
-            std::cout << "prerender" << std::endl;
                 d.deviceLaunch(config.Nt/8, 4, 
                     falseColorPrerenderKernel2D{
                             d.visualization->gridFrequency.device_ptr(), 
                             d.visualization->gridTimeSpace.device_ptr(),
                             config});
-            std::cout << "render" << std::endl;
-                d.deviceLaunch((config.Nx * (config.Nt/2)) / 64, 2, 
+                d.deviceLaunch(config.Nt/8, 4, 
                     falseColorRender2DCartesianKernel{
                             d.visualization->red.device_ptr(),
                             d.visualization->green.device_ptr(),
                             d.visualization->blue.device_ptr(),
                             d.visualization->gridTimeSpace.device_ptr(),
                             config});
-            std::cout << "done" << std::endl;
+                floatImageToPixels(d, config, 1.0f);
                 break;
             case CoordinateMode::radialSymmetry:
                 d.deviceLaunch(config.Nt/8, 4, 
@@ -339,7 +343,7 @@ namespace {
             default:
                 break;
 
-            //floatImageToPixels(d, config, 1.0e18f);
+            
         }
     }
     static void renderBeamPower(ActiveDevice& d, const VisualizationConfig config){

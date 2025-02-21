@@ -2,6 +2,7 @@
 #include "DataStructures.hpp"
 #include "LightwaveExplorerUtilities.h"
 #include <atomic>
+#include <string>
 
 class loadedInputData {
     public:
