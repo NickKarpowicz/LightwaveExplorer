@@ -717,7 +717,7 @@ public:
         squeezeMargins(mainAreaLayout);
         inputRegion->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
         plotRegion->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plotControlRegion->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+        plotControlRegion->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         mainAreaLayout->addWidget(inputRegion);
         mainAreaLayout->addWidget(plotRegion);
         mainAreaLayout->addWidget(plotControlRegion);
@@ -850,7 +850,10 @@ public:
             const std::string& entry2,  
             const std::string& entry3,
             QVBoxLayout* location,
-            const QString& tooltip){
+            const QString& tooltip,
+            const float value1,
+            const float value2,
+            const float value3){
                 QHBoxLayout* rowLayout = getRowBoxLayout(location);
                 labels[entry1] = new QLabel;
                 labels[entry1]->setToolTip(tooltip);
@@ -866,6 +869,12 @@ public:
                 textBoxes[entry1]->setFixedSize(plotTextBoxWidth,textBoxHeight);
                 textBoxes[entry2]->setFixedSize(plotTextBoxWidth,textBoxHeight);
                 textBoxes[entry3]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                QString s1(Sformat(std::string_view("{:g}"), value1).c_str());
+                textBoxes[entry1]->setText(s1);
+                QString s2(Sformat(std::string_view("{:g}"), value2).c_str());
+                textBoxes[entry2]->setText(s2);
+                QString s3(Sformat(std::string_view("{:g}"), value3).c_str());
+                textBoxes[entry3]->setText(s3);
                 rowLayout->addWidget(labels[entry1]);
                 rowLayout->addWidget(textBoxes[entry1]);
                 rowLayout->addWidget(textBoxes[entry2]); 
@@ -1480,6 +1489,30 @@ public:
                 plots["beamView"]->hide();
             } 
         });
+        addTextBoxRowForPlots(
+            "Red (f, \xcf\x83, I)", 
+            "Red_frequency", 
+            "Red_sigma", 
+            "Red_strength", 
+            plotControlRegionLayout,
+            "Control the red color channel in the beam view.\n",
+            400, 80, 1);
+        addTextBoxRowForPlots(
+            "Green (f, \xcf\x83, I)", 
+            "Green_frequency", 
+            "Green_sigma", 
+            "Green_strength", 
+            plotControlRegionLayout,
+            "Control the red color channel in the beam view.\n",
+            550, 80, 1);
+        addTextBoxRowForPlots(
+            "Blue (f, \xcf\x83, I)", 
+            "Blue_frequency", 
+            "Blue_sigma", 
+            "Blue_strength", 
+            plotControlRegionLayout,
+            "Control the red color channel in the beam view.\n",
+            680, 80, 1);
 
         checkboxes["showWavesAndSpectra"] = new QCheckBox("Show waves and spectra");
         checkboxes["showWavesAndSpectra"]->setChecked(true);
@@ -1519,9 +1552,8 @@ public:
             }  
         });
         
+        
         squeezeMargins(plotControlRegionLayout);
-        addTextBoxRowForPlots("Red (f, \xcf\x83, I)", "Red_frequency", "Red_sigma", "Red_strength", plotControlRegionLayout,
-        "Control the red color channel in the beam view.\n");
 
         readDefaultValues(theSim, theDatabase);
         setInterfaceValuesToActiveValues(theSim);
@@ -2277,7 +2309,17 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     image.width = theGui.theSim.base().Nspace;
     image.colorMap = ColorMap::cyan_magenta;
     image.hasFullSizeRenderedImage = true;
-    VisualizationConfig config(&(theGui.theSim.base()), VisualizationType::beamPower);
+    VisualizationConfig config(&(theGui.theSim.base()), VisualizationType::beamFalseColor);
+    config.red_f0 = 1e12 * theGui.textBoxes["Red_frequency"]->text().toDouble();
+    config.green_f0 = 1e12 * theGui.textBoxes["Green_frequency"]->text().toDouble();
+    config.blue_f0 = 1e12 * theGui.textBoxes["Blue_frequency"]->text().toDouble();
+    config.red_sigma = 1e12 * theGui.textBoxes["Red_sigma"]->text().toDouble();
+    config.green_sigma = 1e12 * theGui.textBoxes["Green_sigma"]->text().toDouble();
+    config.blue_sigma = 1e12 * theGui.textBoxes["Blue_sigma"]->text().toDouble();
+    config.red_amplitude = 1e-11 * theGui.textBoxes["Red_strength"]->text().toDouble();
+    config.green_amplitude = 1e-11 * theGui.textBoxes["Green_strength"]->text().toDouble();
+    config.blue_amplitude = 1e-11 * theGui.textBoxes["Blue_strength"]->text().toDouble();
+
     config.simIndex = simIndex;
     config.result_pixels = &image.pixels;
     renderVisualizationCPU(config);
