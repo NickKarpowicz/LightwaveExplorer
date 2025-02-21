@@ -62,6 +62,12 @@ public slots:
     void passSliderUpdate(){
         emit requestSliderUpdate();
     }
+    void passBeamViewRender(){
+        emit requestBeamViewRender();
+    }
+    void passBeamViewUpdate(){
+        emit requestBeamViewUpdate();
+    }
     void passSliderPosition(int value){
         emit moveSlider(value);
     }
@@ -77,6 +83,8 @@ signals:
     void requestUpdate();
     void requestSyncValues();
     void requestSliderUpdate();
+    void requestBeamViewRender();
+    void requestBeamViewUpdate();
     void moveSlider(int value);
     void sendProgressRange(int min, int max);
     void sendProgressValue(int value);
@@ -309,6 +317,8 @@ public:
     QWidget* inputRegion;
     QWidget* plotControlRegion;
     QSlider* slider;
+    LweImage<double> beamView;
+    std::mutex beamViewMutex;
     GuiMessenger* messenger;
     std::mutex m;
 
@@ -1649,6 +1659,8 @@ public:
         QObject::connect(messenger, &GuiMessenger::moveSlider, slider, &QSlider::setValue);
         QObject::connect(messenger, &GuiMessenger::requestSyncValues, this, &LWEGui::queueSyncValues);
         QObject::connect(messenger, &GuiMessenger::requestSliderUpdate, this, &LWEGui::updateSlider);
+        QObject::connect(messenger, &GuiMessenger::requestBeamViewUpdate, this, &LWEGui::updateBeamView);
+        QObject::connect(messenger, &GuiMessenger::requestBeamViewRender, this, &LWEGui::renderBeamView);
         QObject::connect(messenger, &GuiMessenger::sendProgressRange, progress, &QProgressBar::setRange);
         QObject::connect(messenger, &GuiMessenger::sendProgressValue, progress, &QProgressBar::setValue);
 
@@ -1878,6 +1890,13 @@ public:
         slider->setMaximum(theSim.base().Nsims * theSim.base().Nsims2 - 1);
         labels["sliderIndex"]->setText(QString::number(slider->value()));
     }
+    void renderBeamView(){
+        std::thread(drawBeamThread,std::ref(*this)).detach();
+        std::cout<<"render"<<std::endl;
+    }
+    void updateBeamView(){
+        plots["beamView"]->repaint();
+    }
      
 };
 
@@ -2084,7 +2103,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
         return;
     }
     theGui.messenger->passProgressRange(0,static_cast<int>(totalSteps));
-    
+    theGui.messenger->requestBeamViewRender();
     theSim.base().isRunning = true;
     auto progressThread = [&](){
         while(theSim.base().isRunning){
@@ -2183,6 +2202,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     }
     theSim.base().isRunning = false;
     theGui.messenger->passProgressValue(static_cast<int>(theGui.progressCounter));
+    theGui.messenger->requestBeamViewRender();
 }
 void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     simulationBatch& theSim = theGui.theSim;
@@ -2292,23 +2312,15 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 #endif
 }
 
-void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
-        blackoutCairoPlot(cr,width,height);
-        return;
-    }
 
+void drawBeamThread(LWEGui& theGui){
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
-
-    LweImage<double> image;
-    image.height = theGui.theSim.base().Nspace;
-    image.width = theGui.theSim.base().Nspace;
-    image.colorMap = ColorMap::cyan_magenta;
-    image.hasFullSizeRenderedImage = true;
+    theGui.beamView.height = theGui.theSim.base().Nspace;
+    theGui.beamView.width = theGui.theSim.base().Nspace;
+    theGui.beamView.hasFullSizeRenderedImage = true;
     VisualizationConfig config(&(theGui.theSim.base()), VisualizationType::beamFalseColor);
     config.red_f0 = 1e12 * theGui.textBoxes["Red_frequency"]->text().toDouble();
     config.green_f0 = 1e12 * theGui.textBoxes["Green_frequency"]->text().toDouble();
@@ -2319,15 +2331,30 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     config.red_amplitude = 1e-11 * theGui.textBoxes["Red_strength"]->text().toDouble();
     config.green_amplitude = 1e-11 * theGui.textBoxes["Green_strength"]->text().toDouble();
     config.blue_amplitude = 1e-11 * theGui.textBoxes["Blue_strength"]->text().toDouble();
-
     config.simIndex = simIndex;
-    config.result_pixels = &image.pixels;
+    config.result_pixels = &theGui.beamView.pixels;
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::unique_lock imageLock(theGui.beamViewMutex);
     renderVisualizationCPU(config);
+    theGui.messenger->requestBeamViewUpdate();
+}
+void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+        blackoutCairoPlot(cr,width,height);
+        return;
+    }
+    // std::thread renderThread(drawBeamThread, theGui);
+    // renderThread.detach();
+    int64_t simIndex = maxN(0,theGui.slider->value());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
 
     LwePlot<double> sPlot;
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.image = &image;
+    sPlot.image = &theGui.beamView;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "x (mum)";
     sPlot.yLabel = "y (mum)";
@@ -2335,9 +2362,9 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forcedXmin = -sPlot.forcedXmax.value();
     sPlot.forcedYmin = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
     sPlot.forcedYmax = -sPlot.forcedYmin.value();
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     sPlot.makeSVG = theGui.isMakingSVG;
-    if (dataLock.owns_lock()) {
+    std::unique_lock imageLock(theGui.beamViewMutex);
+    if (imageLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
             theGui.SVGStrings[0] = sPlot.SVGString;

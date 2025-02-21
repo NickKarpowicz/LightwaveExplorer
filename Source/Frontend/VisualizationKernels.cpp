@@ -82,7 +82,7 @@ namespace kernelNamespace{
             const float scale = 1e-18 * config.df / (config.Nt);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
-            const float filter_blue = scale * config.red_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+            const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
             
             int64_t dataSize = (config.Nt/2)*(config.Nx);
             float* red = workspace + i;
