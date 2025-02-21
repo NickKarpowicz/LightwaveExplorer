@@ -31,7 +31,7 @@ Changes in 2025.1:
 - Axes and scales are now shown on the space and momentum images, and they're also saved when an SVG is produced.
 - Plot font size scaling works better with high-DPI displays
 - Refactored device structures to more efficiently and consistently allocate memory
-- NOTE: to read the files produced with 2025.0 and later in python, you need [this updated version of LightwaveExplorer.py](https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/refs/heads/master/Documentation/LightwaveExplorer.py), which at the moment can only read these new files. I'll work on a smarter version that will read both in the coming days!
+- NOTE: to read the files produced with 2025.0 and later in python, you need [this updated version of LightwaveExplorer.py](https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/refs/heads/master/Documentation/LightwaveExplorer.py), many thanks to Florian Lindinger for the improved version that works with new and old files!
 
 Changes in 2025.0:
 
