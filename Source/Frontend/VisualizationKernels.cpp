@@ -4,6 +4,7 @@
 #define LWEFLOATINGPOINT 32
 #include "../LightwaveExplorerTrilingual.h"
 #include "../LightwaveExplorerInterfaceClasses.hpp"
+ActiveDevice* d_vis = nullptr;
 
 namespace deviceFunctions{
     deviceFunction static inline float deviceNorm(const deviceComplex& x){
@@ -151,7 +152,13 @@ namespace kernelNamespace{
             float* red_centers = blue_data + dataSize;
             float* green_centers = red_centers + config.Nt/2;
             float* blue_centers = green_centers + config.Nt/2;
-            auto addPoint = [&](float* channel, const float* data, const float* centers, const int x_ind, const float y, const int64_t img_ind){
+            auto addPoint = [&](
+                float* channel, 
+                const float* data, 
+                const float* centers, 
+                const int x_ind, 
+                const float y, 
+                const int64_t img_ind){
                     const float center = centers[f_ind];
                     const float x = static_cast<float>(x_ind)-center;
                     const float r = hypotf(x,y);
@@ -295,111 +302,120 @@ namespace kernelNamespace{
 using namespace kernelNamespace;
 
 namespace {
-    static void floatImageToPixels(ActiveDevice& d, const VisualizationConfig config, float multiplier=1.0f){
-        d.deviceLaunch((config.width * config.height)/64, 64, 
+    static void floatImageToPixels(const VisualizationConfig config, float multiplier=1.0f){
+        d_vis->deviceLaunch((config.width * config.height)/64, 64, 
             floatImagesToPixelsKernel{
-                    d.visualization->red.device_ptr(), 
-                    d.visualization->green.device_ptr(),
-                    d.visualization->blue.device_ptr(),
-                    d.visualization->imageGPU.device_ptr(),});
+                    d_vis->visualization->red.device_ptr(), 
+                    d_vis->visualization->green.device_ptr(),
+                    d_vis->visualization->blue.device_ptr(),
+                    d_vis->visualization->imageGPU.device_ptr(),});
     }
-    static void renderFalseColor(ActiveDevice& d, const VisualizationConfig config){
-
-        d.fft(d.visualization->gridTimeSpace.device_ptr(),
-            d.visualization->gridFrequency.device_ptr(),
+    static void renderFalseColor(const VisualizationConfig config){
+        d_vis->fft(d_vis->visualization->gridTimeSpace.device_ptr(),
+            d_vis->visualization->gridFrequency.device_ptr(),
             deviceFFT::D2Z_1D);
-        d.visualization->gridTimeSpace.initialize_to_zero();
+        d_vis->visualization->gridTimeSpace.initialize_to_zero();
         switch(config.mode){
             case CoordinateMode::cartesian2D:
-                d.deviceLaunch(config.Nt/8, 4, 
+                d_vis->deviceLaunch(config.Nt/8, 4, 
                     falseColorPrerenderKernel2D{
-                            d.visualization->gridFrequency.device_ptr(), 
-                            d.visualization->gridTimeSpace.device_ptr(),
+                            d_vis->visualization->gridFrequency.device_ptr(), 
+                            d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
-                d.deviceLaunch(config.Nt/8, 4, 
+                d_vis->deviceLaunch(config.Nt/8, 4, 
                     falseColorRender2DCartesianKernel{
-                            d.visualization->red.device_ptr(),
-                            d.visualization->green.device_ptr(),
-                            d.visualization->blue.device_ptr(),
-                            d.visualization->gridTimeSpace.device_ptr(),
+                            d_vis->visualization->red.device_ptr(),
+                            d_vis->visualization->green.device_ptr(),
+                            d_vis->visualization->blue.device_ptr(),
+                            d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
-                floatImageToPixels(d, config, 1.0f);
+                floatImageToPixels(config, 1.0f);
+                d_vis->visualization->red.initialize_to_zero();
+                d_vis->visualization->green.initialize_to_zero();
+                d_vis->visualization->blue.initialize_to_zero();
                 break;
             case CoordinateMode::radialSymmetry:
-                d.deviceLaunch(config.Nt/8, 4, 
+                d_vis->deviceLaunch(config.Nt/8, 4, 
                     falseColorPrerenderKernelCylindrical{
-                            d.visualization->gridFrequency.device_ptr(), 
-                            d.visualization->gridTimeSpace.device_ptr(),
+                            d_vis->visualization->gridFrequency.device_ptr(), 
+                            d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
-                d.deviceLaunch((config.width * config.height) / 64, 64, 
-                floatLinetoImageKernelCartesian{
-                    d.visualization->gridTimeSpace.device_ptr(),
-                    d.visualization->gridTimeSpace.device_ptr() + config.Nx,
-                    d.visualization->gridTimeSpace.device_ptr() + 2*config.Nx,
-                    d.visualization->imageGPU.device_ptr(),
+                d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
+                floatLinetoImageKernel{
+                    d_vis->visualization->gridTimeSpace.device_ptr(),
+                    d_vis->visualization->gridTimeSpace.device_ptr() + config.Nx,
+                    d_vis->visualization->gridTimeSpace.device_ptr() + 2*config.Nx,
+                    d_vis->visualization->imageGPU.device_ptr(),
                 config});
                 break;
             default:
                 break;
-
-            
         }
     }
-    static void renderBeamPower(ActiveDevice& d, const VisualizationConfig config){
-        d.visualization->gridFrequency.initialize_to_zero();
+    static void renderBeamPower(const VisualizationConfig config){
+        d_vis->visualization->gridFrequency.initialize_to_zero();
 
         switch(config.mode){
             case CoordinateMode::cartesian2D:
-                d.deviceLaunch(config.Ngrid/64, 64, 
+                d_vis->deviceLaunch(config.Ngrid/64, 64, 
                     beamPowerRenderKernel2D{
-                            d.visualization->gridTimeSpace.device_ptr(), 
-                            d.visualization->red.device_ptr(),
-                            d.visualization->green.device_ptr(),
-                            d.visualization->blue.device_ptr(),
+                            d_vis->visualization->gridTimeSpace.device_ptr(), 
+                            d_vis->visualization->red.device_ptr(),
+                            d_vis->visualization->green.device_ptr(),
+                            d_vis->visualization->blue.device_ptr(),
                             config});
-                d.deviceLaunch((config.width * config.height) / 64, 64, 
+                d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
                     floatLinetoImageKernelCartesian{
-                        d.visualization->red.device_ptr(),
-                        d.visualization->green.device_ptr(),
-                        d.visualization->blue.device_ptr(),
-                        d.visualization->imageGPU.device_ptr(),
+                        d_vis->visualization->red.device_ptr(),
+                        d_vis->visualization->green.device_ptr(),
+                        d_vis->visualization->blue.device_ptr(),
+                        d_vis->visualization->imageGPU.device_ptr(),
                         config});
                 break;
             case CoordinateMode::radialSymmetry:
-                d.deviceLaunch(config.Ngrid/64, 64, 
+                d_vis->deviceLaunch(config.Ngrid/64, 64, 
                     beamPowerRenderKernel2D{
-                            d.visualization->gridTimeSpace.device_ptr(), 
-                            d.visualization->red.device_ptr(),
-                            d.visualization->green.device_ptr(),
-                            d.visualization->blue.device_ptr(),
+                            d_vis->visualization->gridTimeSpace.device_ptr(), 
+                            d_vis->visualization->red.device_ptr(),
+                            d_vis->visualization->green.device_ptr(),
+                            d_vis->visualization->blue.device_ptr(),
                             config});
-                    d.deviceLaunch((config.width * config.height) / 64, 64, 
+                d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
                         floatLinetoImageKernel{
-                            d.visualization->red.device_ptr(),
-                            d.visualization->green.device_ptr(),
-                            d.visualization->blue.device_ptr(),
-                            d.visualization->imageGPU.device_ptr(),
+                            d_vis->visualization->red.device_ptr(),
+                            d_vis->visualization->green.device_ptr(),
+                            d_vis->visualization->blue.device_ptr(),
+                            d_vis->visualization->imageGPU.device_ptr(),
                             config});
                 break;
             default:
                 break;
         }
+        d_vis->visualization->red.initialize_to_zero();
+        d_vis->visualization->green.initialize_to_zero();
+        d_vis->visualization->blue.initialize_to_zero();
     }
 }
 unsigned long renderVisualizationX(VisualizationConfig config){
-    ActiveDevice d(config.width, config.height, config.sCPU);
-    std::lock_guard<std::mutex> lock(d.visualization->memoryMutex);
-    d.visualization->fetchSim(config.sCPU, config.simIndex);
+    if(d_vis == nullptr){
+        d_vis = new ActiveDevice(config.width, config.height, config.sCPU);
+    }
+    else{
+        d_vis->visualization->setSimulationDimensions(config.sCPU);
+        d_vis->visualization->setImageDimensions(config.width, config.height);
+    }
+    d_vis->visualization->fetchSim(config.sCPU, config.simIndex);
     switch(config.type){
         case VisualizationType::beamPower:
-            renderBeamPower(d, config);
+            renderBeamPower(config);
             break;
         case VisualizationType::beamFalseColor:
-            renderFalseColor(d, config);
+            renderFalseColor(config);
             break;
         default:
             return 1;
     }
-    d.visualization->syncImages(config.result_pixels);
+    d_vis->visualization->syncImages(config.result_pixels);
+    d_vis->visualization->imageGPU.initialize_to_zero();
     return 0;
 }

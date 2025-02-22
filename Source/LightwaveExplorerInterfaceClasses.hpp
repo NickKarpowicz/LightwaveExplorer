@@ -516,8 +516,10 @@ struct VisualizationAllocation{
     int64_t Nimage = 0;
     int64_t Ngrid = 0;
     int64_t Ngrid_complex = 0;
-    int64_t Nsims = 1;
-    int64_t Nsims2 = 1;
+    int64_t Nt = 0;
+    int64_t Nx = 0;
+    int64_t Ny = 0;
+
     bool frequencyGridMomentum = true;
     LWEBuffer<float> gridTimeSpace;
     LWEBuffer<deviceComplex> gridFrequency;
@@ -538,8 +540,9 @@ struct VisualizationAllocation{
         Nimage(width * height * 4),
         Ngrid(sCPU->Ngrid),
         Ngrid_complex(sCPU->NgridC),
-        Nsims(sCPU->Nsims),
-        Nsims2(sCPU->Nsims2),
+        Nt(sCPU->Ntime),
+        Nx(sCPU->Nspace),
+        Ny(sCPU->Nspace2),
         gridTimeSpace(d, 2*Ngrid,sizeof(float)),
         gridFrequency(d, 2*Ngrid_complex, sizeof(deviceComplex)),
         imageGPU(d, Nimage, sizeof(uint8_t)),
@@ -566,6 +569,7 @@ struct VisualizationAllocation{
             copyType::ToHost);
     }
     void syncImages(){
+        image.resize(Nimage);
         parentDevice->deviceMemcpy(
             image.data(), 
             imageGPU.device_ptr(),
@@ -589,7 +593,7 @@ struct VisualizationAllocation{
 
     void setImageDimensions(int64_t new_width, int64_t new_height){
         int64_t newNimage = new_width * new_height * 4;
-        if(imageGPU.count < newNimage){
+        if(imageGPU.count < static_cast<std::size_t>(newNimage)){
             imageGPU.resize(newNimage);
             image.resize(newNimage);
         }
@@ -599,10 +603,19 @@ struct VisualizationAllocation{
     }
 
     void setSimulationDimensions(simulationParameterSet* sCPU){
-        Ngrid = sCPU->Ngrid;
-        Ngrid_complex = sCPU->NgridC;
-        gridTimeSpace.resize(2 * Ngrid);
-        gridFrequency.resize(2 * Ngrid_complex);
+        if(Nt != sCPU->Ntime || Nx != sCPU->Nspace || Ny != sCPU->Nspace2){
+            Nt = sCPU->Ntime;
+            Nx = sCPU->Nspace;
+            Ny = sCPU->Nspace2;
+            Ngrid = sCPU->Ngrid;
+            Ngrid_complex = sCPU->NgridC;
+            gridTimeSpace.resize(2 * Ngrid);
+            gridFrequency.resize(2 * Ngrid_complex);
+            sCPU->initializeDeviceParameters(&parameterSet);
+            sCPU->fillRotationMatricies(&parameterSet);
+            sCPU->finishConfiguration(&parameterSet);
+            parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), copyType::ToDevice);
+        }
     }
 };
 

@@ -274,6 +274,7 @@ class LWEDevice{
     simulationParameterSet* cParams;
 	int memoryStatus = -1;
 	bool configuredFFT = false;
+    bool visualizationOnly = false;
     virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
     virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
     virtual void deviceMemcpyImplementation(

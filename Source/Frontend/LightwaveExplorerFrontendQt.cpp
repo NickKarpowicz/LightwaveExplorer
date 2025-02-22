@@ -1899,7 +1899,8 @@ public:
     }
     void renderBeamView(){
         if(plots["beamView"]->isVisible()){
-            std::thread(drawBeamThread,std::ref(*this)).detach();
+            int64_t simIndex = maxN(0,slider->value());
+            std::thread(drawBeamThread,std::ref(*this),simIndex).detach();
         }
     }
     void updateBeamView(){
@@ -2210,7 +2211,6 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     }
     theSim.base().isRunning = false;
     theGui.messenger->passProgressValue(static_cast<int>(theGui.progressCounter));
-    theGui.messenger->requestBeamViewRender();
 }
 void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     simulationBatch& theSim = theGui.theSim;
@@ -2321,8 +2321,7 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 }
 
 
-void drawBeamThread(LWEGui& theGui){
-    int64_t simIndex = maxN(0,theGui.slider->value());
+void drawBeamThread(LWEGui& theGui, int64_t simIndex){
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
@@ -2341,19 +2340,16 @@ void drawBeamThread(LWEGui& theGui){
     config.blue_amplitude = 1e-11 * theGui.textBoxes["Blue_strength"]->text().toDouble();
     config.simIndex = simIndex;
     config.result_pixels = &theGui.beamView.pixels;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex));
     std::unique_lock imageLock(theGui.beamViewMutex);
     renderVisualizationCPU(config);
     theGui.messenger->requestUpdate();
 }
 void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    // std::thread renderThread(drawBeamThread, theGui);
-    // renderThread.detach();
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -2382,8 +2378,7 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2427,8 +2422,7 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2472,8 +2466,7 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2515,8 +2508,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2580,8 +2572,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2643,8 +2634,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2690,8 +2680,7 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2741,8 +2730,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
         return;
     }

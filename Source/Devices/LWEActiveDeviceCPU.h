@@ -188,6 +188,9 @@ private:
 			fftw_destroy_plan(fftPlan1DZ2D);
 			if (s->isCylindric)fftw_destroy_plan(doublePolfftPlan);
 		}
+		else if(visualizationOnly){
+			fftwf_destroy_plan(fftPlan1DD2Z32);
+		}
 		else{
 			fftwf_destroy_plan(fftPlanD2Z32);
 			fftwf_destroy_plan(fftPlanZ2D32);
@@ -214,6 +217,7 @@ public:
 
 	CPUDevice(int64_t width, int64_t height, simulationParameterSet* sCPU){
 		cParams = sCPU;
+		visualizationOnly = true;
 		visualization = std::make_unique<VisualizationAllocation<deviceComplex>>(this, width, height, sCPU);
 		s = &(visualization->parameterSet);
 		fftInitialize();
@@ -454,7 +458,7 @@ public:
 				1, 
 				(int)(*s).Nfreq, 
 				FFTW_ESTIMATE);
-			fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(
+			if(!visualizationOnly)fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(
 				1, 
 				fftw1, 
 				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
@@ -467,7 +471,7 @@ public:
 				1, 
 				(int)(*s).Ntime, 
 				FFTW_ESTIMATE);
-			if ((*s).is3D) {
+			if ((*s).is3D && !visualizationOnly) {
 				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
 				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
 					3, 
@@ -498,7 +502,7 @@ public:
 			}
 			else {
 				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
+				if(!visualizationOnly)fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
 					2, 
 					fftwSizes, 
 					2, 
@@ -511,7 +515,7 @@ public:
 					1, 
 					(int)(*s).NgridC, 
 					FFTW_MEASURE);
-				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(
+				if(!visualizationOnly)fftPlanZ2D32 = fftwf_plan_many_dft_c2r(
 					2, 
 					fftwSizes, 
 					2, 
@@ -525,7 +529,7 @@ public:
 					(int)(*s).Ngrid, 
 					FFTW_MEASURE);
 
-				if ((*s).isCylindric) {
+				if ((*s).isCylindric && !visualizationOnly) {
 					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
 					doublePolfftPlan32 = fftwf_plan_many_dft_r2c(
 						2, 
