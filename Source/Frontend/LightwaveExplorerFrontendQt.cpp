@@ -2211,6 +2211,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     }
     theSim.base().isRunning = false;
     theGui.messenger->passProgressValue(static_cast<int>(theGui.progressCounter));
+    theGui.messenger->passBeamViewRender();
 }
 void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     simulationBatch& theSim = theGui.theSim;

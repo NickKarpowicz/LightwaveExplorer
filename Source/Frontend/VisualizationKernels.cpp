@@ -133,6 +133,32 @@ namespace kernelNamespace{
         }
     };
 
+    struct falseColor3DKernel{
+        const deviceComplex* Ef;
+        float* red;
+        float* green;
+        float* blue;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            const int64_t f_index = (i % (config.Nt/2)) + 1;
+            const int64_t x_index = (i / (config.Nt/2)) % config.Nx;
+            const int64_t y_index = (i / (config.Nt/2)) / config.Nx;
+            const int64_t field_index = f_index + (x_index + y_index * config.Nx) * config.Nf;
+            const int64_t image_index = x_index + config.Nx * y_index;
+            const float f = f_index * config.df;
+
+            const float scale = 1e-18 * config.df / (config.Nt);
+            const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
+            const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
+            const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+
+            float Ef2 = deviceNorm(Ef[field_index]) + deviceNorm(Ef[field_index + config.Ngrid_complex]);
+            atomicAdd(&red[image_index],filter_red * Ef2);
+            atomicAdd(&green[image_index],filter_green * Ef2);
+            atomicAdd(&blue[image_index],filter_blue * Ef2);
+        }
+    };
+
     struct falseColorRender2DCartesianKernel{
         float* red;
         float* green;
@@ -316,7 +342,8 @@ namespace {
             deviceFFT::D2Z_1D);
         d_vis->visualization->gridTimeSpace.initialize_to_zero();
         switch(config.mode){
-            case CoordinateMode::cartesian2D:
+            case CoordinateMode::cartesian2D: [[fallthrough]];
+            case CoordinateMode::FDTD2D:
                 d_vis->deviceLaunch(config.Nt/8, 4, 
                     falseColorPrerenderKernel2D{
                             d_vis->visualization->gridFrequency.device_ptr(), 
@@ -348,6 +375,18 @@ namespace {
                     d_vis->visualization->imageGPU.device_ptr(),
                 config});
                 break;
+            case CoordinateMode::cartesian3D: [[fallthrough]];
+            case CoordinateMode::FDTD3D:
+                d_vis->deviceLaunch(config.Ngrid/64, 32, falseColor3DKernel{
+                    d_vis->visualization->gridFrequency.device_ptr(),
+                    d_vis->visualization->red.device_ptr(),
+                    d_vis->visualization->green.device_ptr(),
+                    d_vis->visualization->blue.device_ptr(),
+                    config});
+                floatImageToPixels(config, 1.0f);
+                    d_vis->visualization->red.initialize_to_zero();
+                    d_vis->visualization->green.initialize_to_zero();
+                    d_vis->visualization->blue.initialize_to_zero();
             default:
                 break;
         }
