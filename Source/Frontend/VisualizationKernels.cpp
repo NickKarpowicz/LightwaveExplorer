@@ -114,6 +114,46 @@ namespace kernelNamespace{
         }
     };
 
+    struct falseColorFarfieldPrerenderKernel2D{
+        const deviceComplex* Ef;
+        float* workspace;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            const float f = (i+1) * config.df;
+            const float k0 = twoPi<float>()*f/lightC<float>()/config.dk;
+            const float scale = 1e-18 * config.df / (config.Ngrid);
+            const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
+            const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
+            const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+            
+            int64_t dataSize = (config.Nt/2)*(config.Nx);
+            float* red = workspace + i;
+            float* green = red + dataSize;
+            float* blue = green + dataSize;
+            float* red_centers = blue + dataSize;
+            float* green_centers = red_centers + config.Nt/2;
+            float* blue_centers = green_centers + config.Nt/2;
+
+            for(int j{}; j<config.Nx; ++j){
+                const float theta = j*config.dTheta - config.maxAngle;
+                const int64_t k_x = config.Nx/2 + 
+                    static_cast<int64_t>(round(k0*deviceFPLib::sin(theta)));
+                if(k_x > 0 && k_x < config.Nx){
+                    int64_t idx_k = indexShiftFFT(k_x, config.Nx);
+                    float Ef2 = deviceNorm(Ef[(i+1) + idx_k*config.Nf]) 
+                    + deviceNorm(Ef[(i+1) + idx_k*config.Nf + config.Ngrid_complex]);
+                    int offset = j * config.Nt/2;
+                    red[offset] = filter_red * Ef2;
+                    green[offset]= filter_green * Ef2;
+                    blue[offset] = filter_blue * Ef2;
+                }
+            }
+            red_centers[0] = findCenter(config.Nx, config.Nt/2, red);
+            green_centers[0] = findCenter(config.Nx, config.Nt/2, green);
+            blue_centers[0] = findCenter(config.Nx, config.Nt/2, blue);
+        }
+    };
+
     struct falseColorPrerenderKernelCylindrical{
         const deviceComplex* Ef;
         float* workspace;
@@ -136,6 +176,39 @@ namespace kernelNamespace{
                 atomicAdd(&red_line[j], filter_red * Ef2);
                 atomicAdd(&green_line[j], filter_green * Ef2);
                 atomicAdd(&blue_line[j], filter_blue * Ef2);
+            }
+        }
+    };
+
+    struct falseColorFarfieldPrerenderKernelCylindrical{
+        const deviceComplex* Ef;
+        float* workspace;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            const float f = (i+1) * config.df;
+            const float k0 = twoPi<float>()*f/lightC<float>()/config.dk;
+            const float scale = 1e-18*config.df / (config.Ngrid);
+            const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
+            const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
+            const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+            
+            float* red_line = workspace;
+            float* green_line = red_line + config.Nx;
+            float* blue_line = green_line + config.Nx; 
+
+            for(int j{}; j<config.Nx; ++j){
+                const float theta = j*config.dTheta - config.maxAngle;
+                const int64_t k_x = config.Nx/2 + 
+                    static_cast<int64_t>(round(k0*deviceFPLib::sin(theta)));
+                if(k_x > 0 && k_x < config.Nx){
+                    int64_t idx_k = indexShiftFFT(k_x, config.Nx);
+                    float Ef2 = deviceNorm(Ef[(i+1) + idx_k*config.Nf])
+                    + deviceNorm(Ef[(i+1) + idx_k*config.Nf + config.Ngrid_complex]);
+                    atomicAdd(&red_line[j], filter_red * Ef2);
+                    atomicAdd(&green_line[j], filter_green * Ef2);
+                    atomicAdd(&blue_line[j], filter_blue * Ef2);
+                }
+                
             }
         }
     };
@@ -446,7 +519,7 @@ namespace {
             case CoordinateMode::cartesian2D: [[fallthrough]];
             case CoordinateMode::FDTD2D:
                 d_vis->deviceLaunch(config.Nt/8, 4, 
-                    falseColorPrerenderKernel2D{
+                    falseColorFarfieldPrerenderKernel2D{
                             d_vis->visualization->gridFrequency.device_ptr(), 
                             d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
@@ -464,12 +537,12 @@ namespace {
                 break;
             case CoordinateMode::radialSymmetry:
                 d_vis->deviceLaunch(config.Nt/8, 4, 
-                    falseColorPrerenderKernelCylindrical{
+                    falseColorFarfieldPrerenderKernelCylindrical{
                             d_vis->visualization->gridFrequency.device_ptr(), 
                             d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
                 d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
-                floatLinetoImageKernel{
+                floatLinetoImageKernelCartesian{
                     d_vis->visualization->gridTimeSpace.device_ptr(),
                     d_vis->visualization->gridTimeSpace.device_ptr() + config.Nx,
                     d_vis->visualization->gridTimeSpace.device_ptr() + 2*config.Nx,
