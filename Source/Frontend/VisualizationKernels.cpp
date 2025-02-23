@@ -65,8 +65,8 @@ namespace kernelNamespace{
         const VisualizationConfig config;
         deviceFunction void operator()(const int64_t i) const {
             const int64_t x_field = (i / config.Nt) * (config.width/config.Nx);
-            const float A2 = Et[i]*Et[i];
-            const float B2 = Et[i + config.Ngrid] * Et[i + config.Ngrid];
+            const float A2 = 1e-18f * Et[i]*Et[i];
+            const float B2 = 1e-18f * Et[i + config.Ngrid] * Et[i + config.Ngrid];
             atomicAdd(&red[x_field], A2);
             atomicAdd(&green[x_field], B2);
             atomicAdd(&blue[x_field], A2 + B2);
@@ -114,7 +114,7 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             const float f = (i+1) * config.df;
 
-            const float scale = 1e-18 * config.df / (config.Nt);
+            const float scale = 1e-18*config.df / (config.Nt);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
@@ -245,15 +245,15 @@ namespace kernelNamespace{
 
             image[4*i] = static_cast<uint8_t>(
                 std::clamp(
-                    1e-18f * blue[idx],
+                    blue[idx],
                     0.f, 255.f));;
             image[4*i + 1] = static_cast<uint8_t>(
                 std::clamp(
-                    1e-18f * green[idx],
+                    green[idx],
                     0.f, 255.f));;
             image[4*i + 2] = static_cast<uint8_t>(
                 std::clamp(
-                    1e-18f * red[idx],
+                    red[idx],
                     0.f, 255.f));;
         }
     };
@@ -277,43 +277,43 @@ namespace kernelNamespace{
             if(idx1Valid && idx2Valid){
                 image[4*i] = static_cast<uint8_t>(
                     std::clamp(
-                        0.5e-18f * (blue[idx1]+ blue[idx2]),
+                        0.5f*(blue[idx1]+ blue[idx2]),
                         0.f, 255.f));;
                 image[4*i + 1] = static_cast<uint8_t>(
                     std::clamp(
-                        0.5e-18f * (green[idx1]+green[idx2]),
+                        0.5f*(green[idx1]+green[idx2]),
                         0.f, 255.f));;
                 image[4*i + 2] = static_cast<uint8_t>(
                     std::clamp(
-                        0.5e-18f * (red[idx1] + red[idx2]),
+                        0.5f*(red[idx1] + red[idx2]),
                         0.f, 255.f));;
             }
             else if(idx1Valid){
                 image[4*i] = static_cast<uint8_t>(
                     std::clamp(
-                        1e-18f * (blue[idx1]),
+                        blue[idx1],
                         0.f, 255.f));;
                 image[4*i + 1] = static_cast<uint8_t>(
                     std::clamp(
-                        1e-18f * (green[idx1]),
+                        green[idx1],
                         0.f, 255.f));;
                 image[4*i + 2] = static_cast<uint8_t>(
                     std::clamp(
-                        1e-18f * (red[idx1]),
+                        red[idx1],
                         0.f, 255.f));;
             }
             else if(idx2Valid){
                 image[4*i] = static_cast<uint8_t>(
                     std::clamp(
-                        1e-18f * (blue[idx2]),
+                        blue[idx2],
                         0.f, 255.f));;
                 image[4*i + 1] = static_cast<uint8_t>(
                     std::clamp(
-                        1e-18f * (green[idx2]),
+                        green[idx2],
                         0.f, 255.f));;
                 image[4*i + 2] = static_cast<uint8_t>(
                     std::clamp(
-                        1e-18f * (red[idx2]),
+                        red[idx2],
                         0.f, 255.f));;
             }
             else{

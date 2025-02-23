@@ -2361,8 +2361,8 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.width = width;
     sPlot.image = &theGui.beamView;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
-    sPlot.xLabel = "x (mum)";
-    sPlot.yLabel = "y (mum)";
+    sPlot.xLabel = "x (\xce\xbcm)";
+    sPlot.yLabel = "y (\xce\xbcm)";
     sPlot.forcedXmax = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
     sPlot.forcedXmin = -sPlot.forcedXmax.value();
     sPlot.forcedYmin = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
@@ -2711,7 +2711,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.image = &image;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Transverse k (1/\xce\xbcm)";
+    sPlot.yLabel = "k\xe2\x82\x93 (1/\xce\xbcm)";
     sPlot.unitY = 1;
     sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
     sPlot.forcedXmin = 0;
@@ -2726,8 +2726,6 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         }
     }
     else blackoutCairoPlot(cr, width, height);
-
-    
 }
 
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
@@ -2761,7 +2759,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.image = &image;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Transverse k (1/\xce\xbcm)";
+    sPlot.yLabel = "k\xe2\x82\x93 (1/\xce\xbcm)";
     sPlot.unitY = 1;
     sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
     sPlot.forcedXmin = 0;
