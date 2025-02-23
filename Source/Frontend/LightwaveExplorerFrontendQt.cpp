@@ -323,7 +323,7 @@ public:
     std::mutex m;
 
     bool isMakingSVG = false;
-    std::array<std::string,8> SVGStrings;
+    std::array<std::string,9> SVGStrings;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
         console->append(s.c_str());
@@ -1854,59 +1854,145 @@ public:
             std::string SVGpath = QFileDialog::getSaveFileName(buttons["svg"],"Save SVG file of plots","","Scalable Vector Graphics (*.svg)").toStdString();
             if(SVGpath.empty()) return;
             isMakingSVG = true;
-            plots["freqPlot1"] -> repaint();
-            plots["freqPlot2"] -> repaint();
-            plots["timePlot1"] -> repaint();
-            plots["timePlot2"] -> repaint();
-            plots["beamView"] -> repaint();
-            plots["timeImage1"] -> repaint();
-            plots["timeImage2"] -> repaint();
-            plots["freqImage1"] -> repaint();
-            plots["freqImage2"] -> repaint();
+
 
             //get dimensions lambda
-            int width = 0;
-            int height = 0;
-            auto getDimensions = [&width, &height](const std::string& SVGstr) {
+            auto getDimensions = [](const std::string& SVGstr) {
                 std::regex width_regex("width=\"(\\d+)\"");
                 std::regex height_regex("height=\"(\\d+)\"");
                 std::smatch width_match, height_match;
             
                 std::regex_search(SVGstr, width_match, width_regex);
                 std::regex_search(SVGstr, height_match, height_regex);
-                width = std::stoi(width_match[1].str());
-                height = std::stoi(height_match[1].str());   
+                int width = std::stoi(width_match[1].str());
+                int height = std::stoi(height_match[1].str());   
+                return std::pair<int,int>(width, height);
             };
-            getDimensions(SVGStrings[0]);
+            for(auto& str : SVGStrings){
+                str.clear();
+            }
+            for(auto& pair : plots){
+                if(pair.second->isVisible()){
+                    pair.second->repaint();
+                }
+            }
 
-            std::size_t SVGbegin = SVGStrings[0].find("<svg");
-            SVGStrings[0].insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+            const bool showSlices = checkboxes["showSpaceTimeMomentumFrequency"]->isChecked();
+            const bool showBeamView = checkboxes["showBeamView"]->isChecked();
+            const bool showWaves = checkboxes["showWavesAndSpectra"] ->isChecked();
+            const bool combineWaves = checkboxes["combinePolarizations"]->isChecked();
+            bool startedSVG = false;
+            int totalHeight = 0;
+            int totalWidth = 0;
+            int height_slice = 0;
+            int width_slice = 0;
+            int height_beam = 0;
+            int width_beam = 0;
+            int height_wave = 0;
+            int width_wave = 0;
+            int firstPlot = -1;
+            int verticalElements = 0;
+            int horizontalElements = 2;
+
+            if(showSlices){
+                startedSVG = true;
+                firstPlot = 0;
+                auto width_height = getDimensions(SVGStrings[0]);
+                width_slice = width_height.first;
+                height_slice = width_height.second;
+                totalWidth = 2 * width_slice;
+                totalHeight = 2 * height_slice;
+                verticalElements += 2;
+            }
+            if(showBeamView){
+                if(!startedSVG){
+                    firstPlot = 8;
+                    horizontalElements = 1;
+                }
+                startedSVG = true;
+                auto width_height = getDimensions(SVGStrings[8]);
+                width_beam = width_height.first;
+                height_beam = width_height.second;
+                totalWidth = width_height.first;
+                totalHeight += width_height.second;
+                verticalElements++;
+            }
+            if(showWaves){
+                if(!startedSVG) firstPlot = 4;
+                startedSVG = true;
+                auto width_height = getDimensions(SVGStrings[4]);
+                horizontalElements = 2;
+                width_wave = width_height.first;
+                height_wave = width_height.second;
+                totalWidth = 2*width_wave;
+                totalHeight += height_wave;
+                if(!combineWaves){
+                    totalHeight += height_wave;
+                    verticalElements++;
+                }
+                verticalElements++;
+            }
+
+
+            
+            std::cout << "First plot:" << firstPlot << std::endl;
+            std::size_t SVGbegin = SVGStrings[firstPlot].find("<svg");
+            SVGStrings[firstPlot].insert(SVGbegin,Sformat("<svg cool=\"1\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
                 "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
                 "\"http://www.w3.org/1999/xlink\">\n",
-                2*width, 4*height, 2*width, 4*height));
+                totalWidth, totalHeight, totalWidth, totalHeight));
+
 
             auto appendPlot = [&](int index, int x, int y){
+                std::cout << "x: " << x * (totalWidth/horizontalElements) << " y: " << y * (totalHeight/verticalElements) << std::endl;
                 SVGbegin = SVGStrings[index].find("width=");
                 SVGStrings[index].insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-                x * width, y * height));
+                x * (totalWidth/horizontalElements), y * (totalHeight/verticalElements)));
                 SVGbegin = SVGStrings[index].find("<svg");
                 SVGStrings[index] = SVGStrings[index].substr(SVGbegin);
+                
             };
             
-            appendPlot(1,0,1);
-            appendPlot(2,1,0);
-            appendPlot(3,1,1);
-            appendPlot(4,0,2);
-            appendPlot(5,0,3);
-            appendPlot(6,1,2);
-            appendPlot(7,1,3);
-            SVGStrings[7].append("</svg>");
-            isMakingSVG = false;
-            
-            std::ofstream fs(SVGpath);
-            for(std::string& str : SVGStrings){
-                fs << str;
+            int y_ind = 0;
+            if(showSlices){
+                appendPlot(1,0,1);
+                appendPlot(2,1,0);
+                appendPlot(3,1,1);
+
+                y_ind = 2;
             }
+            if(showSlices && showBeamView){
+                appendPlot(8,0,y_ind);
+            }
+            if(showBeamView) y_ind++;
+            if(showWaves && (showSlices || showBeamView)){
+                appendPlot(4,0,y_ind);
+            }
+            if(showWaves){
+                appendPlot(6,1,y_ind);
+                y_ind++;
+                if(!combineWaves){
+                    appendPlot(5,0,y_ind);
+                    appendPlot(7,1,y_ind);
+                }
+            }
+
+            
+            isMakingSVG = false;
+            std::ofstream fs(SVGpath);
+
+            fs << SVGStrings[0];
+            fs << SVGStrings[1];
+            fs << SVGStrings[2];
+            fs << SVGStrings[3];
+            fs << SVGStrings[8];
+            fs << SVGStrings[4];
+            fs << SVGStrings[5];
+            fs << SVGStrings[6];
+            fs << SVGStrings[7];
+
+
+            fs << "</svg>";
         });
         
     }
@@ -2409,7 +2495,7 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (imageLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
-            theGui.SVGStrings[0] = sPlot.SVGString;
+            theGui.SVGStrings[8] = sPlot.SVGString;
         }
     }
     else blackoutCairoPlot(cr, width, height);
