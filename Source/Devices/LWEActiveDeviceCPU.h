@@ -556,7 +556,16 @@ public:
 
 	void reset(simulationParameterSet* sCPU) override {
 		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
-		allocation->useNewParameterSet(sCPU);
+		cParams = sCPU;
+		if(visualizationOnly){
+			resetFFT = visualization->Nx != sCPU->Nspace
+			|| visualization->Ny != sCPU->Nspace2
+			|| visualization->Nt != sCPU->Ntime;
+			visualization->setSimulationDimensions(sCPU);
+		}
+		else{
+			allocation->useNewParameterSet(sCPU);
+		}
 		if(resetFFT){
 			fftInitialize();
 		}

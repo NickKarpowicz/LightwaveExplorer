@@ -440,7 +440,7 @@ unsigned long renderVisualizationX(VisualizationConfig config){
         d_vis = new ActiveDevice(config.width, config.height, config.sCPU);
     }
     else{
-        d_vis->visualization->setSimulationDimensions(config.sCPU);
+        d_vis->reset(config.sCPU);
         d_vis->visualization->setImageDimensions(config.width, config.height);
     }
     d_vis->visualization->fetchSim(config.sCPU, config.simIndex);
