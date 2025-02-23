@@ -1742,7 +1742,7 @@ public:
                 if(isZipFile) theSim.loadOptics(path);
                 theSim.configure(true);
                 std::for_each(theSim.mutexes.begin(), theSim.mutexes.end(), 
-                        [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
+                        [](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
                 if (readParameters == 61 && theSim.base().isGridAllocated) {
                     int64_t extensionLoc = path.find_last_of(".");
                     const std::string basePath = path.substr(0, extensionLoc);
@@ -2347,7 +2347,7 @@ void drawBeamThread(LWEGui& theGui, int64_t simIndex, VisualizationType type){
     config.dTheta = 2*config.maxAngle/config.Nx;
     config.simIndex = simIndex;
     config.result_pixels = &theGui.beamView.pixels;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex));
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex));
     std::unique_lock imageLock(theGui.beamViewMutex);
     renderVisualizationCPU(config);
     theGui.messenger->requestUpdate();
@@ -2418,7 +2418,7 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
     sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
@@ -2462,7 +2462,7 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         sPlot.yLabel = "E (GV/m)";
     }
     sPlot.unitY = 1e9;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
@@ -2503,7 +2503,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
@@ -2568,7 +2568,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         sPlot.forcedYmin = yMin;
         sPlot.forcedYmax = yMax;
     }
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
@@ -2630,7 +2630,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         sPlot.forcedYmax = yMax;
     }
     
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
@@ -2676,7 +2676,7 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
     sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
@@ -2724,7 +2724,7 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
     sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
@@ -2772,7 +2772,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
     sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){

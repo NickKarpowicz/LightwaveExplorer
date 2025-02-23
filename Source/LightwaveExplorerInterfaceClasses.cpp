@@ -789,7 +789,7 @@ void simulationBatch::configure(bool allocateFields) {
 	simulationParameterSet base = parameters[0];
 	parameters.resize(Nsimstotal, base);
 	std::for_each(mutexes.begin(), mutexes.end(),
-		[](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
+		[](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
 	if(allocateFields){
 		Ext = std::vector<double>(Nsimstotal * Ngrid * 2, 0.0);
 		Ekw = std::vector<std::complex<double>>(
@@ -797,7 +797,7 @@ void simulationBatch::configure(bool allocateFields) {
 			std::complex<double>(0.0, 0.0));
 	}
 	
-	mutexes = std::vector<std::mutex>(Nsimstotal);
+	mutexes = std::vector<std::shared_mutex>(Nsimstotal);
 	totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
 
 	if (parameters[0].pulse1FileType == 1 || parameters[0].pulse1FileType == 2) {
@@ -884,8 +884,8 @@ void simulationBatch::configureCounter() {
 	simulationParameterSet base = parameters[0];
 	parameters.resize(Nsimstotal, base);
 	std::for_each(mutexes.begin(), mutexes.end(),
-		[](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
-	mutexes = std::vector<std::mutex>(Nsimstotal);
+		[](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
+	mutexes = std::vector<std::shared_mutex>(Nsimstotal);
 
 	//configure
 	double step1 = (parameters[0].batchDestination
@@ -1001,7 +1001,7 @@ void simulationBatch::loadOptics(const std::string& zipPath){
 
 int simulationBatch::saveDataSet() {
 	std::for_each(mutexes.begin(), mutexes.end(),
-		[&](std::mutex& m) { m.lock(); });
+		[&](std::shared_mutex& m) { m.lock(); });
 
 	std::string Epath=parameters[0].outputBasePath + "_Ext.dat";
 	std::string Spath=parameters[0].outputBasePath + "_spectrum.dat";
@@ -1035,7 +1035,7 @@ int simulationBatch::saveDataSet() {
 	mz_zip_writer_end(&zip);
 
 	std::for_each(mutexes.begin(), mutexes.end(),
-		[&](std::mutex& m) { m.unlock(); });
+		[&](std::shared_mutex& m) { m.unlock(); });
 	return 0;
 }
 

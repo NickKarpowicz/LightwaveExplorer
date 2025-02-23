@@ -473,14 +473,14 @@ class simulationBatch {
 public:
     std::vector<loadedInputData> optics;
     std::vector<simulationParameterSet> parameters;
-    std::vector<std::mutex> mutexes = std::vector<std::mutex>(1);
+    std::vector<std::shared_mutex> mutexes = std::vector<std::shared_mutex>(1);
 
     simulationBatch() {
         parameters = std::vector<simulationParameterSet>(1);
     }
     ~simulationBatch() {
         std::for_each(mutexes.begin(), mutexes.end(), 
-            [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
+            [](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
     }
     void configure(bool allocateFields=true);
     void configureCounter();
