@@ -1499,6 +1499,9 @@ public:
                 plots["beamView"]->hide();
             } 
         });
+        addPulldownInContainer(labelWidth, plotControlRegionLayout, "beamViewMode");
+        pulldowns["beamViewMode"]->addItem("Near field");
+        pulldowns["beamViewMode"]->addItem("Far field");
         addTextBoxRowForPlots(
             "Red (f, \xcf\x83, I)", 
             "Red_frequency", 
@@ -1900,7 +1903,8 @@ public:
     void renderBeamView(){
         if(plots["beamView"]->isVisible()){
             int64_t simIndex = maxN(0,slider->value());
-            std::thread(drawBeamThread,std::ref(*this),simIndex).detach();
+            VisualizationType type = static_cast<VisualizationType>(pulldowns["beamViewMode"]->currentIndex());
+            std::thread(drawBeamThread,std::ref(*this),simIndex,type).detach();
         }
     }
     void updateBeamView(){
@@ -2322,14 +2326,14 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 }
 
 
-void drawBeamThread(LWEGui& theGui, int64_t simIndex){
+void drawBeamThread(LWEGui& theGui, int64_t simIndex, VisualizationType type){
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
     }
     theGui.beamView.height = theGui.theSim.base().Nspace;
     theGui.beamView.width = theGui.theSim.base().Nspace;
     theGui.beamView.hasFullSizeRenderedImage = true;
-    VisualizationConfig config(&(theGui.theSim.base()), VisualizationType::beamFalseColor);
+    VisualizationConfig config(&(theGui.theSim.base()), type);
     config.red_f0 = 1e12 * theGui.textBoxes["Red_frequency"]->text().toDouble();
     config.green_f0 = 1e12 * theGui.textBoxes["Green_frequency"]->text().toDouble();
     config.blue_f0 = 1e12 * theGui.textBoxes["Blue_frequency"]->text().toDouble();
@@ -2339,6 +2343,8 @@ void drawBeamThread(LWEGui& theGui, int64_t simIndex){
     config.red_amplitude = 1e-11 * theGui.textBoxes["Red_strength"]->text().toDouble();
     config.green_amplitude = 1e-11 * theGui.textBoxes["Green_strength"]->text().toDouble();
     config.blue_amplitude = 1e-11 * theGui.textBoxes["Blue_strength"]->text().toDouble();
+    config.maxAngle = 10.0f * deg2Rad<float>();
+    config.dTheta = 2*config.maxAngle/config.Nx;
     config.simIndex = simIndex;
     config.result_pixels = &theGui.beamView.pixels;
     std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex));

@@ -120,7 +120,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui);
-void drawBeamThread(LWEGui& theGui, int64_t simIndex);
+void drawBeamThread(LWEGui& theGui, int64_t simIndex, VisualizationType type);
 class simulationRun {
 public:
     std::function<unsigned long(simulationParameterSet*)> normalFunction;

@@ -757,8 +757,9 @@ struct UPPEAllocation{
 };
 
 enum class VisualizationType{
-    beamPower,
-    beamFalseColor
+    beamFalseColor,
+    farFieldFalseColor,
+    beamPower
 };
 
 enum class CoordinateMode{
@@ -778,6 +779,8 @@ struct VisualizationConfig{
     float dy = 0.0f;
     float df = 0.0f;
     float dk = 0.0f;
+    float maxAngle = 1.0f;
+    float dTheta = 0.01f;
     int64_t Nx = 0;
     int64_t Ny = 0;
     int64_t Nt = 0;

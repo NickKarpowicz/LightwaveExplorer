@@ -4,6 +4,7 @@
 #define LWEFLOATINGPOINT 32
 #include "../LightwaveExplorerTrilingual.h"
 #include "../LightwaveExplorerInterfaceClasses.hpp"
+#include "../LightwaveExplorerHelpers.h"
 ActiveDevice* d_vis = nullptr;
 
 namespace deviceFunctions{
@@ -21,6 +22,12 @@ namespace deviceFunctions{
             static_cast<float>(Nspace)/2.0f + r + 0.25f));
 		return index;
 	}
+
+    deviceFunction static inline int64_t indexShiftFFT(const int64_t i, const int64_t Nx){
+        return (i < Nx/2) ?
+            Nx/2 + i:
+            i - Nx/2;
+    }
 
     deviceFunction static inline float findCenter(const int64_t Nspace, const int64_t stride, const float* data){
         float beamTotal{};
@@ -148,6 +155,47 @@ namespace kernelNamespace{
             const float f = f_index * config.df;
 
             const float scale = 1e-18 * config.df / (config.Nt);
+            const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
+            const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
+            const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
+
+            float Ef2 = deviceNorm(Ef[field_index]) + deviceNorm(Ef[field_index + config.Ngrid_complex]);
+            atomicAdd(&red[image_index],filter_red * Ef2);
+            atomicAdd(&green[image_index],filter_green * Ef2);
+            atomicAdd(&blue[image_index],filter_blue * Ef2);
+        }
+    };
+
+    struct falseColorFarfield3DKernel{
+        const deviceComplex* Ef;
+        float* red;
+        float* green;
+        float* blue;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            //relative to fixed max angle
+            //find angle of current point
+            //find corresponding kx value omega/c * sin theta
+            //round(kx/dk)+Nx/2 is field index
+            const int64_t f_index = (i % (config.Nt/2)) + 1;
+            const float f = f_index * config.df;
+            const float w = twoPi<float>() * f;
+            const int64_t x_index = (i / (config.Nt/2)) % config.Nx;
+            const int64_t y_index = (i / (config.Nt/2)) / config.Nx;
+            const float angle_x = x_index * config.dTheta - config.maxAngle;
+            const float angle_y = y_index * config.dTheta - config.maxAngle;
+            const float kx = deviceFPLib::sin(angle_x)*w/lightC<float>();
+            const float ky = deviceFPLib::sin(angle_y)*w/lightC<float>();
+            const int64_t kx_index = round(kx/config.dk) + config.Nx/2;
+            const int64_t ky_index = round(ky/config.dk) + config.Nx/2;
+            if(kx_index >= config.Nx 
+                || ky_index >= config.Nx
+                || kx_index<0
+                || ky_index<0) return;
+            const int64_t field_index = f_index + (indexShiftFFT(kx_index, config.Nx) + indexShiftFFT(ky_index, config.Ny) * config.Nx) * config.Nf;
+            const int64_t image_index = x_index + config.Nx * y_index;
+            
+            const float scale = 1e-18 * config.df / (config.Ngrid);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
@@ -391,6 +439,60 @@ namespace {
                 break;
         }
     }
+
+    static void renderFalseColorFarfield(const VisualizationConfig config){
+        d_vis->visualization->gridTimeSpace.initialize_to_zero();
+        switch(config.mode){
+            case CoordinateMode::cartesian2D: [[fallthrough]];
+            case CoordinateMode::FDTD2D:
+                d_vis->deviceLaunch(config.Nt/8, 4, 
+                    falseColorPrerenderKernel2D{
+                            d_vis->visualization->gridFrequency.device_ptr(), 
+                            d_vis->visualization->gridTimeSpace.device_ptr(),
+                            config});
+                d_vis->deviceLaunch(config.Nt/8, 4, 
+                    falseColorRender2DCartesianKernel{
+                            d_vis->visualization->red.device_ptr(),
+                            d_vis->visualization->green.device_ptr(),
+                            d_vis->visualization->blue.device_ptr(),
+                            d_vis->visualization->gridTimeSpace.device_ptr(),
+                            config});
+                floatImageToPixels(config, 1.0f);
+                d_vis->visualization->red.initialize_to_zero();
+                d_vis->visualization->green.initialize_to_zero();
+                d_vis->visualization->blue.initialize_to_zero();
+                break;
+            case CoordinateMode::radialSymmetry:
+                d_vis->deviceLaunch(config.Nt/8, 4, 
+                    falseColorPrerenderKernelCylindrical{
+                            d_vis->visualization->gridFrequency.device_ptr(), 
+                            d_vis->visualization->gridTimeSpace.device_ptr(),
+                            config});
+                d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
+                floatLinetoImageKernel{
+                    d_vis->visualization->gridTimeSpace.device_ptr(),
+                    d_vis->visualization->gridTimeSpace.device_ptr() + config.Nx,
+                    d_vis->visualization->gridTimeSpace.device_ptr() + 2*config.Nx,
+                    d_vis->visualization->imageGPU.device_ptr(),
+                config});
+                break;
+            case CoordinateMode::cartesian3D: [[fallthrough]];
+            case CoordinateMode::FDTD3D:
+                d_vis->deviceLaunch(config.Ngrid/64, 32, falseColorFarfield3DKernel{
+                    d_vis->visualization->gridFrequency.device_ptr(),
+                    d_vis->visualization->red.device_ptr(),
+                    d_vis->visualization->green.device_ptr(),
+                    d_vis->visualization->blue.device_ptr(),
+                    config});
+                floatImageToPixels(config, 1.0f);
+                    d_vis->visualization->red.initialize_to_zero();
+                    d_vis->visualization->green.initialize_to_zero();
+                    d_vis->visualization->blue.initialize_to_zero();
+            default:
+                break;
+        }
+    }
+
     static void renderBeamPower(const VisualizationConfig config){
         d_vis->visualization->gridFrequency.initialize_to_zero();
 
@@ -450,6 +552,9 @@ unsigned long renderVisualizationX(VisualizationConfig config){
             break;
         case VisualizationType::beamFalseColor:
             renderFalseColor(config);
+            break;
+        case VisualizationType::farFieldFalseColor:
+            renderFalseColorFarfield(config);
             break;
         default:
             return 1;
