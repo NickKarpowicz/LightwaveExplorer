@@ -1476,6 +1476,20 @@ public:
     #endif
 
     //Layout of plot control area
+
+        checkboxes["plotDark"] = new QCheckBox("Dark mode");
+        checkboxes["plotDark"]->setChecked(true);
+        checkboxes["plotDark"]->setToolTip("Uncheck to plot with white background");
+        plotControlRegionLayout->addWidget(checkboxes["plotDark"]);
+        addTextBoxRowForPlots(
+            "Font size", 
+            "fontSize", 
+            "none", 
+            "none", 
+            plotControlRegionLayout,
+            "Set font size in the plots\n",
+            13, 0, 0);
+
         checkboxes["showSpaceTimeMomentumFrequency"] = new QCheckBox("Slice images");
         checkboxes["showSpaceTimeMomentumFrequency"]->setChecked(true);
         checkboxes["showSpaceTimeMomentumFrequency"]->setToolTip("Show or hide the space/time and momentum/frequency view.");
@@ -1886,8 +1900,6 @@ public:
             int totalWidth = 0;
             int height_slice = 0;
             int width_slice = 0;
-            int height_beam = 0;
-            int width_beam = 0;
             int height_wave = 0;
             int width_wave = 0;
             int firstPlot = -1;
@@ -1911,8 +1923,6 @@ public:
                 }
                 startedSVG = true;
                 auto width_height = getDimensions(SVGStrings[8]);
-                width_beam = width_height.first;
-                height_beam = width_height.second;
                 totalWidth = width_height.first;
                 totalHeight += width_height.second;
                 verticalElements++;
@@ -1933,9 +1943,6 @@ public:
                 verticalElements++;
             }
 
-
-            
-            std::cout << "First plot:" << firstPlot << std::endl;
             std::size_t SVGbegin = SVGStrings[firstPlot].find("<svg");
             SVGStrings[firstPlot].insert(SVGbegin,Sformat("<svg cool=\"1\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
                 "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
@@ -1944,7 +1951,6 @@ public:
 
 
             auto appendPlot = [&](int index, int x, int y){
-                std::cout << "x: " << x * (totalWidth/horizontalElements) << " y: " << y * (totalHeight/verticalElements) << std::endl;
                 SVGbegin = SVGStrings[index].find("width=");
                 SVGStrings[index].insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
                 x * (totalWidth/horizontalElements), y * (totalHeight/verticalElements)));
@@ -2468,10 +2474,15 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &theGui.beamView;
-    sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     if(theGui.pulldowns["beamViewMode"]->currentIndex() == 1){
         sPlot.xLabel = "\xce\xb8 (deg)";
         sPlot.yLabel = "\xcf\x86 (deg)";
@@ -2523,6 +2534,12 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
 
     LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2558,7 +2575,13 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
     sPlot.makeSVG = theGui.isMakingSVG;
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().tStep / 1e-15;
@@ -2604,8 +2627,13 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     int64_t cubeMiddle = 
         theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
-
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
     sPlot.makeSVG = theGui.isMakingSVG;
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().tStep / 1e-15;
@@ -2655,8 +2683,13 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
- 
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
     sPlot.makeSVG = theGui.isMakingSVG;
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
@@ -2719,8 +2752,13 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
-
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
     sPlot.makeSVG = theGui.isMakingSVG;
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
@@ -2781,6 +2819,12 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
 
     LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2829,6 +2873,12 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     image.colorMap = ColorMap::purple;
     image.logMin = logPlotOffset;
     LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2877,6 +2927,12 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     image.colorMap = ColorMap::purple;
     image.logMin = logPlotOffset;
     LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;

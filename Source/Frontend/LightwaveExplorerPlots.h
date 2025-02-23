@@ -434,7 +434,7 @@ public:
     std::optional<T> forcedYmax;
     std::optional<T> forcedXmin;
     std::optional<T> forcedXmax;
-    LweColor axisColor = LweColor(0.5, 0.5, 0.5, 0.5);
+    LweColor axisColor = LweColor(0.8, 0.8, 0.8, 0.8);
     LweColor textColor = LweColor(0.8, 0.8, 0.8, 0.8);
     LweColor backgroundColor = LweColor(0.0, 0.0, 0.0, 0.0);
     std::vector<LweColor> lineColors;
@@ -564,7 +564,7 @@ public:
                 width, height, width, height));
             SVGString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke="
                 "\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
-                SVGh(0.0f), SVGh(0.0f), SVGh(0.0f), width, height));
+                SVGh(backgroundColor.r), SVGh(backgroundColor.g), SVGh(backgroundColor.b), width, height));
         }
         
         cairo_rectangle(cr, 0, 0, width, height);
