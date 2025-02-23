@@ -731,6 +731,7 @@ public:
         mainAreaLayout->addWidget(inputRegion);
         mainAreaLayout->addWidget(plotRegion);
         mainAreaLayout->addWidget(plotControlRegion);
+        plotControlRegion->setFixedWidth(220);
         plotControlRegion->hide();
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
         plotRegionLayout->setContentsMargins(0,0,0,0);
@@ -865,30 +866,37 @@ public:
             const float value2,
             const float value3){
                 QHBoxLayout* rowLayout = getRowBoxLayout(location);
+                rowLayout->setAlignment(Qt::AlignLeft);
+                rowLayout->setSpacing(2);
                 labels[entry1] = new QLabel;
                 labels[entry1]->setToolTip(tooltip);
                 textBoxes[entry1] = new QLineEdit;
-                textBoxes[entry2] = new QLineEdit;
-                textBoxes[entry3] = new QLineEdit;
+                if(entry2 != "none")textBoxes[entry2] = new QLineEdit;
+                if(entry3 != "none")textBoxes[entry3] = new QLineEdit;
                 textBoxes[entry1]->setToolTip(tooltip);
-                textBoxes[entry2]->setToolTip(tooltip);
-                textBoxes[entry3]->setToolTip(tooltip);
+                if(entry2 != "none")textBoxes[entry2]->setToolTip(tooltip);
+                if(entry3 != "none")textBoxes[entry3]->setToolTip(tooltip);
                 labels[entry1]->setToolTip(tooltip);
                 labels[entry1]->setText(label);
                 labels[entry1]->setFixedSize(plotLabelWidth,textBoxHeight);
                 textBoxes[entry1]->setFixedSize(plotTextBoxWidth,textBoxHeight);
-                textBoxes[entry2]->setFixedSize(plotTextBoxWidth,textBoxHeight);
-                textBoxes[entry3]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                if(entry2 != "none")textBoxes[entry2]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                if(entry3 != "none")textBoxes[entry3]->setFixedSize(plotTextBoxWidth,textBoxHeight);
                 QString s1(Sformat(std::string_view("{:g}"), value1).c_str());
                 textBoxes[entry1]->setText(s1);
-                QString s2(Sformat(std::string_view("{:g}"), value2).c_str());
-                textBoxes[entry2]->setText(s2);
-                QString s3(Sformat(std::string_view("{:g}"), value3).c_str());
-                textBoxes[entry3]->setText(s3);
-                rowLayout->addWidget(labels[entry1]);
-                rowLayout->addWidget(textBoxes[entry1]);
-                rowLayout->addWidget(textBoxes[entry2]); 
-                rowLayout->addWidget(textBoxes[entry3]); 
+                if(entry2 != "none"){
+                    QString s2(Sformat(std::string_view("{:g}"), value2).c_str());
+                    textBoxes[entry2]->setText(s2);
+                }
+
+                if(entry3 != "none"){
+                    QString s3(Sformat(std::string_view("{:g}"), value3).c_str());
+                    textBoxes[entry3]->setText(s3);
+                }
+                rowLayout->addWidget(labels[entry1], Qt::AlignLeft);
+                rowLayout->addWidget(textBoxes[entry1], Qt::AlignLeft);
+                if(entry2 != "none")rowLayout->addWidget(textBoxes[entry2], Qt::AlignLeft); 
+                if(entry3 != "none")rowLayout->addWidget(textBoxes[entry3], Qt::AlignLeft); 
         };
 
         auto addPulldownInContainer = [&](int width, QBoxLayout* location, const std::string& entry){
@@ -1508,7 +1516,8 @@ public:
             "Red_sigma", 
             "Red_strength", 
             plotControlRegionLayout,
-            "Control the red color channel in the beam view.\n",
+            "Control the red color channel in the beam view.\n"
+            "Central frequency (THz), bandwidth (THz), gain (multiplier)",
             400, 80, 1);
         addTextBoxRowForPlots(
             "Green (f, \xcf\x83, I)", 
@@ -1516,7 +1525,8 @@ public:
             "Green_sigma", 
             "Green_strength", 
             plotControlRegionLayout,
-            "Control the red color channel in the beam view.\n",
+            "Control the green color channel in the beam view.\n"
+            "Central frequency (THz), bandwidth (THz), gain (multiplier)",
             550, 80, 1);
         addTextBoxRowForPlots(
             "Blue (f, \xcf\x83, I)", 
@@ -1524,8 +1534,17 @@ public:
             "Blue_sigma", 
             "Blue_strength", 
             plotControlRegionLayout,
-            "Control the red color channel in the beam view.\n",
+            "Control the blue color channel in the beam view.\n"
+            "Central frequency (THz), bandwidth (THz), gain (multiplier)",
             680, 80, 1);
+        addTextBoxRowForPlots(
+                "Farfield \xe2\x88\xa0", 
+                "farfieldAngle", 
+                "none", 
+                "none", 
+                plotControlRegionLayout,
+                "Set the solid angle shown in the farfield view (in degrees)\n",
+                10, 0, 0);
         buttons["render"] = new QPushButton("Render");
         buttons["render"]->setFixedSize(mainButtonWidth,mainButtonHeight);
         buttons["render"]->setToolTip("Render the beam view with these parameters");
@@ -1569,7 +1588,7 @@ public:
         });
         
         
-        squeezeMargins(plotControlRegionLayout);
+        //squeezeMargins(plotControlRegionLayout);
 
         readDefaultValues(theSim, theDatabase);
         setInterfaceValuesToActiveValues(theSim);
@@ -2343,7 +2362,7 @@ void drawBeamThread(LWEGui& theGui, int64_t simIndex, VisualizationType type){
     config.red_amplitude = 1e-11 * theGui.textBoxes["Red_strength"]->text().toDouble();
     config.green_amplitude = 1e-11 * theGui.textBoxes["Green_strength"]->text().toDouble();
     config.blue_amplitude = 1e-11 * theGui.textBoxes["Blue_strength"]->text().toDouble();
-    config.maxAngle = 10.0f * deg2Rad<float>();
+    config.maxAngle = deg2Rad<float>() * theGui.textBoxes["farfieldAngle"]->text().toDouble();
     config.dTheta = 2*config.maxAngle/config.Nx;
     config.simIndex = simIndex;
     config.result_pixels = &theGui.beamView.pixels;
@@ -2367,12 +2386,24 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.width = width;
     sPlot.image = &theGui.beamView;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
-    sPlot.xLabel = "x (\xce\xbcm)";
-    sPlot.yLabel = "y (\xce\xbcm)";
-    sPlot.forcedXmax = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
-    sPlot.forcedXmin = -sPlot.forcedXmax.value();
-    sPlot.forcedYmin = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
-    sPlot.forcedYmax = -sPlot.forcedYmin.value();
+    if(theGui.pulldowns["beamViewMode"]->currentIndex() == 1){
+        sPlot.xLabel = "\xce\xb8 (deg)";
+        sPlot.yLabel = "\xcf\x86 (deg)";
+        sPlot.forcedXmax = theGui.textBoxes["farfieldAngle"]->text().toDouble();
+        sPlot.forcedXmin = -sPlot.forcedXmax.value();
+        sPlot.forcedYmin = theGui.textBoxes["farfieldAngle"]->text().toDouble();
+        sPlot.forcedYmax = -sPlot.forcedYmin.value();
+    }
+    else{
+        sPlot.xLabel = "x (\xce\xbcm)";
+        sPlot.yLabel = "y (\xce\xbcm)";
+        sPlot.forcedXmax = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
+        sPlot.forcedXmin = -sPlot.forcedXmax.value();
+        sPlot.forcedYmin = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
+        sPlot.forcedYmax = -sPlot.forcedYmin.value();
+    }
+
+
     sPlot.makeSVG = theGui.isMakingSVG;
     std::unique_lock imageLock(theGui.beamViewMutex);
     if (imageLock.owns_lock()) {

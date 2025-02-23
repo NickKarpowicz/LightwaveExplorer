@@ -704,10 +704,10 @@ public:
                 }
             }
             if (abs(ytVal) > 10.0 || abs(ytVal) < 0.01) {
-                messageBuffer = Sformat("{:.1e}", ytVal);
+                messageBuffer = Sformat("{:.2g}", ytVal);
             }
             else {
-                messageBuffer = Sformat("{:4.4f}", ytVal);
+                messageBuffer = Sformat("{:4.4g}", ytVal);
             }
             if(messageBuffer=="0.0e+00") messageBuffer = "0";
             layoutLeft = axisLabelSpaceX;
