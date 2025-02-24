@@ -25,7 +25,8 @@ if(USE_CUDA AND USE_SYCL)
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCounter.cpp 
-        Source/Devices/DlibLibraryComponents.cpp)
+        Source/Devices/DlibLibraryComponents.cpp
+        Source/Frontend/LWEVisualizationsCPU.cpp)
     target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
     target_link_libraries(LightwaveExplorer fmt::fmt -lm miniz)
     link_fft_library(LightwaveExplorer)
@@ -105,7 +106,8 @@ elseif(AMDLIBRARY)
             Source/Frontend/LightwaveExplorerFrontendQt.cpp 
             Source/Devices/LightwaveExplorerCoreCPU.cpp 
             Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
-            Source/Devices/LightwaveExplorerCoreCounter.cpp)
+            Source/Devices/LightwaveExplorerCoreCounter.cpp
+            Source/Frontend/LWEVisualizationsCPU.cpp)
         target_link_libraries(${EXECUTABLE_NAME}  ${LIBRARY_NAME} onemkl)
         target_link_libraries(${EXECUTABLE_NAME}  -lsycl)
         target_link_libraries(${EXECUTABLE_NAME}  Qt6::Widgets Qt6::DBus)
@@ -136,7 +138,8 @@ elseif(USE_SYCL)
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCounter.cpp 
-        Source/Devices/DlibLibraryComponents.cpp)
+        Source/Devices/DlibLibraryComponents.cpp
+        Source/Frontend/LWEVisualizationsCPU.cpp)
     target_link_libraries(${EXECUTABLE_NAME}  onemkl)
     target_link_libraries(${EXECUTABLE_NAME}  -lsycl)
     target_link_libraries(${EXECUTABLE_NAME}  Qt6::Widgets Qt6::DBus)
@@ -166,7 +169,8 @@ else()
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCounter.cpp 
-        Source/Devices/DlibLibraryComponents.cpp)
+        Source/Devices/DlibLibraryComponents.cpp
+        Source/Frontend/LWEVisualizationsCPU.cpp)
     target_link_libraries(${EXECUTABLE_NAME} Qt6::Widgets Qt6::DBus)
     target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES})
     link_fft_library(${EXECUTABLE_NAME})
