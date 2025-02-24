@@ -337,6 +337,34 @@ namespace kernelNamespace{
         }
     };
 
+    struct falseColorRender2DCartesianNoRotationKernel{
+        float* red;
+        float* green;
+        float* blue;
+        float* workspace;
+        const VisualizationConfig config;
+        deviceFunction void operator()(const int64_t i) const {
+            //i range 0..Nx*Nx*Nt/2
+            const float mid = static_cast<float>(config.Nx)/2.0f;
+            const int64_t Nf = config.Nt/2; //not +1 because I skip 0
+            const int64_t f_ind = i % Nf;
+            
+            int64_t dataSize = Nf*(config.Nx);
+            float* red_data = workspace;
+            float* green_data = red_data + dataSize;
+            float* blue_data = green_data + dataSize;
+        
+            for(int x_ind{}; x_ind<config.Nx; ++x_ind){
+                for(int y_ind{}; y_ind<config.Nx; ++y_ind){
+                    const int64_t img_ind = x_ind + y_ind * config.Nx;
+                    atomicAdd(&red[img_ind], red_data[f_ind + x_ind*(config.Nt/2)]);
+                    atomicAdd(&green[img_ind], green_data[f_ind + x_ind*(config.Nt/2)]);
+                    atomicAdd(&blue[img_ind], blue_data[f_ind + x_ind*(config.Nt/2)]);
+                }
+            }
+        }
+    };
+
     struct floatImagesToPixelsKernel{
         const float* red;
         const float* green;
@@ -470,13 +498,25 @@ namespace {
                             d_vis->visualization->gridFrequency.device_ptr(), 
                             d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
-                d_vis->deviceLaunch(config.Nt/8, 4, 
-                    falseColorRender2DCartesianKernel{
-                            d_vis->visualization->red.device_ptr(),
-                            d_vis->visualization->green.device_ptr(),
-                            d_vis->visualization->blue.device_ptr(),
-                            d_vis->visualization->gridTimeSpace.device_ptr(),
-                            config});
+                if(config.rotate2D){
+                    d_vis->deviceLaunch(config.Nt/8, 4, 
+                        falseColorRender2DCartesianKernel{
+                                d_vis->visualization->red.device_ptr(),
+                                d_vis->visualization->green.device_ptr(),
+                                d_vis->visualization->blue.device_ptr(),
+                                d_vis->visualization->gridTimeSpace.device_ptr(),
+                                config});
+                }
+                else{
+                    d_vis->deviceLaunch(config.Nt/8, 4, 
+                        falseColorRender2DCartesianNoRotationKernel{
+                                d_vis->visualization->red.device_ptr(),
+                                d_vis->visualization->green.device_ptr(),
+                                d_vis->visualization->blue.device_ptr(),
+                                d_vis->visualization->gridTimeSpace.device_ptr(),
+                                config});
+                }
+                
                 floatImageToPixels(config, 1.0f);
                 d_vis->visualization->red.initialize_to_zero();
                 d_vis->visualization->green.initialize_to_zero();
@@ -523,13 +563,25 @@ namespace {
                             d_vis->visualization->gridFrequency.device_ptr(), 
                             d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
-                d_vis->deviceLaunch(config.Nt/8, 4, 
-                    falseColorRender2DCartesianKernel{
-                            d_vis->visualization->red.device_ptr(),
-                            d_vis->visualization->green.device_ptr(),
-                            d_vis->visualization->blue.device_ptr(),
-                            d_vis->visualization->gridTimeSpace.device_ptr(),
-                            config});
+                if(config.rotate2D){
+                    d_vis->deviceLaunch(config.Nt/8, 4, 
+                        falseColorRender2DCartesianKernel{
+                                d_vis->visualization->red.device_ptr(),
+                                d_vis->visualization->green.device_ptr(),
+                                d_vis->visualization->blue.device_ptr(),
+                                d_vis->visualization->gridTimeSpace.device_ptr(),
+                                config});
+                }
+                else{
+                    d_vis->deviceLaunch(config.Nt/8, 4, 
+                        falseColorRender2DCartesianNoRotationKernel{
+                                d_vis->visualization->red.device_ptr(),
+                                d_vis->visualization->green.device_ptr(),
+                                d_vis->visualization->blue.device_ptr(),
+                                d_vis->visualization->gridTimeSpace.device_ptr(),
+                                config});
+                }
+                
                 floatImageToPixels(config, 1.0f);
                 d_vis->visualization->red.initialize_to_zero();
                 d_vis->visualization->green.initialize_to_zero();

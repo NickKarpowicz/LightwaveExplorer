@@ -805,6 +805,7 @@ struct VisualizationConfig{
     float blue_f0 = 650e12f;
     float blue_sigma = 50e12f;
     float blue_amplitude = 1.0f;
+    bool rotate2D = false;
     std::vector<uint8_t>* result_pixels = nullptr;
     VisualizationConfig(simulationParameterSet* sCPU_in, VisualizationType type_in) : 
         sCPU(sCPU_in),

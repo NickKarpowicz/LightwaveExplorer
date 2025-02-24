@@ -1559,6 +1559,13 @@ public:
                 plotControlRegionLayout,
                 "Set the solid angle shown in the farfield view (in degrees)\n",
                 10, 0, 0);
+        checkboxes["rotate2D"] = new QCheckBox("Rotate 2D around center");
+        checkboxes["rotate2D"]->setChecked(true);
+        checkboxes["rotate2D"]->setToolTip(
+            "Produce images in 2D mode by rotating around the center-of-mass.\n"
+            "This will produce ring artifacts for frequencies that don't correspond\n"
+            "to a single beam.");
+        plotControlRegionLayout->addWidget(checkboxes["rotate2D"]);
         buttons["render"] = new QPushButton("Render");
         buttons["render"]->setFixedSize(mainButtonWidth,mainButtonHeight);
         buttons["render"]->setToolTip("Render the beam view with these parameters");
@@ -2035,6 +2042,7 @@ public:
             config.dTheta = 2*config.maxAngle/config.Nx;
             config.simIndex = simIndex;
             config.result_pixels = &beamView.pixels;
+            config.rotate2D = checkboxes["rotate2D"]->isChecked();
             std::thread(drawBeamThread,std::ref(*this),config).detach();
         }
     }
