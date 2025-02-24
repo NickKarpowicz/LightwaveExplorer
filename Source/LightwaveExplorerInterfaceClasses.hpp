@@ -596,6 +596,9 @@ struct VisualizationAllocation{
         if(imageGPU.count < static_cast<std::size_t>(newNimage)){
             imageGPU.resize(newNimage);
             image.resize(newNimage);
+            red.resize(newNimage);
+            green.resize(newNimage);
+            blue.resize(newNimage);
         }
         Nimage = newNimage;
         height = new_height;

@@ -320,7 +320,7 @@ public:
     LweImage<double> beamView;
     std::mutex beamViewMutex;
     GuiMessenger* messenger;
-    std::mutex m;
+    std::shared_mutex m;
 
     bool isMakingSVG = false;
     std::array<std::string,9> SVGStrings;
@@ -2015,7 +2015,27 @@ public:
         if(plots["beamView"]->isVisible()){
             int64_t simIndex = maxN(0,slider->value());
             VisualizationType type = static_cast<VisualizationType>(pulldowns["beamViewMode"]->currentIndex());
-            std::thread(drawBeamThread,std::ref(*this),simIndex,type).detach();
+            if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
+                simIndex = 0;
+            }
+            beamView.height = theSim.base().Nspace;
+            beamView.width = theSim.base().Nspace;
+            beamView.hasFullSizeRenderedImage = true;
+            VisualizationConfig config(&(theSim.base()), type);
+            config.red_f0 = 1e12 * textBoxes["Red_frequency"]->text().toDouble();
+            config.green_f0 = 1e12 * textBoxes["Green_frequency"]->text().toDouble();
+            config.blue_f0 = 1e12 * textBoxes["Blue_frequency"]->text().toDouble();
+            config.red_sigma = 1e12 * textBoxes["Red_sigma"]->text().toDouble();
+            config.green_sigma = 1e12 * textBoxes["Green_sigma"]->text().toDouble();
+            config.blue_sigma = 1e12 * textBoxes["Blue_sigma"]->text().toDouble();
+            config.red_amplitude = 1e-11 * textBoxes["Red_strength"]->text().toDouble();
+            config.green_amplitude = 1e-11 * textBoxes["Green_strength"]->text().toDouble();
+            config.blue_amplitude = 1e-11 * textBoxes["Blue_strength"]->text().toDouble();
+            config.maxAngle = deg2Rad<float>() * textBoxes["farfieldAngle"]->text().toDouble();
+            config.dTheta = 2*config.maxAngle/config.Nx;
+            config.simIndex = simIndex;
+            config.result_pixels = &beamView.pixels;
+            std::thread(drawBeamThread,std::ref(*this),config).detach();
         }
     }
     void updateBeamView(){
@@ -2241,6 +2261,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
             theSim.sCPU()[j].runningOnCPU = activeRun.forceCPU;
             theSim.sCPU()[j].assignedGPU = activeRun.assignedGPU;
             theSim.sCPU()[j].useOpenMP = activeRun.useOpenMP;
+            std::unique_lock lock(theSim.mutexes.at(j));
                 try {
                     if(theSim.base().isInSequence){
                         error = activeRun.sequenceFunction(&theSim.sCPU()[j]);
@@ -2436,35 +2457,18 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 #endif
 }
 
-
-void drawBeamThread(LWEGui& theGui, int64_t simIndex, VisualizationType type){
-    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
-        simIndex = 0;
-    }
-    theGui.beamView.height = theGui.theSim.base().Nspace;
-    theGui.beamView.width = theGui.theSim.base().Nspace;
-    theGui.beamView.hasFullSizeRenderedImage = true;
-    VisualizationConfig config(&(theGui.theSim.base()), type);
-    config.red_f0 = 1e12 * theGui.textBoxes["Red_frequency"]->text().toDouble();
-    config.green_f0 = 1e12 * theGui.textBoxes["Green_frequency"]->text().toDouble();
-    config.blue_f0 = 1e12 * theGui.textBoxes["Blue_frequency"]->text().toDouble();
-    config.red_sigma = 1e12 * theGui.textBoxes["Red_sigma"]->text().toDouble();
-    config.green_sigma = 1e12 * theGui.textBoxes["Green_sigma"]->text().toDouble();
-    config.blue_sigma = 1e12 * theGui.textBoxes["Blue_sigma"]->text().toDouble();
-    config.red_amplitude = 1e-11 * theGui.textBoxes["Red_strength"]->text().toDouble();
-    config.green_amplitude = 1e-11 * theGui.textBoxes["Green_strength"]->text().toDouble();
-    config.blue_amplitude = 1e-11 * theGui.textBoxes["Blue_strength"]->text().toDouble();
-    config.maxAngle = deg2Rad<float>() * theGui.textBoxes["farfieldAngle"]->text().toDouble();
-    config.dTheta = 2*config.maxAngle/config.Nx;
-    config.simIndex = simIndex;
-    config.result_pixels = &theGui.beamView.pixels;
-    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex));
+void drawBeamThread(LWEGui& theGui, VisualizationConfig config){
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(config.simIndex), std::try_to_lock);
+    if(!(dataLock.owns_lock()) || !(guiLock.owns_lock())) return;
     std::unique_lock imageLock(theGui.beamViewMutex);
+    if(&theGui.theSim.base() != config.sCPU) return;
     renderVisualizationCPU(config);
     theGui.messenger->requestUpdate();
 }
 void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2500,7 +2504,6 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
         sPlot.forcedYmax = -sPlot.forcedYmin.value();
     }
 
-
     sPlot.makeSVG = theGui.isMakingSVG;
     std::unique_lock imageLock(theGui.beamViewMutex);
     if (imageLock.owns_lock()) {
@@ -2513,7 +2516,8 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2563,7 +2567,8 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2613,7 +2618,8 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2660,7 +2666,8 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2729,7 +2736,8 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2796,7 +2804,8 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2848,7 +2857,8 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
@@ -2902,7 +2912,8 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    if (!theGui.theSim.base().isGridAllocated) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
