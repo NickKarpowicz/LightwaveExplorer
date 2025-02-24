@@ -289,8 +289,8 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             //i range 0..Nx*Nx*Nt/2
             const float mid = static_cast<float>(config.Nx)/2.0f;
-            const int64_t Nf = config.Nt/2; //not +1 because I skip 0
-            const int64_t f_ind = i % Nf;
+            const int64_t Nf = config.Nt/2; 
+            const int64_t f_ind = i % Nf; //not +1 because I skip 0
             
             int64_t dataSize = Nf*(config.Nx);
             float* red_data = workspace;
@@ -315,7 +315,7 @@ namespace kernelNamespace{
                     const bool idx2Valid = (idx2 < config.Nx) && (idx2>=0);
 
                     if(idx1Valid && idx2Valid){
-                        atomicAdd(&channel[img_ind], data[f_ind + idx1*(config.Nt/2)] + data[f_ind + idx2*(config.Nt/2)]); 
+                        atomicAdd(&channel[img_ind], 0.5f * (data[f_ind + idx1*(config.Nt/2)] + data[f_ind + idx2*(config.Nt/2)])); 
                     }
                     else if(idx1Valid){
                         atomicAdd(&channel[img_ind], data[f_ind + idx1*(config.Nt/2)]); 
@@ -344,9 +344,7 @@ namespace kernelNamespace{
         float* workspace;
         const VisualizationConfig config;
         deviceFunction void operator()(const int64_t i) const {
-            //i range 0..Nx*Nx*Nt/2
-            const float mid = static_cast<float>(config.Nx)/2.0f;
-            const int64_t Nf = config.Nt/2; //not +1 because I skip 0
+            const int64_t Nf = config.Nt/2;
             const int64_t f_ind = i % Nf;
             
             int64_t dataSize = Nf*(config.Nx);
