@@ -644,14 +644,17 @@ public:
                 messageBuffer));
         };
 
-        auto SVGlefttext = [&]() {
-            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" "
-                "font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" "
-                "y=\"{}\">\n{}\n</text>\n", 
-                fontSize - 1, 
-                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
-                layoutLeft, layoutTop + fontSize, 
-                messageBuffer));
+        auto SVGrighttext = [&]() {
+            if (makeSVG){
+                cairo_text_extents(cr, messageBuffer.c_str(), &te);
+                SVGString.append(Sformat("<text font-family=\"Arial\" "
+                    "font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" "
+                    "y=\"{}\">\n{}\n</text>\n", 
+                    fontSize - 1, 
+                    currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
+                    layoutRight - te.x_advance - 0.25*fontSize, 0.5 * (layoutBottom + layoutTop - te.height), 
+                    messageBuffer));
+            }
         };
 
         cairo_set_line_width(cr, lineWidth);
@@ -664,7 +667,7 @@ public:
         auto cairoRightText = [&]() {
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
-            cairo_move_to(cr, layoutRight - te.width - 3, 
+            cairo_move_to(cr, layoutRight - te.x_advance - 0.25 * fontSize, 
                 0.5 * (layoutBottom + layoutTop - te.height));
             cairo_show_text(cr, messageBuffer.c_str());
         };
@@ -672,7 +675,7 @@ public:
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
             cairo_move_to(cr, 
-                0.5 * (layoutLeft + layoutRight - te.width), 
+                0.5 * (layoutLeft + layoutRight - te.x_advance), 
                 0.5 * (layoutBottom + layoutTop - te.height));
             cairo_show_text(cr, messageBuffer.c_str());
         };
@@ -717,7 +720,7 @@ public:
             layoutBottom = layoutTop + axisSpaceY;
             layoutRight = axisSpaceX;
             cairoRightText();
-            SVGlefttext();
+            SVGrighttext();
         }
         //y-axis name
         if (yLabel.size()) {
