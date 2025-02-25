@@ -652,7 +652,7 @@ public:
                     "y=\"{}\">\n{}\n</text>\n", 
                     fontSize - 1, 
                     currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
-                    layoutRight - te.x_advance - 0.25*fontSize, 0.5 * (layoutBottom + layoutTop - te.height), 
+                    layoutRight - te.x_advance - 0.1*fontSize, 0.5 * (layoutBottom + layoutTop - te.height), 
                     messageBuffer));
             }
         };
@@ -667,7 +667,7 @@ public:
         auto cairoRightText = [&]() {
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
-            cairo_move_to(cr, layoutRight - te.x_advance - 0.25 * fontSize, 
+            cairo_move_to(cr, layoutRight - te.x_advance - 0.15 * fontSize, 
                 0.5 * (layoutBottom + layoutTop - te.height));
             cairo_show_text(cr, messageBuffer.c_str());
         };
@@ -712,7 +712,7 @@ public:
             else {
                 messageBuffer = Sformat("{:4.4g}", ytVal);
             }
-            if(messageBuffer=="0.0e+00") messageBuffer = "0";
+            if(messageBuffer=="0.0e+00") messageBuffer = "0 ";
             layoutLeft = axisLabelSpaceX;
             layoutTop = (i * (0.5 * (height)));
             if (i == 2) layoutTop -= 8.0f;
