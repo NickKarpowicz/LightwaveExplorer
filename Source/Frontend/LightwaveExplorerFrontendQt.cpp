@@ -448,6 +448,7 @@ public:
         sim.base().axesNumber = 0;
         sim.base().Ntime = (int64_t)(minGridDimension * round(sim.base().timeSpan 
             / (minGridDimension * sim.base().tStep)));
+        sim.base().timeSpan = sim.base().tStep * sim.base().Ntime;
         if (sim.base().symmetryType == 2) {
             sim.base().is3D = true;
             sim.base().isFDTD = false;

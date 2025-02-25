@@ -57,7 +57,7 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool 
 			0, 
 			1, 
 			(int)NgridC, 
-			FFTW_MEASURE);
+			FFTW_ESTIMATE);
 	}
 	else {
 		const int fftwSizes[] = { (int)Nspace, (int)Ntime };
@@ -73,7 +73,7 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool 
 			0, 
 			1, 
 			(int)NgridC, 
-			FFTW_MEASURE);
+			FFTW_ESTIMATE);
 	}
 
 	for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
@@ -731,9 +731,12 @@ int simulationParameterSet::readInputParametersFile(
 	sellmeierType = 0;
 	axesNumber = 0;
 	Ntime = (int64_t)(minGridDimension * round(timeSpan / (minGridDimension * tStep)));
+	timeSpan = Ntime * tStep; //force timeSpan to be consistent with Ntime
 	Nfreq = Ntime / 2 + 1;
 	Nspace = (int64_t)(minGridDimension * round(spatialWidth / (minGridDimension * rStep)));
+	spatialWidth = Nspace * rStep;
 	Nspace2 = (int64_t)(minGridDimension * round(spatialHeight / (minGridDimension * rStep)));
+	spatialHeight = Nspace2 * rStep;
 	Ngrid = Ntime * Nspace;
 	NgridC = Nfreq * Nspace;
 	kStep = twoPi<double>() / (Nspace * rStep);
