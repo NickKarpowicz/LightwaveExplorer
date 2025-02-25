@@ -18,14 +18,24 @@ Tutorials on YouTube!
 - Tutorial 5: (new!) <a href="https://www.youtube.com/watch?v=4njswvog4bo">FDTD</a>
 
 ---
-### Latest release: 2025.1
-Windows: [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
+### Latest release: 2025.2
+**Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
 
-Mac: [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
+**Mac:** [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
 
-Linux: [Get it on Flathub!](https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer)
+**Linux:**
 
-Changes in 2025.1:
+<a href='https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer'>
+    <img width='240' alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en'/>
+  </a>
+
+#### Changes in 2025.2:
+- Added new beam visualization mode, where you can make color images of the light field that results from the simulation
+- Add new controls for the appearance of plots, which you can access by clicking the ↔️ button on the bottom of the window.
+- Fixed a bug where a FROG file loaded for pulse 2 wouldn't be used.
+- Fixed a bug where very large grids whose dimensions were divisible by 4 but not by 8 would look weird.
+
+#### Changes in 2025.1:
 - Fixed a bug introduced in 2025.0 where on CUDA the plasma would not affect fields in the y-direction
 - Fixed a bug where cancelling a batch job caused the subsequent batch to cancel itself
 - Axes and scales are now shown on the space and momentum images, and they're also saved when an SVG is produced.
@@ -33,7 +43,7 @@ Changes in 2025.1:
 - Refactored device structures to more efficiently and consistently allocate memory
 - NOTE: to read the files produced with 2025.0 and later in python, you need [this updated version of LightwaveExplorer.py](https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/refs/heads/master/Documentation/LightwaveExplorer.py), many thanks to Florian Lindinger for the improved version that works with new and old files!
 
-Changes in 2025.0:
+#### Changes in 2025.0:
 
  - FDTD mode is more accessible: besides the options for crystals in the Propagation pulldown menu, you can also load a custom grid containing different nonlinear materials at different positions using the fdtd() function
  - FDTD reflection mode for nonlinear reflection from a surface, using the fdtdReflection() sequence command.

@@ -11,6 +11,16 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="2025.2" date="2025-02-27" urgency="high">
+  <description>
+  <ul>
+  <li>Added new beam visualization mode, where you can make color images of the light field that results from the simulation</li>
+  <li>Add new controls for the appearance of plots, which you can access by clicking the ↔️ button on the bottom of the window.</li>
+  <li>Fixed a bug where a FROG file loaded for pulse 2 wouldn't be used.</li>
+  <li>Fixed a bug where very large grids whose dimensions were divisible by 4 but not by 8 would look weird.</li>
+  </ul>
+  </description>
+  </release>
   <release version="2025.1" date="2025-02-17" urgency="high">
   <description>
   <p>Changes in this version:</p>
