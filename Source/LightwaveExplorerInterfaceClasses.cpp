@@ -334,7 +334,7 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	std::string FittingTargetPath = outputBasePath + "_fittingTarget.dat";
 	std::string Pulse1Path = outputBasePath + "_pulse1.dat";
 	std::string Pulse2Path = outputBasePath + "_pulse2.dat";
-	if(pulse2LoadedData.hasData){
+	if(pulse1LoadedData.hasData){
 		mz_zip_writer_add_mem(&zip, getBasename(Pulse1Path).c_str(), pulse1LoadedData.fileContents.c_str(), pulse1LoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 	}
 	if(pulse2LoadedData.hasData){
@@ -954,7 +954,7 @@ void simulationBatch::loadPulseFiles() {
 			parameters[0].Ntime, 
 			parameters[0].fStep, 
 			0.0);
-		parameters[0].field1IsAllocated = (frogLines > 1);
+		parameters[0].field2IsAllocated = (frogLines > 1);
 	}
 
 	if (parameters[0].pulse1FileType == 2) {
