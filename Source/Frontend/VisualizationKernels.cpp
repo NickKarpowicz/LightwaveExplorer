@@ -87,7 +87,7 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             const float f = (i+1) * config.df;
 
-            const float scale = 1e-18 * config.df / (config.Nt);
+            const float scale = 1.0f / ((1e-9 * config.df) * config.Nt * config.Nt);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
@@ -121,7 +121,7 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             const float f = (i+1) * config.df;
             const float k0 = twoPi<float>()*f/lightC<float>()/config.dk;
-            const float scale = 1e-18 * config.df / (config.Ngrid);
+            const float scale = 1.0f/ ((1e-20 * config.dk * config.dk) * config.df * config.Ngrid * config.Ngrid);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
@@ -161,7 +161,7 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             const float f = (i+1) * config.df;
 
-            const float scale = 1e-18*config.df / (config.Nt);
+            const float scale = 1.0 / ((1e-9 * config.df) * config.Nt * config.Nt);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
@@ -187,7 +187,7 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             const float f = (i+1) * config.df;
             const float k0 = twoPi<float>()*f/lightC<float>()/config.dk;
-            const float scale = 1e-18*config.df / (config.Ngrid);
+            const float scale = 1.0f / ((1e-20 * config.dk * config.dk) * config.Ngrid * config.Ngrid * config.df);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
@@ -207,8 +207,7 @@ namespace kernelNamespace{
                     atomicAdd(&red_line[j], filter_red * Ef2);
                     atomicAdd(&green_line[j], filter_green * Ef2);
                     atomicAdd(&blue_line[j], filter_blue * Ef2);
-                }
-                
+                }  
             }
         }
     };
@@ -227,7 +226,7 @@ namespace kernelNamespace{
             const int64_t image_index = x_index + config.Nx * y_index;
             const float f = f_index * config.df;
 
-            const float scale = 1e-18 * config.df / (config.Nt);
+            const float scale = 1.0f /(1e-9 * config.df* config.Nt * config.Nt);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
@@ -268,7 +267,7 @@ namespace kernelNamespace{
             const int64_t field_index = f_index + (indexShiftFFT(kx_index, config.Nx) + indexShiftFFT(ky_index, config.Ny) * config.Nx) * config.Nf;
             const int64_t image_index = x_index + config.Nx * y_index;
             
-            const float scale = 1e-18 * config.df / (config.Ngrid);
+            const float scale = 1.0f / (deviceFPLib::pow(config.dk * 3e-5, 4)* config.Ngrid * config.Ngrid);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
