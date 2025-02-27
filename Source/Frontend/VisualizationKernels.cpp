@@ -309,18 +309,9 @@ namespace kernelNamespace{
                     const float x = static_cast<float>(x_ind)-center;
                     const float r = hypotf(x,y);
                     const int64_t idx1 = static_cast<int64_t>((r+center));
-                    const int64_t idx2 = static_cast<int64_t>((r-center));
                     const bool idx1Valid = (idx1 < config.Nx) && (idx1>=0);
-                    const bool idx2Valid = (idx2 < config.Nx) && (idx2>=0);
-
-                    if(idx1Valid && idx2Valid){
-                        atomicAdd(&channel[img_ind], 0.5f * (data[f_ind + idx1*(config.Nt/2)] + data[f_ind + idx2*(config.Nt/2)])); 
-                    }
-                    else if(idx1Valid){
+                    if(idx1Valid){
                         atomicAdd(&channel[img_ind], data[f_ind + idx1*(config.Nt/2)]); 
-                    }
-                    else if(idx2Valid){
-                        atomicAdd(&channel[img_ind], data[f_ind + idx2*(config.Nt/2)]); 
                     }
             };
             

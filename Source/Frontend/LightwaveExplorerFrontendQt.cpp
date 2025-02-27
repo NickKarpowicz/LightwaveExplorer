@@ -2709,6 +2709,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
+    sPlot.yLabel = "Sx (J/THz)";
     if (theGui.checkboxes["Total"]->isChecked()) {
         sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq]);
         sPlot.lineColors.push_back(LweColor(1.0, 0.5, 0.0, 0));
@@ -2716,6 +2717,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (theGui.checkboxes["combinePolarizations"]->isChecked()) {
         sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq]);
         sPlot.lineColors.push_back(LweColor(1, 0, 0.5, 0.0));
+        sPlot.yLabel = "S (J/THz)";
     }
     sPlot.data.push_back(
         &theGui.theSim.base().totalSpectrum[simIndex * 3 * theGui.theSim.base().Nfreq]);
@@ -2724,7 +2726,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.lineColors.push_back(LweColor(0.5, 0, 1, 1));
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Sx (J/THz)";
+    
     sPlot.unitY = 1.0e-12;
     if(forceX){
         sPlot.forcedXmax = xMax;
