@@ -476,7 +476,7 @@ public:
         if(!image.has_value()){
             for (int i = 0; i < Npts; ++i) {
                 if (dataX.size()) currentX = (double)dataX[0][i];
-                else { currentX = (double)(i * dx + x0); }
+                else { currentX = static_cast<double>(i) * dx + x0; }
                 if (i == 0) {
                     minX = currentX;
                     maxX = currentX;
@@ -755,9 +755,9 @@ public:
 
         //x-axis tick labels
         for (int i = 0; i < 3; ++i) {
-            messageBuffer.assign(Sformat("{}", (int)round(xTicks1[i])));
+            messageBuffer.assign(Sformat("{:1.4g}", xTicks1[i]));
             if(messageBuffer=="0.0e+00") messageBuffer = "0";
-            layoutLeft = axisSpaceX + 0.25 * width * ((int64_t)(i)+1) - 0.5 * axisSpaceX;
+            layoutLeft = axisSpaceX + 0.25 * width * (static_cast<int64_t>(i+1)) - 0.5 * axisSpaceX;
             layoutTop = height + 3;
             layoutBottom = height + axisSpaceY;
             layoutRight = layoutLeft + axisSpaceX;

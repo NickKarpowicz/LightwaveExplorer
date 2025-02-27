@@ -2598,8 +2598,10 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dx = theGui.theSim.base().tStep / 1e-15;
-    sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
+    sPlot.dx = theGui.theSim.base().tStep * 1e15;
+    sPlot.x0 = -0.5e15 * (theGui.theSim.base().Ntime) * theGui.theSim.base().tStep;
+    sPlot.forcedXmin = sPlot.x0;
+    sPlot.forcedXmax = -sPlot.x0;
     sPlot.data.push_back(&theGui.theSim.base().ExtOut[
         simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
 
@@ -2652,7 +2654,9 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().tStep / 1e-15;
-    sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
+    sPlot.x0 = -0.5e15 * (theGui.theSim.base().Ntime) * theGui.theSim.base().tStep;
+    sPlot.forcedXmin = sPlot.x0;
+    sPlot.forcedXmax = -sPlot.x0;
     sPlot.data.push_back( 
         &theGui.theSim.base().ExtOut[
         theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
