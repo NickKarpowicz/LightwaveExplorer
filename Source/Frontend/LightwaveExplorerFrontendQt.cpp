@@ -1525,6 +1525,7 @@ public:
         addPulldownInContainer(labelWidth, plotControlRegionLayout, "beamViewMode");
         pulldowns["beamViewMode"]->addItem("Near field");
         pulldowns["beamViewMode"]->addItem("Far field");
+        pulldowns["beamViewMode"]->setCurrentIndex(1);
         addTextBoxRowForPlots(
             "Red (f, \xcf\x83, I)", 
             "Red_frequency", 
@@ -1533,7 +1534,7 @@ public:
             plotControlRegionLayout,
             "Control the red color channel in the beam view.\n"
             "Central frequency (THz), bandwidth (THz), gain (multiplier)",
-            400, 80, 1);
+            400, 60, 1);
         addTextBoxRowForPlots(
             "Green (f, \xcf\x83, I)", 
             "Green_frequency", 
@@ -1542,7 +1543,7 @@ public:
             plotControlRegionLayout,
             "Control the green color channel in the beam view.\n"
             "Central frequency (THz), bandwidth (THz), gain (multiplier)",
-            550, 80, 1);
+            550, 60, 1);
         addTextBoxRowForPlots(
             "Blue (f, \xcf\x83, I)", 
             "Blue_frequency", 
@@ -1551,7 +1552,7 @@ public:
             plotControlRegionLayout,
             "Control the blue color channel in the beam view.\n"
             "Central frequency (THz), bandwidth (THz), gain (multiplier)",
-            680, 80, 1);
+            680, 90, 1);
         addTextBoxRowForPlots(
                 "Farfield \xe2\x88\xa0", 
                 "farfieldAngle", 
@@ -1559,7 +1560,7 @@ public:
                 "none", 
                 plotControlRegionLayout,
                 "Set the solid angle shown in the farfield view (in degrees)\n",
-                10, 0, 0);
+                5, 0, 0);
         checkboxes["rotate2D"] = new QCheckBox("Rotate 2D around center");
         checkboxes["rotate2D"]->setChecked(true);
         checkboxes["rotate2D"]->setToolTip(
