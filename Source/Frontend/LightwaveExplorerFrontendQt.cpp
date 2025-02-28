@@ -1802,7 +1802,7 @@ public:
                         messenger->passString("Loaded stored pulse 2 file into buffer.");
                     }
                 }
-                messenger->requestUpdate();
+                messenger->passDrawRequest();
                 messenger->passSyncValues();
                 messenger->passSliderUpdate();
                 messenger->passString("done.");
