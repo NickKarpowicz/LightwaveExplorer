@@ -28,7 +28,8 @@ if(NOT DEFINED USE_SYCL)
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCounter.cpp 
-        Source/Devices/DlibLibraryComponents.cpp)
+        Source/Devices/DlibLibraryComponents.cpp
+        Source/Frontend/LWEVisualizationsCPU.cpp)
     set_target_properties(${EXECUTABLE_NAME} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
     target_compile_options(${EXECUTABLE_NAME} PRIVATE -O3 ${OpenMP_CXX_FLAGS} -DNOSYCL -DLWEFLATPAK)
     target_link_libraries(${EXECUTABLE_NAME} LightwaveExplorerCuda)
