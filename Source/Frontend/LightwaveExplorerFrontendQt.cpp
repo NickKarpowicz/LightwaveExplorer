@@ -767,13 +767,16 @@ public:
         plots["beamView"] = new CairoWidget(*this, drawBeamImage);
         plots["beamView"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plotRegionLayout->addWidget(plots["beamView"],2,0,1,2);
-        plots["beamView"]->setToolTip("Face-on view of the output light.");
+        plots["beamView"]->setToolTip("Face-on view of the output light. Depending on the setting in the\n"
+        "plot panel (right-hand side when the toggle arrow has been pressed)\n"
+        "either near-field at the end of the simulation (position) or far-field (angle)");
         //plots["beamView"]->hide();
 
         plots["timePlot1"] = new CairoWidget(*this, drawField1Plot);
         plots["timePlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["timePlot1"]->setToolTip(
-            "Plot of the on-axis electric field in the x-polarization");
+            "Plot of the on-axis electric field in the x-polarization. When the polarizations are combined,\n"
+        "it will show both x-polarization (cyan) and y-polarization (magenta).");
         plotRegionLayout->addWidget(plots["timePlot1"],4,0);
 
         plots["timePlot2"] = new CairoWidget(*this, drawField2Plot);
@@ -783,7 +786,7 @@ public:
         plotRegionLayout->addWidget(plots["timePlot2"],5,0);
         plots["freqPlot1"] = new CairoWidget(*this, drawSpectrum1Plot);
         plots["freqPlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["freqPlot1"]->setToolTip("Plot of the energy spectrum of the result, x-polarization.");
+        plots["freqPlot1"]->setToolTip("Plot of the energy spectrum of the result\n x-polarization (purple)\n y-polarization (red)\n total (orange)\n");
         plotRegionLayout->addWidget(plots["freqPlot1"],4,1);
         plots["freqPlot2"] = new CairoWidget(*this, drawSpectrum2Plot);
         plots["freqPlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -1427,6 +1430,7 @@ public:
         plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         buttons["collapse"] = new QPushButton("\xe2\x86\x94\xef\xb8\x8f");
         buttons["collapse"]->setFixedSize(miniButtonWidth, mainButtonHeight);
+        buttons["collapse"]->setToolTip("Collapse the simulation parameters pane and show the plot controls.");
         plotControlStripLayout->addWidget(buttons["collapse"]);
         
         slider = new QSlider(Qt::Horizontal);
