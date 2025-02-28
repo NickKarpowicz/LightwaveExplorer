@@ -52,7 +52,8 @@ if(NOT DEFINED USE_SYCL)
         Source/Devices/LightwaveExplorerCoreCPU.cpp 
         Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
         Source/Devices/LightwaveExplorerCoreCounter.cpp 
-        Source/Devices/DlibLibraryComponents.cpp)
+        Source/Devices/DlibLibraryComponents.cpp
+        Source/Frontend/LWEVisualizationsCPU.cpp)
     target_compile_options(LightwaveExplorerNoCuda PRIVATE ${OpenMP_CXX_FLAGS} -DNOSYCL -DNOCUDA -DLWEFLATPAK)
     target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
     target_link_libraries(LightwaveExplorerNoCuda ${CAIRO_LIBRARIES})
