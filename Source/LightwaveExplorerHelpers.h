@@ -30,8 +30,8 @@ hostOrDevice static constexpr inline T minN(const T a, const U b) {
 }
 //pi to stupid digits
 template <typename T>
-hostOrDevice static constexpr T vPi() {
-    return (T)3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384L;
+hostOrDevice static consteval T vPi() {
+    return static_cast<T>(3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384L);
 }
 template <typename T>
 hostOrDevice static constexpr T twoPi() {

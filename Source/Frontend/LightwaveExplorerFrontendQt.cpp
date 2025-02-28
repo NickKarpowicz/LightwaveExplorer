@@ -62,6 +62,12 @@ public slots:
     void passSliderUpdate(){
         emit requestSliderUpdate();
     }
+    void passBeamViewRender(){
+        emit requestBeamViewRender();
+    }
+    void passBeamViewUpdate(){
+        emit requestBeamViewUpdate();
+    }
     void passSliderPosition(int value){
         emit moveSlider(value);
     }
@@ -77,6 +83,8 @@ signals:
     void requestUpdate();
     void requestSyncValues();
     void requestSliderUpdate();
+    void requestBeamViewRender();
+    void requestBeamViewUpdate();
     void moveSlider(int value);
     void sendProgressRange(int min, int max);
     void sendProgressValue(int value);
@@ -306,13 +314,16 @@ public:
     QTextEdit* console;
     QTextEdit* fitting;
     QProgressBar* progress;
-    QWidget *inputRegion;
+    QWidget* inputRegion;
+    QWidget* plotControlRegion;
     QSlider* slider;
+    LweImage<double> beamView;
+    std::mutex beamViewMutex;
     GuiMessenger* messenger;
-    std::mutex m;
+    std::shared_mutex m;
 
     bool isMakingSVG = false;
-    std::array<std::string,8> SVGStrings;
+    std::array<std::string,9> SVGStrings;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
         std::string s = Svformat(format, Smake_format_args(args...));
         console->append(s.c_str());
@@ -437,6 +448,7 @@ public:
         sim.base().axesNumber = 0;
         sim.base().Ntime = (int64_t)(minGridDimension * round(sim.base().timeSpan 
             / (minGridDimension * sim.base().tStep)));
+        sim.base().timeSpan = sim.base().tStep * sim.base().Ntime;
         if (sim.base().symmetryType == 2) {
             sim.base().is3D = true;
             sim.base().isFDTD = false;
@@ -680,8 +692,9 @@ public:
         const int miniButtonWidth = 30;
         const int mainButtonHeight = textBoxHeight;
 #else
-
 #endif
+        const int plotTextBoxWidth = 40;
+        const int plotLabelWidth = 80;
         const int labelWidth = 2*textBoxWidth;
         const int rowHeight = textBoxHeight+2;
         const int rowWidth = labelWidth + 2*textBoxWidth + 10;
@@ -709,17 +722,24 @@ public:
         //Divide the large window area into an input area and a plot area
         inputRegion = new QWidget;
         QWidget *plotRegion = new QWidget;
-
+        //add a plot control region to show when the input area is collapsed
+        plotControlRegion = new QWidget;
         QHBoxLayout *mainAreaLayout = new QHBoxLayout(mainArea);
         squeezeMargins(mainAreaLayout);
         inputRegion->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
         plotRegion->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plotControlRegion->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         mainAreaLayout->addWidget(inputRegion);
         mainAreaLayout->addWidget(plotRegion);
-
+        mainAreaLayout->addWidget(plotControlRegion);
+        plotControlRegion->setFixedWidth(220);
+        plotControlRegion->hide();
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
         plotRegionLayout->setContentsMargins(0,0,0,0);
         plotRegionLayout->setSpacing(2);
+        
+        QVBoxLayout* plotControlRegionLayout = new QVBoxLayout(plotControlRegion);
+
         plots["timeImage1"] = new CairoWidget(*this, drawTimeImage1);
         plots["timeImage1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["timeImage1"]->setToolTip(
@@ -744,26 +764,35 @@ public:
             "Ey(kx,ky=0,f). Is plotted on a logarithmic scale. Vertical axis is transverse momentum\n"
             "kx, and horizontal axis is frequency f.");
 
+        plots["beamView"] = new CairoWidget(*this, drawBeamImage);
+        plots["beamView"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        plotRegionLayout->addWidget(plots["beamView"],2,0,1,2);
+        plots["beamView"]->setToolTip("Face-on view of the output light. Depending on the setting in the\n"
+        "plot panel (right-hand side when the toggle arrow has been pressed)\n"
+        "either near-field at the end of the simulation (position) or far-field (angle)");
+        //plots["beamView"]->hide();
+
         plots["timePlot1"] = new CairoWidget(*this, drawField1Plot);
         plots["timePlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["timePlot1"]->setToolTip(
-            "Plot of the on-axis electric field in the x-polarization");
-        plotRegionLayout->addWidget(plots["timePlot1"],2,0);
+            "Plot of the on-axis electric field in the x-polarization. When the polarizations are combined,\n"
+        "it will show both x-polarization (cyan) and y-polarization (magenta).");
+        plotRegionLayout->addWidget(plots["timePlot1"],4,0);
 
         plots["timePlot2"] = new CairoWidget(*this, drawField2Plot);
         plots["timePlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["timePlot2"]->setToolTip(
             "Plot of the on-axis electric field in the y-polarization");
-        plotRegionLayout->addWidget(plots["timePlot2"],3,0);
+        plotRegionLayout->addWidget(plots["timePlot2"],5,0);
         plots["freqPlot1"] = new CairoWidget(*this, drawSpectrum1Plot);
         plots["freqPlot1"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        plots["freqPlot1"]->setToolTip("Plot of the energy spectrum of the result, x-polarization.");
-        plotRegionLayout->addWidget(plots["freqPlot1"],2,1);
+        plots["freqPlot1"]->setToolTip("Plot of the energy spectrum of the result\n x-polarization (purple)\n y-polarization (red)\n total (orange)\n");
+        plotRegionLayout->addWidget(plots["freqPlot1"],4,1);
         plots["freqPlot2"] = new CairoWidget(*this, drawSpectrum2Plot);
         plots["freqPlot2"]->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         plots["freqPlot2"]->setToolTip(
             "Plot of the energy spectrum of the result, y-polarization.");
-        plotRegionLayout->addWidget(plots["freqPlot2"],3,1);
+        plotRegionLayout->addWidget(plots["freqPlot2"],5,1);
 
         //Divide the input area into the input grid and the sequence box
         QWidget *inputGrid = new QWidget;
@@ -828,6 +857,50 @@ public:
                 rowLayout->addWidget(labels[entry1]);
                 rowLayout->addWidget(textBoxes[entry1]);
                 rowLayout->addWidget(textBoxes[entry2]); 
+        };
+        
+        auto addTextBoxRowForPlots = [&](
+            const QString& label,
+            const std::string& entry1, 
+            const std::string& entry2,  
+            const std::string& entry3,
+            QVBoxLayout* location,
+            const QString& tooltip,
+            const float value1,
+            const float value2,
+            const float value3){
+                QHBoxLayout* rowLayout = getRowBoxLayout(location);
+                rowLayout->setAlignment(Qt::AlignLeft);
+                rowLayout->setSpacing(2);
+                labels[entry1] = new QLabel;
+                labels[entry1]->setToolTip(tooltip);
+                textBoxes[entry1] = new QLineEdit;
+                if(entry2 != "none")textBoxes[entry2] = new QLineEdit;
+                if(entry3 != "none")textBoxes[entry3] = new QLineEdit;
+                textBoxes[entry1]->setToolTip(tooltip);
+                if(entry2 != "none")textBoxes[entry2]->setToolTip(tooltip);
+                if(entry3 != "none")textBoxes[entry3]->setToolTip(tooltip);
+                labels[entry1]->setToolTip(tooltip);
+                labels[entry1]->setText(label);
+                labels[entry1]->setFixedSize(plotLabelWidth,textBoxHeight);
+                textBoxes[entry1]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                if(entry2 != "none")textBoxes[entry2]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                if(entry3 != "none")textBoxes[entry3]->setFixedSize(plotTextBoxWidth,textBoxHeight);
+                QString s1(Sformat(std::string_view("{:g}"), value1).c_str());
+                textBoxes[entry1]->setText(s1);
+                if(entry2 != "none"){
+                    QString s2(Sformat(std::string_view("{:g}"), value2).c_str());
+                    textBoxes[entry2]->setText(s2);
+                }
+
+                if(entry3 != "none"){
+                    QString s3(Sformat(std::string_view("{:g}"), value3).c_str());
+                    textBoxes[entry3]->setText(s3);
+                }
+                rowLayout->addWidget(labels[entry1], Qt::AlignLeft);
+                rowLayout->addWidget(textBoxes[entry1], Qt::AlignLeft);
+                if(entry2 != "none")rowLayout->addWidget(textBoxes[entry2], Qt::AlignLeft); 
+                if(entry3 != "none")rowLayout->addWidget(textBoxes[entry3], Qt::AlignLeft); 
         };
 
         auto addPulldownInContainer = [&](int width, QBoxLayout* location, const std::string& entry){
@@ -1357,6 +1430,7 @@ public:
         plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         buttons["collapse"] = new QPushButton("\xe2\x86\x94\xef\xb8\x8f");
         buttons["collapse"]->setFixedSize(miniButtonWidth, mainButtonHeight);
+        buttons["collapse"]->setToolTip("Collapse the simulation parameters pane and show the plot controls.");
         plotControlStripLayout->addWidget(buttons["collapse"]);
         
         slider = new QSlider(Qt::Horizontal);
@@ -1405,6 +1479,144 @@ public:
         plotControlStripLayout->addSpacerItem(new QSpacerItem(8,1,QSizePolicy::Fixed,QSizePolicy::Fixed));
         plotControlStripLayout->addWidget(checkboxes["Log"]);
     #endif
+
+    //Layout of plot control area
+
+        checkboxes["plotDark"] = new QCheckBox("Dark mode");
+        checkboxes["plotDark"]->setChecked(true);
+        checkboxes["plotDark"]->setToolTip("Uncheck to plot with white background");
+        plotControlRegionLayout->addWidget(checkboxes["plotDark"]);
+        addTextBoxRowForPlots(
+            "Font size", 
+            "fontSize", 
+            "none", 
+            "none", 
+            plotControlRegionLayout,
+            "Set font size in the plots\n",
+            13, 0, 0);
+
+        checkboxes["showSpaceTimeMomentumFrequency"] = new QCheckBox("Slice images");
+        checkboxes["showSpaceTimeMomentumFrequency"]->setChecked(true);
+        checkboxes["showSpaceTimeMomentumFrequency"]->setToolTip("Show or hide the space/time and momentum/frequency view.");
+        plotControlRegionLayout->addWidget(checkboxes["showSpaceTimeMomentumFrequency"]);
+        QObject::connect(checkboxes["showSpaceTimeMomentumFrequency"], &QCheckBox::clicked, [&](){
+            if(checkboxes["showSpaceTimeMomentumFrequency"]->isChecked()){
+                plots["timeImage1"]->show();
+                plots["timeImage2"]->show();
+                plots["freqImage1"]->show();
+                plots["freqImage2"]->show();
+            }
+            else{
+                plots["timeImage1"]->hide();
+                plots["timeImage2"]->hide();
+                plots["freqImage1"]->hide();
+                plots["freqImage2"]->hide();
+            } 
+        });
+
+        checkboxes["showBeamView"] = new QCheckBox("Beam view");
+        checkboxes["showBeamView"]->setChecked(true);
+        checkboxes["showBeamView"]->setToolTip("Show or hide the beam view.");
+        plotControlRegionLayout->addWidget(checkboxes["showBeamView"]);
+        QObject::connect(checkboxes["showBeamView"], &QCheckBox::clicked, [&](){
+            if(checkboxes["showBeamView"]->isChecked()){
+                plots["beamView"]->show();
+            }
+            else{
+                plots["beamView"]->hide();
+            } 
+        });
+        addPulldownInContainer(labelWidth, plotControlRegionLayout, "beamViewMode");
+        pulldowns["beamViewMode"]->addItem("Near field");
+        pulldowns["beamViewMode"]->addItem("Far field");
+        pulldowns["beamViewMode"]->setCurrentIndex(1);
+        addTextBoxRowForPlots(
+            "Red (f, \xcf\x83, I)", 
+            "Red_frequency", 
+            "Red_sigma", 
+            "Red_strength", 
+            plotControlRegionLayout,
+            "Control the red color channel in the beam view.\n"
+            "Central frequency (THz), bandwidth (THz), gain (multiplier)",
+            400, 60, 1);
+        addTextBoxRowForPlots(
+            "Green (f, \xcf\x83, I)", 
+            "Green_frequency", 
+            "Green_sigma", 
+            "Green_strength", 
+            plotControlRegionLayout,
+            "Control the green color channel in the beam view.\n"
+            "Central frequency (THz), bandwidth (THz), gain (multiplier)",
+            550, 60, 1);
+        addTextBoxRowForPlots(
+            "Blue (f, \xcf\x83, I)", 
+            "Blue_frequency", 
+            "Blue_sigma", 
+            "Blue_strength", 
+            plotControlRegionLayout,
+            "Control the blue color channel in the beam view.\n"
+            "Central frequency (THz), bandwidth (THz), gain (multiplier)",
+            680, 90, 1);
+        addTextBoxRowForPlots(
+                "Farfield \xe2\x88\xa0", 
+                "farfieldAngle", 
+                "none", 
+                "none", 
+                plotControlRegionLayout,
+                "Set the solid angle shown in the farfield view (in degrees)\n",
+                5, 0, 0);
+        checkboxes["rotate2D"] = new QCheckBox("Rotate 2D around center");
+        checkboxes["rotate2D"]->setChecked(true);
+        checkboxes["rotate2D"]->setToolTip(
+            "Produce images in 2D mode by rotating around the center-of-mass.\n"
+            "This will produce ring artifacts for frequencies that don't correspond\n"
+            "to a single beam.");
+        plotControlRegionLayout->addWidget(checkboxes["rotate2D"]);
+        buttons["render"] = new QPushButton("Render");
+        buttons["render"]->setFixedSize(mainButtonWidth,mainButtonHeight);
+        buttons["render"]->setToolTip("Render the beam view with these parameters");
+        plotControlRegionLayout->addWidget(buttons["render"]);
+        checkboxes["showWavesAndSpectra"] = new QCheckBox("Show waves and spectra");
+        checkboxes["showWavesAndSpectra"]->setChecked(true);
+        checkboxes["showWavesAndSpectra"]->setToolTip(
+            "show the waveforms and spectra");
+        plotControlRegionLayout->addWidget(checkboxes["showWavesAndSpectra"]);
+        QObject::connect(checkboxes["showWavesAndSpectra"], &QCheckBox::clicked, [&](){
+            if(checkboxes["showWavesAndSpectra"]->isChecked()){
+                if(!checkboxes["combinePolarizations"]->isChecked()){
+                    plots["timePlot2"]->show();
+                    plots["freqPlot2"]->show();
+                }
+                plots["timePlot1"]->show();
+                plots["freqPlot1"]->show();
+            }
+            else{
+                plots["timePlot1"]->hide();
+                plots["freqPlot1"]->hide();
+                plots["timePlot2"]->hide();
+                plots["freqPlot2"]->hide();
+            }  
+        });
+
+        checkboxes["combinePolarizations"] = new QCheckBox("Combine polarizations");
+        checkboxes["combinePolarizations"]->setChecked(false);
+        checkboxes["combinePolarizations"]->setToolTip(
+            "Combine the waveform and spectra plots, showing the two polarization components together");
+        plotControlRegionLayout->addWidget(checkboxes["combinePolarizations"]);
+        QObject::connect(checkboxes["combinePolarizations"], &QCheckBox::clicked, [&](){
+            if(checkboxes["combinePolarizations"]->isChecked()){
+                plots["timePlot2"]->hide();
+                plots["freqPlot2"]->hide();
+            }
+            else if(checkboxes["showWavesAndSpectra"]->isChecked()){
+                plots["timePlot2"]->show();
+                plots["freqPlot2"]->show();
+            }  
+        });
+        
+        
+        //squeezeMargins(plotControlRegionLayout);
+
         readDefaultValues(theSim, theDatabase);
         setInterfaceValuesToActiveValues(theSim);
         cPrint(checkLibraryAvailability(theSim));
@@ -1448,6 +1660,7 @@ public:
         messenger->moveToThread(messengerThread);
         QObject::connect(messenger, &GuiMessenger::sendText, console, &QTextEdit::append);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqPlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["beamView"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqPlot2"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timePlot1"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timePlot2"], &CairoWidget::queueUpdate);
@@ -1457,6 +1670,7 @@ public:
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqImage2"], &CairoWidget::queueUpdate);
 
         QObject::connect(slider, &QSlider::valueChanged, plots["freqPlot1"], &CairoWidget::queueUpdate);
+        QObject::connect(slider, &QSlider::valueChanged, this, &LWEGui::renderBeamView);
         QObject::connect(slider, &QSlider::valueChanged, plots["freqPlot2"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["timePlot1"], &CairoWidget::queueUpdate);
         QObject::connect(slider, &QSlider::valueChanged, plots["timePlot2"], &CairoWidget::queueUpdate);
@@ -1497,6 +1711,8 @@ public:
         QObject::connect(messenger, &GuiMessenger::moveSlider, slider, &QSlider::setValue);
         QObject::connect(messenger, &GuiMessenger::requestSyncValues, this, &LWEGui::queueSyncValues);
         QObject::connect(messenger, &GuiMessenger::requestSliderUpdate, this, &LWEGui::updateSlider);
+        QObject::connect(messenger, &GuiMessenger::requestBeamViewUpdate, this, &LWEGui::updateBeamView);
+        QObject::connect(messenger, &GuiMessenger::requestBeamViewRender, this, &LWEGui::renderBeamView);
         QObject::connect(messenger, &GuiMessenger::sendProgressRange, progress, &QProgressBar::setRange);
         QObject::connect(messenger, &GuiMessenger::sendProgressValue, progress, &QProgressBar::setValue);
 
@@ -1572,7 +1788,7 @@ public:
                 if(isZipFile) theSim.loadOptics(path);
                 theSim.configure(true);
                 std::for_each(theSim.mutexes.begin(), theSim.mutexes.end(), 
-                        [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
+                        [](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
                 if (readParameters == 61 && theSim.base().isGridAllocated) {
                     int64_t extensionLoc = path.find_last_of(".");
                     const std::string basePath = path.substr(0, extensionLoc);
@@ -1634,11 +1850,18 @@ public:
             if(isInputRegionHidden){
                 inputRegion->show();
                 isInputRegionHidden = false;
+
+                plotControlRegion->hide();
             }
             else{
                 inputRegion->hide();
                 isInputRegionHidden = true;
+                plotControlRegion->show();
             }
+        });
+
+        QObject::connect(buttons["render"], &QPushButton::clicked, [&](){
+            messenger->passBeamViewRender();
         });
 
         QObject::connect(buttons["ylim"], &QPushButton::clicked, [&](){
@@ -1658,59 +1881,139 @@ public:
             std::string SVGpath = QFileDialog::getSaveFileName(buttons["svg"],"Save SVG file of plots","","Scalable Vector Graphics (*.svg)").toStdString();
             if(SVGpath.empty()) return;
             isMakingSVG = true;
-            plots["freqPlot1"] -> repaint();
-            plots["freqPlot2"] -> repaint();
-            plots["timePlot1"] -> repaint();
-            plots["timePlot2"] -> repaint();
-            plots["timeImage1"] -> repaint();
-            plots["timeImage2"] -> repaint();
-            plots["freqImage1"] -> repaint();
-            plots["freqImage2"] -> repaint();
+
 
             //get dimensions lambda
-            int width = 0;
-            int height = 0;
-            auto getDimensions = [&width, &height](const std::string& SVGstr) {
+            auto getDimensions = [](const std::string& SVGstr) {
                 std::regex width_regex("width=\"(\\d+)\"");
                 std::regex height_regex("height=\"(\\d+)\"");
                 std::smatch width_match, height_match;
             
                 std::regex_search(SVGstr, width_match, width_regex);
                 std::regex_search(SVGstr, height_match, height_regex);
-                width = std::stoi(width_match[1].str());
-                height = std::stoi(height_match[1].str());   
+                int width = std::stoi(width_match[1].str());
+                int height = std::stoi(height_match[1].str());   
+                return std::pair<int,int>(width, height);
             };
-            getDimensions(SVGStrings[0]);
+            for(auto& str : SVGStrings){
+                str.clear();
+            }
+            for(auto& pair : plots){
+                if(pair.second->isVisible()){
+                    pair.second->repaint();
+                }
+            }
 
-            std::size_t SVGbegin = SVGStrings[0].find("<svg");
-            SVGStrings[0].insert(SVGbegin,Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+            const bool showSlices = checkboxes["showSpaceTimeMomentumFrequency"]->isChecked();
+            const bool showBeamView = checkboxes["showBeamView"]->isChecked();
+            const bool showWaves = checkboxes["showWavesAndSpectra"] ->isChecked();
+            const bool combineWaves = checkboxes["combinePolarizations"]->isChecked();
+            bool startedSVG = false;
+            int totalHeight = 0;
+            int totalWidth = 0;
+            int height_slice = 0;
+            int width_slice = 0;
+            int height_wave = 0;
+            int width_wave = 0;
+            int firstPlot = -1;
+            int verticalElements = 0;
+            int horizontalElements = 2;
+
+            if(showSlices){
+                startedSVG = true;
+                firstPlot = 0;
+                auto width_height = getDimensions(SVGStrings[0]);
+                width_slice = width_height.first;
+                height_slice = width_height.second;
+                totalWidth = 2 * width_slice;
+                totalHeight = 2 * height_slice;
+                verticalElements += 2;
+            }
+            if(showBeamView){
+                if(!startedSVG){
+                    firstPlot = 8;
+                    horizontalElements = 1;
+                }
+                startedSVG = true;
+                auto width_height = getDimensions(SVGStrings[8]);
+                totalWidth = width_height.first;
+                totalHeight += width_height.second;
+                verticalElements++;
+            }
+            if(showWaves){
+                if(!startedSVG) firstPlot = 4;
+                startedSVG = true;
+                auto width_height = getDimensions(SVGStrings[4]);
+                horizontalElements = 2;
+                width_wave = width_height.first;
+                height_wave = width_height.second;
+                totalWidth = 2*width_wave;
+                totalHeight += height_wave;
+                if(!combineWaves){
+                    totalHeight += height_wave;
+                    verticalElements++;
+                }
+                verticalElements++;
+            }
+
+            std::size_t SVGbegin = SVGStrings[firstPlot].find("<svg");
+            SVGStrings[firstPlot].insert(SVGbegin,Sformat("<svg cool=\"1\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
                 "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
                 "\"http://www.w3.org/1999/xlink\">\n",
-                2*width, 4*height, 2*width, 4*height));
+                totalWidth, totalHeight, totalWidth, totalHeight));
+
 
             auto appendPlot = [&](int index, int x, int y){
                 SVGbegin = SVGStrings[index].find("width=");
                 SVGStrings[index].insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
-                x * width, y * height));
+                x * (totalWidth/horizontalElements), y * (totalHeight/verticalElements)));
                 SVGbegin = SVGStrings[index].find("<svg");
                 SVGStrings[index] = SVGStrings[index].substr(SVGbegin);
+                
             };
             
-            appendPlot(1,0,1);
-            appendPlot(2,1,0);
-            appendPlot(3,1,1);
-            appendPlot(4,0,2);
-            appendPlot(5,0,3);
-            appendPlot(6,1,2);
-            appendPlot(7,1,3);
-            SVGStrings[7].append("</svg>");
-            isMakingSVG = false;
-            
-            std::ofstream fs(SVGpath);
-            for(std::string& str : SVGStrings){
-                fs << str;
+            int y_ind = 0;
+            if(showSlices){
+                appendPlot(1,0,1);
+                appendPlot(2,1,0);
+                appendPlot(3,1,1);
+
+                y_ind = 2;
             }
+            if(showSlices && showBeamView){
+                appendPlot(8,0,y_ind);
+            }
+            if(showBeamView) y_ind++;
+            if(showWaves && (showSlices || showBeamView)){
+                appendPlot(4,0,y_ind);
+            }
+            if(showWaves){
+                appendPlot(6,1,y_ind);
+                y_ind++;
+                if(!combineWaves){
+                    appendPlot(5,0,y_ind);
+                    appendPlot(7,1,y_ind);
+                }
+            }
+
+            
+            isMakingSVG = false;
+            std::ofstream fs(SVGpath);
+
+            fs << SVGStrings[0];
+            fs << SVGStrings[1];
+            fs << SVGStrings[2];
+            fs << SVGStrings[3];
+            fs << SVGStrings[8];
+            fs << SVGStrings[4];
+            fs << SVGStrings[5];
+            fs << SVGStrings[6];
+            fs << SVGStrings[7];
+
+
+            fs << "</svg>";
         });
+        
     }
     public slots:
     void queueSyncValues(){
@@ -1720,6 +2023,37 @@ public:
         slider->setMinimum(0);
         slider->setMaximum(theSim.base().Nsims * theSim.base().Nsims2 - 1);
         labels["sliderIndex"]->setText(QString::number(slider->value()));
+    }
+    void renderBeamView(){
+        if(plots["beamView"]->isVisible()){
+            int64_t simIndex = maxN(0,slider->value());
+            VisualizationType type = static_cast<VisualizationType>(pulldowns["beamViewMode"]->currentIndex());
+            if (simIndex > theSim.base().Nsims * theSim.base().Nsims2) {
+                simIndex = 0;
+            }
+            beamView.height = theSim.base().Nspace;
+            beamView.width = theSim.base().Nspace;
+            beamView.hasFullSizeRenderedImage = true;
+            VisualizationConfig config(&(theSim.base()), type);
+            config.red_f0 = 1e12 * textBoxes["Red_frequency"]->text().toDouble();
+            config.green_f0 = 1e12 * textBoxes["Green_frequency"]->text().toDouble();
+            config.blue_f0 = 1e12 * textBoxes["Blue_frequency"]->text().toDouble();
+            config.red_sigma = 1e12 * textBoxes["Red_sigma"]->text().toDouble();
+            config.green_sigma = 1e12 * textBoxes["Green_sigma"]->text().toDouble();
+            config.blue_sigma = 1e12 * textBoxes["Blue_sigma"]->text().toDouble();
+            config.red_amplitude = 1e-11 * textBoxes["Red_strength"]->text().toDouble();
+            config.green_amplitude = 1e-11 * textBoxes["Green_strength"]->text().toDouble();
+            config.blue_amplitude = 1e-11 * textBoxes["Blue_strength"]->text().toDouble();
+            config.maxAngle = deg2Rad<float>() * textBoxes["farfieldAngle"]->text().toDouble();
+            config.dTheta = 2*config.maxAngle/config.Nx;
+            config.simIndex = simIndex;
+            config.result_pixels = &beamView.pixels;
+            config.rotate2D = checkboxes["rotate2D"]->isChecked();
+            std::thread(drawBeamThread,std::ref(*this),config).detach();
+        }
+    }
+    void updateBeamView(){
+        plots["beamView"]->repaint();
     }
      
 };
@@ -1927,7 +2261,6 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
         return;
     }
     theGui.messenger->passProgressRange(0,static_cast<int>(totalSteps));
-    
     theSim.base().isRunning = true;
     auto progressThread = [&](){
         while(theSim.base().isRunning){
@@ -1942,6 +2275,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
             theSim.sCPU()[j].runningOnCPU = activeRun.forceCPU;
             theSim.sCPU()[j].assignedGPU = activeRun.assignedGPU;
             theSim.sCPU()[j].useOpenMP = activeRun.useOpenMP;
+            std::unique_lock lock(theSim.mutexes.at(j));
                 try {
                     if(theSim.base().isInSequence){
                         error = activeRun.sequenceFunction(&theSim.sCPU()[j]);
@@ -1979,6 +2313,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
                 if (error) break;
                 theGui.messenger->passSliderPosition(j);
                 theGui.messenger->requestUpdate();
+                
             if (theSim.base().cancellationCalled) {
                 theGui.messenger->passString(Sformat((
                     "Warning: series cancelled, stopping\n"
@@ -2026,6 +2361,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     }
     theSim.base().isRunning = false;
     theGui.messenger->passProgressValue(static_cast<int>(theGui.progressCounter));
+    theGui.messenger->passBeamViewRender();
 }
 void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     simulationBatch& theSim = theGui.theSim;
@@ -2135,8 +2471,66 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 #endif
 }
 
+void drawBeamThread(LWEGui& theGui, VisualizationConfig config){
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(config.simIndex), std::try_to_lock);
+    if(!(dataLock.owns_lock()) || !(guiLock.owns_lock())) return;
+    std::unique_lock imageLock(theGui.beamViewMutex);
+    if(&theGui.theSim.base() != config.sCPU) return;
+    renderVisualizationCPU(config);
+    theGui.messenger->requestUpdate();
+}
+void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
+    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+        blackoutCairoPlot(cr,width,height);
+        return;
+    }
+    int64_t simIndex = maxN(0,theGui.slider->value());
+    if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
+        simIndex = 0;
+    }
+
+    LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
+    sPlot.height = height;
+    sPlot.width = width;
+    sPlot.image = &theGui.beamView;
+    if(theGui.pulldowns["beamViewMode"]->currentIndex() == 1){
+        sPlot.xLabel = "\xce\xb8 (deg)";
+        sPlot.yLabel = "\xcf\x86 (deg)";
+        sPlot.forcedXmax = theGui.textBoxes["farfieldAngle"]->text().toDouble();
+        sPlot.forcedXmin = -sPlot.forcedXmax.value();
+        sPlot.forcedYmin = theGui.textBoxes["farfieldAngle"]->text().toDouble();
+        sPlot.forcedYmax = -sPlot.forcedYmin.value();
+    }
+    else{
+        sPlot.xLabel = "x (\xce\xbcm)";
+        sPlot.yLabel = "y (\xce\xbcm)";
+        sPlot.forcedXmax = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
+        sPlot.forcedXmin = -sPlot.forcedXmax.value();
+        sPlot.forcedYmin = 0.5e6 * theGui.theSim.base().Nspace * theGui.theSim.base().rStep;
+        sPlot.forcedYmax = -sPlot.forcedYmin.value();
+    }
+
+    sPlot.makeSVG = theGui.isMakingSVG;
+    std::unique_lock imageLock(theGui.beamViewMutex);
+    if (imageLock.owns_lock()) {
+        sPlot.plot(cr);
+        if(theGui.isMakingSVG){
+            theGui.SVGStrings[8] = sPlot.SVGString;
+        }
+    }
+    else blackoutCairoPlot(cr, width, height);
+}
+
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
     if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
@@ -2148,16 +2542,22 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    LweImage image;
-    image.data = &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle];
-    image.dataXdim = theGui.theSim.base().Ntime;
-    image.dataYdim = theGui.theSim.base().Nspace;
+    LweImage<double> image;
+    image.data = DataSlice<double,2>{&theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle],
+        {static_cast<size_t>(theGui.theSim.base().Ntime), static_cast<size_t>(theGui.theSim.base().Nspace)}};
+
     image.height = height;
     image.width = width;
-    image.colorMap = 4;
-    image.dataType = 0;
+    image.colorMap = ColorMap::cyan_magenta;
 
-    LwePlot sPlot;
+
+    LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2166,11 +2566,11 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.yLabel = "x (mm)";
     sPlot.unitY = 1e3;
     sPlot.forcedXmax = 0.5e15 * theGui.theSim.base().Ntime * theGui.theSim.base().tStep;
-    sPlot.forcedXmin = -sPlot.forcedXmax;
+    sPlot.forcedXmin = -sPlot.forcedXmax.value();
     sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
-    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
@@ -2181,12 +2581,12 @@ void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
     if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
     int64_t simIndex = maxN(0,theGui.slider->value());
 
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2194,20 +2594,36 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
     sPlot.makeSVG = theGui.isMakingSVG;
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.dx = theGui.theSim.base().tStep / 1e-15;
-    sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = &theGui.theSim.base().ExtOut[
-        simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
+    sPlot.dx = theGui.theSim.base().tStep * 1e15;
+    sPlot.x0 = -0.5e15 * (theGui.theSim.base().Ntime) * theGui.theSim.base().tStep;
+    sPlot.forcedXmin = sPlot.x0;
+    sPlot.forcedXmax = -sPlot.x0;
+    sPlot.data.push_back(&theGui.theSim.base().ExtOut[
+        simIndex * theGui.theSim.base().Ngrid * 2 + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
+
     sPlot.Npts = theGui.theSim.base().Ntime;
-    sPlot.color = LweColor(0, 1, 1, 1);
+    sPlot.lineColors = {LweColor(0, 1, 1, 1)};
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ex (GV/m)";
+    if(theGui.checkboxes["combinePolarizations"]->isChecked()){
+        sPlot.lineColors.push_back(LweColor(1, 0, 1, 1));
+        sPlot.data.push_back(&theGui.theSim.base().ExtOut[
+        theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
+            + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
+        sPlot.yLabel = "E (GV/m)";
+    }
     sPlot.unitY = 1e9;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
@@ -2218,12 +2634,12 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
     if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
 
@@ -2233,23 +2649,30 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     int64_t cubeMiddle = 
         theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
-
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
     sPlot.makeSVG = theGui.isMakingSVG;
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().tStep / 1e-15;
-    sPlot.x0 = -((sPlot.dx * theGui.theSim.base().Ntime) / 2 - sPlot.dx / 2);
-    sPlot.data = 
+    sPlot.x0 = -0.5e15 * (theGui.theSim.base().Ntime) * theGui.theSim.base().tStep;
+    sPlot.forcedXmin = sPlot.x0;
+    sPlot.forcedXmax = -sPlot.x0;
+    sPlot.data.push_back( 
         &theGui.theSim.base().ExtOut[
         theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
-            + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2];
+            + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
     sPlot.Npts = theGui.theSim.base().Ntime;
-    sPlot.color = LweColor(1, 0, 1, 1);
+    sPlot.lineColors = {LweColor(1, 0, 1, 1)};
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Time (fs)";
     sPlot.yLabel = "Ey (GV/m)";
     sPlot.unitY = 1e9;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
@@ -2261,12 +2684,12 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
     if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2285,33 +2708,44 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
- 
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
     sPlot.makeSVG = theGui.isMakingSVG;
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
-    sPlot.data = &theGui.theSim.base().totalSpectrum[simIndex * 3 * theGui.theSim.base().Nfreq];
+    sPlot.yLabel = "Sx (J/THz)";
+    if (theGui.checkboxes["Total"]->isChecked()) {
+        sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq]);
+        sPlot.lineColors.push_back(LweColor(1.0, 0.5, 0.0, 0));
+    }
+    if (theGui.checkboxes["combinePolarizations"]->isChecked()) {
+        sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq]);
+        sPlot.lineColors.push_back(LweColor(1, 0, 0.5, 0.0));
+        sPlot.yLabel = "S (J/THz)";
+    }
+    sPlot.data.push_back(
+        &theGui.theSim.base().totalSpectrum[simIndex * 3 * theGui.theSim.base().Nfreq]);
     sPlot.Npts = theGui.theSim.base().Nfreq;
     sPlot.logScale = theGui.checkboxes["Log"]->isChecked();;
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
-    sPlot.color = LweColor(0.5, 0, 1, 1);
+    sPlot.lineColors.push_back(LweColor(0.5, 0, 1, 1));
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Sx (J/THz)";
+    
     sPlot.unitY = 1.0e-12;
-    sPlot.forceXmax = forceX;
-    sPlot.forceXmin = forceX;
-    sPlot.forcedXmax = xMax;
-    sPlot.forcedXmin = xMin;
-    if (theGui.checkboxes["Total"]->isChecked()) {
-        sPlot.data2 = &theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq];
-        sPlot.ExtraLines = 1;
-        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
+    if(forceX){
+        sPlot.forcedXmax = xMax;
+        sPlot.forcedXmin = xMin;
     }
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (forceY){
+        sPlot.forcedYmin = yMin;
+        sPlot.forcedYmax = yMax;
+    }
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
@@ -2322,12 +2756,12 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
     if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2346,33 +2780,40 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if (yMin != yMax && yMax > yMin) {
         forceY = true;
     }
-
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
     sPlot.makeSVG = theGui.isMakingSVG;
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.dx = theGui.theSim.base().fStep / 1e12;
-    sPlot.data = &theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq];
+    if (theGui.checkboxes["Total"]->isChecked()) {
+        sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq]);
+        sPlot.lineColors = {LweColor(1.0, 0.5, 0.0, 0), LweColor(1, 0, 0.5, 0.0)};
+    }
+    else{
+        sPlot.lineColors = {LweColor(1, 0, 0.5, 0.0)};
+    }
+    sPlot.data.push_back(&theGui.theSim.base().totalSpectrum[(1 + simIndex * 3) * theGui.theSim.base().Nfreq]);
     sPlot.Npts = theGui.theSim.base().Nfreq;
     sPlot.logScale = theGui.checkboxes["Log"]->isChecked();
-    sPlot.forceYmin = forceY;
-    sPlot.forceYmax = forceY;
-    sPlot.forcedYmax = yMax;
-    if (forceY)sPlot.forcedYmin = yMin;
-    sPlot.color = LweColor(1, 0, 0.5, 0.0);
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
     sPlot.yLabel = "Sy (J/THz)";
     sPlot.unitY = 1.0e-12;
-    sPlot.forceXmax = forceX;
-    sPlot.forceXmin = forceX;
-    sPlot.forcedXmax = xMax;
-    sPlot.forcedXmin = xMin;
-    if (theGui.checkboxes["Total"]->isChecked()) {
-        sPlot.data2 = &theGui.theSim.base().totalSpectrum[(2 + simIndex * 3) * theGui.theSim.base().Nfreq];
-        sPlot.ExtraLines = 1;
-        sPlot.color2 = LweColor(1.0, 0.5, 0.0, 0);
+    if(forceX){
+        sPlot.forcedXmax = xMax;
+        sPlot.forcedXmin = xMin;
     }
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
+    if (forceY){
+        sPlot.forcedYmin = yMin;
+        sPlot.forcedYmax = yMax;
+    }
+    
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG) {
@@ -2383,7 +2824,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
     if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
@@ -2396,16 +2837,23 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     int64_t cubeMiddle = theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
 
-    LweImage image;
-    image.data = &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + theGui.theSim.base().Ngrid + cubeMiddle];
-    image.dataXdim = theGui.theSim.base().Ntime;
-    image.dataYdim = theGui.theSim.base().Nspace;
+    LweImage<double> image;
+    image.data = DataSlice<double,2>{
+        &theGui.theSim.base().ExtOut[simIndex * theGui.theSim.base().Ngrid * 2 + theGui.theSim.base().Ngrid + cubeMiddle],
+        {static_cast<size_t>(theGui.theSim.base().Ntime),
+        static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
-    image.colorMap = 4;
-    image.dataType = 0;
+    image.colorMap = ColorMap::cyan_magenta;
 
-    LwePlot sPlot;
+
+    LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
@@ -2414,11 +2862,11 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.yLabel = "x (mm)";
     sPlot.unitY = 1e3;
     sPlot.forcedXmax = 0.5e15 * theGui.theSim.base().Ntime * theGui.theSim.base().tStep;
-    sPlot.forcedXmin = -sPlot.forcedXmax;
+    sPlot.forcedXmin = -sPlot.forcedXmax.value();
     sPlot.forcedYmin = 0.5e3 * theGui.theSim.base().spatialWidth;
-    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
@@ -2429,12 +2877,12 @@ void drawTimeImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 }
 
 void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
     if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage image;
+    LweImage<double> image;
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
         simIndex = 0;
@@ -2446,29 +2894,34 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
                 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
     image.complexData =
-        &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2];
-
-    image.dataXdim = theGui.theSim.base().Nfreq;
-    image.dataYdim = theGui.theSim.base().Nspace;
+        DataSlice<std::complex<double>,2>{
+            &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2],
+            {static_cast<size_t>(theGui.theSim.base().Nfreq),
+            static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
-    image.colorMap = 3;
-    image.dataType = 1;
+    image.colorMap = ColorMap::purple;
     image.logMin = logPlotOffset;
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Transverse k (1/\xce\xbcm)";
+    sPlot.yLabel = "k\xe2\x82\x93 (1/\xce\xbcm)";
     sPlot.unitY = 1;
     sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
     sPlot.forcedXmin = 0;
     sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
-    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
@@ -2476,17 +2929,15 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
         }
     }
     else blackoutCairoPlot(cr, width, height);
-
-    
 }
 
 void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
-    std::unique_lock guiLock(theGui.m, std::try_to_lock);
+    std::shared_lock guiLock(theGui.m, std::try_to_lock);
     if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
         blackoutCairoPlot(cr,width,height);
         return;
     }
-    LweImage image;
+    LweImage<double> image;
 
     int64_t simIndex = maxN(0,theGui.slider->value());
     if (simIndex > theGui.theSim.base().Nsims * theGui.theSim.base().Nsims2) {
@@ -2498,29 +2949,34 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
         logPlotOffset = (double)(1e-4 
             / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
-    image.complexData =
-        &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2 + theGui.theSim.base().NgridC];
-    image.dataXdim = theGui.theSim.base().Nfreq;
-    image.dataYdim = theGui.theSim.base().Nspace;
+    image.complexData = DataSlice<std::complex<double>,2>{
+        &theGui.theSim.base().EkwOut[simIndex * theGui.theSim.base().NgridC * 2 + theGui.theSim.base().NgridC],
+        {static_cast<size_t>(theGui.theSim.base().Nfreq),
+        static_cast<size_t>(theGui.theSim.base().Nspace)}};
     image.height = height;
     image.width = width;
-    image.colorMap = 3;
-    image.dataType = 1;
+    image.colorMap = ColorMap::purple;
     image.logMin = logPlotOffset;
-    LwePlot sPlot;
+    LwePlot<double> sPlot;
+    if(!(theGui.checkboxes["plotDark"]->isChecked())){
+        sPlot.backgroundColor =  LweColor(1,1,1,0);
+        sPlot.axisColor = LweColor(0.0, 0.0, 0.0, 0);
+        sPlot.textColor = sPlot.axisColor;
+    }
+    sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
     sPlot.image = &image;
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    sPlot.yLabel = "Transverse k (1/\xce\xbcm)";
+    sPlot.yLabel = "k\xe2\x82\x93 (1/\xce\xbcm)";
     sPlot.unitY = 1;
     sPlot.forcedXmax = 1e-12*(theGui.theSim.base().Nfreq-1) * theGui.theSim.base().fStep;
     sPlot.forcedXmin = 0;
     sPlot.forcedYmin = -0.5e-6 * theGui.theSim.base().Nspace * theGui.theSim.base().kStep;
-    sPlot.forcedYmax = -sPlot.forcedYmin;
+    sPlot.forcedYmax = -sPlot.forcedYmin.value();
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
+    std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex),std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
         if(theGui.isMakingSVG){

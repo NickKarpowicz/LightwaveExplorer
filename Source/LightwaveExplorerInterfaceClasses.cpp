@@ -57,7 +57,7 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool 
 			0, 
 			1, 
 			(int)NgridC, 
-			FFTW_MEASURE);
+			FFTW_ESTIMATE);
 	}
 	else {
 		const int fftwSizes[] = { (int)Nspace, (int)Ntime };
@@ -73,7 +73,7 @@ int simulationParameterSet::loadSavedFields(const std::string& outputBase, bool 
 			0, 
 			1, 
 			(int)NgridC, 
-			FFTW_MEASURE);
+			FFTW_ESTIMATE);
 	}
 
 	for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
@@ -334,7 +334,7 @@ double simulationParameterSet::saveSlurmScript(const std::string& gpuType, int g
 	std::string FittingTargetPath = outputBasePath + "_fittingTarget.dat";
 	std::string Pulse1Path = outputBasePath + "_pulse1.dat";
 	std::string Pulse2Path = outputBasePath + "_pulse2.dat";
-	if(pulse2LoadedData.hasData){
+	if(pulse1LoadedData.hasData){
 		mz_zip_writer_add_mem(&zip, getBasename(Pulse1Path).c_str(), pulse1LoadedData.fileContents.c_str(), pulse1LoadedData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
 	}
 	if(pulse2LoadedData.hasData){
@@ -455,7 +455,7 @@ std::string simulationParameterSet::settingsString(){
 		}
 		fs << '\x0A';
 	}
-	fs << "Code version: 2025.0";
+	fs << "Code version: 2025.2";
 	fs << '\x0A';
 	return fs.str();
 }
@@ -731,9 +731,12 @@ int simulationParameterSet::readInputParametersFile(
 	sellmeierType = 0;
 	axesNumber = 0;
 	Ntime = (int64_t)(minGridDimension * round(timeSpan / (minGridDimension * tStep)));
+	timeSpan = Ntime * tStep; //force timeSpan to be consistent with Ntime
 	Nfreq = Ntime / 2 + 1;
 	Nspace = (int64_t)(minGridDimension * round(spatialWidth / (minGridDimension * rStep)));
+	spatialWidth = Nspace * rStep;
 	Nspace2 = (int64_t)(minGridDimension * round(spatialHeight / (minGridDimension * rStep)));
+	spatialHeight = Nspace2 * rStep;
 	Ngrid = Ntime * Nspace;
 	NgridC = Nfreq * Nspace;
 	kStep = twoPi<double>() / (Nspace * rStep);
@@ -789,7 +792,7 @@ void simulationBatch::configure(bool allocateFields) {
 	simulationParameterSet base = parameters[0];
 	parameters.resize(Nsimstotal, base);
 	std::for_each(mutexes.begin(), mutexes.end(),
-		[](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
+		[](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
 	if(allocateFields){
 		Ext = std::vector<double>(Nsimstotal * Ngrid * 2, 0.0);
 		Ekw = std::vector<std::complex<double>>(
@@ -797,7 +800,7 @@ void simulationBatch::configure(bool allocateFields) {
 			std::complex<double>(0.0, 0.0));
 	}
 	
-	mutexes = std::vector<std::mutex>(Nsimstotal);
+	mutexes = std::vector<std::shared_mutex>(Nsimstotal);
 	totalSpectrum = std::vector<double>(Nfreq * Nsimstotal * 3);
 
 	if (parameters[0].pulse1FileType == 1 || parameters[0].pulse1FileType == 2) {
@@ -884,8 +887,8 @@ void simulationBatch::configureCounter() {
 	simulationParameterSet base = parameters[0];
 	parameters.resize(Nsimstotal, base);
 	std::for_each(mutexes.begin(), mutexes.end(),
-		[](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
-	mutexes = std::vector<std::mutex>(Nsimstotal);
+		[](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
+	mutexes = std::vector<std::shared_mutex>(Nsimstotal);
 
 	//configure
 	double step1 = (parameters[0].batchDestination
@@ -951,7 +954,7 @@ void simulationBatch::loadPulseFiles() {
 			parameters[0].Ntime, 
 			parameters[0].fStep, 
 			0.0);
-		parameters[0].field1IsAllocated = (frogLines > 1);
+		parameters[0].field2IsAllocated = (frogLines > 1);
 	}
 
 	if (parameters[0].pulse1FileType == 2) {
@@ -1001,7 +1004,7 @@ void simulationBatch::loadOptics(const std::string& zipPath){
 
 int simulationBatch::saveDataSet() {
 	std::for_each(mutexes.begin(), mutexes.end(),
-		[&](std::mutex& m) { m.lock(); });
+		[&](std::shared_mutex& m) { m.lock(); });
 
 	std::string Epath=parameters[0].outputBasePath + "_Ext.dat";
 	std::string Spath=parameters[0].outputBasePath + "_spectrum.dat";
@@ -1035,7 +1038,7 @@ int simulationBatch::saveDataSet() {
 	mz_zip_writer_end(&zip);
 
 	std::for_each(mutexes.begin(), mutexes.end(),
-		[&](std::mutex& m) { m.unlock(); });
+		[&](std::shared_mutex& m) { m.unlock(); });
 	return 0;
 }
 

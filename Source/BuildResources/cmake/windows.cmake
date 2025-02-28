@@ -62,6 +62,7 @@ else()
         Source/Devices/LightwaveExplorerCoreCounter.cpp
         Source/LightwaveExplorerCore.cu 
         Source/Devices/LightwaveExplorerCoreFP32.cu
+        Source/Frontend/LWEVisualizationsCPU.cpp
         Source/Frontend/LightwaveExplorerIcon.rc)
     target_compile_options(LightwaveExplorer
         PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${OpenMP_CXX_FLAGS}>

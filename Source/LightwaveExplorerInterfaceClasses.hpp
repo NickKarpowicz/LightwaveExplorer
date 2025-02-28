@@ -2,6 +2,7 @@
 #include "DataStructures.hpp"
 #include "LightwaveExplorerUtilities.h"
 #include <atomic>
+#include <string>
 
 class loadedInputData {
     public:
@@ -472,14 +473,14 @@ class simulationBatch {
 public:
     std::vector<loadedInputData> optics;
     std::vector<simulationParameterSet> parameters;
-    std::vector<std::mutex> mutexes = std::vector<std::mutex>(1);
+    std::vector<std::shared_mutex> mutexes = std::vector<std::shared_mutex>(1);
 
     simulationBatch() {
         parameters = std::vector<simulationParameterSet>(1);
     }
     ~simulationBatch() {
         std::for_each(mutexes.begin(), mutexes.end(), 
-            [](std::mutex& m) {std::lock_guard<std::mutex> lock(m); });
+            [](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
     }
     void configure(bool allocateFields=true);
     void configureCounter();
@@ -507,6 +508,119 @@ public:
     }
 };
 
+template <typename deviceComplex>
+struct VisualizationAllocation{
+    LWEDevice* parentDevice;
+    int64_t width = 0;
+    int64_t height = 0;
+    int64_t Nimage = 0;
+    int64_t Ngrid = 0;
+    int64_t Ngrid_complex = 0;
+    int64_t Nt = 0;
+    int64_t Nx = 0;
+    int64_t Ny = 0;
+
+    bool frequencyGridMomentum = true;
+    LWEBuffer<float> gridTimeSpace;
+    LWEBuffer<deviceComplex> gridFrequency;
+    LWEBuffer<uint8_t> imageGPU;
+    LWEBuffer<float> red;
+    LWEBuffer<float> green;
+    LWEBuffer<float> blue;
+    std::vector<uint8_t> image;
+    deviceParameterSet<float, deviceComplex> parameterSet;
+    LWEBuffer<deviceParameterSet<float, deviceComplex>> parameterSet_deviceCopy;
+    std::mutex memoryMutex;
+    VisualizationAllocation(){}
+
+    VisualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, simulationParameterSet* sCPU) : 
+        parentDevice(d),
+        width(init_width),
+        height(init_height),
+        Nimage(width * height * 4),
+        Ngrid(sCPU->Ngrid),
+        Ngrid_complex(sCPU->NgridC),
+        Nt(sCPU->Ntime),
+        Nx(sCPU->Nspace),
+        Ny(sCPU->Nspace2),
+        gridTimeSpace(d, 2*Ngrid,sizeof(float)),
+        gridFrequency(d, 2*Ngrid_complex, sizeof(deviceComplex)),
+        imageGPU(d, Nimage, sizeof(uint8_t)),
+        red(d, height*width, sizeof(float)),
+        green(d, height*width, sizeof(float)),
+        blue(d, height*width, sizeof(float)),
+        image(Nimage),
+        parameterSet_deviceCopy(d, 1, sizeof(deviceParameterSet<float, deviceComplex>))
+        {
+                sCPU->initializeDeviceParameters(&parameterSet);
+                sCPU->fillRotationMatricies(&parameterSet);
+                sCPU->finishConfiguration(&parameterSet);
+                parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), copyType::ToDevice);
+            
+        }
+        
+    void syncImages(std::vector<uint8_t>* target){
+        if(target == nullptr) return;
+        target->resize(Nimage);
+        parentDevice->deviceMemcpy(
+            target->data(), 
+            imageGPU.device_ptr(),
+            Nimage, 
+            copyType::ToHost);
+    }
+    void syncImages(){
+        image.resize(Nimage);
+        parentDevice->deviceMemcpy(
+            image.data(), 
+            imageGPU.device_ptr(),
+            Nimage, 
+            copyType::ToHost);
+    }
+
+    
+
+    void fetchSim(simulationParameterSet* sCPU, int64_t simIndex){
+        parentDevice->deviceMemcpy(
+            gridTimeSpace.device_ptr(), 
+            sCPU->ExtOut + 2*Ngrid*simIndex, 2 * Ngrid * sizeof(double), 
+            copyType::ToDevice);
+        parentDevice->deviceMemcpy(
+            gridFrequency.device_ptr(), 
+            sCPU->EkwOut+ 2*Ngrid_complex*simIndex, 4 * Ngrid_complex * sizeof(double), 
+            copyType::ToDevice);
+
+    }
+
+    void setImageDimensions(int64_t new_width, int64_t new_height){
+        int64_t newNimage = new_width * new_height * 4;
+        if(imageGPU.count < static_cast<std::size_t>(newNimage)){
+            imageGPU.resize(newNimage);
+            image.resize(newNimage);
+            red.resize(newNimage);
+            green.resize(newNimage);
+            blue.resize(newNimage);
+        }
+        Nimage = newNimage;
+        height = new_height;
+        width = new_width;
+    }
+
+    void setSimulationDimensions(simulationParameterSet* sCPU){
+        if(Nt != sCPU->Ntime || Nx != sCPU->Nspace || Ny != sCPU->Nspace2){
+            Nt = sCPU->Ntime;
+            Nx = sCPU->Nspace;
+            Ny = sCPU->Nspace2;
+            Ngrid = sCPU->Ngrid;
+            Ngrid_complex = sCPU->NgridC;
+            gridTimeSpace.resize(2 * Ngrid);
+            gridFrequency.resize(2 * Ngrid_complex);
+            sCPU->initializeDeviceParameters(&parameterSet);
+            sCPU->fillRotationMatricies(&parameterSet);
+            sCPU->finishConfiguration(&parameterSet);
+            parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), copyType::ToDevice);
+        }
+    }
+};
 
 template <typename deviceFP, typename deviceComplex>
 struct UPPEAllocation{
@@ -645,7 +759,74 @@ struct UPPEAllocation{
     }
 };
 
+enum class VisualizationType{
+    beamFalseColor,
+    farFieldFalseColor,
+    beamPower
+};
 
+enum class CoordinateMode{
+    cartesian2D,
+    radialSymmetry,
+    cartesian3D,
+    FDTD2D,
+    FDTD3D
+};
+
+struct VisualizationConfig{
+    simulationParameterSet* sCPU;
+    VisualizationType type;
+    float amplification = 1.0f;
+    float dt = 0.0f;
+    float dx = 0.0f;
+    float dy = 0.0f;
+    float df = 0.0f;
+    float dk = 0.0f;
+    float maxAngle = 1.0f;
+    float dTheta = 0.01f;
+    int64_t Nx = 0;
+    int64_t Ny = 0;
+    int64_t Nt = 0;
+    int64_t Nf = 0;
+    int64_t Ngrid = 0;
+    int64_t Ngrid_complex = 0;
+    int64_t Nsims = 1;
+    int64_t Nsims2 = 1;
+    int64_t simIndex = 0;
+    int width = 0;
+    int height = 0; 
+    CoordinateMode mode = CoordinateMode::cartesian2D;
+    float red_f0 = 440e12f;
+    float red_sigma = 50e12f;
+    float red_amplitude = 1.0f;
+    float green_f0 = 550e12f;
+    float green_sigma = 50e12f;
+    float green_amplitude = 1.0f;
+    float blue_f0 = 650e12f;
+    float blue_sigma = 50e12f;
+    float blue_amplitude = 1.0f;
+    bool rotate2D = false;
+    std::vector<uint8_t>* result_pixels = nullptr;
+    VisualizationConfig(simulationParameterSet* sCPU_in, VisualizationType type_in) : 
+        sCPU(sCPU_in),
+        type(type_in),
+        dt(sCPU->tStep),
+        dx(sCPU->rStep),
+        dy(dx),
+        df(sCPU->fStep),
+        dk(sCPU->kStep),
+        Nx(sCPU->Nspace),
+        Ny(sCPU->Nspace2),
+        Nt(sCPU->Ntime),
+        Nf(sCPU->Nfreq),
+        Ngrid(sCPU->Ngrid),
+        Ngrid_complex(sCPU->NgridC),
+        Nsims(sCPU->Nsims),
+        Nsims2(sCPU->Nsims2),
+        width(Nx),
+        height(Nx),
+        mode(static_cast<CoordinateMode>(sCPU->symmetryType)){}
+};
 
 int				loadFrogSpeck(const loadedInputData& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
 int             loadWaveformFile(const loadedInputData& waveformFile, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);

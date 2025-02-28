@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <mutex>
+#include <shared_mutex>
 #include <algorithm>
 #include <utility>
 #include <filesystem>

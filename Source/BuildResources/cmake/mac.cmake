@@ -18,7 +18,8 @@ add_executable(LightwaveExplorer MACOSX_BUNDLE
     Source/Devices/LightwaveExplorerCoreCPUFP32.cpp 
     Source/Devices/LightwaveExplorerCoreCPU.cpp 
     Source/Devices/LightwaveExplorerCoreCounter.cpp 
-    Source/Devices/DlibLibraryComponents.cpp)
+    Source/Devices/DlibLibraryComponents.cpp
+    Source/Frontend/LWEVisualizationsCPU.cpp)
 set_target_properties(LightwaveExplorer  PROPERTIES
     BUNDLE True
     MACOSX_BUNDLE_BUNDLE_NAME LightwaveExplorer

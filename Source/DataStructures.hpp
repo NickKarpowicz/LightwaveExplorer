@@ -274,6 +274,7 @@ class LWEDevice{
     simulationParameterSet* cParams;
 	int memoryStatus = -1;
 	bool configuredFFT = false;
+    bool visualizationOnly = false;
     virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
     virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
     virtual void deviceMemcpyImplementation(
@@ -386,7 +387,7 @@ public:
     LWEBuffer(){}
     LWEBuffer(const LWEBuffer&) = delete;
     LWEBuffer& operator=(const LWEBuffer&) = delete;
-    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize) : 
+    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize = sizeof(T)) : 
     d(d),
     count(maxN(N,static_cast<size_t>(1))),
     bytes(count*elementSize)
@@ -419,7 +420,11 @@ public:
         if(bytes) d->deviceMemset(buffer, 0, bytes);
     }
 
-    void resize(int64_t newCount){
+    void resize(size_t newCount){
+        if(newCount == count && buffer != nullptr){
+            initialize_to_zero();
+            return;
+        }
         if(buffer != nullptr) d->deviceFree(buffer);
         int error = d->deviceCalloc((void**)&buffer, newCount, sizeof(T));
         if(error){
