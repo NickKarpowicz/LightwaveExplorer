@@ -119,6 +119,11 @@
   <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
   <screenshots>
     <screenshot type="default">
+      <caption>The Lightwave Explorer main window in light mode showing a simulation of an optical parametric amplifier</caption>
+      <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot_light.png</image>
+    </screenshot>
+    <screenshot environment="plasma:dark">
+      <caption>The Lightwave Explorer main window in dark mode, with additional plots of the real-space and momentum-space fields</caption>
       <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot.png</image>
     </screenshot>
   </screenshots>
