@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "LightwaveExplorer"
+version = "2025.2.2"
+authors = [
+    { name="Nick Karpowicz", email="nicholas.karpowicz@mpq.mpg.de" },
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+]
+description = "Tools for using Lightwave Explorer results"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = { file = "LICENSE"}
+
+[project.urls]
+Homepage = "https://github.com/NickKarpowicz/LightwaveExplorer"
+Issues = "https://github.com/NickKarpowicz/LightwaveExplorer/issues"
