@@ -34,6 +34,7 @@ Tutorials on YouTube!
 - Add new controls for the appearance of plots, which you can access by clicking the ↔️ button on the bottom of the window.
 - Fixed a bug where a FROG file loaded for pulse 2 wouldn't be used.
 - Fixed a bug where very large grids whose dimensions were divisible by 4 but not by 8 would look weird.
+- The LightwaveExplorer python module is now on pip! i.e. you can run "pip install LightwaveExplorer" to get the latest version.
 
 #### Changes in 2025.1:
 - Fixed a bug introduced in 2025.0 where on CUDA the plasma would not affect fields in the y-direction
@@ -41,7 +42,7 @@ Tutorials on YouTube!
 - Axes and scales are now shown on the space and momentum images, and they're also saved when an SVG is produced.
 - Plot font size scaling works better with high-DPI displays
 - Refactored device structures to more efficiently and consistently allocate memory
-- NOTE: to read the files produced with 2025.0 and later in python, you need [this updated version of LightwaveExplorer.py](https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/refs/heads/master/Documentation/LightwaveExplorer.py), many thanks to Florian Lindinger for the improved version that works with new and old files!
+- NOTE: to read the files produced with 2025.0 and later in python, you need to update the LightwaveExplorer module (now available on pip!), many thanks to Florian Lindinger for the improved version that works with new and old files!
 
 #### Changes in 2025.0:
 
@@ -70,7 +71,10 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
  - _A graphical interface that lets you see what you're doing:_ A lot of us think in visual terms. Being able to adjust and scan parameters and immediately see what happens can really make it easier to understand what you're looking at. 
  - _A flexible sequence mode:_ By stringing together elements, not just nonlinear crystals but also spherical or parabolic mirrors, apertures, filters, free space propagation and other elements, simulate how  one interaction affects another. Sequences of events can be scripted and even programmed with loop functions to see how things change over the course of repeated interactions.
  - _Fitting modes:_ Sometimes the data that we measure depends in an interesting way on a parameter, and we'd actually like to go back and figure out what that parameter was from the data. Solving this kind of inverse problem can be tough when the parameter lives inside a partial differential equation, but by simulating the whole thing and doing a fit, you have a chance to do it! The fitting algorithm can be used to narrow down a huge space of variables to come at your best estimation of what was happening in an experiment, or to adjust your experimental system to maximize output at a given frequency.
- - _A Python module for easy postprocessing of the results:_ I hope that you get something interesting out that you want to plot and maybe publish. One of the nicest platforms for making nice plots is Python in my opinion (that's why the documentation is in a Jupyter notebook), so purely out of self interest I tried to make it easy to load the results in Python. The module also has some functions related to typical operations you'd like to do on the data to make it easy for all of us. The program also gives you a Matlab loading script for those who want to use that.
+ - _A Python module for easy postprocessing of the results:_ I hope that you get something interesting out that you want to plot and maybe publish. One of the nicest platforms for making nice plots is Python in my opinion (that's why the documentation is in a Jupyter notebook), so purely out of self interest I tried to make it easy to load the results in Python. The module also has some functions related to typical operations you'd like to do on the data to make it easy for all of us. The program also gives you a Matlab loading script for those who want to use that. To get it, it's just 
+ ```
+ pip install LightwaveExplorer
+ ```
  - _Multiplatform:_ Works on Windows, Linux, and Mac.
  - _Command line interface for running on Linux/clusters:_ the simulation core can be compiled as a command line application to be controlled via the SLURM system. The GUI app can automatically configure the SLURM script, as well. I use this to run it on the clusters of the Max Planck Society, and other institutes and universities likely have similar systems. This lets you do a lot more if your personal resources are limited but you want to run simulations on a large grid or cover a lot of different parameters!
 
