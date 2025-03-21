@@ -5,8 +5,6 @@
  Max Planck Institute of Quantum Optics</p>
 
 ---
-New! 
-
 Publication!
 - N. Karpowicz, Open source, heterogenous, nonlinear-optics simulation. [*Optics Continuum* **2**, 2244-2254 (2023).](https://opg.optica.org/optcon/fulltext.cfm?uri=optcon-2-11-2244&id=540999)
   
@@ -16,6 +14,8 @@ Tutorials on YouTube!
 - Tutorial 3: <a href="https://youtu.be/qlcy_RBLGoU">Adding a crystal to the database</a>
 - Tutorial 4: <a href="https://youtu.be/v5O0UOUdfKE">Birefringence</a>
 - Tutorial 5: (new!) <a href="https://www.youtube.com/watch?v=4njswvog4bo">FDTD</a>
+
+[Documentation](https://nickkarpowicz.github.io/LightwaveExplorerDocumentation)!
 
 ---
 ### Latest release: 2025.2
