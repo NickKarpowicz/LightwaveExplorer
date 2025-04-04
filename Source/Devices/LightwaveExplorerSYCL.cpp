@@ -65,6 +65,7 @@ void readSYCLDevices(char* deviceArray, char* deviceListCstring) {
 }
 
 #ifdef _WIN32
+#include <windows.h>
 BOOL DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
