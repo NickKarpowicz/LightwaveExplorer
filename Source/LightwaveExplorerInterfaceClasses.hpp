@@ -12,7 +12,7 @@ class loadedInputData {
     loadedInputData(){}
     loadedInputData(const std::string& path){
         filePath = path;
-        std::ifstream file(filePath);
+        std::ifstream file(filePath, std::ios::binary);
         if(file.fail()) return;
         fileContents = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         hasData = fileContents.size() > 1;
