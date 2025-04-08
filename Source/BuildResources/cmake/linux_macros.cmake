@@ -98,7 +98,7 @@ macro(add_oneapi_interfaces)
     FetchContent_Declare(
             onemkl_interface_library
             GIT_REPOSITORY https://github.com/uxlfoundation/oneMath.git
-            GIT_TAG v0.6
+            GIT_TAG v0.7
     )
     FetchContent_MakeAvailable(onemkl_interface_library)
 
