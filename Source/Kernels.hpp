@@ -202,6 +202,21 @@ namespace kernelNamespace{
 		}
 	};
 
+	//apply a perfect polarizer to the field (same pattern as rotate with negative angle, and one rotated component is rotated back to orgin)
+	class polarizerKernel {
+		public:
+			const deviceComplex* Ein1;
+			const deviceComplex* Ein2;
+			deviceComplex* Eout1;
+			deviceComplex* Eout2;
+			const deviceFP rotationAngle;
+			deviceFunction void operator()(const int64_t i) const {
+				deviceComplex projectedField = deviceFPLib::cos(rotationAngle) * Ein1[i] + deviceFPLib::sin(rotationAngle) * Ein2[i];
+				Eout1[i] = deviceFPLib::cos(rotationAngle) * projectedField;
+				Eout2[i] = deviceFPLib::sin(rotationAngle) * projectedField;
+			}
+	};
+
 	//calculate the extra term in the Laplacian encountered in cylindrical coordinates (1/rho d/drho)
 	class radialLaplacianKernel {
 	public:
