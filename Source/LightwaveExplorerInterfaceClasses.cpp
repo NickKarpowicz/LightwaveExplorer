@@ -455,7 +455,7 @@ std::string simulationParameterSet::settingsString(){
 		}
 		fs << '\x0A';
 	}
-	fs << "Code version: 2025.2";
+	fs << "Code version: 2025.3.1";
 	fs << '\x0A';
 	return fs.str();
 }
