@@ -11,6 +11,14 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="2025.3" date="2025-02-27" urgency="high">
+  <description>
+  <ul>
+  <li>Add polarizer() sequence function</li>
+  <li>Use OneMath 0.7 for SYCL build</li>
+  </ul>
+  </description>
+  </release>
   <release version="2025.2" date="2025-02-27" urgency="high">
   <description>
   <ul>
@@ -118,13 +126,13 @@
   
   <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
   <screenshots>
-    <screenshot type="default">
-      <caption>The Lightwave Explorer main window in light mode showing a simulation of an optical parametric amplifier</caption>
-      <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot_light.png</image>
-    </screenshot>
-    <screenshot environment="plasma:dark">
+    <screenshot environment="default">
       <caption>The Lightwave Explorer main window in dark mode, with additional plots of the real-space and momentum-space fields</caption>
       <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot.png</image>
+    </screenshot>
+    <screenshot type="plasma:light">
+      <caption>The Lightwave Explorer main window in light mode showing a simulation of an optical parametric amplifier</caption>
+      <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot_light.png</image>
     </screenshot>
   </screenshots>
 

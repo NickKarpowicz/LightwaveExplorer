@@ -1091,6 +1091,55 @@ namespace hostFunctions{
 		return 0;
 	}
 
+	//apply a polarizer to the field -- nearly same pattern as rotateField
+	static int applyPolarizer(
+		ActiveDevice& d, 
+		simulationParameterSet* sCPU, 
+		const double rotationAngle) {
+
+		deviceComplex* Ein1 = d.s->gridEFrequency1;
+		deviceComplex* Ein2 = d.s->gridEFrequency2;
+		deviceComplex* Eout1 = d.s->gridEFrequency1Next1;
+		deviceComplex* Eout2 = d.s->gridEFrequency1Next2;
+
+		//retrieve/rotate the field from the CPU memory
+		d.deviceMemcpy(
+			Ein1, 
+			(*sCPU).EkwOut, 
+			2 * (*sCPU).NgridC * sizeof(std::complex<double>), 
+			copyType::ToDevice);
+
+
+		d.deviceLaunch(
+			static_cast<unsigned int>(d.s->NgridC / minGridDimension), 
+			minGridDimension, 
+			polarizerKernel{ Ein1, Ein2, Eout1, Eout2, (deviceFP)rotationAngle });
+
+		d.deviceMemcpy(
+			(*sCPU).EkwOut, 
+			Eout1, 
+			2 * (*sCPU).NgridC * sizeof(std::complex<double>), 
+			copyType::ToHost);
+
+		//transform back to time
+		d.fft(Eout1, d.s->gridETime1, deviceFFT::Z2D);
+		d.deviceLaunch(
+			2 * d.s->Nblock, 
+			d.s->Nthread, 
+			multiplyByConstantKernelD{ 
+				d.s->gridETime1, 
+				static_cast<deviceFP>(1.0 / d.s->Ngrid) });
+		d.deviceMemcpy(
+			(*sCPU).ExtOut, 
+			d.s->gridETime1, 
+			2 * (*sCPU).Ngrid * sizeof(double), 
+			copyType::ToHost);
+
+		//update spectrum
+		getTotalSpectrum(d);
+		return 0;
+	}
+
 	static void rotateBiaxial(
 		ActiveDevice& d,
 		simulationParameterSet* sCPU,
@@ -1954,6 +2003,12 @@ namespace hostFunctions{
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			rotateField(d, sCPU, deg2Rad<deviceFP>() * parameters[0]);
+			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+			break;
+		case functionID("polarizer"):
+			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
+			d.reset(sCPU);
+			applyPolarizer(d, sCPU, deg2Rad<deviceFP>() * parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case functionID("rotateIntoBiaxial"):

@@ -18,7 +18,7 @@ Tutorials on YouTube!
 [Documentation](https://nickkarpowicz.github.io/LightwaveExplorerDocumentation)!
 
 ---
-### Latest release: 2025.2
+### Latest release: 2025.3
 **Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
 
 **Mac:** [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
@@ -28,6 +28,10 @@ Tutorials on YouTube!
 <a href='https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer'>
     <img width='240' alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en'/>
   </a>
+
+#### Changes in 2025.3:
+- Add polarizer() sequence function
+- Use OneMath 0.7 in SYCL version
 
 #### Changes in 2025.2:
 - Added new beam visualization mode, where you can make color images of the light field that results from the simulation
