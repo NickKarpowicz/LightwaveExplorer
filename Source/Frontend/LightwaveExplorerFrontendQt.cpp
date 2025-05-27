@@ -373,7 +373,7 @@ public:
         setToDoubleMultiplier(textBoxes["frequency1"],1e-12,sim.base().pulse1.frequency);
         setToDoubleMultiplier(textBoxes["bandwidth1"],1e-12,sim.base().pulse1.bandwidth);
         setToInt(textBoxes["SGOrder1"],sim.base().pulse1.sgOrder);
-        setToDouble(textBoxes["CEP1"],sim.base().pulse1.cep);
+        setToDoubleMultiplier(textBoxes["CEP1"],1.0/vPi<double>(),sim.base().pulse1.cep);
         setToDoubleMultiplier(textBoxes["delay1"],1e15,sim.base().pulse1.delay);
         setToDoubleMultiplier(textBoxes["GDD1"],1e30,sim.base().pulse1.gdd);
         setToDoubleMultiplier(textBoxes["TOD1"],1e45,sim.base().pulse1.tod);
@@ -390,7 +390,7 @@ public:
         setToDoubleMultiplier(textBoxes["frequency2"],1e-12,sim.base().pulse2.frequency);
         setToDoubleMultiplier(textBoxes["bandwidth2"],1e-12,sim.base().pulse2.bandwidth);
         setToInt(textBoxes["SGOrder2"],sim.base().pulse2.sgOrder);
-        setToDouble(textBoxes["CEP2"],sim.base().pulse2.cep);
+        setToDoubleMultiplier(textBoxes["CEP2"],1.0/vPi<double>(),sim.base().pulse2.cep);
         setToDoubleMultiplier(textBoxes["delay2"],1e15,sim.base().pulse2.delay);
         setToDoubleMultiplier(textBoxes["GDD2"],1e30,sim.base().pulse2.gdd);
         setToDoubleMultiplier(textBoxes["TOD2"],1e45,sim.base().pulse2.tod);
@@ -603,7 +603,7 @@ public:
         setToDouble(textBoxes["frequency1"],1e-12*sim.base().pulse1.frequency);
         setToDouble(textBoxes["bandwidth1"],1e-12*sim.base().pulse1.bandwidth);
         setToDouble(textBoxes["SGOrder1"],sim.base().pulse1.sgOrder);
-        setToDouble(textBoxes["CEP1"],sim.base().pulse1.cep);
+        setToDouble(textBoxes["CEP1"],sim.base().pulse1.cep / vPi<double>());
         setToDouble(textBoxes["delay1"],1e15*sim.base().pulse1.delay);
         setToDouble(textBoxes["GDD1"],1e30*sim.base().pulse1.gdd);
         setToDouble(textBoxes["TOD1"],1e45*sim.base().pulse1.tod);
@@ -620,7 +620,7 @@ public:
         setToDouble(textBoxes["frequency2"],1e-12*sim.base().pulse2.frequency);
         setToDouble(textBoxes["bandwidth2"],1e-12*sim.base().pulse2.bandwidth);
         setToDouble(textBoxes["SGOrder2"],sim.base().pulse2.sgOrder);
-        setToDouble(textBoxes["CEP2"],sim.base().pulse2.cep);
+        setToDouble(textBoxes["CEP2"],sim.base().pulse2.cep / vPi<double>());
         setToDouble(textBoxes["delay2"],1e15*sim.base().pulse2.delay);
         setToDouble(textBoxes["GDD2"],1e30*sim.base().pulse2.gdd);
         setToDouble(textBoxes["TOD2"],1e45*sim.base().pulse2.tod);
