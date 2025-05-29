@@ -820,15 +820,16 @@ void simulationBatch::configure(bool allocateFields) {
 	}
 
 	//configure
-	double step1 = (parameters[0].batchDestination 
+	double step1 = (Nsims > 1) ? 
+		(parameters[0].batchDestination 
 		- parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex)) 
-		/ (Nsims - 1);
-	double step2 = 0.0;
-	if (Nsims2 > 0) {
-		step2 = (parameters[0].batchDestination2 
-			- parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2)) 
-			/ (Nsims2 - 1);
-	}
+		/ (Nsims - 1)
+		 : 0.0;
+	double step2 = (Nsims2 > 1) ?
+		(parameters[0].batchDestination2 
+		- parameters[0].getByNumberWithMultiplier(parameters[0].batchIndex2)) 
+		/ (Nsims2 - 1)
+		: 0.0;
 	
 	parameters[0].ExtOut = Ext.data();
 	parameters[0].EkwOut = Ekw.data();
