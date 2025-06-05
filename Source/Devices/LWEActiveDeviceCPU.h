@@ -256,7 +256,7 @@ public:
 		const unsigned int Nblock,
 		const unsigned int Nthread,
 		const T& functor) const {
-		if (cParams->useOpenMP) {
+		if (cParams->useOpenMP || visualizationOnly) {
 #pragma omp parallel for num_threads(LWEThreadCount)
 			for (int i = 0; i < static_cast<int>(Nblock); i++) {
 				const int64_t offset = i * static_cast<int64_t>(Nthread);
