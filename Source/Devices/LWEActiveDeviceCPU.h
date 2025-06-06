@@ -20,7 +20,7 @@
 #ifdef __APPLE__
 #include <dispatch/dispatch.h>
 #endif
-static const int LWEThreadCount = 
+static const int LWEThreadCount =
 	maxN(static_cast<int>(std::thread::hardware_concurrency() / 2), 2);
 #if defined __APPLE__ || defined __linux__
 template<typename deviceFP>
@@ -92,31 +92,31 @@ namespace deviceLibCPUFP32{
 };
 
 [[maybe_unused]] static std::complex<double> operator+(
-	const float f, 
-	const std::complex<double> x) { 
-	return std::complex<double>(x.real() + f, x.imag()); 
+	const float f,
+	const std::complex<double> x) {
+	return std::complex<double>(x.real() + f, x.imag());
 }
 [[maybe_unused]] static std::complex<double> operator+(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() + f, x.imag()); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() + f, x.imag());
 }
 [[maybe_unused]] static std::complex<double> operator-(
-	const std::complex<double> x, 
-	const float f) { 
+	const std::complex<double> x,
+	const float f) {
 	return std::complex<double>(x.real() - f, x.imag()); }
 [[maybe_unused]] static std::complex<double> operator*(
-	const float f, 
-	const std::complex<double> x) { 
-	return std::complex<double>(x.real() * f, x.imag() * f); 
+	const float f,
+	const std::complex<double> x) {
+	return std::complex<double>(x.real() * f, x.imag() * f);
 }
 [[maybe_unused]] static std::complex<double> operator*(
-	const std::complex<double> x, const float f) { 
-	return std::complex<double>(x.real() * f, x.imag() * f); 
+	const std::complex<double> x, const float f) {
+	return std::complex<double>(x.real() * f, x.imag() * f);
 }
 [[maybe_unused]] static std::complex<double> operator/(
-	const std::complex<double> x, const float f) { 
-	return std::complex<double>(x.real() / f, x.imag() / f); 
+	const std::complex<double> x, const float f) {
+	return std::complex<double>(x.real() / f, x.imag() / f);
 }
 
 [[maybe_unused]] static double j0Device(double x) {
@@ -179,7 +179,7 @@ private:
 	fftwf_plan fftPlan1DD2Z32 = {};
 	fftwf_plan fftPlan1DZ2D32 = {};
 	fftwf_plan doublePolfftPlan32 = {};
-	
+
 	void fftDestroy() {
 		if(sizeof(deviceFP)==sizeof(double)){
 			fftw_destroy_plan(fftPlanD2Z);
@@ -222,7 +222,7 @@ public:
 		s = &(visualization->parameterSet);
 		fftInitialize();
 		#if defined _WIN32 || defined __linux__
-			indices = std::vector<int64_t>(4 * sCPU->NgridC);
+			indices = std::vector<int64_t>(maxN(4 * sCPU->NgridC, height * width));
 			std::iota(indices.begin(), indices.end(), 0);
 		#endif
 		#ifdef __APPLE__
@@ -240,8 +240,8 @@ public:
 	template<typename T>
 #ifdef __APPLE__
 	void deviceLaunch(
-		const unsigned int Nblock, 
-		const unsigned int Nthread, 
+		const unsigned int Nblock,
+		const unsigned int Nthread,
 		const T& functor) const {
 			for (auto i = 0; i < Nthread; i++) {
 				dispatch_async(queue, ^{
@@ -262,7 +262,7 @@ public:
 				const int64_t offset = i * static_cast<int64_t>(Nthread);
 				for (int64_t j = offset; j < static_cast<int64_t>(offset + Nthread); functor(j++)) {}
 			}
-		}		
+		}
 		else {
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
 			std::for_each(
@@ -292,7 +292,7 @@ public:
 	inline bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
 		return isnan(*canaryPointer);
 	}
-	
+
 	void fft(const void* input, void* output, deviceFFT type) override {
 		if (!configuredFFT) return;
 		if(sizeof(deviceFP) == sizeof(double)){
@@ -342,101 +342,101 @@ public:
 			std::vector<std::complex<double>> setupWorkC((*s).NgridC * (2 + 2 * (*s).isCylindric));
 			const int fftw1[1] = { (int)(*s).Ntime };
 			fftPlan1DD2Z = fftw_plan_many_dft_r2c(
-				1, 
-				fftw1, 
-				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
-				setupWorkD.data(), 
-				fftw1, 
-				1, 
-				(int)(*s).Ntime, (fftw_complex*)setupWorkC.data(), 
-				fftw1, 
-				1, 
-				(int)(*s).Nfreq, 
+				1,
+				fftw1,
+				(int)(*s).Nspace * (int)(*s).Nspace2 * 2,
+				setupWorkD.data(),
+				fftw1,
+				1,
+				(int)(*s).Ntime, (fftw_complex*)setupWorkC.data(),
+				fftw1,
+				1,
+				(int)(*s).Nfreq,
 				FFTW_ESTIMATE);
 			fftPlan1DZ2D = fftw_plan_many_dft_c2r(
-				1, 
-				fftw1, 
-				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
-				(fftw_complex*)setupWorkC.data(), 
-				fftw1, 
-				1, 
-				(int)(*s).Nfreq, 
-				setupWorkD.data(), 
-				fftw1, 
-				1, 
-				(int)(*s).Ntime, 
+				1,
+				fftw1,
+				(int)(*s).Nspace * (int)(*s).Nspace2 * 2,
+				(fftw_complex*)setupWorkC.data(),
+				fftw1,
+				1,
+				(int)(*s).Nfreq,
+				setupWorkD.data(),
+				fftw1,
+				1,
+				(int)(*s).Ntime,
 				FFTW_ESTIMATE);
 			if ((*s).is3D) {
 				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
 				fftPlanD2Z = fftw_plan_many_dft_r2c(
-					3, 
-					fftwSizes, 
-					2, 
-					setupWorkD.data(), 
-					NULL, 
-					1, 
-					(int)(*s).Ngrid, 
-					(fftw_complex*)setupWorkC.data(), 
-					NULL, 1, 
-					(int)(*s).NgridC, 
+					3,
+					fftwSizes,
+					2,
+					setupWorkD.data(),
+					NULL,
+					1,
+					(int)(*s).Ngrid,
+					(fftw_complex*)setupWorkC.data(),
+					NULL, 1,
+					(int)(*s).NgridC,
 					FFTW_MEASURE);
 				fftPlanZ2D = fftw_plan_many_dft_c2r(
-					3, 
-					fftwSizes, 
-					2, 
-					(fftw_complex*)setupWorkC.data(), 
-					NULL, 
-					1, 
-					(int)(*s).NgridC, 
-					setupWorkD.data(), 
-					NULL, 
-					1, 
-					(int)(*s).Ngrid, 
+					3,
+					fftwSizes,
+					2,
+					(fftw_complex*)setupWorkC.data(),
+					NULL,
+					1,
+					(int)(*s).NgridC,
+					setupWorkD.data(),
+					NULL,
+					1,
+					(int)(*s).Ngrid,
 					FFTW_MEASURE);
 			}
 			else {
 				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
 				fftPlanD2Z = fftw_plan_many_dft_r2c(
-					2, 
-					fftwSizes, 
-					2, 
-					setupWorkD.data(), 
-					NULL, 
-					1, 
-					(int)(*s).Ngrid, 
-					(fftw_complex*)setupWorkC.data(), 
-					NULL, 
-					1, 
-					(int)(*s).NgridC, 
+					2,
+					fftwSizes,
+					2,
+					setupWorkD.data(),
+					NULL,
+					1,
+					(int)(*s).Ngrid,
+					(fftw_complex*)setupWorkC.data(),
+					NULL,
+					1,
+					(int)(*s).NgridC,
 					FFTW_MEASURE);
 				fftPlanZ2D = fftw_plan_many_dft_c2r(
-					2, 
-					fftwSizes, 
-					2, 
-					(fftw_complex*)setupWorkC.data(), 
-					NULL, 
-					1, 
-					(int)(*s).NgridC, 
-					setupWorkD.data(), 
-					NULL, 
-					1, 
-					(int)(*s).Ngrid, 
+					2,
+					fftwSizes,
+					2,
+					(fftw_complex*)setupWorkC.data(),
+					NULL,
+					1,
+					(int)(*s).NgridC,
+					setupWorkD.data(),
+					NULL,
+					1,
+					(int)(*s).Ngrid,
 					FFTW_MEASURE);
 
 				if ((*s).isCylindric) {
 					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
 					doublePolfftPlan = fftw_plan_many_dft_r2c(
-						2, 
-						fftwSizesCyl, 
-						2 + 2 * (*s).hasPlasma, 
-						setupWorkD.data(), 
-						NULL, 
-						1, 
-						2 * (int)(*s).Ngrid, 
-						(fftw_complex*)setupWorkC.data(), 
-						NULL, 
-						1, 
-						2 * (int)(*s).NgridC, 
+						2,
+						fftwSizesCyl,
+						2 + 2 * (*s).hasPlasma,
+						setupWorkD.data(),
+						NULL,
+						1,
+						2 * (int)(*s).Ngrid,
+						(fftw_complex*)setupWorkC.data(),
+						NULL,
+						1,
+						2 * (int)(*s).NgridC,
 						FFTW_MEASURE);
 				}
 			}
@@ -446,103 +446,103 @@ public:
 			std::vector<std::complex<float>> setupWorkC((*s).NgridC * (2 + 2 * (*s).isCylindric));
 			const int fftw1[1] = { (int)(*s).Ntime };
 			fftPlan1DD2Z32 = fftwf_plan_many_dft_r2c(
-				1, 
-				fftw1, 
-				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
-				setupWorkD.data(), 
-				fftw1, 
-				1, 
-				(int)(*s).Ntime, 
-				(fftwf_complex*)setupWorkC.data(), 
-				fftw1, 
-				1, 
-				(int)(*s).Nfreq, 
+				1,
+				fftw1,
+				(int)(*s).Nspace * (int)(*s).Nspace2 * 2,
+				setupWorkD.data(),
+				fftw1,
+				1,
+				(int)(*s).Ntime,
+				(fftwf_complex*)setupWorkC.data(),
+				fftw1,
+				1,
+				(int)(*s).Nfreq,
 				FFTW_ESTIMATE);
 			if(!visualizationOnly)fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(
-				1, 
-				fftw1, 
-				(int)(*s).Nspace * (int)(*s).Nspace2 * 2, 
-				(fftwf_complex*)setupWorkC.data(), 
-				fftw1, 
-				1, 
-				(int)(*s).Nfreq, 
-				setupWorkD.data(), 
-				fftw1, 
-				1, 
-				(int)(*s).Ntime, 
+				1,
+				fftw1,
+				(int)(*s).Nspace * (int)(*s).Nspace2 * 2,
+				(fftwf_complex*)setupWorkC.data(),
+				fftw1,
+				1,
+				(int)(*s).Nfreq,
+				setupWorkD.data(),
+				fftw1,
+				1,
+				(int)(*s).Ntime,
 				FFTW_ESTIMATE);
 			if ((*s).is3D && !visualizationOnly) {
 				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
 				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
-					3, 
-					fftwSizes, 
-					2, 
-					setupWorkD.data(), 
-					NULL, 
-					1, 
-					(int)(*s).Ngrid, 
-					(fftwf_complex*)setupWorkC.data(), 
-					NULL, 
-					1, 
-					(int)(*s).NgridC, 
+					3,
+					fftwSizes,
+					2,
+					setupWorkD.data(),
+					NULL,
+					1,
+					(int)(*s).Ngrid,
+					(fftwf_complex*)setupWorkC.data(),
+					NULL,
+					1,
+					(int)(*s).NgridC,
 					FFTW_MEASURE);
 				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(
-					3, 
-					fftwSizes, 
-					2, 
-					(fftwf_complex*)setupWorkC.data(), 
-					NULL, 
-					1, 
-					(int)(*s).NgridC, 
-					setupWorkD.data(), 
-					NULL, 
-					1, 
-					(int)(*s).Ngrid, 
+					3,
+					fftwSizes,
+					2,
+					(fftwf_complex*)setupWorkC.data(),
+					NULL,
+					1,
+					(int)(*s).NgridC,
+					setupWorkD.data(),
+					NULL,
+					1,
+					(int)(*s).Ngrid,
 					FFTW_MEASURE);
 			}
 			else {
 				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
 				if(!visualizationOnly)fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
-					2, 
-					fftwSizes, 
-					2, 
-					setupWorkD.data(), 
-					NULL, 
-					1, 
-					(int)(*s).Ngrid, 
-					(fftwf_complex*)setupWorkC.data(), 
-					NULL, 
-					1, 
-					(int)(*s).NgridC, 
+					2,
+					fftwSizes,
+					2,
+					setupWorkD.data(),
+					NULL,
+					1,
+					(int)(*s).Ngrid,
+					(fftwf_complex*)setupWorkC.data(),
+					NULL,
+					1,
+					(int)(*s).NgridC,
 					FFTW_MEASURE);
 				if(!visualizationOnly)fftPlanZ2D32 = fftwf_plan_many_dft_c2r(
-					2, 
-					fftwSizes, 
-					2, 
-					(fftwf_complex*)setupWorkC.data(), 
-					NULL, 
-					1, 
-					(int)(*s).NgridC, 
-					setupWorkD.data(), 
-					NULL, 
-					1, 
-					(int)(*s).Ngrid, 
+					2,
+					fftwSizes,
+					2,
+					(fftwf_complex*)setupWorkC.data(),
+					NULL,
+					1,
+					(int)(*s).NgridC,
+					setupWorkD.data(),
+					NULL,
+					1,
+					(int)(*s).Ngrid,
 					FFTW_MEASURE);
 
 				if ((*s).isCylindric && !visualizationOnly) {
 					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
 					doublePolfftPlan32 = fftwf_plan_many_dft_r2c(
-						2, 
-						fftwSizesCyl, 
-						2 + 2 * (*s).hasPlasma, 
-						setupWorkD.data(), 
-						NULL, 
-						1, 
-						2 * (int)(*s).Ngrid, 
-						(fftwf_complex*)setupWorkC.data(), 
-						NULL, 
-						1, 
-						2 * (int)(*s).NgridC, 
+						2,
+						fftwSizesCyl,
+						2 + 2 * (*s).hasPlasma,
+						setupWorkD.data(),
+						NULL,
+						1,
+						2 * (int)(*s).Ngrid,
+						(fftwf_complex*)setupWorkC.data(),
+						NULL,
+						1,
+						2 * (int)(*s).NgridC,
 						FFTW_MEASURE);
 				}
 			}
@@ -570,7 +570,8 @@ public:
 			fftInitialize();
 		}
 	#if defined _WIN32 || defined __linux__
-		if(indices.size() < static_cast<std::size_t>(4 * (*s).NgridC)){
+		if(indices.size() < static_cast<std::size_t>(4 * (*s).NgridC) ||
+		(visualizationOnly && indices.size() < (static_cast<std::size_t>((*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2))))){
 			indices = std::vector<int64_t>(4 * (*s).NgridC);
 			std::iota(indices.begin(), indices.end(), 0);
 		}
