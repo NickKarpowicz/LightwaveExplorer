@@ -2,7 +2,7 @@
 <!-- Copyright 2023 Nicholas Karpowicz -->
 <component type="desktop-application">
   <id>io.github.NickKarpowicz.LightwaveExplorer</id>
-  
+
   <name>Lightwave Explorer</name>
   <summary>Easily simulate nonlinear optics</summary>
   <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
@@ -11,7 +11,19 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
-    <release version="2025.3" date="2025-02-27" urgency="high">
+  <release version="2025.4" date="2025-06-07" urgency="high">
+  <description>
+  <p>Bug fix release:
+  <ul>
+  <li>Corrects the carrier-envelope phase unit on the GUI</li>
+  <li>Fixes batch size of 1 refusing to run</li>
+  <li>Fixes a crash when rendering large 2D beam views</li>
+  <li>Fixes a crash in FDTD mode for large grids and short time lengths</li>
+  <li>Fixes GUI lock-up when rendering large beam views</li>
+  </ul>
+  </description>
+  </release>
+  <release version="2025.3" date="2025-02-27" urgency="high">
   <description>
   <ul>
   <li>Add polarizer() sequence function</li>
@@ -123,7 +135,7 @@
       <li>A Python module for easy postprocessing</li>
     </ul>
   </description>
-  
+
   <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
   <screenshots>
     <screenshot type="default">
