@@ -222,7 +222,13 @@ public:
 		s = &(visualization->parameterSet);
 		fftInitialize();
 		#if defined _WIN32 || defined __linux__
-			indices = std::vector<int64_t>(maxN(4 * sCPU->NgridC, height * width));
+            int64_t max_launch_size = maxN(
+    		    maxN(
+    				4 * (*s).NgridC,
+    				(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
+       			    height * width
+    		);
+			indices = std::vector<int64_t>(max_launch_size);
 			std::iota(indices.begin(), indices.end(), 0);
 		#endif
 		#ifdef __APPLE__
@@ -572,7 +578,13 @@ public:
 	#if defined _WIN32 || defined __linux__
 		if(indices.size() < static_cast<std::size_t>(4 * (*s).NgridC) ||
 		(visualizationOnly && indices.size() < (static_cast<std::size_t>((*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2))))){
-			indices = std::vector<int64_t>(4 * (*s).NgridC);
+			int64_t max_launch_size = maxN(
+			    maxN(
+					4 * (*s).NgridC,
+					(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
+				visualizationOnly * (*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2)
+			);
+		    indices = std::vector<int64_t>(max_launch_size);
 			std::iota(indices.begin(), indices.end(), 0);
 		}
 	#endif
@@ -586,7 +598,13 @@ public:
 		fftInitialize();
 		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
 		#if defined _WIN32 || defined __linux__
-			indices = std::vector<int64_t>(4 * (*s).NgridC);
+            int64_t max_launch_size = maxN(
+    		    maxN(
+    				4 * (*s).NgridC,
+    				(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
+    			visualizationOnly * (*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2)
+    		);
+			indices = std::vector<int64_t>(max_launch_size);
 			std::iota(indices.begin(), indices.end(), 0);
 		#endif
 		return 0;
