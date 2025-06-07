@@ -7,7 +7,7 @@
 ---
 Publication!
 - N. Karpowicz, Open source, heterogenous, nonlinear-optics simulation. [*Optics Continuum* **2**, 2244-2254 (2023).](https://opg.optica.org/optcon/fulltext.cfm?uri=optcon-2-11-2244&id=540999)
-  
+
 Tutorials on YouTube!
 - Tutorial 1: <a href="https://youtu.be/J1-dh6V5flQ">Introduction and quick start, with walkthrough of simulating SHG and OPA</a></li>
 - Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
@@ -21,13 +21,21 @@ Tutorials on YouTube!
 ### Latest release: 2025.3
 **Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
 
-**Mac:** [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native) 
+**Mac:** [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native)
 
 **Linux:**
 
 <a href='https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer'>
     <img width='240' alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en'/>
   </a>
+
+#### Changes in 2025.4:
+Bug fix release:
+- Corrects the carrier-envelope phase unit on the GUI
+- Fixes batch size of 1 refusing to run
+- Fixes a crash when rendering large 2D beam views
+- Fixes a crash in FDTD mode for large grids and short time lengths
+- Fixes GUI lock-up when rendering large beam views
 
 #### Changes in 2025.3:
 - Add polarizer() sequence function
@@ -72,10 +80,10 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
  - _Easily extensible database of materials:_ Eveything the program knows about nonlinear materials comes from a human-readable text file giving the appropriate coefficients and tensors. If you want to use a new material, or you've done a measurement in a new range where typical extrapolations from older data isn't relevant, it's easy to add and correct. There are places for references for the key parameters, and these references are stored in the saved simulation results for future reference. Especially if you have simulations that you checked against experiments, I'd be very happy for you to add your crystal definitions to the central database in the project Github.
  - _Accurate modeling of nonlinear optics_ using multiple, user-selectable physical models, including the unidirectional nonlinear wave equation and finite-difference time-domain approaches. This allows calculations that accommodate large systems where forward-propagation is an appropriate assumption, but also of etalon effects in thin crystals where reflections cannot be neglected.
  - _Efficient code so that complicated systems can be simulated in 3D:_ Real laser pulses can be messy, and if they weren't so before a nonlinear crystal, there's a good chance they are after (but not always). If things are slow, it's hard to go beyond one dimension on tolerable time scales, and then you miss out on the whole weird world of spatiotemporal couplings. Here you have options for rather fast simulations when there's a symmetry to apply (e.g. cylindrical or along one Cartesian dimension), alongside fully 3D propagation. Runs natively on both GPU and CPU to make use of whatever you have to work with.
- - _A graphical interface that lets you see what you're doing:_ A lot of us think in visual terms. Being able to adjust and scan parameters and immediately see what happens can really make it easier to understand what you're looking at. 
+ - _A graphical interface that lets you see what you're doing:_ A lot of us think in visual terms. Being able to adjust and scan parameters and immediately see what happens can really make it easier to understand what you're looking at.
  - _A flexible sequence mode:_ By stringing together elements, not just nonlinear crystals but also spherical or parabolic mirrors, apertures, filters, free space propagation and other elements, simulate how  one interaction affects another. Sequences of events can be scripted and even programmed with loop functions to see how things change over the course of repeated interactions.
  - _Fitting modes:_ Sometimes the data that we measure depends in an interesting way on a parameter, and we'd actually like to go back and figure out what that parameter was from the data. Solving this kind of inverse problem can be tough when the parameter lives inside a partial differential equation, but by simulating the whole thing and doing a fit, you have a chance to do it! The fitting algorithm can be used to narrow down a huge space of variables to come at your best estimation of what was happening in an experiment, or to adjust your experimental system to maximize output at a given frequency.
- - _A Python module for easy postprocessing of the results:_ I hope that you get something interesting out that you want to plot and maybe publish. One of the nicest platforms for making nice plots is Python in my opinion (that's why the documentation is in a Jupyter notebook), so purely out of self interest I tried to make it easy to load the results in Python. The module also has some functions related to typical operations you'd like to do on the data to make it easy for all of us. The program also gives you a Matlab loading script for those who want to use that. To get it, it's just 
+ - _A Python module for easy postprocessing of the results:_ I hope that you get something interesting out that you want to plot and maybe publish. One of the nicest platforms for making nice plots is Python in my opinion (that's why the documentation is in a Jupyter notebook), so purely out of self interest I tried to make it easy to load the results in Python. The module also has some functions related to typical operations you'd like to do on the data to make it easy for all of us. The program also gives you a Matlab loading script for those who want to use that. To get it, it's just
  ```
  pip install LightwaveExplorer
  ```
@@ -162,7 +170,7 @@ Here's an example for Intel:
 cmake -DUSE_SYCL=1 -DCMAKE_CXX_COMPILER=icpx ..
 ```
   - The Intel (SPIR-V) backend is the default, so that's what you get if nothing else is specified
-  - Use the Intel compiler provided by the OneAPI Base Toolkit (icpx). 
+  - Use the Intel compiler provided by the OneAPI Base Toolkit (icpx).
   - You will need to source the OneAPI setvars.sh script first. e.g.
   ```
   . /opt/intel/oneapi/setvars.sh
@@ -197,7 +205,7 @@ Additional compiler flags:
   ```
 ---
   ### Compilation on clusters
-  
+
   A script is provided to compile the CUDA command line version on Linux. This is made specifically to work on the clusters of the MPCDF but will likely work with small modifications on other distributions depending on the local environment. The CUDA development kit and Intel OneAPI should be available in advance. With these prerequisites, the following command should work:
   ```
 curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/compileCommandLineLWEfromRepos.sh | tcsh -s
@@ -209,8 +217,8 @@ curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master
  ---
 
 ### Compilation on Windows
-You will need: 
- - [Visual Studio 2022](https://visualstudio.microsoft.com/free-developer-offers/) to get Microsoft's compiler. 
+You will need:
+ - [Visual Studio 2022](https://visualstudio.microsoft.com/free-developer-offers/) to get Microsoft's compiler.
  - [vcpkg](https://vcpkg.io), and use that to install dlib, gcem, and miniz.
  - [CMake](https://cmake.org/).
  - [CUDA development kit](https://developer.nvidia.com/cuda-downloads)
@@ -220,7 +228,7 @@ You will need:
 If you've cloned the repo, from that folder, first make the SYCL version as a DLL:
 ```
 mkdir build
-cd build 
+cd build
 cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
 cmake --build . --config Release
 ```
@@ -242,17 +250,17 @@ Thanks to the original authors for making their work available! They are all fre
   - [Dlib](http://dlib.net/): This library is the basis of the optimization routines. I make use of the global optimization functions for the fitting/optimization modes. The library is [available on Github](https://github.com/davisking/dlib), and their excellent documentation and further information is on the [main project website](http://dlib.net/).
   - [FFTW](https://www.fftw.org/): This is used for Fast Fourier Transforms in the GPL 3.0 version (i.e. the CPU-only Linux and Mac versions). On a given CPU this is on average the fastest FFT you can find.
   - [miniz](https://github.com/richgel999/miniz): Nice and easy to use C library for making/reading .zip archives.
-  
+
   ---
 
   ### Programming note
 
-  The code is written in a "trilingual" way - a single core code file is compiled (after some includes and preprocessor definitions) by the three different compilers, Nvidia nvcc, a c++ compiler (either Microsoft's, g++, or clang++ have all worked), and Intel dpc++. 
+  The code is written in a "trilingual" way - a single core code file is compiled (after some includes and preprocessor definitions) by the three different compilers, Nvidia nvcc, a c++ compiler (either Microsoft's, g++, or clang++ have all worked), and Intel dpc++.
 
-  Although CUDA was the initial platform and what I use (and test) most extensively, I've added two additional languages for those who don't have an Nvidia graphics card. 
-  
-  One is in c++, with multithreading done with either with OpenMP or using C++ parallel execution policies. 
-  
+  Although CUDA was the initial platform and what I use (and test) most extensively, I've added two additional languages for those who don't have an Nvidia graphics card.
+
+  One is in c++, with multithreading done with either with OpenMP or using C++ parallel execution policies.
+
   The other language is SYCL. This also allows the simulation to run on the CPU and should allow it to run on Intel's graphics cards, as well as the integrated graphics of many Intel CPUs, and GPUs from AMD.
-    
+
   The different architectures are using the same algorithm, aside from small differences in their floating point math and intrinsic functions. So when I make changes or additions, there will never be any platform gaining over the other (again, reproducibility by anyone is part of the goals here).
