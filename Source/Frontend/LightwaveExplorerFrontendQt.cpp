@@ -12,9 +12,9 @@ void blackoutCairoPlot(cairo_t* cr, const int width, const int height, const boo
         std::string message("Rendering...");
         cairo_text_extents_t te;
         cairo_text_extents(cr, message.c_str(), &te);
-        LweColor white(128,128,128,255);
+        LweColor white(0.5,0.5,0.5,1.0);
+        cairo_move_to(cr, 0.5*width - 0.5*te.x_advance, 0.5*height + 0.5*te.height);
         white.setCairo(cr);
-        cairo_move_to(cr, 0.5*width - 0.5*te.x_advance, 0.5*height);
         cairo_show_text(cr, message.c_str());
     }
 }
@@ -1818,6 +1818,7 @@ public:
                 messenger->passDrawRequest();
                 messenger->passSyncValues();
                 messenger->passSliderUpdate();
+                messenger->passBeamViewRender();
                 messenger->passString("done.");
             },path).detach();
         });
