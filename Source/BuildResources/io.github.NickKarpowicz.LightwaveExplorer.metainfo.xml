@@ -13,7 +13,7 @@
   <releases>
   <release version="2025.4" date="2025-06-07" urgency="high">
   <description>
-  <p>Bug fix release:
+  <p>Bug fix release:</p>
   <ul>
   <li>Corrects the carrier-envelope phase unit on the GUI</li>
   <li>Fixes batch size of 1 refusing to run</li>
