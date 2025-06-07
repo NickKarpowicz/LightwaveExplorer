@@ -1,21 +1,33 @@
 #include "LightwaveExplorerFrontendQt.h"
+#include "cairo.h"
+#include <mutex>
 #include <regex>
-void blackoutCairoPlot(cairo_t* cr, const int width, const int height){
+#include <shared_mutex>
+void blackoutCairoPlot(cairo_t* cr, const int width, const int height, const bool show_rendering=false){
     LweColor black(0, 0, 0, 0);
     cairo_rectangle(cr, 0, 0, width, height);
     black.setCairo(cr);
     cairo_fill(cr);
+    if(show_rendering){
+        std::string message("Rendering...");
+        cairo_text_extents_t te;
+        cairo_text_extents(cr, message.c_str(), &te);
+        LweColor white(128,128,128,255);
+        white.setCairo(cr);
+        cairo_move_to(cr, 0.5*width - 0.5*te.x_advance, 0.5*height);
+        cairo_show_text(cr, message.c_str());
+    }
 }
 class CairoWidget : public QWidget {
     Q_OBJECT
     LWEGui& theGui;
     CairoFunction theFunction;
 public:
-    CairoWidget(LWEGui& sim, CairoFunction fun, QWidget* parent = nullptr) : 
+    CairoWidget(LWEGui& sim, CairoFunction fun, QWidget* parent = nullptr) :
     QWidget(parent),
-    theGui(sim), 
+    theGui(sim),
     theFunction(fun) {}
-    
+
 protected:
     void paintEvent(QPaintEvent* event) override {
         qreal ratio = devicePixelRatio();
@@ -216,7 +228,7 @@ class SequenceValidator : public QSyntaxHighlighter {
         rule.pattern = QRegularExpression("<.*>");
         rule.format = commentFormat;
         highlightingRules.append(rule);
-        
+
         return highlightingRules;
     }
 public:
@@ -235,7 +247,7 @@ protected:
     #else
         const bool isLightTheme = (QApplication::styleHints()->colorScheme() == Qt::ColorScheme::Light);
     #endif
-        QList<HighlightingRule>& highlightingRules = isLightTheme ? 
+        QList<HighlightingRule>& highlightingRules = isLightTheme ?
             highlightingRulesLight : highlightingRulesDark;
         const ColorSet& c = isLightTheme ? lightColors : darkColors;
         for (const HighlightingRule &rule : std::as_const(highlightingRules)) {
@@ -271,7 +283,7 @@ protected:
             setFormat(openingIndex, 1, badParenFormat);
         }
     }
-private: 
+private:
 };
 
 
@@ -288,7 +300,7 @@ class LWEGui : public QMainWindow {
             pulldowns["material"]->addItem(materialString.c_str());
         }
     }
-public:    
+public:
 //Main data structures:
 // theSim contains all of the parameters of the current simulation including grid arrays
 // theDatabase is the database of crystal properties
@@ -319,7 +331,7 @@ public:
     QWidget* plotControlRegion;
     QSlider* slider;
     LweImage<double> beamView;
-    std::mutex beamViewMutex;
+    std::shared_mutex beamViewMutex;
     GuiMessenger* messenger;
     std::shared_mutex m;
 
@@ -350,7 +362,7 @@ public:
 
         enum class SecondValueDefault {Default_zero = 0, Default_same = 1};
         auto setTwoDoublesIfThereIsASemicolon = [](QLineEdit* box, double& value1, double& value2, SecondValueDefault defaultType, double multiplier = 1.0){
-            QString input = box -> text(); 
+            QString input = box -> text();
             int semicolonIndex = input.indexOf(';');
             if(semicolonIndex == -1){
                 value1 = multiplier * input.toDouble();
@@ -428,12 +440,12 @@ public:
         setToInt64(textBoxes["batch1steps"],sim.base().Nsims);
         setToInt64(textBoxes["batch2steps"],sim.base().Nsims2);
         setToInt64(textBoxes["offload"],sim.base().NsimsCPU);
-        
+
         sim.base().isInSequence = false;
         sim.base().sequenceString = sequence->toPlainText().toStdString();
         stripWhiteSpace(sim.base().sequenceString);
-        if (sim.base().sequenceString[0] != 'N' 
-            && sim.base().sequenceString.length() > 5) 
+        if (sim.base().sequenceString[0] != 'N'
+            && sim.base().sequenceString.length() > 5)
             sim.base().isInSequence = true;
 
         sim.base().isInFittingMode = false;
@@ -443,30 +455,30 @@ public:
         sim.base().pulse1LoadedData = pulse1LoadedData;
         sim.base().pulse2LoadedData = pulse2LoadedData;
         sim.base().fittingLoadedData = fittingLoadedData;
-        
+
         //derived parameters and cleanup:
         sim.base().sellmeierType = 0;
         sim.base().axesNumber = 0;
-        sim.base().Ntime = (int64_t)(minGridDimension * round(sim.base().timeSpan 
+        sim.base().Ntime = (int64_t)(minGridDimension * round(sim.base().timeSpan
             / (minGridDimension * sim.base().tStep)));
         sim.base().timeSpan = sim.base().tStep * sim.base().Ntime;
         if (sim.base().symmetryType == 2) {
             sim.base().is3D = true;
             sim.base().isFDTD = false;
-            sim.base().spatialWidth = sim.base().rStep 
-                * (minGridDimension * round(sim.base().spatialWidth 
+            sim.base().spatialWidth = sim.base().rStep
+                * (minGridDimension * round(sim.base().spatialWidth
                     / (sim.base().rStep * minGridDimension)));
-            sim.base().Nspace = (int64_t)round(sim.base().spatialWidth 
+            sim.base().Nspace = (int64_t)round(sim.base().spatialWidth
                 / sim.base().rStep);
             if (sim.base().spatialHeight > 0) {
-                sim.base().spatialHeight = sim.base().rStep 
-                    * (minGridDimension * round(sim.base().spatialHeight 
+                sim.base().spatialHeight = sim.base().rStep
+                    * (minGridDimension * round(sim.base().spatialHeight
                         / (sim.base().rStep * minGridDimension)));
             }
             else {
                 sim.base().spatialHeight = sim.base().spatialWidth;
             }
-            sim.base().Nspace2 = (int64_t)round(sim.base().spatialHeight 
+            sim.base().Nspace2 = (int64_t)round(sim.base().spatialHeight
                 / sim.base().rStep);
         }
         else if (sim.base().symmetryType == 3) {
@@ -474,29 +486,29 @@ public:
             sim.base().isFDTD = true;
             sim.base().Nspace2 = 1;
             sim.base().spatialHeight = 0;
-            sim.base().spatialWidth = sim.base().rStep 
-                * (minGridDimension * round(sim.base().spatialWidth 
+            sim.base().spatialWidth = sim.base().rStep
+                * (minGridDimension * round(sim.base().spatialWidth
                     / (sim.base().rStep * minGridDimension)));
-            sim.base().Nspace = (int64_t)round(sim.base().spatialWidth 
+            sim.base().Nspace = (int64_t)round(sim.base().spatialWidth
                 / sim.base().rStep);
         }
         else if (sim.base().symmetryType == 4) {
             sim.base().is3D = true;
             sim.base().isFDTD = true;
-            sim.base().spatialWidth = sim.base().rStep 
-                * (minGridDimension * round(sim.base().spatialWidth 
+            sim.base().spatialWidth = sim.base().rStep
+                * (minGridDimension * round(sim.base().spatialWidth
                     / (sim.base().rStep * minGridDimension)));
-            sim.base().Nspace = (int64_t)round(sim.base().spatialWidth 
+            sim.base().Nspace = (int64_t)round(sim.base().spatialWidth
                 / sim.base().rStep);
             if (sim.base().spatialHeight > 0) {
-                sim.base().spatialHeight = sim.base().rStep 
-                    * (minGridDimension * round(sim.base().spatialHeight 
+                sim.base().spatialHeight = sim.base().rStep
+                    * (minGridDimension * round(sim.base().spatialHeight
                         / (sim.base().rStep * minGridDimension)));
             }
             else {
                 sim.base().spatialHeight = sim.base().spatialWidth;
             }
-            sim.base().Nspace2 = (int64_t)round(sim.base().spatialHeight 
+            sim.base().Nspace2 = (int64_t)round(sim.base().spatialHeight
                 / sim.base().rStep);
         }
         else {
@@ -504,10 +516,10 @@ public:
             sim.base().isFDTD = false;
             sim.base().Nspace2 = 1;
             sim.base().spatialHeight = 0;
-            sim.base().spatialWidth = sim.base().rStep 
-                * (minGridDimension * round(sim.base().spatialWidth 
+            sim.base().spatialWidth = sim.base().rStep
+                * (minGridDimension * round(sim.base().spatialWidth
                     / (sim.base().rStep * minGridDimension)));
-            sim.base().Nspace = (int64_t)round(sim.base().spatialWidth 
+            sim.base().Nspace = (int64_t)round(sim.base().spatialWidth
                 / sim.base().rStep);
         }
 
@@ -516,7 +528,7 @@ public:
         sim.base().Ngrid = sim.base().Ntime * sim.base().Nspace * sim.base().Nspace2;
         sim.base().kStep = twoPi<double>() / (sim.base().Nspace * sim.base().rStep);
         sim.base().fStep = 1.0 / (sim.base().Ntime * sim.base().tStep);
-        sim.base().Npropagation = (int64_t)round(sim.base().crystalThickness 
+        sim.base().Npropagation = (int64_t)round(sim.base().crystalThickness
             / sim.base().propagationStep);
 
         sim.base().isCylindric = sim.base().symmetryType == 1;
@@ -533,7 +545,7 @@ public:
         if (sim.base().batchIndex2 == 0 || sim.base().Nsims2 < 1) {
             sim.base().Nsims2 = 1;
         }
-        sim.base().NsimsCPU = minN(sim.base().NsimsCPU, 
+        sim.base().NsimsCPU = minN(sim.base().NsimsCPU,
             sim.base().Nsims * sim.base().Nsims2);
 
         sim.base().field1IsAllocated = false;
@@ -541,17 +553,17 @@ public:
 
         //crystal from database (database must be loaded!)
         sim.base().crystalDatabase = theDatabase.db.data();
-        sim.base().chi2Tensor = 
+        sim.base().chi2Tensor =
             theDatabase.db[sim.base().materialIndex].d.data();
-        sim.base().chi3Tensor = 
+        sim.base().chi3Tensor =
             theDatabase.db[sim.base().materialIndex].chi3.data();
-        sim.base().nonlinearSwitches = 
+        sim.base().nonlinearSwitches =
             theDatabase.db[sim.base().materialIndex].nonlinearSwitches;
-        sim.base().sellmeierCoefficients = 
+        sim.base().sellmeierCoefficients =
             theDatabase.db[sim.base().materialIndex].sellmeierCoefficients.data();
-        sim.base().sellmeierType = 
+        sim.base().sellmeierType =
             theDatabase.db[sim.base().materialIndex].sellmeierType;
-        sim.base().axesNumber = 
+        sim.base().axesNumber =
             theDatabase.db[sim.base().materialIndex].axisType;
         sim.base().progressCounter = &progressCounter;
 
@@ -639,7 +651,7 @@ public:
         pulldowns["propagator"]->setCurrentIndex(sim.base().symmetryType);
         pulldowns["pulse1type"]->setCurrentIndex(sim.base().pulse1FileType);
         pulldowns["pulse2type"]->setCurrentIndex(sim.base().pulse2FileType);
-        
+
         setToDouble(textBoxes["crystalTheta"],rad2Deg<double>() * sim.base().crystalTheta);
         setToDouble(textBoxes["crystalPhi"],rad2Deg<double>() *sim.base().crystalPhi);
         setToTwoDoubles(textBoxes["NLAbsorption"],sim.base().nonlinearAbsorptionStrength, sim.base().startingCarrierDensity, NoSemicolonIf::zero);
@@ -700,7 +712,7 @@ public:
         const int rowHeight = textBoxHeight+2;
         const int rowWidth = labelWidth + 2*textBoxWidth + 10;
         const int mainButtonWidth = rowWidth/4;
-        
+
         const int pulldownContainerWidth = labelWidth+4;
         QFont emojiFont = getEmojiFont();
 
@@ -738,7 +750,7 @@ public:
         QGridLayout* plotRegionLayout = new QGridLayout(plotRegion);
         plotRegionLayout->setContentsMargins(0,0,0,0);
         plotRegionLayout->setSpacing(2);
-        
+
         QVBoxLayout* plotControlRegionLayout = new QVBoxLayout(plotControlRegion);
 
         plots["timeImage1"] = new CairoWidget(*this, drawTimeImage1);
@@ -839,8 +851,8 @@ public:
 
         auto addTextBoxRow = [&](
             const QString& label,
-            const std::string& entry1, 
-            const std::string& entry2,  
+            const std::string& entry1,
+            const std::string& entry2,
             QVBoxLayout* location,
             const QString& tooltip){
                 QHBoxLayout* rowLayout = getRowBoxLayout(location);
@@ -857,13 +869,13 @@ public:
                 textBoxes[entry2]->setFixedSize(textBoxWidth,textBoxHeight);
                 rowLayout->addWidget(labels[entry1]);
                 rowLayout->addWidget(textBoxes[entry1]);
-                rowLayout->addWidget(textBoxes[entry2]); 
+                rowLayout->addWidget(textBoxes[entry2]);
         };
-        
+
         auto addTextBoxRowForPlots = [&](
             const QString& label,
-            const std::string& entry1, 
-            const std::string& entry2,  
+            const std::string& entry1,
+            const std::string& entry2,
             const std::string& entry3,
             QVBoxLayout* location,
             const QString& tooltip,
@@ -900,8 +912,8 @@ public:
                 }
                 rowLayout->addWidget(labels[entry1], Qt::AlignLeft);
                 rowLayout->addWidget(textBoxes[entry1], Qt::AlignLeft);
-                if(entry2 != "none")rowLayout->addWidget(textBoxes[entry2], Qt::AlignLeft); 
-                if(entry3 != "none")rowLayout->addWidget(textBoxes[entry3], Qt::AlignLeft); 
+                if(entry2 != "none")rowLayout->addWidget(textBoxes[entry2], Qt::AlignLeft);
+                if(entry3 != "none")rowLayout->addWidget(textBoxes[entry3], Qt::AlignLeft);
         };
 
         auto addPulldownInContainer = [&](int width, QBoxLayout* location, const std::string& entry){
@@ -939,7 +951,7 @@ public:
         "Group-delay dispersion of the pulses, i.e. linear chirp.");
         addTextBoxRow("TOD (fs\xc2\xb3)", "TOD1", "TOD2", entryColumn1Layout,
         "Third-order dispersion of the pulses.");
-        addTextBoxRow("Phase material", "material1", "material2", entryColumn1Layout, 
+        addTextBoxRow("Phase material", "material1", "material2", entryColumn1Layout,
         "Select a material number - the numbers come from the Material pulldown menu -\n"
         "to apply to the pulse before it enters the simulation. For example, you can\n"
         "add a given amount of fused silica transmission to the pulse to simulate\n"
@@ -1014,7 +1026,7 @@ public:
         pulldowns["slurm"]->addItem("Raven 2xA100");
         pulldowns["slurm"]->addItem("Raven 4xA100");
         pulldowns["slurm"]->addItem("Raven NxA100");
-        
+
         buttons["saveSLURM"] = new QPushButton("\xf0\x9f\x92\xbe");
         buttons["saveSLURM"]->setFixedSize(miniButtonWidth,mainButtonHeight);
         buttons["saveSLURM"]->setFont(emojiFont);
@@ -1043,8 +1055,8 @@ public:
             "for absorption, with Dawson function shapes of the refractive index.");
         labels["material"]->setToolTip(pulldowns["material"]->toolTip());
         buttons["loadMaterial"]->setToolTip("Load a custom crystal database");
-        
-        addTextBoxRow("Theta, phi (deg)", "crystalTheta", "crystalPhi", entryColumn2Layout, 
+
+        addTextBoxRow("Theta, phi (deg)", "crystalTheta", "crystalPhi", entryColumn2Layout,
         "These angles define the orientation of the nonlinear crystal.");
         addTextBoxRow("NL absorption", "NLAbsorption", "crystalBandgap", entryColumn2Layout,
         "The first parameter is the nonlinear absorption strength inside of the crystal.\n"
@@ -1159,7 +1171,7 @@ public:
         "These give the number of steps to be done in the batch scan. For example, if\n"
         "frequency is scanned from 200 to 300 THz, a value of 11 will perform simulations at:\n"
         "200, 210, 220, ..., 290, 300.");
-        
+
         QHBoxLayout* loadRow = getRowBoxLayout(entryColumn2Layout);
         buttons["load"] = new QPushButton("Load");
         buttons["load"]->setFixedSize(mainButtonWidth,mainButtonHeight);
@@ -1259,25 +1271,25 @@ public:
             QObject::connect(buttons[entry], &QPushButton::clicked, action);
         };
 
-        addMiniButton("\xf0\x9f\x93\xb8", "addSameCrystal", 
+        addMiniButton("\xf0\x9f\x93\xb8", "addSameCrystal",
         "Add a fixed crystal which matches the values currently entered on the interface",[&](){
             if(textBoxes["NLAbsorption"]->text().toDouble() != 0.0){
                 sPrint("plasma({},{},{},{},{},{},{},{},{})\n",
-                pulldowns["material"]->currentIndex(), 
+                pulldowns["material"]->currentIndex(),
                 textBoxes["crystalTheta"]->text().toDouble(),
-                textBoxes["crystalPhi"]->text().toDouble(), 
+                textBoxes["crystalPhi"]->text().toDouble(),
                 textBoxes["NLAbsorption"]->text().toDouble(),
-                textBoxes["crystalBandgap"]->text().toDouble(), 
+                textBoxes["crystalBandgap"]->text().toDouble(),
                 textBoxes["DrudeGamma"]->text().toDouble(),
-                textBoxes["effectiveMass"]->text().toDouble(), 
+                textBoxes["effectiveMass"]->text().toDouble(),
                 textBoxes["zSize"]->text().toDouble(),
                 textBoxes["dz"]->text().toDouble());
             }
             else{
                 sPrint("nonlinear({},{},{},{},{})\n",
-                pulldowns["material"]->currentIndex(), 
+                pulldowns["material"]->currentIndex(),
                 textBoxes["crystalTheta"]->text().toDouble(),
-                textBoxes["crystalPhi"]->text().toDouble(), 
+                textBoxes["crystalPhi"]->text().toDouble(),
                 textBoxes["zSize"]->text().toDouble(),
                 textBoxes["dz"]->text().toDouble());
             }
@@ -1293,15 +1305,15 @@ public:
         addMiniButton("\xf0\x9f\x92\xa1", "addPulse", "Add a new pulse to the grid; values will be set to duplicate "
             "pulse 1 as entered above",[&](){
                 sPrint("addPulse({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})\n",
-                textBoxes["energy1"]->text().toDouble(), 
+                textBoxes["energy1"]->text().toDouble(),
                 textBoxes["frequency1"]->text().toDouble(),
-                textBoxes["bandwidth1"]->text().toDouble(), 
+                textBoxes["bandwidth1"]->text().toDouble(),
                 textBoxes["SGOrder1"]->text().toInt(),
-                textBoxes["CEP1"]->text().toDouble(), 
-                textBoxes["delay1"]->text().toDouble(), 
+                textBoxes["CEP1"]->text().toDouble(),
+                textBoxes["delay1"]->text().toDouble(),
                 textBoxes["GDD1"]->text().toDouble(),
                 textBoxes["TOD1"]->text().toDouble(),
-                textBoxes["material1"]->text().toInt(), 
+                textBoxes["material1"]->text().toInt(),
                 textBoxes["thickness1"]->text().toDouble(),
                 textBoxes["beamwaist1"]->text().toDouble(),
                 textBoxes["xOffset1"]->text().toDouble(),
@@ -1326,9 +1338,9 @@ public:
             });
         addMiniButton("\xf0\x9f\x93\x8f", "addLinear", "Add a linear propagation through the crystal entered on the interface",[&](){
             sPrint("linear({},{},{},{},{})\n",
-                pulldowns["material"]->currentIndex(), 
+                pulldowns["material"]->currentIndex(),
                 textBoxes["crystalTheta"]->text().toDouble(),
-                textBoxes["crystalPhi"]->text().toDouble(), 
+                textBoxes["crystalPhi"]->text().toDouble(),
                 textBoxes["zSize"]->text().toDouble(),
                 textBoxes["dz"]->text().toDouble());
             });
@@ -1399,9 +1411,9 @@ public:
 
         SequenceValidator* contextColors = new SequenceValidator(sequence->document());
     #if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
-        QObject::connect(QGuiApplication::styleHints(), 
-            &QStyleHints::colorSchemeChanged, 
-            contextColors, 
+        QObject::connect(QGuiApplication::styleHints(),
+            &QStyleHints::colorSchemeChanged,
+            contextColors,
             &QSyntaxHighlighter::rehighlight);
     #endif
         //Put the control strip below the sequence
@@ -1433,7 +1445,7 @@ public:
         buttons["collapse"]->setFixedSize(miniButtonWidth, mainButtonHeight);
         buttons["collapse"]->setToolTip("Collapse the simulation parameters pane and show the plot controls.");
         plotControlStripLayout->addWidget(buttons["collapse"]);
-        
+
         slider = new QSlider(Qt::Horizontal);
         slider->setFixedHeight(mainButtonHeight);
         plotControlStripLayout->addWidget(slider);
@@ -1488,10 +1500,10 @@ public:
         checkboxes["plotDark"]->setToolTip("Uncheck to plot with white background");
         plotControlRegionLayout->addWidget(checkboxes["plotDark"]);
         addTextBoxRowForPlots(
-            "Font size", 
-            "fontSize", 
-            "none", 
-            "none", 
+            "Font size",
+            "fontSize",
+            "none",
+            "none",
             plotControlRegionLayout,
             "Set font size in the plots\n",
             13, 0, 0);
@@ -1512,7 +1524,7 @@ public:
                 plots["timeImage2"]->hide();
                 plots["freqImage1"]->hide();
                 plots["freqImage2"]->hide();
-            } 
+            }
         });
 
         checkboxes["showBeamView"] = new QCheckBox("Beam view");
@@ -1525,44 +1537,44 @@ public:
             }
             else{
                 plots["beamView"]->hide();
-            } 
+            }
         });
         addPulldownInContainer(labelWidth, plotControlRegionLayout, "beamViewMode");
         pulldowns["beamViewMode"]->addItem("Near field");
         pulldowns["beamViewMode"]->addItem("Far field");
         pulldowns["beamViewMode"]->setCurrentIndex(1);
         addTextBoxRowForPlots(
-            "Red (f, \xcf\x83, I)", 
-            "Red_frequency", 
-            "Red_sigma", 
-            "Red_strength", 
+            "Red (f, \xcf\x83, I)",
+            "Red_frequency",
+            "Red_sigma",
+            "Red_strength",
             plotControlRegionLayout,
             "Control the red color channel in the beam view.\n"
             "Central frequency (THz), bandwidth (THz), gain (multiplier)",
             400, 60, 1);
         addTextBoxRowForPlots(
-            "Green (f, \xcf\x83, I)", 
-            "Green_frequency", 
-            "Green_sigma", 
-            "Green_strength", 
+            "Green (f, \xcf\x83, I)",
+            "Green_frequency",
+            "Green_sigma",
+            "Green_strength",
             plotControlRegionLayout,
             "Control the green color channel in the beam view.\n"
             "Central frequency (THz), bandwidth (THz), gain (multiplier)",
             550, 60, 1);
         addTextBoxRowForPlots(
-            "Blue (f, \xcf\x83, I)", 
-            "Blue_frequency", 
-            "Blue_sigma", 
-            "Blue_strength", 
+            "Blue (f, \xcf\x83, I)",
+            "Blue_frequency",
+            "Blue_sigma",
+            "Blue_strength",
             plotControlRegionLayout,
             "Control the blue color channel in the beam view.\n"
             "Central frequency (THz), bandwidth (THz), gain (multiplier)",
             680, 90, 1);
         addTextBoxRowForPlots(
-                "Farfield \xe2\x88\xa0", 
-                "farfieldAngle", 
-                "none", 
-                "none", 
+                "Farfield \xe2\x88\xa0",
+                "farfieldAngle",
+                "none",
+                "none",
                 plotControlRegionLayout,
                 "Set the solid angle shown in the farfield view (in degrees)\n",
                 5, 0, 0);
@@ -1596,7 +1608,7 @@ public:
                 plots["freqPlot1"]->hide();
                 plots["timePlot2"]->hide();
                 plots["freqPlot2"]->hide();
-            }  
+            }
         });
 
         checkboxes["combinePolarizations"] = new QCheckBox("Combine polarizations");
@@ -1612,10 +1624,10 @@ public:
             else if(checkboxes["showWavesAndSpectra"]->isChecked()){
                 plots["timePlot2"]->show();
                 plots["freqPlot2"]->show();
-            }  
+            }
         });
-        
-        
+
+
         //squeezeMargins(plotControlRegionLayout);
 
         readDefaultValues(theSim, theDatabase);
@@ -1682,12 +1694,12 @@ public:
         QObject::connect(slider, &QSlider::valueChanged, this, [&](){
             int i = slider->value();
             labels["sliderIndex"]->setText(QString::number(i));
-            
+
             if(theSim.base().batchIndex2 == 0){
                 if(theSim.base().Nsims < 2) return;
                 double batchStart = theSim.base().getByNumberWithMultiplier(theSim.base().batchIndex);
-                double batchValue = 
-                batchStart + 
+                double batchValue =
+                batchStart +
                 i * (theSim.base().batchDestination - batchStart)/(theSim.base().Nsims - 1);
                 labels["sliderValue"]->setFixedWidth(60);
                 labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:.3g}",batchValue)));
@@ -1695,20 +1707,20 @@ public:
             else{
                 if(theSim.base().Nsims < 2 && theSim.base().Nsims2 < 2) return;
                 double batchStart = theSim.base().getByNumberWithMultiplier(theSim.base().batchIndex);
-                double batchValue = 
-                batchStart + 
+                double batchValue =
+                batchStart +
                 (i % theSim.base().Nsims) * (theSim.base().batchDestination - batchStart)/(theSim.base().Nsims - 1);
 
                 double batchStart2 = theSim.base().getByNumberWithMultiplier(theSim.base().batchIndex2);
-                double batchValue2 = 
-                batchStart2 + 
+                double batchValue2 =
+                batchStart2 +
                 (i / theSim.base().Nsims) * (theSim.base().batchDestination2 - batchStart2)/(theSim.base().Nsims2 - 1);
                 labels["sliderValue"]->setFixedWidth(120);
                 labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:.3g}, {:.3g}",batchValue,batchValue2)));
             }
-            
+
         });
-        
+
         QObject::connect(messenger, &GuiMessenger::moveSlider, slider, &QSlider::setValue);
         QObject::connect(messenger, &GuiMessenger::requestSyncValues, this, &LWEGui::queueSyncValues);
         QObject::connect(messenger, &GuiMessenger::requestSliderUpdate, this, &LWEGui::updateSlider);
@@ -1781,14 +1793,14 @@ public:
             if(path.empty()) return;
             std::thread([&](std::string path){
                 std::unique_lock lock(m);
-                bool isZipFile = (path.length() >= 4 
+                bool isZipFile = (path.length() >= 4
                 && path.substr(path.length()-4)==".zip");
                 messenger->passString("Loading...");
                 int readParameters =
                 theSim.base().readInputParametersFile(theDatabase.db.data(), path);
                 if(isZipFile) theSim.loadOptics(path);
                 theSim.configure(true);
-                std::for_each(theSim.mutexes.begin(), theSim.mutexes.end(), 
+                std::for_each(theSim.mutexes.begin(), theSim.mutexes.end(),
                         [](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
                 if (readParameters == 61 && theSim.base().isGridAllocated) {
                     int64_t extensionLoc = path.find_last_of(".");
@@ -1877,7 +1889,7 @@ public:
         QObject::connect(checkboxes["Total"], &QCheckBox::clicked, [&](){
             messenger->passDrawRequest();
         });
-        
+
         QObject::connect(buttons["svg"], &QPushButton::clicked, [&](){
             std::string SVGpath = QFileDialog::getSaveFileName(buttons["svg"],"Save SVG file of plots","","Scalable Vector Graphics (*.svg)").toStdString();
             if(SVGpath.empty()) return;
@@ -1889,11 +1901,11 @@ public:
                 std::regex width_regex("width=\"(\\d+)\"");
                 std::regex height_regex("height=\"(\\d+)\"");
                 std::smatch width_match, height_match;
-            
+
                 std::regex_search(SVGstr, width_match, width_regex);
                 std::regex_search(SVGstr, height_match, height_regex);
                 int width = std::stoi(width_match[1].str());
-                int height = std::stoi(height_match[1].str());   
+                int height = std::stoi(height_match[1].str());
                 return std::pair<int,int>(width, height);
             };
             for(auto& str : SVGStrings){
@@ -1970,9 +1982,9 @@ public:
                 x * (totalWidth/horizontalElements), y * (totalHeight/verticalElements)));
                 SVGbegin = SVGStrings[index].find("<svg");
                 SVGStrings[index] = SVGStrings[index].substr(SVGbegin);
-                
+
             };
-            
+
             int y_ind = 0;
             if(showSlices){
                 appendPlot(1,0,1);
@@ -1997,7 +2009,7 @@ public:
                 }
             }
 
-            
+
             isMakingSVG = false;
             std::ofstream fs(SVGpath);
 
@@ -2014,7 +2026,7 @@ public:
 
             fs << "</svg>";
         });
-        
+
     }
     public slots:
     void queueSyncValues(){
@@ -2056,7 +2068,7 @@ public:
     void updateBeamView(){
         plots["beamView"]->repaint();
     }
-     
+
 };
 
 int main(int argc, char **argv){
@@ -2114,7 +2126,7 @@ void setSYCLvars(std::string& s) {
         si.cb = sizeof(si);
         ZeroMemory(&pi, sizeof(pi));
         wchar_t setSYCLpersistent[] = L"setx SYCL_CACHE_PERSISTENT 1";
-        // Start the child process. 
+        // Start the child process.
         CreateProcess(NULL,   // No module name (use command line)
             setSYCLpersistent,        // Command line
             NULL,           // Process handle not inheritable
@@ -2122,14 +2134,14 @@ void setSYCLvars(std::string& s) {
             false,          // Set handle inheritance to false
             CREATE_NO_WINDOW,              // No creation flags
             NULL,           // Use parent's environment block
-            NULL,           // Use parent's starting directory 
+            NULL,           // Use parent's starting directory
             &si,            // Pointer to STARTUPINFO structure
             &pi);           // Pointer to PROCESS_INFORMATION structure
 
         // Wait until child process exits.
         WaitForSingleObject(pi.hProcess, INFINITE);
 
-        // Close process and thread handles. 
+        // Close process and thread handles.
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
         s.append("Note: SYCL cache was disabled, now it's enabled.\n"
@@ -2140,7 +2152,7 @@ void setSYCLvars(std::string& s) {
 }
 
 //ifdef guards are in place to only include CUDA/SYCL when they are being used
-std::string checkLibraryAvailability(simulationBatch& theSim) {   
+std::string checkLibraryAvailability(simulationBatch& theSim) {
     std::string s;
 #if defined CPUONLY
     theSim.base().CUDAavailable = false;
@@ -2167,7 +2179,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
         return true;
     };
 #endif
-    
+
 #ifndef NOCUDA
     if(checkDLL("nvml.dll")){
         int CUDAdevice;
@@ -2185,12 +2197,12 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
             }
             for (int i = 0; i < theSim.base().cudaGPUCount; ++i) {
                 cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-                s.append(Sformat("   {}\n", 
+                s.append(Sformat("   {}\n",
                     activeCUDADeviceProp.name));
             }
         }
     }
-	
+
 
 #else
 #define solveNonlinearWaveEquationSequence solveNonlinearWaveEquationSequenceCPU
@@ -2199,7 +2211,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 #endif
 
 #ifndef NOSYCL
-    bool isIntelRuntimeInstalled = checkDLL("sycl8.dll"); 
+    bool isIntelRuntimeInstalled = checkDLL("sycl8.dll");
     if (isIntelRuntimeInstalled) {
         theSim.base().SYCLavailable = true;
         char syclDeviceList[1024] = { 0 };
@@ -2227,7 +2239,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     int error = 0;
     theSim.base().cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
-    
+
     std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
     std::atomic_uint32_t& totalSteps = theGui.totalSteps;
     std::atomic_uint32_t& progressCounter = theGui.progressCounter;
@@ -2294,27 +2306,27 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
                     std::erase(errorString,'{');
                     std::erase(errorString,'}');
                     theGui.messenger->passString(
-                        Sformat("Simulation failed with exception:\n{}\n", 
+                        Sformat("Simulation failed with exception:\n{}\n",
                         errorString));
                 }
                 if (theSim.sCPU()[j].memoryError != 0) {
                     if (theSim.sCPU()[j].memoryError == -1) {
                         theGui.messenger->passString(
                         Sformat(
-                            "Not enough free GPU memory, sorry.\n", 
+                            "Not enough free GPU memory, sorry.\n",
                             theSim.sCPU()[j].memoryError));
                     }
                     else {
                         theGui.messenger->passString(
                         Sformat(
-                            "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n", 
+                            "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n",
                             theSim.sCPU()[j].memoryError));
                     }
                 }
                 if (error) break;
                 theGui.messenger->passSliderPosition(j);
                 theGui.messenger->requestUpdate();
-                
+
             if (theSim.base().cancellationCalled) {
                 theGui.messenger->passString(Sformat((
                     "Warning: series cancelled, stopping\n"
@@ -2386,9 +2398,9 @@ void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     theGui.messenger->passString(Sformat(
         "Fitting {} values in mode {} over {} iterations.\n"
         "Region of interest contains {} elements\n",
-        theSim.base().Nfitting, 
-        theSim.base().fittingMode, 
-        theSim.base().fittingMaxIterations, 
+        theSim.base().Nfitting,
+        theSim.base().fittingMode,
+        theSim.base().fittingMaxIterations,
         theSim.base().fittingROIsize));
 
     theSim.base().isRunning = true;
@@ -2438,25 +2450,25 @@ void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
 #ifdef __linux__
         std::string homePath(std::getenv("HOME"));
         homePath.append("/.LightwaveExplorer/DefaultValues.ini");
-        bool firstReadFail = (1 == 
+        bool firstReadFail = (1 ==
             sim.sCPU()->readInputParametersFile(db.db.data(), homePath));
-        
+
         if(firstReadFail){
             char pBuf[256];
-            int64_t len = sizeof(pBuf); 
+            int64_t len = sizeof(pBuf);
             int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
             if(bytes >= 0)
                 pBuf[bytes] = '\0';
             std::string binPath(pBuf);
             int64_t posPath = binPath.find_last_of("/");
-            std::string defaultsPath = 
+            std::string defaultsPath =
                 binPath.substr(0, posPath).append("/../share/LightwaveExplorer/DefaultValues.ini");
 
             if (1 == sim.sCPU()->readInputParametersFile(db.db.data(), defaultsPath)) {
                 sim.sCPU()->readInputParametersFile(db.db.data(), "DefaultValues.ini");
             }
         }
-        
+
 #elif defined __APPLE__
 		uint32_t bufferSize = 1024;
 		char sysPathBuffer[1024] = { 0 };
@@ -2483,8 +2495,12 @@ void drawBeamThread(LWEGui& theGui, VisualizationConfig config){
 }
 void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     std::shared_lock guiLock(theGui.m, std::try_to_lock);
-    if (!theGui.theSim.base().isGridAllocated || !(guiLock.owns_lock())) {
+    if (!theGui.theSim.base().isGridAllocated) {
         blackoutCairoPlot(cr,width,height);
+        return;
+    }
+    if (!(guiLock.owns_lock())) {
+        blackoutCairoPlot(cr,width,height,true);
         return;
     }
     int64_t simIndex = maxN(0,theGui.slider->value());
@@ -2501,7 +2517,6 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.fontSize = theGui.textBoxes["fontSize"]->text().toDouble();
     sPlot.height = height;
     sPlot.width = width;
-    sPlot.image = &theGui.beamView;
     if(theGui.pulldowns["beamViewMode"]->currentIndex() == 1){
         sPlot.xLabel = "\xce\xb8 (deg)";
         sPlot.yLabel = "\xcf\x86 (deg)";
@@ -2520,14 +2535,15 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock imageLock(theGui.beamViewMutex);
+    std::shared_lock imageLock(theGui.beamViewMutex, std::try_to_lock);
     if (imageLock.owns_lock()) {
+        sPlot.image = &theGui.beamView;
         sPlot.plot(cr);
         if(theGui.isMakingSVG){
             theGui.SVGStrings[8] = sPlot.SVGString;
         }
     }
-    else blackoutCairoPlot(cr, width, height);
+    else blackoutCairoPlot(cr, width, height, true);
 }
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
@@ -2619,7 +2635,7 @@ void drawField1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     if(theGui.checkboxes["combinePolarizations"]->isChecked()){
         sPlot.lineColors.push_back(LweColor(1, 0, 1, 1));
         sPlot.data.push_back(&theGui.theSim.base().ExtOut[
-        theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
+        theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2
             + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
         sPlot.yLabel = "E (GV/m)";
     }
@@ -2648,7 +2664,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         simIndex = 0;
     }
 
-    int64_t cubeMiddle = 
+    int64_t cubeMiddle =
         theGui.theSim.base().Ntime * theGui.theSim.base().Nspace * (theGui.theSim.base().Nspace2 / 2);
     if(!(theGui.checkboxes["plotDark"]->isChecked())){
         sPlot.backgroundColor =  LweColor(1,1,1,0);
@@ -2663,9 +2679,9 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.x0 = -0.5e15 * (theGui.theSim.base().Ntime) * theGui.theSim.base().tStep;
     sPlot.forcedXmin = sPlot.x0;
     sPlot.forcedXmax = -sPlot.x0;
-    sPlot.data.push_back( 
+    sPlot.data.push_back(
         &theGui.theSim.base().ExtOut[
-        theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2 
+        theGui.theSim.base().Ngrid + simIndex * theGui.theSim.base().Ngrid * 2
             + cubeMiddle + theGui.theSim.base().Ntime * theGui.theSim.base().Nspace / 2]);
     sPlot.Npts = theGui.theSim.base().Ntime;
     sPlot.lineColors = {LweColor(1, 0, 1, 1)};
@@ -2681,7 +2697,7 @@ void drawField2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         }
     }
     else blackoutCairoPlot(cr, width, height);
-    
+
 }
 
 void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
@@ -2736,7 +2752,7 @@ void drawSpectrum1Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
     sPlot.lineColors.push_back(LweColor(0.5, 0, 1, 1));
     sPlot.axisColor = LweColor(0.8, 0.8, 0.8, 0);
     sPlot.xLabel = "Frequency (THz)";
-    
+
     sPlot.unitY = 1.0e-12;
     if(forceX){
         sPlot.forcedXmax = xMax;
@@ -2813,7 +2829,7 @@ void drawSpectrum2Plot(cairo_t* cr, int width, int height, LWEGui& theGui) {
         sPlot.forcedYmin = yMin;
         sPlot.forcedYmax = yMax;
     }
-    
+
     std::shared_lock dataLock(theGui.theSim.mutexes.at(simIndex), std::try_to_lock);
     if (dataLock.owns_lock()) {
         sPlot.plot(cr);
@@ -2890,8 +2906,8 @@ void drawFourierImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
     double logPlotOffset = (double)(1e-4 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().timeSpan));
     if (theGui.theSim.base().is3D) {
-        logPlotOffset = 
-            (double)(1e-4 
+        logPlotOffset =
+            (double)(1e-4
                 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
     image.complexData =
@@ -2947,7 +2963,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
     double logPlotOffset = (double)(1e-4 / (theGui.theSim.base().spatialWidth * theGui.theSim.base().timeSpan));
     if (theGui.theSim.base().is3D) {
-        logPlotOffset = (double)(1e-4 
+        logPlotOffset = (double)(1e-4
             / (theGui.theSim.base().spatialWidth * theGui.theSim.base().spatialHeight * theGui.theSim.base().timeSpan));
     }
     image.complexData = DataSlice<std::complex<double>,2>{
@@ -3057,7 +3073,7 @@ void createRunFile(LWEGui& theGui) {
         getBasename(theSim.base().outputBasePath), getBasename(theSim.base().outputBasePath)));
     theGui.messenger->passString(Sformat("or\n./lweget.sh {}\n",getBasename(theSim.base().outputBasePath)));
     theGui.messenger->passString(Sformat(
-        "Upper estimate time to complete: {:.2} hours\n", 
+        "Upper estimate time to complete: {:.2} hours\n",
         timeEstimate));
     theSim.base().isRunning = false;
     theSim.base().isGridAllocated = false;
@@ -3074,9 +3090,9 @@ int insertAfterCharacter(std::string& s, char target, std::string appended){
 }
 
 int insertAfterCharacterExcept(
-    std::string& s, 
-    char target, 
-    std::string appended, 
+    std::string& s,
+    char target,
+    std::string appended,
     std::string exclude){
     bool match = false;
     for(std::size_t i = 0; i < s.length()-1; ++i){
