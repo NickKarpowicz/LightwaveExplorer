@@ -29,7 +29,7 @@ set_target_properties(LightwaveExplorer  PROPERTIES
     MACOSX_BUNDLE_ICON_FILE ${CMAKE_SOURCE_DIR}/Source/BuildResources/AppIcon.icns
 )
 
-target_link_libraries(LightwaveExplorer fmt::fmt)
+target_link_libraries(LightwaveExplorer fmt::fmt-header-only)
 target_link_libraries(LightwaveExplorer miniz)
 target_link_libraries(LightwaveExplorer libfftw3_threads.a)
 target_link_libraries(LightwaveExplorer libfftw3f_threads.a)
