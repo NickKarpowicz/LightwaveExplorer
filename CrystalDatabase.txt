@@ -93,8 +93,8 @@ None
 chi3 type:
 1
 chi3:
-1.59e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 
-0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.59e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 
+1.59e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00
+0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.59e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00
 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.10e-22 0.00e+00 0.00e+00 0.00e+00 1.59e-22
 chi3 reference:
 R. DeSalvo et al. Z-scan measurements of the anisotropy of nonlinear refraction and absorption in crystals. Opt. Lett. 18, 194-196 (1993), assuming x_1122=x_1221=x_1212
@@ -320,11 +320,11 @@ Type:
 Sellmeier equation:
 0
 1st axis coefficients:
-10.6409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 
+10.6409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
 2nd axis coefficients:
-10.6409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 
+10.6409 0.3788 0 -0.1232 7090.7 0 -2216.2 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
 3rd axis coefficients:
-8.2477 0.2881 0 -0.1669 4927.5 0 -1990.1 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 
+8.2477 0.2881 0 -0.1669 4927.5 0 -1990.1 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0
 Sellmeier reference:
 G. Ghosh, Optics Communications 163, 95-102 (1999).
 chi2 type:
@@ -867,7 +867,7 @@ chi3:
 0
 0
 chi3 reference:
-Opt. Express 20, 8791-8803 (2012) 
+Opt. Express 20, 8791-8803 (2012)
 Spectral file:
 None
 Nonlinear reference frequencies:
@@ -1012,4 +1012,39 @@ Spectral file:
 None
 Nonlinear reference frequencies:
 2.778e+14 2.778e+14 5.557e+14 2.8176e+14 2.8176e+14 2.8176e+14 2.8176e+14
+~~~crystal end~~~
+Name:
+GaSe L
+Type:
+1
+Sellmeier equation:
+1
+1st axis coefficients:
+4.99335 1.86266e+28 3.19775e+31 5e+12 2.864e+27 1.51755e+31 5e+12 3e+21 6.98334e+27 2e+12 1.75908e+24 6.81948e+22 1.5e+12 0 0 0 0 0 0 0 0 0
+2nd axis coefficients:
+3.60808 1.74802e+28 3.19775e+31 5e+12 2.02011e+27 1.51755e+31 5e+12 3e+21 6.98334e+27 2e+12 1.39739e+24 1.26144e+27 1.5e+12 0 0 0 0 0 0 0 0 0
+3rd axis coefficients:
+3.60808 1.74802e+28 3.19775e+31 5e+12 2.02011e+27 1.51755e+31 5e+12 3e+21 6.98334e+27 2e+12 1.39739e+24 1.26144e+27 1.5e+12 0 0 0 0 0 0 0 0 0
+Sellmeier reference:
+K. Kato, F. Tanno, N. Umemura. Sellmeier and thermo-optic dispersion formulas for GaSe (Revisited). Appl. Opt. 52, 2325-2328 (2013)
+chi2 type:
+1
+d:
+0.0 0.0 0.0 0.0 0.0 54.0
+54.0 -54.0 0.0 0.0 0.0 0.0
+0.0 0.0 0.0 0.0 0.0 0.0
+d reference:
+D.A. Roberts, IEEE J. Quant. Electr. 28(10), 2056-2074 (1992)
+chi3 type:
+2
+chi3:
+2.8e-21
+0
+0
+chi3 reference:
+T. Kawamori et al., CLEO 2021 STu4C.1
+Spectral file:
+None
+Nonlinear reference frequencies:
+2.83e+13 2.83e+13 5.66e+13 1.28e+14 1.28e+14 1.28e+14 1.28e+14
 ~~~crystal end~~~
