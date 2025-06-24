@@ -1705,6 +1705,7 @@ public:
                 labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:.3g}",batchValue)));
             }
             else{
+                int64_t index_batch_2 = i / theSim.base().Nsims;
                 if(theSim.base().Nsims < 2 && theSim.base().Nsims2 < 2) return;
                 double batchStart = theSim.base().getByNumberWithMultiplier(theSim.base().batchIndex);
                 double batchValue =
@@ -1714,7 +1715,7 @@ public:
                 double batchStart2 = theSim.base().getByNumberWithMultiplier(theSim.base().batchIndex2);
                 double batchValue2 =
                 batchStart2 +
-                (i / theSim.base().Nsims) * (theSim.base().batchDestination2 - batchStart2)/(theSim.base().Nsims2 - 1);
+                static_cast<double>(index_batch_2) * (theSim.base().batchDestination2 - batchStart2)/(theSim.base().Nsims2 - 1);
                 labels["sliderValue"]->setFixedWidth(120);
                 labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:.3g}, {:.3g}",batchValue,batchValue2)));
             }
