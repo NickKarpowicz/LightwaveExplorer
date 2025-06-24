@@ -2504,13 +2504,13 @@ namespace hostFunctions{
 						currentString =
 							currentString.substr(findParenthesesClosure(currentString)+1, std::string::npos);
 						if (error || (*sCPU).cancellationCalled) break;
+						backupSet.isFollowerInSequence = (*sCPU).isFollowerInSequence;
+						backupSet.optics = (*sCPU).optics;
+						*sCPU = backupSet;
 					}
 					++vBlock[targetVar];
 					currentString = forStartString;
 					if (error || (*sCPU).cancellationCalled) break;
-					backupSet.isFollowerInSequence = (*sCPU).isFollowerInSequence;
-					backupSet.optics = (*sCPU).optics;
-					*sCPU = backupSet;
 				}
 			}
 			break;
