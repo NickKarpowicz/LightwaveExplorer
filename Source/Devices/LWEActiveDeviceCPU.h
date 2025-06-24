@@ -1,8 +1,5 @@
-#ifdef _U_GLIBCXX_ASSERTIONS
-#undef _U_GLIBCXX_ASSERTIONS
-#endif
 #include "../LightwaveExplorerUtilities.h"
-
+#include "../LightwaveExplorerInterfaceClasses.hpp"
 #ifdef USEFFTW
 #include <fftw3.h>
 #else

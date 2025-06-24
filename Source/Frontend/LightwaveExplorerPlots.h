@@ -34,7 +34,7 @@
 #endif
 
 //Limit the number of threads used to draw the interface if the processor supports a lot
-const int interfaceThreads = 
+const int interfaceThreads =
 maxN(2, minN(4, static_cast<int>(std::thread::hardware_concurrency() / 2)));
 
 constexpr inline uint8_t clampcast(const double d){
@@ -105,10 +105,10 @@ consteval std::array<std::array<uint8_t, 3>, 256> createColormap(const ColorMap 
 }
 
 static constexpr std::array<std::array<std::array<uint8_t, 3>, 256>, 5> LweColorMaps{
-        createColormap(ColorMap::greyscale), 
-        createColormap(ColorMap::jet), 
-        createColormap(ColorMap::jet_white), 
-        createColormap(ColorMap::purple), 
+        createColormap(ColorMap::greyscale),
+        createColormap(ColorMap::jet),
+        createColormap(ColorMap::jet_white),
+        createColormap(ColorMap::purple),
         createColormap(ColorMap::cyan_magenta)};
 
 
@@ -119,7 +119,7 @@ public:
     double g;
     double b;
     double a;
-    constexpr LweColor(double rIn, double gIn, double bIn, double aIn) 
+    constexpr LweColor(double rIn, double gIn, double bIn, double aIn)
         : r(rIn), g(gIn), b(bIn), a(aIn) {}
     [[nodiscard]] constexpr int rHex() const noexcept { return static_cast<int>(15 * r); }
     [[nodiscard]] constexpr int gHex() const noexcept { return static_cast<int>(15 * g); }
@@ -131,8 +131,8 @@ public:
 
 //function to stream png data into a vector
 static cairo_status_t cairoWritePNGtoVector(
-    void *closure, 
-    const unsigned char *data, 
+    void *closure,
+    const unsigned char *data,
     unsigned int length) {
     std::vector<uint8_t> *vector = static_cast<std::vector<uint8_t>*>(closure);
     vector->insert(vector->end(), data, data + length);
@@ -173,8 +173,8 @@ class LweImage {
             std::vector<float> plotarr2(plotSize);
             if(data.has_value()){
                 linearRemapDoubleToFloat(
-                    data.value().data, 
-                    static_cast<int>(data.value().shape[1]), 
+                    data.value().data,
+                    static_cast<int>(data.value().shape[1]),
                     static_cast<int>(data.value().shape[0]),
                     plotarr2.data(),
                     height,
@@ -183,7 +183,7 @@ class LweImage {
             }
             else if(complexData.has_value()){
                 linearRemapZToLogFloatShift(
-                    complexData.value().data, 
+                    complexData.value().data,
                     static_cast<int>(complexData.value().shape[1]),
                     static_cast<int>(complexData.value().shape[0]),
                     plotarr2.data(),
@@ -193,18 +193,18 @@ class LweImage {
                 createBitmapFromArray(width, height, plotarr2.data(), colorMap);
             }
         }
-    
+
         [[nodiscard]] constexpr T cModulusSquared(const std::complex<T>& x) const {
             return x.real() * x.real() + x.imag() * x.imag();
         }
-    
+
         void linearRemapZToLogFloatShift(
-            const std::complex<T>* A, 
-            const int nax, 
-            const int nay, 
-            float* B, 
-            const int nbx, 
-            const int nby, 
+            const std::complex<T>* A,
+            const int nax,
+            const int nay,
+            float* B,
+            const int nbx,
+            const int nby,
             const T logMin) {
             const int div2 = nax / 2;
     #pragma omp parallel for num_threads(interfaceThreads)
@@ -220,14 +220,14 @@ class LweImage {
                 }
             }
         }
-    
+
         void linearRemapZToLogFloat(
-            const std::complex<T>* A, 
-            const int nax, 
-            const int nay, 
-            float* B, 
-            const int nbx, 
-            const int nby, 
+            const std::complex<T>* A,
+            const int nax,
+            const int nay,
+            float* B,
+            const int nbx,
+            const int nby,
             const T logMin) {
     #pragma omp parallel for num_threads(interfaceThreads)
             for (int i = 0; i < nbx; ++i) {
@@ -242,13 +242,13 @@ class LweImage {
                 }
             }
         }
-    
+
         void linearRemapDoubleToFloat(
-            const T* A, 
-            const int nax, 
-            const int nay, 
-            float* B, 
-            const int nbx, 
+            const T* A,
+            const int nax,
+            const int nay,
+            float* B,
+            const int nbx,
             const int nby) {
     #pragma omp parallel for num_threads(interfaceThreads)
             for (int i = 0; i < nbx; ++i) {
@@ -261,7 +261,7 @@ class LweImage {
                 }
             }
         }
-    
+
         void createBitmapFromArray(
             const int Nx,
             const int Ny,
@@ -270,7 +270,7 @@ class LweImage {
             // creating input
             const int64_t Ntot = static_cast<int64_t>(Nx) * static_cast<int64_t>(Ny);
             pixels.resize(4 * Ntot);
-    
+
             const std::array<std::array<uint8_t, 3>, 256> colorMap = LweColorMaps[cm];
             constexpr int stride = 4;
             //Find the image maximum and minimum
@@ -284,11 +284,11 @@ class LweImage {
                 imax = maxN(imax, -imin);
                 imin = minN(imin, -imax);
             }
-    
+
             if (imin != imax) {
     #pragma omp parallel for num_threads(interfaceThreads)
                 for (int p = 0; p < Ntot; p++) {
-                    uint8_t currentValue = 
+                    uint8_t currentValue =
                         clampcast(255.0 * (data[p] - imin) / (imax - imin));
                     pixels[stride * p] = colorMap[currentValue][0];
                     pixels[stride * p + 1] = colorMap[currentValue][1];
@@ -297,21 +297,21 @@ class LweImage {
             }
         }
         void drawArrayAsBitmap(
-            cairo_t* cr, 
-            const int Nx, 
-            const int Ny, 
-            const float* data, 
+            cairo_t* cr,
+            const int Nx,
+            const int Ny,
+            const float* data,
             const int cm,
             const double x_offset = 0.0,
             const double y_offset = 0.0) {
             if (Nx * Ny == 0) return;
             createBitmapFromArray(Nx, Ny, data, cm);
-            std::unique_lock GTKlock(GTKmutex);
+
             const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, Nx);
             cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
                 pixels.data(),
-                CAIRO_FORMAT_RGB24, 
-                Nx, Ny, 
+                CAIRO_FORMAT_RGB24,
+                Nx, Ny,
                 caiStride);
             cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
             cairo_paint(cr);
@@ -320,7 +320,7 @@ class LweImage {
         }
 
         void drawRenderedPixels(
-            cairo_t* cr, 
+            cairo_t* cr,
             const double x_offset = 0.0,
             const double y_offset = 0.0,
             int drawingwidth = 0,
@@ -330,32 +330,32 @@ class LweImage {
             const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, width);
             cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
                 pixels.data(),
-                CAIRO_FORMAT_RGB24, 
-                width, height, 
+                CAIRO_FORMAT_RGB24,
+                width, height,
                 caiStride);
             if(reshapeImage){
                 cairo_save(cr);
                 double x_scale = static_cast<double>(drawingwidth)/width;
                 double y_scale = static_cast<double>(drawingheight)/height;
                 cairo_scale(
-                    cr, 
-                    x_scale, 
+                    cr,
+                    x_scale,
                     y_scale);
                     cairo_set_source_surface(cr, cSurface, x_offset/x_scale, y_offset/y_scale);
                     cairo_paint(cr);
                     cairo_restore(cr);
                 }
-                else{
-                    cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
-                    cairo_paint(cr);
-                }
+            else{
+                cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
+                cairo_paint(cr);
+            }
 
             cairo_surface_finish(cSurface);
             cairo_surface_destroy(cSurface);
         }
 
         std::string encodeBase64(const std::vector<uint8_t>& data) {
-            static const char* base64_chars = 
+            static const char* base64_chars =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
             std::string encoded;
             size_t i = 0;
@@ -388,9 +388,9 @@ class LweImage {
                 const int caiStride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, width);
                 cairo_surface_t* cSurface = cairo_image_surface_create_for_data(
                     pixels.data(),
-                    CAIRO_FORMAT_RGB24, 
-                    width, 
-                    height, 
+                    CAIRO_FORMAT_RGB24,
+                    width,
+                    height,
                     caiStride);
                 cairo_set_source_surface(cr, cSurface, x_offset, y_offset);
                 cairo_paint(cr);
@@ -400,11 +400,11 @@ class LweImage {
                 auto pngString = encodeBase64(png);
                 std::string tag = Sformat(
                     "<image x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" "
-                    "preserveAspectRatio=\"none\" xlink:href=\"data:image/png;base64,{}\"/>", 
-                    x_offset, 
-                    y_offset, 
-                    width_in_svg, 
-                    height_in_svg, 
+                    "preserveAspectRatio=\"none\" xlink:href=\"data:image/png;base64,{}\"/>",
+                    x_offset,
+                    y_offset,
+                    width_in_svg,
+                    height_in_svg,
                     pngString);
                 return tag;
         }
@@ -443,7 +443,7 @@ public:
     int plot(cairo_t* cr) {
         if (image.has_value()) Npts = 5;
         if (Npts == 0) return 1;
-        std::unique_lock GTKlock(GTKmutex);
+
         int64_t iMin = 0;
         int64_t iMax = Npts;
         cairo_font_extents_t fe{};
@@ -501,7 +501,7 @@ public:
                     minY = minN(currentY, minY);
                 }
             }
-    
+
             if (minY == maxY) {
                 minY = -1;
                 maxY = 1;
@@ -524,7 +524,7 @@ public:
         }
         else{
             //drawing an image: require input x and y limits
-            if(forcedXmin.has_value() 
+            if(forcedXmin.has_value()
             && forcedXmin.has_value()
             && forcedYmin.has_value()
             && forcedYmax.has_value()){
@@ -545,9 +545,9 @@ public:
         constexpr int NyTicks = 3;
         std::string messageBuffer;
         const double yTicks1[3] = { maxY, 0.5 * (maxY + minY), minY };
-        const double xTicks1[3] = { 
-            minX + 0.25 * (maxX - minX), 
-            minX + 0.5 * (maxX - minX), 
+        const double xTicks1[3] = {
+            minX + 0.25 * (maxX - minX),
+            minX + 0.5 * (maxX - minX),
             minX + 0.75 * (maxX - minX) };
 
         //Start SVG file if building one
@@ -566,7 +566,7 @@ public:
                 "\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
                 SVGh(backgroundColor.r), SVGh(backgroundColor.g), SVGh(backgroundColor.b), width, height));
         }
-        
+
         cairo_rectangle(cr, 0, 0, width, height);
         backgroundColor.setCairo(cr);
         cairo_fill(cr);
@@ -582,7 +582,7 @@ public:
             }
             if(image.value()->hasFullSizeRenderedImage){
                 image.value()->drawRenderedPixels(cr,axisSpaceX,0.0,width,height);
-            } 
+            }
             else{
                 image.value()->width = width;
                 image.value()->height = height;
@@ -599,8 +599,8 @@ public:
         //lambdas for writing components of SVG file
         auto SVGstdline = [&]() {
             if (makeSVG)SVGString.append(Sformat("<line x1=\"{}\" y1=\"{}\" "
-                "x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n", 
-                x1, y1, x2, y2, 
+                "x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n",
+                x1, y1, x2, y2,
                 currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
         };
 
@@ -610,7 +610,7 @@ public:
 
         auto SVGendPolyLine = [&]() {
             SVGString.append(Sformat("\" stroke=\"#{:x}{:x}{:x}\" stroke-width="
-                "\"{}\" fill=\"none\"/>\n", 
+                "\"{}\" fill=\"none\"/>\n",
                 currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
         };
 
@@ -620,8 +620,8 @@ public:
 
         auto SVGstdcircle = [&]() {
             if (makeSVG)SVGString.append(Sformat("<circle cx=\"{}\" cy=\"{}\" r=\"{}\""
-                " stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n", 
-                x1, y1, radius, 
+                " stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n",
+                x1, y1, radius,
                 currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
         };
 
@@ -636,11 +636,11 @@ public:
         auto SVGcentertext = [&]() {
             if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}"
                 "\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" "
-                "text-anchor=\"middle\">\n{}\n</text>\n", 
-                fontSize - 1, 
-                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
-                0.5 * (layoutLeft + layoutRight), 
-                0.5 * (layoutBottom + layoutTop - te.height), 
+                "text-anchor=\"middle\">\n{}\n</text>\n",
+                fontSize - 1,
+                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(),
+                0.5 * (layoutLeft + layoutRight),
+                0.5 * (layoutBottom + layoutTop - te.height),
                 messageBuffer));
         };
 
@@ -649,10 +649,10 @@ public:
                 cairo_text_extents(cr, messageBuffer.c_str(), &te);
                 SVGString.append(Sformat("<text font-family=\"Arial\" "
                     "font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" "
-                    "y=\"{}\">\n{}\n</text>\n", 
-                    fontSize - 1, 
-                    currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
-                    layoutRight - te.x_advance - 0.1*fontSize, 0.5 * (layoutBottom + layoutTop - te.height), 
+                    "y=\"{}\">\n{}\n</text>\n",
+                    fontSize - 1,
+                    currentColor.rHex(), currentColor.gHex(), currentColor.bHex(),
+                    layoutRight - te.x_advance - 0.1*fontSize, 0.5 * (layoutBottom + layoutTop - te.height),
                     messageBuffer));
             }
         };
@@ -667,15 +667,15 @@ public:
         auto cairoRightText = [&]() {
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
-            cairo_move_to(cr, layoutRight - te.x_advance - 0.15 * fontSize, 
+            cairo_move_to(cr, layoutRight - te.x_advance - 0.15 * fontSize,
                 0.5 * (layoutBottom + layoutTop - te.height));
             cairo_show_text(cr, messageBuffer.c_str());
         };
         auto cairoCenterText = [&]() {
             currentColor.setCairo(cr);
             cairo_text_extents(cr, messageBuffer.c_str(), &te);
-            cairo_move_to(cr, 
-                0.5 * (layoutLeft + layoutRight - te.x_advance), 
+            cairo_move_to(cr,
+                0.5 * (layoutLeft + layoutRight - te.x_advance),
                 0.5 * (layoutBottom + layoutTop - te.height));
             cairo_show_text(cr, messageBuffer.c_str());
         };
@@ -706,7 +706,7 @@ public:
                     ytVal = pow(10.0, minY) / unitY;
                 }
             }
-            if (abs(ytVal) > 10.0 || abs(ytVal) < 0.01) {
+            if (std::abs(ytVal) > 10.0 || std::abs(ytVal) < 0.01) {
                 messageBuffer = Sformat("{:.2g}", ytVal);
             }
             else {
@@ -733,12 +733,12 @@ public:
             cairoVerticalText();
             if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size"
                 "=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor="
-                "\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n", 
-                fontSize, 
-                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), 
-                0.5 * (layoutLeft + layoutRight), 
-                layoutTop + fontSize, 
-                -(layoutLeft + layoutRight), 
+                "\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n",
+                fontSize,
+                currentColor.rHex(), currentColor.gHex(), currentColor.bHex(),
+                0.5 * (layoutLeft + layoutRight),
+                layoutTop + fontSize,
+                -(layoutLeft + layoutRight),
                 height, messageBuffer));
         }
 
@@ -830,7 +830,7 @@ public:
                 }
             }
         };
-        //I would think it would be faster to only call cairo_fill() 
+        //I would think it would be faster to only call cairo_fill()
         //at the end, but this requires calling cairo_cloase_path()
         //in the loop, which seems to be even slower....
         auto plotCairoPolyline = [&]() {
@@ -842,19 +842,19 @@ public:
                         cairo_line_to(cr, scaledX[i], scaledY[i]);
                     }
                     else {
-                        cairo_line_to(cr, 
-                            scaledX[i - 1] + 
-                            (height - scaledY[i - 1]) 
-                            / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i - 1])), 
+                        cairo_line_to(cr,
+                            scaledX[i - 1] +
+                            (height - scaledY[i - 1])
+                            / ((scaledY[i] - scaledY[i - 1]) / (scaledX[i] - scaledX[i - 1])),
                             height);
                     }
                 }
                 else if (scaledY[i] <= height) {
-                    cairo_move_to(cr, 
-                        scaledX[i - 1] + 
-                        (height - scaledY[i - 1]) 
-                        / ((scaledY[i] - scaledY[i - 1]) 
-                            / (scaledX[i] - scaledX[i - 1])), 
+                    cairo_move_to(cr,
+                        scaledX[i - 1] +
+                        (height - scaledY[i - 1])
+                        / ((scaledY[i] - scaledY[i - 1])
+                            / (scaledX[i] - scaledX[i - 1])),
                         height);
                     cairo_line_to(cr, scaledX[i], scaledY[i]);
                 }
@@ -942,4 +942,3 @@ public:
         return 0;
     }
 };
-

@@ -43,7 +43,7 @@
 #include <QTextCharFormat>
 #include <cairo.h>
 #include "../LightwaveExplorerUtilities.h"
-std::mutex GTKmutex;
+
 #include "LightwaveExplorerPlots.h"
 #include "../Devices/LightwaveExplorerCoreCPU.h"
 #include "../Devices/LightwaveExplorerCoreCounter.h"
@@ -60,7 +60,7 @@ using CairoFunction = std::function<void(cairo_t*,int,int,LWEGui&)>;
 
 //if not running on a cpu-only build load CUDA and SYCL code
 #ifndef CPUONLY
-//if using CUDA include CUDA libraries and the 
+//if using CUDA include CUDA libraries and the
 //CUDA version of the simulation
 #ifndef NOCUDA
 #include <cuda_runtime.h>
@@ -130,9 +130,9 @@ public:
     bool forceCPU = false;
     bool useOpenMP = false;
     simulationRun(int pulldownSelection, bool use64bitFloatingPoint, simulationBatch& theSim){
-        sequenceFunction = use64bitFloatingPoint ? 
+        sequenceFunction = use64bitFloatingPoint ?
             &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
-        normalFunction = use64bitFloatingPoint ? 
+        normalFunction = use64bitFloatingPoint ?
             &solveNonlinearWaveEquationCPU : &solveNonlinearWaveEquationCPUFP32;
         fittingFunction = use64bitFloatingPoint ?
             &runDlibFittingCPU : &runDlibFittingCPUFP32;
@@ -211,24 +211,7 @@ public:
     };
 };
 
-QFont getEmojiFont() {
-    QFont emojiFont;
-#if defined(Q_OS_WIN)
-    emojiFont.setFamily("Segoe UI Emoji");
-#elif defined(Q_OS_MAC)
-    emojiFont.setFamily("Apple Color Emoji");
-#elif defined(Q_OS_LINUX)
-    emojiFont.setFamily("Noto Color Emoji");
-#else
-    // Fallback option
-    emojiFont.setFamily("Segoe UI Emoji");
-#endif
-    return emojiFont;
-}
-
+QFont getEmojiFont();
 void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloadRun);
 void fittingThread(LWEGui& theGui,  simulationRun theRun);
 void createRunFile(LWEGui& theGui);
-
-
-

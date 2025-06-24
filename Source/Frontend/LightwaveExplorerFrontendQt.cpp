@@ -3143,4 +3143,19 @@ int formatSequence(std::string& s){
     return 0;
 }
 
+QFont getEmojiFont() {
+    QFont emojiFont;
+#if defined(Q_OS_WIN)
+    emojiFont.setFamily("Segoe UI Emoji");
+#elif defined(Q_OS_MAC)
+    emojiFont.setFamily("Apple Color Emoji");
+#elif defined(Q_OS_LINUX)
+    emojiFont.setFamily("Noto Color Emoji");
+#else
+    // Fallback option
+    emojiFont.setFamily("Segoe UI Emoji");
+#endif
+    return emojiFont;
+}
+
 #include "LightwaveExplorerFrontendQt.moc"
