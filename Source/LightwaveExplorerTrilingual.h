@@ -30,11 +30,11 @@
 #elif defined RUNONSYCL
 	#include <oneapi/mkl/dft.hpp>
 	#include <sycl/sycl.hpp>
-	const auto dftPrecision = (LWEFLOATINGPOINT == 32) ? 
-		oneapi::mkl::dft::precision::SINGLE 
+	const auto dftPrecision = (LWEFLOATINGPOINT == 32) ?
+		oneapi::mkl::dft::precision::SINGLE
 		: oneapi::mkl::dft::precision::DOUBLE;
 	#include "Devices/LWEActiveDeviceSYCL.h"
-	#define deviceFunction 
+	#define deviceFunction
 	#if LWEFLOATINGPOINT == 64
 		namespace deviceLib = sycl::ext::oneapi::experimental;
 		namespace complexLib = sycl::ext::oneapi::experimental;
@@ -62,7 +62,7 @@
 #elif defined RUNSTEPCOUNTER
 	#include "Devices/LWEAciveDeviceCounter.h"
 	#define kernelNamespace CounterKernels
-	#define deviceFunction 
+	#define deviceFunction
 	typedef counterDevice<double, std::complex<double>> ActiveDevice;
 	typedef double deviceFP;
 	typedef complexLib::complex<double> deviceComplex;
@@ -72,7 +72,7 @@
 #else
 	#include "Devices/LWEActiveDeviceCPU.h"
 	namespace complexLib = std;
-	#define deviceFunction 
+	#define deviceFunction
 	#if LWEFLOATINGPOINT == 32
 		namespace deviceFPLib = deviceLibCPUFP32;
 		namespace deviceLib = deviceLibCPUFP32;
@@ -85,8 +85,8 @@
 		#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCPUFP32
 		#define renderVisualizationX renderVisualizationCPU
 	#else
-		namespace deviceFPLib = std;
-		namespace deviceLib = std;
+		namespace deviceFPLib = std; //NOLINT
+		namespace deviceLib = std; //NOLINT
 		#define kernelNamespace CPU64Kernels
 		typedef CPUDevice<double, std::complex<double>> ActiveDevice;
 		typedef double deviceFP;
@@ -97,6 +97,6 @@
 	#endif
 #endif
 
-typedef 
-maxwellCalculation<deviceFP, maxwellPoint<deviceFP>, maxwellPoint<deviceFP>, oscillator<deviceFP>> 
+typedef
+maxwellCalculation<deviceFP, maxwellPoint<deviceFP>, maxwellPoint<deviceFP>, oscillator<deviceFP>>
 maxwell3D;

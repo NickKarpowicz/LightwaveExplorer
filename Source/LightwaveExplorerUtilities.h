@@ -64,10 +64,8 @@ static bool zipContainsFile(std::string zipPath, std::string filename){
 		char name[1024]={};
 		mz_zip_reader_get_filename(&zip, 0, name, 1024);
 		std::string interiorName(name);
+		mz_zip_reader_end(&zip);
 		return std::filesystem::path(interiorName).stem().string();
 	}
 	else return "ERROR";
 }
-
-
-
