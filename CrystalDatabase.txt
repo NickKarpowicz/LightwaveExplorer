@@ -1048,3 +1048,38 @@ None
 Nonlinear reference frequencies:
 2.83e+13 2.83e+13 5.66e+13 1.28e+14 1.28e+14 1.28e+14 1.28e+14
 ~~~crystal end~~~
+Name:
+YAG G
+Type:
+0
+Sellmeier equation:
+2
+1st axis coefficients:
+3.33941 1.35088e+16 1.25664e+15 1.71191 1.35088e+14 1.25664e+13 13.5961 6.9115e+13 1.25664e+13 11 2.07345e+14 6.28319e+13 0.01 3.11018e+13 6.28319e+11 1.55759e-11 0 0 0 0 0 0
+2nd axis coefficients:
+3.33941 1.35088e+16 1.25664e+15 1.71191 1.35088e+14 1.25664e+13 13.5961 6.9115e+13 1.25664e+13 11 2.07345e+14 6.28319e+13 0.01 3.11018e+13 6.28319e+11 1.55759e-11 0 0 0 0 0 0
+3rd axis coefficients:
+3.33941 1.35088e+16 1.25664e+15 1.71191 1.35088e+14 1.25664e+13 13.5961 6.9115e+13 1.25664e+13 11 2.07345e+14 6.28319e+13 0.01 3.11018e+13 6.28319e+11 1.55759e-11 0 0 0 0 0 0
+Sellmeier reference:
+D. Franta, M.-G. Muresan. Wide spectral range optical characterization of yttrium aluminum garnet (YAG) single crystal by universal dispersion model, Opt. Mater. Express 11, 3930–3945 (2021) via refractiveindex.info
+chi2 type:
+0
+d:
+0.0 0.0 0.0 0.0 0.0 0.0
+0.0 0.0 0.0 0.0 0.0 0.0
+0.0 0.0 0.0 0.0 0.0 0.0
+d reference:
+none
+chi3 type:
+2
+chi3:
+6.719720332155478e-22
+0
+0
+chi3 reference:
+M. Hemmer, Self-compression to sub-3-cycle duration of MIR optical pulses in dielectrics
+Spectral file:
+None
+Nonlinear reference frequencies:
+3.75e+14 3.75e+14 7.5e+14 9.67e+13 9.67e+13 9.67e+13 9.67e+13
+~~~crystal end~~~
