@@ -18,7 +18,7 @@ Tutorials on YouTube!
 [Documentation](https://nickkarpowicz.github.io/LightwaveExplorerDocumentation)!
 
 ---
-### Latest release: 2025.5 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/Documentation/changelog.md))
+### Latest release: 2025.5 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/blob/master/Documentation/changelog.md))
 **Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
 
 **Mac:** [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native)
