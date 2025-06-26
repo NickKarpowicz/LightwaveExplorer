@@ -1,3 +1,9 @@
+### Changes in 2025.5:
+Bug fixes + some crystals:
+- Fixes bug where files could not be overwritten after loading
+- Fixes behavior of default values within for-loop sequences
+- Add Lorentzian model of GaSe, Gaussian model of YAG
+
 ### Changes in 2025.4:
 Bug fix release:
 - Corrects the carrier-envelope phase unit on the GUI

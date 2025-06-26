@@ -13,11 +13,11 @@
   <releases>
   <release version="2025.5" date="2025-06-25" urgency="high">
   <description>
-  <p>Bug fix release:</p>
+  <p>Bug fix release, plus some extra crystals:</p>
   <ul>
   <li>Fixes bug where files could not be overwritten after loading</li>
   <li>Fixes behavior of default values within for-loop sequences</li>
-  <li>Add Lorentzian model of GaSe</li>
+  <li>Add Lorentzian model of GaSe, Gaussian model of YAG</li>
   </ul>
   </description>
   </release>
