@@ -89,6 +89,7 @@ public:
 	}
 
 	void reset(simulationParameterSet* sCPU) override {
+	    cParams = sCPU;
 		sCPU->initializeDeviceParameters(s);
 	}
 };
