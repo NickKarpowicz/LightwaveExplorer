@@ -24,6 +24,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
       - run: |
+          "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"
           cmake -E make_directory build
           cd build
           cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2025"
@@ -31,6 +32,7 @@ jobs:
 
           cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
           cmake --build . --config Release
+        shell: cmd
       - run: |
           xcopy /s /y Release LightwaveExplorerWin64
           del /f /q LightwaveExplorerWin64\LightwaveExplorerSYCL.exp
