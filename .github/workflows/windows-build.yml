@@ -11,6 +11,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: Jimver/cuda-toolkit@v0.2.24
+        id: cuda-toolkit
       - run: |
           choco install -y wget --no-progress
       - run: |
@@ -20,8 +22,6 @@ jobs:
           C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
-      - uses: Jimver/cuda-toolkit@v0.2.27
-        id: cuda-toolkit
       - run: |
           cmake -E make_directory build
           cd build
