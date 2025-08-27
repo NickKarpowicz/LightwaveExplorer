@@ -16,7 +16,7 @@ jobs:
       - run: |
           choco install -y wget --no-progress
       - run: |
-          wget https://registrationcenter-download.intel.com/akdlm/IRC_NAS/f5881e61-dcdc-40f1-9bd9-717081ac623c/intel-oneapi-base-toolkit-2025.2.1.46_offline.exe
+          wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/f5881e61-dcdc-40f1-9bd9-717081ac623c/intel-oneapi-base-toolkit-2025.2.1.46_offline.exe
           .\intel-oneapi-base-toolkit-2025.2.1.46_offline.exe -a --silent --eula accept
       - run: |
           C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows gcem:x64-windows
@@ -25,7 +25,7 @@ jobs:
       - run: |
           cmake -E make_directory build
           cd build
-          cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler"
+          cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2025"
           cmake --build . --config Release
 
           cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
