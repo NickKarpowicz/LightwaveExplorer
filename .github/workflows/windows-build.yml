@@ -17,7 +17,7 @@ jobs:
           choco install -y wget pkgconfiglite --no-progress
       - run: |
           wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/f5881e61-dcdc-40f1-9bd9-717081ac623c/intel-oneapi-base-toolkit-2025.2.1.46_offline.exe
-          .\intel-oneapi-base-toolkit-2025.2.1.46_offline.exe -a --eula accept --install-dir D:\a\LightwaveExplorer\intel\oneapi
+          ./intel-oneapi-base-toolkit-2025.2.1.46_offline.exe -a --silent --eula accept --install-dir D:\a\LightwaveExplorer\intel\oneapi
       - run: |
           C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows gcem:x64-windows
       - name: Install Qt
