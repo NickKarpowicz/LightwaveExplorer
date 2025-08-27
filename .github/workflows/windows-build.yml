@@ -16,10 +16,10 @@ jobs:
       - run: |
           choco install -y wget --no-progress
       - run: |
-          wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2bc3d20f-d250-44f3-af36-c8f0dff2b86d/intel-cpp-essentials-2025.2.1.6_offline.exe
-          .\intel-cpp-essentials-2025.2.1.6_offline.exe -a --eula accept
+          wget https://registrationcenter-download.intel.com/akdlm/IRC_NAS/f5881e61-dcdc-40f1-9bd9-717081ac623c/intel-oneapi-base-toolkit-2025.2.1.46_offline.exe
+          .\intel-oneapi-base-toolkit-2025.2.1.46_offline.exe -a --silent --eula accept
       - run: |
-          C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows
+          C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows gcem:x64-windows
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
       - run: |
