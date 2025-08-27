@@ -21,6 +21,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
       - run: |
+          cmake -E make_directory build
+          cd build
           cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2025"
           cmake --build . --config Release
 
