@@ -1,0 +1,36 @@
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@4
+      - run: |
+          choco install -y cuda wget
+      - run: |
+          wget https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2bc3d20f-d250-44f3-af36-c8f0dff2b86d/intel-cpp-essentials-2025.2.1.6_offline.exe
+          intel-cpp-essentials-2025.2.1.6_offline.exe -a --silent --eula accept
+          del intel-cpp-essentials-2025.2.1.6_offline.exe
+          "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"
+      - run: |
+          %VCPKG_INSTALLATION_ROOT%\vcpkg install dlib:x64-windows miniz:x64-windows
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+      - run: |
+          cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="%VCPKG_INSTALLATION_ROOT%/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2025"
+          cmake --build . --config Release
+
+          cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="%VCPKG_INSTALLATION_ROOT%/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
+          cmake --build . --config Release
+      - run: |
+          xcopy /s /y Release LightwaveExplorerWin64
+          del /f /q LightwaveExplorerWin64\LightwaveExplorerSYCL.exp
+          del /f /q LightwaveExplorerWin64\LightwaveExplorerSYCL.lib
+
+          7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
