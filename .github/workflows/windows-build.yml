@@ -12,14 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          choco install -y cuda wget --no-progress
+          choco install -y wget --no-progress
       - run: |
           wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2bc3d20f-d250-44f3-af36-c8f0dff2b86d/intel-cpp-essentials-2025.2.1.6_offline.exe
           .\intel-cpp-essentials-2025.2.1.6_offline.exe -a --eula accept
       - run: |
-          C:\vcpkg\vcpkg.exe install dlib:x64-windows --features=core miniz:x64-windows
+          C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
+      - uses: Jimver/cuda-toolkit@v0.2.27
+        id: cuda-toolkit
       - run: |
           cmake -E make_directory build
           cd build
