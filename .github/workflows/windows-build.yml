@@ -18,7 +18,7 @@ jobs:
       - run: |
           wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/f5881e61-dcdc-40f1-9bd9-717081ac623c/intel-oneapi-base-toolkit-2025.2.1.46_offline.exe
           .\intel-oneapi-base-toolkit-2025.2.1.46_offline.exe -a --eula accept
-          C:\Program Files (x86)\Intel\oneAPI\setvars.bat
+          "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"
       - run: |
           C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows gcem:x64-windows
       - name: Install Qt
