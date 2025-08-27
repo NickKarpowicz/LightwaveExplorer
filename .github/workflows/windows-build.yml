@@ -16,7 +16,7 @@ jobs:
       - run: |
           wget https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2bc3d20f-d250-44f3-af36-c8f0dff2b86d/intel-cpp-essentials-2025.2.1.6_offline.exe
           .\intel-cpp-essentials-2025.2.1.6_offline.exe -a --silent --eula accept
-          call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"
+          & "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"
       - run: |
           %VCPKG_INSTALLATION_ROOT%\vcpkg install dlib:x64-windows miniz:x64-windows
       - name: Install Qt
