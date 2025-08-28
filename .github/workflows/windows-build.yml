@@ -21,7 +21,6 @@ jobs:
         uses: jurplel/install-qt-action@v4
       - run: |
           wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/f5881e61-dcdc-40f1-9bd9-717081ac623c/intel-oneapi-base-toolkit-2025.2.1.46_offline.exe
-          intel-oneapi-base-toolkit-2025.2.1.46_offline.exe --help
           intel-oneapi-base-toolkit-2025.2.1.46_offline.exe -a --silent --eula accept --install-dir D:\a\LightwaveExplorer\intel\oneapi
           call "D:\a\LightwaveExplorer\intel\oneapi\setvars.bat"
           cmake -E make_directory build
