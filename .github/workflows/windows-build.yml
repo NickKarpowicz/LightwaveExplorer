@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies with choco and vcpkg
         run: |
           choco install -y wget pkgconfiglite --no-progress
-          C:\vcpkg\vcpkg.exe install cairo:x64-windows-static
+          C:\vcpkg\vcpkg.exe install cairo:x64-windows
       - name: Install OneAPI
         run: |
           wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/da3f1dbe-47ad-49b5-acb9-3a7858b93d0d/intel-cpp-essentials-2025.1.1.10_offline.exe
