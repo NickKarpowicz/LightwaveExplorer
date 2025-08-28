@@ -21,7 +21,7 @@ jobs:
         run: |
           wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2bc3d20f-d250-44f3-af36-c8f0dff2b86d/intel-cpp-essentials-2025.2.1.6_offline.exe
           intel-cpp-essentials-2025.2.1.6_offline.exe -a --silent --eula accept --install-dir D:\a\LightwaveExplorer\intel\oneapi
-          shell: cmd
+        shell: cmd
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
       - name: Build LightwaveExplorer
