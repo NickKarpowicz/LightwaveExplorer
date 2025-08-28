@@ -40,7 +40,7 @@ if(MAKEDEPENDENCIES)
     project(LightwaveExplorer LANGUAGES C CXX)
     conditionally_fetch_dependencies()
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-    add_library(LightwaveExplorerDependencies SHARED
+    add_library(LightwaveExplorerDependencies STATIC
         Source/Devices/DlibLibraryComponents.cpp)
     add_library(miniz STATIC miniz/miniz.c)
 elseif(MAKESYCL)
