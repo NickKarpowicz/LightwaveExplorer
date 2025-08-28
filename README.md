@@ -18,16 +18,16 @@ Tutorials on YouTube!
 [Documentation](https://nickkarpowicz.github.io/LightwaveExplorerDocumentation)!
 
 ---
-### Latest release: 2025.5 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/blob/master/Documentation/changelog.md))
+### Latest release: 2025.6 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/blob/master/Documentation/changelog.md))
 **Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
-
-**Mac:** [Download .dmg](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg) (Intel native or Rosetta on Apple silicon) or [compile it yourself](#compiling-on-mac) (Apple silicon native)
 
 **Linux:**
 
 <a href='https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer'>
     <img width='240' alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en'/>
-  </a>
+</a>
+
+**Mac:** [compile it yourself](#compiling-on-mac)
 
 ---
 
@@ -75,11 +75,9 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ---
 ### Installation on Mac
 
-The Mac version is also available [directly from the Github relases](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerMacOS.dmg). The first time you run it, you have to right-click (or command-click) on it and select "open". You have to do this because of how Apple expects developers to pay them a subscription to release applications on their platform, and I'd rather not. For the same reason, if you want the M1,M2,M3 .etc native version, you need to [compile it](#compiling-on-mac) on your machine using the directions below.
+Since Intel Macs are deprecated now, you'll need to [compile it](#compiling-on-mac) on your machine using the directions below. It's not hard, don't worry. I'm looking into ways that I can distribute a pre-compiled app that will run on Apple Silicon without paying them a yearly subscription (which I find offensive), so it might get easier if there's a solution.
 
 This version makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
-
-The application bundle contains all the required files. If you want to edit the crystal database or default settings, open the app as a folder (right click or control-click on the app and select "show package contents") - You will find them in the Resources folder.
 
 ---
 
@@ -183,29 +181,7 @@ curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master
  ---
 
 ### Compilation on Windows
-You will need:
- - [Visual Studio 2022](https://visualstudio.microsoft.com/free-developer-offers/) to get Microsoft's compiler.
- - [vcpkg](https://vcpkg.io), and use that to install dlib, gcem, and miniz.
- - [CMake](https://cmake.org/).
- - [CUDA development kit](https://developer.nvidia.com/cuda-downloads)
- - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) (including the Math Kernel Library and the DPC++ compiler).
- - [Qt](https://www.qt.io).
-
-If you've cloned the repo, from that folder, first make the SYCL version as a DLL:
-```
-mkdir build
-cd build
-cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2024"
-cmake --build . --config Release
-```
-Next build the main application together with the CUDA version:
-```
-cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
-cmake --build . --config Release
-```
-
-There's also a powershell script named WinBuild.ps1 in the BuildResources folder that does all of this, so you can just run "./Source/BuildResources/WinBuild.Ps1" from the repo root directory to build the whole thing.
-
+This is now handled by a Github action - the recipie is in the file .github/workflows/windows-build.yml in the repo if you'd like to look inside and replicate it.
 
  ---
   ### Libraries used

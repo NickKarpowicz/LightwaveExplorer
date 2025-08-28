@@ -11,6 +11,15 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="2025.6" date="2025-08-28" urgency="high">
+  <description>
+  <p>Bug fix release:</p>
+  <ul>
+  <li>Fix a bug where setting a non-colinear angle would cause pulse injection to fail in FDTD simulations</li>
+  <li>Fix a bug where a failed load of a custom FDTD grid wouldn't cause the simulation to throw an exception</li>
+  </ul>
+  </description>
+  </release>
   <release version="2025.5" date="2025-06-25" urgency="high">
   <description>
   <p>Bug fix release, plus some extra crystals:</p>

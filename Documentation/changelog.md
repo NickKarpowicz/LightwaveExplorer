@@ -1,3 +1,10 @@
+### Changes in 2025.6:
+Bug fixes:
+- Fix a bug where setting a non-colinear angle would cause pulse injection to fail in FDTD simulations
+- Fix a bug where a failed load of a custom FDTD grid wouldn't cause the simulation to throw an exception
+- The Windows version is now built by a Github action for better reproducibility
+- The Intel Mac version is deprecated since Apple stopped updates for them. If someone still wants a build, tell me. That means that to use it on Mac, you should follow the compilation directions.
+
 ### Changes in 2025.5:
 Bug fixes + some crystals:
 - Fixes bug where files could not be overwritten after loading
