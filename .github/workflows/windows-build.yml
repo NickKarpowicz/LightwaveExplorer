@@ -32,8 +32,12 @@ jobs:
           cmake --build . --config Release
         shell: cmd
       - run: |
-          xcopy /s /y Release LightwaveExplorerWin64
-          del /f /q LightwaveExplorerWin64\LightwaveExplorerSYCL.exp
-          del /f /q LightwaveExplorerWin64\LightwaveExplorerSYCL.lib
-
-          7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
+          cd build
+          Copy-Item -Path Release -Destination LightwaveExplorerWin64 -Recurse
+          Remove-Item .\LightwaveExplorerWin64\LightwaveExplorerSYCL.exp -Force
+          Remove-Item .\LightwaveExplorerWin64\LightwaveExplorerSYCL.lib
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: LightwaveExplorerWin64
+          path: build/LightwaveExplorerWin64
