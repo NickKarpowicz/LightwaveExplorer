@@ -16,7 +16,7 @@ jobs:
       - run: |
           choco install -y wget pkgconfiglite --no-progress
       - run: |
-          C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows gcem:x64-windows
+          C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows gcem:x64-windows cairo:x64-windows
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
       - run: |
