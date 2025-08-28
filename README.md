@@ -27,6 +27,7 @@ Tutorials on YouTube!
     <img width='240' alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en'/>
 </a>
 
+
 **Mac:** [compile it yourself](#compiling-on-mac)
 
 ---
