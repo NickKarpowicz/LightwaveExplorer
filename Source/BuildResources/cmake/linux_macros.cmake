@@ -1,6 +1,6 @@
 macro(conditionally_fetch_dependencies)
     if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/dlib)
-    message("Using existing dlib clone")
+        message("Using existing dlib clone")
     else()
         execute_process(COMMAND wget https://github.com/davisking/dlib/archive/refs/tags/v19.24.6.zip)
         execute_process(COMMAND unzip -o v19.24.6.zip)
@@ -22,7 +22,7 @@ macro(conditionally_fetch_dependencies)
         execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
     endif()
 
-    include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib) 
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib)
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
@@ -37,8 +37,8 @@ macro(linux_install_launchscript)
     install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
     install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/Source//BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
-    install(FILES Source/BuildResources/DesktopFileLauncher 
-        DESTINATION share/applications 
+    install(FILES Source/BuildResources/DesktopFileLauncher
+        DESTINATION share/applications
         RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
 endmacro()
 
@@ -47,8 +47,8 @@ macro(linux_install_nolaunchscript)
     install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
     install(FILES Source/BuildResources/DefaultValues.ini DESTINATION share/LightwaveExplorer)
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/Source//BuildResources/icons DESTINATION share FILES_MATCHING PATTERN "*")
-    install(FILES Source/BuildResources/DesktopFileNoLauncher 
-            DESTINATION share/applications 
+    install(FILES Source/BuildResources/DesktopFileNoLauncher
+            DESTINATION share/applications
             RENAME io.github.NickKarpowicz.LightwaveExplorer.desktop)
 endmacro()
 
@@ -98,7 +98,7 @@ macro(add_oneapi_interfaces)
     FetchContent_Declare(
             onemkl_interface_library
             GIT_REPOSITORY https://github.com/uxlfoundation/oneMath.git
-            GIT_TAG v0.7
+            GIT_TAG v0.8
     )
     FetchContent_MakeAvailable(onemkl_interface_library)
 
@@ -107,9 +107,9 @@ endmacro()
 
 macro(set_sycl_compile_flags)
     add_compile_options(
-        -ffp-model=precise 
-        -O3 
-        -fsycl 
+        -ffp-model=precise
+        -O3
+        -fsycl
         -fsycl-targets=${SYCL_TARGETS_STRING}
         -w)
     if(OpenMP_FOUND)
@@ -125,7 +125,7 @@ macro(set_sycl_compile_flags)
     endif()
 
     add_link_options(
-        -fsycl 
+        -fsycl
         -fsycl-targets=${SYCL_TARGETS_STRING})
 
     if(BACKEND_ROCM)
@@ -161,10 +161,10 @@ endmacro()
 macro(link_fft_library FFT_TARGET)
     if(USING_MKL)
         target_link_libraries(${FFT_TARGET}
-            -Wl,--start-group 
-            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a 
-            ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a 
-            ${MKL_ROOT}/lib/intel64/libmkl_core.a 
+            -Wl,--start-group
+            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a
+            ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a
+            ${MKL_ROOT}/lib/intel64/libmkl_core.a
             -Wl,--end-group)
         target_link_libraries(${FFT_TARGET} TBB::tbb)
     elseif(USING_FFTW)

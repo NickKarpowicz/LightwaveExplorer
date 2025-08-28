@@ -13,38 +13,38 @@ __device__ static thrust::complex<double> operator/(const double& a, const thrus
 	return thrust::complex<double>(b.real() * divByDenominator, -b.imag() * divByDenominator);
 }
 __device__ static thrust::complex<double> operator/(
-	const thrust::complex<double>& a, 
-	const double& b) { 
-	return thrust::complex<double>(a.real() / b, a.imag() / b); 
+	const thrust::complex<double>& a,
+	const double& b) {
+	return thrust::complex<double>(a.real() / b, a.imag() / b);
 }
 __device__ static thrust::complex<double> operator*(
-	const double& b, 
-	const thrust::complex<double>& a) { 
+	const double& b,
+	const thrust::complex<double>& a) {
 	return thrust::complex<double>(a.real() * b, a.imag() * b); }
 __device__ static thrust::complex<double> operator*(
-	thrust::complex<double> a, 
-	double b) { 
-	return thrust::complex<double>(a.real() * b, a.imag() * b); 
+	thrust::complex<double> a,
+	double b) {
+	return thrust::complex<double>(a.real() * b, a.imag() * b);
 }
 __device__ static thrust::complex<double> operator+(
-	const double& a, 
-	const thrust::complex<double>& b) { 
-	return thrust::complex<double>(b.real() + a, b.imag()); 
+	const double& a,
+	const thrust::complex<double>& b) {
+	return thrust::complex<double>(b.real() + a, b.imag());
 }
 __device__ static thrust::complex<double> operator+(
-	const thrust::complex<double>& a, 
-	const double& b) { 
-	return thrust::complex<double>(a.real() + b, a.imag()); 
+	const thrust::complex<double>& a,
+	const double& b) {
+	return thrust::complex<double>(a.real() + b, a.imag());
 }
 __device__ static thrust::complex<double> operator-(
-	const double& a, 
-	const thrust::complex<double>& b) { 
-	return thrust::complex<double>(a - b.real(), -b.imag()); 
+	const double& a,
+	const thrust::complex<double>& b) {
+	return thrust::complex<double>(a - b.real(), -b.imag());
 }
 __device__ static thrust::complex<double> operator-(
-	const thrust::complex<double>& a, 
-	const double& b) { 
-	return thrust::complex<double>(a.real() - b, a.imag()); 
+	const thrust::complex<double>& a,
+	const double& b) {
+	return thrust::complex<double>(a.real() - b, a.imag());
 }
 
 namespace deviceLib = thrust;
@@ -127,9 +127,9 @@ static int hardwareCheck(int* CUDAdeviceCount) {
 		for (int i = 0; i < *CUDAdeviceCount; ++i) {
 			cuErr = cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
 			std::cout << activeCUDADeviceProp.name << std::endl;
-			std::cout << " Memory: " << 
+			std::cout << " Memory: " <<
 				(int)(activeCUDADeviceProp.totalGlobalMem / (1024 * 1024)) <<
-				"MB; Multiprocessors: " << 
+				"MB; Multiprocessors: " <<
 				activeCUDADeviceProp.multiProcessorCount
 				<<  std::endl;
 		}
@@ -194,8 +194,8 @@ public:
 
 	template <typename T>
 	void deviceLaunch (
-		const unsigned int Nblock, 
-		const unsigned int Nthread, 
+		const unsigned int Nblock,
+		const unsigned int Nthread,
 		const T& functor) const {
 		deviceLaunchFunctorWrapper<<<Nblock, Nthread, 0, stream>>>(functor);
 	}
@@ -213,17 +213,17 @@ public:
 	}
 
 	void inline deviceMemcpy(
-		thrust::complex<float>* dst, 
-		const std::complex<double>* src, 
-		size_t count, 
+		thrust::complex<float>* dst,
+		const std::complex<double>* src,
+		size_t count,
 		copyType kind) {
 			deviceMemcpy(reinterpret_cast<std::complex<float>*>(dst), src, count, kind);
 		}
 
 	void inline deviceMemcpy(
-		std::complex<double>* dst, 
-		const thrust::complex<float>* src, 
-		size_t count, 
+		std::complex<double>* dst,
+		const thrust::complex<float>* src,
+		size_t count,
 		copyType kind) {
 			deviceMemcpy(dst, reinterpret_cast<const std::complex<float>*>(src), count, kind);
 		}
@@ -267,10 +267,10 @@ public:
 				int cufftSizes2[] = { 2 * (int)(*s).Nspace, (int)(*s).Ntime };
 				cufftCreate(&doublePolfftPlan);
 				cufftGetSizeMany(
-					doublePolfftPlan, 2, cufftSizes2, NULL, 
+					doublePolfftPlan, 2, cufftSizes2, NULL,
 					0, 0, 0, 0, 0, CUFFT_fwd, 2 + 2 * (*s).hasPlasma, &workSize);
 				cufftMakePlanMany(
-					doublePolfftPlan, 2, cufftSizes2, NULL, 
+					doublePolfftPlan, 2, cufftSizes2, NULL,
 					0, 0, 0, 0, 0, CUFFT_fwd, 2 + 2 * (*s).hasPlasma, &workSize);
 				cufftSetStream(doublePolfftPlan, stream);
 			}
@@ -323,6 +323,7 @@ public:
 
 	void reset(simulationParameterSet* sCPU) override {
 		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
+		cParams = sCPU;
 		allocation->useNewParameterSet(sCPU);
 		if(resetFFT){
 			fftInitialize();

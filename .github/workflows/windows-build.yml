@@ -1,0 +1,66 @@
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jimver/cuda-toolkit@v0.2.24
+        id: cuda-toolkit
+      - name: Install dependencies with choco and vcpkg
+        run: |
+          choco install -y wget pkgconfiglite --no-progress
+          C:\vcpkg\vcpkg.exe install cairo[core]:x64-windows
+      - name: Install OneAPI
+        run: |
+          wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/da3f1dbe-47ad-49b5-acb9-3a7858b93d0d/intel-cpp-essentials-2025.1.1.10_offline.exe
+          intel-cpp-essentials-2025.1.1.10_offline.exe -a --silent --eula accept --install-dir D:\a\LightwaveExplorer\intel\oneapi
+        shell: cmd
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+      - name: Build LightwaveExplorer
+        run: |
+          call "D:\a\LightwaveExplorer\intel\oneapi\setvars.bat"
+          cmake -E make_directory build
+          cd build
+          cmake -DMAKEDEPENDENCIES=1 .. -G "Visual Studio 17 2022" -A x64
+          cmake --build . --config Release
+          cmake --fresh -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2025"
+          cmake --build . --config Release
+          cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
+          cmake --build . --config Release
+        shell: cmd
+      - name: Clean up distribution folder
+        run: |
+          cd build
+          Copy-Item -Path Release -Destination LightwaveExplorerWin64 -Recurse
+          Remove-Item .\LightwaveExplorerWin64\LightwaveExplorerSYCL.exp -Force
+          Remove-Item .\LightwaveExplorerWin64\LightwaveExplorerSYCL.lib
+          Remove-Item .\LightwaveExplorerWin64\LightwaveExplorerDependencies.lib
+          Remove-Item .\LightwaveExplorerWin64\miniz.lib
+          7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: LightwaveExplorerWin64
+          path: build/LightwaveExplorerWin64
+      - name: Upload to Github Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/LightwaveExplorerWin64.zip
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}

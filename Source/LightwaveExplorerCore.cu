@@ -1771,7 +1771,7 @@ namespace hostFunctions{
 
 			}
 			else{
-				std::runtime_error("Failed to load material map.\n");
+				throw std::runtime_error("Failed to load material map.\n");
 			}
 
 		}
