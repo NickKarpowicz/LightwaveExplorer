@@ -13,6 +13,10 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
       - uses: Jimver/cuda-toolkit@v0.2.24
@@ -53,24 +57,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LightwaveExplorerWin64
-          path: build/LightwaveExplorerWin64.zip
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
-    needs: [build]
-    permissions:
-      id-token: write
-      contents: write
-      attestations: write
-    steps:
-      - uses: actions/download-artifact@v4
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: "LightwaveExplorerWin64.zip"
+          path: build/LightwaveExplorerWin64
       - name: Upload to Github Release
         uses: softprops/action-gh-release@v1
         with:
-          files: LightwaveExplorerWin64.zip
+          files: build/LightwaveExplorerWin64.zip
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
