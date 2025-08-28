@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies with choco and vcpkg
         run: |
           choco install -y wget pkgconfiglite --no-progress
-          C:\vcpkg\vcpkg.exe install dlib[core]:x64-windows miniz:x64-windows gcem:x64-windows cairo:x64-windows
+          C:\vcpkg\vcpkg.exe install cairo:x64-windows
       - name: Install OneAPI
         run: |
           wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2bc3d20f-d250-44f3-af36-c8f0dff2b86d/intel-cpp-essentials-2025.2.1.6_offline.exe
@@ -29,6 +29,8 @@ jobs:
           call "D:\a\LightwaveExplorer\intel\oneapi\setvars.bat"
           cmake -E make_directory build
           cd build
+          cmake -DMAKEDEPENDENCIES=1 -G .. "Visual Studio 17 2022" -A x64
+          cmake --build . --config Release
           cmake -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2025"
           cmake --build . --config Release
           cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
