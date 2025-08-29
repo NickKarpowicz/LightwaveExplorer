@@ -25,3 +25,9 @@ jobs:
           cd build
           cmake .. -DCLI=1
           cmake --build .
+      - name: Test run
+        run: |
+          cd build
+          cp ../CrystalDatabase.txt ./
+          cp ../Source/BuildResources/test_input.txt ./
+          ./LightwaveExplorer test_input.txt
