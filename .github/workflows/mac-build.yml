@@ -35,10 +35,6 @@ jobs:
           make clean >& /dev/null
           make >& /dev/null
           make DESTDIR=$BASE_DIR/fftw install >& /dev/null
-      - name: clone dlib
-        run: |
-          cd ..
-          git clone --depth 1 --branch v19.24.2 https://github.com/davisking/dlib >& /dev/null
       - name: Run build script
         run: |
           ./Source/BuildResources/makeMacAppQt.sh
