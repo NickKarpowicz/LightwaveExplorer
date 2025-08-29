@@ -16,7 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: brew install cmake ninja make pkgconfig libomp qt cairo fmt wget
+        run: brew install cmake make libomp cairo fmt
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
       - name: build fftw
         run: |
           cd ..
