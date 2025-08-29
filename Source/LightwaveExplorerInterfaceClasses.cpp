@@ -645,7 +645,6 @@ int simulationParameterSet::readInputParametersFile(
       return 1;
     contents = std::string((std::istreambuf_iterator<char>(file)),
                            std::istreambuf_iterator<char>());
-    std::cout << contents << std::endl;
   }
 
   std::string line;
@@ -750,14 +749,16 @@ int simulationParameterSet::readInputParametersFile(
   Nsims2 = checkLineName("Batch steps 2", 0.0);
 
   moveToColon();
+
   std::getline(fs, line);
-  line.erase(line.begin());
+  if(line.length()>0) line.erase(line.begin());
 
   sequenceString = line;
 
   moveToColon();
   std::getline(fs, line);
-  line.erase(line.begin());
+
+  if(line.length()>0) line.erase(line.begin());
 
   fittingString = line;
   moveToColon();
@@ -765,29 +766,28 @@ int simulationParameterSet::readInputParametersFile(
 
   moveToColon();
   std::getline(fs, line);
-  line.erase(line.begin());
+  if(line.length()>0) line.erase(line.begin());
 
   outputBasePath = line;
   moveToColon();
   fs >> pulse1FileType;
   moveToColon();
   fs >> pulse2FileType;
-
   moveToColon();
   std::getline(fs, line);
-  line.erase(line.begin());
+  if(line.length()>0) line.erase(line.begin());
   removeCharacterFromString(line, '\r');
   removeCharacterFromString(line, '\n');
   pulse1LoadedData = loadedInputData(line);
   moveToColon();
   std::getline(fs, line);
-  line.erase(line.begin());
+  if(line.length()>0) line.erase(line.begin());
   removeCharacterFromString(line, '\r');
   removeCharacterFromString(line, '\n');
   pulse2LoadedData = loadedInputData(line);
   moveToColon();
   std::getline(fs, line);
-  line.erase(line.begin());
+  if(line.length()>0) line.erase(line.begin());
   removeCharacterFromString(line, '\r');
   removeCharacterFromString(line, '\n');
   fittingLoadedData = loadedInputData(line);
