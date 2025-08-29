@@ -3,7 +3,6 @@ name: Build Mac
 on:
   push:
     branches:
-      - expand_CI
       - master
     tags:
       - "*"
