@@ -1,4 +1,4 @@
-#include "LightwaveExplorerTrilingual.h"	
+#include "LightwaveExplorerTrilingual.h"
 #include "LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerInterfaceClasses.hpp"
 #include <iostream>
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]){
 		else break;
 		opticCount++;
 	}
-	
+
 	if ((theSim.sCPU()->sequenceString[0] != 'N') && theSim.sCPU()->sequenceString[0] != 0) theSim.sCPU()->isInSequence = true;
 	theSim.configure();
 	simulationParameterSet* sCPU = theSim.sCPU();
@@ -81,6 +81,7 @@ int main(int argc, char* argv[]){
 		return 0;
 	}
 	// run simulations
+	std::cout << "starting run" << std::endl;
 	std::thread* threadBlock = new std::thread[(*sCPU).Nsims * (*sCPU).Nsims2];
 	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
 	for (int j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; ++j) {
