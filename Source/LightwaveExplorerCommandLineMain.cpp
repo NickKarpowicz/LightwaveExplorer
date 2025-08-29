@@ -1,4 +1,4 @@
-#include "LightwaveExplorerTrilingual.h"	
+#include "LightwaveExplorerTrilingual.h"
 #include "LightwaveExplorerUtilities.h"
 #include "LightwaveExplorerInterfaceClasses.hpp"
 #include <iostream>
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]){
 		else break;
 		opticCount++;
 	}
-	
+
 	if ((theSim.sCPU()->sequenceString[0] != 'N') && theSim.sCPU()->sequenceString[0] != 0) theSim.sCPU()->isInSequence = true;
 	theSim.configure();
 	simulationParameterSet* sCPU = theSim.sCPU();

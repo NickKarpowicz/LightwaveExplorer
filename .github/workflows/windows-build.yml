@@ -3,7 +3,6 @@ name: Build Windows
 on:
   push:
     branches:
-      - dev
       - master
     tags:
       - "*"

@@ -1,0 +1,31 @@
+name: Build and run Linux command line
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y libfmt-dev libtbb-dev libfftw3-dev
+      - name: Compile Lightwave Explorer
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCLI=1
+          cmake --build .
+      - name: Test run
+        run: |
+          cd build
+          cp ../CrystalDatabase.txt ./
+          cp ../Source/BuildResources/test_input.txt ./
+          ./LightwaveExplorer test_input.txt

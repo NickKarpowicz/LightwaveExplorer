@@ -1,0 +1,46 @@
+name: Build Mac
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install cmake make libomp cairo fmt
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+      - name: build fftw
+        run: |
+          cd ..
+          BASE_DIR=$(pwd)
+          curl -O http://fftw.org/fftw-3.3.10.tar.gz >& /dev/null
+          tar -xvf fftw-3.3.10.tar.gz >& /dev/null
+          cd fftw-3.3.10
+          curl -O https://raw.githubusercontent.com/andrej5elin/howto_fftw_apple_silicon/main/fftw-3-3-10-configure-diff.txt >& /dev/null
+          patch configure fftw-3-3-10-configure-diff.txt >& /dev/null
+
+          ./configure --enable-threads --enable-neon --enable-armv8-cntvct-el0 --enable-silent-rules >& /dev/null
+          make >& /dev/null
+          make DESTDIR=$BASE_DIR/fftw install >& /dev/null
+
+          ./configure --enable-threads --enable-neon --enable-armv8-cntvct-el0 --enable-float --enable-silent-rules >& /dev/null
+          make clean >& /dev/null
+          make >& /dev/null
+          make DESTDIR=$BASE_DIR/fftw install >& /dev/null
+      - name: Run build script
+        run: |
+          ./Source/BuildResources/makeMacAppQtBundle.sh ${QT_ROOT_DIR}/bin
+      - name: Upload Mac binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: LightwaveExplorerMac
+          path: build/LightwaveExplorerMacOS.dmg
