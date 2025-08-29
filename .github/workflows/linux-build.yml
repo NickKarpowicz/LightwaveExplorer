@@ -1,9 +1,8 @@
-name: Build Linux
+name: Build and run Linux command line
 
 on:
   push:
     branches:
-      - expand_CI
       - master
     tags:
       - "*"
