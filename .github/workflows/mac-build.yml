@@ -1,0 +1,20 @@
+name: Build Mac using macAutoBuild.sh
+
+on:
+  push:
+    branches:
+      - expand_CI
+      - master
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run build script
+        run: |
+          zsh -s Source/BuildResources/macAutoBuild.sh
