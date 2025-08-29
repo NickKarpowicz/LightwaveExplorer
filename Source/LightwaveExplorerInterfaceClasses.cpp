@@ -645,6 +645,7 @@ int simulationParameterSet::readInputParametersFile(
       return 1;
     contents = std::string((std::istreambuf_iterator<char>(file)),
                            std::istreambuf_iterator<char>());
+    std::cout << contents << std::endl;
   }
 
   std::string line;
