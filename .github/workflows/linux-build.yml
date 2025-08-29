@@ -1,0 +1,27 @@
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - expand_CI
+      - master
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libfmt-dev libtbb-dev libfftw3-dev
+      - name: Compile Lightwave Explorer
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build .
