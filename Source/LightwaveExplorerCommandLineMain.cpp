@@ -48,7 +48,7 @@ int main(int argc, char* argv[]){
 		std::cout << "Could not read input file." << std::endl;
 		return 13;
 	}
-
+	std::cout << "input read" << std::endl;
 	// read optics files if there are any
 	int opticCount = 0;
 	while(true){
@@ -57,9 +57,10 @@ int main(int argc, char* argv[]){
 		else break;
 		opticCount++;
 	}
-
+	std::cout << "optics read" << std::endl;
 	if ((theSim.sCPU()->sequenceString[0] != 'N') && theSim.sCPU()->sequenceString[0] != 0) theSim.sCPU()->isInSequence = true;
 	theSim.configure();
+	std::cout << "configured" << std::endl;
 	simulationParameterSet* sCPU = theSim.sCPU();
 	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
@@ -81,7 +82,6 @@ int main(int argc, char* argv[]){
 		return 0;
 	}
 	// run simulations
-	std::cout << "starting run" << std::endl;
 	std::thread* threadBlock = new std::thread[(*sCPU).Nsims * (*sCPU).Nsims2];
 	size_t maxThreads = minN(CUDAdeviceCount, (*sCPU).Nsims * (*sCPU).Nsims2);
 	for (int j = 0; j < (*sCPU).Nsims * (*sCPU).Nsims2; ++j) {
