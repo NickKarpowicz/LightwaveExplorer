@@ -93,12 +93,13 @@ redirectLibraryDependencies(){
 
 #if the binary has fixed library paths, send them to the bundle /lib
 fixBinPaths(){
-    OTOUT=$(otool -l $BINPATH | grep path | grep -v @exec | awk '{print $2}')
-    NLIBS=$(echo "$OTOUT" | wc -l)
-    for((i=1; i<=$NLIBS; i++))
-    do
-        CURRENT=$(echo "$OTOUT" | awk -v i=$i 'FNR==i')
-        install_name_tool -rpath "$CURRENT" "@executable_path/../Resources/lib" $BINPATH
+    mapfile -t LIBS < <(otool -l "$BINPATH" | grep path | grep -v @exec | awk '{print $2}')
+
+    for LIB in "${LIBS[@]}"; do
+        if [[ $LIB != @* ]]; then
+            install_name_tool -add_rpath "@executable_path/../Resources/lib" "$BINPATH"
+            install_name_tool -change "$LIB" "@executable_path/../Resources/lib/${LIB##*/}" "$BINPATH"
+        fi
     done
 }
 
