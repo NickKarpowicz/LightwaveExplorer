@@ -18,8 +18,8 @@ macro(conditionally_fetch_dependencies)
     if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/miniz)
         message("Using existing miniz download")
     else()
-        execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip)
-        execute_process(COMMAND unzip -o miniz-3.0.2 -d miniz)
+        execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.1.0/miniz-3.1.0.zip)
+        execute_process(COMMAND unzip -o miniz-3.1.0 -d miniz)
     endif()
 
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib)
@@ -98,7 +98,7 @@ macro(add_oneapi_interfaces)
     FetchContent_Declare(
             onemkl_interface_library
             GIT_REPOSITORY https://github.com/uxlfoundation/oneMath.git
-            GIT_TAG v0.8
+            GIT_TAG v0.9
     )
     FetchContent_MakeAvailable(onemkl_interface_library)
 
