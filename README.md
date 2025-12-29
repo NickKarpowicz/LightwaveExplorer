@@ -9,11 +9,10 @@ Publication!
 - N. Karpowicz, Open source, heterogenous, nonlinear-optics simulation. [*Optics Continuum* **2**, 2244-2254 (2023).](https://opg.optica.org/optcon/fulltext.cfm?uri=optcon-2-11-2244&id=540999)
 
 Tutorials on YouTube!
-- Tutorial 1: <a href="https://youtu.be/J1-dh6V5flQ">Introduction and quick start, with walkthrough of simulating SHG and OPA</a></li>
-- Tutorial 2: <a href="https://youtu.be/7osRWaI91nk">Understanding and ensuring convergence</a>
-- Tutorial 3: <a href="https://youtu.be/qlcy_RBLGoU">Adding a crystal to the database</a>
-- Tutorial 4: <a href="https://youtu.be/v5O0UOUdfKE">Birefringence</a>
-- Tutorial 5: (new!) <a href="https://www.youtube.com/watch?v=4njswvog4bo">FDTD</a>
+- <a href="https://youtu.be/sZ5Evkgj4Vk">Introduction, main tutorial (2026 update!)</a>
+- <a href="https://youtu.be/qlcy_RBLGoU">Adding a crystal to the database</a>
+- <a href="https://youtu.be/v5O0UOUdfKE">Birefringence</a>
+- <a href="https://www.youtube.com/watch?v=4njswvog4bo">FDTD</a>
 
 [Documentation](https://nickkarpowicz.github.io/LightwaveExplorerDocumentation)!
 
