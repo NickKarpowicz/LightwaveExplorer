@@ -599,23 +599,29 @@ public:
 };
 
 // Apply a (soft, possibly) aperture
-class apertureKernel {
+class ApertureKernel {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP radius;
   const deviceFP activationParameter;
+  const deviceFP x_offset;
+  const deviceFP y_offset;
   deviceFunction void operator()(int64_t i) const {
     const int64_t col = i / (*s).Ntime;
     const int64_t j = col % (*s).Nspace;
     const int64_t k = col / (*s).Nspace;
     deviceFP r;
     if ((*s).is3D) {
-      const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f));
-      const deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f));
+      const deviceFP x = ((*s).dx * (j - (*s).Nspace / 2.0f)) - x_offset;
+      const deviceFP y = ((*s).dx * (k - (*s).Nspace2 / 2.0f)) - y_offset;
       r = deviceFPLib::hypot(x, y);
-    } else {
+    } else if (s->isCylindric){
       r = deviceFPLib::abs((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) +
                            0.25f * (*s).dx);
+    }
+    else{
+        r = deviceFPLib::abs( (*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f) +
+                             0.25f * (*s).dx - x_offset);
     }
 
     const deviceFP a =

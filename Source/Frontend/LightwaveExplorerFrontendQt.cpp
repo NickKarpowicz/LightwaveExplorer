@@ -173,6 +173,7 @@ class SequenceValidator : public QSyntaxHighlighter {
             "savePlasma",
             "fresnelLoss",
             "aperture",
+            "offsetAperture",
             "farFieldAperture",
             "farFieldInverseAperture",
             "energy",

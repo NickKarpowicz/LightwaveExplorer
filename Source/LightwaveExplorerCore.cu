@@ -777,7 +777,9 @@ namespace hostFunctions{
 		ActiveDevice& d,
 		const simulationParameterSet* sCPU,
 		const double diameter,
-		const double activationParameter) {
+		const double activationParameter,
+        const double x_offset=0.0,
+        const double y_offset=0.0) {
 		d.deviceMemcpy(
 			d.s->gridETime1,
 			(*sCPU).ExtOut,
@@ -788,10 +790,12 @@ namespace hostFunctions{
 		d.deviceLaunch(
 			d.s->Nblock,
 			d.s->Nthread,
-			apertureKernel{
+			ApertureKernel{
 				sDevice,
-				(deviceFP)(0.5 * diameter),
-				(deviceFP)(activationParameter) });
+				static_cast<deviceFP>(0.5 * diameter),
+				static_cast<deviceFP>(activationParameter),
+			    static_cast<deviceFP>(x_offset),
+				static_cast<deviceFP>(y_offset)});
 		d.deviceMemcpy(
 			(*sCPU).ExtOut,
 			d.s->gridETime1,
@@ -2298,6 +2302,16 @@ namespace hostFunctions{
 				parameters[1]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
+		case functionID("offsetAperture"):
+    		interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+    		d.reset(sCPU);
+    		applyAperature(d, sCPU,
+    			parameters[0],
+    			parameters[1],
+                parameters[2],
+                parameters[3]);
+    		if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+    		break;
 		case functionID("farFieldAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			(*sCPU).materialIndex = 0;
