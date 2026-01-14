@@ -2,7 +2,9 @@
 #include "cairo.h"
 #include <mutex>
 #include <regex>
+#include <algorithm>
 #include <shared_mutex>
+
 void blackoutCairoPlot(cairo_t* cr, const int width, const int height, const bool show_rendering=false){
     LweColor black(0, 0, 0, 0);
     cairo_rectangle(cr, 0, 0, width, height);
@@ -398,6 +400,7 @@ public:
         setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle1"], sim.base().pulse1.beamAngle, sim.base().pulse1.beamAnglePhi, SecondValueDefault::Default_zero, deg2Rad<double>());
         setToDoubleMultiplier(textBoxes["polarization1"],rad2Deg<double>(),sim.base().pulse1.polarizationAngle);
         setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
+        sim.base().pulse1.circularity = std::clamp(sim.base().pulse1.circularity, -1.0, 1.0);
 
         setToDouble(textBoxes["energy2"],sim.base().pulse2.energy);
         setToDoubleMultiplier(textBoxes["frequency2"],1e-12,sim.base().pulse2.frequency);
@@ -415,6 +418,7 @@ public:
         setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle2"], sim.base().pulse2.beamAngle, sim.base().pulse2.beamAnglePhi, SecondValueDefault::Default_zero, deg2Rad<double>());
         setToDoubleMultiplier(textBoxes["polarization2"],rad2Deg<double>(),sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
+        sim.base().pulse2.circularity = std::clamp(sim.base().pulse2.circularity, -1.0, 1.0);
 
         sim.base().pulse1FileType = pulldowns["pulse1type"]->currentIndex();
         sim.base().pulse2FileType = pulldowns["pulse2type"]->currentIndex();
@@ -971,7 +975,7 @@ public:
         addTextBoxRow("Polarization (deg)", "polarization1", "polarization2", entryColumn1Layout,
         "Polarization angle of the beam. With 0: field points along x-axis, 90: along y-axis.");
         addTextBoxRow("Circularity", "circularity1", "circularity2", entryColumn1Layout,
-        "Degree of circularity of the beam. 0: Linear polarization, 1: circular (can be any value in between).");
+        "Degree of circularity of the beam. 0: Linear polarization, 1: right-circular, -1 left-circular (can be any value in between).");
 
         QHBoxLayout* pulseTypeRow = getRowBoxLayout(entryColumn1Layout);
         labels["source"] = new QLabel;

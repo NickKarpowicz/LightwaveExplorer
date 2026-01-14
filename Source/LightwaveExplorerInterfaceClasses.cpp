@@ -5,6 +5,7 @@
 #else
 #include <fftw3_mkl.h>
 #endif
+#include <algorithm>
 
 int simulationParameterSet::loadSavedFields(const std::string &outputBase,
                                             bool isZipFile) {
@@ -585,10 +586,10 @@ void simulationParameterSet::setByNumber(const int64_t index,
     pulse2.polarizationAngle = value;
     return;
   case 27:
-    pulse1.circularity = value;
+    pulse1.circularity = std::clamp(value, -1.0, 1.0);
     return;
   case 28:
-    pulse2.circularity = value;
+    pulse2.circularity = std::clamp(value, -1.0, 1.0);
     return;
   case 29:
     crystalTheta = value;
@@ -722,7 +723,9 @@ int simulationParameterSet::readInputParametersFile(
   pulse1.polarizationAngle = checkLineName("Polarization 1 (rad)", 0.0);
   pulse2.polarizationAngle = checkLineName("Polarization 2 (rad)", 0.0);
   pulse1.circularity = checkLineName("Circularity 1", 0.0);
+  pulse1.circularity = std::clamp(pulse1.circularity, -1.0, 1.0);
   pulse2.circularity = checkLineName("Circularity 2", 0.0);
+  pulse2.circularity = std::clamp(pulse2.circularity, -1.0, 1.0);
   materialIndex = checkLineName("Material index", 0.0);
   materialIndexAlternate = checkLineName("Alternate material index", 0.0);
   crystalTheta = checkLineName("Crystal theta (rad)", 0.0);
