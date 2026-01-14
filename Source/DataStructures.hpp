@@ -278,76 +278,76 @@ class LWEDevice{
     virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
     virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
     virtual void deviceMemcpyImplementation(
-		void* dst, 
-		const void* src, 
-		size_t count, 
+		void* dst,
+		const void* src,
+		size_t count,
 		copyType kind) = 0;
     virtual void deviceFree(void* block) = 0;
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
     virtual void reset(simulationParameterSet* sCPU) = 0;
-    
+
     void deviceMemcpy(
-		void* dst, 
-		const void* src, 
-		size_t count, 
+		void* dst,
+		const void* src,
+		size_t count,
 		copyType kind) {
 			deviceMemcpyImplementation(dst, src, count, kind);
 	}
 
     void deviceMemcpy(
-		void* dst, 
-		void* src, 
-		size_t count, 
+		void* dst,
+		void* src,
+		size_t count,
 		copyType kind) {
             if(src==dst) return;
 			deviceMemcpyImplementation(dst, src, count, kind);
 	}
 
 	void deviceMemcpy(
-		double* dst, 
-		const float* src, 
-		size_t count, 
+		double* dst,
+		const float* src,
+		size_t count,
 		copyType kind) {
             float* copyBuffer = new float[count / sizeof(double)];
             deviceMemcpyImplementation(
-                static_cast<void*>(copyBuffer), 
-                static_cast<const void*>(src), 
-                count/2, 
+                static_cast<void*>(copyBuffer),
+                static_cast<const void*>(src),
+                count/2,
                 kind);
             for (size_t i = 0; i < count / sizeof(double); i++) {
                 dst[i] = copyBuffer[i];
             }
             delete[] copyBuffer;
 	}
-	
+
 	void deviceMemcpy(
-		float* dst, 
-		const double* src, 
-		size_t count, 
+		float* dst,
+		const double* src,
+		size_t count,
 		copyType kind) {
             float* copyBuffer = new float[count / sizeof(double)];
             for (size_t i = 0; i < count / sizeof(double); i++) {
                 copyBuffer[i] = (float)src[i];
             }
             deviceMemcpyImplementation(
-                static_cast<void*>(dst), 
-                static_cast<void*>(copyBuffer), 
-                count / 2, 
+                static_cast<void*>(dst),
+                static_cast<void*>(copyBuffer),
+                count / 2,
                 kind);
             delete[] copyBuffer;
 	}
 
     void deviceMemcpy(
-		std::complex<double>* dst, 
-		const std::complex<float>* src, 
-		size_t count, 
+		std::complex<double>* dst,
+		const std::complex<float>* src,
+		size_t count,
 		copyType kind) {
-		std::complex<float>* copyBuffer = 
+		std::complex<float>* copyBuffer =
 			new std::complex<float>[count / sizeof(std::complex<double>)];
 		deviceMemcpyImplementation(
-			static_cast<void*>(copyBuffer), 
-			static_cast<const void*>(src), 
-			count/2, 
+			static_cast<void*>(copyBuffer),
+			static_cast<const void*>(src),
+			count/2,
 			kind);
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
@@ -356,21 +356,21 @@ class LWEDevice{
 	}
 
 	void deviceMemcpy(
-		std::complex<float>* dst, 
-		const std::complex<double>* src, 
-		size_t count, 
+		std::complex<float>* dst,
+		const std::complex<double>* src,
+		size_t count,
 		copyType kind) {
-		std::complex<float>* copyBuffer = 
+		std::complex<float>* copyBuffer =
 			new std::complex<float>[count / sizeof(std::complex<double>)];
-		
+
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			copyBuffer[i] = 
+			copyBuffer[i] =
 				std::complex<float>((float)src[i].real(), (float)src[i].imag());
 		}
 		deviceMemcpyImplementation(
-			static_cast<void*>(dst), 
-			static_cast<void*>(copyBuffer), 
-			count / 2, 
+			static_cast<void*>(dst),
+			static_cast<void*>(copyBuffer),
+			count / 2,
 			kind);
 		delete[] copyBuffer;
 	}
@@ -387,7 +387,7 @@ public:
     LWEBuffer(){}
     LWEBuffer(const LWEBuffer&) = delete;
     LWEBuffer& operator=(const LWEBuffer&) = delete;
-    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize = sizeof(T)) : 
+    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize = sizeof(T)) :
     d(d),
     count(maxN(N,static_cast<size_t>(1))),
     bytes(count*elementSize)
@@ -397,7 +397,7 @@ public:
             throw std::runtime_error("Couldn't allocate enough memory.");
         }
     }
-    LWEBuffer(LWEDevice* d, const std::vector<T> v) : 
+    LWEBuffer(LWEDevice* d, const std::vector<T> v) :
     d(d),
     count(v.size()),
     bytes(count * sizeof(T)){
@@ -407,7 +407,7 @@ public:
         }
         d->deviceMemcpy(buffer, v.data(), count, copyType::ToDevice);
     }
-    
+
     ~LWEBuffer(){
         if(bytes) d->deviceFree(buffer);
     }
@@ -493,7 +493,7 @@ public:
     deviceFP* gridPlasmaCurrent2 = 0;
 
     //fixed length arrays
-    PlasmaParameters<deviceFP> plasmaParameters = {}; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
+    PlasmaParameters<deviceFP> plasmaParameters = {}; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma]
     deviceFP chi2Tensor[18] = { 0 };
     deviceFP chi3Tensor[81] = { 0 };
     deviceFP rotationForward[9] = { 0 };
@@ -578,7 +578,7 @@ public:
 
         if(!fs.is_open()){
             char pBuf[256];
-            int64_t len = sizeof(pBuf); 
+            int64_t len = sizeof(pBuf);
             int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
             if(bytes >= 0)
                 pBuf[bytes] = '\0';
@@ -593,7 +593,7 @@ public:
                 path = databasePath;
             }
         }
-        
+
 #else
         std::ifstream fs("CrystalDatabase.txt");
 #endif
@@ -711,8 +711,8 @@ public:
                 fs >> newEntry.nonlinearReferenceFrequencies[k];
             }
             std::getline(fs, line);
-            std::getline(fs, line); //~~~crystal end~~~
             if(fs.good())db.push_back(newEntry);
+            std::getline(fs, line); //~~~crystal end~~~
         }
     }
 };
@@ -742,7 +742,7 @@ public:
     T circularity;
     T pulseSum;
 
-    pulse() : energy(), 
+    pulse() : energy(),
         frequency(),
         bandwidth(),
         sgOrder(),
@@ -807,5 +807,3 @@ public:
         return *this;
     }
 };
-
-
