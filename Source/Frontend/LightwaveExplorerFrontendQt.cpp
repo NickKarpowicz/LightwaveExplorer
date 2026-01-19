@@ -298,7 +298,7 @@ class LWEGui : public QMainWindow {
         std::string materialString;
         pulldowns["material"]->clear();
         for (std::size_t i = 0; i < theDatabase.db.size(); ++i) {
-            materialString = Sformat(
+            materialString = std::format(
                 "{:2}: {}", i, theDatabase.db[i].crystalName);
             pulldowns["material"]->addItem(materialString.c_str());
         }
@@ -341,11 +341,11 @@ public:
     bool isMakingSVG = false;
     std::array<std::string,9> SVGStrings;
     template<typename... Args> void cPrint(std::string_view format, Args&&... args) {
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         console->append(s.c_str());
     }
     template<typename... Args> void sPrint(std::string_view format, Args&&... args) {
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         sequence->insertPlainText(s.c_str());
     }
 
@@ -579,11 +579,11 @@ public:
 
     void setInterfaceValuesToActiveValues(simulationBatch& sim){
         auto setToDouble = [](QLineEdit* box, const double value){
-            QString s(Sformat(std::string_view("{:g}"), value).c_str());
+            QString s(std::format(std::string_view("{:g}"), value).c_str());
             box->setText(s);
         };
         auto setToInt = [](QLineEdit* box, const int value){
-            QString s(Sformat(std::string_view("{}"), value).c_str());
+            QString s(std::format(std::string_view("{}"), value).c_str());
             box->setText(s);
         };
 
@@ -607,11 +607,11 @@ public:
                     }
             }
             if(setBoth){
-                QString s(Sformat(std::string_view("{:g}; {:g}"), value1, value2).c_str());
+                QString s(std::format(std::string_view("{:g}; {:g}"), value1, value2).c_str());
                 box->setText(s);
             }
             else{
-                QString s(Sformat(std::string_view("{:g}"), value1).c_str());
+                QString s(std::format(std::string_view("{:g}"), value1).c_str());
                 box->setText(s);
             }
         };
@@ -904,15 +904,15 @@ public:
                 textBoxes[entry1]->setFixedSize(plotTextBoxWidth,textBoxHeight);
                 if(entry2 != "none")textBoxes[entry2]->setFixedSize(plotTextBoxWidth,textBoxHeight);
                 if(entry3 != "none")textBoxes[entry3]->setFixedSize(plotTextBoxWidth,textBoxHeight);
-                QString s1(Sformat(std::string_view("{:g}"), value1).c_str());
+                QString s1(std::format(std::string_view("{:g}"), value1).c_str());
                 textBoxes[entry1]->setText(s1);
                 if(entry2 != "none"){
-                    QString s2(Sformat(std::string_view("{:g}"), value2).c_str());
+                    QString s2(std::format(std::string_view("{:g}"), value2).c_str());
                     textBoxes[entry2]->setText(s2);
                 }
 
                 if(entry3 != "none"){
-                    QString s3(Sformat(std::string_view("{:g}"), value3).c_str());
+                    QString s3(std::format(std::string_view("{:g}"), value3).c_str());
                     textBoxes[entry3]->setText(s3);
                 }
                 rowLayout->addWidget(labels[entry1], Qt::AlignLeft);
@@ -1645,7 +1645,7 @@ public:
             pulldowns["primaryHardware"]->addItem("CUDA");
             pulldowns["secondaryHardware"]->addItem("CUDA");
             for (int i = 1; i < theSim.base().cudaGPUCount; ++i) {
-                A = Sformat("CUDA {}", i);
+                A = std::format("CUDA {}", i);
                 pulldowns["primaryHardware"]->addItem(A.c_str());
                 pulldowns["secondaryHardware"]->addItem(A.c_str());
             }
@@ -1707,7 +1707,7 @@ public:
                 batchStart +
                 i * (theSim.base().batchDestination - batchStart)/(theSim.base().Nsims - 1);
                 labels["sliderValue"]->setFixedWidth(60);
-                labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:.3g}",batchValue)));
+                labels["sliderValue"]->setText(QString::fromStdString(std::format("{:.3g}",batchValue)));
             }
             else{
                 int64_t index_batch_2 = i / theSim.base().Nsims;
@@ -1722,7 +1722,7 @@ public:
                 batchStart2 +
                 static_cast<double>(index_batch_2) * (theSim.base().batchDestination2 - batchStart2)/(theSim.base().Nsims2 - 1);
                 labels["sliderValue"]->setFixedWidth(120);
-                labels["sliderValue"]->setText(QString::fromStdString(Sformat("{:.3g}, {:.3g}",batchValue,batchValue2)));
+                labels["sliderValue"]->setText(QString::fromStdString(std::format("{:.3g}, {:.3g}",batchValue,batchValue2)));
             }
 
         });
@@ -1833,21 +1833,21 @@ public:
             std::string path = QFileDialog::getOpenFileName(buttons["loadPulse1"],"Load field data","","ASCII data (*.*)").toStdString();
             if(path.empty()) return;
             pulse1LoadedData = loadedInputData(path);
-            messenger->passString(Sformat("Loaded new file into pulse 1 buffer:\n{}\n", pulse1LoadedData.filePath));
+            messenger->passString(std::format("Loaded new file into pulse 1 buffer:\n{}\n", pulse1LoadedData.filePath));
         });
 
         QObject::connect(buttons["loadPulse2"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["loadPulse2"],"Load field data","","ASCII data (*.*)").toStdString();
             if(path.empty()) return;
             pulse2LoadedData = loadedInputData(path);
-            messenger->passString(Sformat("Loaded new file into pulse 2 buffer:\n{}\n", pulse2LoadedData.filePath));
+            messenger->passString(std::format("Loaded new file into pulse 2 buffer:\n{}\n", pulse2LoadedData.filePath));
         });
 
         QObject::connect(buttons["loadFitting"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["loadFitting"],"Load spectral target data","","ASCII data (*.*)").toStdString();
             if(path.empty()) return;
             fittingLoadedData = loadedInputData(path);
-            messenger->passString(Sformat("Loaded new fitting spectral target:\n{}\n", fittingLoadedData.filePath));
+            messenger->passString(std::format("Loaded new fitting spectral target:\n{}\n", fittingLoadedData.filePath));
         });
 
         QObject::connect(buttons["loadMaterial"], &QPushButton::clicked, [&](){
@@ -1855,7 +1855,7 @@ public:
             if(path.empty()) return;
             theDatabase = crystalDatabase(path);
             populateDatabasePulldown();
-            messenger->passString(Sformat("Loaded new crystal database:\n{}\n", path));
+            messenger->passString(std::format("Loaded new crystal database:\n{}\n", path));
         });
 
         QObject::connect(buttons["stop"], &QPushButton::clicked, [&](){
@@ -1977,7 +1977,7 @@ public:
             }
 
             std::size_t SVGbegin = SVGStrings[firstPlot].find("<svg");
-            SVGStrings[firstPlot].insert(SVGbegin,Sformat("<svg cool=\"1\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+            SVGStrings[firstPlot].insert(SVGbegin,std::format("<svg cool=\"1\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
                 "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
                 "\"http://www.w3.org/1999/xlink\">\n",
                 totalWidth, totalHeight, totalWidth, totalHeight));
@@ -1985,7 +1985,7 @@ public:
 
             auto appendPlot = [&](int index, int x, int y){
                 SVGbegin = SVGStrings[index].find("width=");
-                SVGStrings[index].insert(SVGbegin,Sformat("x=\"{}\" y=\"{}\" ",
+                SVGStrings[index].insert(SVGbegin,std::format("x=\"{}\" y=\"{}\" ",
                 x * (totalWidth/horizontalElements), y * (totalHeight/verticalElements)));
                 SVGbegin = SVGStrings[index].find("<svg");
                 SVGStrings[index] = SVGStrings[index].substr(SVGbegin);
@@ -2197,14 +2197,14 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
         if (theSim.base().cudaGPUCount > 0) {
             theSim.base().CUDAavailable = true;
             if (theSim.base().cudaGPUCount == 1) {
-                s.append(Sformat("CUDA found a GPU:\n", theSim.base().cudaGPUCount));
+                s.append(std::format("CUDA found a GPU:\n", theSim.base().cudaGPUCount));
             }
             else {
-                s.append(Sformat("CUDA found {} GPU(s):\n", theSim.base().cudaGPUCount));
+                s.append(std::format("CUDA found {} GPU(s):\n", theSim.base().cudaGPUCount));
             }
             for (int i = 0; i < theSim.base().cudaGPUCount; ++i) {
                 cudaGetDeviceProperties(&activeCUDADeviceProp, CUDAdevice);
-                s.append(Sformat("   {}\n",
+                s.append(std::format("   {}\n",
                     activeCUDADeviceProp.name));
             }
         }
@@ -2228,7 +2228,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
         theSim.base().syclGPUCount = (int)counts[1];
         syclDevices = (int64_t)counts[0] + (int64_t)counts[1];
         if (syclDevices != 0) {
-            s.append(Sformat("{}", syclDeviceList));
+            s.append(std::format("{}", syclDeviceList));
         }
         setSYCLvars(s);
     }
@@ -2275,7 +2275,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
         std::erase(errorString, ';');
         std::erase(errorString, '{');
         std::erase(errorString, '}');
-        theGui.messenger->passString(Sformat(
+        theGui.messenger->passString(std::format(
             "<span color=\"#FF88FF\">Simulation failed with exception:\n{}</span>\n",
             errorString));
         return;
@@ -2313,19 +2313,19 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
                     std::erase(errorString,'{');
                     std::erase(errorString,'}');
                     theGui.messenger->passString(
-                        Sformat("Simulation failed with exception:\n{}\n",
+                        std::format("Simulation failed with exception:\n{}\n",
                         errorString));
                 }
                 if (theSim.sCPU()[j].memoryError != 0) {
                     if (theSim.sCPU()[j].memoryError == -1) {
                         theGui.messenger->passString(
-                        Sformat(
+                        std::format(
                             "Not enough free GPU memory, sorry.\n",
                             theSim.sCPU()[j].memoryError));
                     }
                     else {
                         theGui.messenger->passString(
-                        Sformat(
+                        std::format(
                             "<span color=\"#FF88FF\">Warning: device memory error ({}).</span>\n",
                             theSim.sCPU()[j].memoryError));
                     }
@@ -2335,7 +2335,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
                 theGui.messenger->requestUpdate();
 
             if (theSim.base().cancellationCalled) {
-                theGui.messenger->passString(Sformat((
+                theGui.messenger->passString(std::format((
                     "Warning: series cancelled, stopping\n"
                     "after {} simulations.\n"), j + 1));
                 break;
@@ -2374,7 +2374,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
             "Sorry about that!\n</span>");
     }
     else if(!error){
-        theGui.messenger->passString(Sformat(
+        theGui.messenger->passString(std::format(
             "Finished after {:.4} s.", 1e-6 *
             (double)(std::chrono::duration_cast<std::chrono::microseconds>
                 (simulationTimerEnd - simulationTimerBegin).count())));
@@ -2402,7 +2402,7 @@ void fittingThread(LWEGui& theGui,  simulationRun theRun) {
         }
     }
 
-    theGui.messenger->passString(Sformat(
+    theGui.messenger->passString(std::format(
         "Fitting {} values in mode {} over {} iterations.\n"
         "Region of interest contains {} elements\n",
         theSim.base().Nfitting,
@@ -2431,14 +2431,14 @@ void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     theGui.messenger->passDrawRequest();
     //theGui.requestInterfaceValuesUpdate();
     auto simulationTimerEnd = std::chrono::high_resolution_clock::now();
-    theGui.messenger->passString(Sformat(("Finished fitting after {:.4} s.\n"), 1e-6 *
+    theGui.messenger->passString(std::format(("Finished fitting after {:.4} s.\n"), 1e-6 *
         (double)(std::chrono::duration_cast<std::chrono::microseconds>
             (simulationTimerEnd - simulationTimerBegin).count())));
-    theGui.messenger->passString(Sformat(
+    theGui.messenger->passString(std::format(
         "Fitting result:\n"
         "(index, value)"));
     for (int i = 0; i < theSim.base().Nfitting; ++i) {
-        theGui.messenger->passString(Sformat("{},  {}", i, theSim.base().fittingResult[i]));
+        theGui.messenger->passString(std::format("{},  {}", i, theSim.base().fittingResult[i]));
     }
     theSim.base().isRunning = false;
     theGui.messenger->requestSyncValues();
@@ -3075,11 +3075,11 @@ void createRunFile(LWEGui& theGui) {
     }
     double timeEstimate = theSim.sCPU()->saveSlurmScript(gpuType, gpuCount, arrayMode, theGui.totalSteps, theSim.parameters, theGui.theDatabase);
 
-    theGui.messenger->passString(Sformat(
+    theGui.messenger->passString(std::format(
         "Run {} on cluster with:\nsbatch {}.slurmScript\n",
         getBasename(theSim.base().outputBasePath), getBasename(theSim.base().outputBasePath)));
-    theGui.messenger->passString(Sformat("or\n./lweget.sh {}\n",getBasename(theSim.base().outputBasePath)));
-    theGui.messenger->passString(Sformat(
+    theGui.messenger->passString(std::format("or\n./lweget.sh {}\n",getBasename(theSim.base().outputBasePath)));
+    theGui.messenger->passString(std::format(
         "Upper estimate time to complete: {:.2} hours\n",
         timeEstimate));
     theSim.base().isRunning = false;
