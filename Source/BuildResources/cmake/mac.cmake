@@ -10,7 +10,7 @@ link_directories(${CMAKE_SOURCE_DIR}/../fftw/usr/local/lib)
 conditionally_fetch_dependencies()
 
 add_definitions(-DCPUONLY -DUSEFFTW -DNOSYCL -DNDEBUG)
-add_compile_options(-O3 -Wall)
+add_compile_options(-O3 -Wall -mmacosx-version-min=13.3 -march=native)
 add_executable(LightwaveExplorer MACOSX_BUNDLE
     Source/Frontend/LightwaveExplorerFrontendQt.cpp
     Source/LightwaveExplorerUtilities.cpp
