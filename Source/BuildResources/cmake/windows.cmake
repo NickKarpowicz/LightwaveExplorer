@@ -130,7 +130,7 @@ else()
     copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/Source/BuildResources/Licenses.txt)
     copy_after_build(LightwaveExplorer ${MKL_ROOT}/../../compiler/latest/bin/libiomp5md.dll)
     #Include CUDA dlls, whatver their current number is
-    file(GLOB CUFFT_DLLS "${CUDAToolkit_LIBRARY_DIR}/cufft64*.dll")
+    file(GLOB CUFFT_DLLS "${CUDAToolkit_BIN_DIR}/x64/cufft64*.dll")
     foreach(CUFFT_DLL ${CUFFT_DLLS})
         add_custom_command(TARGET LightwaveExplorer POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -138,7 +138,7 @@ else()
             $<TARGET_FILE_DIR:LightwaveExplorer>
         )
     endforeach()
-    file(GLOB CUDART_DLLS "${CUDAToolkit_LIBRARY_DIR}/cudart64*.dll")
+    file(GLOB CUDART_DLLS "${CUDAToolkit_BIN_DIR}/x64/cudart64*.dll")
     foreach(CUDART_DLL ${CUDART_DLLS})
         add_custom_command(TARGET LightwaveExplorer POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
