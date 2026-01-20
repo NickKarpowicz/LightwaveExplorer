@@ -11,7 +11,7 @@ macro(conditionally_fetch_dependencies)
         message("Using existing dlib clone")
     else()
         execute_process(COMMAND wget https://github.com/davisking/dlib/archive/refs/tags/v19.24.6.zip)
-        execute_process(COMMAND unzip -o v19.24.6.zip)
+        execute_process(COMMAND unzip -q -o v19.24.6.zip)
         execute_process(COMMAND mv dlib-19.24.6 dlib)
     endif()
 
@@ -19,7 +19,7 @@ macro(conditionally_fetch_dependencies)
         message("Using existing gcem clone")
     else()
         execute_process(COMMAND wget https://github.com/kthohr/gcem/archive/refs/tags/v1.18.0.zip)
-        execute_process(COMMAND unzip -o v1.18.0.zip)
+        execute_process(COMMAND unzip -q -o v1.18.0.zip)
         execute_process(COMMAND mv gcem-1.18.0 gcem)
     endif()
 
@@ -27,7 +27,7 @@ macro(conditionally_fetch_dependencies)
         message("Using existing miniz download")
     else()
         execute_process(COMMAND wget https://github.com/richgel999/miniz/releases/download/3.1.0/miniz-3.1.0.zip)
-        execute_process(COMMAND unzip -o miniz-3.1.0 -d miniz)
+        execute_process(COMMAND unzip -q -o miniz-3.1.0 -d miniz)
     endif()
 
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib)
@@ -130,7 +130,7 @@ else()
     copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/Source/BuildResources/Licenses.txt)
     copy_after_build(LightwaveExplorer ${MKL_ROOT}/../../compiler/latest/bin/libiomp5md.dll)
     #Include CUDA dlls, whatver their current number is
-    file(GLOB CUFFT_DLLS "${CUDAToolkit_BIN_DIR}/cufft64*.dll")
+    file(GLOB CUFFT_DLLS "${CUDAToolkit_LIBRARY_DIR}/cufft64*.dll")
     foreach(CUFFT_DLL ${CUFFT_DLLS})
         add_custom_command(TARGET LightwaveExplorer POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -138,7 +138,7 @@ else()
             $<TARGET_FILE_DIR:LightwaveExplorer>
         )
     endforeach()
-    file(GLOB CUDART_DLLS "${CUDAToolkit_BIN_DIR}/cudart64*.dll")
+    file(GLOB CUDART_DLLS "${CUDAToolkit_LIBRARY_DIR}/cudart64*.dll")
     foreach(CUDART_DLL ${CUDART_DLLS})
         add_custom_command(TARGET LightwaveExplorer POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
