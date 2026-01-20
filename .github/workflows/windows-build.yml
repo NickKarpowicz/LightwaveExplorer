@@ -18,7 +18,7 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v4
-      - uses: Jimver/cuda-toolkit@v0.2.24
+      - uses: Jimver/cuda-toolkit@v0.2.30
         id: cuda-toolkit
       - name: Install dependencies with choco and vcpkg
         run: |
@@ -30,7 +30,7 @@ jobs:
           intel-cpp-essentials-2025.1.1.10_offline.exe -a --silent --eula accept --install-dir D:\a\LightwaveExplorer\intel\oneapi
         shell: cmd
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@v4.3.0
       - name: Build LightwaveExplorer
         run: |
           call "D:\a\LightwaveExplorer\intel\oneapi\setvars.bat"
@@ -40,7 +40,7 @@ jobs:
           cmake --build . --config Release
           cmake --fresh -DMAKESYCL=1 .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -T "Intel(R) oneAPI DPC++ Compiler 2025"
           cmake --build . --config Release
-          cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
+          cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86;89;90;120"
           cmake --build . --config Release
         shell: cmd
       - name: Clean up distribution folder
