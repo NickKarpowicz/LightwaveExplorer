@@ -46,11 +46,11 @@ jobs:
       - name: Clean up distribution folder
         run: |
           cd build
+          Remove-Item .\Release\LightwaveExplorerSYCL.exp -Force
+          Remove-Item .\Release\LightwaveExplorerSYCL.lib
+          Remove-Item .\Release\LightwaveExplorerDependencies.lib
+          Remove-Item .\Release\miniz.lib
           Copy-Item -Path Release -Destination LightwaveExplorerWin64 -Recurse
-          Remove-Item .\LightwaveExplorerWin64\LightwaveExplorerSYCL.exp -Force
-          Remove-Item .\LightwaveExplorerWin64\LightwaveExplorerSYCL.lib
-          Remove-Item .\LightwaveExplorerWin64\LightwaveExplorerDependencies.lib
-          Remove-Item .\LightwaveExplorerWin64\miniz.lib
           7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
       - name: Upload Windows binary
         uses: actions/upload-artifact@v4
