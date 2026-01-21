@@ -46,10 +46,8 @@ jobs:
       - name: Clean up distribution folder
         run: |
           cd build
-          Remove-Item .\Release\LightwaveExplorerSYCL.exp -Force
-          Remove-Item .\Release\LightwaveExplorerSYCL.lib
-          Remove-Item .\Release\LightwaveExplorerDependencies.lib
-          Remove-Item .\Release\miniz.lib
+          Remove-Item .\Release\*.exp -Force
+          Remove-Item .\Release\*.lib
           Copy-Item -Path Release -Destination LightwaveExplorerWin64 -Recurse
           7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
       - name: Upload Windows binary
