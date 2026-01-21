@@ -65,14 +65,15 @@ jobs:
           signing-policy-slug: "test-signing"
           github-artifact-id: "${{ steps.upload-unsigned-artifact.outputs.artifact-id }}"
           wait-for-completion: true
-          output-artifact-directory: "LightwaveExplorer_signed"
+          output-artifact-directory: "build/LightwaveExplorer_signed"
       - name: upload-signed-artifact
         uses: actions/upload-artifact@v4
         with:
-          path: LightwaveExplorer_signed
+          name: LightwaveExplorer_Win64_signed
+          path: build/LightwaveExplorer_signed
       - name: Upload to Github Release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/LightwaveExplorerWin64.zip
+          files: build/LightwaveExplorer_signed/LightwaveExplorer_Win64_signed.zip
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
         if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
