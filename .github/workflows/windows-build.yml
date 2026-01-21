@@ -50,11 +50,26 @@ jobs:
           Remove-Item .\Release\*.lib
           Copy-Item -Path Release -Destination LightwaveExplorerWin64 -Recurse
           7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
-      - name: Upload Windows binary
+      - name: upload-unsigned-artifact
+        id: upload-unsigned-artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LightwaveExplorerWin64
           path: build/LightwaveExplorerWin64
+      - name: submit-signing-request
+        id: submit-signing-request
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: "${{ secrets.SIGNPATH_API_TOKEN }}"
+          organization-id: "783ed34a-91fc-4bc6-9142-da97f921e9ee"
+          project-slug: "LightwaveExplorer"
+          signing-policy-slug: "test-signing"
+          github-artifact-id: "${{ steps.upload-unsigned-artifact.outputs.artifact-id }}"
+          wait-for-completion: true
+          output-artifact-directory: "LightwaveExplorer_signed"
+      - name: upload-signed-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: LightwaveExplorer_signed
       - name: Upload to Github Release
         uses: softprops/action-gh-release@v1
         with:
