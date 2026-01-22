@@ -19,15 +19,12 @@ jobs:
           python-version: "3.x"
 
       - name: Install build tools
-        run: pip install build
+        run: pip install build "twine>=3.8.0"
 
       - name: Build package
         working-directory: ./Source/Python
         run: |
           python -m build --sdist --wheel
-
-      - name: Install Twine (with skip-existing support)
-        run: pip install "twine>=3.8.0"
 
       - name: Publish to PyPI
         working-directory: ./Source/Python
