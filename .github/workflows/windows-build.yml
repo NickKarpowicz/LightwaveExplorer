@@ -53,6 +53,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: build/Release
+          name: LightwaveExplorerWin64
       - name: submit-signing-request
         id: submit-signing-request
         uses: signpath/github-action-submit-signing-request@v2
@@ -64,12 +65,6 @@ jobs:
           github-artifact-id: "${{ steps.upload-unsigned-artifact.outputs.artifact-id }}"
           wait-for-completion: true
           output-artifact-directory: "build/LightwaveExplorer_signed"
-        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
-      - name: upload-signed-artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: LightwaveExplorerWin64
-          path: build/LightwaveExplorer_signed
         if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
       - name: Upload to Github Release
         uses: softprops/action-gh-release@v1
