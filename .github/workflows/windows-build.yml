@@ -48,13 +48,11 @@ jobs:
           cd build
           Remove-Item .\Release\*.exp -Force
           Remove-Item .\Release\*.lib
-          Copy-Item -Path Release -Destination LightwaveExplorerWin64 -Recurse
-          7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
       - name: upload-unsigned-artifact
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v4
         with:
-          path: build/LightwaveExplorerWin64
+          path: build/Release
       - name: submit-signing-request
         id: submit-signing-request
         uses: signpath/github-action-submit-signing-request@v2
@@ -70,12 +68,12 @@ jobs:
       - name: upload-signed-artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LightwaveExplorer_Win64_signed
+          name: LightwaveExplorerWin64
           path: build/LightwaveExplorer_signed
         if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
       - name: Upload to Github Release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/LightwaveExplorer_signed/LightwaveExplorer_Win64_signed.zip
+          files: build/LightwaveExplorer_signed/LightwaveExplorerWin64.zip
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
         if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
