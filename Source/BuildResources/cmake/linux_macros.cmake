@@ -100,6 +100,7 @@ macro(add_oneapi_interfaces)
             GIT_TAG v0.9
     )
     FetchContent_MakeAvailable(onemkl_interface_library)
+    target_compile_options(onemath PRIVATE -Wno-deprecated-declarations)
 
     message(STATUS "SYCL Targets: ${SYCL_TARGETS_STRING}")
 endmacro()
