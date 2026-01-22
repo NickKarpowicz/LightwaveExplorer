@@ -26,8 +26,8 @@ jobs:
           C:\vcpkg\vcpkg.exe install cairo[core]:x64-windows-static
       - name: Install OneAPI
         run: |
-          wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/da3f1dbe-47ad-49b5-acb9-3a7858b93d0d/intel-cpp-essentials-2025.1.1.10_offline.exe
-          intel-cpp-essentials-2025.1.1.10_offline.exe -a --silent --eula accept --install-dir D:\a\LightwaveExplorer\intel\oneapi
+          wget -q https://registrationcenter-download.intel.com/akdlm/IRC_NAS/df5b2d7b-050a-447b-87e7-c870c7c5d552/intel-cpp-essentials-2025.3.0.326_offline.exe
+          intel-cpp-essentials-2025.3.0.326_offline.exe -a --silent --eula accept --install-dir D:\a\LightwaveExplorer\intel\oneapi
         shell: cmd
       - name: Install Qt
         uses: jurplel/install-qt-action@v4.3.0
@@ -66,11 +66,13 @@ jobs:
           github-artifact-id: "${{ steps.upload-unsigned-artifact.outputs.artifact-id }}"
           wait-for-completion: true
           output-artifact-directory: "build/LightwaveExplorer_signed"
+        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
       - name: upload-signed-artifact
         uses: actions/upload-artifact@v4
         with:
           name: LightwaveExplorer_Win64_signed
           path: build/LightwaveExplorer_signed
+        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
       - name: Upload to Github Release
         uses: softprops/action-gh-release@v1
         with:

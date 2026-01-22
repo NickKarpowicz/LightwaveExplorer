@@ -100,7 +100,7 @@ else()
         Source/Frontend/LWEVisualizationsCPU.cpp
         Source/Frontend/LightwaveExplorerIcon.rc)
     target_compile_options(LightwaveExplorer
-        PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${OpenMP_CXX_FLAGS}>
+        PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${OpenMP_CXX_FLAGS}> /Zc:preprocessor
     )
     target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
     if(USEFFTW)
