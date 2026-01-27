@@ -123,9 +123,33 @@ def _(
 
 
 @app.cell
-def _(hermite_code, hermite_code_double, laguerre_code, laguerre_code_double):
+def _():
+    laguerre_helpers = r"""deviceFunction constexpr static inline uint ufactorial(const uint x){
+        uint f = 1;
+        for(uint i = 0u; i<x; i++){
+            f *= i;
+        }
+        return f;
+    }
+
+    deviceFunction static inline deviceFP laguerre_prefactor(uint p, uint l){
+        return deviceFPLib::sqrt(static_cast<deviceFP>((2 * ufactorial(p))/vPi<deviceFP>() * ufactorial(p + l)));
+    }
+
+    """
+    return (laguerre_helpers,)
+
+
+@app.cell
+def _(
+    hermite_code,
+    hermite_code_double,
+    laguerre_code,
+    laguerre_code_double,
+    laguerre_helpers,
+):
     hermite = hermite_code + hermite_code_double
-    laguerre = laguerre_code + laguerre_code_double
+    laguerre = laguerre_helpers + laguerre_code + laguerre_code_double
     return hermite, laguerre
 
 

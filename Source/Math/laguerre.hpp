@@ -1,3 +1,15 @@
+deviceFunction constexpr static inline uint ufactorial(const uint x){
+    uint f = 1;
+    for(uint i = 0u; i<x; i++){
+        f *= i;
+    }
+    return f;
+}
+
+deviceFunction static inline deviceFP laguerre_prefactor(uint p, uint l){
+    return deviceFPLib::sqrt(static_cast<deviceFP>((2 * ufactorial(p))/vPi<deviceFP>() * ufactorial(p + l)));
+}
+
 deviceFunction static inline constexpr float generalized_laguerre(const float x, const int alpha, const uint8_t n){
     switch(n){
 		case 0u:

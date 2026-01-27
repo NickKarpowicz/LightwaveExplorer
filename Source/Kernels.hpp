@@ -1,6 +1,8 @@
+#include "DataStructures.hpp"
 #include "DeviceFunctions.hpp"
 #include "LightwaveExplorerTrilingual.h"
 #include "MaxwellDeviceFunctions.hpp"
+#include <cmath>
 
 using namespace deviceFunctions;
 namespace kernelNamespace {
@@ -1978,10 +1980,15 @@ public:
         total_field += mode_field * p->beam_spec.weight[mode_index];
         switch(p->beam_spec.basis){
             case BeamBasis::laguerre:
-                total_field *= deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz),p->beam_spec.l[mode_index], p->beam_spec.m[mode_index]);
+                total_field *=
+                    deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, p->beam_spec.m[mode_index])
+                    * deviceFunctions::laguerre_prefactor(p->beam_spec.l[mode_index], p->beam_spec.m[mode_index])
+                    * deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz),p->beam_spec.m[mode_index], p->beam_spec.l[mode_index])
+                    * deviceLib::exp(deviceComplex(0.0f, (abs(p->beam_spec.m[mode_index]) + 2 * p->beam_spec.l[mode_index]) * phi));
                 break;
             case BeamBasis::hermite:
-                total_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.m[mode_index]);
+                total_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.l[mode_index])
+                    * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.m[mode_index] + p->beam_spec.l[mode_index]) * phi));
                 break;
             default:
                 break;
