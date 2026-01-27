@@ -1901,11 +1901,12 @@ public:
     const int64_t j = i / ((*s).Nfreq - 1);
     i = h + j * ((*s).Nfreq);
     const deviceFP f = h * (*s).fStep;
-    const deviceFP w = twoPi<deviceFP>() * (f - (*p).frequency);
+    const deviceFP f_delta = f - p->frequency;
+    const deviceFP w = twoPi<deviceFP>() * f_delta;
 
     // supergaussian pulse spectrum, if no input pulse specified
     deviceComplex specfac = deviceComplex(
-        -deviceFPLib::pow((f - (*p).frequency) / (*p).bandwidth, (*p).sgOrder),
+        -deviceFPLib::pow(f_delta / (*p).bandwidth, (*p).sgOrder),
         0.0f);
 
     if (isComplexNaN(materialPhase[h])) {
@@ -1934,46 +1935,76 @@ public:
       return;
     }
 
+    deviceComplex total_field{};
+    deviceFP net_r{};
+    deviceFP net_weight{};
     const deviceFP ko = twoPi<deviceFP>() * no.real() * f / lightC<deviceFP>();
-    const deviceFP zR = vPi<deviceFP>() * (*p).beamwaist * (*p).beamwaist *
-                        no.real() * f / lightC<deviceFP>();
+    for(int mode_index = 0; mode_index < p->beam_spec.relevant_modes; mode_index++){
+        deviceFP f_series = f_delta;
+        deviceFP beamwaist = p->beam_spec.waist[mode_index][0];
+        deviceFP x_offset = p->beam_spec.x_offset[mode_index][0];
+        deviceFP z_offset = p->beam_spec.z_offset[mode_index][0];
+        deviceFP angle_x = p->beam_spec.angle_x[mode_index][0];
+        for(int expansion_index = 1; expansion_index < p->beam_spec.relevant_expansion; expansion_index++){
+            f_series *= f_delta;
+            beamwaist += p->beam_spec.waist[mode_index][expansion_index] * f_series;
+            x_offset += p->beam_spec.x_offset[mode_index][expansion_index] * f_series;
+            z_offset += p->beam_spec.z_offset[mode_index][expansion_index] * f_series;
+            angle_x += p->beam_spec.angle_x[mode_index][expansion_index] * f_series;
+        }
 
-    const deviceFP rB =
-        ((*p).x0 - (*s).dx * (-0.5f * (*s).Nspace + (deviceFP)j) -
-         0.25f * (*s).dx);
-    const deviceFP r = rB * deviceFPLib::cos((*p).beamAngle) -
-                       (*p).z0 * deviceFPLib::sin((*p).beamAngle);
-    const deviceFP z = rB * deviceFPLib::sin((*p).beamAngle) +
-                       (*p).z0 * deviceFPLib::cos((*p).beamAngle);
+        const deviceFP zR = vPi<deviceFP>() * beamwaist * beamwaist *
+                            no.real() * f / lightC<deviceFP>();
 
-    const deviceFP wz =
-        (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
-    const deviceFP Rz =
-        (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
-    const deviceFP phi = deviceFPLib::atan(z / zR);
-    deviceComplex Eb =
-        deviceComplex(0.0f, 1.0f) *
-            (ko * (z - (*p).z0) + ko * r * r / (2.0f * Rz) - phi) -
-        r * r / (wz * wz);
-    Eb = isComplexNaN(Eb) ? deviceComplex{}
-                          : ((*p).beamwaist / wz) * deviceLib::exp(Eb);
-    Eb = Eb * specfac;
+        const deviceFP rB =
+            (x_offset - (*s).dx * (-0.5f * (*s).Nspace + (deviceFP)j) -
+             0.25f * (*s).dx);
+        const deviceFP r = rB * deviceFPLib::cos(angle_x) -
+                           z_offset * deviceFPLib::sin(angle_x);
+        const deviceFP z = rB * deviceFPLib::sin(angle_x) +
+                           z_offset * deviceFPLib::cos(angle_x);
 
+        const deviceFP wz =
+            beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
+        const deviceFP Rz =
+            (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
+        const deviceFP phi = deviceFPLib::atan(z / zR);
+        deviceComplex mode_field =
+            deviceComplex(0.0f, 1.0f) *
+                (ko * (z - z_offset) + ko * r * r / (2.0f * Rz) - phi) -
+            r * r / (wz * wz);
+        mode_field = isComplexNaN(mode_field) ? deviceComplex{}
+                              : (beamwaist / wz) * deviceLib::exp(mode_field);
+        total_field += mode_field * p->beam_spec.weight[mode_index];
+        switch(p->beam_spec.basis){
+            case BeamBasis::laguerre:
+                total_field *= deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz),p->beam_spec.l[mode_index], p->beam_spec.m[mode_index]);
+                break;
+            case BeamBasis::hermite:
+                total_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.m[mode_index]);
+                break;
+            default:
+                break;
+        }
+        net_r += r * p->beam_spec.weight[mode_index];
+        net_weight += p->beam_spec.weight[mode_index];
+    }
+    total_field *= specfac;
     field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle),
                              -(*p).circularity *
                                  deviceFPLib::sin((*p).polarizationAngle)) *
-               Eb;
+               total_field;
     field[i + (*s).NgridC] =
         deviceComplex(deviceFPLib::sin((*p).polarizationAngle),
                       (*p).circularity *
                           deviceFPLib::cos((*p).polarizationAngle)) *
-        Eb;
+        total_field;
     if (isComplexNaN(field[i]))
       field[i] = deviceComplex{};
     if (isComplexNaN(field[i + (*s).NgridC]))
       field[i + (*s).NgridC] = deviceComplex{};
     deviceFP pointEnergy =
-        deviceFPLib::abs(r) *
+        deviceFPLib::abs(net_r/net_weight) *
         (modulusSquared(field[i]) + modulusSquared(field[i + (*s).NgridC]));
     pointEnergy *= 2.0f * vPi<deviceFP>() * lightC<deviceFP>() *
                    eps0<deviceFP>() * (*s).dx * (*s).dt;
@@ -2002,7 +2033,8 @@ public:
     const int64_t j = col % (*s).Nspace;
     const int64_t k = col / (*s).Nspace;
     const deviceFP f = h * (*s).fStep;
-    const deviceFP w = twoPi<deviceFP>() * (f - (*p).frequency);
+    const deviceFP f_delta = f - p->frequency;
+    const deviceFP w = twoPi<deviceFP>() * f_delta;
     if (isComplexNaN(materialPhase[h])) {
       field[i] = deviceComplex{};
       field[i + (*s).NgridC] = deviceComplex{};
@@ -2034,48 +2066,74 @@ public:
       return;
     }
     const deviceFP ko = twoPi<deviceFP>() * no.real() * f / lightC<deviceFP>();
-    const deviceFP zR = vPi<deviceFP>() * (*p).beamwaist * (*p).beamwaist *
-                        no.real() * f / lightC<deviceFP>();
 
-    const deviceFP xo =
-        ((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f)) - (*p).x0;
-    const deviceFP yo =
-        ((*s).dx * ((deviceFP)k - (*s).Nspace2 / 2.0f)) - (*p).y0;
-    const deviceFP zo = (*p).z0;
-    const deviceFP cB = deviceFPLib::cos((*p).beamAngle);
-    const deviceFP cA = deviceFPLib::cos((*p).beamAnglePhi);
-    const deviceFP sB = deviceFPLib::sin((*p).beamAngle);
-    const deviceFP sA = deviceFPLib::sin((*p).beamAnglePhi);
-    const deviceFP x = cB * xo + sA * sB * yo + sA * sB * zo;
-    const deviceFP y = cA * yo - sA * zo;
-    const deviceFP z = -sB * xo + sA * cB * yo + cA * cB * zo;
-    const deviceFP r = deviceFPLib::hypot(x, y);
+    deviceComplex total_field{};
+    for(int mode_index = 0; mode_index < p->beam_spec.relevant_modes; mode_index++){
+        deviceFP f_series = f_delta;
+        deviceFP beamwaist = p->beam_spec.waist[mode_index][0];
+        deviceFP x_offset = p->beam_spec.x_offset[mode_index][0];
+        deviceFP y_offset = p->beam_spec.y_offset[mode_index][0];
+        deviceFP z_offset = p->beam_spec.z_offset[mode_index][0];
+        deviceFP angle_x = p->beam_spec.angle_x[mode_index][0];
+        deviceFP angle_y = p->beam_spec.angle_y[mode_index][0];
+        for(int expansion_index = 1; expansion_index < p->beam_spec.relevant_expansion; expansion_index++){
+            f_series *= f_delta;
+            beamwaist += p->beam_spec.waist[mode_index][expansion_index] * f_series;
+            x_offset += p->beam_spec.x_offset[mode_index][expansion_index] * f_series;
+            y_offset += p->beam_spec.y_offset[mode_index][expansion_index] * f_series;
+            z_offset += p->beam_spec.z_offset[mode_index][expansion_index] * f_series;
+            angle_x += p->beam_spec.angle_x[mode_index][expansion_index] * f_series;
+            angle_y += p->beam_spec.angle_y[mode_index][expansion_index] * f_series;
+        }
 
-    const deviceFP wz =
-        (*p).beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
-    const deviceFP Rz =
-        (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
-    const deviceFP phi = deviceFPLib::atan(z / zR);
+        const deviceFP zR = vPi<deviceFP>() * beamwaist * beamwaist *
+                            no.real() * f / lightC<deviceFP>();
 
-    deviceComplex Eb = ((*p).beamwaist / wz) *
-                       deviceLib::exp(deviceComplex(0.0f, 1.0f) *
-                                          (ko * (z - (*p).z0) +
-                                           ko * r * r / (2.0f * Rz) - phi) -
-                                      r * r / (wz * wz));
-    Eb = Eb * specfac;
-    if (isComplexNaN(Eb) || f <= 0.0f) {
-      Eb = deviceComplex{};
+        const deviceFP xo =
+            ((*s).dx * ((deviceFP)j - (*s).Nspace / 2.0f)) - x_offset;
+        const deviceFP yo =
+            ((*s).dx * ((deviceFP)k - (*s).Nspace2 / 2.0f)) - y_offset;
+
+        const deviceFP cB = deviceFPLib::cos(angle_x);
+        const deviceFP cA = deviceFPLib::cos(angle_y);
+        const deviceFP sB = deviceFPLib::sin(angle_x);
+        const deviceFP sA = deviceFPLib::sin(angle_y);
+        const deviceFP x = cB * xo + sA * sB * yo + sA * sB * z_offset;
+        const deviceFP y = cA * yo - sA * z_offset;
+        const deviceFP z = -sB * xo + sA * cB * yo + cA * cB * z_offset;
+        const deviceFP r = deviceFPLib::hypot(x, y);
+
+        const deviceFP wz =
+            beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
+        const deviceFP Rz =
+            (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
+        const deviceFP phi = deviceFPLib::atan(z / zR);
+
+        deviceComplex mode_field = (beamwaist / wz) *
+                           deviceLib::exp(deviceComplex(0.0f, 1.0f) *
+                                              (ko * (z - z_offset) +
+                                               ko * r * r / (2.0f * Rz) - phi) -
+                                          r * r / (wz * wz));
+        mode_field = mode_field * specfac;
+        if (isComplexNaN(mode_field) || f <= 0.0f) {
+          mode_field = deviceComplex{};
+        }
+        total_field += mode_field * p->beam_spec.weight[mode_index];
     }
+
+
+
+
 
     field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle),
                              -(*p).circularity *
                                  deviceFPLib::sin((*p).polarizationAngle)) *
-               Eb;
+               total_field;
     field[i + (*s).NgridC] =
         deviceComplex(deviceFPLib::sin((*p).polarizationAngle),
                       (*p).circularity *
                           deviceFPLib::cos((*p).polarizationAngle)) *
-        Eb;
+        total_field;
     deviceFP pointEnergy =
         (modulusSquared(field[i]) + modulusSquared(field[i + (*s).NgridC]));
     pointEnergy *= constProd(lightC<deviceFP>() * eps0<deviceFP>(), 2) *

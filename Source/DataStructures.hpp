@@ -730,19 +730,25 @@ enum class BeamBasis {
 template <FPType T, int number_of_modes, int max_expansion_order>
 struct BeamSpecification {
     BeamBasis basis = BeamBasis::hermite;
+    int relevant_modes = 1;
+    int relevant_expansion = 1;
     std::uint8_t m[number_of_modes] = {};
     std::uint8_t l[number_of_modes] = {};
-    T weight[number_of_modes] = {};
+    T weight[number_of_modes] = { 1 };
     T waist[number_of_modes][max_expansion_order] = {};
     T x_offset[number_of_modes][max_expansion_order] = {};
     T y_offset[number_of_modes][max_expansion_order] = {};
     T z_offset[number_of_modes][max_expansion_order] = {};
+    T angle_x[number_of_modes][max_expansion_order] = {};
+    T angle_y[number_of_modes][max_expansion_order] = {};
 
     BeamSpecification() = default;
 
     template<FPType otherFP>
     BeamSpecification(const BeamSpecification<otherFP, number_of_modes, max_expansion_order>& other){
         basis = other.basis;
+        relevant_modes = other.relevant_modes;
+        relevant_expansion = other.relevant_expansion;
         for(int i = 0; i < number_of_modes; i++){
             m[i] = other.m[i];
             l[i] = other.l[i];
@@ -752,6 +758,8 @@ struct BeamSpecification {
                 x_offset[i][j] = static_cast<T>(other.x_offset[i][j]);
                 y_offset[i][j] = static_cast<T>(other.y_offset[i][j]);
                 z_offset[i][j] = static_cast<T>(other.z_offset[i][j]);
+                angle_x[i][j] = static_cast<T>(other.angle_x[i][j]);
+                angle_y[i][j] = static_cast<T>(other.angle_x[i][j]);
             }
         }
     }
@@ -759,6 +767,8 @@ struct BeamSpecification {
     template<FPType otherFP>
     BeamSpecification& operator=(const BeamSpecification<otherFP, number_of_modes, max_expansion_order>& other){
         basis = other.basis;
+        relevant_modes = other.relevant_modes;
+        relevant_expansion = other.relevant_expansion;
         for(int i = 0; i < number_of_modes; i++){
             m[i] = other.m[i];
             l[i] = other.l[i];
@@ -768,6 +778,8 @@ struct BeamSpecification {
                 x_offset[i][j] = static_cast<T>(other.x_offset[i][j]);
                 y_offset[i][j] = static_cast<T>(other.y_offset[i][j]);
                 z_offset[i][j] = static_cast<T>(other.z_offset[i][j]);
+                angle_x[i][j] = static_cast<T>(other.angle_x[i][j]);
+                angle_y[i][j] = static_cast<T>(other.angle_y[i][j]);
             }
         }
     }
@@ -788,13 +800,7 @@ public:
     T tod;
     int phaseMaterial;
     T phaseMaterialThickness;
-    T beamwaist;
-    T x0;
-    T y0;
-    T z0;
-    T beamAngle;
     T polarizationAngle;
-    T beamAnglePhi;
     T circularity;
     T pulseSum;
     BeamSpecification<T, 16, 4> beam_spec;
@@ -809,13 +815,7 @@ public:
         tod(),
         phaseMaterial(),
         phaseMaterialThickness(),
-        beamwaist(),
-        x0(),
-        y0(),
-        z0(),
-        beamAngle(),
         polarizationAngle(),
-        beamAnglePhi(),
         circularity(),
         pulseSum(),
         beam_spec() {}
@@ -831,13 +831,7 @@ public:
         tod((T)other.tod),
         phaseMaterial(other.phaseMaterial),
         phaseMaterialThickness((T)other.phaseMaterialThickness),
-        beamwaist((T)other.beamwaist),
-        x0((T)other.x0),
-        y0((T)other.y0),
-        z0((T)other.z0),
-        beamAngle((T)other.beamAngle),
         polarizationAngle((T)other.polarizationAngle),
-        beamAnglePhi((T)other.beamAnglePhi),
         circularity((T)other.circularity),
         pulseSum((T)other.pulseSum),
         beam_spec(other.beam_spec) {}
@@ -854,13 +848,7 @@ public:
         tod = (T)other.tod;
         phaseMaterial = other.phaseMaterial;
         phaseMaterialThickness = (T)other.phaseMaterialThickness;
-        beamwaist = (T)other.beamwaist;
-        x0 = (T)other.x0;
-        y0 = (T)other.y0;
-        z0 = (T)other.z0;
-        beamAngle = (T)other.beamAngle;
         polarizationAngle = (T)other.polarizationAngle;
-        beamAnglePhi = (T)other.beamAnglePhi;
         circularity = (T)other.circularity;
         pulseSum = (T)other.pulseSum;
         beam_spec = other.beam_spec;

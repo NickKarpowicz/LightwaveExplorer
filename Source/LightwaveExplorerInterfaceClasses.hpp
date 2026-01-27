@@ -283,21 +283,21 @@ public:
         case 16:
             return pulse2.phaseMaterialThickness;
         case 17:
-            return pulse1.beamwaist;
+            return pulse1.beam_spec.waist[0][0];
         case 18:
-            return pulse2.beamwaist;
+            return pulse2.beam_spec.waist[0][0];
         case 19:
-            return pulse1.x0;
+            return pulse1.beam_spec.x_offset[0][0];
         case 20:
-            return pulse2.x0;
+            return pulse2.beam_spec.x_offset[0][0];
         case 21:
-            return pulse1.z0;
+            return pulse1.beam_spec.z_offset[0][0];
         case 22:
-            return pulse2.z0;
+            return pulse2.beam_spec.z_offset[0][0];
         case 23:
-            return pulse1.beamAngle;
+            return pulse1.beam_spec.angle_x[0][0];
         case 24:
-            return pulse2.beamAngle;
+            return pulse2.beam_spec.angle_x[0][0];
         case 25:
             return pulse1.polarizationAngle;
         case 26:

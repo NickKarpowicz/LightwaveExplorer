@@ -394,10 +394,10 @@ public:
         setToDoubleMultiplier(textBoxes["TOD1"],1e45,sim.base().pulse1.tod);
         setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
         setToDoubleMultiplier(textBoxes["thickness1"],1e6,sim.base().pulse1.phaseMaterialThickness);
-        setToDoubleMultiplier(textBoxes["beamwaist1"],1e6,sim.base().pulse1.beamwaist);
-        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset1"], sim.base().pulse1.x0, sim.base().pulse1.y0, SecondValueDefault::Default_zero, 1e-6);
-        setToDoubleMultiplier(textBoxes["zOffset1"],1e6,sim.base().pulse1.z0);
-        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle1"], sim.base().pulse1.beamAngle, sim.base().pulse1.beamAnglePhi, SecondValueDefault::Default_zero, deg2Rad<double>());
+        setToDoubleMultiplier(textBoxes["beamwaist1"],1e6,sim.base().pulse1.beam_spec.waist[0][0]);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset1"], sim.base().pulse1.beam_spec.x_offset[0][0], sim.base().pulse1.beam_spec.y_offset[0][0], SecondValueDefault::Default_zero, 1e-6);
+        setToDoubleMultiplier(textBoxes["zOffset1"],1e6,sim.base().pulse1.beam_spec.z_offset[0][0]);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle1"], sim.base().pulse1.beam_spec.angle_x[0][0], sim.base().pulse1.beam_spec.angle_y[0][0], SecondValueDefault::Default_zero, deg2Rad<double>());
         setToDoubleMultiplier(textBoxes["polarization1"],rad2Deg<double>(),sim.base().pulse1.polarizationAngle);
         setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
         sim.base().pulse1.circularity = std::clamp(sim.base().pulse1.circularity, -1.0, 1.0);
@@ -412,10 +412,10 @@ public:
         setToDoubleMultiplier(textBoxes["TOD2"],1e45,sim.base().pulse2.tod);
         setToInt(textBoxes["material2"],sim.base().pulse2.phaseMaterial);
         setToDoubleMultiplier(textBoxes["thickness2"],1e6,sim.base().pulse2.phaseMaterialThickness);
-        setToDoubleMultiplier(textBoxes["beamwaist2"],1e6,sim.base().pulse2.beamwaist);
-        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset2"], sim.base().pulse2.x0, sim.base().pulse2.y0, SecondValueDefault::Default_zero, 1e-6);
-        setToDoubleMultiplier(textBoxes["zOffset2"],1e6,sim.base().pulse2.z0);
-        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle2"], sim.base().pulse2.beamAngle, sim.base().pulse2.beamAnglePhi, SecondValueDefault::Default_zero, deg2Rad<double>());
+        setToDoubleMultiplier(textBoxes["beamwaist2"],1e6,sim.base().pulse2.beam_spec.waist[0][0]);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset2"], sim.base().pulse2.beam_spec.x_offset[0][0], sim.base().pulse2.beam_spec.y_offset[0][0], SecondValueDefault::Default_zero, 1e-6);
+        setToDoubleMultiplier(textBoxes["zOffset2"],1e6,sim.base().pulse2.beam_spec.z_offset[0][0]);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle2"], sim.base().pulse2.beam_spec.angle_x[0][0], sim.base().pulse2.beam_spec.angle_y[0][0], SecondValueDefault::Default_zero, deg2Rad<double>());
         setToDoubleMultiplier(textBoxes["polarization2"],rad2Deg<double>(),sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
         sim.base().pulse2.circularity = std::clamp(sim.base().pulse2.circularity, -1.0, 1.0);
@@ -538,10 +538,10 @@ public:
 
         sim.base().isCylindric = sim.base().symmetryType == 1;
         if (sim.base().isCylindric) {
-            sim.base().pulse1.x0 = 0;
-            sim.base().pulse2.x0 = 0;
-            sim.base().pulse1.beamAngle = 0;
-            sim.base().pulse2.beamAngle = 0;
+            sim.base().pulse1.beam_spec.x_offset[0][0] = 0;
+            sim.base().pulse2.beam_spec.x_offset[0][0] = 0;
+            sim.base().pulse1.beam_spec.angle_x[0][0] = 0;
+            sim.base().pulse2.beam_spec.angle_x[0][0] = 0;
         }
 
         if (sim.base().batchIndex == 0 || sim.base().Nsims < 1) {
@@ -626,10 +626,10 @@ public:
         setToDouble(textBoxes["TOD1"],1e45*sim.base().pulse1.tod);
         setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
         setToDouble(textBoxes["thickness1"],1e6*sim.base().pulse1.phaseMaterialThickness);
-        setToDouble(textBoxes["beamwaist1"],1e6*sim.base().pulse1.beamwaist);
-        setToTwoDoubles(textBoxes["xOffset1"], 1e6*sim.base().pulse1.x0, 1e6*sim.base().pulse1.y0, NoSemicolonIf::zero);
-        setToDouble(textBoxes["zOffset1"],1e6*sim.base().pulse1.z0);
-        setToTwoDoubles(textBoxes["NCAngle1"],rad2Deg<double>()*sim.base().pulse1.beamAngle, rad2Deg<double>()*sim.base().pulse1.beamAnglePhi, NoSemicolonIf::zero);
+        setToDouble(textBoxes["beamwaist1"],1e6*sim.base().pulse1.beam_spec.waist[0][0]);
+        setToTwoDoubles(textBoxes["xOffset1"], 1e6*sim.base().pulse1.beam_spec.x_offset[0][0], 1e6*sim.base().pulse1.beam_spec.y_offset[0][0], NoSemicolonIf::zero);
+        setToDouble(textBoxes["zOffset1"],1e6*sim.base().pulse1.beam_spec.z_offset[0][0]);
+        setToTwoDoubles(textBoxes["NCAngle1"],rad2Deg<double>()*sim.base().pulse1.beam_spec.angle_x[0][0], rad2Deg<double>()*sim.base().pulse1.beam_spec.angle_y[0][0], NoSemicolonIf::zero);
         setToDouble(textBoxes["polarization1"],rad2Deg<double>()*sim.base().pulse1.polarizationAngle);
         setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
 
@@ -643,10 +643,10 @@ public:
         setToDouble(textBoxes["TOD2"],1e45*sim.base().pulse2.tod);
         setToInt(textBoxes["material2"],sim.base().pulse2.phaseMaterial);
         setToDouble(textBoxes["thickness2"],1e6*sim.base().pulse2.phaseMaterialThickness);
-        setToDouble(textBoxes["beamwaist2"],1e6*sim.base().pulse2.beamwaist);
-        setToTwoDoubles(textBoxes["xOffset2"], 1e6*sim.base().pulse2.x0, 1e6*sim.base().pulse2.y0, NoSemicolonIf::zero);
-        setToDouble(textBoxes["zOffset2"],1e6*sim.base().pulse2.z0);
-        setToTwoDoubles(textBoxes["NCAngle2"],rad2Deg<double>()*sim.base().pulse2.beamAngle, rad2Deg<double>()*sim.base().pulse2.beamAnglePhi, NoSemicolonIf::zero);
+        setToDouble(textBoxes["beamwaist2"],1e6*sim.base().pulse2.beam_spec.waist[0][0]);
+        setToTwoDoubles(textBoxes["xOffset2"], 1e6*sim.base().pulse2.beam_spec.x_offset[0][0], 1e6*sim.base().pulse2.beam_spec.y_offset[0][0], NoSemicolonIf::zero);
+        setToDouble(textBoxes["zOffset2"],1e6*sim.base().pulse2.beam_spec.z_offset[0][0]);
+        setToTwoDoubles(textBoxes["NCAngle2"],rad2Deg<double>()*sim.base().pulse2.beam_spec.angle_x[0][0], rad2Deg<double>()*sim.base().pulse2.beam_spec.angle_y[0][0], NoSemicolonIf::zero);
         setToDouble(textBoxes["polarization2"],rad2Deg<double>()*sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
 
