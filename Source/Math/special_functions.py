@@ -21,7 +21,7 @@ def _():
     from sympy.codegen.ast import real, float32, float64
     from sympy.codegen.rewriting import optimize, optims_c99
     import marimo as mo
-    N_MAX = 32
+    N_MAX = 16
     case_indent = '\t\t'
     code_indent = '\t\t\t'
     return (
@@ -79,7 +79,7 @@ def _(
         switch(n){
     """
     for i in range(N_MAX):
-        laguerre_code += generate_case(i,generate_Laguerre(i,device_library='DeviceFPLib::'))
+        laguerre_code += generate_case(i,generate_Laguerre(i,device_library='deviceFPLib::'))
     laguerre_code += case_indent + 'default: return 0.0f;\n'
     laguerre_code += r"""    }
     }
@@ -89,7 +89,7 @@ def _(
         switch(n){
     """
     for i in range(N_MAX):
-        laguerre_code_double += generate_case(i,generate_Laguerre(i,device_library='DeviceFPLib::',type=float64))
+        laguerre_code_double += generate_case(i,generate_Laguerre(i,device_library='deviceFPLib::',type=float64))
     laguerre_code_double += case_indent + 'default: return 0.0;\n'
     laguerre_code_double += r"""    }
     }
@@ -99,7 +99,7 @@ def _(
         switch(n){
     """
     for i in range(N_MAX):
-        hermite_code += generate_case(i,generate_Hermite(i,device_library='DeviceFPLib::'))
+        hermite_code += generate_case(i,generate_Hermite(i,device_library='deviceFPLib::'))
     hermite_code += case_indent + 'default: return 0.0f;\n'
     hermite_code += r"""    }
     }
@@ -109,7 +109,7 @@ def _(
         switch(n){
     """
     for i in range(N_MAX):
-        hermite_code_double += generate_case(i,generate_Hermite(i,device_library='DeviceFPLib::', type=float64))
+        hermite_code_double += generate_case(i,generate_Hermite(i,device_library='deviceFPLib::', type=float64))
     hermite_code_double += case_indent + 'default: return 0.0;\n'
     hermite_code_double += r"""    }
     }

@@ -1889,7 +1889,7 @@ public:
 class beamGenerationKernel2D {
 public:
   deviceComplex *field;
-  const pulse<deviceFP> *p;
+  const Pulse<deviceFP> *p;
   deviceFP *pulseSum;
   deviceParameterSet<deviceFP, deviceComplex> *s;
   const bool hasLoadedField;
@@ -1988,7 +1988,7 @@ public:
 class beamGenerationKernel3D {
 public:
   deviceComplex *field;
-  const pulse<deviceFP> *p;
+  const Pulse<deviceFP> *p;
   deviceFP *pulseSum;
   deviceParameterSet<deviceFP, deviceComplex> *s;
   const bool hasLoadedField;

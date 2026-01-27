@@ -149,16 +149,16 @@ namespace hostFunctions{
 
 	static int addPulseToFieldArrays(
 		ActiveDevice& d,
-		pulse<double>& pCPU,
+		Pulse<double>& pCPU,
 		const bool useLoadedField,
 		const std::complex<double>* loadedFieldIn) {
 		if(pCPU.energy == 0.0) return 0;
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		deviceParameterSet<deviceFP, deviceComplex>* scDevice = d.dParamsDevice;
-		pulse<deviceFP>* p;
-		d.deviceCalloc((void**)&p, 1, sizeof(pulse<deviceFP>));
-		pulse<deviceFP> devpCPU = pCPU;
+		Pulse<deviceFP>* p;
+		d.deviceCalloc((void**)&p, 1, sizeof(Pulse<deviceFP>));
+		Pulse<deviceFP> devpCPU = pCPU;
 
 		d.deviceMemcpy(
 			d.dParamsDevice,
@@ -213,7 +213,7 @@ namespace hostFunctions{
 		d.deviceMemcpy(
 			p,
 			&devpCPU,
-			sizeof(pulse<deviceFP>),
+			sizeof(Pulse<deviceFP>),
 			copyType::ToDevice);
 		if ((*sc).is3D) {
 			d.deviceLaunch(
@@ -2443,7 +2443,7 @@ namespace hostFunctions{
 				2 * d.s->NgridC * sizeof(std::complex<double>),
 				copyType::ToDevice);
 
-			pulse<double> p;
+			Pulse<double> p;
 			p = sCPU->pulse1;
 			p.energy = parameters[0];
 			p.frequency = 1e12 * parameters[1];

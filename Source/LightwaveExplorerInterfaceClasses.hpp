@@ -84,13 +84,13 @@ class loadedInputData {
                 //linear interpolation
                 df = loadedReflectivities[j].f - loadedReflectivities[j-1].f;
                 double t = (currentFrequency - loadedReflectivities[j-1].f)/df;
-                std::complex<double> currentValue = 
-                    (1.0 - t)* loadedReflectivities[j-1].R 
+                std::complex<double> currentValue =
+                    (1.0 - t)* loadedReflectivities[j-1].R
                     + t * loadedReflectivities[j].R;
 
                 //put in complex representation
-                currentValue = 
-                    std::sqrt(std::abs(currentValue.real())) * 
+                currentValue =
+                    std::sqrt(std::abs(currentValue.real())) *
                     std::exp(std::complex<double>(0.0,currentValue.imag()));
                 complexReflectivity[i] = std::complex<deviceFP>(
                     static_cast<deviceFP>(currentValue.real()),
@@ -137,8 +137,8 @@ public:
     int64_t Nsims2 = 0;
     std::atomic_uint32_t* progressCounter = 0;
     int64_t NsimsCPU = 0;
-    pulse<double> pulse1;
-    pulse<double> pulse2;
+    Pulse<double> pulse1;
+    Pulse<double> pulse2;
     double spatialWidth = 0;
     double spatialHeight = 0;
     double timeSpan = 0;
@@ -245,7 +245,7 @@ public:
     [[nodiscard]] constexpr bool hasPlasma() const {
         return nonlinearAbsorptionStrength > 0.0 || startingCarrierDensity > 0.0;
     }
-    
+
     constexpr double getByNumber(const std::size_t index) {
         switch (index) {
         case 0:
@@ -479,7 +479,7 @@ public:
         parameters = std::vector<simulationParameterSet>(1);
     }
     ~simulationBatch() {
-        std::for_each(mutexes.begin(), mutexes.end(), 
+        std::for_each(mutexes.begin(), mutexes.end(),
             [](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
     }
     void configure(bool allocateFields=true);
@@ -533,7 +533,7 @@ struct VisualizationAllocation{
     std::mutex memoryMutex;
     VisualizationAllocation(){}
 
-    VisualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, simulationParameterSet* sCPU) : 
+    VisualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, simulationParameterSet* sCPU) :
         parentDevice(d),
         width(init_width),
         height(init_height),
@@ -556,37 +556,37 @@ struct VisualizationAllocation{
                 sCPU->fillRotationMatricies(&parameterSet);
                 sCPU->finishConfiguration(&parameterSet);
                 parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), copyType::ToDevice);
-            
+
         }
-        
+
     void syncImages(std::vector<uint8_t>* target){
         if(target == nullptr) return;
         target->resize(Nimage);
         parentDevice->deviceMemcpy(
-            target->data(), 
+            target->data(),
             imageGPU.device_ptr(),
-            Nimage, 
+            Nimage,
             copyType::ToHost);
     }
     void syncImages(){
         image.resize(Nimage);
         parentDevice->deviceMemcpy(
-            image.data(), 
+            image.data(),
             imageGPU.device_ptr(),
-            Nimage, 
+            Nimage,
             copyType::ToHost);
     }
 
-    
+
 
     void fetchSim(simulationParameterSet* sCPU, int64_t simIndex){
         parentDevice->deviceMemcpy(
-            gridTimeSpace.device_ptr(), 
-            sCPU->ExtOut + 2*Ngrid*simIndex, 2 * Ngrid * sizeof(double), 
+            gridTimeSpace.device_ptr(),
+            sCPU->ExtOut + 2*Ngrid*simIndex, 2 * Ngrid * sizeof(double),
             copyType::ToDevice);
         parentDevice->deviceMemcpy(
-            gridFrequency.device_ptr(), 
-            sCPU->EkwOut+ 2*Ngrid_complex*simIndex, 4 * Ngrid_complex * sizeof(double), 
+            gridFrequency.device_ptr(),
+            sCPU->EkwOut+ 2*Ngrid_complex*simIndex, 4 * Ngrid_complex * sizeof(double),
             copyType::ToDevice);
 
     }
@@ -649,10 +649,10 @@ struct UPPEAllocation{
     LWEBuffer<deviceFP> expGammaT;
     deviceParameterSet<deviceFP, deviceComplex> parameterSet;
     LWEBuffer<deviceParameterSet<deviceFP, deviceComplex>> parameterSet_deviceCopy;
-    
+
     UPPEAllocation(){}
 
-    UPPEAllocation(LWEDevice* d, simulationParameterSet* sCPU) : 
+    UPPEAllocation(LWEDevice* d, simulationParameterSet* sCPU) :
     hasPlasma(sCPU->nonlinearAbsorptionStrength > 0.0 || sCPU->startingCarrierDensity > 0.0),
     isCylindric(sCPU->isCylindric),
     beamExpansionFactor(1 + isCylindric + 2 * isCylindric * hasPlasma),
@@ -794,7 +794,7 @@ struct VisualizationConfig{
     int64_t Nsims2 = 1;
     int64_t simIndex = 0;
     int width = 0;
-    int height = 0; 
+    int height = 0;
     CoordinateMode mode = CoordinateMode::cartesian2D;
     float red_f0 = 440e12f;
     float red_sigma = 50e12f;
@@ -807,7 +807,7 @@ struct VisualizationConfig{
     float blue_amplitude = 1.0f;
     bool rotate2D = false;
     std::vector<uint8_t>* result_pixels = nullptr;
-    VisualizationConfig(simulationParameterSet* sCPU_in, VisualizationType type_in) : 
+    VisualizationConfig(simulationParameterSet* sCPU_in, VisualizationType type_in) :
         sCPU(sCPU_in),
         type(type_in),
         dt(sCPU->tStep),
