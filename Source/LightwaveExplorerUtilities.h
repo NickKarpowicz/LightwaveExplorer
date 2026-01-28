@@ -83,28 +83,27 @@ static bool zipContainsFile(std::string zipPath, std::string filename){
 }
 
 template <typename T>
-std::vector<std::vector<double>> parse_string_to_vecs(const std::string& txt)
+std::vector<std::vector<double>> parse_string_to_vecs(const std::string& txt, char line_delimiter=';', char number_delimiter=' ')
 {
-    auto outer = txt | std::ranges::views::split(';')
-                 | std::ranges::views::transform([](auto&& row_range) {
+    auto outer = txt | std::ranges::views::split(line_delimiter)
+                 | std::ranges::views::transform([number_delimiter](auto&& row_range) {
                        std::string_view row_sv{
                            &*row_range.begin(),
                            static_cast<std::size_t>(row_range.end() - row_range.begin())
                        };
                        auto inner_view = row_sv
-                                       | std::ranges::views::split(' ')
+                                       | std::ranges::views::split(number_delimiter)
                                        | std::ranges::views::filter([](auto&& sub) { return !sub.empty(); })
-                                       | std::ranges::views::transform(
-                                           [](auto&& token_range) {
-                                                T val;
-                                                std::string_view token_sv{
-                                                    &*token_range.begin(),
-                                                    static_cast<std::size_t>(token_range.end() -
-                                                                            token_range.begin())
-                                                };
-                                                std::from_chars(token_sv.data(), token_sv.data() + token_sv.size(), val);
-                                                return val;
-                                            });
+                                       | std::ranges::views::transform([](auto&& token_range) {
+                                            T val;
+                                             std::string_view token_sv{
+                                                 &*token_range.begin(),
+                                                 static_cast<std::size_t>(token_range.end() -
+                                                                          token_range.begin())
+                                             };
+                                             std::from_chars(token_sv.data(), token_sv.data() + token_sv.size(), val);
+                                             return val;
+                                         });
 
                        return std::vector<T>{ std::ranges::begin(inner_view),
                                                     std::ranges::end(inner_view) };
