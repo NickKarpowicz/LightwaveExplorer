@@ -698,6 +698,42 @@ public:
         setToDouble(textBoxes["polarization2"],rad2Deg<double>()*sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
 
+        switch(sim.base().pulse1.beam_spec.basis){
+            case BeamBasis::hermite:
+                if(sim.base().pulse1.beam_spec.waist[0][0] == 0.0){
+                    pulldowns["beam1type"]->setCurrentIndex(0);
+                    textBoxes["beamspec1"]->setText("");
+                }
+                else{
+                    pulldowns["beam1type"]->setCurrentIndex(2);
+                    QString spec = QString::fromStdString(sim.base().pulse1.beam_spec.to_string());
+                    textBoxes["beamspec1"]->setText(spec);
+                }
+                break;
+            case BeamBasis::laguerre:{
+                pulldowns["beam1type"]->setCurrentIndex(1);
+                QString spec = QString::fromStdString(sim.base().pulse1.beam_spec.to_string());
+                textBoxes["beamspec1"]->setText(spec);
+            }
+        }
+        switch(sim.base().pulse2.beam_spec.basis){
+            case BeamBasis::hermite:
+                if(sim.base().pulse2.beam_spec.waist[0][0] == 0.0){
+                    pulldowns["beam2type"]->setCurrentIndex(0);
+                    textBoxes["beamspec2"]->setText("");
+                }
+                else{
+                    pulldowns["beam2type"]->setCurrentIndex(2);
+                    QString spec = QString::fromStdString(sim.base().pulse2.beam_spec.to_string());
+                    textBoxes["beamspec2"]->setText(spec);
+                }
+                break;
+            case BeamBasis::laguerre:{
+                pulldowns["beam2type"]->setCurrentIndex(1);
+                QString spec = QString::fromStdString(sim.base().pulse2.beam_spec.to_string());
+                textBoxes["beamspec2"]->setText(spec);
+            }
+        }
         pulldowns["material"]->setCurrentIndex(sim.base().materialIndex);
         pulldowns["batch1"]->setCurrentIndex(sim.base().batchIndex);
         pulldowns["batch2"]->setCurrentIndex(sim.base().batchIndex2);
