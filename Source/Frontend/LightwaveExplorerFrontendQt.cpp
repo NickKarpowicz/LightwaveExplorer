@@ -1468,8 +1468,8 @@ public:
         sequence->setToolTip("Here you can enter a sequence of events to take place during the simulation\n"
         "The buttons above will enter the commands for a few common things; there are more in the docs.");
 
-        SequenceValidator* contextColors = new SequenceValidator(sequence->document());
     #if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
+        SequenceValidator* contextColors = new SequenceValidator(sequence->document());
         QObject::connect(QGuiApplication::styleHints(),
             &QStyleHints::colorSchemeChanged,
             contextColors,

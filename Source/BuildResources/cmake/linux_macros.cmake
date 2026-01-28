@@ -24,7 +24,7 @@ macro(conditionally_fetch_dependencies)
 
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib)
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
-    include_directories(${CMAKE_CURRENT_BINARY_DIR})
+    include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR}/miniz)
 
     add_library(miniz STATIC miniz/miniz.c)
 endmacro()

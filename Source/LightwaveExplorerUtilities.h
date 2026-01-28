@@ -9,7 +9,7 @@
 #include <filesystem>
 #include "LightwaveExplorerHelpers.h"
 #include "DataStructures.hpp"
-#include <miniz/miniz.h>
+#include <miniz.h>
 
 static const unsigned int threadsPerBlock = 64;
 static const unsigned int minGridDimension = 8;
