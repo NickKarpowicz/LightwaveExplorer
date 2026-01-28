@@ -7,6 +7,9 @@
 #include <algorithm>
 #include <utility>
 #include <filesystem>
+#include <ranges>
+#include <string_view>
+#include <charconv>
 #include "LightwaveExplorerHelpers.h"
 #include "DataStructures.hpp"
 #include <miniz/miniz.h>
@@ -22,6 +25,15 @@ double          parameterStringToDouble(const std::string& ss, const double* iBl
 void            stripWhiteSpace(std::string& s);
 void            stripLineBreaks(std::string& s);
 int             interpretParameters(const std::string& cc, const int n, const double *iBlock, const double *vBlock, double *parameters, bool* defaultMask);
+
+template <FPType T, int number_of_modes, int max_expansion_order>
+BeamSpecification<T, number_of_modes, max_expansion_order> beam_specification_from_string(const std::string& str){
+    BeamSpecification<T, number_of_modes, max_expansion_order> spec;
+    for(int mode = 0; mode < number_of_modes; mode++){
+
+    }
+
+}
 
 template<typename T>
 static void zipIntoMemory(std::string zipPath, std::string filename, T* data, std::size_t dataSize){
@@ -68,4 +80,44 @@ static bool zipContainsFile(std::string zipPath, std::string filename){
 		return std::filesystem::path(interiorName).stem().string();
 	}
 	else return "ERROR";
+}
+
+template <typename T>
+std::vector<std::vector<double>> parse_string_to_vecs(const std::string& txt)
+{
+    auto outer = txt | std::ranges::views::split(';')
+                 | std::ranges::views::transform([](auto&& row_range) {
+                       std::string_view row_sv{
+                           &*row_range.begin(),
+                           static_cast<std::size_t>(row_range.end() - row_range.begin())
+                       };
+                       auto inner_view = row_sv
+                                       | std::ranges::views::split(' ')
+                                       | std::ranges::views::filter([](auto&& sub) { return !sub.empty(); })
+                                       | std::ranges::views::transform(
+                                           [](auto&& token_range) {
+                                                T val;
+                                                std::string_view token_sv{
+                                                    &*token_range.begin(),
+                                                    static_cast<std::size_t>(token_range.end() -
+                                                                            token_range.begin())
+                                                };
+                                                std::from_chars(token_sv.data(), token_sv.data() + token_sv.size(), val);
+                                                return val;
+                                            });
+
+                       return std::vector<T>{ std::ranges::begin(inner_view),
+                                                    std::ranges::end(inner_view) };
+                   });
+
+    auto result = std::vector<std::vector<T>>{
+        std::ranges::begin(outer), std::ranges::end(outer)
+    };
+    if(result.size() == 0){
+        throw std::runtime_error("Unparsable or empty string.");
+    }
+    if(result.size() > 1){
+        result.erase(std::remove_if(result.begin(), result.end(), [](auto&& c){ return c.empty(); }));
+    }
+    return result;
 }
