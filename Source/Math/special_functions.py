@@ -124,10 +124,10 @@ def _(
 
 @app.cell
 def _():
-    laguerre_helpers = r"""deviceFunction constexpr static inline uint ufactorial(const uint x){
-        uint f = 1;
-        if (x < 3) return x;
-        for(uint i = 2u; i<x; i++){
+    laguerre_helpers = r"""deviceFunction constexpr static inline uint32_t ufactorial(const uint32_t x){
+        uint32_t f = 2u;
+        if (x < 2) return 1u;
+        for(uint32_t i = 3u; i<=x; i++){
             f *= i;
         }
         return f;
