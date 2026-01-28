@@ -1977,22 +1977,25 @@ public:
             r * r / (wz * wz);
         mode_field = isComplexNaN(mode_field) ? deviceComplex{}
                               : (beamwaist / wz) * deviceLib::exp(mode_field);
-        total_field += mode_field * p->beam_spec.weight[mode_index];
+
         switch(p->beam_spec.basis){
+            // in 2D mode, phi is not calculated or used
             case BeamBasis::laguerre:
-                total_field *=
+                mode_field *=
                     deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, p->beam_spec.m[mode_index])
                     * deviceFunctions::laguerre_prefactor(p->beam_spec.l[mode_index], p->beam_spec.m[mode_index])
                     * deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz),p->beam_spec.m[mode_index], p->beam_spec.l[mode_index])
-                    * deviceLib::exp(deviceComplex(0.0f, (abs(p->beam_spec.m[mode_index]) + 2 * p->beam_spec.l[mode_index]) * phi));
+                    * deviceLib::exp(deviceComplex(0.0f, p->beam_spec.m[mode_index] + 2 * p->beam_spec.l[mode_index]) * phi);
                 break;
             case BeamBasis::hermite:
-                total_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.l[mode_index])
+                // in 2D mode, no use of m
+                mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.l[mode_index])
                     * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.m[mode_index] + p->beam_spec.l[mode_index]) * phi));
                 break;
             default:
                 break;
         }
+        total_field += mode_field * p->beam_spec.weight[mode_index];
         net_r += r * p->beam_spec.weight[mode_index];
         net_weight += p->beam_spec.weight[mode_index];
     }
@@ -2114,16 +2117,41 @@ public:
             beamwaist * deviceFPLib::sqrt(1.0f + (z * z / (zR * zR)));
         const deviceFP Rz =
             (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
-        const deviceFP phi = deviceFPLib::atan(z / zR);
+        const deviceFP gouy_phase = deviceFPLib::atan(z / zR);
 
         deviceComplex mode_field = (beamwaist / wz) *
                            deviceLib::exp(deviceComplex(0.0f, 1.0f) *
                                               (ko * (z - z_offset) +
-                                               ko * r * r / (2.0f * Rz) - phi) -
+                                               ko * r * r / (2.0f * Rz) - gouy_phase) -
                                           r * r / (wz * wz));
         mode_field = mode_field * specfac;
         if (isComplexNaN(mode_field) || f <= 0.0f) {
           mode_field = deviceComplex{};
+        }
+
+        switch(p->beam_spec.basis){
+            case BeamBasis::laguerre:
+                {
+                    deviceFP phi_coord = deviceFPLib::atan2(y,x);
+                    mode_field *=
+                        deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, p->beam_spec.m[mode_index])
+                        * deviceFunctions::laguerre_prefactor(p->beam_spec.l[mode_index], p->beam_spec.m[mode_index])
+                        * deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz),p->beam_spec.m[mode_index], p->beam_spec.l[mode_index])
+                        * deviceLib::exp(deviceComplex(0.0f,
+                            p->beam_spec.m[mode_index] + 2 * p->beam_spec.l[mode_index] * gouy_phase
+                            + p->beam_spec.m[mode_index] * phi_coord));
+
+                }
+                break;
+            case BeamBasis::hermite:
+                {
+                    mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * x/wz, p->beam_spec.l[mode_index])
+                        * deviceFunctions::hermite(sqrtTwo<deviceFP>() * y/wz, p->beam_spec.m[mode_index])
+                        * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.m[mode_index] + p->beam_spec.l[mode_index]) * gouy_phase));
+                }
+                break;
+            default:
+                break;
         }
         total_field += mode_field * p->beam_spec.weight[mode_index];
     }
