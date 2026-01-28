@@ -15,7 +15,7 @@ LIBS="/Users"
 rm -rf build
 mkdir build
 cd build
-${QTPATH}/qt-cmake .. -G Ninja
+${QTPATH}/qt-cmake -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 .. -G Ninja
 cmake --build . --config Release
 cd ..
 mkdir ${APP}/Contents/Resources
