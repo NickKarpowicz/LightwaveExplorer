@@ -1942,7 +1942,7 @@ public:
     deviceFP net_weight{};
     const deviceFP ko = twoPi<deviceFP>() * no.real() * f / lightC<deviceFP>();
     for(int mode_index = 0; mode_index < p->beam_spec.relevant_modes; mode_index++){
-        deviceFP f_series = 1e-12 * f_delta;
+        deviceFP f_series = 1e-12f * f_delta;
         deviceFP beamwaist = p->beam_spec.waist[mode_index][0] + p->beamwaist;
         deviceFP x_offset = p->beam_spec.x_offset[mode_index][0] + p->x_offset;
         deviceFP z_offset = p->beam_spec.z_offset[mode_index][0] + p->z_offset;
@@ -1954,7 +1954,7 @@ public:
             x_offset += p->beam_spec.x_offset[mode_index][expansion_index] * f_series;
             z_offset += p->beam_spec.z_offset[mode_index][expansion_index] * f_series;
             angle_x += p->beam_spec.angle_x[mode_index][expansion_index] * f_series;
-            f_series *= 1e-12 * f_delta;
+            f_series *= 1e-12f * f_delta;
         }
 
         const deviceFP zR = vPi<deviceFP>() * beamwaist * beamwaist *
@@ -2081,7 +2081,7 @@ public:
 
     deviceComplex total_field{};
     for(int mode_index = 0; mode_index < p->beam_spec.relevant_modes; mode_index++){
-        deviceFP f_series = 1e-12 * f_delta;
+        deviceFP f_series = 1e-12f * f_delta;
         deviceFP beamwaist = p->beam_spec.waist[mode_index][0] + p->beamwaist;
         deviceFP beam_rotation = p->beam_spec.rotation[mode_index][0];
         deviceFP x_offset = p->beam_spec.x_offset[mode_index][0] + p->x_offset;
@@ -2100,7 +2100,7 @@ public:
             z_offset += p->beam_spec.z_offset[mode_index][expansion_index] * f_series;
             angle_x += p->beam_spec.angle_x[mode_index][expansion_index] * f_series;
             angle_y += p->beam_spec.angle_y[mode_index][expansion_index] * f_series;
-            f_series *= 1e-12 * f_delta;
+            f_series *= 1e-12f * f_delta;
         }
 
         const deviceFP zR = vPi<deviceFP>() * beamwaist * beamwaist *
