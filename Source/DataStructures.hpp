@@ -735,7 +735,9 @@ struct BeamSpecification {
     std::uint8_t m[number_of_modes] = {};
     std::uint8_t l[number_of_modes] = {};
     T weight[number_of_modes] = { 1 };
+    T phase[number_of_modes] = {};
     T waist[number_of_modes][max_expansion_order] = {};
+    T rotation[number_of_modes][max_expansion_order] = {};
     T x_offset[number_of_modes][max_expansion_order] = {};
     T y_offset[number_of_modes][max_expansion_order] = {};
     T z_offset[number_of_modes][max_expansion_order] = {};
@@ -753,8 +755,10 @@ struct BeamSpecification {
             m[i] = other.m[i];
             l[i] = other.l[i];
             weight[i] = static_cast<T>(other.weight[i]);
+            phase[i] = static_cast<T>(other.phase[i]);
             for(int j = 0; j< max_expansion_order; j++){
                 waist[i][j] = static_cast<T>(other.waist[i][j]);
+                rotation[i][j] = static_cast<T>(other.rotation[i][j]);
                 x_offset[i][j] = static_cast<T>(other.x_offset[i][j]);
                 y_offset[i][j] = static_cast<T>(other.y_offset[i][j]);
                 z_offset[i][j] = static_cast<T>(other.z_offset[i][j]);
@@ -773,8 +777,10 @@ struct BeamSpecification {
             m[i] = other.m[i];
             l[i] = other.l[i];
             weight[i] = static_cast<T>(other.weight[i]);
+            phase[i] = static_cast<T>(other.phase[i]);
             for(int j = 0; j< max_expansion_order; j++){
                 waist[i][j] = static_cast<T>(other.waist[i][j]);
+                rotation[i][j] = static_cast<T>(other.rotation[i][j]);
                 x_offset[i][j] = static_cast<T>(other.x_offset[i][j]);
                 y_offset[i][j] = static_cast<T>(other.y_offset[i][j]);
                 z_offset[i][j] = static_cast<T>(other.z_offset[i][j]);
@@ -782,6 +788,35 @@ struct BeamSpecification {
                 angle_y[i][j] = static_cast<T>(other.angle_y[i][j]);
             }
         }
+    }
+
+    BeamSpecification(const std::string& descriptor, const BeamBasis b){
+        basis = b;
+        std::vector<std::vector<T>> data = parse_string_to_vecs<T>(descriptor);
+        std::cout << "modes: " << data.size() << '\n';
+        std::cout << "elems: " << data[0].size() << std::endl;
+        relevant_modes = std::min(number_of_modes, static_cast<int>(data.size()));
+        //TODO: validation: should have minimum element number for valid beam
+        for(int mode_idx=0; mode_idx<relevant_modes; mode_idx++){
+            int current_expansion = std::min((static_cast<int>(data[mode_idx].size()) - 2) / 6, max_expansion_order);
+            relevant_expansion = std::max(relevant_expansion, current_expansion);
+            l[mode_idx] = static_cast<std::uint8_t>(data[mode_idx][0]);
+            m[mode_idx] = static_cast<std::uint8_t>(data[mode_idx][1]);
+            weight[mode_idx] = static_cast<T>(data[mode_idx][2]);
+            phase[mode_idx] = static_cast<T>(data[mode_idx][3]);
+            for(int expansion_idx=0; expansion_idx<current_expansion; expansion_idx++){
+                waist[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 6*expansion_idx];
+                rotation[mode_idx][expansion_idx] = data[mode_idx][4 + 6*expansion_idx + 1];
+                std::cout << "waist: " << waist[mode_idx][expansion_idx] << '\n';
+                x_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 6*expansion_idx+2];
+                y_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 6*expansion_idx+3];
+                z_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 6*expansion_idx+4];
+                angle_x[mode_idx][expansion_idx] = data[mode_idx][4 + 6*expansion_idx+5];
+                angle_y[mode_idx][expansion_idx] = data[mode_idx][4 + 6*expansion_idx+6];
+            }
+        }
+
+
     }
 };
 
@@ -804,7 +839,12 @@ public:
     T circularity;
     T pulseSum;
     BeamSpecification<T, 16, 4> beam_spec;
-
+    T beamwaist;
+    T x_offset;
+    T y_offset;
+    T z_offset;
+    T angle_x_offset;
+    T angle_y_offset;
     Pulse() : energy(),
         frequency(),
         bandwidth(),
@@ -818,7 +858,13 @@ public:
         polarizationAngle(),
         circularity(),
         pulseSum(),
-        beam_spec() {}
+        beam_spec(),
+        beamwaist(),
+        x_offset(),
+        y_offset(),
+        z_offset(),
+        angle_x_offset(),
+        angle_y_offset() {}
 
     template<FPType U>
     Pulse(Pulse<U>& other) : energy((T)other.energy),
@@ -834,7 +880,13 @@ public:
         polarizationAngle((T)other.polarizationAngle),
         circularity((T)other.circularity),
         pulseSum((T)other.pulseSum),
-        beam_spec(other.beam_spec) {}
+        beam_spec(other.beam_spec),
+        beamwaist((T)other.beamwaist),
+        x_offset((T)other.x_offset),
+        y_offset((T)other.y_offset),
+        z_offset((T)other.z_offset),
+        angle_x_offset((T)other.angle_x_offset),
+        angle_y_offset((T)other.angle_y_offset) {}
 
     template <FPType U>
     Pulse& operator=(const Pulse<U>& other) {
@@ -852,6 +904,12 @@ public:
         circularity = (T)other.circularity;
         pulseSum = (T)other.pulseSum;
         beam_spec = other.beam_spec;
+        beamwaist = (T)other.beamwaist;
+        x_offset = (T)other.x_offset;
+        y_offset = (T)other.y_offset;
+        z_offset = (T)other.z_offset;
+        angle_x_offset = (T)other.angle_x_offset;
+        angle_y_offset = (T)other.angle_y_offset;
         return *this;
     }
 };

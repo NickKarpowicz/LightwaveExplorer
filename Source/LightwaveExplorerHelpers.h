@@ -6,9 +6,14 @@
 #define hostOrDevice
 #endif
 #include <algorithm>
+#include <vector>
+#include <ranges>
+#include <string_view>
+#include <charconv>
+#include <string>
 //variadic template to constexpr the product of a bunch of values
 //in a way that keeps Xe Graphics happy (no doubles)
-//convention: if there are multiple types as inputs, 
+//convention: if there are multiple types as inputs,
 //return type is the type of the first argument
 template<typename T>
 hostOrDevice static constexpr T constProd(const T x) {
@@ -137,4 +142,44 @@ hostOrDevice static constexpr T firstDerivativeStencil(const int i){
 
 inline void removeCharacterFromString(std::string& s, const char removedChar) {
 	std::erase(s, removedChar);
+}
+
+
+template <typename T>
+std::vector<std::vector<double>> parse_string_to_vecs(const std::string& txt, char line_delimiter=';', char number_delimiter=' ')
+{
+    auto outer = txt | std::ranges::views::split(line_delimiter)
+                 | std::ranges::views::transform([number_delimiter](auto&& row_range) {
+                       std::string_view row_sv{
+                           &*row_range.begin(),
+                           static_cast<std::size_t>(row_range.end() - row_range.begin())
+                       };
+                       auto inner_view = row_sv
+                                       | std::ranges::views::split(number_delimiter)
+                                       | std::ranges::views::filter([](auto&& sub) { return !sub.empty(); })
+                                       | std::ranges::views::transform([](auto&& token_range) {
+                                            T val;
+                                             std::string_view token_sv{
+                                                 &*token_range.begin(),
+                                                 static_cast<std::size_t>(token_range.end() -
+                                                                          token_range.begin())
+                                             };
+                                             std::from_chars(token_sv.data(), token_sv.data() + token_sv.size(), val);
+                                             return val;
+                                         });
+
+                       return std::vector<T>{ std::ranges::begin(inner_view),
+                                                    std::ranges::end(inner_view) };
+                   });
+
+    auto result = std::vector<std::vector<T>>{
+        std::ranges::begin(outer), std::ranges::end(outer)
+    };
+    if(result.size() == 0){
+        throw std::runtime_error("Unparsable or empty string.");
+    }
+
+    result.erase(std::remove_if(result.begin(), result.end(), [](auto&& c){ return c.empty(); }), result.end());
+
+    return result;
 }

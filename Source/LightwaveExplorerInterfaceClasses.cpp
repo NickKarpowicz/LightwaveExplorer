@@ -406,18 +406,18 @@ std::string simulationParameterSet::settingsString() {
   fs << "Phase material thickness 2 (mcr.): " << pulse2.phaseMaterialThickness
      << '\x0A';
   fs << "Beam mode placeholder: " << 0 << '\x0A';
-  fs << "Beamwaist 1 (m): " << pulse1.beam_spec.waist[0][0] << '\x0A';
-  fs << "Beamwaist 2 (m): " << pulse2.beam_spec.waist[0][0] << '\x0A';
-  fs << "x offset 1 (m): " << pulse1.beam_spec.x_offset[0][0] << '\x0A';
-  fs << "x offset 2 (m): " << pulse2.beam_spec.x_offset[0][0] << '\x0A';
-  fs << "y offset 1 (m): " << pulse1.beam_spec.y_offset[0][0] << '\x0A';
-  fs << "y offset 2 (m): " << pulse2.beam_spec.y_offset[0][0] << '\x0A';
-  fs << "z offset 1 (m): " << pulse1.beam_spec.z_offset[0][0] << '\x0A';
-  fs << "z offset 2 (m): " << pulse2.beam_spec.z_offset[0][0] << '\x0A';
-  fs << "NC angle 1 (rad): " << pulse1.beam_spec.angle_x[0][0] << '\x0A';
-  fs << "NC angle 2 (rad): " << pulse2.beam_spec.angle_x[0][0] << '\x0A';
-  fs << "NC angle phi 1 (rad): " << pulse1.beam_spec.angle_y[0][0] << '\x0A';
-  fs << "NC angle phi 2 (rad): " << pulse2.beam_spec.angle_y[0][0] << '\x0A';
+  fs << "Beamwaist 1 (m): " << pulse1.beamwaist << '\x0A';
+  fs << "Beamwaist 2 (m): " << pulse2.beamwaist << '\x0A';
+  fs << "x offset 1 (m): " << pulse1.x_offset << '\x0A';
+  fs << "x offset 2 (m): " << pulse2.x_offset << '\x0A';
+  fs << "y offset 1 (m): " << pulse1.y_offset << '\x0A';
+  fs << "y offset 2 (m): " << pulse2.y_offset << '\x0A';
+  fs << "z offset 1 (m): " << pulse1.z_offset << '\x0A';
+  fs << "z offset 2 (m): " << pulse2.z_offset << '\x0A';
+  fs << "NC angle 1 (rad): " << pulse1.angle_x_offset << '\x0A';
+  fs << "NC angle 2 (rad): " << pulse2.angle_x_offset << '\x0A';
+  fs << "NC angle phi 1 (rad): " << pulse1.angle_y_offset << '\x0A';
+  fs << "NC angle phi 2 (rad): " << pulse2.angle_y_offset << '\x0A';
   fs << "Polarization 1 (rad): " << pulse1.polarizationAngle << '\x0A';
   fs << "Polarization 2 (rad): " << pulse2.polarizationAngle << '\x0A';
   fs << "Circularity 1: " << pulse1.circularity << '\x0A';
@@ -556,28 +556,28 @@ void simulationParameterSet::setByNumber(const int64_t index,
     pulse2.phaseMaterialThickness = value;
     return;
   case 17:
-    pulse1.beam_spec.waist[0][0] = value;
+    pulse1.beamwaist = value;
     return;
   case 18:
-    pulse2.beam_spec.waist[0][0] = value;
+    pulse2.beamwaist = value;
     return;
   case 19:
-    pulse1.beam_spec.x_offset[0][0] = value;
+    pulse1.x_offset = value;
     return;
   case 20:
-    pulse2.beam_spec.x_offset[0][0] = value;
+    pulse2.x_offset = value;
     return;
   case 21:
-    pulse1.beam_spec.z_offset[0][0] = value;
+    pulse1.z_offset = value;
     return;
   case 22:
-    pulse2.beam_spec.z_offset[0][0] = value;
+    pulse2.z_offset = value;
     return;
   case 23:
-    pulse1.beam_spec.angle_x[0][0] = value;
+    pulse1.angle_x_offset = value;
     return;
   case 24:
-    pulse2.beam_spec.angle_x[0][0] = value;
+    pulse2.angle_x_offset = value;
     return;
   case 25:
     pulse1.polarizationAngle = value;
@@ -708,18 +708,18 @@ int simulationParameterSet::readInputParametersFile(
   pulse2.phaseMaterialThickness =
       checkLineName("Phase material thickness 2 (mcr.)", 0.0);
   checkLineName("Beam mode placeholder", 0.0);
-  pulse1.beam_spec.waist[0][0] = checkLineName("Beamwaist 1 (m)", 0.0);
-  pulse2.beam_spec.waist[0][0] = checkLineName("Beamwaist 2 (m)", 0.0);
-  pulse1.beam_spec.x_offset[0][0] = checkLineName("x offset 1 (m)", 0.0);
-  pulse2.beam_spec.x_offset[0][0] = checkLineName("x offset 2 (m)", 0.0);
-  pulse1.beam_spec.y_offset[0][0] = checkLineName("y offset 1 (m)", 0.0);
-  pulse2.beam_spec.y_offset[0][0] = checkLineName("y offset 2 (m)", 0.0);
-  pulse1.beam_spec.z_offset[0][0] = checkLineName("z offset 1 (m)", 0.0);
-  pulse2.beam_spec.z_offset[0][0] = checkLineName("z offset 2 (m)", 0.0);
-  pulse1.beam_spec.angle_x[0][0] = checkLineName("NC angle 1 (rad)", 0.0);
-  pulse2.beam_spec.angle_x[0][0] = checkLineName("NC angle 2 (rad)", 0.0);
-  pulse1.beam_spec.angle_y[0][0] = checkLineName("NC angle phi 1 (rad)", 0.0);
-  pulse2.beam_spec.angle_y[0][0] = checkLineName("NC angle phi 2 (rad)", 0.0);
+  pulse1.beamwaist = checkLineName("Beamwaist 1 (m)", 0.0);
+  pulse2.beamwaist = checkLineName("Beamwaist 2 (m)", 0.0);
+  pulse1.x_offset = checkLineName("x offset 1 (m)", 0.0);
+  pulse2.x_offset = checkLineName("x offset 2 (m)", 0.0);
+  pulse1.y_offset = checkLineName("y offset 1 (m)", 0.0);
+  pulse2.y_offset = checkLineName("y offset 2 (m)", 0.0);
+  pulse1.z_offset = checkLineName("z offset 1 (m)", 0.0);
+  pulse2.z_offset = checkLineName("z offset 2 (m)", 0.0);
+  pulse1.angle_x_offset = checkLineName("NC angle 1 (rad)", 0.0);
+  pulse2.angle_x_offset = checkLineName("NC angle 2 (rad)", 0.0);
+  pulse1.angle_y_offset = checkLineName("NC angle phi 1 (rad)", 0.0);
+  pulse2.angle_y_offset = checkLineName("NC angle phi 2 (rad)", 0.0);
   pulse1.polarizationAngle = checkLineName("Polarization 1 (rad)", 0.0);
   pulse2.polarizationAngle = checkLineName("Polarization 2 (rad)", 0.0);
   pulse1.circularity = checkLineName("Circularity 1", 0.0);
@@ -827,6 +827,10 @@ int simulationParameterSet::readInputParametersFile(
     pulse2.beam_spec.x_offset[0][0] = 0.0;
     pulse1.beam_spec.angle_x[0][0] = 0.0;
     pulse2.beam_spec.angle_x[0][0] = 0.0;
+    pulse1.x_offset = 0.0;
+    pulse2.x_offset = 0.0;
+    pulse1.angle_x_offset = 0.0;
+    pulse2.angle_x_offset = 0.0;
   }
   if (is3D) {
     Ngrid = Ntime * Nspace * Nspace2;

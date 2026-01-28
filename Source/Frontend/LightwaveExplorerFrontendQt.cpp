@@ -394,12 +394,27 @@ public:
         setToDoubleMultiplier(textBoxes["TOD1"],1e45,sim.base().pulse1.tod);
         setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
         setToDoubleMultiplier(textBoxes["thickness1"],1e6,sim.base().pulse1.phaseMaterialThickness);
-        sim.base().pulse1.beam_spec.basis = BeamBasis::laguerre;
-        sim.base().pulse1.beam_spec.l[0] = 1; //TODO: DEBUG CODE REMOVE ME
-        setToDoubleMultiplier(textBoxes["beamwaist1"],1e6,sim.base().pulse1.beam_spec.waist[0][0]);
-        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset1"], sim.base().pulse1.beam_spec.x_offset[0][0], sim.base().pulse1.beam_spec.y_offset[0][0], SecondValueDefault::Default_zero, 1e-6);
-        setToDoubleMultiplier(textBoxes["zOffset1"],1e6,sim.base().pulse1.beam_spec.z_offset[0][0]);
-        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle1"], sim.base().pulse1.beam_spec.angle_x[0][0], sim.base().pulse1.beam_spec.angle_y[0][0], SecondValueDefault::Default_zero, deg2Rad<double>());
+        setToDoubleMultiplier(textBoxes["beamwaist1"],1e6,sim.base().pulse1.beamwaist);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset1"], sim.base().pulse1.x_offset, sim.base().pulse1.y_offset, SecondValueDefault::Default_zero, 1e-6);
+        setToDoubleMultiplier(textBoxes["zOffset1"],1e6,sim.base().pulse1.z_offset);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle1"], sim.base().pulse1.angle_x_offset, sim.base().pulse1.angle_y_offset, SecondValueDefault::Default_zero, deg2Rad<double>());
+        switch(pulldowns["beam1type"]->currentIndex()){
+            case 0: //TEM00
+                sim.base().pulse1.beam_spec.waist[0][0] = 0.0;
+                break;
+            case 1: //Laguerre
+                {
+                    std::string spec = textBoxes["beamspec1"] -> text().toStdString();
+                    if(spec.size() > 15) sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
+                }
+                break;
+            case 2: //Hermite
+                {
+                    std::string spec = textBoxes["beamspec1"] -> text().toStdString();
+                    if(spec.size() > 15) sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
+                }
+                break;
+        }
         setToDoubleMultiplier(textBoxes["polarization1"],rad2Deg<double>(),sim.base().pulse1.polarizationAngle);
         setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
         sim.base().pulse1.circularity = std::clamp(sim.base().pulse1.circularity, -1.0, 1.0);
@@ -414,10 +429,29 @@ public:
         setToDoubleMultiplier(textBoxes["TOD2"],1e45,sim.base().pulse2.tod);
         setToInt(textBoxes["material2"],sim.base().pulse2.phaseMaterial);
         setToDoubleMultiplier(textBoxes["thickness2"],1e6,sim.base().pulse2.phaseMaterialThickness);
-        setToDoubleMultiplier(textBoxes["beamwaist2"],1e6,sim.base().pulse2.beam_spec.waist[0][0]);
-        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset2"], sim.base().pulse2.beam_spec.x_offset[0][0], sim.base().pulse2.beam_spec.y_offset[0][0], SecondValueDefault::Default_zero, 1e-6);
-        setToDoubleMultiplier(textBoxes["zOffset2"],1e6,sim.base().pulse2.beam_spec.z_offset[0][0]);
-        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle2"], sim.base().pulse2.beam_spec.angle_x[0][0], sim.base().pulse2.beam_spec.angle_y[0][0], SecondValueDefault::Default_zero, deg2Rad<double>());
+        setToDoubleMultiplier(textBoxes["beamwaist2"],1e6,sim.base().pulse2.beamwaist);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset2"], sim.base().pulse2.x_offset, sim.base().pulse2.y_offset, SecondValueDefault::Default_zero, 1e-6);
+        setToDoubleMultiplier(textBoxes["zOffset2"],1e6,sim.base().pulse2.z_offset);
+        setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle2"], sim.base().pulse2.angle_x_offset, sim.base().pulse2.angle_y_offset, SecondValueDefault::Default_zero, deg2Rad<double>());
+
+        switch(pulldowns["beam2type"]->currentIndex()){
+            case 0: //TEM00
+                sim.base().pulse2.beam_spec.waist[0][0] = 0.0;
+                break;
+            case 1: //Laguerre
+                {
+                    std::string spec = textBoxes["beamspec2"] -> text().toStdString();
+                    if(spec.size() > 15) sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
+                }
+                break;
+            case 2: //Hermite
+                {
+                    std::string spec = textBoxes["beamspec2"] -> text().toStdString();
+                    if(spec.size() > 15) sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
+                }
+                break;
+        }
+
         setToDoubleMultiplier(textBoxes["polarization2"],rad2Deg<double>(),sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
         sim.base().pulse2.circularity = std::clamp(sim.base().pulse2.circularity, -1.0, 1.0);
@@ -628,10 +662,10 @@ public:
         setToDouble(textBoxes["TOD1"],1e45*sim.base().pulse1.tod);
         setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
         setToDouble(textBoxes["thickness1"],1e6*sim.base().pulse1.phaseMaterialThickness);
-        setToDouble(textBoxes["beamwaist1"],1e6*sim.base().pulse1.beam_spec.waist[0][0]);
-        setToTwoDoubles(textBoxes["xOffset1"], 1e6*sim.base().pulse1.beam_spec.x_offset[0][0], 1e6*sim.base().pulse1.beam_spec.y_offset[0][0], NoSemicolonIf::zero);
-        setToDouble(textBoxes["zOffset1"],1e6*sim.base().pulse1.beam_spec.z_offset[0][0]);
-        setToTwoDoubles(textBoxes["NCAngle1"],rad2Deg<double>()*sim.base().pulse1.beam_spec.angle_x[0][0], rad2Deg<double>()*sim.base().pulse1.beam_spec.angle_y[0][0], NoSemicolonIf::zero);
+        setToDouble(textBoxes["beamwaist1"],1e6*sim.base().pulse1.beamwaist);
+        setToTwoDoubles(textBoxes["xOffset1"], 1e6*sim.base().pulse1.x_offset, 1e6*sim.base().pulse1.y_offset, NoSemicolonIf::zero);
+        setToDouble(textBoxes["zOffset1"],1e6*sim.base().pulse1.z_offset);
+        setToTwoDoubles(textBoxes["NCAngle1"],rad2Deg<double>()*sim.base().pulse1.angle_x_offset, rad2Deg<double>()*sim.base().pulse1.angle_y_offset, NoSemicolonIf::zero);
         setToDouble(textBoxes["polarization1"],rad2Deg<double>()*sim.base().pulse1.polarizationAngle);
         setToDouble(textBoxes["circularity1"],sim.base().pulse1.circularity);
 
@@ -645,10 +679,10 @@ public:
         setToDouble(textBoxes["TOD2"],1e45*sim.base().pulse2.tod);
         setToInt(textBoxes["material2"],sim.base().pulse2.phaseMaterial);
         setToDouble(textBoxes["thickness2"],1e6*sim.base().pulse2.phaseMaterialThickness);
-        setToDouble(textBoxes["beamwaist2"],1e6*sim.base().pulse2.beam_spec.waist[0][0]);
-        setToTwoDoubles(textBoxes["xOffset2"], 1e6*sim.base().pulse2.beam_spec.x_offset[0][0], 1e6*sim.base().pulse2.beam_spec.y_offset[0][0], NoSemicolonIf::zero);
-        setToDouble(textBoxes["zOffset2"],1e6*sim.base().pulse2.beam_spec.z_offset[0][0]);
-        setToTwoDoubles(textBoxes["NCAngle2"],rad2Deg<double>()*sim.base().pulse2.beam_spec.angle_x[0][0], rad2Deg<double>()*sim.base().pulse2.beam_spec.angle_y[0][0], NoSemicolonIf::zero);
+        setToDouble(textBoxes["beamwaist2"],1e6*sim.base().pulse2.beamwaist);
+        setToTwoDoubles(textBoxes["xOffset2"], 1e6*sim.base().pulse2.x_offset, 1e6*sim.base().pulse2.y_offset, NoSemicolonIf::zero);
+        setToDouble(textBoxes["zOffset2"],1e6*sim.base().pulse2.z_offset);
+        setToTwoDoubles(textBoxes["NCAngle2"],rad2Deg<double>()*sim.base().pulse2.angle_x_offset, rad2Deg<double>()*sim.base().pulse2.angle_y_offset, NoSemicolonIf::zero);
         setToDouble(textBoxes["polarization2"],rad2Deg<double>()*sim.base().pulse2.polarizationAngle);
         setToDouble(textBoxes["circularity2"],sim.base().pulse2.circularity);
 
@@ -965,6 +999,24 @@ public:
         " the effect of scanning a wedge pair in the beam.");
         addTextBoxRow("Thickness (\xce\xbcm)", "thickness1", "thickness2", entryColumn1Layout,
         "This sets the thickness of the linear propagation through the material selected above.");
+        QHBoxLayout* beamTypeRow = getRowBoxLayout(entryColumn1Layout);
+        labels["basis"] = new QLabel;
+        labels["basis"]->setText("Basis");
+        labels["basis"]->setFixedWidth(labelWidth);
+        beamTypeRow->addWidget(labels["basis"]);
+        addPulldownInContainer(textBoxWidth,beamTypeRow,"beam1type");
+        pulldowns["beam1type"]->addItem("TEM00");
+        pulldowns["beam1type"]->addItem("Laguerre");
+        pulldowns["beam1type"]->addItem("Hermite");
+        pulldowns["beam1type"]->setToolTip(
+            "Type of beam to use\n"
+            "TEM00 gives simple beams");
+        addPulldownInContainer(textBoxWidth,beamTypeRow,"beam2type");
+        pulldowns["beam2type"]->addItem("TEM00");
+        pulldowns["beam2type"]->addItem("Laguerre");
+        pulldowns["beam2type"]->addItem("Hermite");
+        addTextBoxRow("Beam specification", "beamspec1", "beamspec2", entryColumn1Layout,
+        "Detailed beam specification");
         addTextBoxRow("Beamwaist (\xce\xbcm)", "beamwaist1", "beamwaist2", entryColumn1Layout,
         "Gaussian beamwaist of the input beam in space. In terms of intensity, this is the 1/e^2 radius");
         addTextBoxRow("x offset (\xce\xbcm)", "xOffset1", "xOffset2", entryColumn1Layout,
@@ -1252,7 +1304,7 @@ public:
 
         console = new QTextEdit;
         console->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        console->setFixedSize(rowWidth,3*rowHeight-1);
+        console->setFixedSize(rowWidth,5*rowHeight-1);
         console->setTabChangesFocus(true);
         console->setFocusPolicy(Qt::NoFocus);
         entryColumn2Layout->addWidget(console);

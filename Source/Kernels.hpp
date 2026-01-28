@@ -2079,21 +2079,26 @@ public:
 
     deviceComplex total_field{};
     for(int mode_index = 0; mode_index < p->beam_spec.relevant_modes; mode_index++){
-        deviceFP f_series = f_delta;
-        deviceFP beamwaist = p->beam_spec.waist[mode_index][0];
-        deviceFP x_offset = p->beam_spec.x_offset[mode_index][0];
-        deviceFP y_offset = p->beam_spec.y_offset[mode_index][0];
-        deviceFP z_offset = p->beam_spec.z_offset[mode_index][0];
-        deviceFP angle_x = p->beam_spec.angle_x[mode_index][0];
-        deviceFP angle_y = p->beam_spec.angle_y[mode_index][0];
+        deviceFP f_series = 1e-12 * f_delta;
+        deviceFP beamwaist = p->beam_spec.waist[mode_index][0] + p->beamwaist;
+        deviceFP beam_rotation = p->beam_spec.rotation[mode_index][0];
+        deviceFP x_offset = p->beam_spec.x_offset[mode_index][0] + p->x_offset;
+        deviceFP y_offset = p->beam_spec.y_offset[mode_index][0] + p->y_offset;
+        deviceFP z_offset = p->beam_spec.z_offset[mode_index][0] + p->z_offset;
+        deviceFP angle_x = p->beam_spec.angle_x[mode_index][0] + p->angle_x_offset;
+        deviceFP angle_y = p->beam_spec.angle_y[mode_index][0] + p->angle_y_offset;
+        deviceFP mode_weight = p->beam_spec.weight[mode_index];
+        deviceFP mode_phase = p->beam_spec.phase[mode_index];
+
         for(int expansion_index = 1; expansion_index < p->beam_spec.relevant_expansion; expansion_index++){
-            f_series *= f_delta;
             beamwaist += p->beam_spec.waist[mode_index][expansion_index] * f_series;
+            beam_rotation += p->beam_spec.rotation[mode_index][expansion_index] * f_series;
             x_offset += p->beam_spec.x_offset[mode_index][expansion_index] * f_series;
             y_offset += p->beam_spec.y_offset[mode_index][expansion_index] * f_series;
             z_offset += p->beam_spec.z_offset[mode_index][expansion_index] * f_series;
             angle_x += p->beam_spec.angle_x[mode_index][expansion_index] * f_series;
             angle_y += p->beam_spec.angle_y[mode_index][expansion_index] * f_series;
+            f_series *= 1e-12 * f_delta;
         }
 
         const deviceFP zR = vPi<deviceFP>() * beamwaist * beamwaist *
@@ -2108,8 +2113,10 @@ public:
         const deviceFP cA = deviceFPLib::cos(angle_y);
         const deviceFP sB = deviceFPLib::sin(angle_x);
         const deviceFP sA = deviceFPLib::sin(angle_y);
-        const deviceFP x = cB * xo + sA * sB * yo + sA * sB * z_offset;
-        const deviceFP y = cA * yo - sA * z_offset;
+        const deviceFP x0 = cB * xo + sA * sB * yo + sA * sB * z_offset;
+        const deviceFP y0 = cA * yo - sA * z_offset;
+        const deviceFP x = x0 * deviceFPLib::cos(beam_rotation) - y0 * deviceFPLib::sin(beam_rotation);
+        const deviceFP y = x0 * deviceFPLib::sin(beam_rotation) + y0 * deviceFPLib::cos(beam_rotation);
         const deviceFP z = -sB * xo + sA * cB * yo + cA * cB * z_offset;
         const deviceFP r = deviceFPLib::hypot(x, y);
 
@@ -2119,11 +2126,12 @@ public:
             (z != 0.0f) ? z * (1.0f + (zR * zR / (z * z))) : 1.0e15f;
         const deviceFP gouy_phase = deviceFPLib::atan(z / zR);
 
-        deviceComplex mode_field = (beamwaist / wz) *
+        deviceComplex mode_field = mode_weight * (beamwaist / wz) *
                            deviceLib::exp(deviceComplex(0.0f, 1.0f) *
                                               (ko * (z - z_offset) +
                                                ko * r * r / (2.0f * Rz) - gouy_phase) -
-                                          r * r / (wz * wz));
+                                          r * r / (wz * wz)
+                                          + mode_phase);
         mode_field = mode_field * specfac;
 
 
