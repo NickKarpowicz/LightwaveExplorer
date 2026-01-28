@@ -1,6 +1,7 @@
 deviceFunction constexpr static inline uint ufactorial(const uint x){
     uint f = 1;
-    for(uint i = 0u; i<x; i++){
+    if (x < 3) return x;
+    for(uint i = 2u; i<x; i++){
         f *= i;
     }
     return f;

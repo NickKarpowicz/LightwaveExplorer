@@ -394,6 +394,7 @@ public:
         setToDoubleMultiplier(textBoxes["TOD1"],1e45,sim.base().pulse1.tod);
         setToInt(textBoxes["material1"],sim.base().pulse1.phaseMaterial);
         setToDoubleMultiplier(textBoxes["thickness1"],1e6,sim.base().pulse1.phaseMaterialThickness);
+        sim.base().pulse1.beam_spec.basis = BeamBasis::laguerre;
         sim.base().pulse1.beam_spec.l[0] = 1; //TODO: DEBUG CODE REMOVE ME
         setToDoubleMultiplier(textBoxes["beamwaist1"],1e6,sim.base().pulse1.beam_spec.waist[0][0]);
         setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset1"], sim.base().pulse1.beam_spec.x_offset[0][0], sim.base().pulse1.beam_spec.y_offset[0][0], SecondValueDefault::Default_zero, 1e-6);

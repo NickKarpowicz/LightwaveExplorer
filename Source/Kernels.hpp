@@ -2125,9 +2125,7 @@ public:
                                                ko * r * r / (2.0f * Rz) - gouy_phase) -
                                           r * r / (wz * wz));
         mode_field = mode_field * specfac;
-        if (isComplexNaN(mode_field) || f <= 0.0f) {
-          mode_field = deviceComplex{};
-        }
+
 
         switch(p->beam_spec.basis){
             case BeamBasis::laguerre:
@@ -2152,6 +2150,9 @@ public:
                 break;
             default:
                 break;
+        }
+        if (isComplexNaN(mode_field) || f <= 0.0f) {
+          mode_field = deviceComplex{};
         }
         total_field += mode_field * p->beam_spec.weight[mode_index];
     }
