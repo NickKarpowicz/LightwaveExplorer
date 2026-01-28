@@ -664,9 +664,7 @@ int simulationParameterSet::readInputParametersFile(
       const size_t number_start = contents.find_first_not_of(' ', contents.find(':', pos)+1);
       const size_t line_end = contents.find_first_of('\n', pos);
       auto number_view = std::string_view(contents).substr(number_start, line_end-number_start);
-      double val = default_value;
-      std::from_chars(number_view.data(), number_view.data() + number_view.size(), val);
-      return val;
+      return std::stod(std::string(number_view)); //switched to stod because macos still doesn't support from_chars fully
   };
 
   auto find_label_get_string = [&contents](const std::string& label){

@@ -9,7 +9,6 @@
 #include <vector>
 #include <ranges>
 #include <string_view>
-#include <charconv>
 #include <string>
 //variadic template to constexpr the product of a bunch of values
 //in a way that keeps Xe Graphics happy (no doubles)
@@ -158,14 +157,12 @@ std::vector<std::vector<double>> parse_string_to_vecs(const std::string& txt, ch
                                        | std::ranges::views::split(number_delimiter)
                                        | std::ranges::views::filter([](auto&& sub) { return !sub.empty(); })
                                        | std::ranges::views::transform([](auto&& token_range) {
-                                            T val;
                                              std::string_view token_sv{
                                                  &*token_range.begin(),
                                                  static_cast<std::size_t>(token_range.end() -
                                                                           token_range.begin())
                                              };
-                                             std::from_chars(token_sv.data(), token_sv.data() + token_sv.size(), val);
-                                             return val;
+                                             return std::stod(std::string(token_sv));
                                          });
 
                        return std::vector<T>{ std::ranges::begin(inner_view),
