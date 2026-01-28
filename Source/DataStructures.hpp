@@ -1,12 +1,11 @@
 #pragma once
 #include <string>
 #include <array>
-#include <vector>
 #include <fstream>
 #include <iostream>
 #include <complex>
 #include <cstdint>
-#include <concepts>
+#include <format>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
@@ -812,6 +811,25 @@ struct BeamSpecification {
                 angle_y[mode_idx][expansion_idx] = data[mode_idx][4 + 6*expansion_idx+6];
             }
         }
+    }
+    std::string to_string() const {
+        std::string s;
+        for(int mode_idx=0; mode_idx<relevant_modes; mode_idx++){
+            s += std::format("{} ", l[mode_idx]);
+            s += std::format("{} ", m[mode_idx]);
+            s += std::format("{:.5g} ", weight[mode_idx]);
+            s += std::format("{:.5g} ", phase[mode_idx]);
+            for(int expansion_idx=0; expansion_idx < relevant_expansion; expansion_idx++){
+                s += std::format("{:.5g} ", 1e6 * waist[mode_idx][expansion_idx]);
+                s += std::format("{:.5g} ", rotation[mode_idx][expansion_idx]);
+                s += std::format("{:.5g} ", 1e6 * x_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.5g} ", 1e6 * y_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.5g} ", 1e6 * z_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.5g} ", angle_x[mode_idx][expansion_idx]);
+                s += std::format("{:.5g};", angle_y[mode_idx][expansion_idx]);
+            }
+        }
+        return s;
     }
 };
 
