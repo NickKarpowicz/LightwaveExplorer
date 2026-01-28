@@ -133,7 +133,7 @@ def _():
         return f;
     }
 
-    deviceFunction static inline deviceFP laguerre_prefactor(uint p, uint l){
+    deviceFunction static inline deviceFP laguerre_prefactor(uint32_t p, uint32_t l){
         return deviceFPLib::sqrt(static_cast<deviceFP>((2 * ufactorial(p))/vPi<deviceFP>() * ufactorial(p + l)));
     }
 
