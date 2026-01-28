@@ -115,8 +115,8 @@ std::vector<std::vector<double>> parse_string_to_vecs(const std::string& txt, ch
     if(result.size() == 0){
         throw std::runtime_error("Unparsable or empty string.");
     }
-    if(result.size() > 1){
-        result.erase(std::remove_if(result.begin(), result.end(), [](auto&& c){ return c.empty(); }));
-    }
+
+    result.erase(std::remove_if(result.begin(), result.end(), [](auto&& c){ return c.empty(); }), result.end());
+
     return result;
 }
