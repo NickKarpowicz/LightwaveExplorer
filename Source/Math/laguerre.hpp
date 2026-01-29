@@ -1,28 +1,28 @@
-deviceFunction constexpr static inline uint32_t ufactorial(const uint32_t x){
-    uint32_t f = 2u;
-    if (x < 2) return 1u;
-    for(uint32_t i = 3u; i<=x; i++){
-        f *= i;
-    }
-    return f;
-}
-
 deviceFunction static inline deviceFP laguerre_prefactor(uint32_t p, uint32_t l){
-    return deviceFPLib::sqrt(static_cast<deviceFP>((2 * ufactorial(p))/vPi<deviceFP>() * ufactorial(p + l)));
+    deviceFP product = 1.0;
+    for (unsigned int k = 1; k <= l; ++k) {
+        product *= static_cast<deviceFP>(p + k);
+    }
+    deviceFP divisor = vPi<deviceFP>() * product;
+    deviceFP ratio = 2.0 / divisor;
+    return deviceFPLib::sqrt(ratio);
 }
 
-deviceFunction static inline deviceFP generalized_laguerre(const deviceFP x, const uint8_t alpha, const uint8_t n){
-    if(n==0u) return 1.0f;
-    deviceFP Lminus = static_cast<deviceFP>(1u + alpha) - x;
-    if(n==1u) return Lminus;
-    deviceFP Lminusminus = 1.0f;
-    deviceFP Lk = {};
-    const uint8_t alpha_plus_1 = alpha+1;
+deviceFunction static inline deviceFP generalized_laguerre(const deviceFP x, const uint32_t alpha, const uint32_t n){
+    switch(n){
+        case 0u: return 1.0f;
+        case 1u: return static_cast<deviceFP>(1u + alpha) - x;
+        case 2u: return 0.5f * (x * x - static_cast<deviceFP>(2u * (alpha + 2u)) * x + static_cast<deviceFP>((alpha + 1u)*(alpha+2u)));
+    }
 
-    for(uint8_t k = 1; k < n; k++){
-        Lk = ((static_cast<deviceFP>(2u * k + alpha_plus_1) - x) * Lminus - static_cast<deviceFP>(k + alpha) * Lminusminus)/static_cast<deviceFP>(k + 1u);
-        Lminusminus = Lminus;
+    deviceFP Lk = static_cast<deviceFP>(1u + alpha) - x;
+    deviceFP Lminus = 1.0f;
+    const uint32_t alpha_plus_1 = alpha+1;
+
+    for(uint32_t k = 1; k < n; k++){
+        deviceFP Lnext = ((static_cast<deviceFP>(2u * k + alpha_plus_1) - x) * Lk - static_cast<deviceFP>(k + alpha) * Lminus)/static_cast<deviceFP>(k + 1u);
         Lminus = Lk;
+        Lk = Lnext;
     }
     return Lk;
 }

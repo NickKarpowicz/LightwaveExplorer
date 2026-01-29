@@ -145,10 +145,16 @@ inline void removeCharacterFromString(std::string& s, const char removedChar) {
 
 
 template <typename T>
-std::vector<std::vector<double>> parse_string_to_vecs(const std::string& txt, char line_delimiter=';', char number_delimiter=' ')
+std::vector<std::vector<double>> parse_string_to_vecs(
+    const std::string& txt,
+    char line_delimiter=';',
+    char number_delimiter=' ')
 {
+
+
     auto outer = txt | std::ranges::views::split(line_delimiter)
                  | std::ranges::views::transform([number_delimiter](auto&& row_range) {
+
                        std::string_view row_sv{
                            &*row_range.begin(),
                            static_cast<std::size_t>(row_range.end() - row_range.begin())
@@ -157,12 +163,20 @@ std::vector<std::vector<double>> parse_string_to_vecs(const std::string& txt, ch
                                        | std::ranges::views::split(number_delimiter)
                                        | std::ranges::views::filter([](auto&& sub) { return !sub.empty(); })
                                        | std::ranges::views::transform([](auto&& token_range) {
+                                           auto stod_or_zero = [](std::string_view sv){
+                                               try{
+                                                   return std::stod(std::string(sv));
+                                               } catch (...) {
+                                                   std::cout << "bad stod encountered!\n";
+                                                   return 0.0;
+                                               }
+                                           };
                                              std::string_view token_sv{
                                                  &*token_range.begin(),
                                                  static_cast<std::size_t>(token_range.end() -
                                                                           token_range.begin())
                                              };
-                                             return std::stod(std::string(token_sv));
+                                             return stod_or_zero(token_sv);
                                          });
 
                        return std::vector<T>{ std::ranges::begin(inner_view),

@@ -731,8 +731,8 @@ struct BeamSpecification {
     BeamBasis basis = BeamBasis::hermite;
     int relevant_modes = 1;
     int relevant_expansion = 1;
-    std::uint8_t m[number_of_modes] = {};
-    std::uint8_t l[number_of_modes] = {};
+    std::uint16_t lower[number_of_modes] = {};
+    std::int16_t upper[number_of_modes] = {};
     T weight[number_of_modes] = { 1 };
     T phase[number_of_modes] = {};
     T waist[number_of_modes][max_expansion_order] = {};
@@ -751,8 +751,8 @@ struct BeamSpecification {
         relevant_modes = other.relevant_modes;
         relevant_expansion = other.relevant_expansion;
         for(int i = 0; i < number_of_modes; i++){
-            m[i] = other.m[i];
-            l[i] = other.l[i];
+            lower[i] = other.lower[i];
+            upper[i] = other.upper[i];
             weight[i] = static_cast<T>(other.weight[i]);
             phase[i] = static_cast<T>(other.phase[i]);
             for(int j = 0; j< max_expansion_order; j++){
@@ -773,8 +773,8 @@ struct BeamSpecification {
         relevant_modes = other.relevant_modes;
         relevant_expansion = other.relevant_expansion;
         for(int i = 0; i < number_of_modes; i++){
-            m[i] = other.m[i];
-            l[i] = other.l[i];
+            lower[i] = other.lower[i];
+            upper[i] = other.upper[i];
             weight[i] = static_cast<T>(other.weight[i]);
             phase[i] = static_cast<T>(other.phase[i]);
             for(int j = 0; j< max_expansion_order; j++){
@@ -797,8 +797,8 @@ struct BeamSpecification {
         for(int mode_idx=0; mode_idx<relevant_modes; mode_idx++){
             int current_expansion = std::min((static_cast<int>(data[mode_idx].size()) - 2) / 6, max_expansion_order);
             relevant_expansion = std::max(relevant_expansion, current_expansion);
-            l[mode_idx] = static_cast<std::uint8_t>(data[mode_idx][0]);
-            m[mode_idx] = static_cast<std::uint8_t>(data[mode_idx][1]);
+            lower[mode_idx] = static_cast<std::uint16_t>(data[mode_idx][0]);
+            upper[mode_idx] = static_cast<std::int16_t>(data[mode_idx][1]);
             weight[mode_idx] = static_cast<T>(data[mode_idx][2]);
             phase[mode_idx] = static_cast<T>(data[mode_idx][3]);
             for(int expansion_idx=0; expansion_idx<current_expansion; expansion_idx++){
@@ -815,19 +815,21 @@ struct BeamSpecification {
     std::string to_string() const {
         std::string s;
         for(int mode_idx=0; mode_idx<relevant_modes; mode_idx++){
-            s += std::format("{} ", l[mode_idx]);
-            s += std::format("{} ", m[mode_idx]);
-            s += std::format("{:.5g} ", weight[mode_idx]);
-            s += std::format("{:.5g} ", phase[mode_idx]);
+            s += std::format("{} ", lower[mode_idx]);
+            s += std::format("{} ", upper[mode_idx]);
+            s += std::format("{:.6g} ", weight[mode_idx]);
+            s += std::format("{:.6g}", phase[mode_idx]);
             for(int expansion_idx=0; expansion_idx < relevant_expansion; expansion_idx++){
-                s += std::format("{:.5g} ", 1e6 * waist[mode_idx][expansion_idx]);
-                s += std::format("{:.5g} ", rotation[mode_idx][expansion_idx]);
-                s += std::format("{:.5g} ", 1e6 * x_offset[mode_idx][expansion_idx]);
-                s += std::format("{:.5g} ", 1e6 * y_offset[mode_idx][expansion_idx]);
-                s += std::format("{:.5g} ", 1e6 * z_offset[mode_idx][expansion_idx]);
-                s += std::format("{:.5g} ", angle_x[mode_idx][expansion_idx]);
-                s += std::format("{:.5g};", angle_y[mode_idx][expansion_idx]);
+                s += " ";
+                s += std::format("{:.6g} ", 1e6 * waist[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", rotation[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", 1e6 * x_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", 1e6 * y_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", 1e6 * z_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", angle_x[mode_idx][expansion_idx]);
+                s += std::format("{:.6g}", angle_y[mode_idx][expansion_idx]);
             }
+            s += "; ";
         }
         return s;
     }

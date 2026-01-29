@@ -1984,15 +1984,15 @@ public:
             // in 2D mode, phi is not calculated or used
             case BeamBasis::laguerre:
                 mode_field *=
-                    deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, p->beam_spec.m[mode_index])
-                    * deviceFunctions::laguerre_prefactor(p->beam_spec.l[mode_index], p->beam_spec.m[mode_index])
-                    * deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz),p->beam_spec.m[mode_index], p->beam_spec.l[mode_index])
-                    * deviceLib::exp(deviceComplex(0.0f, p->beam_spec.m[mode_index] + 2 * p->beam_spec.l[mode_index]) * phi);
+                    deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, p->beam_spec.upper[mode_index])
+                    * deviceFunctions::laguerre_prefactor(p->beam_spec.lower[mode_index], static_cast<uint32_t>(abs(p->beam_spec.upper[mode_index])))
+                    * deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz), abs(p->beam_spec.upper[mode_index]), p->beam_spec.lower[mode_index])
+                    * deviceLib::exp(deviceComplex(0.0f, p->beam_spec.upper[mode_index] + 2 * p->beam_spec.lower[mode_index]) * phi);
                 break;
             case BeamBasis::hermite:
                 // in 2D mode, no use of m
-                mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.l[mode_index])
-                    * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.m[mode_index] + p->beam_spec.l[mode_index]) * phi));
+                mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.lower[mode_index])
+                    * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.lower[mode_index] + p->beam_spec.upper[mode_index]) * phi));
                 break;
             default:
                 break;
@@ -2141,20 +2141,20 @@ public:
                 {
                     deviceFP phi_coord = deviceFPLib::atan2(y,x);
                     mode_field *=
-                        deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, p->beam_spec.m[mode_index])
-                        * deviceFunctions::laguerre_prefactor(p->beam_spec.l[mode_index], p->beam_spec.m[mode_index])
-                        * deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz),p->beam_spec.m[mode_index], p->beam_spec.l[mode_index])
+                        deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, abs(p->beam_spec.upper[mode_index]))
+                        * deviceFunctions::laguerre_prefactor(p->beam_spec.lower[mode_index], static_cast<uint32_t>(abs(p->beam_spec.upper[mode_index])))
+                        * deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz), static_cast<uint32_t>(abs(p->beam_spec.upper[mode_index])), p->beam_spec.lower[mode_index])
                         * deviceLib::exp(deviceComplex(0.0f,
-                            p->beam_spec.m[mode_index] + 2 * p->beam_spec.l[mode_index] * gouy_phase
-                            + p->beam_spec.m[mode_index] * phi_coord));
+                            (abs(p->beam_spec.upper[mode_index]) + 2 * p->beam_spec.lower[mode_index]) * gouy_phase
+                            + p->beam_spec.upper[mode_index] * phi_coord));
 
                 }
                 break;
             case BeamBasis::hermite:
                 {
-                    mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * x/wz, p->beam_spec.l[mode_index])
-                        * deviceFunctions::hermite(sqrtTwo<deviceFP>() * y/wz, p->beam_spec.m[mode_index])
-                        * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.m[mode_index] + p->beam_spec.l[mode_index]) * gouy_phase));
+                    mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * x/wz, p->beam_spec.lower[mode_index])
+                        * deviceFunctions::hermite(sqrtTwo<deviceFP>() * y/wz, p->beam_spec.upper[mode_index])
+                        * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.lower[mode_index] + p->beam_spec.upper[mode_index]) * gouy_phase));
                 }
                 break;
             default:
