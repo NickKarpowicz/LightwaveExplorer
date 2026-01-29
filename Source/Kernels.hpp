@@ -1975,8 +1975,8 @@ public:
         const deviceFP phi = deviceFPLib::atan(z / zR);
         deviceComplex mode_field =
             deviceComplex(0.0f, 1.0f) *
-                (ko * (z - z_offset) + ko * r * r / (2.0f * Rz) - phi) -
-            r * r / (wz * wz) + mode_phase;
+                (ko * (z - z_offset) + ko * r * r / (2.0f * Rz) - phi + mode_phase) -
+            r * r / (wz * wz);
         mode_field = isComplexNaN(mode_field) ? deviceComplex{}
                               : (mode_weight * beamwaist / wz) * deviceLib::exp(mode_field);
 
@@ -2131,9 +2131,8 @@ public:
         deviceComplex mode_field = mode_weight * (beamwaist / wz) *
                            deviceLib::exp(deviceComplex(0.0f, 1.0f) *
                                               (ko * (z - z_offset) +
-                                               ko * r * r / (2.0f * Rz) - gouy_phase) -
-                                          r * r / (wz * wz)
-                                          + mode_phase);
+                                               ko * r * r / (2.0f * Rz) - gouy_phase + mode_phase) -
+                                          r * r / (wz * wz));
         mode_field = mode_field * specfac;
 
 
