@@ -802,13 +802,13 @@ struct BeamSpecification {
             weight[mode_idx] = static_cast<T>(data[mode_idx][2]);
             phase[mode_idx] = static_cast<T>(data[mode_idx][3]);
             for(int expansion_idx=0; expansion_idx<current_expansion; expansion_idx++){
-                waist[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 6*expansion_idx];
-                rotation[mode_idx][expansion_idx] = data[mode_idx][4 + 6*expansion_idx + 1];
-                x_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 6*expansion_idx+2];
-                y_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 6*expansion_idx+3];
-                z_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 6*expansion_idx+4];
-                angle_x[mode_idx][expansion_idx] = data[mode_idx][4 + 6*expansion_idx+5];
-                angle_y[mode_idx][expansion_idx] = data[mode_idx][4 + 6*expansion_idx+6];
+                waist[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 7*expansion_idx];
+                rotation[mode_idx][expansion_idx] = data[mode_idx][4 + 7*expansion_idx + 1];
+                x_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 7*expansion_idx+2];
+                y_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 7*expansion_idx+3];
+                z_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 7*expansion_idx+4];
+                angle_x[mode_idx][expansion_idx] = data[mode_idx][4 + 7*expansion_idx+5];
+                angle_y[mode_idx][expansion_idx] = data[mode_idx][4 + 7*expansion_idx+6];
             }
         }
     }
