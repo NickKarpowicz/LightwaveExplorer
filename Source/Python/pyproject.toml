@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "LightwaveExplorer"
-version = "2025.2.4"
+version = "2026.1"
 authors = [
     { name="Nick Karpowicz", email="nicholas.karpowicz@mpq.mpg.de" },
 ]

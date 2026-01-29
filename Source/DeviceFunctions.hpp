@@ -1,6 +1,10 @@
 #include "LightwaveExplorerTrilingual.h"
 
 namespace deviceFunctions {
+
+#include "Math/laguerre.hpp"
+#include "Math/hermite.hpp"
+
 // strict isnan for complex type
 deviceFunction static inline bool isComplexNaN(const deviceComplex &x) {
   return isnan(x.real()) || isnan(x.imag());

@@ -1,11 +1,11 @@
-brew install cmake ninja make pkgconfig libomp qt cairo fmt wget
+brew install cmake ninja make pkgconfig libomp qt cairo wget
 mkdir LightwaveExplorerBuild
 cd LightwaveExplorerBuild
 BASE_DIR=$(pwd)
 echo "Building fftw..."
 curl -O http://fftw.org/fftw-3.3.10.tar.gz >& /dev/null
 tar -xvf fftw-3.3.10.tar.gz >& /dev/null
-cd fftw-3.3.10 
+cd fftw-3.3.10
 curl -O https://raw.githubusercontent.com/andrej5elin/howto_fftw_apple_silicon/main/fftw-3-3-10-configure-diff.txt >& /dev/null
 patch configure fftw-3-3-10-configure-diff.txt >& /dev/null
 

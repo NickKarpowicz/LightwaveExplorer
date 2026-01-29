@@ -85,22 +85,9 @@ using CairoFunction = std::function<void(cairo_t*,int,int,LWEGui&)>;
 #endif
 #endif
 
-#if defined __linux__
-#include<fmt/format.h>
-#define Sformat fmt::format
-#define Svformat fmt::vformat
-#define Smake_format_args fmt::make_format_args
-#elif defined __APPLE__
-#include<fmt/format.h>
-#define Sformat fmt::format
-#define Svformat fmt::vformat
-#define Smake_format_args fmt::make_format_args
-#else
 #include <format>
-#define Sformat std::format
-#define Svformat std::vformat
-#define Smake_format_args std::make_format_args
-#endif
+
+
 
 std::string checkLibraryAvailability(simulationBatch& theSim);
 void setInterfaceValuesToActiveValues();
