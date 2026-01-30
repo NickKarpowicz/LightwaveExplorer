@@ -331,15 +331,23 @@ int loadWaveformFile(
 
 	//FFT the waveform onto a frequency grid
 	std::vector<std::complex<double>> fftOfEin(NfreqData + 1, 0.0);
-	fftw_plan fftwPlanD2Z = fftw_plan_dft_r2c_1d(
-		lineCount, Ein.data(),
-		reinterpret_cast<fftw_complex*>(fftOfEin.data()),
-		FFTW_ESTIMATE);
-	fftw_execute_dft_r2c(
-		fftwPlanD2Z,
-		Ein.data(),
-		reinterpret_cast<fftw_complex*>(fftOfEin.data()));
-	fftw_destroy_plan(fftwPlanD2Z);
+	// fftw_plan fftwPlanD2Z = fftw_plan_dft_r2c_1d(
+	// 	lineCount, Ein.data(),
+	// 	reinterpret_cast<fftw_complex*>(fftOfEin.data()),
+	// 	FFTW_ESTIMATE);
+	// fftw_execute_dft_r2c(
+	// 	fftwPlanD2Z,
+	// 	Ein.data(),
+	// 	reinterpret_cast<fftw_complex*>(fftOfEin.data()));
+	// fftw_destroy_plan(fftwPlanD2Z);
+	//
+	pocketfft::r2c(
+                        {lineCount},
+                        {sizeof(float)},
+                        {sizeof(std::complex<double>)},
+                        {0}, pocketfft::FORWARD,
+                        Ein.data(), fftOfEin.data(),
+                        1.0);
 
 	//apply a time shift so that the frequency-domain solution
 	//oscillates slowly (will be undone after interpolation)

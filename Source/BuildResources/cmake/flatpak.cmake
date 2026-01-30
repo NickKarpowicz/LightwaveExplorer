@@ -2,7 +2,7 @@ enable_language(CUDA)
 find_package(CUDAToolkit REQUIRED)
 
 if(NOT DEFINED USE_SYCL)
-    #Flatpak using CUDA, and CPU calculations with FFTs in MKL.
+    #Flatpak using CUDA
     #Current release version of the Flatpak.
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(CAIRO REQUIRED cairo)
@@ -10,11 +10,9 @@ if(NOT DEFINED USE_SYCL)
     set(CMAKE_AUTOMOC ON)
     find_package(OpenMP REQUIRED)
     find_package(TBB PATHS /app/opt/intel/oneapi/tbb/latest/lib/cmake REQUIRED)
-    find_package(MKL PATHS /app/opt/intel/oneapi/mkl/latest/lib/cmake)
     find_package(miniz)
     include_directories(${CUDA_INCLUDE_DIRS})
     include_directories(${Qt6_INCLUDE_DIRS})
-    include_directories(${MKL_ROOT}/include/fftw)
     include_directories(${MKL_ROOT}/include)
     include_directories(${CAIRO_INCLUDE_DIRS})
     add_definitions(-DLWEFLATPAK)
@@ -57,15 +55,7 @@ if(NOT DEFINED USE_SYCL)
     target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
     target_link_libraries(LightwaveExplorerNoCuda ${CAIRO_LIBRARIES})
     target_link_libraries(LightwaveExplorerNoCuda miniz::miniz)
-    target_link_libraries(LightwaveExplorerNoCuda -lm
-        -Wl,--start-group
-        ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a
-        ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a
-        ${MKL_ROOT}/lib/intel64/libmkl_core.a
-        -Wl,--end-group
-        ${MKL_ROOT}/../../compiler/latest/lib/libiomp5.a
-        )
-    target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
+
 
     install(TARGETS ${EXECUTABLE_NAME} LightwaveExplorerNoCuda DESTINATION bin)
     install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)

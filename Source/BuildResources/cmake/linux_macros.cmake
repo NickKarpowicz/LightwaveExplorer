@@ -138,38 +138,3 @@ macro(set_sycl_compile_flags)
         endif()
     endif()
 endmacro()
-
-macro(resolve_fft_library)
-    find_package(MKL QUIET)
-    if(MKL_FOUND)
-        find_package(TBB REQUIRED)
-        include_directories(${MKL_ROOT}/include/fftw)
-        set(USING_MKL True)
-        message("Using MKL for FFTs.")
-    else()
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(FFTW REQUIRED fftw3)
-        pkg_check_modules(FFTWF REQUIRED fftw3f)
-        include_directories(${FFTW_INCLUDE_DIRS})
-        link_directories(${FFTW_LIBRARY_DIRS})
-        set(USING_FFTW True)
-        add_definitions(-DUSEFFTW)
-        message("Using FFTW for FFTs.")
-    endif()
-endmacro()
-
-macro(link_fft_library FFT_TARGET)
-    if(USING_MKL)
-        target_link_libraries(${FFT_TARGET}
-            -Wl,--start-group
-            ${MKL_ROOT}/lib/intel64/libmkl_intel_ilp64.a
-            ${MKL_ROOT}/lib/intel64/libmkl_tbb_thread.a
-            ${MKL_ROOT}/lib/intel64/libmkl_core.a
-            -Wl,--end-group)
-        target_link_libraries(${FFT_TARGET} TBB::tbb)
-    elseif(USING_FFTW)
-        target_link_libraries(${FFT_TARGET} ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})
-    else()
-        message(FATAL_ERROR "Could not link because neither FFT library was found.")
-    endif()
-endmacro()

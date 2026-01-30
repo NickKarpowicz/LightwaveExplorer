@@ -1,11 +1,7 @@
 #include "LightwaveExplorerInterfaceClasses.hpp"
 #include "DataStructures.hpp"
 #include "LightwaveExplorerUtilities.h"
-#ifdef USEFFTW
-#include <fftw3.h>
-#else
-#include <fftw3_mkl.h>
-#endif
+#include "ExternalLibraries/pocketfft_hdronly.h"
 #include <algorithm>
 
 int simulationParameterSet::loadSavedFields(const std::string &outputBase,
@@ -39,24 +35,50 @@ int simulationParameterSet::loadSavedFields(const std::string &outputBase,
                  Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
   }
 
-  fftw_plan fftwPlanD2Z;
+  //fftw_plan fftwPlanD2Z;
   if (is3D) {
-    const int fftwSizes[] = {(int)Nspace2, (int)Nspace, (int)Ntime};
-    fftwPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, ExtOut, 0, 1,
-                                         (int)Ngrid, (fftw_complex *)EkwOut, 0,
-                                         1, (int)NgridC, FFTW_ESTIMATE);
-  } else {
-    const int fftwSizes[] = {(int)Nspace, (int)Ntime};
-    fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, ExtOut, 0, 1,
-                                         (int)Ngrid, (fftw_complex *)EkwOut, 0,
-                                         1, (int)NgridC, FFTW_ESTIMATE);
+      for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
+                    pocketfft::r2c(
+			            {Nspace2, Nspace, Ntime},
+						{sizeof(double) * Nspace * Ntime, sizeof(double)*Ntime, sizeof(double)},
+			            {sizeof(std::complex<double>) * Nspace * Nfreq, sizeof(std::complex<double>)*Nfreq, sizeof(std::complex<double>)},
+			            {0,1,2},
+						pocketfft::FORWARD,
+						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
+						1.0);
+					pocketfft::r2c(
+			            {Nspace2, Nspace, Ntime},
+						{sizeof(double) * Nspace * Ntime, sizeof(double)*Ntime, sizeof(double)},
+			            {sizeof(std::complex<double>) * Nspace * Nfreq, sizeof(std::complex<double>)*Nfreq, sizeof(std::complex<double>)},
+			            {0,1,2},
+						pocketfft::FORWARD,
+						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
+						1.0);
+        }
+  }
+  else{
+      for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
+                    pocketfft::r2c(
+			            {Nspace, Ntime},
+						{sizeof(double)*Ntime, sizeof(double)},
+			            {sizeof(std::complex<double>)*Nfreq, sizeof(std::complex<double>)},
+			            {0,1},
+						pocketfft::FORWARD,
+						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
+						1.0);
+					pocketfft::r2c(
+			            {Nspace, Ntime},
+						{sizeof(double)*Ntime, sizeof(double)},
+			            {sizeof(std::complex<double>)*Nfreq, sizeof(std::complex<double>)},
+			            {0,1},
+						pocketfft::FORWARD,
+						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
+						1.0);
+        }
   }
 
-  for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
-    fftw_execute_dft_r2c(fftwPlanD2Z, &ExtOut[2 * i * Ngrid],
-                         (fftw_complex *)&EkwOut[2 * i * NgridC]);
-  }
-  fftw_destroy_plan(fftwPlanD2Z);
+
+  //fftw_destroy_plan(fftwPlanD2Z);
 
   return 0;
 }
