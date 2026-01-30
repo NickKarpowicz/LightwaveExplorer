@@ -1,11 +1,9 @@
 deviceFunction static inline deviceFP laguerre_prefactor(uint32_t p, uint32_t l){
-    deviceFP product = 1.0;
+    deviceFP product = vPi<deviceFP>();
     for (unsigned int k = 1; k <= l; ++k) {
         product *= static_cast<deviceFP>(p + k);
     }
-    deviceFP divisor = vPi<deviceFP>() * product;
-    deviceFP ratio = 2.0 / divisor;
-    return deviceFPLib::sqrt(ratio);
+    return deviceFPLib::sqrt(2.0f/product);
 }
 
 deviceFunction static inline deviceFP generalized_laguerre(const deviceFP x, const uint32_t alpha, const uint32_t n){

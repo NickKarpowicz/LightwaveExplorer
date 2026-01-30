@@ -1984,7 +1984,7 @@ public:
             // in 2D mode, phi is not calculated or used
             case BeamBasis::laguerre:
                 mode_field *=
-                    deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, p->beam_spec.upper[mode_index])
+                    deviceFPLib::pow(deviceFPLib::abs(r) * sqrtTwo<deviceFP>() / wz, abs(p->beam_spec.upper[mode_index]))
                     * deviceFunctions::laguerre_prefactor(p->beam_spec.lower[mode_index], static_cast<uint32_t>(abs(p->beam_spec.upper[mode_index])))
                     * deviceFunctions::generalized_laguerre(2.0f * r * r / (wz * wz), abs(p->beam_spec.upper[mode_index]), p->beam_spec.lower[mode_index])
                     * deviceLib::exp(deviceComplex(0.0f, p->beam_spec.upper[mode_index] + 2 * p->beam_spec.lower[mode_index]) * phi);
