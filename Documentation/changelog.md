@@ -2,9 +2,11 @@
 New features:
 - Support for complex input beams, on either a Hermite-Gauss or Laguerre-Gauss basism with frequency-dependent beamwaist, rotation, 3D offset and angle.
 - offsetAperture() sequence function for including a non-centered iris
+
 Bug fixes:
 - Will load the last crystal in the database even if there isn't a newline at the end
 - Circular polarization settings are explained in the tooltip, and values of outside of -1..1 are no longer passed to the simulation with odd results
+
 Programming things:
 - The CPU FFT library was switched to PocketFFT. This leads to much better performance on the AMD systems I tested; slightly worse on Intel. However, it also makes maintenance and compiling much easier.
 
