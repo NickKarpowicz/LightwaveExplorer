@@ -275,10 +275,7 @@ public:
 	void fft(const void* input, void* output, deviceFFT type) override {
 			switch (type){
 			case deviceFFT::D2Z:
-    			std::for_each(
-    				std::execution::par,
-    				indices.begin(),
-    				indices.begin() + 2,
+			    deviceLaunch(2, 1,
     				[&](size_t i){
                         pocketfft::r2c(
                             shape_d2z,
@@ -292,10 +289,7 @@ public:
                 });
 				break;
 			case deviceFFT::Z2D:
-    			std::for_each(
-        				std::execution::par,
-        				indices.begin(),
-        				indices.begin() + 2,
+			    deviceLaunch(2,1,
         				[&](size_t i){
                    	pocketfft::c2r(
                         shape_d2z,
@@ -308,10 +302,7 @@ public:
                   		static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::D2Z_1D:
-                std::for_each(
-    				std::execution::par,
-    				indices.begin(),
-    				indices.begin() + 2 * (s->Nspace * s->Nspace2),
+			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
     				[&](size_t i){
                     pocketfft::r2c(
                         shape_1d,
@@ -324,10 +315,7 @@ public:
 
 				break;
 			case deviceFFT::Z2D_1D:
-			std::for_each(
-    				std::execution::par,
-    				indices.begin(),
-    				indices.begin() + 2 * (s->Nspace * s->Nspace2),
+			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
     				[&](size_t i){
                     pocketfft::c2r(shape_1d,
                         stride_1d_freq,
@@ -339,20 +327,17 @@ public:
                         static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::D2Z_Polarization:
-			std::for_each(
-    				std::execution::par,
-    				indices.begin(),
-    				indices.begin() + 2,
+			    deviceLaunch(2,1,
     				[&](size_t i){
-    			pocketfft::r2c(
-                    shape_d2z_double,
-                    stride_d2z_time,
-       	            stride_d2z_freq,
-           	        axes_d2z,
-    				pocketfft::FORWARD,
-    				(deviceFP*)input + i * s->Ngrid,
-    				(deviceComplex*)output + i * s->NgridC,
-    				static_cast<deviceFP>(1));});
+         			pocketfft::r2c(
+                        shape_d2z_double,
+                        stride_d2z_time,
+           	            stride_d2z_freq,
+               	        axes_d2z,
+        				pocketfft::FORWARD,
+        				(deviceFP*)input + i * s->Ngrid,
+        				(deviceComplex*)output + i * s->NgridC,
+        				static_cast<deviceFP>(1));});
 				break;
 			}
 	}
