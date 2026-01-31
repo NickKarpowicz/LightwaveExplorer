@@ -1,10 +1,11 @@
 #pragma once
 #include <string>
 #include <array>
-#include <vector>
 #include <fstream>
 #include <iostream>
 #include <complex>
+#include <cstdint>
+#include <format>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
@@ -12,6 +13,9 @@
 #include <unistd.h>
 #endif
 #include "LightwaveExplorerHelpers.h"
+
+template<typename T>
+concept FPType = std::same_as<T, float> || std::same_as<T, double>;
 
 //Forward declarations of interface classes
 class simulationParameterSet;
@@ -50,13 +54,13 @@ enum class copyType : int {
     OnDevice = 3
 };
 
-template <typename deviceFP>
+template <FPType T>
 class maxwellPoint {
 public:
-    deviceFP x{};
-    deviceFP y{};
-    deviceFP z{};
-    hostOrDevice inline deviceFP& operator()(const int index) {
+    T x{};
+    T y{};
+    T z{};
+    hostOrDevice inline T& operator()(const int index) {
         switch (index) {
         case 0: return x;
         case 1: return y;
@@ -65,199 +69,199 @@ public:
         }
     }
     hostOrDevice inline void operator+=(
-        const maxwellPoint<deviceFP>& other) {
+        const maxwellPoint<T>& other) {
         x += other.x;
         y += other.y;
         z += other.z;
     }
     hostOrDevice inline void operator-=(
-        const maxwellPoint<deviceFP>& other) {
+        const maxwellPoint<T>& other) {
         x -= other.x;
         y -= other.y;
         z -= other.z;
     }
     hostOrDevice inline void operator*=(
-        const maxwellPoint<deviceFP>& other) {
+        const maxwellPoint<T>& other) {
         x *= other.x;
         y *= other.y;
         z *= other.z;
     }
     hostOrDevice inline void operator/=(
-        const maxwellPoint<deviceFP>& other) {
+        const maxwellPoint<T>& other) {
         x /= other.x;
         y /= other.y;
         z /= other.z;
     }
 
     hostOrDevice inline void operator+=(
-        const deviceFP other) {
+        const T other) {
         x += other;
         y += other;
         z += other;
     }
     hostOrDevice inline void operator-=(
-        const deviceFP other) {
+        const T other) {
         x -= other;
         y -= other;
         z -= other;
     }
     hostOrDevice inline void operator*=(
-        const deviceFP other) {
+        const T other) {
         x *= other;
         y *= other;
         z *= other;
     }
     hostOrDevice inline void operator/=(
-        const deviceFP other) {
+        const T other) {
         x /= other;
         y /= other;
         z /= other;
     }
 
-    hostOrDevice inline maxwellPoint<deviceFP> operator*(
-        const maxwellPoint<deviceFP>& other) const {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline maxwellPoint<T> operator*(
+        const maxwellPoint<T>& other) const {
+        return maxwellPoint<T>{
                 x * other.x,
                 y * other.y,
                 z * other.z};
     }
-    hostOrDevice inline maxwellPoint<deviceFP> operator*(
-        const deviceFP other) const {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline maxwellPoint<T> operator*(
+        const T other) const {
+        return maxwellPoint<T>{
                 x * other,
                 y * other,
                 z * other};
     }
-    hostOrDevice inline friend maxwellPoint<deviceFP> operator*(const deviceFP a, const maxwellPoint<deviceFP>& b) {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline friend maxwellPoint<T> operator*(const T a, const maxwellPoint<T>& b) {
+        return maxwellPoint<T>{
                 a * b.x,
                 a * b.y,
                 a * b.z};
     }
 
-    hostOrDevice inline maxwellPoint<deviceFP> operator/(
-        const maxwellPoint<deviceFP>& other) const {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline maxwellPoint<T> operator/(
+        const maxwellPoint<T>& other) const {
+        return maxwellPoint<T>{
                 x / other.x,
                 y / other.y,
                 z / other.z};
     }
-    hostOrDevice inline maxwellPoint<deviceFP> operator/(
-        const deviceFP other) const {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline maxwellPoint<T> operator/(
+        const T other) const {
+        return maxwellPoint<T>{
                 x / other,
                 y / other,
                 z / other};
     }
-    hostOrDevice inline friend maxwellPoint<deviceFP> operator/(const deviceFP a, const maxwellPoint<deviceFP>& b) {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline friend maxwellPoint<T> operator/(const T a, const maxwellPoint<T>& b) {
+        return maxwellPoint<T>{
                 a / b.x,
                 a / b.y,
                 a / b.z};
     }
 
-    hostOrDevice inline maxwellPoint<deviceFP> operator+(
-        const maxwellPoint<deviceFP>& other) const {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline maxwellPoint<T> operator+(
+        const maxwellPoint<T>& other) const {
+        return maxwellPoint<T>{
                 x + other.x,
                 y + other.y,
                 z + other.z};
     }
-    hostOrDevice inline maxwellPoint<deviceFP> operator+(
-        const deviceFP other) const {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline maxwellPoint<T> operator+(
+        const T other) const {
+        return maxwellPoint<T>{
                 x + other,
                 y + other,
                 z + other};
     }
-    hostOrDevice inline friend maxwellPoint<deviceFP> operator+(const deviceFP a, const maxwellPoint<deviceFP>& b) {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline friend maxwellPoint<T> operator+(const T a, const maxwellPoint<T>& b) {
+        return maxwellPoint<T>{
                 a + b.x,
                 a + b.y,
                 a + b.z};
     }
 
-    hostOrDevice inline maxwellPoint<deviceFP> operator-(
-        const maxwellPoint<deviceFP>& other) const {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline maxwellPoint<T> operator-(
+        const maxwellPoint<T>& other) const {
+        return maxwellPoint<T>{
                 x - other.x,
                 y - other.y,
                 z - other.z};
     }
-    hostOrDevice inline maxwellPoint<deviceFP> operator-(
-        const deviceFP other) const {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline maxwellPoint<T> operator-(
+        const T other) const {
+        return maxwellPoint<T>{
                 x - other,
                 y - other,
                 z - other};
     }
-    hostOrDevice inline friend maxwellPoint<deviceFP> operator-(const deviceFP a, const maxwellPoint<deviceFP>& b) {
-        return maxwellPoint<deviceFP>{
+    hostOrDevice inline friend maxwellPoint<T> operator-(const T a, const maxwellPoint<T>& b) {
+        return maxwellPoint<T>{
                 a - b.x,
                 a - b.y,
                 a - b.z};
     }
 };
 
-template <typename deviceFP>
+template <typename T>
 class maxwellKPoint {
 public:
-    maxwellPoint<deviceFP> kE;
-    maxwellPoint<deviceFP> kH;
+    maxwellPoint<T> kE;
+    maxwellPoint<T> kH;
 };
 
-template <typename deviceFP>
+template <typename T>
 class oscillator {
 public:
-    maxwellPoint<deviceFP> J;
-    maxwellPoint<deviceFP> P;
+    maxwellPoint<T> J;
+    maxwellPoint<T> P;
 
     //note that I only defined the three operations I need rather than the
     //full set. Might be worth filling in everything later.
     hostOrDevice void operator+=(
-        const oscillator<deviceFP>& other) {
+        const oscillator<T>& other) {
         J += other.J;
         P += other.P;
     }
-    hostOrDevice inline oscillator<deviceFP> operator*(
-        const deviceFP other) const {
-        return oscillator<deviceFP>{
+    hostOrDevice inline oscillator<T> operator*(
+        const T other) const {
+        return oscillator<T>{
                 J * other,
                 P * other,
         };
     }
-    hostOrDevice inline oscillator<deviceFP> operator+(
-        const oscillator<deviceFP>& other) const {
-        return oscillator<deviceFP>{
+    hostOrDevice inline oscillator<T> operator+(
+        const oscillator<T>& other) const {
+        return oscillator<T>{
                 J + other.J,
                 P + other.P
         };
     }
 };
 
-template<typename deviceFP>
+template<FPType T>
 class PlasmaParameters{
     public:
-    deviceFP nonlinearAbsorption = {};
-    deviceFP bandgap = {};
-    deviceFP drudeGamma = {};
-    deviceFP effectiveMass = {};
-    deviceFP initialDensity = {};
-    deviceFP integrationFactor = {};
-    deviceFP energyFactor = {};
+    T nonlinearAbsorption = {};
+    T bandgap = {};
+    T drudeGamma = {};
+    T effectiveMass = {};
+    T initialDensity = {};
+    T integrationFactor = {};
+    T energyFactor = {};
     int fieldExponent = {};
 
     PlasmaParameters() = default;
 
-    template<typename otherFP>
+    template<FPType otherFP>
     PlasmaParameters(const PlasmaParameters<otherFP>& other){
-        nonlinearAbsorption = static_cast<deviceFP>(other.nonlinearAbsorption);
-        bandgap = static_cast<deviceFP>(other.bandgap);
-        drudeGamma = static_cast<deviceFP>(other.drudeGamma);
-        effectiveMass = static_cast<deviceFP>(other.effectiveMass);
-        initialDensity = static_cast<deviceFP>(other.initialDensity);
-        integrationFactor = static_cast<deviceFP>(other.integrationFactor);
-        energyFactor = static_cast<deviceFP>(other.energyFactor);
+        nonlinearAbsorption = static_cast<T>(other.nonlinearAbsorption);
+        bandgap = static_cast<T>(other.bandgap);
+        drudeGamma = static_cast<T>(other.drudeGamma);
+        effectiveMass = static_cast<T>(other.effectiveMass);
+        initialDensity = static_cast<T>(other.initialDensity);
+        integrationFactor = static_cast<T>(other.integrationFactor);
+        energyFactor = static_cast<T>(other.energyFactor);
         fieldExponent = other.fieldExponent;
     }
 };
@@ -278,76 +282,76 @@ class LWEDevice{
     virtual int deviceCalloc(void** ptr, size_t N, size_t elementSize) = 0;
     virtual void deviceMemset(void* ptr, int value, size_t count) = 0;
     virtual void deviceMemcpyImplementation(
-		void* dst, 
-		const void* src, 
-		size_t count, 
+		void* dst,
+		const void* src,
+		size_t count,
 		copyType kind) = 0;
     virtual void deviceFree(void* block) = 0;
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
     virtual void reset(simulationParameterSet* sCPU) = 0;
-    
+
     void deviceMemcpy(
-		void* dst, 
-		const void* src, 
-		size_t count, 
+		void* dst,
+		const void* src,
+		size_t count,
 		copyType kind) {
 			deviceMemcpyImplementation(dst, src, count, kind);
 	}
 
     void deviceMemcpy(
-		void* dst, 
-		void* src, 
-		size_t count, 
+		void* dst,
+		void* src,
+		size_t count,
 		copyType kind) {
             if(src==dst) return;
 			deviceMemcpyImplementation(dst, src, count, kind);
 	}
 
 	void deviceMemcpy(
-		double* dst, 
-		const float* src, 
-		size_t count, 
+		double* dst,
+		const float* src,
+		size_t count,
 		copyType kind) {
             float* copyBuffer = new float[count / sizeof(double)];
             deviceMemcpyImplementation(
-                static_cast<void*>(copyBuffer), 
-                static_cast<const void*>(src), 
-                count/2, 
+                static_cast<void*>(copyBuffer),
+                static_cast<const void*>(src),
+                count/2,
                 kind);
             for (size_t i = 0; i < count / sizeof(double); i++) {
                 dst[i] = copyBuffer[i];
             }
             delete[] copyBuffer;
 	}
-	
+
 	void deviceMemcpy(
-		float* dst, 
-		const double* src, 
-		size_t count, 
+		float* dst,
+		const double* src,
+		size_t count,
 		copyType kind) {
             float* copyBuffer = new float[count / sizeof(double)];
             for (size_t i = 0; i < count / sizeof(double); i++) {
                 copyBuffer[i] = (float)src[i];
             }
             deviceMemcpyImplementation(
-                static_cast<void*>(dst), 
-                static_cast<void*>(copyBuffer), 
-                count / 2, 
+                static_cast<void*>(dst),
+                static_cast<void*>(copyBuffer),
+                count / 2,
                 kind);
             delete[] copyBuffer;
 	}
 
     void deviceMemcpy(
-		std::complex<double>* dst, 
-		const std::complex<float>* src, 
-		size_t count, 
+		std::complex<double>* dst,
+		const std::complex<float>* src,
+		size_t count,
 		copyType kind) {
-		std::complex<float>* copyBuffer = 
+		std::complex<float>* copyBuffer =
 			new std::complex<float>[count / sizeof(std::complex<double>)];
 		deviceMemcpyImplementation(
-			static_cast<void*>(copyBuffer), 
-			static_cast<const void*>(src), 
-			count/2, 
+			static_cast<void*>(copyBuffer),
+			static_cast<const void*>(src),
+			count/2,
 			kind);
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
 			dst[i] = std::complex<double>(copyBuffer[i].real(), copyBuffer[i].imag());
@@ -356,21 +360,21 @@ class LWEDevice{
 	}
 
 	void deviceMemcpy(
-		std::complex<float>* dst, 
-		const std::complex<double>* src, 
-		size_t count, 
+		std::complex<float>* dst,
+		const std::complex<double>* src,
+		size_t count,
 		copyType kind) {
-		std::complex<float>* copyBuffer = 
+		std::complex<float>* copyBuffer =
 			new std::complex<float>[count / sizeof(std::complex<double>)];
-		
+
 		for (size_t i = 0; i < count / sizeof(std::complex<double>); i++) {
-			copyBuffer[i] = 
+			copyBuffer[i] =
 				std::complex<float>((float)src[i].real(), (float)src[i].imag());
 		}
 		deviceMemcpyImplementation(
-			static_cast<void*>(dst), 
-			static_cast<void*>(copyBuffer), 
-			count / 2, 
+			static_cast<void*>(dst),
+			static_cast<void*>(copyBuffer),
+			count / 2,
 			kind);
 		delete[] copyBuffer;
 	}
@@ -387,7 +391,7 @@ public:
     LWEBuffer(){}
     LWEBuffer(const LWEBuffer&) = delete;
     LWEBuffer& operator=(const LWEBuffer&) = delete;
-    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize = sizeof(T)) : 
+    LWEBuffer(LWEDevice* d, const size_t N, const size_t elementSize = sizeof(T)) :
     d(d),
     count(maxN(N,static_cast<size_t>(1))),
     bytes(count*elementSize)
@@ -397,7 +401,7 @@ public:
             throw std::runtime_error("Couldn't allocate enough memory.");
         }
     }
-    LWEBuffer(LWEDevice* d, const std::vector<T> v) : 
+    LWEBuffer(LWEDevice* d, const std::vector<T> v) :
     d(d),
     count(v.size()),
     bytes(count * sizeof(T)){
@@ -407,7 +411,7 @@ public:
         }
         d->deviceMemcpy(buffer, v.data(), count, copyType::ToDevice);
     }
-    
+
     ~LWEBuffer(){
         if(bytes) d->deviceFree(buffer);
     }
@@ -450,7 +454,7 @@ public:
 //with all of the platforms involved, and because it is transferred
 //to the device with a memcpy-like operation, so constructors
 //would not be called.
-template <typename deviceFP, typename deviceComplex>
+template <FPType T, typename deviceComplex>
 class deviceParameterSet {
 public:
     deviceComplex* workspace1 = 0;
@@ -472,32 +476,32 @@ public:
     deviceComplex* gridEFrequency1Next2 = 0;
     deviceComplex* gridPlasmaCurrentFrequency1 = 0;
     deviceComplex* gridPlasmaCurrentFrequency2 = 0;
-    deviceFP* gridBiaxialDelta = 0;
+    T* gridBiaxialDelta = 0;
     deviceComplex* chiLinear1 = 0;
     deviceComplex* chiLinear2 = 0;
-    deviceFP* inverseChiLinear1 = 0;
-    deviceFP* inverseChiLinear2 = 0;
-    deviceFP* fieldFactor1 = 0;
-    deviceFP* fieldFactor2 = 0;
+    T* inverseChiLinear1 = 0;
+    T* inverseChiLinear2 = 0;
+    T* fieldFactor1 = 0;
+    T* fieldFactor2 = 0;
     deviceComplex* k1 = 0;
     deviceComplex* k2 = 0;
     deviceComplex n0 = 0.0;
-    deviceFP* gridRadialLaplacian1 = 0;
-    deviceFP* gridRadialLaplacian2 = 0;
-    deviceFP* gridETime1 = 0;
-    deviceFP* gridETime2 = 0;
-    deviceFP* gridPolarizationTime1 = 0;
-    deviceFP* gridPolarizationTime2 = 0;
-    deviceFP* expGammaT = 0;
-    deviceFP* gridPlasmaCurrent1 = 0;
-    deviceFP* gridPlasmaCurrent2 = 0;
+    T* gridRadialLaplacian1 = 0;
+    T* gridRadialLaplacian2 = 0;
+    T* gridETime1 = 0;
+    T* gridETime2 = 0;
+    T* gridPolarizationTime1 = 0;
+    T* gridPolarizationTime2 = 0;
+    T* expGammaT = 0;
+    T* gridPlasmaCurrent1 = 0;
+    T* gridPlasmaCurrent2 = 0;
 
     //fixed length arrays
-    PlasmaParameters<deviceFP> plasmaParameters = {}; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma] 
-    deviceFP chi2Tensor[18] = { 0 };
-    deviceFP chi3Tensor[81] = { 0 };
-    deviceFP rotationForward[9] = { 0 };
-    deviceFP rotationBackward[9] = { 0 };
+    PlasmaParameters<T> plasmaParameters = {}; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma]
+    T chi2Tensor[18] = { 0 };
+    T chi3Tensor[81] = { 0 };
+    T rotationForward[9] = { 0 };
+    T rotationBackward[9] = { 0 };
     NonlinearPropertyFlags nonlinearSwitches{};
 
     bool isCylindric = 0;
@@ -512,18 +516,18 @@ public:
     int64_t Nspace2 = 0;
     int64_t Ngrid = 0;
     int64_t NgridC = 0;
-    deviceFP fftNorm = 0;
+    T fftNorm = 0;
     int axesNumber = 0;
     int sellmeierType = 0;
-    deviceFP crystalTheta;
-    deviceFP crystalPhi;
-    deviceFP f0 = 0;
-    deviceFP fStep = 0;
-    deviceFP dt = 0;
-    deviceFP dx = 0;
-    deviceFP dk1 = 0;
-    deviceFP dk2 = 0;
-    deviceFP h = 0;
+    T crystalTheta;
+    T crystalPhi;
+    T f0 = 0;
+    T fStep = 0;
+    T dt = 0;
+    T dx = 0;
+    T dk1 = 0;
+    T dk2 = 0;
+    T h = 0;
     int64_t Nsteps = 0;
     int Nthread = 0;
     int NblockC = 0;
@@ -578,7 +582,7 @@ public:
 
         if(!fs.is_open()){
             char pBuf[256];
-            int64_t len = sizeof(pBuf); 
+            int64_t len = sizeof(pBuf);
             int bytes = minN(readlink("/proc/self/exe", pBuf, len), len - 1);
             if(bytes >= 0)
                 pBuf[bytes] = '\0';
@@ -593,7 +597,7 @@ public:
                 path = databasePath;
             }
         }
-        
+
 #else
         std::ifstream fs("CrystalDatabase.txt");
 #endif
@@ -711,16 +715,130 @@ public:
                 fs >> newEntry.nonlinearReferenceFrequencies[k];
             }
             std::getline(fs, line);
-            std::getline(fs, line); //~~~crystal end~~~
             if(fs.good())db.push_back(newEntry);
+            std::getline(fs, line); //~~~crystal end~~~
         }
+    }
+};
+
+enum class BeamBasis {
+    laguerre,
+    hermite
+};
+
+template <FPType T, int number_of_modes, int max_expansion_order>
+struct BeamSpecification {
+    BeamBasis basis = BeamBasis::hermite;
+    int relevant_modes = 1;
+    int relevant_expansion = 1;
+    std::uint16_t lower[number_of_modes] = {};
+    std::int16_t upper[number_of_modes] = {};
+    T weight[number_of_modes] = { 1 };
+    T phase[number_of_modes] = {};
+    T waist[number_of_modes][max_expansion_order] = {};
+    T rotation[number_of_modes][max_expansion_order] = {};
+    T x_offset[number_of_modes][max_expansion_order] = {};
+    T y_offset[number_of_modes][max_expansion_order] = {};
+    T z_offset[number_of_modes][max_expansion_order] = {};
+    T angle_x[number_of_modes][max_expansion_order] = {};
+    T angle_y[number_of_modes][max_expansion_order] = {};
+
+    BeamSpecification() = default;
+
+    template<FPType otherFP>
+    BeamSpecification(const BeamSpecification<otherFP, number_of_modes, max_expansion_order>& other){
+        basis = other.basis;
+        relevant_modes = other.relevant_modes;
+        relevant_expansion = other.relevant_expansion;
+        for(int i = 0; i < number_of_modes; i++){
+            lower[i] = other.lower[i];
+            upper[i] = other.upper[i];
+            weight[i] = static_cast<T>(other.weight[i]);
+            phase[i] = static_cast<T>(other.phase[i]);
+            for(int j = 0; j< max_expansion_order; j++){
+                waist[i][j] = static_cast<T>(other.waist[i][j]);
+                rotation[i][j] = static_cast<T>(other.rotation[i][j]);
+                x_offset[i][j] = static_cast<T>(other.x_offset[i][j]);
+                y_offset[i][j] = static_cast<T>(other.y_offset[i][j]);
+                z_offset[i][j] = static_cast<T>(other.z_offset[i][j]);
+                angle_x[i][j] = static_cast<T>(other.angle_x[i][j]);
+                angle_y[i][j] = static_cast<T>(other.angle_x[i][j]);
+            }
+        }
+    }
+
+    template<FPType otherFP>
+    BeamSpecification& operator=(const BeamSpecification<otherFP, number_of_modes, max_expansion_order>& other){
+        basis = other.basis;
+        relevant_modes = other.relevant_modes;
+        relevant_expansion = other.relevant_expansion;
+        for(int i = 0; i < number_of_modes; i++){
+            lower[i] = other.lower[i];
+            upper[i] = other.upper[i];
+            weight[i] = static_cast<T>(other.weight[i]);
+            phase[i] = static_cast<T>(other.phase[i]);
+            for(int j = 0; j< max_expansion_order; j++){
+                waist[i][j] = static_cast<T>(other.waist[i][j]);
+                rotation[i][j] = static_cast<T>(other.rotation[i][j]);
+                x_offset[i][j] = static_cast<T>(other.x_offset[i][j]);
+                y_offset[i][j] = static_cast<T>(other.y_offset[i][j]);
+                z_offset[i][j] = static_cast<T>(other.z_offset[i][j]);
+                angle_x[i][j] = static_cast<T>(other.angle_x[i][j]);
+                angle_y[i][j] = static_cast<T>(other.angle_y[i][j]);
+            }
+        }
+    }
+
+    BeamSpecification(const std::string& descriptor, const BeamBasis b){
+        basis = b;
+        std::vector<std::vector<T>> data = parse_string_to_vecs<T>(descriptor);
+        relevant_modes = std::min(number_of_modes, static_cast<int>(data.size()));
+        //TODO: validation: should have minimum element number for valid beam
+        for(int mode_idx=0; mode_idx<relevant_modes; mode_idx++){
+            int current_expansion = std::min((static_cast<int>(data[mode_idx].size()) - 2) / 6, max_expansion_order);
+            relevant_expansion = std::max(relevant_expansion, current_expansion);
+            lower[mode_idx] = static_cast<std::uint16_t>(data[mode_idx][0]);
+            upper[mode_idx] = static_cast<std::int16_t>(data[mode_idx][1]);
+            weight[mode_idx] = static_cast<T>(data[mode_idx][2]);
+            phase[mode_idx] = static_cast<T>(data[mode_idx][3]);
+            for(int expansion_idx=0; expansion_idx<current_expansion; expansion_idx++){
+                waist[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 7*expansion_idx];
+                rotation[mode_idx][expansion_idx] = data[mode_idx][4 + 7*expansion_idx + 1];
+                x_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 7*expansion_idx+2];
+                y_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 7*expansion_idx+3];
+                z_offset[mode_idx][expansion_idx] = 1e-6f * data[mode_idx][4 + 7*expansion_idx+4];
+                angle_x[mode_idx][expansion_idx] = data[mode_idx][4 + 7*expansion_idx+5];
+                angle_y[mode_idx][expansion_idx] = data[mode_idx][4 + 7*expansion_idx+6];
+            }
+        }
+    }
+    std::string to_string() const {
+        std::string s;
+        for(int mode_idx=0; mode_idx<relevant_modes; mode_idx++){
+            s += std::format("{} ", lower[mode_idx]);
+            s += std::format("{} ", upper[mode_idx]);
+            s += std::format("{:.6g} ", weight[mode_idx]);
+            s += std::format("{:.6g}", phase[mode_idx]);
+            for(int expansion_idx=0; expansion_idx < relevant_expansion; expansion_idx++){
+                s += " ";
+                s += std::format("{:.6g} ", 1e6 * waist[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", rotation[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", 1e6 * x_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", 1e6 * y_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", 1e6 * z_offset[mode_idx][expansion_idx]);
+                s += std::format("{:.6g} ", angle_x[mode_idx][expansion_idx]);
+                s += std::format("{:.6g}", angle_y[mode_idx][expansion_idx]);
+            }
+            s += "; ";
+        }
+        return s;
     }
 };
 
 //templated class for describing a pulse in various floating point representations
 //copyable between representations (required for strict FP32 mode)
-template <typename T>
-class pulse {
+template <FPType T>
+class Pulse {
 public:
     T energy;
     T frequency;
@@ -732,17 +850,17 @@ public:
     T tod;
     int phaseMaterial;
     T phaseMaterialThickness;
-    T beamwaist;
-    T x0;
-    T y0;
-    T z0;
-    T beamAngle;
     T polarizationAngle;
-    T beamAnglePhi;
     T circularity;
     T pulseSum;
-
-    pulse() : energy(), 
+    BeamSpecification<T, 16, 4> beam_spec;
+    T beamwaist;
+    T x_offset;
+    T y_offset;
+    T z_offset;
+    T angle_x_offset;
+    T angle_y_offset;
+    Pulse() : energy(),
         frequency(),
         bandwidth(),
         sgOrder(),
@@ -752,18 +870,19 @@ public:
         tod(),
         phaseMaterial(),
         phaseMaterialThickness(),
-        beamwaist(),
-        x0(),
-        y0(),
-        z0(),
-        beamAngle(),
         polarizationAngle(),
-        beamAnglePhi(),
         circularity(),
-        pulseSum(){}
+        pulseSum(),
+        beam_spec(),
+        beamwaist(),
+        x_offset(),
+        y_offset(),
+        z_offset(),
+        angle_x_offset(),
+        angle_y_offset() {}
 
-    template<typename U>
-    pulse(pulse<U>& other) : energy((T)other.energy),
+    template<FPType U>
+    Pulse(Pulse<U>& other) : energy((T)other.energy),
         frequency((T)other.frequency),
         bandwidth((T)other.bandwidth),
         sgOrder(other.sgOrder),
@@ -773,18 +892,19 @@ public:
         tod((T)other.tod),
         phaseMaterial(other.phaseMaterial),
         phaseMaterialThickness((T)other.phaseMaterialThickness),
-        beamwaist((T)other.beamwaist),
-        x0((T)other.x0),
-        y0((T)other.y0),
-        z0((T)other.z0),
-        beamAngle((T)other.beamAngle),
         polarizationAngle((T)other.polarizationAngle),
-        beamAnglePhi((T)other.beamAnglePhi),
         circularity((T)other.circularity),
-        pulseSum((T)other.pulseSum) {}
+        pulseSum((T)other.pulseSum),
+        beam_spec(other.beam_spec),
+        beamwaist((T)other.beamwaist),
+        x_offset((T)other.x_offset),
+        y_offset((T)other.y_offset),
+        z_offset((T)other.z_offset),
+        angle_x_offset((T)other.angle_x_offset),
+        angle_y_offset((T)other.angle_y_offset) {}
 
-    template <typename U>
-    pulse& operator=(const pulse<U>& other) {
+    template <FPType U>
+    Pulse& operator=(const Pulse<U>& other) {
         energy = (T)other.energy;
         frequency = (T)other.frequency;
         bandwidth = (T)other.bandwidth;
@@ -795,17 +915,16 @@ public:
         tod = (T)other.tod;
         phaseMaterial = other.phaseMaterial;
         phaseMaterialThickness = (T)other.phaseMaterialThickness;
-        beamwaist = (T)other.beamwaist;
-        x0 = (T)other.x0;
-        y0 = (T)other.y0;
-        z0 = (T)other.z0;
-        beamAngle = (T)other.beamAngle;
         polarizationAngle = (T)other.polarizationAngle;
-        beamAnglePhi = (T)other.beamAnglePhi;
         circularity = (T)other.circularity;
         pulseSum = (T)other.pulseSum;
+        beam_spec = other.beam_spec;
+        beamwaist = (T)other.beamwaist;
+        x_offset = (T)other.x_offset;
+        y_offset = (T)other.y_offset;
+        z_offset = (T)other.z_offset;
+        angle_x_offset = (T)other.angle_x_offset;
+        angle_y_offset = (T)other.angle_y_offset;
         return *this;
     }
 };
-
-

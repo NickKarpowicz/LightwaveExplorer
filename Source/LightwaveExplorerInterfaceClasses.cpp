@@ -1,10 +1,8 @@
 #include "LightwaveExplorerInterfaceClasses.hpp"
+#include "DataStructures.hpp"
 #include "LightwaveExplorerUtilities.h"
-#ifdef USEFFTW
-#include <fftw3.h>
-#else
-#include <fftw3_mkl.h>
-#endif
+#include "ExternalLibraries/pocketfft_hdronly.h"
+#include <algorithm>
 
 int simulationParameterSet::loadSavedFields(const std::string &outputBase,
                                             bool isZipFile) {
@@ -37,25 +35,30 @@ int simulationParameterSet::loadSavedFields(const std::string &outputBase,
                  Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
   }
 
-  fftw_plan fftwPlanD2Z;
   if (is3D) {
-    const int fftwSizes[] = {(int)Nspace2, (int)Nspace, (int)Ntime};
-    fftwPlanD2Z = fftw_plan_many_dft_r2c(3, fftwSizes, 2, ExtOut, 0, 1,
-                                         (int)Ngrid, (fftw_complex *)EkwOut, 0,
-                                         1, (int)NgridC, FFTW_ESTIMATE);
-  } else {
-    const int fftwSizes[] = {(int)Nspace, (int)Ntime};
-    fftwPlanD2Z = fftw_plan_many_dft_r2c(2, fftwSizes, 2, ExtOut, 0, 1,
-                                         (int)Ngrid, (fftw_complex *)EkwOut, 0,
-                                         1, (int)NgridC, FFTW_ESTIMATE);
+      for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
+                    pocketfft::r2c(
+                        {static_cast<size_t>(Nspace2), static_cast<size_t>(Nspace), static_cast<size_t>(Ntime)},
+                        {static_cast<ptrdiff_t>(sizeof(double) * Nspace * Ntime), static_cast<ptrdiff_t>(sizeof(double)*Ntime), sizeof(double)},
+			            {static_cast<ptrdiff_t>(sizeof(std::complex<double>) * Nspace * Nfreq), static_cast<ptrdiff_t>(sizeof(std::complex<double>)*Nfreq), sizeof(std::complex<double>)},
+			            {0,1,2},
+						pocketfft::FORWARD,
+						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
+						1.0);
+        }
   }
-
-  for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
-    fftw_execute_dft_r2c(fftwPlanD2Z, &ExtOut[2 * i * Ngrid],
-                         (fftw_complex *)&EkwOut[2 * i * NgridC]);
+  else{
+      for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
+                    pocketfft::r2c(
+                        pocketfft::shape_t{static_cast<size_t>(Nspace), static_cast<size_t>(Ntime)},
+                        pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double)*Ntime), sizeof(double)},
+                        pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>)*Nfreq), sizeof(std::complex<double>)},
+			            {0,1},
+						pocketfft::FORWARD,
+						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
+						1.0);
+        }
   }
-  fftw_destroy_plan(fftwPlanD2Z);
-
   return 0;
 }
 
@@ -404,19 +407,22 @@ std::string simulationParameterSet::settingsString() {
      << '\x0A';
   fs << "Phase material thickness 2 (mcr.): " << pulse2.phaseMaterialThickness
      << '\x0A';
-  fs << "Beam mode placeholder: " << 0 << '\x0A';
+  fs << "Beam 1 description: " << pulse1.beam_spec.to_string() << '\x0A';
+  fs << "Beam 1 mode type: " << static_cast<int>(pulse1.beam_spec.basis) << '\x0A';
+  fs << "Beam 2 description: " << pulse2.beam_spec.to_string() << '\x0A';
+  fs << "Beam 2 mode type: " << static_cast<int>(pulse2.beam_spec.basis) << '\x0A';
   fs << "Beamwaist 1 (m): " << pulse1.beamwaist << '\x0A';
   fs << "Beamwaist 2 (m): " << pulse2.beamwaist << '\x0A';
-  fs << "x offset 1 (m): " << pulse1.x0 << '\x0A';
-  fs << "x offset 2 (m): " << pulse2.x0 << '\x0A';
-  fs << "y offset 1 (m): " << pulse1.y0 << '\x0A';
-  fs << "y offset 2 (m): " << pulse2.y0 << '\x0A';
-  fs << "z offset 1 (m): " << pulse1.z0 << '\x0A';
-  fs << "z offset 2 (m): " << pulse2.z0 << '\x0A';
-  fs << "NC angle 1 (rad): " << pulse1.beamAngle << '\x0A';
-  fs << "NC angle 2 (rad): " << pulse2.beamAngle << '\x0A';
-  fs << "NC angle phi 1 (rad): " << pulse1.beamAnglePhi << '\x0A';
-  fs << "NC angle phi 2 (rad): " << pulse2.beamAnglePhi << '\x0A';
+  fs << "x offset 1 (m): " << pulse1.x_offset << '\x0A';
+  fs << "x offset 2 (m): " << pulse2.x_offset << '\x0A';
+  fs << "y offset 1 (m): " << pulse1.y_offset << '\x0A';
+  fs << "y offset 2 (m): " << pulse2.y_offset << '\x0A';
+  fs << "z offset 1 (m): " << pulse1.z_offset << '\x0A';
+  fs << "z offset 2 (m): " << pulse2.z_offset << '\x0A';
+  fs << "NC angle 1 (rad): " << pulse1.angle_x_offset << '\x0A';
+  fs << "NC angle 2 (rad): " << pulse2.angle_x_offset << '\x0A';
+  fs << "NC angle phi 1 (rad): " << pulse1.angle_y_offset << '\x0A';
+  fs << "NC angle phi 2 (rad): " << pulse2.angle_y_offset << '\x0A';
   fs << "Polarization 1 (rad): " << pulse1.polarizationAngle << '\x0A';
   fs << "Polarization 2 (rad): " << pulse2.polarizationAngle << '\x0A';
   fs << "Circularity 1: " << pulse1.circularity << '\x0A';
@@ -482,7 +488,7 @@ std::string simulationParameterSet::settingsString() {
     }
     fs << '\x0A';
   }
-  fs << "Code version: 2025.6";
+  fs << "Code version: 2026.1";
   fs << '\x0A';
   return fs.str();
 }
@@ -561,22 +567,22 @@ void simulationParameterSet::setByNumber(const int64_t index,
     pulse2.beamwaist = value;
     return;
   case 19:
-    pulse1.x0 = value;
+    pulse1.x_offset = value;
     return;
   case 20:
-    pulse2.x0 = value;
+    pulse2.x_offset = value;
     return;
   case 21:
-    pulse1.z0 = value;
+    pulse1.z_offset = value;
     return;
   case 22:
-    pulse2.z0 = value;
+    pulse2.z_offset = value;
     return;
   case 23:
-    pulse1.beamAngle = value;
+    pulse1.angle_x_offset = value;
     return;
   case 24:
-    pulse2.beamAngle = value;
+    pulse2.angle_x_offset = value;
     return;
   case 25:
     pulse1.polarizationAngle = value;
@@ -585,10 +591,10 @@ void simulationParameterSet::setByNumber(const int64_t index,
     pulse2.polarizationAngle = value;
     return;
   case 27:
-    pulse1.circularity = value;
+    pulse1.circularity = std::clamp(value, -1.0, 1.0);
     return;
   case 28:
-    pulse2.circularity = value;
+    pulse2.circularity = std::clamp(value, -1.0, 1.0);
     return;
   case 29:
     crystalTheta = value;
@@ -639,6 +645,7 @@ int simulationParameterSet::readInputParametersFile(
     zipIntoMemory(filePath, textPath, dataVector);
     dataVector.push_back(0);
     contents = std::string(dataVector.data(), dataVector.size());
+
   } else {
     std::ifstream file(filePath);
     if (file.fail())
@@ -647,155 +654,127 @@ int simulationParameterSet::readInputParametersFile(
                            std::istreambuf_iterator<char>());
   }
 
-  std::string line;
-  std::stringstream fs(contents);
-  if (fs.fail())
-    return 1;
-
-  auto moveToColon = [&fs]() {
-    fs.ignore(std::numeric_limits<std::streamsize>::max(), ':');
+  // slower but more robust way of doing the file reading I was doing before.
+  auto find_label_get_double = [&contents](const std::string& label, double default_value=0.0){
+      auto pos = contents.find(label);
+      if(pos==std::string::npos) {
+          std::cout << label << " not found \n";
+          return default_value;
+      }
+      pos += label.size();
+      const size_t number_start = contents.find_first_not_of(' ', contents.find(':', pos)+1);
+      const size_t line_end = contents.find_first_of('\n', pos);
+      auto number_view = std::string_view(contents).substr(number_start, line_end-number_start);
+      return std::stod(std::string(number_view)); //switched to stod because macos still doesn't support from_chars fully
   };
 
-  // Check if the next line in the stream contains the label expectedLabel
-  // followed by a colon if it does, return the number that follows as a number
-  // if there's no colon, or the label isn't what was expected,
-  // return the stream to the starting position and return the default value
-  auto checkLineName = [&fs](const std::string &expectedLabel,
-                             double defaultValue) {
-    std::string line;
-    std::streampos startingPosition = fs.tellg();
-    std::getline(fs, line);
-    std::size_t colon = line.find(':');
-    if (colon == std::string::npos) {
-      fs.seekg(startingPosition);
-      return defaultValue;
-    }
-    std::string label = line.substr(0, colon);
-    std::string value = line.substr(colon + 1);
-    std::size_t firstNonWhitespace = value.find_first_not_of(" \t");
-    if (firstNonWhitespace != std::string::npos && firstNonWhitespace != 0) {
-      value.erase(0, firstNonWhitespace);
-    }
-    value.erase(value.find_last_not_of(" \t") + 1);
-    if (label == expectedLabel) {
-      return std::stod(value);
-    }
-    fs.seekg(startingPosition);
-    return defaultValue;
+  auto find_label_get_string = [&contents](const std::string& label){
+      auto pos = contents.find(label);
+      if(pos==std::string::npos) {
+          std::cout << label << " not found \n";
+          return std::string("");
+      }
+      pos += label.size();
+      const size_t data_start = contents.find_first_not_of(' ', contents.find(':', pos)+1);
+      const size_t line_end = contents.find_first_of('\n', data_start);
+      return contents.substr(data_start, line_end-data_start);
   };
 
-  pulse1.energy = checkLineName("Pulse energy 1 (J)", 0.0);
-  pulse2.energy = checkLineName("Pulse energy 2 (J)", 0.0);
-  pulse1.frequency = checkLineName("Frequency 1 (Hz)", 0.0);
-  pulse2.frequency = checkLineName("Frequency 2 (Hz)", 0.0);
-  pulse1.bandwidth = checkLineName("Bandwidth 1 (Hz)", 0.0);
-  pulse2.bandwidth = checkLineName("Bandwidth 2 (Hz)", 0.0);
-  pulse1.sgOrder = checkLineName("SG order 1", 6);
-  pulse2.sgOrder = checkLineName("SG order 2", 6);
-  pulse1.cep = checkLineName("CEP 1 (rad)", 0.0);
-  pulse2.cep = checkLineName("CEP 2 (rad)", 0.0);
-  pulse1.delay = checkLineName("Delay 1 (s)", 0.0);
-  pulse2.delay = checkLineName("Delay 2 (s)", 0.0);
-  pulse1.gdd = checkLineName("GDD 1 (s^-2)", 0.0);
-  pulse2.gdd = checkLineName("GDD 2 (s^-2)", 0.0);
-  pulse1.tod = checkLineName("TOD 1 (s^-3)", 0.0);
-  pulse2.tod = checkLineName("TOD 2 (s^-3)", 0.0);
-  pulse1.phaseMaterial = checkLineName("Phase material 1 index", 0.0);
-  pulse2.phaseMaterial = checkLineName("Phase material 2 index", 0.0);
+  pulse1.energy = find_label_get_double("Pulse energy 1 (J)", 0.0);
+  pulse2.energy = find_label_get_double("Pulse energy 2 (J)", 0.0);
+  pulse1.frequency = find_label_get_double("Frequency 1 (Hz)", 0.0);
+  pulse2.frequency = find_label_get_double("Frequency 2 (Hz)", 0.0);
+  pulse1.bandwidth = find_label_get_double("Bandwidth 1 (Hz)", 0.0);
+  pulse2.bandwidth = find_label_get_double("Bandwidth 2 (Hz)", 0.0);
+  pulse1.sgOrder = find_label_get_double("SG order 1", 6);
+  pulse2.sgOrder = find_label_get_double("SG order 2", 6);
+  pulse1.cep = find_label_get_double("CEP 1 (rad)", 0.0);
+  pulse2.cep = find_label_get_double("CEP 2 (rad)", 0.0);
+  pulse1.delay = find_label_get_double("Delay 1 (s)", 0.0);
+  pulse2.delay = find_label_get_double("Delay 2 (s)", 0.0);
+  pulse1.gdd = find_label_get_double("GDD 1 (s^-2)", 0.0);
+  pulse2.gdd = find_label_get_double("GDD 2 (s^-2)", 0.0);
+  pulse1.tod = find_label_get_double("TOD 1 (s^-3)", 0.0);
+  pulse2.tod = find_label_get_double("TOD 2 (s^-3)", 0.0);
+  pulse1.phaseMaterial = find_label_get_double("Phase material 1 index", 0.0);
+  pulse2.phaseMaterial = find_label_get_double("Phase material 2 index", 0.0);
   pulse1.phaseMaterialThickness =
-      checkLineName("Phase material thickness 1 (mcr.)", 0.0);
+      find_label_get_double("Phase material thickness 1 (mcr.)", 0.0);
   pulse2.phaseMaterialThickness =
-      checkLineName("Phase material thickness 2 (mcr.)", 0.0);
-  checkLineName("Beam mode placeholder", 0.0);
-  pulse1.beamwaist = checkLineName("Beamwaist 1 (m)", 0.0);
-  pulse2.beamwaist = checkLineName("Beamwaist 2 (m)", 0.0);
-  pulse1.x0 = checkLineName("x offset 1 (m)", 0.0);
-  pulse2.x0 = checkLineName("x offset 2 (m)", 0.0);
-  pulse1.y0 = checkLineName("y offset 1 (m)", 0.0);
-  pulse2.y0 = checkLineName("y offset 2 (m)", 0.0);
-  pulse1.z0 = checkLineName("z offset 1 (m)", 0.0);
-  pulse2.z0 = checkLineName("z offset 2 (m)", 0.0);
-  pulse1.beamAngle = checkLineName("NC angle 1 (rad)", 0.0);
-  pulse2.beamAngle = checkLineName("NC angle 2 (rad)", 0.0);
-  pulse1.beamAnglePhi = checkLineName("NC angle phi 1 (rad)", 0.0);
-  pulse2.beamAnglePhi = checkLineName("NC angle phi 2 (rad)", 0.0);
-  pulse1.polarizationAngle = checkLineName("Polarization 1 (rad)", 0.0);
-  pulse2.polarizationAngle = checkLineName("Polarization 2 (rad)", 0.0);
-  pulse1.circularity = checkLineName("Circularity 1", 0.0);
-  pulse2.circularity = checkLineName("Circularity 2", 0.0);
-  materialIndex = checkLineName("Material index", 0.0);
-  materialIndexAlternate = checkLineName("Alternate material index", 0.0);
-  crystalTheta = checkLineName("Crystal theta (rad)", 0.0);
-  crystalPhi = checkLineName("Crystal phi (rad)", 0.0);
-  spatialWidth = checkLineName("Grid width (m)", 0.0);
-  spatialHeight = checkLineName("Grid height (m)", 0.0);
-  rStep = checkLineName("dx (m)", 0.0);
-  timeSpan = checkLineName("Time span (s)", 0.0);
-  tStep = checkLineName("dt (s)", 0.0);
-  crystalThickness = checkLineName("Thickness (m)", 0.0);
-  propagationStep = checkLineName("dz (m)", 0.0);
+      find_label_get_double("Phase material thickness 2 (mcr.)", 0.0);
+  pulse1.beamwaist = find_label_get_double("Beamwaist 1 (m)", 0.0);
+  pulse2.beamwaist = find_label_get_double("Beamwaist 2 (m)", 0.0);
+  pulse1.x_offset = find_label_get_double("x offset 1 (m)", 0.0);
+  pulse2.x_offset = find_label_get_double("x offset 2 (m)", 0.0);
+  pulse1.y_offset = find_label_get_double("y offset 1 (m)", 0.0);
+  pulse2.y_offset = find_label_get_double("y offset 2 (m)", 0.0);
+  pulse1.z_offset = find_label_get_double("z offset 1 (m)", 0.0);
+  pulse2.z_offset = find_label_get_double("z offset 2 (m)", 0.0);
+  const std::string spec1 = find_label_get_string("Beam 1 description");
+  if(spec1.empty()){
+      pulse1.beam_spec = BeamSpecification<double, 16, 4>();
+  }
+  else{
+      pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec1, static_cast<BeamBasis>(find_label_get_double("Beam 1 mode type", 1.0)));
+  }
+  const std::string spec2 = find_label_get_string("Beam 2 description");
+  if(spec2.empty()){
+      pulse2.beam_spec = BeamSpecification<double, 16, 4>();
+  }
+  else{
+      pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec2, static_cast<BeamBasis>(find_label_get_double("Beam 2 mode type", 1.0)));
+  }
+  pulse1.angle_x_offset = find_label_get_double("NC angle 1 (rad)", 0.0);
+  pulse2.angle_x_offset = find_label_get_double("NC angle 2 (rad)", 0.0);
+  pulse1.angle_y_offset = find_label_get_double("NC angle phi 1 (rad)", 0.0);
+  pulse2.angle_y_offset = find_label_get_double("NC angle phi 2 (rad)", 0.0);
+  pulse1.polarizationAngle = find_label_get_double("Polarization 1 (rad)", 0.0);
+  pulse2.polarizationAngle = find_label_get_double("Polarization 2 (rad)", 0.0);
+  pulse1.circularity = find_label_get_double("Circularity 1", 0.0);
+  pulse1.circularity = std::clamp(pulse1.circularity, -1.0, 1.0);
+  pulse2.circularity = find_label_get_double("Circularity 2", 0.0);
+  pulse2.circularity = std::clamp(pulse2.circularity, -1.0, 1.0);
+  materialIndex = find_label_get_double("Material index", 0.0);
+  materialIndexAlternate = find_label_get_double("Alternate material index", 0.0);
+  crystalTheta = find_label_get_double("Crystal theta (rad)", 0.0);
+  crystalPhi = find_label_get_double("Crystal phi (rad)", 0.0);
+  spatialWidth = find_label_get_double("Grid width (m)", 0.0);
+  spatialHeight = find_label_get_double("Grid height (m)", 0.0);
+  rStep = find_label_get_double("dx (m)", 0.0);
+  timeSpan = find_label_get_double("Time span (s)", 0.0);
+  tStep = find_label_get_double("dt (s)", 0.0);
+  crystalThickness = find_label_get_double("Thickness (m)", 0.0);
+  propagationStep = find_label_get_double("dz (m)", 0.0);
   nonlinearAbsorptionStrength =
-      checkLineName("Nonlinear absorption parameter", 0.0);
-  startingCarrierDensity = checkLineName("Initial carrier density (m^-3)", 0.0);
-  bandGapElectronVolts = checkLineName("Band gap (eV)", 0.0);
-  effectiveMass = checkLineName("Effective mass (relative)", 0.0);
-  drudeGamma = checkLineName("Drude gamma (Hz)", 0.0);
-  symmetryType = checkLineName("Propagation mode", 0.0);
-  batchIndex = checkLineName("Batch mode", 0.0);
-  batchDestination = checkLineName("Batch destination", 0.0);
-  Nsims = checkLineName("Batch steps", 0.0);
-  batchIndex2 = checkLineName("Batch mode 2", 0.0);
-  batchDestination2 = checkLineName("Batch destination 2", 0.0);
-  Nsims2 = checkLineName("Batch steps 2", 0.0);
+      find_label_get_double("Nonlinear absorption parameter", 0.0);
+  startingCarrierDensity = find_label_get_double("Initial carrier density (m^-3)", 0.0);
+  bandGapElectronVolts = find_label_get_double("Band gap (eV)", 0.0);
+  effectiveMass = find_label_get_double("Effective mass (relative)", 0.0);
+  drudeGamma = find_label_get_double("Drude gamma (Hz)", 0.0);
+  symmetryType = find_label_get_double("Propagation mode", 0.0);
+  batchIndex = find_label_get_double("Batch mode", 0.0);
+  batchDestination = find_label_get_double("Batch destination", 0.0);
+  Nsims = find_label_get_double("Batch steps", 0.0);
+  batchIndex2 = find_label_get_double("Batch mode 2", 0.0);
+  batchDestination2 = find_label_get_double("Batch destination 2", 0.0);
+  Nsims2 = find_label_get_double("Batch steps 2", 0.0);
 
-  moveToColon();
+  sequenceString = find_label_get_string("Sequence");
+  fittingString = find_label_get_string("Fitting");
+  fittingMode = static_cast<int>(find_label_get_double("Fitting mode"));
 
-  std::getline(fs, line);
-  if(line.length()>0) line.erase(line.begin());
+  outputBasePath = find_label_get_string("Output base path");
+  pulse1FileType = static_cast<int>(find_label_get_double("Field 1 from file type"));
+  pulse2FileType = static_cast<int>(find_label_get_double("Field 1 from file type"));
 
-  sequenceString = line;
+  std::string path = find_label_get_string("Field 1 file path");
+  pulse1LoadedData = loadedInputData(path);
 
-  moveToColon();
-  std::getline(fs, line);
 
-  if(line.length()>0) line.erase(line.begin());
-
-  fittingString = line;
-  moveToColon();
-  fs >> fittingMode;
-
-  moveToColon();
-  std::getline(fs, line);
-  if(line.length()>0) line.erase(line.begin());
-
-  outputBasePath = line;
-  moveToColon();
-  fs >> pulse1FileType;
-  moveToColon();
-  fs >> pulse2FileType;
-  moveToColon();
-  std::getline(fs, line);
-  if(line.length()>0) line.erase(line.begin());
-  removeCharacterFromString(line, '\r');
-  removeCharacterFromString(line, '\n');
-  pulse1LoadedData = loadedInputData(line);
-  moveToColon();
-  std::getline(fs, line);
-  if(line.length()>0) line.erase(line.begin());
-  removeCharacterFromString(line, '\r');
-  removeCharacterFromString(line, '\n');
-  pulse2LoadedData = loadedInputData(line);
-  moveToColon();
-  std::getline(fs, line);
-  if(line.length()>0) line.erase(line.begin());
-  removeCharacterFromString(line, '\r');
-  removeCharacterFromString(line, '\n');
-  fittingLoadedData = loadedInputData(line);
-
-  removeCharacterFromString(sequenceString, '\r');
-  removeCharacterFromString(sequenceString, '\n');
-  removeCharacterFromString(outputBasePath, '\r');
-  removeCharacterFromString(outputBasePath, '\n');
+  path = find_label_get_string("Field 2 file path");
+  pulse2LoadedData = loadedInputData(path);
+  path = find_label_get_string("Fitting reference file path");
+  fittingLoadedData = loadedInputData(path);
 
   // derived parameters and cleanup:
   sellmeierType = 0;
@@ -820,10 +799,14 @@ int simulationParameterSet::readInputParametersFile(
   is3D = symmetryType == 2 || symmetryType == 4;
   isFDTD = symmetryType == 3 || symmetryType == 4;
   if (isCylindric) {
-    pulse1.x0 = 0;
-    pulse2.x0 = 0;
-    pulse1.beamAngle = 0;
-    pulse2.beamAngle = 0;
+    pulse1.beam_spec.x_offset[0][0] = 0.0;
+    pulse2.beam_spec.x_offset[0][0] = 0.0;
+    pulse1.beam_spec.angle_x[0][0] = 0.0;
+    pulse2.beam_spec.angle_x[0][0] = 0.0;
+    pulse1.x_offset = 0.0;
+    pulse2.x_offset = 0.0;
+    pulse1.angle_x_offset = 0.0;
+    pulse2.angle_x_offset = 0.0;
   }
   if (is3D) {
     Ngrid = Ntime * Nspace * Nspace2;
@@ -851,10 +834,7 @@ int simulationParameterSet::readInputParametersFile(
   sellmeierType = crystalDatabasePtr[materialIndex].sellmeierType;
   axesNumber = crystalDatabasePtr[materialIndex].axisType;
 
-  if (fs.good())
-    return 61;
-  else
-    return -1;
+  return 61;
 }
 
 void simulationBatch::configure(bool allocateFields) {

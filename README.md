@@ -18,7 +18,7 @@ Tutorials on YouTube!
 
 ---
 ### Latest release: 2025.6 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/blob/master/Documentation/changelog.md))
-**Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
+**Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip) (note: if you use SYCL for GPU acceleration on intel, please use the newest [DPC++/C++ Compiler Runtime](https://www.intel.com/content/www/us/en/developer/tools/oneapi/runtime-versions-download.html); you don't need this if you're not using intel graphics).
 
 **Linux:**
 
@@ -38,7 +38,7 @@ Lightwave explorer is an open source nonlinear optics simulator, intended to be 
 
 <p style="text-align: center;"><img src="Documentation/Images/flatpakScreenshot.png"></p>
 
-The simulation was written CUDA in order to run quickly on modern graphics cards. I've subsequently generalized it so that it can be run in two other ways: SYCL on CPUs and Intel GPUs, and using OpenMP to run on CPUs. Accordingly, I hope that the results are fast enough that even complicated systems can be simulated within a human attention span.
+The simulation can make use of Nvidia or intel GPUs on Windows, and on Linux, Nvidia, AMD, and Intel. On all platforms, including Mac, it can also run on your CPU.
 
 ---
 
@@ -59,25 +59,14 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
 ---
 
   ### Publications
-  Lightwave Explorer has been used to perform the nonlinear optics simulations in the following papers!
-  - Maciej Kowalczyk, *et al.*, Ultra-CEP-stable single-cycle pulses at 2.2 µm. [*Optica* **10**, 801-811 (2023).](https://opg.optica.org/optica/fulltext.cfm?uri=optica-10-6-801)
-  - Najd Altwaijry, *et al.*, Broadband Photoconductive Sampling in Gallium Phosphide. [*Advanced Optical Materials* **11**, 2202994 (2023).](https://onlinelibrary.wiley.com/doi/full/10.1002/adom.202202994)
-  - Hadil Kassab, *et al.*, In-line synthesis of multi-octave phase-stable infrared light, [*Optics Express* **31**, 24862 (2023).](https://opg.optica.org/oe/fulltext.cfm?uri=oe-31-15-24862)
-
----
-  ### Installation on a Windows PC
-  Once you've downloaded the file from the latest release above, you should just unzip it and run the exe file inside.
-
-  If you want to use SYCL for propagation, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
-
-  The Python module for working with the results is [here](https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/LightwaveExplorer.py) in this repo; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder.
-
----
-### Installation on Mac
-
-Since Intel Macs are deprecated now, you'll need to [compile it](#compiling-on-mac) on your machine using the directions below. It's not hard, don't worry. I'm looking into ways that I can distribute a pre-compiled app that will run on Apple Silicon without paying them a yearly subscription (which I find offensive), so it might get easier if there's a solution.
-
-This version makes use of the FFTW library for Fourier transforms and is therefore released under the GNU Public License v3.
+  Lightwave Explorer has been used in the following papers!
+  - Christina Hofer, *et al.*, Linear field-resolved spectroscopy approaching ultimate detection sensitivity. [*Optics Express* **33**, 1-17 (2025)](https://opg.optica.org/oe/fulltext.cfm?uri=oe-33-1-1).
+  - Steffen Gommel *et al.*, Photonic time stretch fieldoscopy: single-shot electric field detection at near-petahertz bandwidth. [Arxiv arXiv:2512.03665](https://arxiv.org/abs/2512.03665).
+  - Tim Klee *et al.*, Efficient generation of femtosecond deep-ultraviolet pulses by single-focus cascaded second-harmonic conversion. [*Optics Express* **23**, 47840-47848 (2025)](https://opg.optica.org/oe/fulltext.cfm?uri=oe-33-23-47840).
+  - Benjamin T. Dewes, *et al.*, Fast ultraviolet-C photonics: generating and sensing laser pulses on femtosecond timescales. [*Light: Science & Applciations* **14**, 384 (2025).](https://www.nature.com/articles/s41377-025-02042-2).
+  - Maciej Kowalczyk, *et al.*, Ultra-CEP-stable single-cycle pulses at 2.2 µm. [*Optica* **10**, 801-811 (2023)](https://opg.optica.org/optica/fulltext.cfm?uri=optica-10-6-801).
+  - Najd Altwaijry, *et al.*, Broadband Photoconductive Sampling in Gallium Phosphide. [*Advanced Optical Materials* **11**, 2202994 (2023)](https://onlinelibrary.wiley.com/doi/full/10.1002/adom.202202994).
+  - Hadil Kassab, *et al.*, In-line synthesis of multi-octave phase-stable infrared light, [*Optics Express* **31**, 24862 (2023)](https://opg.optica.org/oe/fulltext.cfm?uri=oe-31-15-24862).
 
 ---
 
@@ -86,12 +75,6 @@ You will at least need the development versions of following installed: fmt, Qt,
 ```
 fmt-devel, qt6-qtbase-devel, cairo-devel, tbb-devel
 ```
-
-Next, you need a CPU-based FFT library, options are:
- - MKL from [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
- - [FFTW](http://fftw.org/)
-
-FFTW is likely available in your distribution, e.g. fftw-devel.
 
 Next, the basic command is to use cmake in the usual way:
 
@@ -143,7 +126,6 @@ cmake -DUSE_SYCL=1 -DCMAKE_CXX_COMPILER=icpx ..
 You can also use -DBACKEND_CUDA=1 to use SYCL on an Nvidia GPU.
 
 Additional compiler flags:
-  - USE_FFTW, set to 1 if it uses MKL and you don't want it to
   - CLI, set to 1 to build a command line version
 
 ---
@@ -188,9 +170,9 @@ This is now handled by a Github action - the recipie is in the file .github/work
 Thanks to the original authors for making their work available! They are all freely available, but of course have their own licenses .etc.
   - [Qt](https://qt.io): This is how the GUI is built in the newest version, and is why it should now use the native style on Windows, Mac, and Linux.
   - [NVIDIA CUDA](https://developer.nvidia.com/cuda-toolkit): This provides the basic CUDA runtime, compiler, and cuFFT, for running the simulations on NVIDIA GPUs, and is the basis of the fastest version of this code.
-  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html), specifically the [Math Kernel Library](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html#gs.cw3ci4): This is used for performing fast fourier transforms when running in CPU mode. The DPC++ compiler allows the program to run on both CPUs and a wider range of GPUs, including the integrated ones on Intel chips. I found that on my rather old laptop, SYCL on the GPU is several times faster than running on CPU, so it's useful even for systems without dedicated GPUs.
+  - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html): The DPC++ compiler allows the program to run on both CPUs and a wider range of GPUs, including the integrated ones on Intel chips. I found that on my rather old laptop, SYCL on the GPU is several times faster than running on CPU, so it's useful even for systems without dedicated GPUs. It also now will work with AMD graphics cards on Linux.
   - [Dlib](http://dlib.net/): This library is the basis of the optimization routines. I make use of the global optimization functions for the fitting/optimization modes. The library is [available on Github](https://github.com/davisking/dlib), and their excellent documentation and further information is on the [main project website](http://dlib.net/).
-  - [FFTW](https://www.fftw.org/): This is used for Fast Fourier Transforms in the GPL 3.0 version (i.e. the CPU-only Linux and Mac versions). On a given CPU this is on average the fastest FFT you can find.
+  - [PocketFFT](https://gitlab.mpcdf.mpg.de/mtr/pocketfft/-/tree/cpp) - this is what is used for the CPU-based Fourier transforms. It's a nice, fast, header-only library, and I strongly recommend it for C++ programs!
   - [miniz](https://github.com/richgel999/miniz): Nice and easy to use C library for making/reading .zip archives.
 
   ---
@@ -203,6 +185,6 @@ Thanks to the original authors for making their work available! They are all fre
 
   One is in c++, with multithreading done with either with OpenMP or using C++ parallel execution policies.
 
-  The other language is SYCL. This also allows the simulation to run on the CPU and should allow it to run on Intel's graphics cards, as well as the integrated graphics of many Intel CPUs, and GPUs from AMD.
+  The other language is SYCL. This also allows the simulation to run on the CPU and should allow it to run on Intel's graphics cards, as well as the integrated graphics of many Intel CPUs, and GPUs from AMD (Linux only).
 
   The different architectures are using the same algorithm, aside from small differences in their floating point math and intrinsic functions. So when I make changes or additions, there will never be any platform gaining over the other (again, reproducibility by anyone is part of the goals here).

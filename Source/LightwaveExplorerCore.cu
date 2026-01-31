@@ -149,16 +149,16 @@ namespace hostFunctions{
 
 	static int addPulseToFieldArrays(
 		ActiveDevice& d,
-		pulse<double>& pCPU,
+		Pulse<double>& pCPU,
 		const bool useLoadedField,
 		const std::complex<double>* loadedFieldIn) {
 		if(pCPU.energy == 0.0) return 0;
 		simulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		deviceParameterSet<deviceFP, deviceComplex>* scDevice = d.dParamsDevice;
-		pulse<deviceFP>* p;
-		d.deviceCalloc((void**)&p, 1, sizeof(pulse<deviceFP>));
-		pulse<deviceFP> devpCPU = pCPU;
+		Pulse<deviceFP>* p;
+		d.deviceCalloc((void**)&p, 1, sizeof(Pulse<deviceFP>));
+		Pulse<deviceFP> devpCPU = pCPU;
 
 		d.deviceMemcpy(
 			d.dParamsDevice,
@@ -213,7 +213,7 @@ namespace hostFunctions{
 		d.deviceMemcpy(
 			p,
 			&devpCPU,
-			sizeof(pulse<deviceFP>),
+			sizeof(Pulse<deviceFP>),
 			copyType::ToDevice);
 		if ((*sc).is3D) {
 			d.deviceLaunch(
@@ -777,7 +777,9 @@ namespace hostFunctions{
 		ActiveDevice& d,
 		const simulationParameterSet* sCPU,
 		const double diameter,
-		const double activationParameter) {
+		const double activationParameter,
+        const double x_offset=0.0,
+        const double y_offset=0.0) {
 		d.deviceMemcpy(
 			d.s->gridETime1,
 			(*sCPU).ExtOut,
@@ -788,10 +790,12 @@ namespace hostFunctions{
 		d.deviceLaunch(
 			d.s->Nblock,
 			d.s->Nthread,
-			apertureKernel{
+			ApertureKernel{
 				sDevice,
-				(deviceFP)(0.5 * diameter),
-				(deviceFP)(activationParameter) });
+				static_cast<deviceFP>(0.5 * diameter),
+				static_cast<deviceFP>(activationParameter),
+			    static_cast<deviceFP>(x_offset),
+				static_cast<deviceFP>(y_offset)});
 		d.deviceMemcpy(
 			(*sCPU).ExtOut,
 			d.s->gridETime1,
@@ -2298,6 +2302,16 @@ namespace hostFunctions{
 				parameters[1]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
+		case functionID("offsetAperture"):
+    		interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
+    		d.reset(sCPU);
+    		applyAperature(d, sCPU,
+    			parameters[0],
+    			parameters[1],
+                parameters[2],
+                parameters[3]);
+    		if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
+    		break;
 		case functionID("farFieldAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			(*sCPU).materialIndex = 0;
@@ -2429,7 +2443,7 @@ namespace hostFunctions{
 				2 * d.s->NgridC * sizeof(std::complex<double>),
 				copyType::ToDevice);
 
-			pulse<double> p;
+			Pulse<double> p;
 			p = sCPU->pulse1;
 			p.energy = parameters[0];
 			p.frequency = 1e12 * parameters[1];
@@ -2441,12 +2455,15 @@ namespace hostFunctions{
 			p.tod = 1e-45 * parameters[7];
 			p.phaseMaterial = (int)parameters[8];
 			p.phaseMaterialThickness = 1e-6 * parameters[9];
-			p.beamwaist = 1e-6 * parameters[10];
-			p.x0 = 1e-6 * parameters[11];
-			p.y0 = 1e-6 * parameters[12];
-			p.z0 = 1e-6 *parameters[13];
-			p.beamAngle = deg2Rad<deviceFP>() * parameters[14];
-			p.beamAnglePhi = deg2Rad<deviceFP>() * parameters[15];
+			p.beam_spec.relevant_modes = 1;
+			p.beam_spec.relevant_expansion = 1;
+			p.beam_spec.weight[0] = 1.0;
+			p.beam_spec.waist[0][0] = 1e-6 * parameters[10];
+			p.beam_spec.x_offset[0][0] = 1e-6 * parameters[11];
+			p.beam_spec.y_offset[0][0] = 1e-6 * parameters[12];
+			p.beam_spec.z_offset[0][0] = 1e-6 * parameters[13];
+			p.beam_spec.angle_x[0][0] = deg2Rad<deviceFP>() * parameters[14];
+			p.beam_spec.angle_y[0][0] = deg2Rad<deviceFP>() * parameters[15];
 			p.polarizationAngle = deg2Rad<deviceFP>() * parameters[16];
 			p.circularity = parameters[17];
 			(*sCPU).materialIndex = (int)parameters[18];

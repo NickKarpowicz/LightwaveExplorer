@@ -14,24 +14,7 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
-
-//temporary set of macros until std::format is on all platforms
-#if defined __linux__
-#include<fmt/format.h>
-#define Sformat fmt::format
-#define Svformat fmt::vformat
-#define Smake_format_args fmt::make_format_args
-#elif defined __APPLE__
-#include<fmt/format.h>
-#define Sformat fmt::format
-#define Svformat fmt::vformat
-#define Smake_format_args fmt::make_format_args
-#else
 #include <format>
-#define Sformat std::format
-#define Svformat std::vformat
-#define Smake_format_args std::make_format_args
-#endif
 
 //Limit the number of threads used to draw the interface if the processor supports a lot
 const int interfaceThreads =
@@ -398,7 +381,7 @@ class LweImage {
                 cairo_surface_finish(cSurface);
                 cairo_surface_destroy(cSurface);
                 auto pngString = encodeBase64(png);
-                std::string tag = Sformat(
+                std::string tag = std::format(
                     "<image x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" "
                     "preserveAspectRatio=\"none\" xlink:href=\"data:image/png;base64,{}\"/>",
                     x_offset,
@@ -558,11 +541,11 @@ public:
             SVGString.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
                 "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" "
                 "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
-            SVGString.append(Sformat("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
+            SVGString.append(std::format("<svg width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}"
                 "\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink="
                 "\"http://www.w3.org/1999/xlink\">\n",
                 width, height, width, height));
-            SVGString.append(Sformat("<rect fill=\"#{:x}{:x}{:x}\" stroke="
+            SVGString.append(std::format("<rect fill=\"#{:x}{:x}{:x}\" stroke="
                 "\"#000\" x=\"0\" y=\"0\" width=\"{}\" height=\"{}\"/>\n",
                 SVGh(backgroundColor.r), SVGh(backgroundColor.g), SVGh(backgroundColor.b), width, height));
         }
@@ -598,28 +581,28 @@ public:
 
         //lambdas for writing components of SVG file
         auto SVGstdline = [&]() {
-            if (makeSVG)SVGString.append(Sformat("<line x1=\"{}\" y1=\"{}\" "
+            if (makeSVG)SVGString.append(std::format("<line x1=\"{}\" y1=\"{}\" "
                 "x2=\"{}\" y2=\"{}\" stroke=\"#{:x}{:x}{:x}\" stroke-width=\"{}\"/>\n",
                 x1, y1, x2, y2,
                 currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
         };
 
         auto SVGstartPolyLine = [&]() {
-            SVGString.append(Sformat("<polyline points=\""));
+            SVGString.append(std::format("<polyline points=\""));
         };
 
         auto SVGendPolyLine = [&]() {
-            SVGString.append(Sformat("\" stroke=\"#{:x}{:x}{:x}\" stroke-width="
+            SVGString.append(std::format("\" stroke=\"#{:x}{:x}{:x}\" stroke-width="
                 "\"{}\" fill=\"none\"/>\n",
                 currentColor.rHex(), currentColor.gHex(), currentColor.bHex(), lineWidth));
         };
 
         auto SVGaddXYtoPolyLine = [&](const double a, const double b) {
-            SVGString.append(Sformat("{},{} ", a, b));
+            SVGString.append(std::format("{},{} ", a, b));
         };
 
         auto SVGstdcircle = [&]() {
-            if (makeSVG)SVGString.append(Sformat("<circle cx=\"{}\" cy=\"{}\" r=\"{}\""
+            if (makeSVG)SVGString.append(std::format("<circle cx=\"{}\" cy=\"{}\" r=\"{}\""
                 " stroke=\"none\" fill=\"#{:x}{:x}{:x}\" />\n",
                 x1, y1, radius,
                 currentColor.rHex(), currentColor.gHex(), currentColor.bHex()));
@@ -634,7 +617,7 @@ public:
         };
 
         auto SVGcentertext = [&]() {
-            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size=\"{}"
+            if (makeSVG)SVGString.append(std::format("<text font-family=\"Arial\" font-size=\"{}"
                 "\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" "
                 "text-anchor=\"middle\">\n{}\n</text>\n",
                 fontSize - 1,
@@ -647,7 +630,7 @@ public:
         auto SVGrighttext = [&]() {
             if (makeSVG){
                 cairo_text_extents(cr, messageBuffer.c_str(), &te);
-                SVGString.append(Sformat("<text font-family=\"Arial\" "
+                SVGString.append(std::format("<text font-family=\"Arial\" "
                     "font-size=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" "
                     "y=\"{}\">\n{}\n</text>\n",
                     fontSize - 1,
@@ -707,10 +690,10 @@ public:
                 }
             }
             if (std::abs(ytVal) > 10.0 || std::abs(ytVal) < 0.01) {
-                messageBuffer = Sformat("{:.2g}", ytVal);
+                messageBuffer = std::format("{:.2g}", ytVal);
             }
             else {
-                messageBuffer = Sformat("{:4.4g}", ytVal);
+                messageBuffer = std::format("{:4.4g}", ytVal);
             }
             if(messageBuffer=="0.0e+00") messageBuffer = "0 ";
             layoutLeft = axisLabelSpaceX;
@@ -731,7 +714,7 @@ public:
             layoutRight = height;
 
             cairoVerticalText();
-            if (makeSVG)SVGString.append(Sformat("<text font-family=\"Arial\" font-size"
+            if (makeSVG)SVGString.append(std::format("<text font-family=\"Arial\" font-size"
                 "=\"{}\" fill=\"#{:x}{:x}{:x}\" x=\"{}\" y=\"{}\" text-anchor="
                 "\"middle\" transform=\"translate({}, {}) rotate(-90)\">\n{}\n</text>\n",
                 fontSize,
@@ -755,7 +738,7 @@ public:
 
         //x-axis tick labels
         for (int i = 0; i < 3; ++i) {
-            messageBuffer.assign(Sformat("{:1.4g}", xTicks1[i]));
+            messageBuffer.assign(std::format("{:1.4g}", xTicks1[i]));
             if(messageBuffer=="0.0e+00") messageBuffer = "0";
             layoutLeft = axisSpaceX + 0.25 * width * (static_cast<int64_t>(i+1)) - 0.5 * axisSpaceX;
             layoutTop = height + 3;

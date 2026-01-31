@@ -60,7 +60,7 @@
 		#define renderVisualizationX renderVisualizationSYCLFP32
 	#endif
 #elif defined RUNSTEPCOUNTER
-	#include "Devices/LWEAciveDeviceCounter.h"
+	#include "Devices/LWEActiveDeviceCounter.h"
 	#define kernelNamespace CounterKernels
 	#define deviceFunction
 	typedef counterDevice<double, std::complex<double>> ActiveDevice;
@@ -70,7 +70,7 @@
 	#define solveNonlinearWaveEquationX solveNonlinearWaveEquationCounter
 	#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
 #else
-	#include "Devices/LWEActiveDeviceCPU.h"
+	#include "Devices/LWEActiveDeviceCPU_pfft.h"
 	namespace complexLib = std;
 	#define deviceFunction
 	#if LWEFLOATINGPOINT == 32

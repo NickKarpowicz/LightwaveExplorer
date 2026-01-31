@@ -1,18 +1,18 @@
 #include "LightwaveExplorerUtilities.h"
+#include "ExternalLibraries/pocketfft_hdronly.h"
 #include "LightwaveExplorerInterfaceClasses.hpp"
 #include "LightwaveExplorerInterfaceClasses.cpp"
 #include <iostream>
-#include <iomanip>
 #include <sstream>
-#include <filesystem>
+
 
 //remove whitespace and line breaks, except inside of protected blocks demarcated with characters in the
 //startChars and endChars strings
 //note that ANY character in the start or stop string will do.
 int removeCharacterFromStringSkippingChars(
-	std::string& s, 
-	const char removedChar, 
-	const std::string& startChars, 
+	std::string& s,
+	const char removedChar,
+	const std::string& startChars,
 	const std::string& endChars) {
 	bool removing = true;
 	for (std::size_t i = 0; i < s.length(); ++i) {
@@ -42,15 +42,15 @@ void stripLineBreaks(std::string& s) {
 }
 
 int interpretParameters(
-	const std::string& cc, 
-	const int numberParams, 
-	const double *iBlock, 
-	const double *vBlock, 
-	double *parameters, 
+	const std::string& cc,
+	const int numberParams,
+	const double *iBlock,
+	const double *vBlock,
+	double *parameters,
 	bool* defaultMask){
 		std::string arguments = cc.substr(cc.find_first_of('(')+1, std::string::npos);
 		// pattern: search for a , or ) depending on how many have been found
-		// and the value of numberParams. 
+		// and the value of numberParams.
 		// If an ) is encountered while searching for , throw "too few"
 		// If an , is encountered while searching for ) throw "too many"
 		int numberFound = 0;
@@ -119,8 +119,8 @@ std::size_t findParenthesesClosure(std::string& a){
 }
 
 double parameterStringToDouble(
-const std::string& ss, 
-	const double* iBlock, 
+const std::string& ss,
+	const double* iBlock,
 	const double* vBlock) {
 	std::vector<std::size_t> operatorTable;
 	std::vector<double> numberTable;
@@ -222,10 +222,10 @@ inline double cModulusSquared(const std::complex<double>& x) {
 }
 
 int loadFrogSpeck(
-	const loadedInputData& frogSpeckData, 
-	std::complex<double>* Egrid, 
-	const int64_t Ntime, 
-	const double fStep, 
+	const loadedInputData& frogSpeckData,
+	std::complex<double>* Egrid,
+	const int64_t Ntime,
+	const double fStep,
 	const double gateLevel) {
 	std::string line;
 	std::stringstream fs(frogSpeckData.fileContents);
@@ -233,7 +233,7 @@ int loadFrogSpeck(
 	double wavelength, R, phi, complexX, complexY, f, f0, f1;
 	double fmax{};
 
-	constexpr double cNanometers = 1e9 * lightC<double>(); 
+	constexpr double cNanometers = 1e9 * lightC<double>();
 	double df{};
 	double fmin{};
 	int currentRow{};
@@ -250,7 +250,7 @@ int loadFrogSpeck(
 
 		//get the complex field from the data
 		E.push_back(std::complex<double>(complexX, complexY));
-		//keep track of the frequency step of the grid 
+		//keep track of the frequency step of the grid
 		//(running sum, divide by number of rows at end to get average)
 		if (currentRow > 0) df += cNanometers / wavelength - fmax;
 
@@ -294,16 +294,16 @@ int loadFrogSpeck(
 }
 
 int loadWaveformFile(
-	const loadedInputData& waveformFile, 
+	const loadedInputData& waveformFile,
 	std::complex<double>* outputGrid,
-	const int64_t Ntime, 
+	const int64_t Ntime,
 	const double fStep) {
 	std::vector<double> Ein;
 	Ein.reserve(8192);
 	std::stringstream fs(waveformFile.fileContents);
 	std::string line;
 
-	//read the waveform file: assumption is that the first column 
+	//read the waveform file: assumption is that the first column
 	//is time and second is the waveform.
 	double dataT;
 	double dataE;
@@ -331,25 +331,23 @@ int loadWaveformFile(
 	const int64_t NfreqData = lineCount / 2 + 1;
 
 	//FFT the waveform onto a frequency grid
-	std::vector<std::complex<double>> fftOfEin(NfreqData + 1, 0.0);
-	fftw_plan fftwPlanD2Z = fftw_plan_dft_r2c_1d(
-		lineCount, Ein.data(), 
-		reinterpret_cast<fftw_complex*>(fftOfEin.data()), 
-		FFTW_ESTIMATE);
-	fftw_execute_dft_r2c(
-		fftwPlanD2Z, 
-		Ein.data(), 
-		reinterpret_cast<fftw_complex*>(fftOfEin.data()));
-	fftw_destroy_plan(fftwPlanD2Z);
+	std::vector<std::complex<double>> fftOfEin(NfreqData, 0.0);
+	pocketfft::r2c(
+                        {static_cast<size_t>(lineCount)},
+                        {sizeof(float)},
+                        {sizeof(std::complex<double>)},
+                        pocketfft::shape_t{0}, pocketfft::FORWARD,
+                        Ein.data(), fftOfEin.data(),
+                        1.0);
 
-	//apply a time shift so that the frequency-domain solution 
+	//apply a time shift so that the frequency-domain solution
 	//oscillates slowly (will be undone after interpolation)
-	const std::complex<double> timeShift = 
-		std::complex<double>(0.0, 1.0) * twoPi<double>() 
+	const std::complex<double> timeShift =
+		std::complex<double>(0.0, 1.0) * twoPi<double>()
 		* df * static_cast<double>(maxLoc) * dataDeltaT;
-	const std::complex<double> timeShiftResult = 
-		std::complex<double>(0.0, -1.0) * twoPi<double>() 
-		* static_cast<double>(maxLoc - lineCount/2) * dataDeltaT;
+	const std::complex<double> timeShiftResult =
+		std::complex<double>(0.0, -1.0) * twoPi<double>()
+		* (static_cast<double>(maxLoc) - static_cast<double>(lineCount)/2.0) * dataDeltaT;
 	for (int i = 0; i < NfreqData; i++) {
 		fftOfEin[i] *= std::exp(timeShift * static_cast<double>(i));
 	}
@@ -368,7 +366,7 @@ int loadWaveformFile(
 			double f0 = k0 * df;
 			double f1 = k1 * df;
 			//linear interpolation
-			outputGrid[i] = (fftOfEin[k0] * (f1 - f) + fftOfEin[k1] * (f - f0)) / df; 
+			outputGrid[i] = (fftOfEin[k0] * (f1 - f) + fftOfEin[k1] * (f - f0)) / df;
 			outputGrid[i] *= std::exp(timeShiftResult * f);
 		}
 	}
@@ -377,14 +375,14 @@ int loadWaveformFile(
 }
 
 int loadSavedGridFile(
-	const loadedInputData& file, 
-	std::vector<double>& outputGrid, 
+	const loadedInputData& file,
+	std::vector<double>& outputGrid,
 	const int64_t Ngrid) {
 	outputGrid.resize(Ngrid);
 	if (file.hasData) {
 		std::stringstream Efile(file.fileContents);
 		Efile.read(
-			reinterpret_cast<char*>(outputGrid.data()), 
+			reinterpret_cast<char*>(outputGrid.data()),
 			2 * Ngrid * sizeof(double));
 		return 0;
 	}
@@ -392,9 +390,9 @@ int loadSavedGridFile(
 }
 
 int loadSavedGridFileMultiple(
-	const loadedInputData& file, 
-	std::vector<double>& outputGrid, 
-	const int64_t Ngrid, 
+	const loadedInputData& file,
+	std::vector<double>& outputGrid,
+	const int64_t Ngrid,
 	const int64_t Nsims) {
 	outputGrid.resize(Ngrid * Nsims);
 	if (file.hasData) {

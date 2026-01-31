@@ -17,24 +17,7 @@
 #endif
 //GLOBAL VARIABLE: GTK MUTEX
 std::mutex GTKmutex;
-//temporary set of macros until std::format is on all platforms
-#if defined __linux__
-#include<fmt/format.h>
-#define Sformat fmt::format
-#define Svformat fmt::vformat
-#define Smake_format_args fmt::make_format_args
-#elif defined __APPLE__
-#include<fmt/format.h>
-#define Sformat fmt::format
-#define Svformat fmt::vformat
-#define Smake_format_args fmt::make_format_args
-#else
 #include <format>
-#define Sformat std::format
-#define Svformat std::vformat
-#define Smake_format_args std::make_format_args
-#endif
-
 #include "LightwaveExplorerPlots.h"
 
 class LweGuiElement {
@@ -213,13 +196,13 @@ public:
 
     void setToDouble(const double in) {
         std::unique_lock GTKlock(GTKmutex);
-        std::string s = Sformat(std::string_view("{:g}"), in);
+        std::string s = std::format(std::string_view("{:g}"), in);
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
         std::unique_lock GTKlock(GTKmutex);
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         GtkEntryBuffer* buf = gtk_entry_get_buffer(GTK_ENTRY(elementHandle));
         gtk_entry_buffer_set_text(buf, s.c_str(), (int)s.length());
     }
@@ -339,10 +322,10 @@ gboolean formatSequenceBuffer(gpointer data) {
             //spanning that is in the functions list.
             //color it if it is.
             for (auto j = i; j > 0; --j) {
-                if (j - 1 == 0 
-                    || s[j - 1] == ' ' 
-                    || s[j - 1] == '\n' 
-                    || s[j - 1] == ')' 
+                if (j - 1 == 0
+                    || s[j - 1] == ' '
+                    || s[j - 1] == '\n'
+                    || s[j - 1] == ')'
                     || s[j - 1] == '>') {
                     nameStart = j - ((j - 1) == 0);
                     if (std::find(
@@ -366,7 +349,7 @@ gboolean formatSequenceBuffer(gpointer data) {
             if (close == std::string::npos || close > nameStart) {
                 applyTag("error", i, i + 1);
             }
-            //if it's closed, paint ( and ) 
+            //if it's closed, paint ( and )
             //and paint special variables in argument
             else {
                 applyTag("parenthesis", i, i + 1);
@@ -432,12 +415,12 @@ public:
         gtk_text_buffer_create_tag(buf, "string", "foreground", "#FFAA00FF", NULL);
     }
     void init(
-        GtkWidget* grid, 
-        int x, 
-        int y, 
-        int width, 
-        int height, 
-        int minWidth, 
+        GtkWidget* grid,
+        int x,
+        int y,
+        int width,
+        int height,
+        int minWidth,
         int minHeight) {
         consoleText = gtk_text_view_new();
         elementHandle = gtk_scrolled_window_new();
@@ -461,7 +444,7 @@ public:
         GtkTextIter stop;
         gtk_text_buffer_get_start_iter(buf, &start);
         gtk_text_buffer_get_end_iter(buf, &stop);
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         gtk_text_buffer_insert_markup(buf, &stop, s.c_str(), -1);
         GTKlock.unlock();
         scrollToEnd();
@@ -469,16 +452,16 @@ public:
 
     template<typename... Args> void tPrint(std::string_view format, Args&&... args) {
         std::unique_lock GTKlock(GTKmutex);
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         textBuffer.append(s);
         hasNewText = true;
     }
     void scrollToEnd() {
         std::unique_lock GTKlock(GTKmutex);
         g_idle_add_full(
-            G_PRIORITY_DEFAULT_IDLE, 
-            scrollTextViewToEndHandler, 
-            elementHandle, 
+            G_PRIORITY_DEFAULT_IDLE,
+            scrollTextViewToEndHandler,
+            elementHandle,
             NULL);
     }
     void updateFromBuffer() {
@@ -522,7 +505,7 @@ public:
 
     template<typename... Args> void overwritePrint(std::string_view format, Args&&... args) {
         std::unique_lock GTKlock(GTKmutex);
-        std::string s = Svformat(format, Smake_format_args(args...));
+        std::string s = std::vformat(format, std::make_format_args(args...));
         gtk_text_buffer_set_text(buf, s.c_str(), (int)s.length());
         textBuffer.clear();
         GTKlock.unlock();
@@ -565,12 +548,12 @@ public:
 class LweButton : public LweGuiElement {
 public:
     void init(
-        const char* buttonName, 
-        GtkWidget* grid, 
-        int x, 
-        int y, 
-        int width, 
-        int height, 
+        const char* buttonName,
+        GtkWidget* grid,
+        int x,
+        int y,
+        int width,
+        int height,
         auto buttonFunction) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_button_new_with_label(buttonName);
@@ -582,13 +565,13 @@ public:
         setFunction(buttonFunction);
     }
     void init(
-        const char* buttonName, 
-        GtkWidget* grid, 
-        int x, 
-        int y, 
-        int width, 
-        int height, 
-        auto buttonFunction, 
+        const char* buttonName,
+        GtkWidget* grid,
+        int x,
+        int y,
+        int width,
+        int height,
+        auto buttonFunction,
         gpointer functionData) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_button_new_with_label(buttonName);
@@ -611,11 +594,11 @@ public:
 class LweCheckBox : public LweGuiElement {
 public:
     void init(
-        const char* buttonName, 
-        GtkWidget* grid, 
-        int x, 
-        int y, 
-        int width, 
+        const char* buttonName,
+        GtkWidget* grid,
+        int x,
+        int y,
+        int width,
         int height) {
         std::unique_lock GTKlock(GTKmutex);
         elementHandle = gtk_check_button_new_with_label(buttonName);
@@ -660,8 +643,8 @@ public:
         //make an array of pointers to c-strings for GTK
         std::vector<const char*> stringPointersForGTK;
         stringPointersForGTK.reserve(entryNames.size()+1);
-        std::transform(entryNames.begin(), entryNames.end(), 
-            std::back_inserter(stringPointersForGTK), 
+        std::transform(entryNames.begin(), entryNames.end(),
+            std::back_inserter(stringPointersForGTK),
             [](const std::string& s) {return s.c_str();});
         stringPointersForGTK.push_back(nullptr);
 
@@ -706,12 +689,12 @@ class LweWindow {
 public:
     GtkWidget* window = nullptr;
     void init(
-        GtkApplication* appHandle, 
-        const char* windowName, 
-        int width, 
+        GtkApplication* appHandle,
+        const char* windowName,
+        int width,
         int height) {
         std::unique_lock GTKlock(GTKmutex);
-        
+
         g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", true, NULL);
         GtkCssProvider* textProvider = gtk_css_provider_new();
 //override style more aggressively if it will be Adwaita
@@ -782,7 +765,7 @@ public:
         gtk_grid_set_column_spacing(GTK_GRID(consoleGrid), 1);
 
         gtk_window_set_child(GTK_WINDOW(window), bigGrid);
-        
+
         gtk_widget_set_hexpand(grid, false);
         gtk_widget_set_vexpand(grid, false);
         gtk_widget_set_halign(grid, GTK_ALIGN_END);
@@ -795,7 +778,7 @@ public:
 
         gtk_widget_set_hexpand(consoleControlsGrid, false);
         gtk_widget_set_halign(consoleControlsGrid, GTK_ALIGN_FILL);
-        
+
         gtk_widget_set_valign(consoleControlsSubgrid1, GTK_ALIGN_CENTER);
         gtk_widget_set_halign(consoleControlsSubgrid2, GTK_ALIGN_END);
         gtk_grid_attach(GTK_GRID(bigGrid), consoleGrid, 0, 1, 1, 1);
@@ -901,7 +884,7 @@ public:
         gtk_widget_set_margin_bottom(elementHandle, 0);
         GTKlock.unlock();
         setPosition(grid, x, y, width, height);
-        
+
     }
     int getIntValue() {
         std::unique_lock GTKlock(GTKmutex);
@@ -949,7 +932,7 @@ static void pathFromLoadDialogToStringCallback(GObject* gobject, GAsyncResult* r
     std::string& destinationPath = *reinterpret_cast <std::string*>(data);
     GError* error = nullptr;
     GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
-    
+
     if (error == nullptr) {
         destinationPath = std::string(g_file_get_path(file));
     }
@@ -996,7 +979,7 @@ void pathFromSaveDialog(LweTextBox& destinationPathBox) {
     GtkFileDialog* dialog = gtk_file_dialog_new();
     GListStore* filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
     GtkFileFilter* filter = gtk_file_filter_new();
-    
+
     gtk_file_filter_add_suffix(filter, "zip");
     gtk_file_filter_set_name(filter, "Compressed (.zip)");
     g_list_store_append(filters, filter);
@@ -1057,7 +1040,7 @@ static void loadDataCallback(GObject* gobject, GAsyncResult* result, gpointer da
     GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(gobject), result, &error);
     if (error == nullptr) {
         std::string path(g_file_get_path(file));
-        
+
         loadingFunction loadingFunctionPointer = reinterpret_cast<loadingFunction>(data);
         (loadingFunctionPointer)(path);
     }
