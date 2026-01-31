@@ -18,7 +18,7 @@ Tutorials on YouTube!
 
 ---
 ### Latest release: 2025.6 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/blob/master/Documentation/changelog.md))
-**Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip)
+**Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip) (note: if you use SYCL for GPU acceleration on intel, please use the newest [DPC++/C++ Compiler Runtime](https://www.intel.com/content/www/us/en/developer/tools/oneapi/runtime-versions-download.html); you don't need this if you're not using intel graphics).
 
 **Linux:**
 
@@ -38,7 +38,7 @@ Lightwave explorer is an open source nonlinear optics simulator, intended to be 
 
 <p style="text-align: center;"><img src="Documentation/Images/flatpakScreenshot.png"></p>
 
-The simulation was written CUDA in order to run quickly on modern graphics cards. I've subsequently generalized it so that it can be run in two other ways: SYCL on CPUs and Intel GPUs, and using OpenMP to run on CPUs. Accordingly, I hope that the results are fast enough that even complicated systems can be simulated within a human attention span.
+The simulation can make use of Nvidia or intel GPUs on Windows, and on Linux, Nvidia, AMD, and Intel. On all platforms, including Mac, it can also run on your CPU.
 
 ---
 
@@ -68,9 +68,9 @@ The simulation was written CUDA in order to run quickly on modern graphics cards
   ### Installation on a Windows PC
   Once you've downloaded the file from the latest release above, you should just unzip it and run the exe file inside.
 
-  If you want to use SYCL for propagation, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html).
+  If you want to use SYCL for propagation, you need to install the [Intel® oneAPI DPC++/C++ Compiler Runtime for Windows](https://www.intel.com/content/www/us/en/developer/tools/oneapi/runtime-versions-download.html).
 
-  The Python module for working with the results is [here](https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/LightwaveExplorer.py) in this repo; I'd recommend putting it somewhere in your Python path if you're going to work with it a lot, otherwise just copy it into your working folder.
+  The Python module for working with the results is on PyPI, called LightwaveExplorer, you can install it with pip or uv etc.
 
 ---
 ### Installation on Mac
@@ -86,12 +86,6 @@ You will at least need the development versions of following installed: fmt, Qt,
 ```
 fmt-devel, qt6-qtbase-devel, cairo-devel, tbb-devel
 ```
-
-Next, you need a CPU-based FFT library, options are:
- - MKL from [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
- - [FFTW](http://fftw.org/)
-
-FFTW is likely available in your distribution, e.g. fftw-devel.
 
 Next, the basic command is to use cmake in the usual way:
 
@@ -143,7 +137,6 @@ cmake -DUSE_SYCL=1 -DCMAKE_CXX_COMPILER=icpx ..
 You can also use -DBACKEND_CUDA=1 to use SYCL on an Nvidia GPU.
 
 Additional compiler flags:
-  - USE_FFTW, set to 1 if it uses MKL and you don't want it to
   - CLI, set to 1 to build a command line version
 
 ---
@@ -190,7 +183,7 @@ Thanks to the original authors for making their work available! They are all fre
   - [NVIDIA CUDA](https://developer.nvidia.com/cuda-toolkit): This provides the basic CUDA runtime, compiler, and cuFFT, for running the simulations on NVIDIA GPUs, and is the basis of the fastest version of this code.
   - [Intel OneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html), specifically the [Math Kernel Library](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html#gs.cw3ci4): This is used for performing fast fourier transforms when running in CPU mode. The DPC++ compiler allows the program to run on both CPUs and a wider range of GPUs, including the integrated ones on Intel chips. I found that on my rather old laptop, SYCL on the GPU is several times faster than running on CPU, so it's useful even for systems without dedicated GPUs.
   - [Dlib](http://dlib.net/): This library is the basis of the optimization routines. I make use of the global optimization functions for the fitting/optimization modes. The library is [available on Github](https://github.com/davisking/dlib), and their excellent documentation and further information is on the [main project website](http://dlib.net/).
-  - [FFTW](https://www.fftw.org/): This is used for Fast Fourier Transforms in the GPL 3.0 version (i.e. the CPU-only Linux and Mac versions). On a given CPU this is on average the fastest FFT you can find.
+  - [PocketFFT](https://gitlab.mpcdf.mpg.de/mtr/pocketfft/-/tree/cpp) - this is what is used for the CPU-based Fourier transforms. It's a nice, fast, header-only library, and I strongly recommend it for C++ programs!
   - [miniz](https://github.com/richgel999/miniz): Nice and easy to use C library for making/reading .zip archives.
 
   ---
