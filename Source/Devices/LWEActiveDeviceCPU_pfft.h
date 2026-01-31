@@ -169,8 +169,10 @@ private:
 	pocketfft::shape_t axes_d2z;
 	pocketfft::shape_t axes_1d;
 	pocketfft::stride_t stride_d2z_time;
+	pocketfft::stride_t stride_d2z_double_time;
 	pocketfft::stride_t stride_1d_time;
 	pocketfft::stride_t stride_d2z_freq;
+	pocketfft::stride_t stride_d2z_double_freq;
 	pocketfft::stride_t stride_1d_freq;
 
 
@@ -273,7 +275,7 @@ public:
 	}
 
 	void fft(const void* input, void* output, deviceFFT type) override {
-			switch (type){
+		switch (type){
 			case deviceFFT::D2Z:
 			    deviceLaunch(2, 1,
     				[&](size_t i){
@@ -312,7 +314,6 @@ public:
                         pocketfft::FORWARD,
                         (deviceFP *)input + i * s->Ntime, (deviceComplex *)output + i * s->Nfreq,
                         static_cast<deviceFP>(1));});
-
 				break;
 			case deviceFFT::Z2D_1D:
 			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
@@ -327,7 +328,7 @@ public:
                         static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::D2Z_Polarization:
-			    deviceLaunch(2,1,
+			    deviceLaunch(2 + 2 * s->hasPlasma,1,
     				[&](size_t i){
          			pocketfft::r2c(
                         shape_d2z_double,
@@ -335,28 +336,28 @@ public:
            	            stride_d2z_freq,
                	        axes_d2z,
         				pocketfft::FORWARD,
-        				(deviceFP*)input + i * s->Ngrid,
-        				(deviceComplex*)output + i * s->NgridC,
+        				(deviceFP*)input + i * 2 * s->Ngrid,
+        				(deviceComplex*)output + i * 2 * s->NgridC,
         				static_cast<deviceFP>(1));});
 				break;
 			}
 	}
 
 	void fftInitialize() {
-        size_t Nspace2 = static_cast<size_t>(s->Nspace2);
-        size_t Nspace = static_cast<size_t>(s->Nspace);
-        size_t Ntime = static_cast<size_t>(s->Ntime);
-        ptrdiff_t pNspace = static_cast<ptrdiff_t>(s->Nspace);
-        ptrdiff_t pNtime = static_cast<ptrdiff_t>(s->Ntime);
-        ptrdiff_t pNfreq = static_cast<ptrdiff_t>(s->Nfreq);
-        ptrdiff_t psizeFP = static_cast<ptrdiff_t>(sizeof(deviceFP));
-        ptrdiff_t psizeCP = static_cast<ptrdiff_t>(sizeof(deviceComplex));
-
+        const size_t Nspace2 = static_cast<size_t>(s->Nspace2);
+        const size_t Nspace = static_cast<size_t>(s->Nspace);
+        const size_t Ntime = static_cast<size_t>(s->Ntime);
+        const ptrdiff_t pNspace = static_cast<ptrdiff_t>(s->Nspace);
+        const ptrdiff_t pNtime = static_cast<ptrdiff_t>(s->Ntime);
+        const ptrdiff_t pNfreq = static_cast<ptrdiff_t>(s->Nfreq);
+        const ptrdiff_t psizeFP = static_cast<ptrdiff_t>(sizeof(deviceFP));
+        const ptrdiff_t psizeCP = static_cast<ptrdiff_t>(sizeof(deviceComplex));
         shape_1d = pocketfft::shape_t{Ntime} ;
         axes_1d = pocketfft::shape_t{0};
         stride_1d_freq = pocketfft::stride_t{psizeCP};
     	stride_1d_time = pocketfft::stride_t{psizeFP};
         shape_d2z_double = pocketfft::shape_t{2u * Nspace, Ntime};
+
         if(s->is3D){
         	shape_d2z = pocketfft::shape_t{Nspace2, Nspace, Ntime} ;
         	stride_d2z_time = pocketfft::stride_t{psizeFP * pNspace * pNtime, psizeFP*pNtime, psizeFP}  ;
@@ -369,7 +370,6 @@ public:
         	stride_d2z_freq = pocketfft::stride_t {psizeCP*pNfreq, psizeCP} ;
             axes_d2z = pocketfft::shape_t{0, 1};
     	}
-
 		configuredFFT = true;
 	}
 
