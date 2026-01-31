@@ -39,17 +39,9 @@ int simulationParameterSet::loadSavedFields(const std::string &outputBase,
   if (is3D) {
       for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
                     pocketfft::r2c(
-			            {Nspace2, Nspace, Ntime},
-						{sizeof(double) * Nspace * Ntime, sizeof(double)*Ntime, sizeof(double)},
-			            {sizeof(std::complex<double>) * Nspace * Nfreq, sizeof(std::complex<double>)*Nfreq, sizeof(std::complex<double>)},
-			            {0,1,2},
-						pocketfft::FORWARD,
-						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
-						1.0);
-					pocketfft::r2c(
-			            {Nspace2, Nspace, Ntime},
-						{sizeof(double) * Nspace * Ntime, sizeof(double)*Ntime, sizeof(double)},
-			            {sizeof(std::complex<double>) * Nspace * Nfreq, sizeof(std::complex<double>)*Nfreq, sizeof(std::complex<double>)},
+                        {static_cast<size_t>(Nspace2), static_cast<size_t>(Nspace), static_cast<size_t>(Ntime)},
+                        {static_cast<ptrdiff_t>(sizeof(double) * Nspace * Ntime), static_cast<ptrdiff_t>(sizeof(double)*Ntime), sizeof(double)},
+			            {static_cast<ptrdiff_t>(sizeof(std::complex<double>) * Nspace * Nfreq), static_cast<ptrdiff_t>(sizeof(std::complex<double>)*Nfreq), sizeof(std::complex<double>)},
 			            {0,1,2},
 						pocketfft::FORWARD,
 						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
@@ -59,17 +51,9 @@ int simulationParameterSet::loadSavedFields(const std::string &outputBase,
   else{
       for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
                     pocketfft::r2c(
-			            {Nspace, Ntime},
-						{sizeof(double)*Ntime, sizeof(double)},
-			            {sizeof(std::complex<double>)*Nfreq, sizeof(std::complex<double>)},
-			            {0,1},
-						pocketfft::FORWARD,
-						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],
-						1.0);
-					pocketfft::r2c(
-			            {Nspace, Ntime},
-						{sizeof(double)*Ntime, sizeof(double)},
-			            {sizeof(std::complex<double>)*Nfreq, sizeof(std::complex<double>)},
+                        pocketfft::shape_t{static_cast<size_t>(Nspace), static_cast<size_t>(Ntime)},
+                        pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(double)*Ntime), sizeof(double)},
+                        pocketfft::stride_t{static_cast<ptrdiff_t>(sizeof(std::complex<double>)*Nfreq), sizeof(std::complex<double>)},
 			            {0,1},
 						pocketfft::FORWARD,
 						&ExtOut[2 * i * Ngrid], &EkwOut[2 * i * NgridC],

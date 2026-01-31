@@ -342,7 +342,7 @@ int loadWaveformFile(
 	// fftw_destroy_plan(fftwPlanD2Z);
 	//
 	pocketfft::r2c(
-                        {lineCount},
+                        {static_cast<size_t>(lineCount)},
                         {sizeof(float)},
                         {sizeof(std::complex<double>)},
                         {0}, pocketfft::FORWARD,

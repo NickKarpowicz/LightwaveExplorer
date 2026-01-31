@@ -1,6 +1,5 @@
 #include "../LightwaveExplorerUtilities.h"
 #include "../LightwaveExplorerInterfaceClasses.hpp"
-
 #include "../ExternalLibraries/pocketfft_hdronly.h"
 #include <atomic>
 #include <thread>
@@ -264,23 +263,28 @@ public:
 	}
 
 	void fft(const void* input, void* output, deviceFFT type) override {
-		if (!configuredFFT) return;
+	    size_t Nspace2 = static_cast<size_t>(s->Nspace2);
+		size_t Nspace = static_cast<size_t>(s->Nspace);
+		size_t Ntime = static_cast<size_t>(s->Ntime);
+		size_t Nfreq = static_cast<size_t>(s->Nfreq);
+
+
 			switch (type){
 			case deviceFFT::D2Z:
 			    if(s->is3D){
 					pocketfft::r2c(
-			            {s->Nspace2, s->Nspace, s->Ntime},
-						{sizeof(deviceFP) * s->Nspace * s->Ntime, sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
-			            {sizeof(deviceComplex) * s->Nspace * s->Nfreq, sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
+			            {Nspace2, Nspace, Ntime},
+						{static_cast<ptrdiff_t>(sizeof(deviceFP) * Nspace * Ntime), static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
+			            {static_cast<ptrdiff_t>(sizeof(deviceComplex) * Nspace * Nfreq), static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
 			            {0,1,2},
 						pocketfft::FORWARD,
 						(deviceFP*)input,
 						(deviceComplex*)output,
 						cOne<deviceComplex>().real());
 					pocketfft::r2c(
-			            {s->Nspace2, s->Nspace, s->Ntime},
-						{sizeof(deviceFP) * s->Nspace * s->Ntime, sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
-			            {sizeof(deviceComplex) * s->Nspace * s->Nfreq, sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
+			            {Nspace2, Nspace, Ntime},
+			            {static_cast<ptrdiff_t>(sizeof(deviceFP) * Nspace * Ntime), static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
+                        {static_cast<ptrdiff_t>(sizeof(deviceComplex) * Nspace * Nfreq), static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
 			            {0,1,2},
 						pocketfft::FORWARD,
 						(deviceFP*)input + s->Ngrid,
@@ -289,18 +293,18 @@ public:
 				}
 			    else {
 							pocketfft::r2c(
-					            {s->Nspace, s->Ntime},
-								{sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
-					            {sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
+					            {Nspace, Ntime},
+								{static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
+					            {static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
 					            {0,1},
 								pocketfft::FORWARD,
 								(deviceFP*)input,
 								(deviceComplex*)output,
 								cOne<deviceComplex>().real());
 					pocketfft::r2c(
-			            {s->Nspace, s->Ntime},
-						{sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
-			            {sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
+			            {Nspace, Ntime},
+						{static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
+			            {static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
 			            {0,1},
 						pocketfft::FORWARD,
 						(deviceFP*)input + s->Ngrid,
@@ -312,18 +316,18 @@ public:
 			case deviceFFT::Z2D:
      			if(s->is3D){
                    	pocketfft::c2r(
-                            {s->Nspace2, s->Nspace, s->Ntime},
-        {sizeof(deviceComplex) * s->Nspace * s->Nfreq, sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
-                  		{sizeof(deviceFP) * s->Nspace * s->Ntime, sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
+                            {Nspace2, Nspace, Ntime},
+        {static_cast<ptrdiff_t>(sizeof(deviceComplex) * Nspace * Nfreq), static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
+                  		{static_cast<ptrdiff_t>(sizeof(deviceFP) * Nspace * Ntime), static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
                             {0,1,2},
                   		pocketfft::BACKWARD,
                   		(deviceComplex*)input,
                         (deviceFP*)output,
                   		cOne<deviceComplex>().real());
                     pocketfft::c2r(
-                            {s->Nspace2, s->Nspace, s->Ntime},
-                            {sizeof(deviceComplex) * s->Nspace * s->Nfreq, sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
-        {sizeof(deviceFP) * s->Nspace * s->Ntime, sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
+                            {Nspace2, Nspace, Ntime},
+                            {static_cast<ptrdiff_t>(sizeof(deviceComplex) * Nspace * Nfreq), static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
+        {static_cast<ptrdiff_t>(sizeof(deviceFP) * Nspace * Ntime), static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
                             {0,1,2},
                   		pocketfft::BACKWARD,
                   		(deviceComplex*)input + s->NgridC,
@@ -332,18 +336,18 @@ public:
                     }
                 else {
                    	pocketfft::c2r(
-                            {s->Nspace, s->Ntime},
-                            {sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
-                            {sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
+                            {Nspace, Ntime},
+                            {static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
+                            {static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
                             {0,1},
                   		pocketfft::BACKWARD,
                   		(deviceComplex*)input,
                   		(deviceFP*)output,
                   		cOne<deviceComplex>().real());
                     pocketfft::c2r(
-                            {s->Nspace, s->Ntime},
-                            {sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
-                            {sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
+                            {Nspace, Ntime},
+                            {static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
+                            {static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
                             {0,1},
                   		pocketfft::BACKWARD,
                   		(deviceComplex*)input + s->NgridC,
@@ -354,9 +358,9 @@ public:
 				//fftw_execute_dft_c2r(fftPlanZ2D, (deviceComplex*)input, (deviceFP*)output);
 				break;
 			case deviceFFT::D2Z_1D:
-                for (int64_t i{}; i < 2 * (s->Nspace * s->Nspace2); i++) {
+                for (int64_t i{}; i < 2 * (Nspace * Nspace2); i++) {
                     pocketfft::r2c(
-                        {s->Ntime},
+                        {Ntime},
                         {sizeof(deviceFP)},
                         {sizeof(deviceComplex)},
                         {0}, pocketfft::FORWARD,
@@ -368,7 +372,7 @@ public:
 				break;
 			case deviceFFT::Z2D_1D:
                 for (int64_t i{}; i < 2*(s->Nspace * s->Nspace2); i++) {
-                    pocketfft::c2r({s->Ntime}, {sizeof(deviceComplex)},
+                    pocketfft::c2r({Ntime}, {sizeof(deviceComplex)},
                         {sizeof(deviceFP)}, {0},
                         pocketfft::BACKWARD,
                         (deviceComplex *)input + i * s->Nfreq,
@@ -380,9 +384,9 @@ public:
 				break;
 			case deviceFFT::D2Z_Polarization:
     			pocketfft::r2c(
-    	            {2 * s->Nspace, s->Ntime},
-    				{sizeof(deviceFP)*s->Ntime, sizeof(deviceFP)},
-    	            {sizeof(deviceComplex)*s->Nfreq, sizeof(deviceComplex)},
+    	            {2 * Nspace, Ntime},
+    				{static_cast<ptrdiff_t>(sizeof(deviceFP)*Ntime), sizeof(deviceFP)},
+    	            {static_cast<ptrdiff_t>(sizeof(deviceComplex)*Nfreq), sizeof(deviceComplex)},
     	            {0,1},
     				pocketfft::FORWARD,
     				(deviceFP*)input,
