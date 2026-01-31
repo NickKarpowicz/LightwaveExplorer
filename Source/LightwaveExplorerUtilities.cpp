@@ -331,17 +331,7 @@ int loadWaveformFile(
 	const int64_t NfreqData = lineCount / 2 + 1;
 
 	//FFT the waveform onto a frequency grid
-	std::vector<std::complex<double>> fftOfEin(NfreqData + 1, 0.0);
-	// fftw_plan fftwPlanD2Z = fftw_plan_dft_r2c_1d(
-	// 	lineCount, Ein.data(),
-	// 	reinterpret_cast<fftw_complex*>(fftOfEin.data()),
-	// 	FFTW_ESTIMATE);
-	// fftw_execute_dft_r2c(
-	// 	fftwPlanD2Z,
-	// 	Ein.data(),
-	// 	reinterpret_cast<fftw_complex*>(fftOfEin.data()));
-	// fftw_destroy_plan(fftwPlanD2Z);
-	//
+	std::vector<std::complex<double>> fftOfEin(NfreqData, 0.0);
 	pocketfft::r2c(
                         {static_cast<size_t>(lineCount)},
                         {sizeof(float)},
@@ -357,7 +347,7 @@ int loadWaveformFile(
 		* df * static_cast<double>(maxLoc) * dataDeltaT;
 	const std::complex<double> timeShiftResult =
 		std::complex<double>(0.0, -1.0) * twoPi<double>()
-		* static_cast<double>(maxLoc - lineCount/2) * dataDeltaT;
+		* (static_cast<double>(maxLoc) - static_cast<double>(lineCount)/2.0) * dataDeltaT;
 	for (int i = 0; i < NfreqData; i++) {
 		fftOfEin[i] *= std::exp(timeShift * static_cast<double>(i));
 	}

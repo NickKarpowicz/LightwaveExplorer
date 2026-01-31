@@ -1,7 +1,7 @@
-deviceFunction static inline constexpr deviceFP hermite(const deviceFP x, uint32_t n){
+deviceFunction static inline constexpr deviceFP hermite(const deviceFP x, const uint32_t n){
     switch(n){
         case 0u: return 1.0f;
-        case 1u: return 2.0f*x;
+        case 1u: return 2.0f * x;
         case 2u: return 4.0f * x * x - 2.0f;
         case 3u: return 8.0f * x * x * x - 12.0f * x;
         default: {

@@ -3,6 +3,7 @@
 #include "LightwaveExplorerTrilingual.h"
 #include "MaxwellDeviceFunctions.hpp"
 #include <cmath>
+#include <cstdint>
 
 using namespace deviceFunctions;
 namespace kernelNamespace {
@@ -1994,8 +1995,6 @@ public:
                 mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.lower[mode_index])
                     * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.lower[mode_index] + p->beam_spec.upper[mode_index]) * phi));
                 break;
-            default:
-                break;
         }
         total_field += mode_field * p->beam_spec.weight[mode_index];
         net_r += r * p->beam_spec.weight[mode_index];
@@ -2153,11 +2152,9 @@ public:
             case BeamBasis::hermite:
                 {
                     mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * x/wz, p->beam_spec.lower[mode_index])
-                        * deviceFunctions::hermite(sqrtTwo<deviceFP>() * y/wz, p->beam_spec.upper[mode_index])
-                        * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.lower[mode_index] + p->beam_spec.upper[mode_index]) * gouy_phase));
+                        * deviceFunctions::hermite(sqrtTwo<deviceFP>() * y/wz, static_cast<uint32_t>(abs(p->beam_spec.upper[mode_index])))
+                        * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.lower[mode_index] + abs(p->beam_spec.upper[mode_index])) * gouy_phase));
                 }
-                break;
-            default:
                 break;
         }
         if (isComplexNaN(mode_field) || f <= 0.0f) {
@@ -2165,10 +2162,6 @@ public:
         }
         total_field += mode_field * p->beam_spec.weight[mode_index];
     }
-
-
-
-
 
     field[i] = deviceComplex(deviceFPLib::cos((*p).polarizationAngle),
                              -(*p).circularity *
@@ -2183,8 +2176,6 @@ public:
         (modulusSquared(field[i]) + modulusSquared(field[i + (*s).NgridC]));
     pointEnergy *= constProd(lightC<deviceFP>() * eps0<deviceFP>(), 2) *
                    (*s).dx * (*s).dx * (*s).dt;
-
-    // factor 2 accounts for the missing negative frequency plane
     atomicAdd(pulseSum, pointEnergy);
   }
 };

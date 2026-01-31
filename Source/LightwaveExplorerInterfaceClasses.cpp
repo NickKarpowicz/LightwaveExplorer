@@ -35,7 +35,6 @@ int simulationParameterSet::loadSavedFields(const std::string &outputBase,
                  Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
   }
 
-  //fftw_plan fftwPlanD2Z;
   if (is3D) {
       for (int64_t i = 0; i < (Nsims * Nsims2); i++) {
                     pocketfft::r2c(
@@ -60,10 +59,6 @@ int simulationParameterSet::loadSavedFields(const std::string &outputBase,
 						1.0);
         }
   }
-
-
-  //fftw_destroy_plan(fftwPlanD2Z);
-
   return 0;
 }
 

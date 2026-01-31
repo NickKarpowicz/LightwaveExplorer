@@ -1,6 +1,6 @@
 ### Changes in 2026.1
 New features:
-- Support for complex input beams, on either a Hermite-Gauss or Laguerre-Gauss basism with frequency-dependent beamwaist, rotation, 3D offset and angle.
+- Support for complex input beams, on either a Hermite-Gauss or Laguerre-Gauss basis with frequency-dependent beamwaist, rotation, 3D offset and angle.
 - offsetAperture() sequence function for including a non-centered iris
 
 Bug fixes:
