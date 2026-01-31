@@ -1,4 +1,5 @@
 #include "LightwaveExplorerUtilities.h"
+#include "ExternalLibraries/pocketfft_hdronly.h"
 #include "LightwaveExplorerInterfaceClasses.hpp"
 #include "LightwaveExplorerInterfaceClasses.cpp"
 #include <iostream>
@@ -345,7 +346,7 @@ int loadWaveformFile(
                         {static_cast<size_t>(lineCount)},
                         {sizeof(float)},
                         {sizeof(std::complex<double>)},
-                        {0}, pocketfft::FORWARD,
+                        pocketfft::shape_t{0}, pocketfft::FORWARD,
                         Ein.data(), fftOfEin.data(),
                         1.0);
 
