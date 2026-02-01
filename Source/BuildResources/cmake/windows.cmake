@@ -66,8 +66,10 @@ elseif(MAKESYCL)
     target_link_libraries(LightwaveExplorerSYCL ${CMAKE_CURRENT_BINARY_DIR}/Release/miniz.lib)
     target_link_libraries(LightwaveExplorerSYCL
         ${MKL_ROOT}/lib/mkl_sycl.lib
+        ${MKL_ROOT}/lib/mkl_intel_ilp64.lib
+        ${MKL_ROOT}/lib/mkl_sequential.lib
+        ${MKL_ROOT}/lib/mkl_core.lib
         sycl8.lib OpenCL.lib)
-    target_link_libraries(LightwaveExplorerSYCL TBB::tbb)
 else()
     #cmake --fresh .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DCMAKE_CUDA_ARCHITECTURES="75;86"
     #cmake --build . --config Release
@@ -115,7 +117,7 @@ else()
     copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/CrystalDatabase.txt)
     copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/Source/BuildResources/DefaultValues.ini)
     copy_after_build(LightwaveExplorer ${CMAKE_SOURCE_DIR}/Source/BuildResources/Licenses.txt)
-    copy_after_build(LightwaveExplorer ${MKL_ROOT}/../../compiler/latest/bin/libiomp5md.dll)
+
     #Include CUDA dlls, whatver their current number is
     file(GLOB CUFFT_DLLS "${CUDAToolkit_BIN_DIR}/x64/cufft64*.dll")
     foreach(CUFFT_DLL ${CUFFT_DLLS})
