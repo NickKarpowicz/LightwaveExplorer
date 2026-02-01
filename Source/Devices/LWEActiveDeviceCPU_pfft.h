@@ -1,36 +1,25 @@
-#include "../LightwaveExplorerUtilities.h"
 #include "../LightwaveExplorerInterfaceClasses.hpp"
 #include "../ExternalLibraries/pocketfft_hdronly.h"
 #include <atomic>
 #include <thread>
-#include <iostream>
 #include <cmath>
 #include <cstring>
-#include <algorithm>
-#include <execution>
 #include <numeric>
+#include <execution>
 #ifdef __APPLE__
 #include <dispatch/dispatch.h>
 #endif
 static const int LWEThreadCount =
-	maxN(static_cast<int>(std::thread::hardware_concurrency() / 2), 2);
-#if defined __APPLE__ || defined __linux__
-template<typename deviceFP>
-[[maybe_unused]] void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
-	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
-	deviceFP expected = pulseSumAtomic->load();
-	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
-}
+	maxN(static_cast<int>(std::thread::hardware_concurrency()/2), 2);
 #ifdef __linux__
 using std::isnan;
 #endif
-#else
 template<typename deviceFP>
 static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
 }
-#endif
+
 [[maybe_unused]]static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
