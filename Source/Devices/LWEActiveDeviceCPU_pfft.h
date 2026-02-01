@@ -147,11 +147,7 @@ class CPUDevice : public LWEDevice {
 private:
 #ifdef __APPLE__
 	dispatch_queue_t queue{};
-#elif defined _WIN32 || defined __linux__
-	std::vector<int64_t> indices;
 #endif
-
-	void fftDestroy() {}
 	pocketfft::shape_t shape_d2z;
 	pocketfft::shape_t shape_d2z_double;
 	pocketfft::shape_t shape_1d;
@@ -163,7 +159,7 @@ private:
 	pocketfft::stride_t stride_d2z_freq;
 	pocketfft::stride_t stride_d2z_double_freq;
 	pocketfft::stride_t stride_1d_freq;
-
+	void fftDestroy() {}
 
 public:
 	deviceParameterSet<deviceFP, deviceComplex>* s;
@@ -185,16 +181,6 @@ public:
 		visualization = std::make_unique<VisualizationAllocation<deviceComplex>>(this, width, height, sCPU);
 		s = &(visualization->parameterSet);
 		fftInitialize();
-		#if defined _WIN32 || defined __linux__
-            int64_t max_launch_size = maxN(
-    		    maxN(
-    				4 * (*s).NgridC,
-    				(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
-       			    height * width
-    		);
-			indices = std::vector<int64_t>(max_launch_size);
-			std::iota(indices.begin(), indices.end(), 0);
-		#endif
 		#ifdef __APPLE__
 			queue = dispatch_queue_create("Kernel", DISPATCH_QUEUE_CONCURRENT);
 		#endif
@@ -235,10 +221,11 @@ public:
 		}
 		else {
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
+            auto view = std::views::iota(int64_t{0}, static_cast<int64_t>(Nblock) * Nthread);
 			std::for_each(
 				std::execution::par,
-				indices.begin(),
-				indices.begin() + static_cast<int64_t>(Nblock) * Nthread,
+				view.begin(),
+				view.end(),
 				functor);
 #endif
 		}
@@ -377,19 +364,6 @@ public:
 		if(resetFFT){
 			fftInitialize();
 		}
-	#if defined _WIN32 || defined __linux__
-		if(indices.size() < static_cast<std::size_t>(4 * (*s).NgridC) ||
-		(visualizationOnly && indices.size() < (static_cast<std::size_t>((*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2))))){
-			int64_t max_launch_size = maxN(
-			    maxN(
-					4 * (*s).NgridC,
-					(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
-				visualizationOnly * (*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2)
-			);
-		    indices = std::vector<int64_t>(max_launch_size);
-			std::iota(indices.begin(), indices.end(), 0);
-		}
-	#endif
 	}
 
 	int allocateSet(simulationParameterSet* sCPU) {
@@ -399,16 +373,6 @@ public:
 		s = &(allocation->parameterSet);
 		fftInitialize();
 		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
-		#if defined _WIN32 || defined __linux__
-            int64_t max_launch_size = maxN(
-    		    maxN(
-    				4 * (*s).NgridC,
-    				(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
-    			visualizationOnly * (*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2)
-    		);
-			indices = std::vector<int64_t>(max_launch_size);
-			std::iota(indices.begin(), indices.end(), 0);
-		#endif
 		return 0;
 	}
 };
