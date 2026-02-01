@@ -66,10 +66,6 @@ elseif(MAKESYCL)
     target_link_libraries(LightwaveExplorerSYCL ${CMAKE_CURRENT_BINARY_DIR}/Release/miniz.lib)
     target_link_libraries(LightwaveExplorerSYCL
         ${MKL_ROOT}/lib/mkl_sycl.lib
-        ${MKL_ROOT}/lib/mkl_intel_ilp64.lib
-        ${MKL_ROOT}/lib/mkl_tbb_thread.lib
-        ${MKL_ROOT}/lib/mkl_core.lib
-        ${MKL_ROOT}/../../compiler/latest/lib/libiomp5md.lib
         sycl8.lib OpenCL.lib)
     target_link_libraries(LightwaveExplorerSYCL TBB::tbb)
 else()
@@ -103,15 +99,6 @@ else()
         PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${OpenMP_CXX_FLAGS}>
     )
     target_link_libraries(LightwaveExplorer Qt6::Widgets Qt6::DBus)
-    if(USEFFTW)
-        target_link_libraries(LightwaveExplorer ${FFTW_LIBRARIES} ${FFTWF_LIBRARIES})
-    else()
-        target_link_libraries(LightwaveExplorer
-            ${MKL_ROOT}/lib/mkl_intel_ilp64.lib
-            ${MKL_ROOT}/lib/mkl_intel_thread.lib
-            ${MKL_ROOT}/lib/mkl_core.lib
-            ${MKL_ROOT}/../../compiler/latest/lib/libiomp5md.lib)
-    endif()
     target_link_libraries(LightwaveExplorer ${CAIRO_LIBRARIES})
     target_link_libraries(LightwaveExplorer ${CMAKE_CURRENT_BINARY_DIR}/Release/LightwaveExplorerDependencies.lib)
     target_link_libraries(LightwaveExplorer ${CMAKE_CURRENT_BINARY_DIR}/Release/miniz.lib)
