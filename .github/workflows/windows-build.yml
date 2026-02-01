@@ -48,6 +48,7 @@ jobs:
           cd build
           Remove-Item .\Release\*.exp -Force
           Remove-Item .\Release\*.lib
+          Remove-Item .\Release\*.runsettings
       - name: upload-unsigned-artifact
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v4
