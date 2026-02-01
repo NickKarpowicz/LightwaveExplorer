@@ -1,6 +1,7 @@
 #include "../LightwaveExplorerInterfaceClasses.hpp"
 #include "../ExternalLibraries/pocketfft_hdronly.h"
 #include <atomic>
+#include <ranges>
 #include <thread>
 #include <cmath>
 #include <cstring>
@@ -235,10 +236,10 @@ public:
 		}
 		else {
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
-			std::for_each(
-				std::execution::par,
+			std::for_each_n(
+				std::execution::par_unseq,
 				indices.begin(),
-				indices.begin() + static_cast<int64_t>(Nblock) * Nthread,
+				static_cast<int64_t>(Nblock) * Nthread,
 				functor);
 #endif
 		}
