@@ -249,7 +249,7 @@ public:
 			if ((*s).isCylindric) {
 				doublePolfftPlan =
 					new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
-					const std::vector<std::int64_t>{2 * (*s).Nspace, (*s).Ntime});
+					std::vector<std::int64_t>{2 * (*s).Nspace, (*s).Ntime});
 				doublePolfftPlan->set_value(
 					oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
 				doublePolfftPlan->set_value(
