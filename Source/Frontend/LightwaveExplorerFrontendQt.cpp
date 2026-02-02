@@ -1058,15 +1058,30 @@ public:
         pulldowns["beam1type"]->addItem("Hermite");
         pulldowns["beam1type"]->setToolTip(
             "Type of beam to use\n"
-            "TEM00 gives simple beams");
+            "TEM00 gives simple beams and does not require a beam specification in the box below.\n"
+            "Laguerre and Hermite require a beam specification.");
         addPulldownInContainer(textBoxWidth,beamTypeRow,"beam2type");
         pulldowns["beam2type"]->addItem("TEM00");
         pulldowns["beam2type"]->addItem("Laguerre");
         pulldowns["beam2type"]->addItem("Hermite");
         addTextBoxRow("Beam specification", "beamspec1", "beamspec2", entryColumn1Layout,
-        "Detailed beam specification");
+        "Detailed beam specification. This will be used if "
+        "the basis is set to Hermite or Laguerre. Has the basic form:\n"
+        "[index 1] [index 2] [weight] [phase (rad)] [waist (\xce\xbcm)] "
+        "[rotation (rad)] [x (\xce\xbcm)] [y(\xce\xbcm)] [z (\xce\xbcm)] [x-angle (rad)] [y-angle(rad)];\n"
+        "Additional modes are separated by semicolons. If the last 7 parameters\n"
+        "are frequency-dependent, this can be expressed in terms of a taylor series expansion\n"
+        "by adding 7 more numbers to the sequence.\n"
+        "Example:\n"
+        "1 2 1 0 50 0 0 10 0 0 0 0\n"
+        "         1 0 0 0.1 0 0 0 0;\n"
+        "2 2 1 0 50 0 0 5 5 0 0 0;\n"
+        "Will give a superposition of 1 HG1,2 and HG2,2 mode, with 50 \xce\xbcm\n"
+        "waist, and 10 \xce\xbcm x-offset HG1,2 (frequency-dependent at 0.1 \xce\xbcm/THz) and \n"
+        "a 5 \xce\xbcm x- and y- offset HG2,2.");
         addTextBoxRow("Beamwaist (\xce\xbcm)", "beamwaist1", "beamwaist2", entryColumn1Layout,
-        "Gaussian beamwaist of the input beam in space. In terms of intensity, this is the 1/e^2 radius");
+        "Gaussian beamwaist of the input beam in space. In terms of intensity, this is the 1/e^2 radius.\n"
+        "If using a detailed beam specification, this offset will be added to the specification's value.");
         addTextBoxRow("x offset (\xce\xbcm)", "xOffset1", "xOffset2", entryColumn1Layout,
         "Offset of the beam in the x-direction (up and down on the screen, transverse to propagation).\n"
         "In 3D radial symmetry mode, this does nothing.");

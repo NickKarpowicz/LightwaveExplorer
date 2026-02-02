@@ -22,8 +22,8 @@ macro(conditionally_fetch_dependencies)
         execute_process(COMMAND unzip -qq -o miniz-3.1.0 -d miniz)
     endif()
 
-    include_directories(${CMAKE_CURRENT_BINARY_DIR}/dlib)
-    include_directories(${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
+    include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR}/dlib)
+    include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR}/gcem/include)
     include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR}/miniz)
 
     add_library(miniz STATIC miniz/miniz.c)

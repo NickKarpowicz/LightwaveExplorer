@@ -239,7 +239,7 @@ public:
 			std::for_each_n(
 				std::execution::par_unseq,
 				indices.begin(),
-				static_cast<int64_t>(Nblock) * Nthread,
+				static_cast<int64_t>(Nblock) * static_cast<int64_t>(Nthread),
 				functor);
 #endif
 		}
@@ -282,53 +282,53 @@ public:
 				break;
 			case deviceFFT::Z2D:
 			    deviceLaunch(2,1,
-        				[&](size_t i){
-                   	pocketfft::c2r(
-                        shape_d2z,
-                        stride_d2z_freq,
-                        stride_d2z_time,
-                        axes_d2z,
-                  		pocketfft::BACKWARD,
-                  		(deviceComplex*)input + i * s->NgridC,
-                        (deviceFP*)output + i *s->Ngrid,
-                  		static_cast<deviceFP>(1));});
+                    [&](size_t i){
+                       	pocketfft::c2r(
+                            shape_d2z,
+                            stride_d2z_freq,
+                            stride_d2z_time,
+                            axes_d2z,
+                      		pocketfft::BACKWARD,
+                      		(deviceComplex*)input + i * s->NgridC,
+                            (deviceFP*)output + i *s->Ngrid,
+                      		static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::D2Z_1D:
 			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
     				[&](size_t i){
-                    pocketfft::r2c(
-                        shape_1d,
-                        stride_1d_time,
-                        stride_1d_freq,
-                        axes_1d,
-                        pocketfft::FORWARD,
-                        (deviceFP *)input + i * s->Ntime, (deviceComplex *)output + i * s->Nfreq,
-                        static_cast<deviceFP>(1));});
+                        pocketfft::r2c(
+                            shape_1d,
+                            stride_1d_time,
+                            stride_1d_freq,
+                            axes_1d,
+                            pocketfft::FORWARD,
+                            (deviceFP *)input + i * s->Ntime, (deviceComplex *)output + i * s->Nfreq,
+                            static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::Z2D_1D:
 			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
     				[&](size_t i){
-                    pocketfft::c2r(shape_1d,
-                        stride_1d_freq,
-                        stride_1d_time,
-                        axes_1d,
-                        pocketfft::BACKWARD,
-                        (deviceComplex *)input + i * s->Nfreq,
-                        (deviceFP *)output + i * s->Ntime,
-                        static_cast<deviceFP>(1));});
+                        pocketfft::c2r(shape_1d,
+                            stride_1d_freq,
+                            stride_1d_time,
+                            axes_1d,
+                            pocketfft::BACKWARD,
+                            (deviceComplex *)input + i * s->Nfreq,
+                            (deviceFP *)output + i * s->Ntime,
+                            static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::D2Z_Polarization:
 			    deviceLaunch(2 + 2 * s->hasPlasma,1,
     				[&](size_t i){
-         			pocketfft::r2c(
-                        shape_d2z_double,
-                        stride_d2z_time,
-           	            stride_d2z_freq,
-               	        axes_d2z,
-        				pocketfft::FORWARD,
-        				(deviceFP*)input + i * 2 * s->Ngrid,
-        				(deviceComplex*)output + i * 2 * s->NgridC,
-        				static_cast<deviceFP>(1));});
+             			pocketfft::r2c(
+                            shape_d2z_double,
+                            stride_d2z_time,
+               	            stride_d2z_freq,
+                   	        axes_d2z,
+            				pocketfft::FORWARD,
+            				(deviceFP*)input + i * 2 * s->Ngrid,
+            				(deviceComplex*)output + i * 2 * s->NgridC,
+            				static_cast<deviceFP>(1));});
 				break;
 			}
 	}
