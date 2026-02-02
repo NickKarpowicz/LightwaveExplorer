@@ -49,6 +49,16 @@ elseif(MAKESYCL)
     #cmake --build . --config Release
     project(LightwaveExplorer LANGUAGES CXX)
     conditionally_fetch_dependencies()
+    include(FetchContent)
+    set(BUILD_FUNCTIONAL_TESTS False)
+    set(BUILD_EXAMPLES False)
+    FetchContent_Declare(
+            onemkl_interface_library
+            GIT_REPOSITORY https://github.com/uxlfoundation/oneMath.git
+            GIT_TAG v0.9
+    )
+    FetchContent_MakeAvailable(onemkl_interface_library)
+    target_compile_options(onemath PRIVATE -Wno-deprecated-declarations)
     find_package(TBB REQUIRED)
     find_package(MKL REQUIRED)
 
@@ -64,7 +74,7 @@ elseif(MAKESYCL)
         Source/LightwaveExplorerUtilities.cpp)
     target_link_libraries(LightwaveExplorerSYCL ${CMAKE_CURRENT_BINARY_DIR}/Release/LightwaveExplorerDependencies.lib)
     target_link_libraries(LightwaveExplorerSYCL ${CMAKE_CURRENT_BINARY_DIR}/Release/miniz.lib)
-    target_link_libraries(LightwaveExplorerSYCL
+    target_link_libraries(LightwaveExplorerSYCL onemath
         ${MKL_ROOT}/lib/mkl_sycl.lib
         ${MKL_ROOT}/lib/mkl_intel_ilp64.lib
         ${MKL_ROOT}/lib/mkl_sequential.lib

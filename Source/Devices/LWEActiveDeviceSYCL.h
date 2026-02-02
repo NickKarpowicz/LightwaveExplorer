@@ -116,9 +116,9 @@ template<typename deviceFP, typename deviceComplex>
 class SYCLDevice : public LWEDevice {
 private:
 	deviceFP canaryPixel = 0.0;
-	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlanD2Z;
-	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* fftPlan1DD2Z;
-	oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>* doublePolfftPlan;
+	oneapi::math::dft::descriptor<dftPrecision, oneapi::math::dft::domain::REAL>* fftPlanD2Z;
+	oneapi::math::dft::descriptor<dftPrecision, oneapi::math::dft::domain::REAL>* fftPlan1DD2Z;
+	oneapi::math::dft::descriptor<dftPrecision, oneapi::math::dft::domain::REAL>* doublePolfftPlan;
 
 	void fftDestroy() {
 		delete fftPlan1DD2Z;
@@ -208,60 +208,60 @@ public:
 			fftDestroy();
 		}
 		fftPlan1DD2Z =
-			new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>((*s).Ntime);
+			new oneapi::math::dft::descriptor<dftPrecision, oneapi::math::dft::domain::REAL>((*s).Ntime);
 		fftPlan1DD2Z->set_value(
-			oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
-		const std::vector<int64_t> outputStrides = { 0, 1 };
-		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, outputStrides);
-		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, outputStrides);
-		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, (*s).Ntime);
-		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, (*s).Nfreq);
+			oneapi::math::dft::config_param::PLACEMENT, oneapi::math::dft::config_value::NOT_INPLACE);
+		const int64_t outputStrides[] = { 0, 1 };
+		fftPlan1DD2Z->set_value(oneapi::math::dft::config_param::BWD_STRIDES, outputStrides);
+		fftPlan1DD2Z->set_value(oneapi::math::dft::config_param::FWD_STRIDES, outputStrides);
+		fftPlan1DD2Z->set_value(oneapi::math::dft::config_param::FWD_DISTANCE, (*s).Ntime);
+		fftPlan1DD2Z->set_value(oneapi::math::dft::config_param::BWD_DISTANCE, (*s).Nfreq);
 		fftPlan1DD2Z->set_value(
-			oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2 * ((*s).Nspace * (*s).Nspace2));
+			oneapi::math::dft::config_param::NUMBER_OF_TRANSFORMS, 2 * ((*s).Nspace * (*s).Nspace2));
 
 		if ((*s).is3D) {
-			fftPlanD2Z = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>
+			fftPlanD2Z = new oneapi::math::dft::descriptor<dftPrecision, oneapi::math::dft::domain::REAL>
 				(std::vector<std::int64_t>{(*s).Nspace2, (*s).Nspace, (*s).Ntime});
 			fftPlanD2Z->set_value(
-				oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
+				oneapi::math::dft::config_param::PLACEMENT, oneapi::math::dft::config_value::NOT_INPLACE);
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
 
-			const std::vector<int64_t> forwardStride3D{ 0, (*s).Nspace * (*s).Ntime, (*s).Nfreq, 1 };
-			const std::vector<int64_t> backwardStride3D{ 0, (*s).Nspace * (*s).Nfreq, (*s).Nfreq, 1 };
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, forwardStride3D);
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, backwardStride3D);
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, (*s).Ntime * (*s).Nspace * (*s).Nspace2);
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, (*s).Nfreq * (*s).Nspace * (*s).Nspace2);
+			const int64_t forwardStride3D[] = { 0, (*s).Nspace * (*s).Ntime, (*s).Nfreq, 1 };
+			const int64_t backwardStride3D[] = { 0, (*s).Nspace * (*s).Nfreq, (*s).Nfreq, 1 };
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::FWD_STRIDES, forwardStride3D);
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::BWD_STRIDES, backwardStride3D);
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::FWD_DISTANCE, (*s).Ntime * (*s).Nspace * (*s).Nspace2);
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::BWD_DISTANCE, (*s).Nfreq * (*s).Nspace * (*s).Nspace2);
 		}
 		else {
-			fftPlanD2Z = new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
+			fftPlanD2Z = new oneapi::math::dft::descriptor<dftPrecision, oneapi::math::dft::domain::REAL>(
 				std::vector<std::int64_t>{(*s).Nspace, (*s).Ntime});
 			fftPlanD2Z->set_value(
-				oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
-			const std::vector<int64_t> backwardStride2D{ 0, (*s).Nfreq, 1 };
-			const std::vector<int64_t> forwardStride2D{ 0, (*s).Ntime, 1 };
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, forwardStride2D);
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, backwardStride2D);
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, (*s).Ntime * (*s).Nspace);
-			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, (*s).Nfreq * (*s).Nspace);
+				oneapi::math::dft::config_param::PLACEMENT, oneapi::math::dft::config_value::NOT_INPLACE);
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
+			const int64_t backwardStride2D[] = { 0, (*s).Nfreq, 1 };
+			const int64_t forwardStride2D[] = { 0, (*s).Ntime, 1 };
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::FWD_STRIDES, forwardStride2D);
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::BWD_STRIDES, backwardStride2D);
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::FWD_DISTANCE, (*s).Ntime * (*s).Nspace);
+			fftPlanD2Z->set_value(oneapi::math::dft::config_param::BWD_DISTANCE, (*s).Nfreq * (*s).Nspace);
 
 			if ((*s).isCylindric) {
 				doublePolfftPlan =
-					new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
+					new oneapi::math::dft::descriptor<dftPrecision, oneapi::math::dft::domain::REAL>(
 					std::vector<std::int64_t>{2 * (*s).Nspace, (*s).Ntime});
 				doublePolfftPlan->set_value(
-					oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
+					oneapi::math::dft::config_param::PLACEMENT, oneapi::math::dft::config_value::NOT_INPLACE);
 				doublePolfftPlan->set_value(
-					oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2 + 2*(*s).hasPlasma);
+					oneapi::math::dft::config_param::NUMBER_OF_TRANSFORMS, 2 + 2*(*s).hasPlasma);
 				doublePolfftPlan->set_value(
-					oneapi::mkl::dft::config_param::BWD_STRIDES, backwardStride2D);
+					oneapi::math::dft::config_param::BWD_STRIDES, backwardStride2D);
 					doublePolfftPlan->set_value(
-					oneapi::mkl::dft::config_param::FWD_STRIDES, forwardStride2D);
+					oneapi::math::dft::config_param::FWD_STRIDES, forwardStride2D);
 				doublePolfftPlan->set_value(
-					oneapi::mkl::dft::config_param::FWD_DISTANCE, (*s).Ntime * 2 * (*s).Nspace);
+					oneapi::math::dft::config_param::FWD_DISTANCE, (*s).Ntime * 2 * (*s).Nspace);
 				doublePolfftPlan->set_value(
-					oneapi::mkl::dft::config_param::BWD_DISTANCE, (*s).Nfreq * 2 * (*s).Nspace);
+					oneapi::math::dft::config_param::BWD_DISTANCE, (*s).Nfreq * 2 * (*s).Nspace);
 			}
 		}
 
@@ -274,19 +274,19 @@ public:
 	void fft(const void* input, void* output, const deviceFFT type) override {
 		switch (type) {
 		case deviceFFT::D2Z:
-			oneapi::mkl::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (std::complex<deviceFP>*)output);
+			oneapi::math::dft::compute_forward(*fftPlanD2Z, (deviceFP*)input, (std::complex<deviceFP>*)output);
 			break;
 		case deviceFFT::Z2D:
-			oneapi::mkl::dft::compute_backward(*fftPlanD2Z, (std::complex<deviceFP>*)input, (deviceFP*)output);
+			oneapi::math::dft::compute_backward(*fftPlanD2Z, (std::complex<deviceFP>*)input, (deviceFP*)output);
 			break;
 		case deviceFFT::D2Z_1D:
-			oneapi::mkl::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (std::complex<deviceFP>*)output);
+			oneapi::math::dft::compute_forward(*fftPlan1DD2Z, (deviceFP*)input, (std::complex<deviceFP>*)output);
 			break;
 		case deviceFFT::Z2D_1D:
-			oneapi::mkl::dft::compute_backward(*fftPlan1DD2Z, (std::complex<deviceFP>*)input, (deviceFP*)output);
+			oneapi::math::dft::compute_backward(*fftPlan1DD2Z, (std::complex<deviceFP>*)input, (deviceFP*)output);
 			break;
 		case deviceFFT::D2Z_Polarization:
-			oneapi::mkl::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (std::complex<deviceFP>*)output);
+			oneapi::math::dft::compute_forward(*doublePolfftPlan, (deviceFP*)input, (std::complex<deviceFP>*)output);
 			break;
 		}
 	}
