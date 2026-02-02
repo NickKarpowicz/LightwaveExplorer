@@ -1,7 +1,7 @@
 #include "../LightwaveExplorerUtilities.h"
-#define SYCL_EXT_ONEAPI_COMPLEX                                        
+#define SYCL_EXT_ONEAPI_COMPLEX
 #include <sycl/ext/oneapi/experimental/complex/complex.hpp>
-#include <sycl/sycl.hpp>   
+#include <sycl/sycl.hpp>
 #include <sycl/atomic.hpp>
 #include <oneapi/mkl/dft.hpp>
 using std::isnan;
@@ -158,9 +158,9 @@ public:
 
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) override {
 		(*ptr) = sycl::aligned_alloc_device(
-			2 * sizeof(deviceFP), 
-			N * elementSize, 
-			stream.get_device(), 
+			2 * sizeof(deviceFP),
+			N * elementSize,
+			stream.get_device(),
 			stream.get_context());
 		stream.memset((*ptr), 0, N * elementSize);
 		stream.wait();
@@ -173,9 +173,9 @@ public:
 	}
 
 	void deviceMemcpyImplementation(
-		void* dst, 
-		const void* src, 
-		const size_t count, 
+		void* dst,
+		const void* src,
+		const size_t count,
 		const copyType kind) override {
 		stream.wait();
 		stream.memcpy(dst, src, count);
@@ -183,17 +183,17 @@ public:
 	}
 
 	void deviceMemcpy(
-		std::complex<double>* dst, 
-		const sycl::ext::oneapi::experimental::complex<float>* src, 
-		size_t count, 
+		std::complex<double>* dst,
+		const sycl::ext::oneapi::experimental::complex<float>* src,
+		size_t count,
 		copyType kind) {
 		deviceMemcpy(dst, reinterpret_cast<const std::complex<float>*>(src),count,kind);
 	}
 
 	void deviceMemcpy(
-		sycl::ext::oneapi::experimental::complex<float>* dst, 
-		const std::complex<double>* src, 
-		const size_t count, 
+		sycl::ext::oneapi::experimental::complex<float>* dst,
+		const std::complex<double>* src,
+		const size_t count,
 		const copyType kind) {
 		deviceMemcpy(reinterpret_cast<std::complex<float>*>(dst),src,count,kind);
 	}
@@ -207,11 +207,11 @@ public:
 		if (configuredFFT) {
 			fftDestroy();
 		}
-		fftPlan1DD2Z = 
+		fftPlan1DD2Z =
 			new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>((*s).Ntime);
 		fftPlan1DD2Z->set_value(
 			oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
-		std::int64_t outputStrides[3] = { 0, 1 };
+		const std::vector<int64_t> outputStrides = { 0, 1 };
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, outputStrides);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, outputStrides);
 		fftPlan1DD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, (*s).Ntime);
@@ -226,8 +226,8 @@ public:
 				oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
 
-			std::int64_t forwardStride3D[5] = { 0, (*s).Nspace * (*s).Ntime, (*s).Nfreq, 1 };
-			std::int64_t backwardStride3D[5] = { 0, (*s).Nspace * (*s).Nfreq, (*s).Nfreq, 1 };
+			const std::vector<int64_t> forwardStride3D{ 0, (*s).Nspace * (*s).Ntime, (*s).Nfreq, 1 };
+			const std::vector<int64_t> backwardStride3D{ 0, (*s).Nspace * (*s).Nfreq, (*s).Nfreq, 1 };
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, forwardStride3D);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, backwardStride3D);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, (*s).Ntime * (*s).Nspace * (*s).Nspace2);
@@ -239,17 +239,17 @@ public:
 			fftPlanD2Z->set_value(
 				oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, 2);
-			std::int64_t backwardStride2D[4] = { 0, (*s).Nfreq, 1 };
-			std::int64_t forwardStride2D[4] = { 0, (*s).Ntime, 1 };
+			const std::vector<int64_t> backwardStride2D{ 0, (*s).Nfreq, 1 };
+			const std::vector<int64_t> forwardStride2D{ 0, (*s).Ntime, 1 };
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, forwardStride2D);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, backwardStride2D);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, (*s).Ntime * (*s).Nspace);
 			fftPlanD2Z->set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, (*s).Nfreq * (*s).Nspace);
 
 			if ((*s).isCylindric) {
-				doublePolfftPlan = 
+				doublePolfftPlan =
 					new oneapi::mkl::dft::descriptor<dftPrecision, oneapi::mkl::dft::domain::REAL>(
-					std::vector<std::int64_t>{2 * (*s).Nspace, (*s).Ntime});
+					const std::vector<std::int64_t>{2 * (*s).Nspace, (*s).Ntime});
 				doublePolfftPlan->set_value(
 					oneapi::mkl::dft::config_param::PLACEMENT, oneapi::mkl::dft::config_value::NOT_INPLACE);
 				doublePolfftPlan->set_value(
@@ -300,7 +300,7 @@ public:
 		}
 	}
 
-	int allocateSet(simulationParameterSet* sCPU) {	
+	int allocateSet(simulationParameterSet* sCPU) {
 		if ((*sCPU).assignedGPU) {
 			try {
 				sycl::queue gpuStream{ sycl::gpu_selector_v, { sycl::property::queue::in_order() } };
@@ -317,7 +317,7 @@ public:
 		}
 		else {
 			sycl::queue defaultStream{ sycl::default_selector_v, sycl::property::queue::in_order() };
-			if (sizeof(deviceFP) == sizeof(double) 
+			if (sizeof(deviceFP) == sizeof(double)
 				&& defaultStream.get_device().get_info<sycl::info::device::double_fp_config>().size()
 				== 0) {
 				sycl::queue cpuStream{ sycl::cpu_selector_v, sycl::property::queue::in_order() };
@@ -326,7 +326,7 @@ public:
 			else {
 				stream = defaultStream;
 			}
-			
+
 		}
 		cParams = sCPU;
 		if(memoryStatus == 0) allocation = nullptr;
