@@ -62,7 +62,7 @@ jobs:
           api-token: "${{ secrets.SIGNPATH_API_TOKEN }}"
           organization-id: "783ed34a-91fc-4bc6-9142-da97f921e9ee"
           project-slug: "LightwaveExplorer"
-          signing-policy-slug: "test-signing"
+          signing-policy-slug: "release-signing"
           github-artifact-id: "${{ steps.upload-unsigned-artifact.outputs.artifact-id }}"
           wait-for-completion: true
           output-artifact-directory: "build/LightwaveExplorer_signed"
