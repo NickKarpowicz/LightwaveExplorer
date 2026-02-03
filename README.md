@@ -138,17 +138,10 @@ Additional compiler flags:
 
   (Please note that what's happening here is a shell script from the internet piped into the terminal. Never do this if you don't trust the developer, and even then it's a good idea to check the contents of the script by pasting the URL into your browser. Essentially, this is like letting me type into your Mac's terminal. I'm using it to compile the code and copy the resulting app, but someone at your terminal can also delete or copy your files.)
 
-
-  Apple Silicon (M1, M2, .etc) version:
-
   ```
   curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuild.sh | zsh -s
   ```
 
-  Intel version:
-  ```
-  curl -s https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Source/BuildResources/macAutoBuildIntel.sh | zsh -s
-  ```
 ---
   ### Compilation on clusters
 
