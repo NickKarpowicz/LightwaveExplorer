@@ -10,8 +10,8 @@ LIBS="/Users"
 rm -rf build
 mkdir build
 cd build
-cmake -DCMAKE_CXX_FLAGS="-O3 -march=native" .. -G Ninja
-cmake --build . --config Release
+cmake -DCMAKE_CXX_FLAGS="-O3 -march=native" ..
+make
 cd ..
 
 #complete the directory structure of the .app

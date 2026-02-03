@@ -1,4 +1,4 @@
-brew install cmake ninja make pkgconfig libomp qt cairo wget
+brew install cmake make pkgconfig qt cairo wget
 mkdir LightwaveExplorerBuild
 cd LightwaveExplorerBuild
 git clone --depth 1 https://github.com/NickKarpowicz/LightwaveExplorer >& /dev/null
