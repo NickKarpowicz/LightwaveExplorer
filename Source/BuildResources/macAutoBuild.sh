@@ -23,5 +23,5 @@ cp Source/BuildResources/Licenses.txt $APP/Contents/Resources
 cp Source/BuildResources/AppIcon.icns $APP/Contents/Resources
 
 cp -r $APP /Applications/
-cd ..
+cd ../..
 rm -rf LightwaveExplorerBuild
