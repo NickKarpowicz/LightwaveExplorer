@@ -1,7 +1,11 @@
 brew install cmake make pkgconfig qt cairo wget
 mkdir LightwaveExplorerBuild
 cd LightwaveExplorerBuild
-git clone --depth 1 https://github.com/NickKarpowicz/LightwaveExplorer
+if [ -n "$1" ]; then
+    git clone --depth 1 --branch "$1" https://github.com/NickKarpowicz/LightwaveExplorer
+else
+    git clone --depth 1 https://github.com/NickKarpowicz/LightwaveExplorer
+fi
 cd LightwaveExplorer
 
 BIN=LightwaveExplorer
