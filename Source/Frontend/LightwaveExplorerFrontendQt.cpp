@@ -786,7 +786,7 @@ public:
 #elif defined(Q_OS_MAC)
         const int textBoxWidth = 82;
         const int textBoxHeight = 26;
-        const int miniButtonWidth = 38;
+        const int miniButtonWidth = 40;
         const int mainButtonHeight = textBoxHeight+6;
 #elif defined(Q_OS_LINUX)
         const int textBoxWidth = 78;
@@ -927,8 +927,8 @@ public:
         plotControlStrip->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         controlStripsLayout->addWidget(simulationControlStrip);
         controlStripsLayout->addWidget(plotControlStrip);
-        simulationControlStrip->setFixedSize(2*rowWidth,rowHeight);
-        plotControlStrip->setFixedHeight(rowHeight);
+        simulationControlStrip->setFixedSize(2*rowWidth,rowHeight+4);
+        plotControlStrip->setFixedHeight(rowHeight + 4);
         auto getRowBoxLayout = [&](QBoxLayout* location){
             QWidget *rowBox = new QWidget;
             rowBox->setFixedSize(rowWidth,rowHeight);
@@ -1376,7 +1376,7 @@ public:
         QVBoxLayout* sequenceBoxLayout = new QVBoxLayout(sequenceBox);
         squeezeMargins(sequenceBoxLayout);
         QWidget* sequenceButtonBox = new QWidget;
-        sequenceButtonBox->setFixedHeight(textBoxHeight+2);
+        sequenceButtonBox->setFixedHeight(textBoxHeight+4);
         sequenceBoxLayout->addWidget(sequenceButtonBox);
         QHBoxLayout* sequenceButtonBoxLayout = new QHBoxLayout(sequenceButtonBox);
         squeezeMargins(sequenceButtonBoxLayout);
