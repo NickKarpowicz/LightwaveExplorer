@@ -15,17 +15,13 @@ cmake -DCMAKE_OSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion) -DCMAKE_CXX_FLAGS
 make
 cd ..
 
-#complete the directory structure of the .app
-mkdir $APP/Contents/Resources/
-mkdir $APP/Contents/Resources/lib
-mkdir $APP/Contents/Resources/bin
-mkdir $APP/Contents/Resources/etc
-mkdir $APP/Contents/Resources/share
-
 #copy in the databases and icons
+mkdir $APP/Contents/Resources/
 cp CrystalDatabase.txt $APP/Contents/Resources
 cp Source/BuildResources/DefaultValues.ini $APP/Contents/Resources
 cp Source/BuildResources/Licenses.txt $APP/Contents/Resources
 cp Source/BuildResources/AppIcon.icns $APP/Contents/Resources
 
 cp -r $APP /Applications/
+cd ..
+rm -rf LightwaveExplorerBuild
