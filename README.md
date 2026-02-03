@@ -20,6 +20,8 @@ Tutorials on YouTube!
 ### Latest release: 2025.6 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/blob/master/Documentation/changelog.md))
 **Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip) (note: if you use SYCL for GPU acceleration on intel, please use the newest [DPC++/C++ Compiler Runtime](https://www.intel.com/content/www/us/en/developer/tools/oneapi/runtime-versions-download.html); you don't need this if you're not using intel graphics).
 
+Free code signing on Windows provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org)
+
 **Linux:**
 
 <a href='https://flathub.org/apps/io.github.NickKarpowicz.LightwaveExplorer'>
@@ -167,6 +169,11 @@ Thanks to the original authors for making their work available! They are all fre
   - [Dlib](http://dlib.net/): This library is the basis of the optimization routines. I make use of the global optimization functions for the fitting/optimization modes. The library is [available on Github](https://github.com/davisking/dlib), and their excellent documentation and further information is on the [main project website](http://dlib.net/).
   - [PocketFFT](https://gitlab.mpcdf.mpg.de/mtr/pocketfft/-/tree/cpp) - this is what is used for the CPU-based Fourier transforms. It's a nice, fast, header-only library, and I strongly recommend it for C++ programs!
   - [miniz](https://github.com/richgel999/miniz): Nice and easy to use C library for making/reading .zip archives.
+
+  ---
+  ### Code signing
+
+The windows releases are now signed thanks to [SignPath.io](https://signpath.io), with a certificate provided by [SignPath Foundation](https://signpath.org)! This means that they should no longer pop up a warning the first time you run them, and you can have some confidence in the provenance of the binary you are using.
 
   ---
 
