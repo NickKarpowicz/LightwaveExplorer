@@ -785,7 +785,7 @@ public:
         const int mainButtonHeight = textBoxHeight;
 #elif defined(Q_OS_MAC)
         const int textBoxWidth = 82;
-        const int textBoxHeight = 28;
+        const int textBoxHeight = 26;
         const int miniButtonWidth = 38;
         const int mainButtonHeight = textBoxHeight+6;
 #elif defined(Q_OS_LINUX)
@@ -1376,7 +1376,7 @@ public:
         QVBoxLayout* sequenceBoxLayout = new QVBoxLayout(sequenceBox);
         squeezeMargins(sequenceBoxLayout);
         QWidget* sequenceButtonBox = new QWidget;
-        sequenceButtonBox->setFixedHeight(textBoxHeight);
+        sequenceButtonBox->setFixedHeight(textBoxHeight+2);
         sequenceBoxLayout->addWidget(sequenceButtonBox);
         QHBoxLayout* sequenceButtonBoxLayout = new QHBoxLayout(sequenceButtonBox);
         squeezeMargins(sequenceButtonBoxLayout);
