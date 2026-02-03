@@ -10,7 +10,7 @@ LIBS="/Users"
 rm -rf build
 mkdir build
 cd build
-cmake -DCMAKE_CXX_FLAGS="-O3 -march=native" ..
+cmake -DCMAKE_OSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion) -DCMAKE_CXX_FLAGS="-O3 -march=native" ..
 make
 cd ..
 

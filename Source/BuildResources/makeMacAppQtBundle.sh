@@ -15,7 +15,7 @@ LIBS="/Users"
 rm -rf build
 mkdir build
 cd build
-${QTPATH}/qt-cmake -DCMAKE_CXX_FLAGS="-O3 -march=native" ..
+${QTPATH}/qt-cmake -DCMAKE_OSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion) -DCMAKE_CXX_FLAGS="-O3 -march=native" ..
 make
 cd ..
 mkdir ${APP}/Contents/Resources
