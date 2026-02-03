@@ -784,9 +784,9 @@ public:
         const int miniButtonWidth = 30;
         const int mainButtonHeight = textBoxHeight;
 #elif defined(Q_OS_MAC)
-        const int textBoxWidth = 80;
-        const int textBoxHeight = 26;
-        const int miniButtonWidth = 36;
+        const int textBoxWidth = 82;
+        const int textBoxHeight = 28;
+        const int miniButtonWidth = 38;
         const int mainButtonHeight = textBoxHeight+6;
 #elif defined(Q_OS_LINUX)
         const int textBoxWidth = 78;
