@@ -46,7 +46,7 @@ target_compile_options(LightwaveExplorerNoCuda PRIVATE ${OpenMP_CXX_FLAGS} -DNOS
 target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
 target_link_libraries(LightwaveExplorerNoCuda ${CAIRO_LIBRARIES})
 target_link_libraries(LightwaveExplorerNoCuda miniz::miniz)
-target_link_libraries(LightwaveExplorer ${OpenMP_CXX_LIBRARIES})
+target_link_libraries(LightwaveExplorer -lgomp)
 
 install(TARGETS ${EXECUTABLE_NAME} LightwaveExplorerNoCuda DESTINATION bin)
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
