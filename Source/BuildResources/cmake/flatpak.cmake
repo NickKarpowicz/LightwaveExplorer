@@ -34,6 +34,7 @@ target_link_libraries(${EXECUTABLE_NAME} CUDA::cudart_static CUDA::cufft_static 
 target_link_libraries(${EXECUTABLE_NAME} Qt6::Widgets Qt6::DBus)
 target_link_libraries(${EXECUTABLE_NAME} ${CAIRO_LIBRARIES})
 target_link_libraries(${EXECUTABLE_NAME} miniz::miniz)
+target_link_libraries(${EXECUTABLE_NAME} -lgomp)
 add_executable(LightwaveExplorerNoCuda
         Source/Frontend/LightwaveExplorerFrontendQt.cpp
         Source/LightwaveExplorerUtilities.cpp
