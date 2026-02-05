@@ -8,7 +8,6 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(CAIRO REQUIRED cairo)
 find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
 set(CMAKE_AUTOMOC ON)
-find_package(OpenMP REQUIRED)
 find_package(miniz)
 find_package(TBB REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -29,13 +28,12 @@ add_executable(LightwaveExplorer
         Source/Devices/DlibLibraryComponents.cpp
         Source/Frontend/LWEVisualizationsCPU.cpp)
 set_target_properties(${EXECUTABLE_NAME} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-target_compile_options(${EXECUTABLE_NAME} PRIVATE -O3 ${OpenMP_CXX_FLAGS} -DNOSYCL -DLWEFLATPAK)
+target_compile_options(${EXECUTABLE_NAME} PRIVATE -O3 -DNOSYCL -DLWEFLATPAK)
 target_link_libraries(${EXECUTABLE_NAME} LightwaveExplorerCuda)
 target_link_libraries(${EXECUTABLE_NAME} CUDA::cudart_static CUDA::cufft_static)
 target_link_libraries(${EXECUTABLE_NAME} Qt6::Widgets Qt6::DBus)
 target_link_libraries(${EXECUTABLE_NAME} ${CAIRO_LIBRARIES})
 target_link_libraries(${EXECUTABLE_NAME} miniz::miniz)
-target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES})
 target_link_libraries(${EXECUTABLE_NAME} TBB::tbb)
 add_executable(LightwaveExplorerNoCuda
         Source/Frontend/LightwaveExplorerFrontendQt.cpp
@@ -45,11 +43,10 @@ add_executable(LightwaveExplorerNoCuda
         Source/Devices/LightwaveExplorerCoreCounter.cpp
         Source/Devices/DlibLibraryComponents.cpp
         Source/Frontend/LWEVisualizationsCPU.cpp)
-target_compile_options(LightwaveExplorerNoCuda PRIVATE ${OpenMP_CXX_FLAGS} -DNOSYCL -DNOCUDA -DLWEFLATPAK)
+target_compile_options(LightwaveExplorerNoCuda PRIVATE -DNOSYCL -DNOCUDA -DLWEFLATPAK)
 target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
 target_link_libraries(LightwaveExplorerNoCuda ${CAIRO_LIBRARIES})
 target_link_libraries(LightwaveExplorerNoCuda miniz::miniz)
-target_link_libraries(LightwaveExplorerNoCuda ${OpenMP_CXX_LIBRARIES})
 target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
 install(TARGETS ${EXECUTABLE_NAME} LightwaveExplorerNoCuda DESTINATION bin)
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
