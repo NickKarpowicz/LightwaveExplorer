@@ -11,6 +11,20 @@
   <project_license>MIT</project_license>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="2026.1" date="2026-02-06" urgency="high">
+  <description>
+  <p>New Features:</p>
+  <ul>
+  <li>Support for complex input beams, on either a Hermite-Gauss or Laguerre-Gauss basis with frequency-dependent beamwaist, rotation, 3D offset and angle.</li>
+  <li>offsetAperture sequence function for including a non-centered iris.</li>
+  </ul>
+  <p>Bug Fixes:</p>
+  <ul>
+  <li>Will load the last crystal in the database even if there isn't a newline at the end.</li>
+  <li>Circular polarization settings are explained in the tooltip, and values of outside of -1..1 are no longer passed to the simulation with odd results</li>
+  </ul>
+  </description>
+  </release>
   <release version="2025.6" date="2025-08-28" urgency="high">
   <description>
   <p>Bug fix release:</p>
