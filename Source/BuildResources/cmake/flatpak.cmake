@@ -10,6 +10,7 @@ find_package(Qt6 COMPONENTS Widgets DBus REQUIRED)
 set(CMAKE_AUTOMOC ON)
 find_package(OpenMP REQUIRED)
 find_package(miniz)
+find_package(TBB REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${Qt6_INCLUDE_DIRS})
 include_directories(${MKL_ROOT}/include)
@@ -34,7 +35,8 @@ target_link_libraries(${EXECUTABLE_NAME} CUDA::cudart_static CUDA::cufft_static)
 target_link_libraries(${EXECUTABLE_NAME} Qt6::Widgets Qt6::DBus)
 target_link_libraries(${EXECUTABLE_NAME} ${CAIRO_LIBRARIES})
 target_link_libraries(${EXECUTABLE_NAME} miniz::miniz)
-target_link_libraries(${EXECUTABLE_NAME} -lgomp)
+target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES})
+target_link_libraries(${EXECUTABLE_NAME} TBB::tbb)
 add_executable(LightwaveExplorerNoCuda
         Source/Frontend/LightwaveExplorerFrontendQt.cpp
         Source/LightwaveExplorerUtilities.cpp
@@ -47,8 +49,8 @@ target_compile_options(LightwaveExplorerNoCuda PRIVATE ${OpenMP_CXX_FLAGS} -DNOS
 target_link_libraries(LightwaveExplorerNoCuda Qt6::Widgets Qt6::DBus)
 target_link_libraries(LightwaveExplorerNoCuda ${CAIRO_LIBRARIES})
 target_link_libraries(LightwaveExplorerNoCuda miniz::miniz)
-target_link_libraries(LightwaveExplorerNoCuda -lgomp)
-
+target_link_libraries(LightwaveExplorerNoCuda ${OpenMP_CXX_LIBRARIES})
+target_link_libraries(LightwaveExplorerNoCuda TBB::tbb)
 install(TARGETS ${EXECUTABLE_NAME} LightwaveExplorerNoCuda DESTINATION bin)
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/Source/BuildResources/flatpakLauncher.sh DESTINATION bin)
 install(FILES CrystalDatabase.txt DESTINATION share/LightwaveExplorer)
