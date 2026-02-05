@@ -1992,7 +1992,7 @@ public:
                 break;
             case BeamBasis::hermite:
                 // in 2D mode, no use of m
-                mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * r/wz, p->beam_spec.lower[mode_index])
+                mode_field *= deviceFunctions::hermite(2.0f * r/wz, p->beam_spec.lower[mode_index])
                     * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.lower[mode_index] + p->beam_spec.upper[mode_index]) * phi));
                 break;
         }
@@ -2151,8 +2151,8 @@ public:
                 break;
             case BeamBasis::hermite:
                 {
-                    mode_field *= deviceFunctions::hermite(sqrtTwo<deviceFP>() * x/wz, p->beam_spec.lower[mode_index])
-                        * deviceFunctions::hermite(sqrtTwo<deviceFP>() * y/wz, static_cast<uint32_t>(abs(p->beam_spec.upper[mode_index])))
+                    mode_field *= deviceFunctions::hermite(2.0f * x/wz, p->beam_spec.lower[mode_index])
+                        * deviceFunctions::hermite(2.0f * y/wz, static_cast<uint32_t>(abs(p->beam_spec.upper[mode_index])))
                         * deviceLib::exp(deviceComplex(0.0f, (p->beam_spec.lower[mode_index] + abs(p->beam_spec.upper[mode_index])) * gouy_phase));
                 }
                 break;
