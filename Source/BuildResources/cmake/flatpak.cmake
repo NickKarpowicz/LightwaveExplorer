@@ -14,7 +14,7 @@ include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${Qt6_INCLUDE_DIRS})
 include_directories(${MKL_ROOT}/include)
 include_directories(${CAIRO_INCLUDE_DIRS})
-INCLUDE_DIRECTORIES(${MINIZ_INCLUDE_DIRS}/miniz)
+INCLUDE_DIRECTORIES(/app/include/miniz)
 add_definitions(-DLWEFLATPAK)
 add_library(LightwaveExplorerCuda STATIC
         Source/LightwaveExplorerCore.cu
