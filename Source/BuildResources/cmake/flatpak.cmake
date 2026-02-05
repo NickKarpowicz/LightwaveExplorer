@@ -30,7 +30,7 @@ add_executable(LightwaveExplorer
 set_target_properties(${EXECUTABLE_NAME} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 target_compile_options(${EXECUTABLE_NAME} PRIVATE -O3 ${OpenMP_CXX_FLAGS} -DNOSYCL -DLWEFLATPAK)
 target_link_libraries(${EXECUTABLE_NAME} LightwaveExplorerCuda)
-target_link_libraries(${EXECUTABLE_NAME} CUDA::cudart CUDA::cufft_static CUDA::nvrtc_static)
+target_link_libraries(${EXECUTABLE_NAME} CUDA::cudart_static CUDA::cufft_static)
 target_link_libraries(${EXECUTABLE_NAME} Qt6::Widgets Qt6::DBus)
 target_link_libraries(${EXECUTABLE_NAME} ${CAIRO_LIBRARIES})
 target_link_libraries(${EXECUTABLE_NAME} miniz::miniz)
