@@ -10,7 +10,7 @@
 
 import marimo
 
-__generated_with = "0.19.7"
+__generated_with = "0.19.8"
 app = marimo.App()
 
 
@@ -657,11 +657,7 @@ def _(mo):
     mo.md(r"""
     ### Interface
 
-    Here is a view of the user interface, with significant parts labeled in the large colored text
-
-    <img src="https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/refs/heads/master/Documentation/Images/LabeledInterface.svg">
-
-    Let's go through these components one-by-one.
+    Let's go through these components one-by-one. There are also tooltips that will tell you more about each value if you hover your cursor over it.
 
     ### Pulse parameters
     These you find in two columns on the left. Here you can put in all the parameters described in the Pulse Parameters section, plus a few more.
@@ -676,14 +672,26 @@ def _(mo):
     8. Phase material: You can select from the loaded material in the crystal database, shown in the info box, a material whose dispersion you would like to apply to the pulse. For example, if you leave it as 2, it will apply the phase of passing through BaF2.
     9. Thickness: Thickness in microns of the phase material to apply. If you set it to 1000, the pulse will be stretched (or compressed) as though it passed through 1 mm of barium fluoride. Negative values would allow you to precompensate for the dispersion.
     10. Basis: select either simple propagation with a TEM00, or a more complicated beam specification on a Hermite-Gauss or Laguerre-Gauss basis
-    11. Beam specification: a sequence of numbers providing a detailed description of the spatio-spectral characteristics of the beam. It has a structure like this: [index 1] [index 2] [weight] [phase (rad)] [waist (μm)] [rotation (rad)] [x (μm)] [y(μm)] [z (μm)] [x-angle (rad)] [y-angle(rad)]
-    Additional modes are separated by semicolons. If the last 7 parameters
+    11. Beam specification: a sequence of numbers providing a detailed description of the spatio-spectral characteristics of the beam. It has a structure like this:
+
+    [index 1] [index 2] [weight] [phase (rad)]
+
+    which can be followed by a set of 7 offset values:
+
+    [waist (μm)] [rotation (rad)] [x (μm)] [y(μm)] [z (μm)] [x-angle (rad)] [y-angle(rad)]
+
+    Additional modes are separated by semicolons.
+
+    If the last 7 parameters
     are frequency-dependent, this can be expressed in terms of a taylor series expansion by adding 7 more numbers to the sequence, using units of μm for space, radians for angles, and THz for frequencies.
+
     Example:
     ```
-    1 2 1 0 50 0 0 10 0 0 0 0
-            1 0 0 0.1 0 0 0 0
-    2 2 1 0 50 0 0 5 5 0 0 0;
+    1 2 1 0
+    0 0 10 0 0 0 0
+    0 0 0.1 0 0 0 0;
+    2 2 1 0
+    0 0 5 5 0 0 0;
     ```
     This will give a superposition of 1 HG1,2 and HG2,2 mode, with 50 μm waist, and 10 μm x-offset HG1,2 (frequency-dependent at 0.1 μm/THz) and a 5 μm x- and y- offset HG2,2. Taylor series expansions can go up to 4th order, and the factorial constants are assumed to be rolled into the provided numbers.
     13. Beamwaist: The Gaussian waist $w_o$. This is not necessarily the size of the beam at the start of the simulation, but what size the focus will have when the beam reaches in via linear propagation.
@@ -1003,6 +1011,7 @@ def _(mo):
 @app.cell
 def _():
     import marimo as mo
+
     return (mo,)
 
 
