@@ -2,6 +2,7 @@
 New features:
 - Support for complex input beams, on either a Hermite-Gauss or Laguerre-Gauss basis with frequency-dependent beamwaist, rotation, 3D offset and angle.
 - offsetAperture() sequence function for including a non-centered iris
+- Free code signing on Windows provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org)
 
 Bug fixes:
 - Will load the last crystal in the database even if there isn't a newline at the end.
