@@ -408,7 +408,7 @@ public:
                     spec.erase(std::remove(spec.begin(), spec.end(), '\n'), spec.end());
                     spec.erase(std::remove(spec.begin(), spec.end(), '\r'), spec.end());
                     spec.erase(std::remove(spec.begin(), spec.end(), '\t'), spec.end());
-                    if(spec.size() > 15) sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
+                    sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
                 }
                 break;
             case 2: //Hermite
@@ -417,7 +417,7 @@ public:
                     spec.erase(std::remove(spec.begin(), spec.end(), '\n'), spec.end());
                     spec.erase(std::remove(spec.begin(), spec.end(), '\r'), spec.end());
                     spec.erase(std::remove(spec.begin(), spec.end(), '\t'), spec.end());
-                    if(spec.size() > 15) sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
+                    sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
                 }
                 break;
         }
@@ -450,7 +450,7 @@ public:
                     spec.erase(std::remove(spec.begin(), spec.end(), '\n'), spec.end());
                     spec.erase(std::remove(spec.begin(), spec.end(), '\r'), spec.end());
                     spec.erase(std::remove(spec.begin(), spec.end(), '\t'), spec.end());
-                    if(spec.size() > 15) sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
+                    sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
                 }
                 break;
             case 2: //Hermite
@@ -459,7 +459,7 @@ public:
                     spec.erase(std::remove(spec.begin(), spec.end(), '\n'), spec.end());
                     spec.erase(std::remove(spec.begin(), spec.end(), '\r'), spec.end());
                     spec.erase(std::remove(spec.begin(), spec.end(), '\t'), spec.end());
-                    if(spec.size() > 15) sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
+                    sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
                 }
                 break;
         }

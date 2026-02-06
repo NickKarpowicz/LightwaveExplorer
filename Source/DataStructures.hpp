@@ -791,11 +791,24 @@ struct BeamSpecification {
 
     BeamSpecification(const std::string& descriptor, const BeamBasis b){
         basis = b;
+        relevant_expansion = 1;
+        auto pad_vector = [&](std::vector<T>& v){
+            if(v.size()<4){
+                v = std::vector<T>{0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+                return;
+            }
+            const size_t expansion_values = v.size()-4u;
+            const size_t required_padding = (expansion_values==0) ? 7u : (7u - expansion_values % 7u);
+            if(required_padding==0u) return;
+            v.resize(v.size() + required_padding, 0.0);
+        };
         std::vector<std::vector<T>> data = parse_string_to_vecs<T>(descriptor);
+        for(auto& v: data){
+            pad_vector(v);
+        }
         relevant_modes = std::min(number_of_modes, static_cast<int>(data.size()));
-        //TODO: validation: should have minimum element number for valid beam
         for(int mode_idx=0; mode_idx<relevant_modes; mode_idx++){
-            int current_expansion = std::min((static_cast<int>(data[mode_idx].size()) - 2) / 6, max_expansion_order);
+            int current_expansion = std::min((static_cast<int>(data[mode_idx].size()) - 4) / 7, max_expansion_order);
             relevant_expansion = std::max(relevant_expansion, current_expansion);
             lower[mode_idx] = static_cast<std::uint16_t>(data[mode_idx][0]);
             upper[mode_idx] = static_cast<std::int16_t>(data[mode_idx][1]);
