@@ -802,6 +802,7 @@ struct BeamSpecification {
             if(required_padding==0u) return;
             v.resize(v.size() + required_padding, 0.0);
         };
+        if(descriptor.empty()) return;
         std::vector<std::vector<T>> data = parse_string_to_vecs<T>(descriptor);
         for(auto& v: data){
             pad_vector(v);

@@ -398,6 +398,13 @@ public:
         setTwoDoublesIfThereIsASemicolon(textBoxes["xOffset1"], sim.base().pulse1.x_offset, sim.base().pulse1.y_offset, SecondValueDefault::Default_zero, 1e-6);
         setToDoubleMultiplier(textBoxes["zOffset1"],1e6,sim.base().pulse1.z_offset);
         setTwoDoublesIfThereIsASemicolon(textBoxes["NCAngle1"], sim.base().pulse1.angle_x_offset, sim.base().pulse1.angle_y_offset, SecondValueDefault::Default_zero, deg2Rad<double>());
+        auto replace_breaks_with_spaces = [&](std::string& str_to_adjust){
+            std::replace(str_to_adjust.begin(), str_to_adjust.end(), '\n', ' ');
+            std::replace(str_to_adjust.begin(), str_to_adjust.end(), '\t', ' ');
+            str_to_adjust.erase(std::remove(str_to_adjust.begin(), str_to_adjust.end(), '\r'), str_to_adjust.end());
+
+        };
+
         switch(pulldowns["beam1type"]->currentIndex()){
             case 0: //TEM00
                 sim.base().pulse1.beam_spec.waist[0][0] = 0.0;
@@ -405,18 +412,14 @@ public:
             case 1: //Laguerre
                 {
                     std::string spec = textBoxes["beamspec1"] -> text().toStdString();
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\n'), spec.end());
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\r'), spec.end());
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\t'), spec.end());
+                    replace_breaks_with_spaces(spec);
                     sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
                 }
                 break;
             case 2: //Hermite
                 {
                     std::string spec = textBoxes["beamspec1"] -> text().toStdString();
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\n'), spec.end());
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\r'), spec.end());
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\t'), spec.end());
+                    replace_breaks_with_spaces(spec);
                     sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
                 }
                 break;
@@ -447,18 +450,14 @@ public:
             case 1: //Laguerre
                 {
                     std::string spec = textBoxes["beamspec2"] -> text().toStdString();
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\n'), spec.end());
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\r'), spec.end());
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\t'), spec.end());
+                    replace_breaks_with_spaces(spec);
                     sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
                 }
                 break;
             case 2: //Hermite
                 {
                     std::string spec = textBoxes["beamspec2"] -> text().toStdString();
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\n'), spec.end());
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\r'), spec.end());
-                    spec.erase(std::remove(spec.begin(), spec.end(), '\t'), spec.end());
+                    replace_breaks_with_spaces(spec);
                     sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
                 }
                 break;
