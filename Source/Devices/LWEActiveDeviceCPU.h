@@ -1,41 +1,26 @@
-#include "../LightwaveExplorerUtilities.h"
 #include "../LightwaveExplorerInterfaceClasses.hpp"
-#ifdef USEFFTW
-#include <fftw3.h>
-#else
-#include <fftw3_mkl.h>
-#endif
-
+#include "../ExternalLibraries/pocketfft_hdronly.h"
 #include <atomic>
+#include <ranges>
 #include <thread>
-#include <iostream>
 #include <cmath>
 #include <cstring>
-#include <algorithm>
-#include <execution>
 #include <numeric>
+#include <execution>
 #ifdef __APPLE__
 #include <dispatch/dispatch.h>
 #endif
 static const int LWEThreadCount =
-	maxN(static_cast<int>(std::thread::hardware_concurrency() / 2), 2);
-#if defined __APPLE__ || defined __linux__
-template<typename deviceFP>
-[[maybe_unused]] void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
-	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
-	deviceFP expected = pulseSumAtomic->load();
-	while (!std::atomic_compare_exchange_weak(pulseSumAtomic, &expected, expected + pointEnergy));
-}
+	maxN(static_cast<int>(std::thread::hardware_concurrency()/2), 2);
 #ifdef __linux__
 using std::isnan;
 #endif
-#else
 template<typename deviceFP>
 static void atomicAdd(deviceFP* pulseSum, deviceFP pointEnergy) {
 	std::atomic<deviceFP>* pulseSumAtomic = (std::atomic<deviceFP>*)pulseSum;
 	(*pulseSumAtomic).fetch_add(pointEnergy);
 }
-#endif
+
 [[maybe_unused]]static int hardwareCheck(int* CUDAdeviceCount) {
 	*CUDAdeviceCount = 1;
 	return 0;
@@ -166,37 +151,20 @@ private:
 #elif defined _WIN32 || defined __linux__
 	std::vector<int64_t> indices;
 #endif
-	fftw_plan fftPlanD2Z = {};
-	fftw_plan fftPlanZ2D = {};
-	fftw_plan fftPlan1DD2Z = {};
-	fftw_plan fftPlan1DZ2D = {};
-	fftw_plan doublePolfftPlan = {};
-	fftwf_plan fftPlanD2Z32 = {};
-	fftwf_plan fftPlanZ2D32 = {};
-	fftwf_plan fftPlan1DD2Z32 = {};
-	fftwf_plan fftPlan1DZ2D32 = {};
-	fftwf_plan doublePolfftPlan32 = {};
 
-	void fftDestroy() {
-		if(sizeof(deviceFP)==sizeof(double)){
-			fftw_destroy_plan(fftPlanD2Z);
-			fftw_destroy_plan(fftPlanZ2D);
-			fftw_destroy_plan(fftPlan1DD2Z);
-			fftw_destroy_plan(fftPlan1DZ2D);
-			if (s->isCylindric)fftw_destroy_plan(doublePolfftPlan);
-		}
-		else if(visualizationOnly){
-			fftwf_destroy_plan(fftPlan1DD2Z32);
-		}
-		else{
-			fftwf_destroy_plan(fftPlanD2Z32);
-			fftwf_destroy_plan(fftPlanZ2D32);
-			fftwf_destroy_plan(fftPlan1DD2Z32);
-			fftwf_destroy_plan(fftPlan1DZ2D32);
-			if (s->isCylindric)fftwf_destroy_plan(doublePolfftPlan32);
-		}
-		fftw_cleanup();
-	}
+	void fftDestroy() {}
+	pocketfft::shape_t shape_d2z;
+	pocketfft::shape_t shape_d2z_double;
+	pocketfft::shape_t shape_1d;
+	pocketfft::shape_t axes_d2z;
+	pocketfft::shape_t axes_1d;
+	pocketfft::stride_t stride_d2z_time;
+	pocketfft::stride_t stride_d2z_double_time;
+	pocketfft::stride_t stride_1d_time;
+	pocketfft::stride_t stride_d2z_freq;
+	pocketfft::stride_t stride_d2z_double_freq;
+	pocketfft::stride_t stride_1d_freq;
+
 
 public:
 	deviceParameterSet<deviceFP, deviceComplex>* s;
@@ -268,10 +236,10 @@ public:
 		}
 		else {
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
-			std::for_each(
-				std::execution::par,
+			std::for_each_n(
+				std::execution::par_unseq,
 				indices.begin(),
-				indices.begin() + static_cast<int64_t>(Nblock) * Nthread,
+				static_cast<int64_t>(Nblock) * static_cast<int64_t>(Nthread),
 				functor);
 #endif
 		}
@@ -297,263 +265,101 @@ public:
 	}
 
 	void fft(const void* input, void* output, deviceFFT type) override {
-		if (!configuredFFT) return;
-		if(sizeof(deviceFP) == sizeof(double)){
-			switch (type){
+		switch (type){
 			case deviceFFT::D2Z:
-				fftw_execute_dft_r2c(fftPlanD2Z, (double*)input, (fftw_complex*)output);
+			    deviceLaunch(2, 1,
+    				[&](size_t i){
+                        pocketfft::r2c(
+                            shape_d2z,
+                            stride_d2z_time,
+                            stride_d2z_freq,
+                            axes_d2z,
+                            pocketfft::FORWARD,
+           					(deviceFP*)input + i * s->Ngrid,
+           					(deviceComplex*)output + i * s->NgridC,
+           					static_cast<deviceFP>(1));
+                });
 				break;
 			case deviceFFT::Z2D:
-				fftw_execute_dft_c2r(fftPlanZ2D, (fftw_complex*)input, (double*)output);
+			    deviceLaunch(2,1,
+                    [&](size_t i){
+                       	pocketfft::c2r(
+                            shape_d2z,
+                            stride_d2z_freq,
+                            stride_d2z_time,
+                            axes_d2z,
+                      		pocketfft::BACKWARD,
+                      		(deviceComplex*)input + i * s->NgridC,
+                            (deviceFP*)output + i *s->Ngrid,
+                      		static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::D2Z_1D:
-				fftw_execute_dft_r2c(fftPlan1DD2Z, (double*)input, (fftw_complex*)output);
+			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
+    				[&](size_t i){
+                        pocketfft::r2c(
+                            shape_1d,
+                            stride_1d_time,
+                            stride_1d_freq,
+                            axes_1d,
+                            pocketfft::FORWARD,
+                            (deviceFP *)input + i * s->Ntime, (deviceComplex *)output + i * s->Nfreq,
+                            static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::Z2D_1D:
-				fftw_execute_dft_c2r(fftPlan1DZ2D, (fftw_complex*)input, (double*)output);
+			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
+    				[&](size_t i){
+                        pocketfft::c2r(shape_1d,
+                            stride_1d_freq,
+                            stride_1d_time,
+                            axes_1d,
+                            pocketfft::BACKWARD,
+                            (deviceComplex *)input + i * s->Nfreq,
+                            (deviceFP *)output + i * s->Ntime,
+                            static_cast<deviceFP>(1));});
 				break;
 			case deviceFFT::D2Z_Polarization:
-				fftw_execute_dft_r2c(doublePolfftPlan, (double*)input, (fftw_complex*)output);
+			    deviceLaunch(2 + 2 * s->hasPlasma,1,
+    				[&](size_t i){
+             			pocketfft::r2c(
+                            shape_d2z_double,
+                            stride_d2z_time,
+               	            stride_d2z_freq,
+                   	        axes_d2z,
+            				pocketfft::FORWARD,
+            				(deviceFP*)input + i * 2 * s->Ngrid,
+            				(deviceComplex*)output + i * 2 * s->NgridC,
+            				static_cast<deviceFP>(1));});
 				break;
 			}
-		}
-		else{
-			switch(type){
-			case deviceFFT::D2Z:
-				fftwf_execute_dft_r2c(fftPlanD2Z32, (float*)input, (fftwf_complex*)output);
-				break;
-			case deviceFFT::Z2D:
-				fftwf_execute_dft_c2r(fftPlanZ2D32, (fftwf_complex*)input, (float*)output);
-				break;
-			case deviceFFT::D2Z_1D:
-				fftwf_execute_dft_r2c(fftPlan1DD2Z32, (float*)input, (fftwf_complex*)output);
-				break;
-			case deviceFFT::Z2D_1D:
-				fftwf_execute_dft_c2r(fftPlan1DZ2D32, (fftwf_complex*)input, (float*)output);
-				break;
-			case deviceFFT::D2Z_Polarization:
-				fftwf_execute_dft_r2c(doublePolfftPlan32, (float*)input, (fftwf_complex*)output);
-				break;
-			}
-		}
 	}
 
 	void fftInitialize() {
-		if (configuredFFT) fftDestroy();
-		if (sizeof(deviceFP) == sizeof(double)) {
-			std::vector<double> setupWorkD((*s).Ngrid * (2 + 2 * (*s).isCylindric));
-			std::vector<std::complex<double>> setupWorkC((*s).NgridC * (2 + 2 * (*s).isCylindric));
-			const int fftw1[1] = { (int)(*s).Ntime };
-			fftPlan1DD2Z = fftw_plan_many_dft_r2c(
-				1,
-				fftw1,
-				(int)(*s).Nspace * (int)(*s).Nspace2 * 2,
-				setupWorkD.data(),
-				fftw1,
-				1,
-				(int)(*s).Ntime, (fftw_complex*)setupWorkC.data(),
-				fftw1,
-				1,
-				(int)(*s).Nfreq,
-				FFTW_ESTIMATE);
-			fftPlan1DZ2D = fftw_plan_many_dft_c2r(
-				1,
-				fftw1,
-				(int)(*s).Nspace * (int)(*s).Nspace2 * 2,
-				(fftw_complex*)setupWorkC.data(),
-				fftw1,
-				1,
-				(int)(*s).Nfreq,
-				setupWorkD.data(),
-				fftw1,
-				1,
-				(int)(*s).Ntime,
-				FFTW_ESTIMATE);
-			if ((*s).is3D) {
-				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z = fftw_plan_many_dft_r2c(
-					3,
-					fftwSizes,
-					2,
-					setupWorkD.data(),
-					NULL,
-					1,
-					(int)(*s).Ngrid,
-					(fftw_complex*)setupWorkC.data(),
-					NULL, 1,
-					(int)(*s).NgridC,
-					FFTW_MEASURE);
-				fftPlanZ2D = fftw_plan_many_dft_c2r(
-					3,
-					fftwSizes,
-					2,
-					(fftw_complex*)setupWorkC.data(),
-					NULL,
-					1,
-					(int)(*s).NgridC,
-					setupWorkD.data(),
-					NULL,
-					1,
-					(int)(*s).Ngrid,
-					FFTW_MEASURE);
-			}
-			else {
-				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z = fftw_plan_many_dft_r2c(
-					2,
-					fftwSizes,
-					2,
-					setupWorkD.data(),
-					NULL,
-					1,
-					(int)(*s).Ngrid,
-					(fftw_complex*)setupWorkC.data(),
-					NULL,
-					1,
-					(int)(*s).NgridC,
-					FFTW_MEASURE);
-				fftPlanZ2D = fftw_plan_many_dft_c2r(
-					2,
-					fftwSizes,
-					2,
-					(fftw_complex*)setupWorkC.data(),
-					NULL,
-					1,
-					(int)(*s).NgridC,
-					setupWorkD.data(),
-					NULL,
-					1,
-					(int)(*s).Ngrid,
-					FFTW_MEASURE);
+        const size_t Nspace2 = static_cast<size_t>(s->Nspace2);
+        const size_t Nspace = static_cast<size_t>(s->Nspace);
+        const size_t Ntime = static_cast<size_t>(s->Ntime);
+        const ptrdiff_t pNspace = static_cast<ptrdiff_t>(s->Nspace);
+        const ptrdiff_t pNtime = static_cast<ptrdiff_t>(s->Ntime);
+        const ptrdiff_t pNfreq = static_cast<ptrdiff_t>(s->Nfreq);
+        const ptrdiff_t psizeFP = static_cast<ptrdiff_t>(sizeof(deviceFP));
+        const ptrdiff_t psizeCP = static_cast<ptrdiff_t>(sizeof(deviceComplex));
+        shape_1d = pocketfft::shape_t{Ntime} ;
+        axes_1d = pocketfft::shape_t{0};
+        stride_1d_freq = pocketfft::stride_t{psizeCP};
+    	stride_1d_time = pocketfft::stride_t{psizeFP};
+        shape_d2z_double = pocketfft::shape_t{2u * Nspace, Ntime};
 
-				if ((*s).isCylindric) {
-					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
-					doublePolfftPlan = fftw_plan_many_dft_r2c(
-						2,
-						fftwSizesCyl,
-						2 + 2 * (*s).hasPlasma,
-						setupWorkD.data(),
-						NULL,
-						1,
-						2 * (int)(*s).Ngrid,
-						(fftw_complex*)setupWorkC.data(),
-						NULL,
-						1,
-						2 * (int)(*s).NgridC,
-						FFTW_MEASURE);
-				}
-			}
-		}
-		else if(sizeof(deviceFP)==sizeof(float)){
-			std::vector<float> setupWorkD((*s).Ngrid * (2 + 2 * (*s).isCylindric));
-			std::vector<std::complex<float>> setupWorkC((*s).NgridC * (2 + 2 * (*s).isCylindric));
-			const int fftw1[1] = { (int)(*s).Ntime };
-			fftPlan1DD2Z32 = fftwf_plan_many_dft_r2c(
-				1,
-				fftw1,
-				(int)(*s).Nspace * (int)(*s).Nspace2 * 2,
-				setupWorkD.data(),
-				fftw1,
-				1,
-				(int)(*s).Ntime,
-				(fftwf_complex*)setupWorkC.data(),
-				fftw1,
-				1,
-				(int)(*s).Nfreq,
-				FFTW_ESTIMATE);
-			if(!visualizationOnly)fftPlan1DZ2D32 = fftwf_plan_many_dft_c2r(
-				1,
-				fftw1,
-				(int)(*s).Nspace * (int)(*s).Nspace2 * 2,
-				(fftwf_complex*)setupWorkC.data(),
-				fftw1,
-				1,
-				(int)(*s).Nfreq,
-				setupWorkD.data(),
-				fftw1,
-				1,
-				(int)(*s).Ntime,
-				FFTW_ESTIMATE);
-			if ((*s).is3D && !visualizationOnly) {
-				const int fftwSizes[] = { (int)(*s).Nspace2, (int)(*s).Nspace, (int)(*s).Ntime };
-				fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
-					3,
-					fftwSizes,
-					2,
-					setupWorkD.data(),
-					NULL,
-					1,
-					(int)(*s).Ngrid,
-					(fftwf_complex*)setupWorkC.data(),
-					NULL,
-					1,
-					(int)(*s).NgridC,
-					FFTW_MEASURE);
-				fftPlanZ2D32 = fftwf_plan_many_dft_c2r(
-					3,
-					fftwSizes,
-					2,
-					(fftwf_complex*)setupWorkC.data(),
-					NULL,
-					1,
-					(int)(*s).NgridC,
-					setupWorkD.data(),
-					NULL,
-					1,
-					(int)(*s).Ngrid,
-					FFTW_MEASURE);
-			}
-			else {
-				const int fftwSizes[] = { (int)(*s).Nspace, (int)(*s).Ntime };
-				if(!visualizationOnly)fftPlanD2Z32 = fftwf_plan_many_dft_r2c(
-					2,
-					fftwSizes,
-					2,
-					setupWorkD.data(),
-					NULL,
-					1,
-					(int)(*s).Ngrid,
-					(fftwf_complex*)setupWorkC.data(),
-					NULL,
-					1,
-					(int)(*s).NgridC,
-					FFTW_MEASURE);
-				if(!visualizationOnly)fftPlanZ2D32 = fftwf_plan_many_dft_c2r(
-					2,
-					fftwSizes,
-					2,
-					(fftwf_complex*)setupWorkC.data(),
-					NULL,
-					1,
-					(int)(*s).NgridC,
-					setupWorkD.data(),
-					NULL,
-					1,
-					(int)(*s).Ngrid,
-					FFTW_MEASURE);
-
-				if ((*s).isCylindric && !visualizationOnly) {
-					const int fftwSizesCyl[] = { (int)(2 * (*s).Nspace), (int)(*s).Ntime };
-					doublePolfftPlan32 = fftwf_plan_many_dft_r2c(
-						2,
-						fftwSizesCyl,
-						2 + 2 * (*s).hasPlasma,
-						setupWorkD.data(),
-						NULL,
-						1,
-						2 * (int)(*s).Ngrid,
-						(fftwf_complex*)setupWorkC.data(),
-						NULL,
-						1,
-						2 * (int)(*s).NgridC,
-						FFTW_MEASURE);
-				}
-			}
-		}
-		else{
-			configuredFFT = false;
-			return;
-		}
+        if(s->is3D){
+        	shape_d2z = pocketfft::shape_t{Nspace2, Nspace, Ntime} ;
+        	stride_d2z_time = pocketfft::stride_t{psizeFP * pNspace * pNtime, psizeFP*pNtime, psizeFP}  ;
+        	stride_d2z_freq = pocketfft::stride_t {psizeCP * pNspace * pNfreq, psizeCP*pNfreq, psizeCP} ;
+            axes_d2z = pocketfft::shape_t{0, 1, 2};
+    	}
+    	else{
+        	shape_d2z = pocketfft::shape_t{Nspace, Ntime} ;
+        	stride_d2z_time = pocketfft::stride_t{psizeFP*pNtime, psizeFP}  ;
+        	stride_d2z_freq = pocketfft::stride_t {psizeCP*pNfreq, psizeCP} ;
+            axes_d2z = pocketfft::shape_t{0, 1};
+    	}
 		configuredFFT = true;
 	}
 

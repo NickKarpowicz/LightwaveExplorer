@@ -70,7 +70,7 @@
 	#define solveNonlinearWaveEquationX solveNonlinearWaveEquationCounter
 	#define solveNonlinearWaveEquationSequenceX solveNonlinearWaveEquationSequenceCounter
 #else
-	#include "Devices/LWEActiveDeviceCPU_pfft.h"
+	#include "Devices/LWEActiveDeviceCPU.h"
 	namespace complexLib = std;
 	#define deviceFunction
 	#if LWEFLOATINGPOINT == 32
