@@ -407,7 +407,7 @@ public:
 
         switch(pulldowns["beam1type"]->currentIndex()){
             case 0: //TEM00
-                sim.base().pulse1.beam_spec.waist[0][0] = 0.0;
+                sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>{};
                 break;
             case 1: //Laguerre
                 {
@@ -445,7 +445,7 @@ public:
 
         switch(pulldowns["beam2type"]->currentIndex()){
             case 0: //TEM00
-                sim.base().pulse2.beam_spec.waist[0][0] = 0.0;
+                sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>{};
                 break;
             case 1: //Laguerre
                 {
