@@ -412,15 +412,25 @@ public:
             case 1: //Laguerre
                 {
                     std::string spec = textBoxes["beamspec1"] -> text().toStdString();
-                    replace_breaks_with_spaces(spec);
-                    sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
+                    if(spec.empty()){
+                        sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>{};
+                    }
+                    else{
+                        replace_breaks_with_spaces(spec);
+                        sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
+                    }
                 }
                 break;
             case 2: //Hermite
                 {
                     std::string spec = textBoxes["beamspec1"] -> text().toStdString();
-                    replace_breaks_with_spaces(spec);
-                    sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
+                    if(spec.empty()){
+                        sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>{};
+                    }
+                    else{
+                        replace_breaks_with_spaces(spec);
+                        sim.base().pulse1.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
+                    }
                 }
                 break;
         }
@@ -450,15 +460,25 @@ public:
             case 1: //Laguerre
                 {
                     std::string spec = textBoxes["beamspec2"] -> text().toStdString();
-                    replace_breaks_with_spaces(spec);
-                    sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
+                    if(spec.empty()){
+                        sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>{};
+                    }
+                    else{
+                        replace_breaks_with_spaces(spec);
+                        sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::laguerre);
+                    }
                 }
                 break;
             case 2: //Hermite
                 {
                     std::string spec = textBoxes["beamspec2"] -> text().toStdString();
-                    replace_breaks_with_spaces(spec);
-                    sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
+                    if(spec.empty()){
+                        sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>{};
+                    }
+                    else{
+                        replace_breaks_with_spaces(spec);
+                        sim.base().pulse2.beam_spec = BeamSpecification<double, 16, 4>(spec, BeamBasis::hermite);
+                    }
                 }
                 break;
         }
