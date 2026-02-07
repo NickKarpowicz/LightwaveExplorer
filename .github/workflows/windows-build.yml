@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: build/Release
-          name: LightwaveExplorerWin64
+          name: LightwaveExplorerWin64_unsigned
       - name: submit-signing-request
         id: submit-signing-request
         uses: signpath/github-action-submit-signing-request@v2
@@ -65,11 +65,18 @@ jobs:
           signing-policy-slug: "release-signing"
           github-artifact-id: "${{ steps.upload-unsigned-artifact.outputs.artifact-id }}"
           wait-for-completion: true
-          output-artifact-directory: "build/LightwaveExplorer_signed"
+          output-artifact-directory: "build/LightwaveExplorerWin64"
         if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+      - name: Final clean up and bundle
+        run: |
+          cd build
+          cd LightwaveExplorerWin64
+          Get-ChildItem -File -Filter *.dll | % { $_.Attributes = $_.Attributes -bor [IO.FileAttributes]::Hidden }
+          cd ..
+          7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
       - name: Upload to Github Release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/LightwaveExplorer_signed/LightwaveExplorerWin64.zip
+          files: build/LightwaveExplorerWin64.zip
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
         if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
