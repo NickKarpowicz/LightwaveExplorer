@@ -9,6 +9,7 @@
   <developer_name>Nick Karpowicz</developer_name>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
+  <url type="vcs-browser">https://github.com/NickKarpowicz/LightwaveExplorer</url>
   <content_rating type="oars-1.1" />
   <releases>
   <release version="2026.1" date="2026-02-06" urgency="high">
@@ -176,7 +177,7 @@
       <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot.png</image>
     </screenshot>
     <screenshot environment="plasma">
-      <caption>The Lightwave Explorer main window in light mode showing a simulation of an optical parametric amplifier</caption>
+      <caption>The Lightwave Explorer main window in light mode showing a Laguerre-Gauss input beam</caption>
       <image>https://raw.githubusercontent.com/NickKarpowicz/LightwaveExplorer/master/Documentation/Images/flatpakScreenshot_light.png</image>
     </screenshot>
   </screenshots>
