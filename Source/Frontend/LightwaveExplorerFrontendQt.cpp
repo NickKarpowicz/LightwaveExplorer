@@ -2668,7 +2668,7 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
             theGui.SVGStrings[8] = sPlot.SVGString;
         }
     }
-    else blackoutCairoPlot(cr, width, height, true);
+
 }
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
