@@ -74,6 +74,7 @@ jobs:
           Get-ChildItem -File -Filter *.dll | % { $_.Attributes = $_.Attributes -bor [IO.FileAttributes]::Hidden }
           cd ..
           7z a -tzip LightwaveExplorerWin64.zip LightwaveExplorerWin64\*
+        if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
       - name: Upload to Github Release
         uses: softprops/action-gh-release@v1
         with:
