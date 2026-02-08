@@ -762,7 +762,7 @@ struct BeamSpecification {
                 y_offset[i][j] = static_cast<T>(other.y_offset[i][j]);
                 z_offset[i][j] = static_cast<T>(other.z_offset[i][j]);
                 angle_x[i][j] = static_cast<T>(other.angle_x[i][j]);
-                angle_y[i][j] = static_cast<T>(other.angle_x[i][j]);
+                angle_y[i][j] = static_cast<T>(other.angle_y[i][j]);
             }
         }
     }
