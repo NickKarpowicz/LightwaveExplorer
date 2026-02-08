@@ -2680,15 +2680,12 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::shared_lock imageLock(theGui.beamViewMutex, std::try_to_lock);
-    if (imageLock.owns_lock()) {
-        sPlot.image = &theGui.beamView;
-        sPlot.plot(cr);
-        if(theGui.isMakingSVG){
-            theGui.SVGStrings[8] = sPlot.SVGString;
-        }
+    std::unique_lock imageLock(theGui.beamViewMutex);
+    sPlot.image = &theGui.beamView;
+    sPlot.plot(cr);
+    if(theGui.isMakingSVG){
+        theGui.SVGStrings[8] = sPlot.SVGString;
     }
-
 }
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
