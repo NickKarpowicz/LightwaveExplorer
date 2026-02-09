@@ -1816,7 +1816,6 @@ public:
         messenger->moveToThread(messengerThread);
         QObject::connect(messenger, &GuiMessenger::sendText, console, &QTextEdit::append);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqPlot1"], &CairoWidget::queueUpdate);
-        QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["beamView"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["freqPlot2"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timePlot1"], &CairoWidget::queueUpdate);
         QObject::connect(messenger, &GuiMessenger::requestUpdate, plots["timePlot2"], &CairoWidget::queueUpdate);
@@ -2636,7 +2635,7 @@ void drawBeamThread(LWEGui& theGui, VisualizationConfig config){
     std::unique_lock imageLock(theGui.beamViewMutex);
     if(&theGui.theSim.base() != config.sCPU) return;
     renderVisualizationCPU(config);
-    theGui.messenger->requestUpdate();
+    theGui.messenger->requestBeamViewUpdate();
 }
 void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     std::shared_lock guiLock(theGui.m, std::try_to_lock);
@@ -2680,12 +2679,27 @@ void drawBeamImage(cairo_t* cr, int width, int height, LWEGui& theGui) {
     }
 
     sPlot.makeSVG = theGui.isMakingSVG;
-    std::unique_lock imageLock(theGui.beamViewMutex);
     sPlot.image = &theGui.beamView;
-    sPlot.plot(cr);
-    if(theGui.isMakingSVG){
-        theGui.SVGStrings[8] = sPlot.SVGString;
+    std::shared_lock imageLock(theGui.beamViewMutex, std::try_to_lock);
+    if(imageLock.owns_lock()){
+        sPlot.plot(cr);
+        if(theGui.isMakingSVG){
+            theGui.SVGStrings[8] = sPlot.SVGString;
+        }
     }
+    else{
+        std::this_thread::sleep_for(std::chrono::milliseconds{30});
+        if(imageLock.try_lock()){
+            sPlot.plot(cr);
+            if(theGui.isMakingSVG){
+                theGui.SVGStrings[8] = sPlot.SVGString;
+            }
+        }
+        else{
+            blackoutCairoPlot(cr, width, height, true);
+        }
+    }
+
 }
 
 void drawTimeImage1(cairo_t* cr, int width, int height, LWEGui& theGui) {
