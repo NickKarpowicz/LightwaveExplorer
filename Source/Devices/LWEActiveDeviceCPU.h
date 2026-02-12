@@ -246,18 +246,23 @@ public:
 	}
 #endif
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) override {
-		*ptr = calloc(N, elementSize);
-		return static_cast<int>(*ptr == nullptr);
+		const size_t request = N*elementSize;
+		const size_t standard_alignment = 2*sizeof(deviceFP);
+		const size_t bytes = (request % standard_alignment) ? standard_alignment * (request / standard_alignment) + standard_alignment : request;
+		*ptr = std::aligned_alloc(standard_alignment, bytes);
+		if(*ptr == nullptr) return 1;
+		std::memset(*ptr, 0, bytes);
+		return 0;
 	}
 	void deviceMemset(void* ptr, int value, size_t count) override {
-		memset(ptr, value, count);
+		std::memset(ptr, value, count);
 	}
 	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, copyType kind) override {
 		std::memcpy(dst, src, count);
 	}
 
 	void deviceFree(void* block) override {
-		free(block);
+		std::free(block);
 	}
 
 	inline bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
