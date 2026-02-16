@@ -5,7 +5,6 @@
 #include <thread>
 #include <cmath>
 #include <cstring>
-#include <cstdlib>
 #include <numeric>
 #include <execution>
 #ifdef __APPLE__
@@ -250,7 +249,11 @@ public:
 		const size_t request = N*elementSize;
 		const size_t standard_alignment = 2*sizeof(deviceFP);
 		const size_t bytes = (request % standard_alignment) ? standard_alignment * (request / standard_alignment) + standard_alignment : request;
-		*ptr = std::aligned_alloc(standard_alignment, bytes);
+		#ifndef _WIN32
+		    *ptr = std::aligned_alloc(standard_alignment, bytes);
+		#else
+		    *ptr = std::malloc(bytes);
+		#endif
 		if(*ptr == nullptr) return 1;
 		std::memset(*ptr, 0, bytes);
 		return 0;
