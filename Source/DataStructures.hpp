@@ -768,7 +768,7 @@ struct BeamSpecification {
     }
 
     template<FPType otherFP>
-    BeamSpecification& operator=(const BeamSpecification<otherFP, number_of_modes, max_expansion_order>& other){
+    void operator=(const BeamSpecification<otherFP, number_of_modes, max_expansion_order>& other){
         basis = other.basis;
         relevant_modes = other.relevant_modes;
         relevant_expansion = other.relevant_expansion;
