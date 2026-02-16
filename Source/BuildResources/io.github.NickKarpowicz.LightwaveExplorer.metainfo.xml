@@ -23,6 +23,9 @@
   <ul>
   <li>Will load the last crystal in the database even if there isn't a newline at the end.</li>
   <li>Circular polarization settings are explained in the tooltip, and values of outside of -1..1 are no longer passed to the simulation with odd results</li>
+  <li>2026.1.2 update: fix x-angle in beam specification</li>
+  <li>2026.1.3: further fixes for beam view glitches for long renders</li>
+  <li>2026.1.4: fix addPulse sequence function</li>
   </ul>
   </description>
   </release>
