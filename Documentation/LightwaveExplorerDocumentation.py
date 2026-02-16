@@ -111,7 +111,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    #Slider to control the UV resonance
+    # Slider to control the UV resonance
     UV = mo.ui.slider(start=0.5, stop=2.0, step=0.1, value=1, label="UV factor")
     UV
     return (UV,)
@@ -119,7 +119,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    #Slider to control the IR resonance
+    # Slider to control the IR resonance
     IR = mo.ui.slider(start=0.5, stop=2.0, step=0.1, value=1, label="IR factor")
     IR
     return (IR,)
@@ -127,45 +127,104 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(IR, UV, mo):
-    #importing some modules I'll want
-    import LightwaveExplorer as lwe
+    # importing some modules I'll want
     import io
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib import rcParams
-    rcParams['font.family'] = 'sans-serif'
-    rcParams['font.sans-serif'] = ['Helvetica', 'Arial', 'Verdana', 'DejaVu Sans', 'Liberation Sans', 'Bitstream Vera Sans', 'sans-serif']
 
+    import LightwaveExplorer as lwe
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib import rcParams
+
+    rcParams["font.family"] = "sans-serif"
+    rcParams["font.sans-serif"] = [
+        "Helvetica",
+        "Arial",
+        "Verdana",
+        "DejaVu Sans",
+        "Liberation Sans",
+        "Bitstream Vera Sans",
+        "sans-serif",
+    ]
 
     def showmo():
         """
         Helper function to plot as an svg and have it display in marimo in vector form
         """
         svg_buffer = io.StringIO()
-        plt.savefig(svg_buffer, format='svg')
+        plt.savefig(svg_buffer, format="svg")
         svg_buffer.seek(0)
         svg_data = svg_buffer.getvalue()
         return mo.Html(svg_data)
 
-    #first we'll make a wavelength grid to work with
-    l = np.linspace(0.3,3,1024)
+    # first we'll make a wavelength grid to work with
+    l = np.linspace(0.3, 3, 1024)
 
-    #next we'll need Sellmeier coefficients, these are for barium fluoride, H. H. Li., J. Phys. Chem. Ref. Data 9, 161-289 (1980)
-    a = np.array([1.33973,0,0.81070,-0.010130,0,0.19652,-892.22,0,4.52469,-2896.6,0,0,1,0,0,0,0,0,0,0,0,0])
+    # next we'll need Sellmeier coefficients, these are for barium fluoride, H. H. Li., J. Phys. Chem. Ref. Data 9, 161-289 (1980)
+    a = np.array(
+        [
+            1.33973,
+            0,
+            0.81070,
+            -0.010130,
+            0,
+            0.19652,
+            -892.22,
+            0,
+            4.52469,
+            -2896.6,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ]
+    )
 
-    #we can get the refractive index for the wavelengths we put in the grid by calling the sellmeier() function
-    #from the lightwaveExplorer module, with the equationType set to 0.
+    # we can get the refractive index for the wavelengths we put in the grid by calling the sellmeier() function
+    # from the lightwaveExplorer module, with the equationType set to 0.
     n = lwe.sellmeier(l, a, 0)
 
-    #let's make it so we can adjust the resonances of the oscillators and see how it affects the index
+    # let's make it so we can adjust the resonances of the oscillators and see how it affects the index
 
-    fig,ax = plt.subplots(1,1, figsize=(5,4))
-    a2 = np.array([1.33973,0,0.81070,-0.010130,0,0.19652,-892.22,0,4.52469,-2896.6,0,0,1,0,0,0,0,0,0,0,0,0])
+    fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+    a2 = np.array(
+        [
+            1.33973,
+            0,
+            0.81070,
+            -0.010130,
+            0,
+            0.19652,
+            -892.22,
+            0,
+            4.52469,
+            -2896.6,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ]
+    )
     a2[3] *= UV.value
     a2[6] *= IR.value
     n2 = lwe.sellmeier(l, a2, 0)
-    ax.plot(l,np.real(n),label="original",color="blue")
-    ax.plot(l,np.real(n2), label = "modified", color = "magenta")
+    ax.plot(l, np.real(n), label="original", color="blue")
+    ax.plot(l, np.real(n2), label="modified", color="magenta")
     ax.set_xlabel("Wavelength (microns)")
     ax.set_ylabel("n")
     ax.legend()
@@ -549,16 +608,23 @@ def _(mo):
 def _(Ns, bandwidth, cep, f0, lwe, np, phi2, phi3, plt, showmo, tau):
     dt = 0.25e-15
     Tgrid = 80e-15
-    Nt = int(2*Tgrid/dt)
-    t = np.linspace(-Tgrid,Tgrid,Nt)
-    w = 2*np.pi*np.fft.fftfreq(Nt,dt)
-    ws = (w-2*np.pi*f0.value*1e12)
-    phi = np.pi*cep.value + (-Tgrid + tau.value*1e-15)*w + 0.5*phi2.value*1e-30*ws**2 + (1.0/6)*phi3.value*1e-45*ws**3
-    Ew = np.exp(-ws**Ns.value/(2*np.pi*bandwidth.value*1e12)**Ns.value -1.0j * phi)
-    Ew[w<0]=0
+    Nt = int(2 * Tgrid / dt)
+    t = np.linspace(-Tgrid, Tgrid, Nt)
+    w = 2 * np.pi * np.fft.fftfreq(Nt, dt)
+    ws = w - 2 * np.pi * f0.value * 1e12
+    phi = (
+        np.pi * cep.value
+        + (-Tgrid + tau.value * 1e-15) * w
+        + 0.5 * phi2.value * 1e-30 * ws**2
+        + (1.0 / 6) * phi3.value * 1e-45 * ws**3
+    )
+    Ew = np.exp(
+        -(ws**Ns.value) / (2 * np.pi * bandwidth.value * 1e12) ** Ns.value - 1.0j * phi
+    )
+    Ew[w < 0] = 0
     Et = lwe.norma(np.fft.ifft(Ew))
-    fwhm_value = 1e15*lwe.fwhm(t,np.abs(Et)**2)
-    plt.plot(1e15*t,np.real(Et))
+    fwhm_value = 1e15 * lwe.fwhm(t, np.abs(Et) ** 2)
+    plt.plot(1e15 * t, np.real(Et))
     plt.xlabel("Time (fs)")
     plt.title(f"FWHM duration: {fwhm_value: .2f} fs")
     showmo()
@@ -803,7 +869,7 @@ def _(mo):
 
     Note that compared to the interface, you have an extra beam angle and beam position. These are only relevant to 3D calculations and gives the angle and offset in the y-direction. (you can actually specify them on the interface, too, by writing both angles in the text box separated by a semicolon in the box for x0 and the NC angle, e.g. 10;20 will give an x-direction value of 10 and a y-direction value of 20).
 
-    A call to addPulse() will initialize the electric field grid if it hasn't been done so already.
+    A call to addPulse() will initialize the electric field grid if it hasn't been done so already, with the added pulse only.
 
     #### linear(materialIndex, crystalTheta, crystalPhi, crystalThickness, propagationStep)
     This function will propagate *linearly* through the medium determined by materialIndex. The parameter propagationStep is only necessary when in cylindrical symmetry mode. This is because the propagation is carried out analytically in 3D and 2D Cartesian modes since the linear propagator is diagonal in those bases. In cylindrical symmetry mode, it is handled as a numerical propagation with all nonlinearities disabled, which is why specifying a step size is necessary. This is also why this function is significantly faster in 3D and 2D Cartesian coordinates.
@@ -1003,7 +1069,7 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
- 
+
     """)
     return
 

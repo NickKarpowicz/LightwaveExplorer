@@ -2444,7 +2444,6 @@ namespace hostFunctions{
 				copyType::ToDevice);
 
 			Pulse<double> p;
-			p = sCPU->pulse1;
 			p.energy = parameters[0];
 			p.frequency = 1e12 * parameters[1];
 			p.bandwidth = 1e12 * parameters[2];
@@ -2455,15 +2454,13 @@ namespace hostFunctions{
 			p.tod = 1e-45 * parameters[7];
 			p.phaseMaterial = (int)parameters[8];
 			p.phaseMaterialThickness = 1e-6 * parameters[9];
-			p.beam_spec.relevant_modes = 1;
-			p.beam_spec.relevant_expansion = 1;
-			p.beam_spec.weight[0] = 1.0;
-			p.beam_spec.waist[0][0] = 1e-6 * parameters[10];
-			p.beam_spec.x_offset[0][0] = 1e-6 * parameters[11];
-			p.beam_spec.y_offset[0][0] = 1e-6 * parameters[12];
-			p.beam_spec.z_offset[0][0] = 1e-6 * parameters[13];
-			p.beam_spec.angle_x[0][0] = deg2Rad<deviceFP>() * parameters[14];
-			p.beam_spec.angle_y[0][0] = deg2Rad<deviceFP>() * parameters[15];
+			p.beam_spec = BeamSpecification<deviceFP, 16, 4>{};
+			p.beamwaist = 1e-6 * parameters[10];
+			p.x_offset = 1e-6 * parameters[11];
+			p.y_offset = 1e-6 * parameters[12];
+			p.z_offset = 1e-6 *parameters[13];
+			p.angle_x_offset = deg2Rad<deviceFP>() * parameters[14];
+			p.angle_y_offset = deg2Rad<deviceFP>() * parameters[15];
 			p.polarizationAngle = deg2Rad<deviceFP>() * parameters[16];
 			p.circularity = parameters[17];
 			(*sCPU).materialIndex = (int)parameters[18];
