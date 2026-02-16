@@ -5,6 +5,7 @@
 #include <thread>
 #include <cmath>
 #include <cstring>
+#include <cstdlib>
 #include <numeric>
 #include <execution>
 #ifdef __APPLE__
