@@ -331,14 +331,14 @@ int loadWaveformFile(
 	const int64_t NfreqData = lineCount / 2 + 1;
 
 	//FFT the waveform onto a frequency grid
-	std::vector<std::complex<double>> fftOfEin(NfreqData, 0.0);
+	std::vector<std::complex<double>> fftOfEin(NfreqData, std::complex<double>(0.0));
 	pocketfft::r2c(
-                        {static_cast<size_t>(lineCount)},
-                        {sizeof(float)},
-                        {sizeof(std::complex<double>)},
-                        pocketfft::shape_t{0}, pocketfft::FORWARD,
-                        Ein.data(), fftOfEin.data(),
-                        1.0);
+        {static_cast<size_t>(lineCount)},
+        {sizeof(double)},
+        {sizeof(std::complex<double>)},
+        pocketfft::shape_t{0}, pocketfft::FORWARD,
+        Ein.data(), fftOfEin.data(),
+        1.0);
 
 	//apply a time shift so that the frequency-domain solution
 	//oscillates slowly (will be undone after interpolation)

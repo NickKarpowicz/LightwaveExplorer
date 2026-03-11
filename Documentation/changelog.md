@@ -11,6 +11,7 @@ Bug fixes:
 - 2026.1.2 update: fix x-angle in beam specification
 - 2026.1.3: further fixes for beam view glitches for long renders
 - 2026.1.4: fix addPulse sequence function
+- 2026.1.5: fix loading of waveforms
 
 Programming things:
 - The CPU FFT library was switched to PocketFFT. This leads to much better performance on the AMD systems I tested; slightly worse on Intel. However, it also makes maintenance and compiling much easier.
