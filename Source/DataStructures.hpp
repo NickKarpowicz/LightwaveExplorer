@@ -457,45 +457,6 @@ public:
 template <FPType T, typename deviceComplex>
 class deviceParameterSet {
 public:
-    deviceComplex* workspace1 = 0;
-    deviceComplex* workspace2 = 0;
-    deviceComplex* workspace2P = 0;
-    deviceComplex* gridETemp1 = 0;
-    deviceComplex* gridETemp2 = 0;
-    deviceComplex* gridEFrequency1 = 0;
-    deviceComplex* gridEFrequency2 = 0;
-    deviceComplex* gridPropagationFactor1 = 0;
-    deviceComplex* gridPropagationFactor1Rho1 = 0;
-    deviceComplex* gridPropagationFactor1Rho2 = 0;
-    deviceComplex* gridPolarizationFactor1 = 0;
-    deviceComplex* gridPolarizationFrequency1 = 0;
-    deviceComplex* gridPropagationFactor2 = 0;
-    deviceComplex* gridPolarizationFactor2 = 0;
-    deviceComplex* gridPolarizationFrequency2 = 0;
-    deviceComplex* gridEFrequency1Next1 = 0;
-    deviceComplex* gridEFrequency1Next2 = 0;
-    deviceComplex* gridPlasmaCurrentFrequency1 = 0;
-    deviceComplex* gridPlasmaCurrentFrequency2 = 0;
-    T* gridBiaxialDelta = 0;
-    deviceComplex* chiLinear1 = 0;
-    deviceComplex* chiLinear2 = 0;
-    T* inverseChiLinear1 = 0;
-    T* inverseChiLinear2 = 0;
-    T* fieldFactor1 = 0;
-    T* fieldFactor2 = 0;
-    deviceComplex* k1 = 0;
-    deviceComplex* k2 = 0;
-    deviceComplex n0 = 0.0;
-    T* gridRadialLaplacian1 = 0;
-    T* gridRadialLaplacian2 = 0;
-    T* gridETime1 = 0;
-    T* gridETime2 = 0;
-    T* gridPolarizationTime1 = 0;
-    T* gridPolarizationTime2 = 0;
-    T* expGammaT = 0;
-    T* gridPlasmaCurrent1 = 0;
-    T* gridPlasmaCurrent2 = 0;
-
     //fixed length arrays
     PlasmaParameters<T> plasmaParameters = {}; //[dt^2 * e^2/m * nonlinearAbsorptionStrength, gamma]
     T chi2Tensor[18] = { 0 };

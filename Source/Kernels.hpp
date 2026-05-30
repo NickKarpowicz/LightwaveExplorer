@@ -23,6 +23,9 @@ namespace kernelNamespace {
 class totalSpectrumKernel {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const deviceComplex* workspace1;
+  const deviceComplex* workspace2;
+  deviceFP* gridPolarizationTime1;
   deviceFunction void operator()(const int64_t i) const {
     deviceFP beamCenter1{};
     deviceFP beamCenter2{};
@@ -36,10 +39,10 @@ public:
     } else {
       for (int64_t j{}; j < (*s).Nspace; ++j) {
         deviceFP x = (*s).dx * j;
-        deviceFP a = modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
+        deviceFP a = modulusSquared(workspace1[i + j * (*s).Nfreq]);
         beamTotal1 += a;
         beamCenter1 += x * a;
-        a = modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
+        a = modulusSquared(workspace2[i + j * (*s).Nfreq]);
         beamTotal2 += a;
         beamCenter2 += x * a;
       }
@@ -58,15 +61,15 @@ public:
     for (int64_t j{}; j < (*s).Nspace; ++j) {
       deviceFP x = (*s).dx * j;
       beamTotal1 += deviceFPLib::abs(x - beamCenter1) *
-                    modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
+                    modulusSquared(workspace1[i + j * (*s).Nfreq]);
       beamTotal2 += deviceFPLib::abs(x - beamCenter2) *
-                    modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
+                    modulusSquared(workspace2[i + j * (*s).Nfreq]);
     }
 
     // put the values into the output spectrum
-    (*s).gridPolarizationTime1[i] = beamTotal1;
-    (*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
-    (*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
+    gridPolarizationTime1[i] = beamTotal1;
+    gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+    gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
   }
 };
 
@@ -81,8 +84,8 @@ public:
 //	beamTotal1 = 0.0f;
 //	beamTotal2 = 0.0f;
 //	for (j = 0; j < (*s).Nspace; ++j) {
-//		beamTotal1 += modulusSquared((*s).workspace1[i + j *
-//(*s).Nfreq]); 		beamTotal2 += modulusSquared((*s).workspace2[i + j *
+//		beamTotal1 += modulusSquared(workspace1[i + j *
+//(*s).Nfreq]); 		beamTotal2 += modulusSquared(workspace2[i + j *
 //(*s).Nfreq]);
 //	}
 //	beamTotal1 *= 2.0f * LIGHTC * eps0<deviceFP>() * (*s).dx * (*s).dx *
@@ -99,19 +102,22 @@ public:
 class totalSpectrum3DKernel {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const deviceComplex* workspace1;
+  const deviceComplex* workspace2;
+  deviceFP* gridPolarizationTime1;
   deviceFunction void operator()(int64_t i) const {
     deviceFP beamTotal1{};
     deviceFP beamTotal2{};
     // Integrate total beam power
     for (int64_t j{}; j < (*s).Nspace * (*s).Nspace2; ++j) {
-      beamTotal1 += modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
-      beamTotal2 += modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
+      beamTotal1 += modulusSquared(workspace1[i + j * (*s).Nfreq]);
+      beamTotal2 += modulusSquared(workspace2[i + j * (*s).Nfreq]);
     }
 
     // put the values into the output spectrum
-    (*s).gridPolarizationTime1[i] = beamTotal1;
-    (*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
-    (*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
+    gridPolarizationTime1[i] = beamTotal1;
+    gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
+    gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
   }
 };
 
@@ -238,17 +244,21 @@ public:
 class radialLaplacianKernel {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const deviceFP* gridETime1;
+  const deviceFP* gridETime2;
+  deviceFP* gridRadialLaplacian1;
+  deviceFP* gridRadialLaplacian2;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = i / (*s).Ntime;
 
     // zero at edges of grid
     [[unlikely]] if (j < 3 || j > ((*s).Nspace - 4)) {
-      (*s).gridRadialLaplacian1[i] = {};
-      (*s).gridRadialLaplacian2[i] = {};
+      gridRadialLaplacian1[i] = {};
+      gridRadialLaplacian2[i] = {};
     } else {
       const int64_t h = i - j * (*s).Ntime;
-      const deviceFP *E1 = (*s).gridETime1 + h;
-      const deviceFP *E2 = (*s).gridETime2 + h;
+      const deviceFP *E1 = gridETime1 + h;
+      const deviceFP *E2 = gridETime2 + h;
       if (j < (*s).Nspace / 2) {
         const deviceFP rhoFac =
             2.0f / ((*s).dx * (*s).dx *
@@ -259,14 +269,14 @@ public:
                                    ((*s).Nspace - j) * (*s).Ntime,
                                    (j - 1) * (*s).Ntime,
                                    ((*s).Nspace - j + 1) * (*s).Ntime};
-        (*s).gridRadialLaplacian1[i] =
+        gridRadialLaplacian1[i] =
             rhoFac * (firstDerivativeStencil<deviceFP>(-3) * E1[neighbors[0]] +
                       firstDerivativeStencil<deviceFP>(-2) * E1[neighbors[1]] +
                       firstDerivativeStencil<deviceFP>(-1) * E1[neighbors[2]] +
                       firstDerivativeStencil<deviceFP>(1) * E1[neighbors[3]] +
                       firstDerivativeStencil<deviceFP>(2) * E1[neighbors[4]] +
                       firstDerivativeStencil<deviceFP>(3) * E1[neighbors[5]]);
-        (*s).gridRadialLaplacian2[i] =
+        gridRadialLaplacian2[i] =
             rhoFac * (firstDerivativeStencil<deviceFP>(-3) * E2[neighbors[0]] +
                       firstDerivativeStencil<deviceFP>(-2) * E2[neighbors[1]] +
                       firstDerivativeStencil<deviceFP>(-1) * E2[neighbors[2]] +
@@ -283,14 +293,14 @@ public:
                                    ((*s).Nspace - j - 1) * (*s).Ntime,
                                    (j + 1) * (*s).Ntime,
                                    ((*s).Nspace - j - 2) * (*s).Ntime};
-        (*s).gridRadialLaplacian1[i] =
+        gridRadialLaplacian1[i] =
             rhoFac * (firstDerivativeStencil<deviceFP>(-3) * E1[neighbors[0]] +
                       firstDerivativeStencil<deviceFP>(-2) * E1[neighbors[1]] +
                       firstDerivativeStencil<deviceFP>(-1) * E1[neighbors[2]] +
                       firstDerivativeStencil<deviceFP>(1) * E1[neighbors[3]] +
                       firstDerivativeStencil<deviceFP>(2) * E1[neighbors[4]] +
                       firstDerivativeStencil<deviceFP>(3) * E1[neighbors[5]]);
-        (*s).gridRadialLaplacian2[i] =
+        gridRadialLaplacian2[i] =
             rhoFac * (firstDerivativeStencil<deviceFP>(-3) * E2[neighbors[0]] +
                       firstDerivativeStencil<deviceFP>(-2) * E2[neighbors[1]] +
                       firstDerivativeStencil<deviceFP>(-1) * E2[neighbors[2]] +
@@ -309,6 +319,8 @@ public:
   const deviceFP activationParameter;
   const deviceFP xOffset;
   const deviceFP yOffset;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t col = i / ((*s).Nfreq - 1);   // spatial coordinate
     const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
@@ -334,8 +346,8 @@ public:
 
     // light that won't go the the farfield is immediately zero
     if (dk1 * dk1 > ko * ko || dk2 * dk2 > ko * ko) {
-      (*s).gridEFrequency1[i] = {};
-      (*s).gridEFrequency2[i] = {};
+      gridEFrequency1[i] = {};
+      gridEFrequency2[i] = {};
       return;
     }
 
@@ -349,11 +361,11 @@ public:
     const deviceFP a =
         1.0f -
         (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
-    (*s).gridEFrequency1[i] *= a;
-    (*s).gridEFrequency2[i] *= a;
+    gridEFrequency1[i] *= a;
+    gridEFrequency2[i] *= a;
     if (j == 1) {
-      (*s).gridEFrequency1[i - 1] = deviceComplex{};
-      (*s).gridEFrequency2[i - 1] = deviceComplex{};
+      gridEFrequency1[i - 1] = deviceComplex{};
+      gridEFrequency2[i - 1] = deviceComplex{};
     }
   }
 };
@@ -365,6 +377,8 @@ public:
   const deviceFP activationParameter;
   const deviceFP xOffset;
   const deviceFP yOffset;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t col = i / ((*s).Nfreq - 1);   // spatial coordinate
     const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
@@ -390,8 +404,8 @@ public:
 
     // light that won't go the the farfield is immediately zero
     if (dk1 * dk1 > ko * ko || dk2 * dk2 > ko * ko) {
-      (*s).gridEFrequency1[i] = {};
-      (*s).gridEFrequency2[i] = {};
+      gridEFrequency1[i] = {};
+      gridEFrequency2[i] = {};
       return;
     }
 
@@ -404,11 +418,11 @@ public:
     const deviceFP r = deviceFPLib::hypot(theta1, theta2);
     const deviceFP a =
         (1.0f / (1.0f + deviceFPLib::exp(-activationParameter * (r - radius))));
-    (*s).gridEFrequency1[i] *= a;
-    (*s).gridEFrequency2[i] *= a;
+    gridEFrequency1[i] *= a;
+    gridEFrequency2[i] *= a;
     if (j == 1) {
-      (*s).gridEFrequency1[i - 1] = deviceComplex{};
-      (*s).gridEFrequency2[i - 1] = deviceComplex{};
+      gridEFrequency1[i - 1] = deviceComplex{};
+      gridEFrequency2[i - 1] = deviceComplex{};
     }
   }
 };
@@ -420,6 +434,8 @@ public:
   const deviceFP activationParameter;
   const deviceFP xOffset;
   const deviceFP yOffset;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t col = i / ((*s).Nfreq - 1);   // spatial coordinate
     const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
@@ -437,8 +453,8 @@ public:
 
     // light that won't go the the farfield is immediately zero
     if (dk1 * dk1 > ko * ko) {
-      (*s).gridEFrequency1[i] = {};
-      (*s).gridEFrequency2[i] = {};
+      gridEFrequency1[i] = {};
+      gridEFrequency2[i] = {};
       return;
     }
 
@@ -447,11 +463,11 @@ public:
         1.0f -
         (1.0f / (1.0f + deviceFPLib::exp(-activationParameter *
                                          (deviceFPLib::abs(theta1) - radius))));
-    (*s).gridEFrequency1[i] *= a;
-    (*s).gridEFrequency2[i] *= a;
+    gridEFrequency1[i] *= a;
+    gridEFrequency2[i] *= a;
     if (j == 1) {
-      (*s).gridEFrequency1[i - 1] = deviceComplex{};
-      (*s).gridEFrequency2[i - 1] = deviceComplex{};
+      gridEFrequency1[i - 1] = deviceComplex{};
+      gridEFrequency2[i - 1] = deviceComplex{};
     }
   }
 };
@@ -463,6 +479,8 @@ public:
   const deviceFP activationParameter;
   const deviceFP xOffset;
   const deviceFP yOffset;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t col = i / ((*s).Nfreq - 1);   // spatial coordinate
     const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
@@ -480,8 +498,8 @@ public:
 
     // light that won't go the the farfield is immediately zero
     if (dk1 * dk1 > ko * ko) {
-      (*s).gridEFrequency1[i] = {};
-      (*s).gridEFrequency2[i] = {};
+      gridEFrequency1[i] = {};
+      gridEFrequency2[i] = {};
       return;
     }
 
@@ -489,11 +507,11 @@ public:
     const deviceFP a =
         (1.0f / (1.0f + deviceFPLib::exp(-activationParameter *
                                          (deviceFPLib::abs(theta1) - radius))));
-    (*s).gridEFrequency1[i] *= a;
-    (*s).gridEFrequency2[i] *= a;
+    gridEFrequency1[i] *= a;
+    gridEFrequency2[i] *= a;
     if (j == 1) {
-      (*s).gridEFrequency1[i - 1] = deviceComplex{};
-      (*s).gridEFrequency2[i - 1] = deviceComplex{};
+      gridEFrequency1[i - 1] = deviceComplex{};
+      gridEFrequency2[i - 1] = deviceComplex{};
     }
   }
 };
@@ -507,6 +525,8 @@ public:
   const int order;
   const deviceFP inBandAmplitude;
   const deviceFP outOfBandAmplitude;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t col = i / ((*s).Nfreq - 1);   // spatial coordinate
     const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
@@ -518,8 +538,8 @@ public:
     }
     const deviceFP filterFunction =
         outOfBandAmplitude + inBandAmplitude * deviceFPLib::exp(-0.5f * f);
-    (*s).gridEFrequency1[i] *= filterFunction;
-    (*s).gridEFrequency2[i] *= filterFunction;
+    gridEFrequency1[i] *= filterFunction;
+    gridEFrequency2[i] *= filterFunction;
   }
 };
 
@@ -529,21 +549,23 @@ public:
   const deviceComplex *complexReflectivity;
   const bool applyX;
   const bool applyY;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t col = i / ((*s).Nfreq - 1);   // spatial coordinate
     const int64_t j = 1 + i % ((*s).Nfreq - 1); // frequency coordinate
     i = j + col * (*s).Nfreq;
     if (applyX)
-      (*s).gridEFrequency1[i] *= complexReflectivity[j] / (*s).Ntime;
+      gridEFrequency1[i] *= complexReflectivity[j] / (*s).Ntime;
     else
-      (*s).gridEFrequency1[i] /= (*s).Ntime;
+      gridEFrequency1[i] /= (*s).Ntime;
     if (applyY)
-      (*s).gridEFrequency2[i] *= complexReflectivity[j] / (*s).Ntime;
+      gridEFrequency2[i] *= complexReflectivity[j] / (*s).Ntime;
     else
-      (*s).gridEFrequency2[i] /= (*s).Ntime;
+      gridEFrequency2[i] /= (*s).Ntime;
     if (j == 1) {
-      (*s).gridEFrequency1[i - 1] = {};
-      (*s).gridEFrequency2[i - 1] = {};
+      gridEFrequency1[i - 1] = {};
+      gridEFrequency2[i - 1] = {};
     }
   }
 };
@@ -562,6 +584,8 @@ public:
   const deviceFP gamma;
   const deviceFP radius;
   const deviceFP order;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     int64_t col = i / ((*s).Nfreq - 1);
     int64_t j = col % (*s).Nspace;
@@ -596,8 +620,8 @@ public:
     }
     deviceComplex filterFunction =
         deviceComplex(0.0f, deviceFPLib::exp(-spotFactor)) * lorentzian;
-    (*s).gridEFrequency1[i] += filterFunction * (*s).gridEFrequency1[i];
-    (*s).gridEFrequency2[i] += filterFunction * (*s).gridEFrequency2[i];
+    gridEFrequency1[i] += filterFunction * gridEFrequency1[i];
+    gridEFrequency2[i] += filterFunction * gridEFrequency2[i];
   }
 };
 
@@ -609,6 +633,8 @@ public:
   const deviceFP activationParameter;
   const deviceFP x_offset;
   const deviceFP y_offset;
+  deviceFP* gridETime1;
+  deviceFP* gridETime2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t col = i / (*s).Ntime;
     const int64_t j = col % (*s).Nspace;
@@ -630,8 +656,8 @@ public:
     const deviceFP a =
         1.0f - (1.0f / (1.0f + deviceFPLib::exp(-activationParameter *
                                                 (r - radius) / (*s).dx)));
-    (*s).gridETime1[i] *= a;
-    (*s).gridETime2[i] *= a;
+    gridETime1[i] *= a;
+    gridETime2[i] *= a;
   }
 };
 
@@ -640,6 +666,8 @@ class parabolicMirrorKernel {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP focus;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t h = 1 + i % ((*s).Nfreq - 1);
     const int64_t col = i / ((*s).Nfreq - 1);
@@ -661,8 +689,8 @@ public:
     const deviceComplex u = deviceLib::exp(
         deviceComplex(0.0f, w * r * r * (0.5f / focus) / lightC<deviceFP>()));
 
-    (*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
-    (*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
+    gridEFrequency1[i] *= u;
+    gridEFrequency2[i] *= u;
   }
 };
 
@@ -671,6 +699,8 @@ class sphericalMirrorKernel {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFP ROC_in;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(int64_t i) const {
     const int64_t h = 1 + i % ((*s).Nfreq - 1);
     const int64_t col = i / ((*s).Nfreq - 1);
@@ -708,12 +738,12 @@ public:
                     lightC<deviceFP>()));
     }
 
-    (*s).gridEFrequency1[i] = u * (*s).gridEFrequency1[i];
-    (*s).gridEFrequency2[i] = u * (*s).gridEFrequency2[i];
-    if (isComplexNaN((*s).gridEFrequency1[i]) ||
-        isComplexNaN((*s).gridEFrequency2[i])) {
-      (*s).gridEFrequency1[i] = deviceComplex{};
-      (*s).gridEFrequency2[i] = deviceComplex{};
+    gridEFrequency1[i] *= u;
+    gridEFrequency2[i] *= u;
+    if (isComplexNaN(gridEFrequency1[i]) ||
+        isComplexNaN(gridEFrequency2[i])) {
+      gridEFrequency1[i] = deviceComplex{};
+      gridEFrequency2[i] = deviceComplex{};
     }
   }
 };
@@ -722,6 +752,8 @@ public:
 class correctFDTDAmplitudesKernel {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   deviceFunction void operator()(const int64_t localIndex) const {
     int64_t i = localIndex;
     const int64_t h = 1 + i % ((*s).Nfreq - 1);
@@ -737,19 +769,19 @@ public:
     const deviceFP dk2 =
         k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
     if (dk2 * dk2 + dk1 * dk1 < kMagnitude * kMagnitude) {
-      s->gridEFrequency1[i] *=
+      gridEFrequency1[i] *=
           (*s).fftNorm * kMagnitude /
           deviceFPLib::sqrt((kMagnitude - dk1) * (kMagnitude + dk1));
-      s->gridEFrequency2[i] *=
+      gridEFrequency2[i] *=
           (*s).fftNorm * kMagnitude /
           deviceFPLib::sqrt((kMagnitude - dk2) * (kMagnitude + dk2));
     } else {
-      s->gridEFrequency1[i] = {};
-      s->gridEFrequency2[i] = {};
+      gridEFrequency1[i] = {};
+      gridEFrequency2[i] = {};
     }
     if (h == 1) {
-      s->gridEFrequency1[i - 1] = {};
-      s->gridEFrequency2[i - 1] = {};
+      gridEFrequency1[i - 1] = {};
+      gridEFrequency2[i - 1] = {};
     }
   }
 };
@@ -1372,11 +1404,12 @@ public:
 class plasmaCurrentKernel_twoStage_A {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  deviceFP *dN;
   deviceFunction void operator()(const int64_t i) const {
     const int pMax = (*s).plasmaParameters.fieldExponent;
 
     // save values in workspaces, casting to deviceFP
-    deviceFP *dN = (deviceFP *)(*s).workspace1;
+    //deviceFP *dN = (deviceFP *)workspace1;
     const deviceFP Esquared = (*s).plasmaParameters.nonlinearAbsorption *
                               ((*s).gridETime1[i] * (*s).gridETime1[i] +
                                (*s).gridETime2[i] * (*s).gridETime2[i]);
@@ -1392,16 +1425,18 @@ public:
   }
 };
 
-class plasmaCurrentKernel_twoStage_B {
-public:
+struct plasmaCurrentKernel_twoStage_B {
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  deviceFP* workspace1;
+  deviceFP* gridETime1;
+  deviceFP* gridPolarizationTime1;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = (i) * (*s).Ntime;
     const deviceFP *expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
     const deviceFP *dN =
-        (j % (*s).Ngrid) + reinterpret_cast<deviceFP *>((*s).workspace1);
-    const deviceFP *E = &(*s).gridETime1[j];
-    deviceFP *P = &(*s).gridPolarizationTime1[j];
+        (j % (*s).Ngrid) + workspace1;
+    const deviceFP *E = &gridETime1[j];
+    deviceFP *P = &gridPolarizationTime1[j];
     SimpsonIntegrator<deviceFP> N(s->plasmaParameters.initialDensity);
     SimpsonIntegrator<deviceFP> integral;
     for (int64_t k{}; k < (*s).Ntime; ++k) {
@@ -1414,13 +1449,13 @@ public:
   }
 };
 
-class plasmaCurrentKernel_twoStage_B_simultaneous {
-public:
+struct plasmaCurrentKernel_twoStage_B_simultaneous {
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  deviceFP* workspace1;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = (i) * (*s).Ntime;
     const deviceFP *expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-    const deviceFP *dN = j + reinterpret_cast<deviceFP *>((*s).workspace1);
+    const deviceFP *dN = j + workspace1;
     const deviceFP *E = &(*s).gridETime1[j];
     const deviceFP *Ey = E + (*s).Ngrid;
     deviceFP *P = &(*s).gridPolarizationTime1[j];
@@ -1447,7 +1482,7 @@ public:
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = (i) * (*s).Ntime;
     const deviceFP *expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
-    const deviceFP *dN = j + reinterpret_cast<deviceFP *>((*s).workspace1);
+    const deviceFP *dN = j + reinterpret_cast<deviceFP *>(workspace1);
     const deviceFP *E = &(*s).gridETime1[j];
     const deviceFP *Ey = E + (*s).Ngrid;
     deviceFP *P = &(*s).gridPolarizationTime1[j];
@@ -1483,9 +1518,9 @@ public:
         (radIndex + ((radIndex > ((*sP).Nspace / 2))) * (*sP).Nspace) *
             (*sP).Nfreq;
     (*sP).k1[gridIndex] +=
-        (*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[polIndex];
+        (*sP).gridPolarizationFactor1[gridIndex] * workspace1[polIndex];
     (*sP).k2[gridIndex] +=
-        (*sP).gridPolarizationFactor2[gridIndex] * (*sP).workspace2P[polIndex];
+        (*sP).gridPolarizationFactor2[gridIndex] * workspace2P[polIndex];
   }
 };
 
@@ -1500,11 +1535,11 @@ public:
     (*sP).k1[h] +=
         deviceComplex{-jfac * (*sP).gridPolarizationFactor1[h].imag(),
                       jfac * (*sP).gridPolarizationFactor1[h].real()} *
-        (*sP).workspace1[h] * (*sP).inverseChiLinear1[h % ((*sP).Nfreq)];
+        workspace1[h] * (*sP).inverseChiLinear1[h % ((*sP).Nfreq)];
     (*sP).k2[h] +=
         deviceComplex{-jfac * (*sP).gridPolarizationFactor2[h].imag(),
                       jfac * (*sP).gridPolarizationFactor2[h].real()} *
-        (*sP).workspace2P[h] * (*sP).inverseChiLinear2[h % ((*sP).Nfreq)];
+        workspace2P[h] * (*sP).inverseChiLinear2[h % ((*sP).Nfreq)];
   }
 };
 
@@ -1524,17 +1559,17 @@ public:
     (*sP).k1[gridIndex] +=
         deviceComplex{-jfac * (*sP).gridPolarizationFactor1[gridIndex].imag(),
                       jfac * (*sP).gridPolarizationFactor1[gridIndex].real()} *
-        (*sP).workspace1[fftIndex] * (*sP).inverseChiLinear1[freqIndex];
+        workspace1[fftIndex] * (*sP).inverseChiLinear1[freqIndex];
     (*sP).k2[gridIndex] +=
         deviceComplex{-jfac * (*sP).gridPolarizationFactor2[gridIndex].imag(),
                       jfac * (*sP).gridPolarizationFactor2[gridIndex].real()} *
-        (*sP).workspace2P[fftIndex] * (*sP).inverseChiLinear2[freqIndex];
+        workspace2P[fftIndex] * (*sP).inverseChiLinear2[freqIndex];
 
     fftIndex += 4 * (*sP).NgridC;
     (*sP).k1[gridIndex] +=
-        (*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[fftIndex];
+        (*sP).gridPolarizationFactor1[gridIndex] * workspace1[fftIndex];
     (*sP).k2[gridIndex] +=
-        (*sP).gridPolarizationFactor2[gridIndex] * (*sP).workspace2P[fftIndex];
+        (*sP).gridPolarizationFactor2[gridIndex] * workspace2P[fftIndex];
   }
 };
 
@@ -1572,7 +1607,7 @@ public:
         1 + gridIndex % ((*sP).Nfreq - 1); // frequency coordinate
     gridIndex = freqIndex + (gridIndex / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
     (*sP).k1[gridIndex] +=
-        (*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
+        (*sP).gridPolarizationFactor1[gridIndex] * workspace1[gridIndex];
     (*sP).gridEFrequency1Next1[gridIndex] =
         (*sP).gridPropagationFactor1[gridIndex] *
         (*sP).gridPropagationFactor1[gridIndex] *
@@ -1581,12 +1616,12 @@ public:
     const deviceFP ff = (gridIndex > (*sP).NgridC)
                             ? (*sP).fieldFactor2[freqIndex]
                             : (*sP).fieldFactor1[freqIndex];
-    (*sP).workspace1[gridIndex] =
+    workspace1[gridIndex] =
         ff * (*sP).gridPropagationFactor1[gridIndex] *
         ((*sP).gridEFrequency1[gridIndex] + 0.5f * (*sP).k1[gridIndex]);
     (*sP).k1[gridIndex] = {};
     [[unlikely]] if (freqIndex == 1)
-      (*sP).workspace1[gridIndex - 1] = {};
+      workspace1[gridIndex - 1] = {};
   }
 };
 
@@ -1598,7 +1633,7 @@ public:
     const int64_t gridIndex =
         freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
     (*sP).k1[gridIndex] +=
-        (*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
+        (*sP).gridPolarizationFactor1[gridIndex] * workspace1[gridIndex];
     (*sP).gridEFrequency1Next1[gridIndex] =
         (*sP).gridEFrequency1Next1[gridIndex] +
         (*sP).gridPropagationFactor1[gridIndex] * (deviceFP)third<deviceFP>() *
@@ -1606,13 +1641,13 @@ public:
     const deviceFP ff = (gridIndex > (*sP).NgridC)
                             ? (*sP).fieldFactor2[freqIndex]
                             : (*sP).fieldFactor1[freqIndex];
-    (*sP).workspace1[gridIndex] =
+    workspace1[gridIndex] =
         ff * ((*sP).gridPropagationFactor1[gridIndex] *
                   (*sP).gridEFrequency1[gridIndex] +
               0.5f * (*sP).k1[gridIndex]);
     (*sP).k1[gridIndex] = {};
     [[unlikely]] if (freqIndex == 1)
-      (*sP).workspace1[gridIndex - 1] = {};
+      workspace1[gridIndex - 1] = {};
   }
 };
 
@@ -1624,7 +1659,7 @@ public:
     const int64_t gridIndex =
         freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
     (*sP).k1[gridIndex] +=
-        (*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
+        (*sP).gridPolarizationFactor1[gridIndex] * workspace1[gridIndex];
     (*sP).gridEFrequency1Next1[gridIndex] =
         (*sP).gridEFrequency1Next1[gridIndex] +
         (*sP).gridPropagationFactor1[gridIndex] * (deviceFP)third<deviceFP>() *
@@ -1632,14 +1667,14 @@ public:
     const deviceFP ff = (gridIndex > (*sP).NgridC)
                             ? (*sP).fieldFactor2[freqIndex]
                             : (*sP).fieldFactor1[freqIndex];
-    (*sP).workspace1[gridIndex] =
+    workspace1[gridIndex] =
         ff * ((*sP).gridPropagationFactor1[gridIndex] *
               ((*sP).gridPropagationFactor1[gridIndex] *
                    (*sP).gridEFrequency1[gridIndex] +
                (*sP).k1[gridIndex]));
     (*sP).k1[gridIndex] = {};
     [[unlikely]] if (freqIndex == 1)
-      (*sP).workspace1[gridIndex - 1] = {};
+      workspace1[gridIndex - 1] = {};
   }
 };
 
@@ -1651,16 +1686,16 @@ public:
     const int64_t gridIndex =
         freqIndex + (i / ((*sP).Nfreq - 1)) * ((*sP).Nfreq);
     (*sP).k1[gridIndex] +=
-        (*sP).gridPolarizationFactor1[gridIndex] * (*sP).workspace1[gridIndex];
+        (*sP).gridPolarizationFactor1[gridIndex] * workspace1[gridIndex];
     (*sP).gridEFrequency1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] +
                                        sixth<deviceFP>() * (*sP).k1[gridIndex];
     const deviceFP ff = (gridIndex > (*sP).NgridC)
                             ? (*sP).fieldFactor2[freqIndex]
                             : (*sP).fieldFactor1[freqIndex];
-    (*sP).workspace1[gridIndex] = ff * (*sP).gridEFrequency1[gridIndex];
+    workspace1[gridIndex] = ff * (*sP).gridEFrequency1[gridIndex];
     (*sP).k1[gridIndex] = {};
     [[unlikely]] if (freqIndex == 1)
-      (*sP).workspace1[gridIndex - 1] = {};
+      workspace1[gridIndex - 1] = {};
   }
 };
 
@@ -1673,7 +1708,7 @@ public:
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
     (*sP).k1[gridIndex] += (*sP).gridPropagationFactor1Rho1[gridIndex] *
-                           (*sP).workspace1[gridIndex];
+                           workspace1[gridIndex];
     (*sP).gridEFrequency1Next1[gridIndex] =
         (*sP).gridPropagationFactor1[gridIndex] *
         (*sP).gridPropagationFactor1[gridIndex] *
@@ -1682,12 +1717,12 @@ public:
     const deviceFP ff = (gridIndex > (*sP).NgridC)
                             ? (*sP).fieldFactor2[freqIndex]
                             : (*sP).fieldFactor1[freqIndex];
-    (*sP).workspace1[gridIndex] =
+    workspace1[gridIndex] =
         ff * ((*sP).gridPropagationFactor1[gridIndex] *
               ((*sP).gridEFrequency1[gridIndex] + 0.5f * (*sP).k1[gridIndex]));
     (*sP).k1[gridIndex] = {};
     [[unlikely]] if (freqIndex == 1)
-      (*sP).workspace1[gridIndex - 1] = {};
+      workspace1[gridIndex - 1] = {};
   }
 };
 
@@ -1698,7 +1733,7 @@ public:
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
     (*sP).k1[gridIndex] += (*sP).gridPropagationFactor1Rho1[gridIndex] *
-                           (*sP).workspace1[gridIndex];
+                           workspace1[gridIndex];
     (*sP).gridEFrequency1Next1[gridIndex] =
         (*sP).gridEFrequency1Next1[gridIndex] +
         (*sP).gridPropagationFactor1[gridIndex] * third<deviceFP>() *
@@ -1706,13 +1741,13 @@ public:
     const deviceFP ff = (gridIndex > (*sP).NgridC)
                             ? (*sP).fieldFactor2[freqIndex]
                             : (*sP).fieldFactor1[freqIndex];
-    (*sP).workspace1[gridIndex] =
+    workspace1[gridIndex] =
         ff * ((*sP).gridPropagationFactor1[gridIndex] *
                   (*sP).gridEFrequency1[gridIndex] +
               0.5f * (*sP).k1[gridIndex]);
     (*sP).k1[gridIndex] = {};
     [[unlikely]] if (freqIndex == 1)
-      (*sP).workspace1[gridIndex - 1] = {};
+      workspace1[gridIndex - 1] = {};
   }
 };
 
@@ -1723,7 +1758,7 @@ public:
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
     (*sP).k1[gridIndex] += (*sP).gridPropagationFactor1Rho1[gridIndex] *
-                           (*sP).workspace1[gridIndex];
+                           workspace1[gridIndex];
     (*sP).gridEFrequency1Next1[gridIndex] =
         (*sP).gridEFrequency1Next1[gridIndex] +
         (*sP).gridPropagationFactor1[gridIndex] * third<deviceFP>() *
@@ -1731,14 +1766,14 @@ public:
     const deviceFP ff = (gridIndex > (*sP).NgridC)
                             ? (*sP).fieldFactor2[freqIndex]
                             : (*sP).fieldFactor1[freqIndex];
-    (*sP).workspace1[gridIndex] =
+    workspace1[gridIndex] =
         ff * ((*sP).gridPropagationFactor1[gridIndex] *
               ((*sP).gridPropagationFactor1[gridIndex] *
                    (*sP).gridEFrequency1[gridIndex] +
                (*sP).k1[gridIndex]));
     (*sP).k1[gridIndex] = {};
     [[unlikely]] if (freqIndex == 1)
-      (*sP).workspace1[gridIndex - 1] = {};
+      workspace1[gridIndex - 1] = {};
   }
 };
 
@@ -1749,16 +1784,16 @@ public:
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
     (*sP).k1[gridIndex] += (*sP).gridPropagationFactor1Rho1[gridIndex] *
-                           (*sP).workspace1[gridIndex];
+                           workspace1[gridIndex];
     (*sP).gridEFrequency1[gridIndex] = (*sP).gridEFrequency1Next1[gridIndex] +
                                        sixth<deviceFP>() * (*sP).k1[gridIndex];
     const deviceFP ff = (gridIndex > (*sP).NgridC)
                             ? (*sP).fieldFactor2[freqIndex]
                             : (*sP).fieldFactor1[freqIndex];
-    (*sP).workspace1[gridIndex] = ff * (*sP).gridEFrequency1[gridIndex];
+    workspace1[gridIndex] = ff * (*sP).gridEFrequency1[gridIndex];
     (*sP).k1[gridIndex] = {};
     [[unlikely]] if (freqIndex == 1)
-      (*sP).workspace1[gridIndex - 1] = {};
+      workspace1[gridIndex - 1] = {};
   }
 };
 
