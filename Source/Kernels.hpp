@@ -788,6 +788,8 @@ public:
 
 class correctFDTDAmplitudesKernel2D {
 public:
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
   const deviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t localIndex) const {
     int64_t i = localIndex;
@@ -801,17 +803,17 @@ public:
     const deviceFP dk1 =
         j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
     if (dk1 * dk1 < kMagnitude * kMagnitude && h > 2) {
-      s->gridEFrequency1[i] *=
+      gridEFrequency1[i] *=
           (*s).fftNorm * kMagnitude /
           deviceFPLib::sqrt((kMagnitude - dk1) * (kMagnitude + dk1));
-      s->gridEFrequency2[i] *= (*s).fftNorm;
+      gridEFrequency2[i] *= (*s).fftNorm;
     } else {
-      s->gridEFrequency1[i] = {};
-      s->gridEFrequency2[i] = {};
+      gridEFrequency1[i] = {};
+      gridEFrequency2[i] = {};
     }
     if (h == 1) {
-      s->gridEFrequency1[i - 1] = {};
-      s->gridEFrequency2[i - 1] = {};
+      gridEFrequency1[i - 1] = {};
+      gridEFrequency2[i - 1] = {};
     }
   }
 };
@@ -822,6 +824,9 @@ public:
   const deviceFP *sellmeierCoefficients;
   const deviceFP thickness;
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  deviceComplex* gridEFrequency1;
+  deviceComplex* gridEFrequency2;
+  deviceComplex* gridBiaxialDelta;
   deviceFunction void operator()(const int64_t localIndex) const {
     int64_t i = localIndex;
     const int axesNumber = (*s).axesNumber;
@@ -841,7 +846,7 @@ public:
     deviceFP delta = findBirefringentCrystalIndex(s, sellmeierCoefficients,
                                                   localIndex, &ne, &no);
     if (s->axesNumber == 2 && i < s->NgridC)
-      s->gridBiaxialDelta[i] = delta;
+      gridBiaxialDelta[i] = delta;
 
     const deviceFP dk1 =
         j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
@@ -872,16 +877,16 @@ public:
       ts = deviceComplex{};
     if (isComplexNaN(tp))
       tp = deviceComplex{};
-    (*s).gridEFrequency1[i] = ts * (*s).gridEFrequency1[i];
-    (*s).gridEFrequency2[i] = tp * (*s).gridEFrequency2[i];
-    if (isComplexNaN((*s).gridEFrequency1[i]) ||
-        isComplexNaN((*s).gridEFrequency2[i])) {
-      (*s).gridEFrequency1[i] = deviceComplex{};
-      (*s).gridEFrequency2[i] = deviceComplex{};
+    gridEFrequency1[i] *= ts;
+    gridEFrequency2[i] *= tp;
+    if (isComplexNaN(gridEFrequency1[i]) ||
+        isComplexNaN(gridEFrequency2[i])) {
+      gridEFrequency1[i] = deviceComplex{};
+      gridEFrequency2[i] = deviceComplex{};
     }
     if (h == 1) {
-      (*s).gridEFrequency1[i - 1] = deviceComplex{};
-      (*s).gridEFrequency2[i - 1] = deviceComplex{};
+      gridEFrequency1[i - 1] = deviceComplex{};
+      gridEFrequency2[i - 1] = deviceComplex{};
     }
   }
 };
@@ -893,6 +898,13 @@ class prepareCartesianGridsKernel {
 public:
   const deviceFP *sellmeierCoefficients;
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  deviceComplex* gridPropagationFactor1;
+  deviceComplex* gridPropagationFactor2;
+  deviceComplex* gridBiaxialDelta;
+  deviceComplex* gridPolarizationFactor1;
+  deviceComplex* gridPolarizationFactor2;
+  deviceComplex* chiLinear1;
+  deviceComplex* chiLinear2;
   deviceFunction void operator()(const int64_t localIndex) const {
     const int64_t j = localIndex / ((*s).Nfreq - 1);       // spatial coordinate
     const int64_t k = 1 + (localIndex % ((*s).Nfreq - 1)); // temporal
@@ -911,16 +923,16 @@ public:
     deviceFP d = findBirefringentCrystalIndex(s, sellmeierCoefficients,
                                               localIndex, &ne, &no);
     if (s->axesNumber == 2 && i < s->NgridC)
-      s->gridBiaxialDelta[i] = d;
+      gridBiaxialDelta[i] = d;
     // if the refractive index was returned weird,
     // then the index isn't valid, so set the propagator to zero for that
     // frequency
     if (minN(ne.real(), no.real()) < 0.9f || isComplexNaN(ne) ||
         isComplexNaN(no)) {
-      (*s).gridPropagationFactor1[i] = {};
-      (*s).gridPropagationFactor2[i] = {};
-      (*s).gridPolarizationFactor1[i] = {};
-      (*s).gridPolarizationFactor2[i] = {};
+      gridPropagationFactor1[i] = {};
+      gridPropagationFactor2[i] = {};
+      gridPolarizationFactor1[i] = {};
+      gridPolarizationFactor2[i] = {};
       return;
     }
 
@@ -931,12 +943,12 @@ public:
 
     // chi11 factor, also multiplied by -sqrt(-1)!
     const deviceComplex chi11 = ((*s).isUsingMillersRule)
-                                    ? deviceComplex((*s).chiLinear1[k].imag(),
-                                                    -(*s).chiLinear1[k].real())
+                                    ? deviceComplex(chiLinear1[k].imag(),
+                                                    -chiLinear1[k].real())
                                     : cOne<deviceComplex>();
     const deviceComplex chi12 = ((*s).isUsingMillersRule)
-                                    ? deviceComplex((*s).chiLinear2[k].imag(),
-                                                    -(*s).chiLinear2[k].real())
+                                    ? deviceComplex(chiLinear2[k].imag(),
+                                                    -chiLinear2[k].real())
                                     : cOne<deviceComplex>();
 
     const deviceComplex kz1 =
@@ -946,33 +958,33 @@ public:
 
     if (kz1.real() > 0.0f && kz2.real() > 0.0f && !isComplexNaN(k0) &&
         !isComplexNaN(kz1) && !isComplexNaN(kz2)) {
-      (*s).gridPropagationFactor1[i] =
+      gridPropagationFactor1[i] =
           fourierPropagator(ke, dk, deviceFP{}, k0.real(), 0.5f * (*s).h);
-      (*s).gridPropagationFactor2[i] =
+      gridPropagationFactor2[i] =
           fourierPropagator(ko, dk, deviceFP{}, k0.real(), 0.5f * (*s).h);
-      (*s).gridPolarizationFactor1[i] =
-          deviceLib::pow((*s).chiLinear1[k] + 1.0f, (deviceFP)0.25f) * chi11 *
+      gridPolarizationFactor1[i] =
+          deviceLib::pow(chiLinear1[k] + 1.0f, (deviceFP)0.25f) * chi11 *
           (twoPi<deviceFP>() * twoPi<deviceFP>() * f * f) /
           ((2.0f * lightC<deviceFP>() * lightC<deviceFP>() * kz1)) * (*s).h;
-      (*s).gridPolarizationFactor2[i] =
-          deviceLib::pow((*s).chiLinear2[k] + 1.0f, (deviceFP)0.25f) * chi12 *
+      gridPolarizationFactor2[i] =
+          deviceLib::pow(chiLinear2[k] + 1.0f, (deviceFP)0.25f) * chi12 *
           (twoPi<deviceFP>() * twoPi<deviceFP>() * f * f) /
           ((2.0f * lightC<deviceFP>() * lightC<deviceFP>() * kz2)) * (*s).h;
     } else {
-      (*s).gridPropagationFactor1[i] = {};
-      (*s).gridPropagationFactor2[i] = {};
-      (*s).gridPolarizationFactor1[i] = {};
-      (*s).gridPolarizationFactor2[i] = {};
+      gridPropagationFactor1[i] = {};
+      gridPropagationFactor2[i] = {};
+      gridPolarizationFactor1[i] = {};
+      gridPolarizationFactor2[i] = {};
     }
 
-    if (isComplexNaN((*s).gridPropagationFactor1[i]) ||
-        isComplexNaN((*s).gridPropagationFactor2[i]) ||
-        isComplexNaN((*s).gridPolarizationFactor1[i]) ||
-        isComplexNaN((*s).gridPolarizationFactor2[i])) {
-      (*s).gridPropagationFactor1[i] = {};
-      (*s).gridPropagationFactor2[i] = {};
-      (*s).gridPolarizationFactor1[i] = {};
-      (*s).gridPolarizationFactor2[i] = {};
+    if (isComplexNaN(gridPropagationFactor1[i]) ||
+        isComplexNaN(gridPropagationFactor2[i]) ||
+        isComplexNaN(gridPolarizationFactor1[i]) ||
+        isComplexNaN(gridPolarizationFactor2[i])) {
+      gridPropagationFactor1[i] = {};
+      gridPropagationFactor2[i] = {};
+      gridPolarizationFactor1[i] = {};
+      gridPolarizationFactor2[i] = {};
     }
   }
 };

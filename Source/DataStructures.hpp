@@ -464,7 +464,7 @@ public:
     T rotationForward[9] = { 0 };
     T rotationBackward[9] = { 0 };
     NonlinearPropertyFlags nonlinearSwitches{};
-
+    deviceComplex n0;
     bool isCylindric = 0;
     bool is3D = 0;
     bool hasPlasma = 0;
