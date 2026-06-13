@@ -996,6 +996,13 @@ class prepare3DGridsKernel {
 public:
   const deviceFP *sellmeierCoefficients;
   const deviceParameterSet<deviceFP, deviceComplex> *s;
+  deviceComplex* gridPropagationFactor1;
+  deviceComplex* gridPropagationFactor2;
+  deviceComplex* gridBiaxialDelta;
+  deviceComplex* gridPolarizationFactor1;
+  deviceComplex* gridPolarizationFactor2;
+  deviceComplex* chiLinear1;
+  deviceComplex* chiLinear2;
   deviceFunction void operator()(const int64_t localIndex) const {
 
     const int64_t col = localIndex / ((*s).Nfreq - 1);   // spatial coordinate
@@ -1021,13 +1028,13 @@ public:
     deviceFP d = findBirefringentCrystalIndex(s, sellmeierCoefficients,
                                               localIndex, &ne, &no);
     if (s->axesNumber == 2 && i < s->NgridC)
-      s->gridBiaxialDelta[i] = d;
+      gridBiaxialDelta[i] = d;
     if (minN(ne.real(), no.real()) < 0.9f || isComplexNaN(ne) ||
         isComplexNaN(no)) {
-      (*s).gridPropagationFactor1[i] = {};
-      (*s).gridPropagationFactor2[i] = {};
-      (*s).gridPolarizationFactor1[i] = {};
-      (*s).gridPolarizationFactor2[i] = {};
+      gridPropagationFactor1[i] = {};
+      gridPropagationFactor2[i] = {};
+      gridPolarizationFactor1[i] = {};
+      gridPolarizationFactor2[i] = {};
       return;
     }
 
@@ -1038,52 +1045,52 @@ public:
 
     // chi11 factor, also multiplied by -sqrt(-1)!
     const deviceComplex chi11 = ((*s).isUsingMillersRule)
-                                    ? deviceComplex((*s).chiLinear1[j].imag(),
-                                                    -(*s).chiLinear1[j].real())
+                                    ? deviceComplex(chiLinear1[j].imag(),
+                                                    -chiLinear1[j].real())
                                     : cOne<deviceComplex>();
     const deviceComplex chi12 = ((*s).isUsingMillersRule)
-                                    ? deviceComplex((*s).chiLinear2[j].imag(),
-                                                    -(*s).chiLinear2[j].real())
+                                    ? deviceComplex(chiLinear2[j].imag(),
+                                                    -chiLinear2[j].real())
                                     : cOne<deviceComplex>();
 
     deviceComplex kz1 = deviceLib::sqrt(ke * ke - dk1 * dk1 - dk2 * dk2);
     deviceComplex kz2 = deviceLib::sqrt(ko * ko - dk1 * dk1 - dk2 * dk2);
     if (kz1.real() > 0.0f && kz2.real() > 0.0f) {
-      (*s).gridPropagationFactor1[i] =
+      gridPropagationFactor1[i] =
           fourierPropagator(ke, dk1, dk2, k0.real(), 0.5f * (*s).h);
-      if (isnan(((*s).gridPropagationFactor1[i].real()))) {
-        (*s).gridPropagationFactor1[i] = {};
+      if (isnan((gridPropagationFactor1[i].real()))) {
+        gridPropagationFactor1[i] = {};
       }
 
-      (*s).gridPropagationFactor2[i] =
+      gridPropagationFactor2[i] =
           fourierPropagator(ko, dk1, dk2, k0.real(), 0.5f * (*s).h);
-      if (isnan(((*s).gridPropagationFactor2[i].real()))) {
-        (*s).gridPropagationFactor2[i] = {};
+      if (isnan((gridPropagationFactor2[i].real()))) {
+        gridPropagationFactor2[i] = {};
       }
 
-      (*s).gridPolarizationFactor1[i] =
-          deviceLib::pow((*s).chiLinear1[j] + 1.0f, 0.25f) * chi11 *
+      gridPolarizationFactor1[i] =
+          deviceLib::pow(chiLinear1[j] + 1.0f, 0.25f) * chi11 *
           (twoPi<deviceFP>() * twoPi<deviceFP>() * f * f) /
           (2.0f * lightC<deviceFP>() * lightC<deviceFP>() * kz1) * (*s).h;
-      (*s).gridPolarizationFactor2[i] =
-          deviceLib::pow((deviceComplex)(*s).chiLinear2[j] + 1.0f, 0.25f) *
+      gridPolarizationFactor2[i] =
+          deviceLib::pow(chiLinear2[j] + 1.0f, 0.25f) *
           chi12 * (twoPi<deviceFP>() * twoPi<deviceFP>() * f * f) /
           (2.0f * lightC<deviceFP>() * lightC<deviceFP>() * kz2) * (*s).h;
     } else {
-      (*s).gridPropagationFactor1[i] = {};
-      (*s).gridPropagationFactor2[i] = {};
-      (*s).gridPolarizationFactor1[i] = {};
-      (*s).gridPolarizationFactor2[i] = {};
+      gridPropagationFactor1[i] = {};
+      gridPropagationFactor2[i] = {};
+      gridPolarizationFactor1[i] = {};
+      gridPolarizationFactor2[i] = {};
     }
 
-    if (isComplexNaN((*s).gridPropagationFactor1[i]) ||
-        isComplexNaN((*s).gridPropagationFactor2[i]) ||
-        isComplexNaN((*s).gridPolarizationFactor1[i]) ||
-        isComplexNaN((*s).gridPolarizationFactor2[i])) {
-      (*s).gridPropagationFactor1[i] = {};
-      (*s).gridPropagationFactor2[i] = {};
-      (*s).gridPolarizationFactor1[i] = {};
-      (*s).gridPolarizationFactor2[i] = {};
+    if (isComplexNaN(gridPropagationFactor1[i]) ||
+        isComplexNaN(gridPropagationFactor2[i]) ||
+        isComplexNaN(gridPolarizationFactor1[i]) ||
+        isComplexNaN(gridPolarizationFactor2[i])) {
+      gridPropagationFactor1[i] = {};
+      gridPropagationFactor2[i] = {};
+      gridPolarizationFactor1[i] = {};
+      gridPolarizationFactor2[i] = {};
     }
   }
 };
