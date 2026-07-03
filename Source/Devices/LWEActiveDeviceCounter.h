@@ -1,5 +1,5 @@
 #pragma once
-#include "../LightwaveExplorerUtilities.h"
+#include "../LightwaveExplorerInterfaceClasses.hpp"
 namespace deviceLib = std;
 namespace deviceFPLib = std;
 namespace complexLib = std;
@@ -16,39 +16,39 @@ int hardwareCheck(int* CUDAdeviceCount) {
 
 
 [[maybe_unused]]static std::complex<double> operator+(
-	const float f, 
-	const std::complex<double> x) { 
-	return std::complex<double>(x.real() + f, x.imag()); 
+	const float f,
+	const std::complex<double> x) {
+	return std::complex<double>(x.real() + f, x.imag());
 }
 
 [[maybe_unused]] static std::complex<double> operator+(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() + f, x.imag()); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() + f, x.imag());
 }
 
 [[maybe_unused]] static std::complex<double> operator-(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() - f, x.imag()); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() - f, x.imag());
 }
 
 [[maybe_unused]] static std::complex<double> operator*(
-	const float f, 
-	const std::complex<double> x) { 
-	return std::complex<double>(x.real() * f, x.imag() * f); 
+	const float f,
+	const std::complex<double> x) {
+	return std::complex<double>(x.real() * f, x.imag() * f);
 }
 
 [[maybe_unused]] static std::complex<double> operator*(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() * f, x.imag() * f); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() * f, x.imag() * f);
 }
 
 [[maybe_unused]] static std::complex<double> operator/(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() / f, x.imag() / f); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() / f, x.imag() / f);
 }
 
 
@@ -65,12 +65,12 @@ class counterDevice : public LWEDevice {
 private:
 	deviceParameterSet<deviceFP, deviceComplex> dParamslocal;
 public:
-	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
+	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
 	counterDevice(simulationParameterSet* sCPU) {
-		s = &deviceStruct;
-		memoryStatus = 0;
+		memoryStatus = allocateSet(sCPU);
+		s = &(allocation->parameterSet);
 		configuredFFT = true;
 		cParams = sCPU;
 		dParamsDevice = &dParamslocal;
@@ -91,5 +91,13 @@ public:
 	void reset(simulationParameterSet* sCPU) override {
 	    cParams = sCPU;
 		sCPU->initializeDeviceParameters(s);
+	}
+	int allocateSet(simulationParameterSet* sCPU) {
+		cParams = sCPU;
+		if(memoryStatus == 0) allocation = nullptr;
+		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
+		s = &(allocation->parameterSet);
+		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
+		return 0;
 	}
 };

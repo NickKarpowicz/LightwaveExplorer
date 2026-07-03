@@ -82,40 +82,52 @@ namespace hostFunctions{
 		return std::complex<double>(1.0,0.0);
 	};
 	static int getTotalSpectrum(ActiveDevice& d) {
-		simulationParameterSet* sCPU = d.cParams;
-		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
+		d.deviceMemset(d.allocation->workspace.device_ptr(), 0, 2 * d.s->NgridC * sizeof(deviceComplex));
+		d.fft(d.allocation->gridETime.device_ptr(), d.allocation->workspace.device_ptr(), deviceFFT::D2Z_1D);
+        if (d.s->is3D) {
+            d.deviceLaunch(
+                d.s->Nfreq, 1u,
+                totalSpectrum3DKernel{
+                    .Nspace_x = d.s->Nspace,
+                    .Nspace_y = d.s->Nspace2,
+                    .Nfreq = d.s->Nfreq,
+                    .NgridC = d.s->NgridC,
+                    .field_freq_vs_space =
+                        d.allocation->workspace.device_ptr(),
+                    .spectrum =
+                        d.allocation->gridPolarizationTime.device_ptr()});
+        } else {
+            d.deviceLaunch(
+                d.s->Nfreq, 1u,
+                totalSpectrumKernel{
+                    .isCylindric = d.s->isCylindric,
+                    .Nspace = d.s->Nspace,
+                    .Nfreq = d.s->Nfreq,
+                    .NgridC = d.s->NgridC,
+                    .dx = static_cast<deviceFP>(d.cParams->rStep),
+                    .field_freq_vs_space =
+                        d.allocation->workspace.device_ptr(),
+                    .spectrum =
+                        d.allocation->gridPolarizationTime.device_ptr()});
+        }
+        d.deviceMemcpy(reinterpret_cast<double*>(d.cParams->totalSpectrum),
+                        reinterpret_cast<deviceFP*>(d.s->gridPolarizationTime1),
+                        3 * (d.cParams->Nfreq) * sizeof(double),
+                        copyType::ToHost);
 
-		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-		d.fft((*sc).gridETime1, (*sc).workspace1, deviceFFT::D2Z_1D);
-		if ((*sc).is3D) {
-			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel{ d.dParamsDevice });
-		}
-		else if ((*sc).isCylindric) {
-			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel{ d.dParamsDevice });
-		}
-		else {
-			//uncomment and change logic if I want to use the square spectra
-			//d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum2DSquareKernel, d.dParamsDevice);
-			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrumKernel{ d.dParamsDevice });
-		}
-
-		d.deviceMemcpy((double*)(*sCPU).totalSpectrum,
-			(deviceFP*)(*sc).gridPolarizationTime1,
-			3 * (*sCPU).Nfreq * sizeof(double), copyType::ToHost);
-
-		//apply normalization to result of 3D calculation for numerical precision (value may not be
+        //apply normalization to result of 3D calculation for numerical precision (value may not be
 		//represtentable as a float)
-		if ((*sCPU).runType != runTypes::counter) {
+		if (d.cParams->runType != runTypes::counter) {
 			double volumeElement = constProd(lightC<double>(), 2 * eps0<double>())
-					* (*sCPU).rStep * (*sCPU).tStep * (*sCPU).tStep;
-			if((*sCPU).is3D){
-				volumeElement *= (*sCPU).rStep;
+					* d.cParams->rStep * d.cParams->tStep * d.cParams->tStep;
+			if(d.cParams->is3D){
+				volumeElement *= d.cParams->rStep;
 			}
 			else{
 				volumeElement *= vPi<double>();
 			}
-			for (int64_t i = 0; i < 3 * (*sCPU).Nfreq; i++) {
-				(*sCPU).totalSpectrum[i] *= volumeElement;
+			for (int64_t i = 0; i < 3 * d.cParams->Nfreq; i++) {
+				d.cParams->totalSpectrum[i] *= volumeElement;
 			}
 		}
 

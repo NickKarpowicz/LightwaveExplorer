@@ -416,7 +416,7 @@ public:
         if(bytes) d->deviceFree(buffer);
     }
     T* device_ptr() const {
-        if(bytes == 0 || buffer == nullptr) throw std::runtime_error("Attempted to access empty LWEBuffer");
+        //if(bytes == 0 || buffer == nullptr) throw std::runtime_error("Attempted to access empty LWEBuffer");
         return buffer;
     }
 

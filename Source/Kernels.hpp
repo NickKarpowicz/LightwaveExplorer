@@ -20,9 +20,14 @@ namespace kernelNamespace {
 // for the cartesian one, it will be treated as a round beam instead of an
 // infinite plane wave in the transverse direction. Thus, the 2D Cartesian
 // spectra are approximations.
-class totalSpectrumKernel {
-public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+struct totalSpectrumKernel {
+  const bool isCylindric;
+  const int64_t Nspace;
+  const int64_t Nfreq;
+  const int64_t NgridC;
+  const deviceFP dx;
+  const deviceComplex* field_freq_vs_space;
+  deviceFP* spectrum;
   deviceFunction void operator()(const int64_t i) const {
     deviceFP beamCenter1{};
     deviceFP beamCenter2{};
@@ -30,88 +35,67 @@ public:
     deviceFP beamTotal2{};
 
     // find beam centers
-    if ((*s).isCylindric) {
-      beamCenter1 = ((*s).Nspace / 2.0f * (*s).dx) + 0.25f * (*s).dx;
+    if (isCylindric) {
+      beamCenter1 = (Nspace / 2.0f * dx) + 0.25f * dx;
       beamCenter2 = beamCenter1;
     } else {
-      for (int64_t j{}; j < (*s).Nspace; ++j) {
-        deviceFP x = (*s).dx * j;
-        deviceFP a = modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
+      for (int64_t j{}; j < Nspace; ++j) {
+        deviceFP x = dx * j;
+        deviceFP a = modulusSquared(field_freq_vs_space[i + j * Nfreq]);
         beamTotal1 += a;
         beamCenter1 += x * a;
-        a = modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
+        a = modulusSquared(field_freq_vs_space[NgridC + i + j * Nfreq]);
         beamTotal2 += a;
         beamCenter2 += x * a;
       }
-      if (beamTotal1 > 0.0f) {
+      if (beamTotal1 > deviceFP{}) {
         beamCenter1 /= beamTotal1;
       }
-      if (beamTotal2 > 0.0f) {
+      if (beamTotal2 > deviceFP{}) {
         beamCenter2 /= beamTotal2;
       }
     }
 
     // Integrate total beam power, assuming radially-symmetric beam around
     // the center
-    beamTotal1 = 0.0f;
-    beamTotal2 = 0.0f;
-    for (int64_t j{}; j < (*s).Nspace; ++j) {
-      deviceFP x = (*s).dx * j;
+    beamTotal1 = deviceFP{};
+    beamTotal2 = deviceFP{};
+    for (int64_t j{}; j < Nspace; ++j) {
+      deviceFP x = dx * j;
       beamTotal1 += deviceFPLib::abs(x - beamCenter1) *
-                    modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
+                    modulusSquared(field_freq_vs_space[i + j * Nfreq]);
       beamTotal2 += deviceFPLib::abs(x - beamCenter2) *
-                    modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
+                    modulusSquared(field_freq_vs_space[NgridC + i + j * Nfreq]);
     }
 
     // put the values into the output spectrum
-    (*s).gridPolarizationTime1[i] = beamTotal1;
-    (*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
-    (*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
+    spectrum[i] = beamTotal1;
+    spectrum[i + Nfreq] = beamTotal2;
+    spectrum[i + 2 * Nfreq] = beamTotal1 + beamTotal2;
   }
 };
 
-// Calculate the energy spectrum after a 2D propagation assuming that the beam
-// height in the non-resolved direction is == the grid width (i.e. square grid)
-// More quantitative than the mapping to round beams, but rather specific
-//  DISABLED IN FAVOR OF ROUND-BEAM APPROXIMATION
-//	int64_t j;
-//	deviceFP beamTotal1 = 0.0f;
-//	deviceFP beamTotal2 = 0.0f;
-//	//Integrate total beam power
-//	beamTotal1 = 0.0f;
-//	beamTotal2 = 0.0f;
-//	for (j = 0; j < (*s).Nspace; ++j) {
-//		beamTotal1 += modulusSquared((*s).workspace1[i + j *
-//(*s).Nfreq]); 		beamTotal2 += modulusSquared((*s).workspace2[i + j *
-//(*s).Nfreq]);
-//	}
-//	beamTotal1 *= 2.0f * LIGHTC * eps0<deviceFP>() * (*s).dx * (*s).dx *
-//(*s).Nspace * (*s).dt * (*s).dt; 	beamTotal2 *= 2.0f * LIGHTC *
-//eps0<deviceFP>() * (*s).dx * (*s).dx * (*s).Nspace * (*s).dt * (*s).dt;
-//	//put the values into the output spectrum
-//	(*s).gridPolarizationTime1[i] = beamTotal1;
-//	(*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
-//	(*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 +
-//beamTotal2;
-// };
-
 // Calculate the energy spectrum after a 3D propagation
-class totalSpectrum3DKernel {
-public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+struct totalSpectrum3DKernel {
+    const int64_t Nspace_x;
+    const int64_t Nspace_y;
+    const int64_t Nfreq;
+    const int64_t NgridC;
+    const deviceComplex* field_freq_vs_space;
+    deviceFP* spectrum;
   deviceFunction void operator()(int64_t i) const {
     deviceFP beamTotal1{};
     deviceFP beamTotal2{};
     // Integrate total beam power
-    for (int64_t j{}; j < (*s).Nspace * (*s).Nspace2; ++j) {
-      beamTotal1 += modulusSquared((*s).workspace1[i + j * (*s).Nfreq]);
-      beamTotal2 += modulusSquared((*s).workspace2[i + j * (*s).Nfreq]);
+    for (int64_t j{}; j < Nspace_x * Nspace_y; ++j) {
+      beamTotal1 += modulusSquared(field_freq_vs_space[i + j * Nfreq]);
+      beamTotal2 += modulusSquared(field_freq_vs_space[NgridC + i + j * Nfreq]);
     }
 
     // put the values into the output spectrum
-    (*s).gridPolarizationTime1[i] = beamTotal1;
-    (*s).gridPolarizationTime1[i + (*s).Nfreq] = beamTotal2;
-    (*s).gridPolarizationTime1[i + 2 * (*s).Nfreq] = beamTotal1 + beamTotal2;
+    spectrum[i] = beamTotal1;
+    spectrum[i + Nfreq] = beamTotal2;
+    spectrum[i + 2 * Nfreq] = beamTotal1 + beamTotal2;
   }
 };
 
