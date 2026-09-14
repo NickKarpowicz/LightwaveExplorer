@@ -94,8 +94,7 @@ class lightwaveExplorerResult:
         if filePath.endswith(".zip"):
             isZip = True
             archive = zipfile.ZipFile(filePath, "r")
-            directory, archiveName = os.path.split(filePath)
-            fileBase, baseExtension = os.path.splitext(archiveName)
+            fileBase = next(name for name in archive.namelist() if name.lower().endswith(".txt"))[:-4]
             settingsFile = archive.open(fileBase + ".txt")
             settingsFile = io.TextIOWrapper(settingsFile, "utf-8")
 
