@@ -190,23 +190,23 @@ G. Ghosh, Optics Communications 163, 95-102 (1999).
 chi2 type:
 1
 d:
-0.18 -0.18 0 0 0 0
-0 0 0 0 0 -0.18
+0.6 -0.6 0 0.008 0 0
+0 0 0 0 -0.008 -0.6
 0 0 0 0 0 0
 d reference:
-(old code, look up later)
+Boyd/Sutherland
 chi3 type:
 2
 chi3:
-2.6e-22 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+2.567e-22 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 chi3 reference:
-Empty matrix awaiting input
+Refractiveindex.info Adaur et ak, 1989 (o axis)
 Spectral file:
 None
 Nonlinear reference frequencies:
-0 0 0 0 0 0 0
+281.76e12 281.76e12 563.52e12 281.76e12 281.76e12 281.76e12 281.76e12
 ~~~crystal end~~~
 Name:
 Fused silica
@@ -237,11 +237,11 @@ chi3:
 0
 0
 chi3 reference:
-single value
+Boyd
 Spectral file:
 None
 Nonlinear reference frequencies:
-0 0 0 0 0 0 0
+281.76e12 281.76e12 563.52e12 281.76e12 281.76e12 281.76e12 281.76e12
 ~~~crystal end~~~
 Name:
 Ge
@@ -268,15 +268,15 @@ d reference:
 chi3 type:
 0
 chi3:
-1.5e-18 0 0 0 0 0 0 0 0
+1.55e-18 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0
 chi3 reference:
-Empty matrix awaiting input
+Refractiveindex.info, Ensley and Bambha 2019
 Spectral file:
 None
 Nonlinear reference frequencies:
-75e12 75e12 150e12 75e12 75e12 75e12 75e12
+76.9e12 76.9e12 153.8e12 76.9e12 76.9e12 76.9e12 76.9e12
 ~~~crystal end~~~
 Name:
 Si
@@ -408,7 +408,7 @@ none
 chi3 type:
 2
 chi3:
-1.0e-22
+7.349788024734981e-23
 0
 0
 chi3 reference:
@@ -416,7 +416,7 @@ A guess
 Spectral file:
 None
 Nonlinear reference frequencies:
-0 0 0 0 0 0 0
+375e12 375e12 750e12 375e12 375e12 375e12 375e12
 ~~~crystal end~~~
 Name:
 MgO:LiNbO3
@@ -890,23 +890,23 @@ G. Ghosh, Optics Communications 163, 95-102 (1999). Lorentzian fit with addition
 chi2 type:
 1
 d:
-0.18 -0.18 0 0 0 0
-0 0 0 0 0 -0.18
+0.6 -0.6 0 0.008 0 0
+0 0 0 0 -0.008 -0.6
 0 0 0 0 0 0
 d reference:
-(old code, look up later)
+Boyd/Sutherland
 chi3 type:
 2
 chi3:
-2.6e-22 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+2.567e-22 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 chi3 reference:
-Empty matrix awaiting input
+Refractiveindex.info Adaur et ak, 1989 (o axis)
 Spectral file:
 None
 Nonlinear reference frequencies:
-0 0 0 0 0 0 0
+281.76e12 281.76e12 563.52e12 281.76e12 281.76e12 281.76e12 281.76e12
 ~~~crystal end~~~
 Name:
 BiBO L (rot 47deg)
