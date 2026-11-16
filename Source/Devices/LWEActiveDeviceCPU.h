@@ -1,7 +1,6 @@
 #include "../LightwaveExplorerInterfaceClasses.hpp"
 #include "../ExternalLibraries/pocketfft_hdronly.h"
 #include <atomic>
-#include <ranges>
 #include <thread>
 #include <cmath>
 #include <cstring>
@@ -366,8 +365,7 @@ public:
         	stride_d2z_time = pocketfft::stride_t{psizeFP * pNspace * pNtime, psizeFP*pNtime, psizeFP}  ;
         	stride_d2z_freq = pocketfft::stride_t {psizeCP * pNspace * pNfreq, psizeCP*pNfreq, psizeCP} ;
             axes_d2z = pocketfft::shape_t{0, 1, 2};
-    	}
-    	else{
+    	} else {
         	shape_d2z = pocketfft::shape_t{Nspace, Ntime} ;
         	stride_d2z_time = pocketfft::stride_t{psizeFP*pNtime, psizeFP}  ;
         	stride_d2z_freq = pocketfft::stride_t {psizeCP*pNfreq, psizeCP} ;
