@@ -4,7 +4,9 @@
 #include "Kernels.hpp"
 
 using namespace kernelNamespace;
-
+enum class FDTD_output {
+	xy, xz, zy
+};
 namespace hostFunctions{
 	static simulationParameterSet* fittingSet;
 	static ActiveDevice* dFit;
@@ -20,7 +22,8 @@ namespace hostFunctions{
 		deviceFP observationPoint = 0.0,
 		int gridIndex = -1,
 		bool preserveNearField = false,
-		int64_t manualWaitFrames = -1);
+		int64_t manualWaitFrames = -1,
+		FDTD_output output_fields = FDTD_output::xz);
 
 	static std::complex<double> hostSellmeierFunc(
 		double ls,
@@ -1842,6 +1845,7 @@ namespace hostFunctions{
 				maxwellSetInitialCarrierDensity{ maxCalc.deviceCopy});
 	}
 
+
 	static unsigned long int solveFDTD(
 		ActiveDevice& d,
 		simulationParameterSet* sCPU,
@@ -1852,7 +1856,8 @@ namespace hostFunctions{
 		deviceFP observationPoint,
 		int gridIndex,
 		bool preserveNearField,
-		int64_t manualWaitFrames) {
+		int64_t manualWaitFrames,
+		FDTD_output output_fields) {
 
 		//initialize the grid if necessary
 		if (!sCPU->isFollowerInSequence) {
@@ -1914,12 +1919,43 @@ namespace hostFunctions{
 				maxwellRKkernel3{ maxCalc.deviceCopy, i });
 			if (i % maxCalc.tGridFactor == 0
 				&& (i >= maxCalc.waitFrames)) {
-				d.deviceLaunch(
-					(maxCalc.Nx * maxCalc.Ny) / minGridDimension,
-					minGridDimension,
-					maxwellSampleGrid{
-						maxCalc.deviceCopy,
-						(i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+
+				switch(output_fields){
+				    case FDTD_output::xy:
+						d.deviceLaunch(
+							(maxCalc.Nx * maxCalc.Ny) / minGridDimension,
+							minGridDimension,
+							maxwellSampleGrid{
+								maxCalc.deviceCopy,
+								maxCalc.Egrid,
+								maxCalc.inOutEx,
+								maxCalc.inOutEy,
+								(i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+						break;
+					case FDTD_output::xz:
+	                    d.deviceLaunch(
+    						(maxCalc.Nx * maxCalc.Ny) / minGridDimension,
+    						minGridDimension,
+    						maxwellSampleGridExEz{
+    							maxCalc.deviceCopy,
+   								maxCalc.Egrid,
+								maxCalc.inOutEx,
+								maxCalc.inOutEy,
+    							(i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+						break;
+					case FDTD_output::zy:
+	                    d.deviceLaunch(
+    						(maxCalc.Nx * maxCalc.Ny) / minGridDimension,
+    						minGridDimension,
+    						maxwellSampleGridEyEz{
+    							maxCalc.deviceCopy,
+   								maxCalc.Egrid,
+								maxCalc.inOutEx,
+								maxCalc.inOutEy,
+    							(i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+						break;
+				}
+
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;

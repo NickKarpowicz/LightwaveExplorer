@@ -1824,12 +1824,43 @@ public:
 class maxwellSampleGrid {
 public:
   maxwell3D *s;
+  maxwellPoint<deviceFP>* Egrid;
+  deviceFP* Ex_out;
+  deviceFP* Ey_out;
   int64_t time;
   deviceFunction void operator()(int64_t i) const {
-    int64_t gridIndex = i * s->Nz + s->observationPoint;
-    s->inOutEx[i * s->NtIO + time] = s->Egrid[gridIndex].x;
-    s->inOutEy[i * s->NtIO + time] = s->Egrid[gridIndex].y;
+    int64_t gridIndex = i * s[0].Nz + s[0].observationPoint;
+    Ex_out[i * s[0].NtIO + time] = Egrid[gridIndex].x;
+    Ey_out[i * s[0].NtIO + time] = Egrid[gridIndex].y;
   }
+};
+
+class maxwellSampleGridExEz {
+public:
+  maxwell3D *s;
+  maxwellPoint<deviceFP>* Egrid;
+  deviceFP* Ex_out;
+  deviceFP* Ey_out;
+  int64_t time;
+  deviceFunction void operator()(int64_t i) const {
+    int64_t gridIndex = i * s[0].Nz + s[0].observationPoint;
+    Ex_out[i * s[0].NtIO + time] = Egrid[gridIndex].x;
+    Ey_out[i * s[0].NtIO + time] = Egrid[gridIndex].z;
+  }
+};
+
+class maxwellSampleGridEyEz {
+public:
+    maxwell3D *s;
+    maxwellPoint<deviceFP>* Egrid;
+    deviceFP* Ex_out;
+    deviceFP* Ey_out;
+    int64_t time;
+    deviceFunction void operator()(int64_t i) const {
+        int64_t gridIndex = i * s[0].Nz + s[0].observationPoint;
+        Ex_out[i * s[0].NtIO + time] = Egrid[gridIndex].z;
+        Ey_out[i * s[0].NtIO + time] = Egrid[gridIndex].y;
+    }
 };
 
 class maxwellSetInitialCarrierDensity {

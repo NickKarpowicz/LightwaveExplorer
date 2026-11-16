@@ -41,10 +41,8 @@ public:
     bool hasMaterialMap{};
     deviceFP* inOutEy{};
     deviceFP* inOutEx{};
-    deviceFP* inOutEz{};
     deviceFP* inputExFFT{};
     deviceFP* inputEyFFT{};
-    deviceFP* inputEzFFT{};
     deviceFP omegaStep{};
     deviceFP xyStep{};
     deviceFP zStep{};
