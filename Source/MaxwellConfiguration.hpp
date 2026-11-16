@@ -43,6 +43,10 @@ public:
     deviceFP* inOutEx{};
     deviceFP* inputExFFT{};
     deviceFP* inputEyFFT{};
+    deviceFP* inputEzFFT{};
+    deviceFP* inputHxFFT{};
+    deviceFP* inputHyFFT{};
+    deviceFP* inputHzFFT{};
     deviceFP omegaStep{};
     deviceFP xyStep{};
     deviceFP zStep{};

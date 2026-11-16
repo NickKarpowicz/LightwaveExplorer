@@ -718,6 +718,37 @@ public:
   }
 };
 
+//Calculate the full input field for FDTD with six components
+struct CalculateSixComponentFields{
+    const int64_t Nfreq;
+    const int64_t Nspace;
+    const int64_t Nspace2;
+    deviceFP fstep;
+    deviceFP dk1_step;
+    deviceFP dk2_step;
+    deviceComplex* Ex;
+    deviceComplex* Ey;
+    deviceComplex* Ez;
+    deviceComplex* Hx;
+    deviceComplex* Hy;
+    deviceComplex* Hz;
+    deviceFunction void operator()(const int64_t localIndex) const {
+        int64_t i = localIndex;
+        const int64_t h = 1 + i % (Nfreq - 1);
+        const int64_t col = i / (Nfreq - 1);
+        i = h + col * (Nfreq);
+        const int64_t k = col / Nspace;
+        const int64_t j = col - k * Nspace;
+
+        const deviceFP kMagnitude =
+            (h * fstep * twoPi<deviceFP>()) / lightC<deviceFP>();
+        const deviceFP dk1 =
+            j * dk1_step - (j >= (Nspace / 2)) * (dk1_step * Nspace);
+        const deviceFP dk2 =
+            k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2);
+    }
+};
+
 // apply linear propagation through a given medium to the fields
 class correctFDTDAmplitudesKernel {
 public:

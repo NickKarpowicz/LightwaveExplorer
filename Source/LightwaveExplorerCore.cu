@@ -1797,7 +1797,10 @@ namespace hostFunctions{
 			copyType::ToDevice);
 		maxCalc.inOutEx = d.s->gridETime1;
 		maxCalc.inOutEy = d.s->gridETime2;
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		//NOTE: Here is where I have to change in order to keep all field vector components
+		//Need kernel to calculate Exyz and Hxyz based on Fourier representation
+		d.deviceLaunch((*sCPU).Ngrid/64, 64, const T &functor)
 		maxCalc.inputExFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1);
 		maxCalc.inputEyFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency2);
 		d.deviceMemset(maxCalc.inOutEx, 0, 2*(*sCPU).Ngrid * sizeof(deviceFP));
