@@ -727,6 +727,8 @@ struct UPPEAllocation{
         hasPlasma = newHasPlasma;
         workspace.resize(beamExpansionFactor * 2 * Ngrid_complex);
         gridRadialLaplacian.resize(isCylindric * beamExpansionFactor * 2 * Ngrid);
+        parameterSet.workspace1 = workspace.device_ptr();
+        parameterSet.gridRadialLaplacian1 = gridRadialLaplacian.device_ptr();
     }
     void useNewParameterSet(simulationParameterSet* sCPU){
         bool newSetHasPlasma = ((sCPU->nonlinearAbsorptionStrength != 0.0) || sCPU->startingCarrierDensity != 0.0);

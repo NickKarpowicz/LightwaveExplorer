@@ -12,6 +12,18 @@
   <url type="vcs-browser">https://github.com/NickKarpowicz/LightwaveExplorer</url>
   <content_rating type="oars-1.1" />
   <releases>
+  <release version="2026.2" date="2026-11-19" urgency="high">
+  <description>
+  <p>Changes:</p>
+  <ul>
+  <li>Python module will load files that have been renamed (thanks Florian Lindinger)</li>
+  <li>Improved field injection for nonparaxial beams in FDTD</li>
+  <li>Python module will calculate field Ex, Ey, and Ez field components for paraxial beams</li>
+  <li>Fixed crystal database entries with Miller's rule scaling for SiO2, MgF2, Ge</li>
+  <li>Fix crash that can occur when some parts of a sequence use a plasma and others don't</li>
+  </ul>
+  </description>
+  </release>
   <release version="2026.1" date="2026-02-06" urgency="high">
   <description>
   <p>New Features:</p>

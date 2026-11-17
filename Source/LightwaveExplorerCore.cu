@@ -2133,7 +2133,6 @@ namespace hostFunctions{
 			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
 			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
-
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 			d.reset(sCPU);
