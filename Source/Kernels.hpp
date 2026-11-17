@@ -723,9 +723,10 @@ struct CalculateSixComponentFields{
     const int64_t Nfreq;
     const int64_t Nspace;
     const int64_t Nspace2;
-    deviceFP fstep;
-    deviceFP dk1_step;
-    deviceFP dk2_step;
+    const deviceFP fstep;
+    const deviceFP dk1_step;
+    const deviceFP dk2_step;
+    const deviceFP fft_norm;
     deviceComplex* Ex_input;
     deviceComplex* Ey_input;
     deviceComplex* Ex;
@@ -744,19 +745,25 @@ struct CalculateSixComponentFields{
 
         const deviceFP kMagnitude =
             (h * fstep * twoPi<deviceFP>()) / lightC<deviceFP>();
-        const deviceFP norm_x = (j * dk1_step - (j >= (Nspace / 2)) * (dk1_step * Nspace))/kMagnitude;
-        const deviceFP norm_y = (k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2))/kMagnitude;
-        const deviceFP norm_t = deviceFPLib::hypot(norm_x, norm_y);
-        const deviceFP norm_z = deviceFPLib::sqrt((1.0f-norm_t)*(1.0f+norm_t));
-        const deviceFP tilt_x = deviceFPLib::sqrt((1.0f-norm_x)*(1.0f+norm_x));
-        const deviceFP tilt_y = deviceFPLib::sqrt((1.0f-norm_y)*(1.0f+norm_y));
-        Ex[i] = Ex_input[i] * tilt_x;
-        Ey[i] = Ey_input[i] * tilt_y;
-        Ez[i] = norm_x * Ex_input[i] + norm_y * Ey_input[i];
+        deviceFP norm_x = (j * dk1_step - (j >= (Nspace / 2)) * (dk1_step * Nspace))/kMagnitude;
+        deviceFP norm_y = (k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2))/kMagnitude;
+        deviceFP norm_t = deviceFPLib::hypot(norm_x, norm_y);
+        deviceFP norm_z = deviceFPLib::sqrt((1.0f-norm_t)*(1.0f+norm_t));
+        deviceFP tilt_x = deviceFPLib::sqrt((1.0f-norm_x)*(1.0f+norm_x));
+        deviceFP tilt_y = deviceFPLib::sqrt((1.0f-norm_y)*(1.0f+norm_y));
+        norm_x = isnan(norm_x) ? 0.0f : norm_x;
+        norm_y = isnan(norm_y) ? 0.0f : norm_y;
+        norm_t = isnan(norm_t) ? 0.0f : norm_t;
+        norm_z = isnan(norm_z) ? 0.0f : norm_z;
+        tilt_x = isnan(tilt_x) ? 0.0f : tilt_x;
+        tilt_y = isnan(tilt_y) ? 0.0f : tilt_y;
+        Ex[i] = fft_norm * Ex_input[i] * tilt_x;
+        Ey[i] = fft_norm * Ey_input[i] * tilt_y;
+        Ez[i] = fft_norm * (norm_x * Ex_input[i] + norm_y * Ey_input[i]);
         //minus signs to be consistent with the rest of the calculation
-        Hx[i] = -inverseZo<deviceFP>() * (norm_y * Ez[i] - norm_z * Ey[i]);
-        Hy[i] = -inverseZo<deviceFP>() * (norm_z * Ex[i] - norm_x * Ez[i]);
-        Hz[i] = -inverseZo<deviceFP>() * (norm_x * Ey[i] - norm_y * Ex[i]);
+        Hx[i] = - fft_norm * inverseZo<deviceFP>() * (norm_y * Ez[i] - norm_z * Ey[i]);
+        Hy[i] = - fft_norm * inverseZo<deviceFP>() * (norm_z * Ex[i] - norm_x * Ez[i]);
+        Hz[i] = - fft_norm * inverseZo<deviceFP>() * (norm_x * Ey[i] - norm_y * Ex[i]);
         if(h==1){
             Ex[i-1] = {};
             Ey[i-1] = {};

@@ -1801,22 +1801,13 @@ namespace hostFunctions{
 
 		//NOTE: Here is where I have to change in order to keep all field vector components
 		//Need kernel to calculate Exyz and Hxyz based on Fourier representation
-		//    const int64_t Nfreq;
-        // const int64_t Nspace;
-        // const int64_t Nspace2;
-        // deviceFP fstep;
-        // deviceFP dk1_step;
-        // deviceFP dk2_step;
-        // deviceComplex* Ex_input;
-        // deviceComplex* Ey_input;
-        // deviceComplex* Ex;
-        // deviceComplex* Ey;
-        // deviceComplex* Ez;
-        // deviceComplex* Hx;
-        // deviceComplex* Hy;
-        // deviceComplex* Hz;
         maxCalc.inputExFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1);
 		maxCalc.inputEyFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency2);
+		maxCalc.inputEzFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1Next1);
+		maxCalc.inputHxFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1Next2);
+		maxCalc.inputHyFFT = reinterpret_cast<deviceFP*>(d.s->gridPropagationFactor1);
+		maxCalc.inputHzFFT = reinterpret_cast<deviceFP*>(d.s->gridPropagationFactor2);
+
 		d.deviceLaunch((*sCPU).NgridC/64, 64, CalculateSixComponentFields{
 		    .Nfreq=d.s->Nfreq,
 			.Nspace=d.s->Nspace,
@@ -1824,14 +1815,24 @@ namespace hostFunctions{
 			.fstep=d.s->fStep,
 			.dk1_step=d.s->dk1,
 			.dk2_step=d.s->dk2,
+			.fft_norm=d.s->fftNorm,
 		    .Ex_input=d.s->gridEFrequency1,
 			.Ey_input=d.s->gridEFrequency2,
-		    .Ex = maxCalc.inputExFFT,
-			.Ey = maxCalc.inputEyFFT,
-			.Ez = maxCalc.inputEzFFT,
-			.Hx = maxCalc.inputHxFFT,
-			.Hy = maxCalc.inputHyFFT,
-			.Hz = maxCalc.inputHzFFT});
+		    .Ex = reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT),
+			.Ey = reinterpret_cast<deviceComplex*>(maxCalc.inputEyFFT),
+			.Ez = reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT),
+			.Hx = reinterpret_cast<deviceComplex*>(maxCalc.inputHxFFT),
+			.Hy = reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT),
+			.Hz = reinterpret_cast<deviceComplex*>(maxCalc.inputHzFFT)});
+
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT), d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT), deviceFFT::D2Z_1D);
+
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT), d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT), deviceFFT::D2Z_1D);
+
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT), d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT), deviceFFT::D2Z_1D);
 
 		d.deviceMemset(maxCalc.inOutEx, 0, 2*(*sCPU).Ngrid * sizeof(deviceFP));
 
