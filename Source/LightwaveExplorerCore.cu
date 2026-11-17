@@ -1798,11 +1798,41 @@ namespace hostFunctions{
 		maxCalc.inOutEx = d.s->gridETime1;
 		maxCalc.inOutEy = d.s->gridETime2;
 		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+
 		//NOTE: Here is where I have to change in order to keep all field vector components
 		//Need kernel to calculate Exyz and Hxyz based on Fourier representation
-		d.deviceLaunch((*sCPU).Ngrid/64, 64, const T &functor)
-		maxCalc.inputExFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1);
+		//    const int64_t Nfreq;
+        // const int64_t Nspace;
+        // const int64_t Nspace2;
+        // deviceFP fstep;
+        // deviceFP dk1_step;
+        // deviceFP dk2_step;
+        // deviceComplex* Ex_input;
+        // deviceComplex* Ey_input;
+        // deviceComplex* Ex;
+        // deviceComplex* Ey;
+        // deviceComplex* Ez;
+        // deviceComplex* Hx;
+        // deviceComplex* Hy;
+        // deviceComplex* Hz;
+        maxCalc.inputExFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1);
 		maxCalc.inputEyFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency2);
+		d.deviceLaunch((*sCPU).NgridC/64, 64, CalculateSixComponentFields{
+		    .Nfreq=d.s->Nfreq,
+			.Nspace=d.s->Nspace,
+			.Nspace2=d.s->Nspace2,
+			.fstep=d.s->fStep,
+			.dk1_step=d.s->dk1,
+			.dk2_step=d.s->dk2,
+		    .Ex_input=d.s->gridEFrequency1,
+			.Ey_input=d.s->gridEFrequency2,
+		    .Ex = maxCalc.inputExFFT,
+			.Ey = maxCalc.inputEyFFT,
+			.Ez = maxCalc.inputEzFFT,
+			.Hx = maxCalc.inputHxFFT,
+			.Hy = maxCalc.inputHyFFT,
+			.Hz = maxCalc.inputHzFFT});
+
 		d.deviceMemset(maxCalc.inOutEx, 0, 2*(*sCPU).Ngrid * sizeof(deviceFP));
 
 		//allocate the new memory needed for the maxwell calculation
