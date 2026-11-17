@@ -23,7 +23,7 @@ namespace hostFunctions{
 		int gridIndex = -1,
 		bool preserveNearField = false,
 		int64_t manualWaitFrames = -1,
-		FDTD_output output_fields = FDTD_output::xz);
+		FDTD_output output_fields = FDTD_output::xy);
 
 	static std::complex<double> hostSellmeierFunc(
 		double ls,
