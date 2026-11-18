@@ -1445,11 +1445,11 @@ def getFieldVector(s: LightwaveExplorerResult):
             len(s.spaceVectorY),
             d=s.spatialStep))
     sqrt_mask = np.abs(norm_x) < 1.0
-    tilt_x = (1.0-norm_x)*(1.0+norm_x)
-    tilt_x = np.sqrt(tilt_x,out=tilt_x,where=sqrt_mask)
+    tilt_x = np.zeros_like(norm_x)
+    tilt_x = np.sqrt((1.0-norm_x)*(1.0+norm_x),out=tilt_x,where=sqrt_mask)
     sqrt_mask = np.abs(norm_y) < 1.0
-    tilt_y = (1.0-norm_y)*(1.0+norm_y)
-    tilt_y = np.sqrt(tilt_y,out=tilt_y,where=sqrt_mask)
+    tilt_y = np.zeros_like(norm_y)
+    tilt_y = np.sqrt((1.0-norm_y)*(1.0+norm_y),out=tilt_y,where=sqrt_mask)
 
     Ex = np.fft.irfft(
         np.fft.ifftn(
