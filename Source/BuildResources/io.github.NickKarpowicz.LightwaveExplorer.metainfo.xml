@@ -6,13 +6,15 @@
   <name>Lightwave Explorer</name>
   <summary>Easily simulate nonlinear optics</summary>
   <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
-  <developer_name>Nick Karpowicz</developer_name>
+  <developer>
+    <name>Nick Karpowicz</name>
+  </developer>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <url type="vcs-browser">https://github.com/NickKarpowicz/LightwaveExplorer</url>
   <content_rating type="oars-1.1" />
   <releases>
-  <release version="2026.2" date="2026-11-19" urgency="high">
+  <release version="2026.2" date="2026-11-18" urgency="high">
   <description>
   <p>Changes:</p>
   <ul>
@@ -184,8 +186,6 @@
       <li>A Python module for easy postprocessing</li>
     </ul>
   </description>
-
-  <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
   <screenshots>
     <screenshot type="default">
       <caption>The Lightwave Explorer main window in dark mode, with additional plots of the real-space and momentum-space fields</caption>
