@@ -6,7 +6,7 @@
   <name>Lightwave Explorer</name>
   <summary>Easily simulate nonlinear optics</summary>
   <launchable type="desktop-id">io.github.NickKarpowicz.LightwaveExplorer.desktop</launchable>
-  <developer>
+  <developer id="io.github.NickKarpowicz">
     <name>Nick Karpowicz</name>
   </developer>
   <metadata_license>CC0-1.0</metadata_license>
