@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 from scipy.optimize import least_squares
+import scipy.constants as constants
 
-
-class lightwaveExplorerResult:
+class LightwaveExplorerResult:
     """
     A class which contains the result of a Lightwave Explorer simulation
     The parameters of the simulation run are read from the .txt file
@@ -527,10 +527,13 @@ class lightwaveExplorerResult:
 
         self.timeVector = self.timeStep * np.arange(0, self.Ntime)
         self.frequencyVector = np.fft.fftfreq(self.Ntime, d=self.timeStep)
-        self.frequencyVectorSpectrum = self.frequencyVector[0 : self.Nfreq]
-        self.frequencyVectorSpectrum[-1] *= -1
-        self.spaceVector = (
+        self.frequencyVectorSpectrum = np.fft.rfftfreq(self.Ntime, self.timeStep)
+        self.spaceVectorX = (
             self.spatialStep * (np.arange(0, self.Nspace) - self.Nspace / 2)
+            + 0.25 * self.spatialStep
+        )
+        self.spaceVectorY = (
+            self.spatialStep * (np.arange(0, self.Nspace2) - self.Nspace2 / 2)
             + 0.25 * self.spatialStep
         )
 
@@ -702,7 +705,7 @@ def load(filePath: str, loadFieldArray=True):
     :return: The class contianing the parameters and results
     :rtype: LightwaveExplorerResult
     """
-    s = lightwaveExplorerResult(filePath=filePath, loadFieldArray=loadFieldArray)
+    s = LightwaveExplorerResult(filePath=filePath, loadFieldArray=loadFieldArray)
     return s
 
 
@@ -826,7 +829,7 @@ def getTabulatedDataFromRII(url):
 
 
 def EOS(
-    s: lightwaveExplorerResult,
+    s: LightwaveExplorerResult,
     bandpass=None,
     filterTransmissionNanometers=None,
     detectorResponseNanometers=None,
@@ -1405,3 +1408,69 @@ def fuseZips(outputFile: str):
     spectrum.close()
     os.unlink(Ext.name)
     os.unlink(spectrum.name)
+
+def getFieldVector(s: LightwaveExplorerResult):
+    """
+    Provides the vector components of the real-space field given the flattened representation saved by LWE.
+
+    Args:
+        s (LightwaveExplorerResult): a loaded simulation result
+
+    Returns:
+        Ex: The array of x-components of the field
+        Ey: y-components
+        Ez: z-components
+    """
+    Ekw_x_in = np.fft.fftn(
+        np.fft.rfft(
+            s.Ext_x,
+            axis=0),
+        axes=[1,2])
+    Ekw_y_in = np.fft.fftn(
+        np.fft.rfft(
+            s.Ext_y,
+            axis=0),
+        axes=[1,2])
+
+    inverse_k = (2.0 * np.pi/constants.speed_of_light) * s.frequencyVectorSpectrum
+    np.divide(1.0, inverse_k, out=inverse_k, where=(inverse_k != 0.0))
+    norm_x = np.outer(
+        inverse_k,
+        (2.0*np.pi)*np.fft.fftfreq(
+            len(s.spaceVectorX),
+            d=s.spatialStep))
+    norm_y = np.outer(
+        inverse_k,
+        (2.0*np.pi)*np.fft.fftfreq(
+            len(s.spaceVectorY),
+            d=s.spatialStep))
+    sqrt_mask = np.abs(norm_x) < 1.0
+    tilt_x = (1.0-norm_x)*(1.0+norm_x)
+    tilt_x = np.sqrt(tilt_x,out=tilt_x,where=sqrt_mask)
+    sqrt_mask = np.abs(norm_y) < 1.0
+    tilt_y = (1.0-norm_y)*(1.0+norm_y)
+    tilt_y = np.sqrt(tilt_y,out=tilt_y,where=sqrt_mask)
+
+    Ex = np.fft.irfft(
+        np.fft.ifftn(
+            tilt_x[:,:,np.newaxis] * Ekw_x_in,
+            axes=[2,1]
+        ),
+        axis = 0
+    )
+    Ey = np.fft.irfft(
+        np.fft.ifftn(
+            tilt_y[:,np.newaxis,:] * Ekw_y_in,
+            axes=[2,1]
+        ),
+        axis = 0
+    )
+    Ez = np.fft.irfft(
+        np.fft.ifftn(
+            norm_x[:,:,np.newaxis] * Ekw_x_in + norm_y[:,np.newaxis,:] * Ekw_y_in,
+            axes=[2,1]
+        ),
+        axis = 0
+    )
+
+    return Ex, Ey, Ez

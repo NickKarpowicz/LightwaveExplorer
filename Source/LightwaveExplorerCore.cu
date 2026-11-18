@@ -2000,7 +2000,7 @@ namespace hostFunctions{
 
 
 		//correct far-field amplitudes for vectorial effects
-		if(preserveNearField){
+		if(preserveNearField || output_fields != FDTD_output::xy){
 			d.deviceMemcpy(
 				(*sCPU).ExtOut,
 				maxCalc.inOutEx,
