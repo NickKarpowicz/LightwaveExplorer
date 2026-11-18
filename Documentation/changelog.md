@@ -1,3 +1,12 @@
+### Changes in 2026.2
+New features:
+- Python module will load files that have been renamed (thanks Florian Lindinger)
+- Improved field injection for nonparaxial beams in FDTD
+- Python module will calculate field Ex, Ey, and Ez field components for paraxial beams using the getFieldVector function 
+Bug fixes:
+- Fixed crystal database entries with Miller's rule scaling for SiO2, MgF2, Ge
+- Fix crash that can occur when some parts of a sequence use a plasma and others don't
+
 ### Changes in 2026.1
 New features:
 - Support for complex input beams, on either a Hermite-Gauss or Laguerre-Gauss basis with frequency-dependent beamwaist, rotation, 3D offset and angle.
