@@ -412,12 +412,14 @@ public:
 		fftInitialize();
 		dParamsDevice = allocation->parameterSet_deviceCopy.device_ptr();
 		#if defined _WIN32 || defined __linux__
-            int64_t max_launch_size = maxN(
-    		    maxN(
-    				4 * (*s).NgridC,
-    				(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
-    			visualizationOnly * (*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2)
+            int64_t max_launch_size =
+                maxN(
+        		    maxN(
+        				4 * (*s).NgridC,
+        				(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
+        			visualizationOnly * (*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2)
     		);
+            max_launch_size = maxN(81, max_launch_size);
 			indices = std::vector<int64_t>(max_launch_size);
 			std::iota(indices.begin(), indices.end(), 0);
 		#endif

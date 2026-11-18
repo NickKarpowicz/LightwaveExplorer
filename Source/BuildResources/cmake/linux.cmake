@@ -143,6 +143,30 @@ elseif(USE_SYCL)
 
     linux_install_launchscript()
     install(TARGETS onemath)
+elseif(SANITIZE)
+    #run cpu version with sanitizers
+    find_package(TBB REQUIRED)
+    find_package(OpenMP REQUIRED)
+    conditionally_fetch_dependencies()
+    linux_ui_packages()
+    add_compile_options(-O0 -g -fsanitize=address,undefined ${OpenMP_CXX_FLAGS} -Wall)
+    add_definitions(-DNOCUDA -DNOSYCL -DNDEBUG)
+    add_executable(${EXECUTABLE_NAME}
+        Source/Frontend/LightwaveExplorerFrontendQt.cpp
+        Source/Frontend/LWEVisualizationsCPU.cpp
+        Source/LightwaveExplorerUtilities.cpp
+        Source/Devices/LightwaveExplorerCoreCPU.cpp
+        Source/Devices/LightwaveExplorerCoreCPUFP32.cpp
+        Source/Devices/LightwaveExplorerCoreCounter.cpp
+        Source/Devices/DlibLibraryComponents.cpp
+        Source/Frontend/LWEVisualizationsCPU.cpp)
+    target_link_libraries(${EXECUTABLE_NAME} -fsanitize=address,undefined)
+    target_link_libraries(${EXECUTABLE_NAME} Qt6::Widgets Qt6::DBus)
+    target_link_libraries(${EXECUTABLE_NAME} ${OpenMP_CXX_LIBRARIES})
+    target_link_libraries(${EXECUTABLE_NAME} TBB::tbb)
+    target_link_libraries(${EXECUTABLE_NAME} miniz)
+    target_link_libraries(${EXECUTABLE_NAME} ${CAIRO_LIBRARIES})
+    linux_install_nolaunchscript()
 else()
     #if nothing specified, build CPU version.
     find_package(TBB REQUIRED)
