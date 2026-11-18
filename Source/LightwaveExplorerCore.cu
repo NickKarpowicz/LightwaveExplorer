@@ -4,7 +4,9 @@
 #include "Kernels.hpp"
 
 using namespace kernelNamespace;
-
+enum class FDTD_output {
+	xy, xz, zy
+};
 namespace hostFunctions{
 	static simulationParameterSet* fittingSet;
 	static ActiveDevice* dFit;
@@ -20,7 +22,8 @@ namespace hostFunctions{
 		deviceFP observationPoint = 0.0,
 		int gridIndex = -1,
 		bool preserveNearField = false,
-		int64_t manualWaitFrames = -1);
+		int64_t manualWaitFrames = -1,
+		FDTD_output output_fields = FDTD_output::xy);
 
 	static std::complex<double> hostSellmeierFunc(
 		double ls,
@@ -1794,9 +1797,43 @@ namespace hostFunctions{
 			copyType::ToDevice);
 		maxCalc.inOutEx = d.s->gridETime1;
 		maxCalc.inOutEy = d.s->gridETime2;
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
-		maxCalc.inputExFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+
+		//NOTE: Here is where I have to change in order to keep all field vector components
+		//Need kernel to calculate Exyz and Hxyz based on Fourier representation
+        maxCalc.inputExFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1);
 		maxCalc.inputEyFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency2);
+		maxCalc.inputEzFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1Next1);
+		maxCalc.inputHxFFT = reinterpret_cast<deviceFP*>(d.s->gridEFrequency1Next2);
+		maxCalc.inputHyFFT = reinterpret_cast<deviceFP*>(d.s->gridPropagationFactor1);
+		maxCalc.inputHzFFT = reinterpret_cast<deviceFP*>(d.s->gridPropagationFactor2);
+
+		d.deviceLaunch((*sCPU).NgridC/64, 64, CalculateSixComponentFields{
+		    .Nfreq=d.s->Nfreq,
+			.Nspace=d.s->Nspace,
+			.Nspace2=d.s->Nspace2,
+			.fstep=d.s->fStep,
+			.dk1_step=d.s->dk1,
+			.dk2_step=d.s->dk2,
+			.fft_norm=d.s->fftNorm,
+		    .Ex_input=d.s->gridEFrequency1,
+			.Ey_input=d.s->gridEFrequency2,
+		    .Ex = reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT),
+			.Ey = reinterpret_cast<deviceComplex*>(maxCalc.inputEyFFT),
+			.Ez = reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT),
+			.Hx = reinterpret_cast<deviceComplex*>(maxCalc.inputHxFFT),
+			.Hy = reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT),
+			.Hz = reinterpret_cast<deviceComplex*>(maxCalc.inputHzFFT)});
+
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT), d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT), deviceFFT::D2Z_1D);
+
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT), d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT), deviceFFT::D2Z_1D);
+
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT), d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT), deviceFFT::D2Z_1D);
+
 		d.deviceMemset(maxCalc.inOutEx, 0, 2*(*sCPU).Ngrid * sizeof(deviceFP));
 
 		//allocate the new memory needed for the maxwell calculation
@@ -1842,6 +1879,7 @@ namespace hostFunctions{
 				maxwellSetInitialCarrierDensity{ maxCalc.deviceCopy});
 	}
 
+
 	static unsigned long int solveFDTD(
 		ActiveDevice& d,
 		simulationParameterSet* sCPU,
@@ -1852,7 +1890,8 @@ namespace hostFunctions{
 		deviceFP observationPoint,
 		int gridIndex,
 		bool preserveNearField,
-		int64_t manualWaitFrames) {
+		int64_t manualWaitFrames,
+		FDTD_output output_fields) {
 
 		//initialize the grid if necessary
 		if (!sCPU->isFollowerInSequence) {
@@ -1914,12 +1953,43 @@ namespace hostFunctions{
 				maxwellRKkernel3{ maxCalc.deviceCopy, i });
 			if (i % maxCalc.tGridFactor == 0
 				&& (i >= maxCalc.waitFrames)) {
-				d.deviceLaunch(
-					(maxCalc.Nx * maxCalc.Ny) / minGridDimension,
-					minGridDimension,
-					maxwellSampleGrid{
-						maxCalc.deviceCopy,
-						(i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+
+				switch(output_fields){
+				    case FDTD_output::xy:
+						d.deviceLaunch(
+							(maxCalc.Nx * maxCalc.Ny) / minGridDimension,
+							minGridDimension,
+							maxwellSampleGrid{
+								maxCalc.deviceCopy,
+								maxCalc.Egrid,
+								maxCalc.inOutEx,
+								maxCalc.inOutEy,
+								(i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+						break;
+					case FDTD_output::xz:
+	                    d.deviceLaunch(
+    						(maxCalc.Nx * maxCalc.Ny) / minGridDimension,
+    						minGridDimension,
+    						maxwellSampleGridExEz{
+    							maxCalc.deviceCopy,
+   								maxCalc.Egrid,
+								maxCalc.inOutEx,
+								maxCalc.inOutEy,
+    							(i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+						break;
+					case FDTD_output::zy:
+	                    d.deviceLaunch(
+    						(maxCalc.Nx * maxCalc.Ny) / minGridDimension,
+    						minGridDimension,
+    						maxwellSampleGridEyEz{
+    							maxCalc.deviceCopy,
+   								maxCalc.Egrid,
+								maxCalc.inOutEx,
+								maxCalc.inOutEy,
+    							(i - maxCalc.waitFrames) / maxCalc.tGridFactor });
+						break;
+				}
+
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;
@@ -1930,7 +2000,7 @@ namespace hostFunctions{
 
 
 		//correct far-field amplitudes for vectorial effects
-		if(preserveNearField){
+		if(preserveNearField || output_fields != FDTD_output::xy){
 			d.deviceMemcpy(
 				(*sCPU).ExtOut,
 				maxCalc.inOutEx,
@@ -2063,7 +2133,6 @@ namespace hostFunctions{
 			(*sCPU).chi3Tensor = db[(*sCPU).materialIndex].chi3.data();
 			(*sCPU).nonlinearSwitches = db[(*sCPU).materialIndex].nonlinearSwitches;
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
-
 			(*sCPU).sellmeierType = db[(*sCPU).materialIndex].sellmeierType;
 			(*sCPU).axesNumber = db[(*sCPU).materialIndex].axisType;
 			d.reset(sCPU);

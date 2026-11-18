@@ -1,38 +1,39 @@
 #include "LightwaveExplorerTrilingual.h"
+#include <complex>
 namespace deviceFunctions{
 
 	//define math operators for maxwell grid points
 	deviceFunction static inline deviceFP dotProduct(
-		const maxwellPoint<deviceFP>& a, 
+		const maxwellPoint<deviceFP>& a,
 		const maxwellPoint<deviceFP>& b) {
 		return a.x * b.x + a.y * b.y + a.z * b.z;
 	}
 
 	deviceFunction static maxwellPoint<deviceFP> rotateMaxwellPoint(
-		const maxwell3D* s, 
-		const maxwellPoint<deviceFP>& in, 
+		const maxwell3D* s,
+		const maxwellPoint<deviceFP>& in,
 		const bool backwards) {
 		if (backwards) {
 			return maxwellPoint<deviceFP>{
-				(*s).rotateBackward[0][0] * in.x 
-					+ (*s).rotateBackward[1][0] * in.y 
+				(*s).rotateBackward[0][0] * in.x
+					+ (*s).rotateBackward[1][0] * in.y
 					+ (*s).rotateBackward[2][0] * in.z,
-				(*s).rotateBackward[3][0] * in.x 
-					+ (*s).rotateBackward[4][0] * in.y 
+				(*s).rotateBackward[3][0] * in.x
+					+ (*s).rotateBackward[4][0] * in.y
 					+ (*s).rotateBackward[5][0] * in.z,
-				(*s).rotateBackward[6][0] * in.x 
-					+ (*s).rotateBackward[7][0] * in.y 
+				(*s).rotateBackward[6][0] * in.x
+					+ (*s).rotateBackward[7][0] * in.y
 					+ (*s).rotateBackward[8][0] * in.z};
 		}
 		return maxwellPoint<deviceFP>{
-			(*s).rotateForward[0][0] * in.x 
-				+ (*s).rotateForward[1][0] * in.y 
+			(*s).rotateForward[0][0] * in.x
+				+ (*s).rotateForward[1][0] * in.y
 				+ (*s).rotateForward[2][0] * in.z,
-			(*s).rotateForward[3][0] * in.x 
-				+ (*s).rotateForward[4][0] * in.y 
+			(*s).rotateForward[3][0] * in.x
+				+ (*s).rotateForward[4][0] * in.y
 				+ (*s).rotateForward[5][0] * in.z,
-			(*s).rotateForward[6][0] * in.x 
-				+ (*s).rotateForward[7][0] * in.y 
+			(*s).rotateForward[6][0] * in.x
+				+ (*s).rotateForward[7][0] * in.y
 				+ (*s).rotateForward[8][0] * in.z};
 	}
 	//determine if the current grid location is close to the boundary
@@ -40,7 +41,7 @@ namespace deviceFunctions{
 	// 0..3 first points in the grid
 	// -4..-1 last points in grid
 	deviceFunction static inline int64_t boundaryFinder(
-		const int64_t i, 
+		const int64_t i,
 		const int64_t N) {
 		//normal points
 		if (i < (N - 5) && i > 3) return 5;
@@ -51,31 +52,31 @@ namespace deviceFunctions{
 	}
 
 	[[maybe_unused]] deviceFunction static inline float firstDerivativeSixthOrder(
-		const float M3, 
-		const float M2, 
-		const float M1, 
-		const float P1, 
-		const float P2, 
+		const float M3,
+		const float M2,
+		const float M1,
+		const float P1,
+		const float P2,
 		const float P3) {
-		return -0.0046875f * M3 
-			+ 0.065104166666666667f * M2 
-			- 1.171875f * M1 
-			+ 1.171875f * P1 
-			- 0.065104166666666667f * P2 
+		return -0.0046875f * M3
+			+ 0.065104166666666667f * M2
+			- 1.171875f * M1
+			+ 1.171875f * P1
+			- 0.065104166666666667f * P2
 			+ 0.0046875f * P3;
 	}
 	[[maybe_unused]] deviceFunction static inline double firstDerivativeSixthOrder(
-		const double M3, 
-		const double M2, 
-		const double M1, 
-		const double P1, 
-		const double P2, 
+		const double M3,
+		const double M2,
+		const double M1,
+		const double P1,
+		const double P2,
 		const double P3) {
-		return -0.0046875 * M3 
-			+ 0.065104166666666667 * M2 
-			- 1.171875 * M1 
-			+ 1.171875 * P1 
-			- 0.065104166666666667 * P2 
+		return -0.0046875 * M3
+			+ 0.065104166666666667 * M2
+			- 1.171875 * M1
+			+ 1.171875 * P1
+			- 0.065104166666666667 * P2
 			+ 0.0046875 * P3;
 	}
 
@@ -89,17 +90,17 @@ namespace deviceFunctions{
 	// cases 11..13: solve for dH/dz but substitute the associated E into the inputs.
 	//   the resulting quantity should additionally be divided by Zo.
 	[[maybe_unused]] deviceFunction static inline double resolveMaxwellEndpoints(
-		const int64_t type, 
-		const double in00, 
-		const double in01, 
-		const double in02, 
-		const double in03, 
-		const double in04, 
-		const double in05, 
-		const double in06, 
-		const double in07, 
-		const double in08, 
-		const double in09, 
+		const int64_t type,
+		const double in00,
+		const double in01,
+		const double in02,
+		const double in03,
+		const double in04,
+		const double in05,
+		const double in06,
+		const double in07,
+		const double in08,
+		const double in09,
 		const double in10) {
 		switch (type) {
 		case 0: //reverse and negate for +z end
@@ -181,17 +182,17 @@ namespace deviceFunctions{
 	}
 
 	[[maybe_unused]] deviceFunction static inline float resolveMaxwellEndpoints(
-		const int64_t type, 
-		const float in00, 
-		const float in01, 
-		const float in02, 
-		const float in03, 
-		const float in04, 
-		const float in05, 
-		const float in06, 
-		const float in07, 
-		const float in08, 
-		const float in09, 
+		const int64_t type,
+		const float in00,
+		const float in01,
+		const float in02,
+		const float in03,
+		const float in04,
+		const float in05,
+		const float in06,
+		const float in07,
+		const float in08,
+		const float in09,
 		const float in10) {
 
 		switch (type) {
@@ -275,34 +276,51 @@ namespace deviceFunctions{
 
 	template<typename real_t, typename complex_t>
 	deviceFunction static void fourierInterpolation(
-		const real_t timeShift, 
-		const complex_t* fourierData1, 
-		const complex_t* fourierData2, 
-		const int64_t dataSize, 
-		const real_t dOmega, 
-		const int64_t frequencyLimit, 
+		const real_t timeShift,
+		const complex_t* Ex_vs_omega,
+		const complex_t* Ey_vs_omega,
+		const complex_t* Ez_vs_omega,
+		const complex_t* Hx_vs_omega,
+		const complex_t* Hy_vs_omega,
+		const complex_t* Hz_vs_omega,
+		const int64_t dataSize,
+		const real_t dOmega,
+		const int64_t frequencyLimit,
 		maxwellKPoint<real_t>& k) {
 
-		real_t result1{};
-		real_t result2{};
+		real_t Ex{};
+		real_t Ey{};
+		real_t Ez{};
+		real_t Hx{};
+		real_t Hy{};
+		real_t Hz{};
 		const real_t dOmegaT = dOmega * timeShift;
 		for (int i = 1; i < frequencyLimit; i++) {
 			const real_t w = static_cast<real_t>(i) * dOmegaT;
 			const real_t sinw = deviceFPLib::sin(w);
 			const real_t cosw = deviceFPLib::cos(w);
-			result1 += static_cast<real_t>(i) * (cosw * fourierData1[i].imag() + sinw * fourierData1[i].real());
-			result2 += static_cast<real_t>(i) * (cosw * fourierData2[i].imag() + sinw * fourierData2[i].real());
+			Ex += static_cast<real_t>(i) * (cosw * Ex_vs_omega[i].imag() + sinw * Ex_vs_omega[i].real());
+			Ey += static_cast<real_t>(i) * (cosw * Ey_vs_omega[i].imag() + sinw * Ey_vs_omega[i].real());
+			Ez += static_cast<real_t>(i) * (cosw * Ez_vs_omega[i].imag() + sinw * Ez_vs_omega[i].real());
+			Hx += static_cast<real_t>(i) * (cosw * Hx_vs_omega[i].imag() + sinw * Hx_vs_omega[i].real());
+			Hy += static_cast<real_t>(i) * (cosw * Hy_vs_omega[i].imag() + sinw * Hy_vs_omega[i].real());
+			Hz += static_cast<real_t>(i) * (cosw * Hz_vs_omega[i].imag() + sinw * Hz_vs_omega[i].real());
 		}
-		
+
 		const real_t normalizationFactor = (460.76f * dOmega) / (static_cast<real_t>(dataSize + 1));
-		result1 *= normalizationFactor;
-		result2 *= normalizationFactor;
-		
-		k.kE.x += result1;
-		k.kE.y += result2;
-		
-		k.kH.x += inverseZo<real_t>() * result2;
-		k.kH.y -= inverseZo<real_t>() * result1;
+		Ex *= normalizationFactor;
+		Ey *= normalizationFactor;
+		Ez *= normalizationFactor;
+		Hx *= normalizationFactor;
+		Hy *= normalizationFactor;
+		Hz *= normalizationFactor;
+
+		k.kE.x += Ex;
+		k.kE.y += Ey;
+		k.kE.z += Ez;
+		k.kH.x += Hx;
+		k.kH.y += Hy;
+		k.kH.z += Hz;
 	}
 
 	deviceFunction static maxwellKPoint<deviceFP> maxwellDerivativeTerms(
@@ -1388,17 +1406,17 @@ namespace deviceFunctions{
 		if (solveMaterialEquations) {
 			const int64_t oscillatorIndex = s->hasMaterialMap ?
 				s->oscillatorIndexMap[i] * s->Noscillators
-				: (zIndex - s->materialStart) * s->Noscillators 
+				: (zIndex - s->materialStart) * s->Noscillators
 				+ xIndex * (s->materialStop - s->materialStart) * s->Noscillators;
 			const int oscillatorType = s->hasMaterialMap ?
 				s->materialMap[i] - 1
 				: 0;
-			
+
 			//rotate the field and the currently-active derivative term into the crystal coordinates
 			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
 			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
 			maxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][oscillatorType] - 1.0f;
-			
+
 			//get the total dipole current and polarization of the oscillators
 			maxwellPoint<deviceFP> J{};
 			maxwellPoint<deviceFP> P = chiInstant * crystalField;
@@ -1508,23 +1526,23 @@ namespace deviceFunctions{
 
 				switch (rkIndex) {
 				case 0:
-					s->materialGridEstimate[oscillatorIndex + j] = 
+					s->materialGridEstimate[oscillatorIndex + j] =
 						s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
-					s->materialGridNext[oscillatorIndex + j] = 
+					s->materialGridNext[oscillatorIndex + j] =
 						s->materialGrid[oscillatorIndex + j] + kOsc * (sixth<deviceFP>() * s->tStep);
 					break;
 				case 1:
-					s->materialGridEstimate2[oscillatorIndex + j] = 
+					s->materialGridEstimate2[oscillatorIndex + j] =
 						s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep * 0.5f);
 					s->materialGridNext[oscillatorIndex + j] += kOsc * (third<deviceFP>() * s->tStep);
 					break;
 				case 2:
-					s->materialGridEstimate[oscillatorIndex + j] = 
+					s->materialGridEstimate[oscillatorIndex + j] =
 						s->materialGrid[oscillatorIndex + j] + kOsc * (s->tStep);
 					s->materialGridNext[oscillatorIndex + j] += kOsc * (third<deviceFP>() * s->tStep);
 					break;
 				case 3:
-					s->materialGrid[oscillatorIndex + j] = 
+					s->materialGrid[oscillatorIndex + j] =
 						s->materialGridNext[oscillatorIndex + j] + kOsc * (sixth<deviceFP>() * s->tStep);
 					break;
 				}
@@ -1536,12 +1554,20 @@ namespace deviceFunctions{
 			deviceFP tCurrent = s->tStep * t + 0.5f * isAtMidpoint * s->tStep;
 			deviceComplex* fftDataY = (deviceComplex*)s->inputEyFFT;
 			deviceComplex* fftDataX = (deviceComplex*)s->inputExFFT;
-			fourierInterpolation(tCurrent, 
-				&fftDataX[xIndex * s->fftSize], 
-				&fftDataY[xIndex * s->fftSize], 
-				s->fftSize, 
-				s->omegaStep, 
-				s->frequencyLimit, 
+			deviceComplex* fftDataZ = (deviceComplex*)s->inputEzFFT;
+			deviceComplex* fftDataHX = (deviceComplex*)s->inputHxFFT;
+			deviceComplex* fftDataHY = (deviceComplex*)s->inputHyFFT;
+			deviceComplex* fftDataHZ = (deviceComplex*)s->inputHzFFT;
+			fourierInterpolation(tCurrent,
+				&fftDataX[xIndex * s->fftSize],
+				&fftDataY[xIndex * s->fftSize],
+				&fftDataZ[xIndex * s->fftSize],
+				&fftDataHX[xIndex * s->fftSize],
+				&fftDataHY[xIndex * s->fftSize],
+				&fftDataHZ[xIndex * s->fftSize],
+				s->fftSize,
+				s->omegaStep,
+				s->frequencyLimit,
 				k);
 			return;
 		}

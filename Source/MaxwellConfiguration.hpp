@@ -43,6 +43,10 @@ public:
     deviceFP* inOutEx{};
     deviceFP* inputExFFT{};
     deviceFP* inputEyFFT{};
+    deviceFP* inputEzFFT{};
+    deviceFP* inputHxFFT{};
+    deviceFP* inputHyFFT{};
+    deviceFP* inputHzFFT{};
     deviceFP omegaStep{};
     deviceFP xyStep{};
     deviceFP zStep{};
@@ -70,21 +74,21 @@ public:
     int64_t materialStart{};
     int64_t materialStop{};
     maxwellCalculation<deviceFP, E, H, O>* deviceCopy = nullptr;
-    
+
     void fillRotationMatricies(double crystalTheta, double crystalPhi, int64_t crystalNumber) {
         double cosT = cos(crystalTheta);
         double sinT = sin(crystalTheta);
         double cosP = cos(crystalPhi);
         double sinP = sin(crystalPhi);
         double forward[9] =
-        { cosT * cosP, sinP, -sinT * cosP, 
-            -sinP * cosT, cosP, sinP * sinT, 
+        { cosT * cosP, sinP, -sinT * cosP,
+            -sinP * cosT, cosP, sinP * sinT,
             sinT, 0.0, cosT };
 
         //reverse direction (different order of operations)
         double backward[9] =
-        { cosT * cosP, -sinP * cosT, sinT, 
-            sinP, cosP, 0.0, 
+        { cosT * cosP, -sinP * cosT, sinT,
+            sinP, cosP, 0.0,
             -sinT * cosP, sinP * sinT, cosT };
 
         for (int64_t i = 0; i < 9; i++) {

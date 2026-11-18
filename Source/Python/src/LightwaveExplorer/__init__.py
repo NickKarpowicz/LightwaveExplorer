@@ -13,7 +13,7 @@ from .LightwaveExplorer import (
     getRII_object,
     getSellmeierFromRII,
     getTabulatedDataFromRII,
-    lightwaveExplorerResult,
+    LightwaveExplorerResult,
     load,
     loadSplit,
     norma,
@@ -24,6 +24,7 @@ from .LightwaveExplorer import (
     printSellmeier,
     sellmeier,
     sellmeierFit,
+    getFieldVector,
 )
 
 __all__ = [
@@ -39,7 +40,7 @@ __all__ = [
     "getRII_object",
     "getSellmeierFromRII",
     "getTabulatedDataFromRII",
-    "lightwaveExplorerResult",
+    "LightwaveExplorerResult",
     "load",
     "loadSplit",
     "norma",
@@ -50,4 +51,5 @@ __all__ = [
     "printSellmeier",
     "sellmeier",
     "sellmeierFit",
+    "getFieldVector",
 ]
