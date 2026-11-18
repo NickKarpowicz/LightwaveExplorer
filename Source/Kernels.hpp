@@ -746,11 +746,11 @@ struct CalculateSixComponentFields{
         const deviceFP kMagnitude =
             (h * fstep * twoPi<deviceFP>()) / lightC<deviceFP>();
         deviceFP norm_x = (j * dk1_step - (j >= (Nspace / 2)) * (dk1_step * Nspace))/kMagnitude;
-        deviceFP norm_y = (k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2))/kMagnitude;
-        deviceFP norm_t = deviceFPLib::hypot(norm_x, norm_y);
+        deviceFP norm_y = Nspace2==1 ? 1.0f : (k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2))/kMagnitude;
+        deviceFP norm_t = Nspace2==1 ? norm_x : deviceFPLib::hypot(norm_x, norm_y);
         deviceFP norm_z = deviceFPLib::sqrt((1.0f-norm_t)*(1.0f+norm_t));
         deviceFP tilt_x = deviceFPLib::sqrt((1.0f-norm_x)*(1.0f+norm_x));
-        deviceFP tilt_y = deviceFPLib::sqrt((1.0f-norm_y)*(1.0f+norm_y));
+        deviceFP tilt_y = Nspace2==1 ? 1.0f : deviceFPLib::sqrt((1.0f-norm_y)*(1.0f+norm_y));
         norm_x = isnan(norm_x) ? 0.0f : norm_x;
         norm_y = isnan(norm_y) ? 0.0f : norm_y;
         norm_t = isnan(norm_t) ? 0.0f : norm_t;

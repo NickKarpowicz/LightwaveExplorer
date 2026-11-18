@@ -1,3 +1,4 @@
+#include "DataStructures.hpp"
 #include "LightwaveExplorerTrilingual.h"
 #include "LightwaveExplorerInterfaceClasses.hpp"
 #include <dlib/global_optimization.h>
@@ -1470,7 +1471,9 @@ namespace hostFunctions{
 	static unsigned int freeFDTD(
 		ActiveDevice& d,
 		maxwellType& maxCalc) {
-		unsigned int errorValue = 13 * d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y));
+		maxwellPoint<deviceFP> final_result;
+		d.deviceMemcpy(&final_result, maxCalc.Egrid, sizeof(final_result), copyType::ToHost);
+		unsigned int errorValue = 13 * isnan(final_result.y);
 		d.deviceFree(maxCalc.Egrid);
 		d.deviceFree(maxCalc.EgridEstimate);
 		d.deviceFree(maxCalc.EgridEstimate2);
@@ -1808,7 +1811,7 @@ namespace hostFunctions{
 		maxCalc.inputHyFFT = reinterpret_cast<deviceFP*>(d.s->gridPropagationFactor1);
 		maxCalc.inputHzFFT = reinterpret_cast<deviceFP*>(d.s->gridPropagationFactor2);
 
-		d.deviceLaunch((*sCPU).NgridC/64, 64, CalculateSixComponentFields{
+		d.deviceLaunch(d.s->Ngrid/128, 64, CalculateSixComponentFields{
 		    .Nfreq=d.s->Nfreq,
 			.Nspace=d.s->Nspace,
 			.Nspace2=d.s->Nspace2,
@@ -1992,7 +1995,7 @@ namespace hostFunctions{
 
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
-			if (i % 20 == 0 && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;
+			if (i % 20 == 0 && maxCalc.Egrid != nullptr && d.isTheCanaryPixelNaN(&(maxCalc.Egrid[0].y))) break;
 			if ((*sCPU).cancellationCalled) break;
 		}
 
