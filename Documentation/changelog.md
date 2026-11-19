@@ -7,6 +7,13 @@ Bug fixes:
 - Fixed crystal database entries with Miller's rule scaling for SiO2, MgF2, Ge
 - Fix crash that can occur when some parts of a sequence use a plasma and others don't
 
+follow-up patches:
+- 2026.2.1: fix metadata for Flathub
+- 2026.2.2: fix overflow in new FDTD kernel call
+- 2026.2.4: fix crash for very short time grids
+- 2026.2.5: fix Windows CI build
+- 2026.2.6: fix another short time grid crash
+
 ### Changes in 2026.1
 New features:
 - Support for complex input beams, on either a Hermite-Gauss or Laguerre-Gauss basis with frequency-dependent beamwaist, rotation, 3D offset and angle.

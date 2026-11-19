@@ -18,7 +18,7 @@ Tutorials on YouTube!
 [Documentation](https://nickkarpowicz.github.io/LightwaveExplorerDocumentation)!
 
 ---
-### Latest release: 2026.2 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/blob/master/Documentation/changelog.md))
+### Latest release: 2026.2.6 ([changelog](https://github.com/NickKarpowicz/LightwaveExplorer/blob/master/Documentation/changelog.md))
 **Windows:** [Download .zip](https://github.com/NickKarpowicz/LightwaveExplorer/releases/latest/download/LightwaveExplorerWin64.zip) (note: if you use SYCL for GPU acceleration on intel, please use the newest [DPC++/C++ Compiler Runtime](https://www.intel.com/content/www/us/en/developer/tools/oneapi/runtime-versions-download.html); you don't need this if you're not using intel graphics).
 
 Free code signing on Windows provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org)
