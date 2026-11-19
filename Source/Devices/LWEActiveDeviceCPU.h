@@ -399,6 +399,13 @@ public:
 					(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
 				visualizationOnly * (*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2)
 			);
+			max_launch_size = maxN(
+                (*sCPU).Nspace
+                * (*sCPU).Nspace2
+                * ((4e-6 + (*sCPU).crystalThickness)/(*sCPU).propagationStep),
+                max_launch_size);
+            max_launch_size = maxN(8192, max_launch_size);
+indices = std::vector<int64_t>(max_launch_size);
 		    indices = std::vector<int64_t>(max_launch_size);
 			std::iota(indices.begin(), indices.end(), 0);
 		}
