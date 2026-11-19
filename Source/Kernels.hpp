@@ -719,6 +719,7 @@ public:
 };
 
 //Calculate the full input field for FDTD with six components
+// I need to clean this up, just want to make it work first.
 struct CalculateSixComponentFields{
     const int64_t Nfreq;
     const int64_t Nspace;
@@ -743,10 +744,22 @@ struct CalculateSixComponentFields{
         const int64_t k = col / Nspace;
         const int64_t j = col - k * Nspace;
 
-        const deviceFP kMagnitude =
+        const deviceFP k_magnitude =
             (h * fstep * twoPi<deviceFP>()) / lightC<deviceFP>();
-        deviceFP norm_x = (j * dk1_step - (j >= (Nspace / 2)) * (dk1_step * Nspace))/kMagnitude;
-        deviceFP norm_y = Nspace2==1 ? 1.0f : (k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2))/kMagnitude;
+        const deviceFP k_x =
+            j * dk1_step - (j >= (Nspace / 2)) * (dk1_step * Nspace);
+        const deviceFP k_y =
+            k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2);
+        const deviceFP k_t = deviceFPLib::hypot(k_y,k_x);
+        const deviceFP k_z = deviceFPLib::sqrt((k_magnitude + k_t)*(k_magnitude - k_t));
+        const deviceFP theta = deviceFPLib::atan2(k_t, k_z);
+        const deviceFP phi = deviceFPLib::atan2(k_y,k_x);
+        const deviceFP cos_t = deviceFPLib::cos(theta);
+        const deviceFP sin_t = deviceFPLib::sin(theta);
+        const deviceFP cos_p = deviceFPLib::cos(phi);
+        const deviceFP sin_p = deviceFPLib::sin(phi);
+        deviceFP norm_x = (j * dk1_step - (j >= (Nspace / 2)) * (dk1_step * Nspace))/k_magnitude;
+        deviceFP norm_y = Nspace2==1 ? 1.0f : (k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2))/k_magnitude;
         deviceFP norm_t = Nspace2==1 ? norm_x : deviceFPLib::hypot(norm_x, norm_y);
         deviceFP norm_z = deviceFPLib::sqrt((1.0f-norm_t)*(1.0f+norm_t));
         deviceFP tilt_x = deviceFPLib::sqrt((1.0f-norm_x)*(1.0f+norm_x));
@@ -757,9 +770,12 @@ struct CalculateSixComponentFields{
         norm_z = isnan(norm_z) ? 0.0f : norm_z;
         tilt_x = isnan(tilt_x) ? 0.0f : tilt_x;
         tilt_y = isnan(tilt_y) ? 0.0f : tilt_y;
-        Ex[i] = fft_norm * Ex_input[i] * tilt_x;
-        Ey[i] = fft_norm * Ey_input[i] * tilt_y;
-        Ez[i] = fft_norm * (norm_x * Ex_input[i] + norm_y * Ey_input[i]);
+        Ex[i] = fft_norm * (Ex_input[i] * (sin_p * sin_p + cos_p * cos_p * cos_t) + Ey_input[i] * (-sin_p*cos_p*(1.0f-cos_t)));
+        Ey[i] = fft_norm * (Ex_input[i] * (-sin_p * cos_p * (1.0f-cos_t)) + Ey_input[i] * (cos_p*cos_p + sin_p*sin_p*cos_t));
+        Ez[i] = fft_norm * (-cos_p * sin_t * Ex_input[i] - sin_p*sin_t * Ey_input[i]);
+        Ex[i] = isComplexNaN(Ex[i]) ? deviceComplex(0.0,0.0) : Ex[i];
+        Ey[i] = isComplexNaN(Ey[i]) ? deviceComplex(0.0,0.0) : Ey[i];
+        Ez[i] = isComplexNaN(Ez[i]) ? deviceComplex(0.0,0.0) : Ez[i];
         //minus signs to be consistent with the rest of the calculation
         Hx[i] = - fft_norm * inverseZo<deviceFP>() * (norm_y * Ez[i] - norm_z * Ey[i]);
         Hy[i] = - fft_norm * inverseZo<deviceFP>() * (norm_z * Ex[i] - norm_x * Ez[i]);
@@ -775,7 +791,10 @@ struct CalculateSixComponentFields{
     }
 };
 
-// apply linear propagation through a given medium to the fields
+// rotate each plane wave in the fourier basis to produce a "2d" field compatible with
+// the UPPE picture
+// This involves the rotation matrix similar to going into crystal coordinates, plus an additional
+// rotation around phi to not twist the polarization
 class correctFDTDAmplitudesKernel {
 public:
   const deviceParameterSet<deviceFP, deviceComplex> *s;
@@ -801,17 +820,18 @@ public:
     const deviceFP sin_t = deviceFPLib::sin(theta);
     const deviceFP cos_p = deviceFPLib::cos(phi);
     const deviceFP sin_p = deviceFPLib::sin(phi);
+
     deviceComplex Ex = (*s).fftNorm * s->gridEFrequency1[i];
     deviceComplex Ey = (*s).fftNorm * s->gridEFrequency2[i];
-    deviceComplex Ez = k_z == 0.0 ? deviceComplex{} : -(k_x * Ex + k_y*Ey)/k_z;
+    deviceComplex Ez = k_z == 0.0f ? deviceComplex{} : -(k_x * Ex + k_y*Ey)/k_z;
     deviceComplex Ax = k_t >= k_magnitude ? 0.0f :
-        (cos_p * cos_t) * Ex
-        - (sin_p * cos_t) * Ey
-        - sin_t * Ez;
+        (sin_p*sin_p + cos_p*cos_p*cos_t) * Ex
+        -(sin_p*cos_p*(1.0f-cos_t)) * Ey
+        -cos_p*sin_t * Ez;
     deviceComplex Ay = k_t >= k_magnitude ? 0.0f :
-        (-sin_p*cos_t) * Ex
-        + cos_p * Ey
-        + (sin_p * sin_t) * Ez;
+        (-sin_p*cos_p*(1.0f-cos_t)) * Ex
+        + (cos_p*cos_p + sin_p*sin_p*cos_t) * Ey
+        - (sin_p*sin_t) * Ez;
     s->gridEFrequency1[i] = Ax;
     s->gridEFrequency2[i] = Ay;
 
@@ -831,20 +851,35 @@ public:
     const int64_t col = i / ((*s).Nfreq - 1);
     i = h + col * ((*s).Nfreq);
     const int64_t j = col % (*s).Nspace;
-
-    const deviceFP kMagnitude =
+    const deviceFP k_magnitude =
         (h * (*s).fStep * twoPi<deviceFP>()) / lightC<deviceFP>();
-    const deviceFP dk1 =
+    const deviceFP k_x =
         j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
-    if (dk1 * dk1 < kMagnitude * kMagnitude && h > 2) {
-      s->gridEFrequency1[i] *=
-          (*s).fftNorm * kMagnitude /
-          deviceFPLib::sqrt((kMagnitude - dk1) * (kMagnitude + dk1));
-      s->gridEFrequency2[i] *= (*s).fftNorm;
-    } else {
-      s->gridEFrequency1[i] = {};
-      s->gridEFrequency2[i] = {};
-    }
+    const deviceFP k_y = 0.0f;
+    const deviceFP k_t = deviceFPLib::hypot(k_y,k_x);
+    const deviceFP k_z = deviceFPLib::sqrt((k_magnitude + k_t)*(k_magnitude - k_t));
+    const deviceFP theta = deviceFPLib::atan2(k_t, k_z);
+    const deviceFP phi = deviceFPLib::atan2(k_y,k_x);
+
+    const deviceFP cos_t = deviceFPLib::cos(theta);
+    const deviceFP sin_t = deviceFPLib::sin(theta);
+    const deviceFP cos_p = deviceFPLib::cos(phi);
+    const deviceFP sin_p = deviceFPLib::sin(phi);
+
+    deviceComplex Ex = (*s).fftNorm * s->gridEFrequency1[i];
+    deviceComplex Ey = (*s).fftNorm * s->gridEFrequency2[i];
+    deviceComplex Ez = k_z == 0.0f ? deviceComplex{} : -(k_x * Ex + k_y*Ey)/k_z;
+    deviceComplex Ax = k_t >= k_magnitude ? 0.0f :
+        (sin_p*sin_p + cos_p*cos_p*cos_t) * Ex
+        -(sin_p*cos_p*(1.0f-cos_t)) * Ey
+        -cos_p*sin_t * Ez;
+    deviceComplex Ay = k_t >= k_magnitude ? 0.0f :
+        (-sin_p*cos_p*(1.0f-cos_t)) * Ex
+        + (cos_p*cos_p + sin_p*sin_p*cos_t) * Ey
+        - (sin_p*sin_t) * Ez;
+    s->gridEFrequency1[i] = Ax;
+    s->gridEFrequency2[i] = Ay;
+
     if (h == 1) {
       s->gridEFrequency1[i - 1] = {};
       s->gridEFrequency2[i - 1] = {};
