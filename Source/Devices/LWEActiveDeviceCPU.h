@@ -236,9 +236,6 @@ public:
 		}
 		else {
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
-            if(static_cast<size_t>(Nblock) * static_cast<size_t>(Nthread) > indices.size()){
-                std::cout << "TOO BIG! call with Nblock:" << Nblock << " and Nthread: " << Nthread << " of " << typeid(T).name() << '\n';
-            }
 			std::for_each_n(
 				std::execution::par_unseq,
 				indices.begin(),
