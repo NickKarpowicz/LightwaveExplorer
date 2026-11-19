@@ -192,6 +192,7 @@ public:
     				(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
        			    height * width
     		);
+            max_launch_size = maxN(8192, max_launch_size);
 			indices = std::vector<int64_t>(max_launch_size);
 			std::iota(indices.begin(), indices.end(), 0);
 		#endif
@@ -235,6 +236,9 @@ public:
 		}
 		else {
 #if defined _WIN32 || defined __linux__ && not defined CPUONLY
+            if(static_cast<size_t>(Nblock) * static_cast<size_t>(Nthread) > indices.size()){
+                std::cout << "TOO BIG! call with Nblock:" << Nblock << " and Nthread: " << Nthread << " of " << typeid(T).name() << '\n';
+            }
 			std::for_each_n(
 				std::execution::par_unseq,
 				indices.begin(),
@@ -419,7 +423,13 @@ public:
         				(*sCPU).Nspace * (*sCPU).Nspace2 * (*sCPU).Npropagation),
         			visualizationOnly * (*sCPU).Nspace * maxN((*sCPU).Nspace, (*sCPU).Nspace2)
     		);
-            max_launch_size = maxN(256, max_launch_size);
+            //fdtd
+            max_launch_size = maxN(
+                (*sCPU).Nspace
+                * (*sCPU).Nspace2
+                * ((4e-6 + (*sCPU).crystalThickness)/(*sCPU).propagationStep),
+                max_launch_size);
+            max_launch_size = maxN(8192, max_launch_size);
 			indices = std::vector<int64_t>(max_launch_size);
 			std::iota(indices.begin(), indices.end(), 0);
 		#endif
