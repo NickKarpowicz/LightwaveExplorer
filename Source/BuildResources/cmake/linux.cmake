@@ -150,7 +150,7 @@ elseif(SANITIZE)
     conditionally_fetch_dependencies()
     linux_ui_packages()
     add_compile_options(-O0 -g -fsanitize=address,undefined ${OpenMP_CXX_FLAGS} -Wall)
-    add_definitions(-DNOCUDA -DNOSYCL -DNDEBUG)
+    add_definitions(-DNOCUDA -DNOSYCL)
     add_executable(${EXECUTABLE_NAME}
         Source/Frontend/LightwaveExplorerFrontendQt.cpp
         Source/Frontend/LWEVisualizationsCPU.cpp

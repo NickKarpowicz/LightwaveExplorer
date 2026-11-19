@@ -787,23 +787,34 @@ public:
     const int64_t k = col / (*s).Nspace;
     const int64_t j = col - k * (*s).Nspace;
 
-    const deviceFP kMagnitude =
+    const deviceFP k_magnitude =
         (h * (*s).fStep * twoPi<deviceFP>()) / lightC<deviceFP>();
-    const deviceFP dk1 =
+    const deviceFP k_x =
         j * (*s).dk1 - (j >= ((*s).Nspace / 2)) * ((*s).dk1 * (*s).Nspace);
-    const deviceFP dk2 =
+    const deviceFP k_y =
         k * (*s).dk2 - (k >= ((*s).Nspace2 / 2)) * ((*s).dk2 * (*s).Nspace2);
-    if (dk2 * dk2 + dk1 * dk1 < kMagnitude * kMagnitude) {
-      s->gridEFrequency1[i] *=
-          (*s).fftNorm * kMagnitude /
-          deviceFPLib::sqrt((kMagnitude - dk1) * (kMagnitude + dk1));
-      s->gridEFrequency2[i] *=
-          (*s).fftNorm * kMagnitude /
-          deviceFPLib::sqrt((kMagnitude - dk2) * (kMagnitude + dk2));
-    } else {
-      s->gridEFrequency1[i] = {};
-      s->gridEFrequency2[i] = {};
-    }
+    const deviceFP k_t = deviceFPLib::hypot(k_y,k_x);
+    const deviceFP k_z = deviceFPLib::sqrt((k_magnitude + k_t)*(k_magnitude - k_t));
+    const deviceFP theta = deviceFPLib::atan2(k_t, k_z);
+    const deviceFP phi = deviceFPLib::atan2(k_y,k_x);
+    const deviceFP cos_t = deviceFPLib::cos(theta);
+    const deviceFP sin_t = deviceFPLib::sin(theta);
+    const deviceFP cos_p = deviceFPLib::cos(phi);
+    const deviceFP sin_p = deviceFPLib::sin(phi);
+    deviceComplex Ex = (*s).fftNorm * s->gridEFrequency1[i];
+    deviceComplex Ey = (*s).fftNorm * s->gridEFrequency2[i];
+    deviceComplex Ez = k_z == 0.0 ? deviceComplex{} : -(k_x * Ex + k_y*Ey)/k_z;
+    deviceComplex Ax = k_t >= k_magnitude ? 0.0f :
+        (cos_p * cos_t) * Ex
+        - (sin_p * cos_t) * Ey
+        - sin_t * Ez;
+    deviceComplex Ay = k_t >= k_magnitude ? 0.0f :
+        (-sin_p*cos_t) * Ex
+        + cos_p * Ey
+        + (sin_p * sin_t) * Ez;
+    s->gridEFrequency1[i] = Ax;
+    s->gridEFrequency2[i] = Ay;
+
     if (h == 1) {
       s->gridEFrequency1[i - 1] = {};
       s->gridEFrequency2[i - 1] = {};
