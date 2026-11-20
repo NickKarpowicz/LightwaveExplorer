@@ -737,10 +737,9 @@ struct CalculateSixComponentFields{
     deviceComplex* Hy;
     deviceComplex* Hz;
     deviceFunction void operator()(const int64_t localIndex) const {
-        int64_t i = localIndex;
-        const int64_t h = 1 + i % (Nfreq - 1);
-        const int64_t col = i / (Nfreq - 1);
-        i = h + col * (Nfreq);
+        const int64_t h = 1 + localIndex % (Nfreq - 1);
+        const int64_t col = localIndex / (Nfreq - 1);
+        const int64_t i = h + col * (Nfreq);
         const int64_t k = col / Nspace;
         const int64_t j = col - k * Nspace;
 
@@ -758,28 +757,23 @@ struct CalculateSixComponentFields{
         const deviceFP sin_t = deviceFPLib::sin(theta);
         const deviceFP cos_p = deviceFPLib::cos(phi);
         const deviceFP sin_p = deviceFPLib::sin(phi);
-        deviceFP norm_x = (j * dk1_step - (j >= (Nspace / 2)) * (dk1_step * Nspace))/k_magnitude;
-        deviceFP norm_y = Nspace2==1 ? 1.0f : (k * dk2_step - (k >= (Nspace2 / 2)) * (dk2_step * Nspace2))/k_magnitude;
-        deviceFP norm_t = Nspace2==1 ? norm_x : deviceFPLib::hypot(norm_x, norm_y);
+        deviceFP norm_x = k_x/k_magnitude;
+        deviceFP norm_y = Nspace2==1 ? 1.0f : k_y/k_magnitude;
+        deviceFP norm_t = Nspace2==1 ? norm_x : k_t/k_magnitude;
         deviceFP norm_z = deviceFPLib::sqrt((1.0f-norm_t)*(1.0f+norm_t));
-        deviceFP tilt_x = deviceFPLib::sqrt((1.0f-norm_x)*(1.0f+norm_x));
-        deviceFP tilt_y = Nspace2==1 ? 1.0f : deviceFPLib::sqrt((1.0f-norm_y)*(1.0f+norm_y));
         norm_x = isnan(norm_x) ? 0.0f : norm_x;
         norm_y = isnan(norm_y) ? 0.0f : norm_y;
-        norm_t = isnan(norm_t) ? 0.0f : norm_t;
         norm_z = isnan(norm_z) ? 0.0f : norm_z;
-        tilt_x = isnan(tilt_x) ? 0.0f : tilt_x;
-        tilt_y = isnan(tilt_y) ? 0.0f : tilt_y;
         Ex[i] = fft_norm * (Ex_input[i] * (sin_p * sin_p + cos_p * cos_p * cos_t) + Ey_input[i] * (-sin_p*cos_p*(1.0f-cos_t)));
         Ey[i] = fft_norm * (Ex_input[i] * (-sin_p * cos_p * (1.0f-cos_t)) + Ey_input[i] * (cos_p*cos_p + sin_p*sin_p*cos_t));
         Ez[i] = fft_norm * (-cos_p * sin_t * Ex_input[i] - sin_p*sin_t * Ey_input[i]);
-        Ex[i] = isComplexNaN(Ex[i]) ? deviceComplex(0.0,0.0) : Ex[i];
-        Ey[i] = isComplexNaN(Ey[i]) ? deviceComplex(0.0,0.0) : Ey[i];
-        Ez[i] = isComplexNaN(Ez[i]) ? deviceComplex(0.0,0.0) : Ez[i];
+        Ex[i] = isnan(k_z) ? deviceComplex(0.0,0.0) : Ex[i];
+        Ey[i] = isnan(k_z) ? deviceComplex(0.0,0.0) : Ey[i];
+        Ez[i] = isnan(k_z) ? deviceComplex(0.0,0.0) : Ez[i];
         //minus signs to be consistent with the rest of the calculation
-        Hx[i] = - fft_norm * inverseZo<deviceFP>() * (norm_y * Ez[i] - norm_z * Ey[i]);
-        Hy[i] = - fft_norm * inverseZo<deviceFP>() * (norm_z * Ex[i] - norm_x * Ez[i]);
-        Hz[i] = - fft_norm * inverseZo<deviceFP>() * (norm_x * Ey[i] - norm_y * Ex[i]);
+        Hx[i] = -inverseZo<deviceFP>() * (norm_y * Ez[i] - norm_z * Ey[i]);
+        Hy[i] = -inverseZo<deviceFP>() * (norm_z * Ex[i] - norm_x * Ez[i]);
+        Hz[i] = -inverseZo<deviceFP>() * (norm_x * Ey[i] - norm_y * Ex[i]);
         if(h==1){
             Ex[i-1] = {};
             Ey[i-1] = {};

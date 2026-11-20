@@ -299,28 +299,22 @@ namespace deviceFunctions{
 			const real_t w = static_cast<real_t>(i) * dOmegaT;
 			const real_t sinw = deviceFPLib::sin(w);
 			const real_t cosw = deviceFPLib::cos(w);
-			Ex += static_cast<real_t>(i) * (cosw * Ex_vs_omega[i].imag() + sinw * Ex_vs_omega[i].real());
-			Ey += static_cast<real_t>(i) * (cosw * Ey_vs_omega[i].imag() + sinw * Ey_vs_omega[i].real());
-			Ez += static_cast<real_t>(i) * (cosw * Ez_vs_omega[i].imag() + sinw * Ez_vs_omega[i].real());
-			Hx += static_cast<real_t>(i) * (cosw * Hx_vs_omega[i].imag() + sinw * Hx_vs_omega[i].real());
-			Hy += static_cast<real_t>(i) * (cosw * Hy_vs_omega[i].imag() + sinw * Hy_vs_omega[i].real());
-			Hz += static_cast<real_t>(i) * (cosw * Hz_vs_omega[i].imag() + sinw * Hz_vs_omega[i].real());
+			const real_t i_fp = static_cast<real_t>(i);
+			Ex += i_fp * (cosw * Ex_vs_omega[i].imag() + sinw * Ex_vs_omega[i].real());
+			Ey += i_fp * (cosw * Ey_vs_omega[i].imag() + sinw * Ey_vs_omega[i].real());
+			Ez += i_fp * (cosw * Ez_vs_omega[i].imag() + sinw * Ez_vs_omega[i].real());
+			Hx += i_fp * (cosw * Hx_vs_omega[i].imag() + sinw * Hx_vs_omega[i].real());
+			Hy += i_fp * (cosw * Hy_vs_omega[i].imag() + sinw * Hy_vs_omega[i].real());
+			Hz += i_fp * (cosw * Hz_vs_omega[i].imag() + sinw * Hz_vs_omega[i].real());
 		}
 
-		const real_t normalizationFactor = (460.76f * dOmega) / (static_cast<real_t>(dataSize + 1));
-		Ex *= normalizationFactor;
-		Ey *= normalizationFactor;
-		Ez *= normalizationFactor;
-		Hx *= normalizationFactor;
-		Hy *= normalizationFactor;
-		Hz *= normalizationFactor;
-
-		k.kE.x += Ex;
-		k.kE.y += Ey;
-		k.kE.z += Ez;
-		k.kH.x += Hx;
-		k.kH.y += Hy;
-		k.kH.z += Hz;
+		const real_t normalizationFactor = (472.0f * dOmega) / (static_cast<real_t>(dataSize + 1));
+		k.kE.x += normalizationFactor * Ex;
+		k.kE.y += normalizationFactor * Ey;
+		k.kE.z += normalizationFactor * Ez;
+		k.kH.x += normalizationFactor * Hx;
+		k.kH.y += normalizationFactor * Hy;
+		k.kH.z += normalizationFactor * Hz;
 	}
 
 	deviceFunction static maxwellKPoint<deviceFP> maxwellDerivativeTerms(
