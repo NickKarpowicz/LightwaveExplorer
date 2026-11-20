@@ -1432,42 +1432,52 @@ def getFieldVector(s: LightwaveExplorerResult):
             axis=0),
         axes=[1,2])
 
-    inverse_k = (2.0 * np.pi/constants.speed_of_light) * s.frequencyVectorSpectrum
-    np.divide(1.0, inverse_k, out=inverse_k, where=(inverse_k != 0.0))
-    norm_x = np.outer(
-        inverse_k,
-        (2.0*np.pi)*np.fft.fftfreq(
+    k_magnitude = (2.0 * np.pi/constants.speed_of_light) * s.frequencyVectorSpectrum
+    k_magnitude = k_magnitude[:,None,None]
+    k_x = (2.0*np.pi)*np.fft.fftfreq(
             len(s.spaceVectorX),
-            d=s.spatialStep))
-    norm_y = np.outer(
-        inverse_k,
-        (2.0*np.pi)*np.fft.fftfreq(
+            d=s.spatialStep)
+    k_y = (2.0*np.pi)*np.fft.fftfreq(
             len(s.spaceVectorY),
-            d=s.spatialStep))
-    sqrt_mask = np.abs(norm_x) < 1.0
-    tilt_x = np.zeros_like(norm_x)
-    tilt_x = np.sqrt((1.0-norm_x)*(1.0+norm_x),out=tilt_x,where=sqrt_mask)
-    sqrt_mask = np.abs(norm_y) < 1.0
-    tilt_y = np.zeros_like(norm_y)
-    tilt_y = np.sqrt((1.0-norm_y)*(1.0+norm_y),out=tilt_y,where=sqrt_mask)
+            d=s.spatialStep)
+    k_x = k_x[None,:,None]
 
+    k_y = k_y[None,None,:]
+    k_t = np.hypot(k_x, k_y)
+
+
+    rad = (k_magnitude+k_t) * (k_magnitude-k_t)
+    k_z = np.zeros_like(rad)
+    np.sqrt(rad, out=k_z, where=rad>=0.0)
+    theta = np.atan2(k_t, k_z)
+    phi = np.atan2(k_y, k_x)
+    cos_t = np.cos(theta)
+    sin_t = np.sin(theta)
+    cos_p = np.cos(phi)
+    sin_p = np.sin(phi)
+
+    #The rotation applied is the usual forward rotation around theta and phi, but also rotating polarization
+    # for minimal change
+    Ex = np.nan_to_num(Ekw_x_in * (sin_p * sin_p + cos_p * cos_p * cos_t) - Ekw_y_in * (sin_p*cos_p*(cos_t-1.0)))
     Ex = np.fft.irfft(
         np.fft.ifftn(
-            tilt_x[:,:,np.newaxis] * Ekw_x_in,
+            Ex,
             axes=[2,1]
         ),
         axis = 0
     )
+    Ey = np.nan_to_num(Ekw_x_in * (-sin_p * cos_p * (cos_t-1.0)) + Ekw_y_in * (cos_p*cos_p + sin_p*sin_p*cos_t))
     Ey = np.fft.irfft(
         np.fft.ifftn(
-            tilt_y[:,np.newaxis,:] * Ekw_y_in,
+            Ey,
             axes=[2,1]
         ),
         axis = 0
     )
+    Ez = np.nan_to_num(cos_p * sin_t * Ekw_x_in - sin_p*sin_t * Ekw_y_in)
     Ez = np.fft.irfft(
         np.fft.ifftn(
-            norm_x[:,:,np.newaxis] * Ekw_x_in + norm_y[:,np.newaxis,:] * Ekw_y_in,
+            -Ez,
             axes=[2,1]
         ),
         axis = 0

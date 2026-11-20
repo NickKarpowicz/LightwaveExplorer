@@ -488,7 +488,7 @@ std::string simulationParameterSet::settingsString() {
     }
     fs << '\x0A';
   }
-  fs << "Code version: 2026.2.6";
+  fs << "Code version: 2026.2.7";
   fs << '\x0A';
   return fs.str();
 }
