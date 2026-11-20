@@ -1458,7 +1458,7 @@ def getFieldVector(s: LightwaveExplorerResult):
 
     #The rotation applied is the usual forward rotation around theta and phi, but also rotating polarization
     # for minimal change
-    Ex = np.nan_to_num(Ekw_x_in * (sin_p * sin_p + cos_p * cos_p * cos_t) + Ekw_y_in * (-sin_p*cos_p*(1.0-cos_t)))
+    Ex = np.nan_to_num(Ekw_x_in * (sin_p * sin_p + cos_p * cos_p * cos_t) - Ekw_y_in * (sin_p*cos_p*(cos_t-1.0)))
     Ex = np.fft.irfft(
         np.fft.ifftn(
             Ex,
@@ -1466,7 +1466,7 @@ def getFieldVector(s: LightwaveExplorerResult):
         ),
         axis = 0
     )
-    Ey = np.nan_to_num(Ekw_x_in * (-sin_p * cos_p * (1.0-cos_t)) + Ekw_y_in * (cos_p*cos_p + sin_p*sin_p*cos_t))
+    Ey = np.nan_to_num(Ekw_x_in * (-sin_p * cos_p * (cos_t-1.0)) + Ekw_y_in * (cos_p*cos_p + sin_p*sin_p*cos_t))
     Ey = np.fft.irfft(
         np.fft.ifftn(
             Ey,
@@ -1474,7 +1474,7 @@ def getFieldVector(s: LightwaveExplorerResult):
         ),
         axis = 0
     )
-    Ez = np.nan_to_num(-cos_p * sin_t * Ekw_x_in - sin_p*sin_t * Ekw_y_in)
+    Ez = np.nan_to_num(cos_p * sin_t * Ekw_x_in - sin_p*sin_t * Ekw_y_in)
     Ez = np.fft.irfft(
         np.fft.ifftn(
             -Ez,
