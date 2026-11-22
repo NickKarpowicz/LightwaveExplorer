@@ -98,5 +98,5 @@
 #endif
 
 typedef
-maxwellCalculation<deviceFP, maxwellPoint<deviceFP>, maxwellPoint<deviceFP>, oscillator<deviceFP>>
+MaxwellCalculation<deviceFP, MaxwellPoint<deviceFP>, MaxwellPoint<deviceFP>, Oscillator<deviceFP>>
 maxwell3D;

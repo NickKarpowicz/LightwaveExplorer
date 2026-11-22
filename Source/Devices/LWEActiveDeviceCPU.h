@@ -166,8 +166,8 @@ private:
 
 
 public:
-	deviceParameterSet<deviceFP, deviceComplex>* s;
-	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
+	DeviceParameterSet<deviceFP, deviceComplex>* s;
+	DeviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
 	std::unique_ptr<VisualizationAllocation<deviceComplex>> visualization;
 	using LWEDevice::deviceMemcpy;
@@ -261,7 +261,7 @@ public:
 	void deviceMemset(void* ptr, int value, size_t count) override {
 		std::memset(ptr, value, count);
 	}
-	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, copyType kind) override {
+	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, CopyType kind) override {
 		std::memcpy(dst, src, count);
 	}
 

@@ -182,13 +182,13 @@ public:
     int memoryError = 0;
     int assignedGPU = 0;
     int plotSim = 0;
-    crystalEntry* crystalDatabase = 0;
+    CrystalEntry* crystalDatabase = 0;
     int batchIndex = 0;
     int batchIndex2 = 0;
     double batchDestination = 0;
     double batchDestination2 = 0;
     std::string outputBasePath;
-    runTypes runType = runTypes::normal;
+    RunTypes runType = RunTypes::normal;
     bool runningOnCPU = 0;
 
     //sequence
@@ -332,15 +332,15 @@ public:
     void setByNumberWithMultiplier(const std::size_t index, const double value);
     int loadSavedFields(const std::string& outputBase, bool isZipFile);
     int loadReferenceSpectrum();
-    int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
+    int readInputParametersFile(CrystalEntry* crystalDatabasePtr, const std::string filePath);
     std::string settingsString();
     int saveSettingsFile();
-    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<SimulationParameterSet>& params, const class crystalDatabase& db);
+    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<SimulationParameterSet>& params, const class CrystalDatabase& db);
     int readFittingString();
 
 
     template <typename deviceFP, typename C>
-    void initializeDeviceParameters(deviceParameterSet<deviceFP, C>* s) {
+    void initializeDeviceParameters(DeviceParameterSet<deviceFP, C>* s) {
         (*s).Ntime = Ntime;
         (*s).Nspace = Nspace;
         (*s).Nspace2 = Nspace2;
@@ -384,7 +384,7 @@ public:
     }
 
     template <typename deviceFP, typename C>
-    void fillRotationMatricies(deviceParameterSet<deviceFP, C>* s) {
+    void fillRotationMatricies(DeviceParameterSet<deviceFP, C>* s) {
         double cosT = cos(crystalTheta);
         double sinT = sin(crystalTheta);
         double cosP = cos(crystalPhi);
@@ -403,7 +403,7 @@ public:
     }
 
     template<typename deviceFP, typename C>
-    void finishConfiguration(deviceParameterSet<deviceFP,C>* s) {
+    void finishConfiguration(DeviceParameterSet<deviceFP,C>* s) {
         int64_t beamExpansionFactor = 1;
         if ((*s).isCylindric) {
             beamExpansionFactor = 2;
@@ -528,8 +528,8 @@ struct VisualizationAllocation{
     LWEBuffer<float> green;
     LWEBuffer<float> blue;
     std::vector<uint8_t> image;
-    deviceParameterSet<float, deviceComplex> parameterSet;
-    LWEBuffer<deviceParameterSet<float, deviceComplex>> parameterSet_deviceCopy;
+    DeviceParameterSet<float, deviceComplex> parameterSet;
+    LWEBuffer<DeviceParameterSet<float, deviceComplex>> parameterSet_deviceCopy;
     std::mutex memoryMutex;
     VisualizationAllocation(){}
 
@@ -550,12 +550,12 @@ struct VisualizationAllocation{
         green(d, height*width, sizeof(float)),
         blue(d, height*width, sizeof(float)),
         image(Nimage),
-        parameterSet_deviceCopy(d, 1, sizeof(deviceParameterSet<float, deviceComplex>))
+        parameterSet_deviceCopy(d, 1, sizeof(DeviceParameterSet<float, deviceComplex>))
         {
                 sCPU->initializeDeviceParameters(&parameterSet);
                 sCPU->fillRotationMatricies(&parameterSet);
                 sCPU->finishConfiguration(&parameterSet);
-                parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), copyType::ToDevice);
+                parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(DeviceParameterSet<float, deviceComplex>), CopyType::ToDevice);
 
         }
 
@@ -566,7 +566,7 @@ struct VisualizationAllocation{
             target->data(),
             imageGPU.device_ptr(),
             Nimage,
-            copyType::ToHost);
+            CopyType::ToHost);
     }
     void syncImages(){
         image.resize(Nimage);
@@ -574,7 +574,7 @@ struct VisualizationAllocation{
             image.data(),
             imageGPU.device_ptr(),
             Nimage,
-            copyType::ToHost);
+            CopyType::ToHost);
     }
 
 
@@ -583,11 +583,11 @@ struct VisualizationAllocation{
         parentDevice->deviceMemcpy(
             gridTimeSpace.device_ptr(),
             sCPU->ExtOut + 2*Ngrid*simIndex, 2 * Ngrid * sizeof(double),
-            copyType::ToDevice);
+            CopyType::ToDevice);
         parentDevice->deviceMemcpy(
             gridFrequency.device_ptr(),
             sCPU->EkwOut+ 2*Ngrid_complex*simIndex, 4 * Ngrid_complex * sizeof(double),
-            copyType::ToDevice);
+            CopyType::ToDevice);
 
     }
 
@@ -617,7 +617,7 @@ struct VisualizationAllocation{
             sCPU->initializeDeviceParameters(&parameterSet);
             sCPU->fillRotationMatricies(&parameterSet);
             sCPU->finishConfiguration(&parameterSet);
-            parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<float, deviceComplex>), copyType::ToDevice);
+            parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(DeviceParameterSet<float, deviceComplex>), CopyType::ToDevice);
         }
     }
 };
@@ -647,8 +647,8 @@ struct UPPEAllocation{
     LWEBuffer<deviceFP> inverseChiLinear;
     LWEBuffer<deviceFP> fieldFactor;
     LWEBuffer<deviceFP> expGammaT;
-    deviceParameterSet<deviceFP, deviceComplex> parameterSet;
-    LWEBuffer<deviceParameterSet<deviceFP, deviceComplex>> parameterSet_deviceCopy;
+    DeviceParameterSet<deviceFP, deviceComplex> parameterSet;
+    LWEBuffer<DeviceParameterSet<deviceFP, deviceComplex>> parameterSet_deviceCopy;
 
     UPPEAllocation(){}
 
@@ -676,7 +676,7 @@ struct UPPEAllocation{
     inverseChiLinear(d, 2 * Nfreq, sizeof(deviceFP)),
     fieldFactor(d, 2 * Nfreq, sizeof(deviceFP)),
     expGammaT(d, 2 * Ntime, sizeof(double)),
-    parameterSet_deviceCopy(d, 1, sizeof(deviceParameterSet<deviceFP, deviceComplex>))
+    parameterSet_deviceCopy(d, 1, sizeof(DeviceParameterSet<deviceFP, deviceComplex>))
     {
         sCPU->initializeDeviceParameters(&parameterSet);
         parameterSet.workspace1 = workspace.device_ptr();
@@ -700,9 +700,9 @@ struct UPPEAllocation{
 			expGammaTCPU[i] = static_cast<deviceFP>(exp(sCPU->tStep * i * sCPU->drudeGamma));
 			expGammaTCPU[i + sCPU->Ntime] = static_cast<deviceFP>(exp(-sCPU->tStep * i * sCPU->drudeGamma));
 		}
-        parentDevice->deviceMemcpy(expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * Ntime, copyType::ToDevice);
+        parentDevice->deviceMemcpy(expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * Ntime, CopyType::ToDevice);
         sCPU->finishConfiguration(&parameterSet);
-        parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
+        parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(DeviceParameterSet<deviceFP, deviceComplex>), CopyType::ToDevice);
     }
 
     void zero_initialize_grids(){
@@ -755,9 +755,9 @@ struct UPPEAllocation{
             expGammaTCPU[i] = static_cast<deviceFP>(exp(sCPU->tStep * i * sCPU->drudeGamma));
             expGammaTCPU[i + Ntime] = static_cast<deviceFP>(exp(-sCPU->tStep * i * sCPU->drudeGamma));
         }
-        parentDevice->deviceMemcpy(expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * Ntime, copyType::ToDevice);
+        parentDevice->deviceMemcpy(expGammaT.device_ptr(), expGammaTCPU.data(), 2 * sizeof(deviceFP) * Ntime, CopyType::ToDevice);
         sCPU->finishConfiguration(&parameterSet);
-        parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(deviceParameterSet<deviceFP, deviceComplex>), copyType::ToDevice);
+        parentDevice->deviceMemcpy(parameterSet_deviceCopy.device_ptr(), &parameterSet, sizeof(DeviceParameterSet<deviceFP, deviceComplex>), CopyType::ToDevice);
     }
 };
 

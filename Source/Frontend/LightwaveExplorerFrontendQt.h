@@ -94,7 +94,7 @@ void setInterfaceValuesToActiveValues();
 int insertAfterCharacter(std::string& s, char target, std::string appended);
 int insertAfterCharacterExcept(std::string& s, char target, std::string appended, std::string exclude);
 int formatSequence(std::string& s);
-void readDefaultValues(SimulationBatch& sim, crystalDatabase& db);
+void readDefaultValues(SimulationBatch& sim, CrystalDatabase& db);
 void loadFromPath(const std::string path);
 void saveThread();
 bool updateDisplay();

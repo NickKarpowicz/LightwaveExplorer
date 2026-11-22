@@ -30,7 +30,7 @@ int main(int argc, char* argv[]){
 
 	// allocate databases, main structs
 	SimulationBatch theSim;
-	crystalDatabase db;
+	CrystalDatabase db;
 	theSim.base().crystalDatabase = db.db.data();
 	theSim.base().progressCounter = &progressCounter;
 	// read crystal database

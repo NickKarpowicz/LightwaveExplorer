@@ -16,7 +16,7 @@ deviceFunction static inline bool isComplexNaN(const deviceComplex &x) {
 //  see the expandCylindricalBeam() kernel for more details
 template <typename T, typename U>
 deviceFunction static void
-expandCylindricalBeamDevice(const deviceParameterSet<T, U> *s, const int64_t i,
+expandCylindricalBeamDevice(const DeviceParameterSet<T, U> *s, const int64_t i,
                             T *expandedBeam1, const T *sourceBeam1,
                             const T *sourceBeam2) {
   const int64_t j = i / (*s).Ntime;     // spatial coordinate
@@ -362,7 +362,7 @@ rhoInRadialSymmetry(const int64_t N, const int64_t j, const deviceFP dr) {
 //  arXiv:1406.5468
 template <typename deviceFP, typename deviceComplex>
 deviceFunction static deviceFP findBirefringentCrystalIndex(
-    const deviceParameterSet<deviceFP, deviceComplex> *s,
+    const DeviceParameterSet<deviceFP, deviceComplex> *s,
     const deviceFP *sellmeierCoefficients, const int64_t i, deviceComplex *n1,
     deviceComplex *n2) {
 

@@ -63,11 +63,11 @@ int hardwareCheck(int* CUDAdeviceCount) {
 template <typename deviceFP, typename deviceComplex>
 class counterDevice : public LWEDevice {
 private:
-	deviceParameterSet<deviceFP, deviceComplex> dParamslocal;
+	DeviceParameterSet<deviceFP, deviceComplex> dParamslocal;
 public:
-	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
-	deviceParameterSet<deviceFP, deviceComplex>* s;
-	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
+	DeviceParameterSet<deviceFP, deviceComplex> deviceStruct;
+	DeviceParameterSet<deviceFP, deviceComplex>* s;
+	DeviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	counterDevice(SimulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memoryStatus = 0;
@@ -81,7 +81,7 @@ public:
 
 	int deviceCalloc(void** ptr, const size_t N, const size_t elementSize) override {return 0;}
 	void deviceMemset(void* ptr, int value, size_t count) override {}
-	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, copyType kind) override {}
+	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, CopyType kind) override {}
 	void deviceFree(void* block) override {}
 	void fft(const void* input, void* output, deviceFFT type) override {}
 	bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {

@@ -22,7 +22,7 @@ namespace kernelNamespace {
 // spectra are approximations.
 class totalSpectrumKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t i) const {
     deviceFP beamCenter1{};
     deviceFP beamCenter2{};
@@ -98,7 +98,7 @@ public:
 // Calculate the energy spectrum after a 3D propagation
 class totalSpectrum3DKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(int64_t i) const {
     deviceFP beamTotal1{};
     deviceFP beamTotal2{};
@@ -125,7 +125,7 @@ public:
 // propagation in sequences however.
 class hankelKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP *in;
   deviceFP *out;
   deviceFunction void operator()(const int64_t i) const {
@@ -152,7 +152,7 @@ public:
 // inverse Hankel transform from the k-space back to the offset spatial grid
 class inverseHankelKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP *in;
   deviceFP *out;
   deviceFunction void operator()(const int64_t i) const {
@@ -237,7 +237,7 @@ public:
 // coordinates (1/rho d/drho)
 class radialLaplacianKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = i / (*s).Ntime;
 
@@ -304,7 +304,7 @@ public:
 
 class apertureFarFieldKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP radius;
   const deviceFP activationParameter;
   const deviceFP xOffset;
@@ -360,7 +360,7 @@ public:
 
 class inverseApertureFarFieldKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP radius;
   const deviceFP activationParameter;
   const deviceFP xOffset;
@@ -415,7 +415,7 @@ public:
 
 class apertureFarFieldKernelHankel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP radius;
   const deviceFP activationParameter;
   const deviceFP xOffset;
@@ -458,7 +458,7 @@ public:
 
 class inverseApertureFarFieldKernelHankel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP radius;
   const deviceFP activationParameter;
   const deviceFP xOffset;
@@ -501,7 +501,7 @@ public:
 // apply a spectral filter to the beam (full details in docs)
 class filterKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFP f0;
   const deviceFP bandwidth;
   const int order;
@@ -525,7 +525,7 @@ public:
 
 class applyOpticKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceComplex *complexReflectivity;
   const bool applyX;
   const bool applyY;
@@ -556,7 +556,7 @@ public:
 //  order - supergaussian order of the spot shape
 class lorentzianSpotKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP amplitude;
   const deviceFP f0;
   const deviceFP gamma;
@@ -604,7 +604,7 @@ public:
 // Apply a (soft, possibly) aperture
 class ApertureKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP radius;
   const deviceFP activationParameter;
   const deviceFP x_offset;
@@ -638,7 +638,7 @@ public:
 // apply a spatial phase corresponding to a parabolic mirror (on-axis)
 class parabolicMirrorKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP focus;
   deviceFunction void operator()(int64_t i) const {
     const int64_t h = 1 + i % ((*s).Nfreq - 1);
@@ -669,7 +669,7 @@ public:
 // apply a spatial phase corresponding to a spherical mirror (on axis)
 class sphericalMirrorKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFP ROC_in;
   deviceFunction void operator()(int64_t i) const {
     const int64_t h = 1 + i % ((*s).Nfreq - 1);
@@ -791,7 +791,7 @@ struct CalculateSixComponentFields{
 // rotation around phi to not twist the polarization
 class correctFDTDAmplitudesKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t localIndex) const {
       const int64_t h = 1 + localIndex % (s->Nfreq - 1);
       const int64_t col = localIndex / (s->Nfreq - 1);
@@ -837,7 +837,7 @@ public:
 
 class correctFDTDAmplitudesKernel2D {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t localIndex) const {
     int64_t i = localIndex;
     const int64_t h = 1 + i % ((*s).Nfreq - 1);
@@ -886,7 +886,7 @@ class applyLinearPropagationKernel {
 public:
   const deviceFP *sellmeierCoefficients;
   const deviceFP thickness;
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t localIndex) const {
     int64_t i = localIndex;
     const int axesNumber = (*s).axesNumber;
@@ -957,7 +957,7 @@ public:
 class prepareCartesianGridsKernel {
 public:
   const deviceFP *sellmeierCoefficients;
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t localIndex) const {
     const int64_t j = localIndex / ((*s).Nfreq - 1);       // spatial coordinate
     const int64_t k = 1 + (localIndex % ((*s).Nfreq - 1)); // temporal
@@ -1048,7 +1048,7 @@ public:
 class prepare3DGridsKernel {
 public:
   const deviceFP *sellmeierCoefficients;
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t localIndex) const {
 
     const int64_t col = localIndex / ((*s).Nfreq - 1);   // spatial coordinate
@@ -1144,7 +1144,7 @@ public:
 // prepare the chi(1) arrays that will be needed in the simulation
 class getChiLinearKernel {
 public:
-  deviceParameterSet<deviceFP, deviceComplex> *s;
+  DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP *sellmeierCoefficients;
   deviceFunction void operator()(const int64_t i) const {
     // frequency being resolved by current thread
@@ -1248,7 +1248,7 @@ public:
 class prepareCylindricGridsKernel {
 public:
   deviceFP *sellmeierCoefficients;
-  deviceParameterSet<deviceFP, deviceComplex> *s;
+  DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(int64_t i) const {
     const int64_t j = i / ((*s).Nfreq - 1);     // spatial coordinate
     const int64_t k = 1 + i % ((*s).Nfreq - 1); // temporal coordinate
@@ -1382,7 +1382,7 @@ public:
 // in the time domain
 class nonlinearPolarizationKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t i) const {
     const deviceFP Ex = (*s).gridETime1[i];
     const deviceFP Ey = (*s).gridETime2[i];
@@ -1468,7 +1468,7 @@ public:
 // (C).
 class plasmaCurrentKernel_twoStage_A {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t i) const {
     const int pMax = (*s).plasmaParameters.fieldExponent;
 
@@ -1491,7 +1491,7 @@ public:
 
 class plasmaCurrentKernel_twoStage_B {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = (i) * (*s).Ntime;
     const deviceFP *expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
@@ -1513,7 +1513,7 @@ public:
 
 class plasmaCurrentKernel_twoStage_B_simultaneous {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = (i) * (*s).Ntime;
     const deviceFP *expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
@@ -1540,7 +1540,7 @@ public:
 
 class plasmaCurrentKernel_SaveOutput {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = (i) * (*s).Ntime;
     const deviceFP *expMinusGammaT = &(*s).expGammaT[(*s).Ntime];
@@ -1570,7 +1570,7 @@ public:
 
 class updateKwithPolarizationKernelCylindric {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t radIndex = i / ((*sP).Nfreq - 1);
@@ -1588,7 +1588,7 @@ public:
 
 class updateKwithPlasmaKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     int64_t h = 1 + i % ((*sP).Nfreq - 1);   // temporal coordinate
     const int64_t j = i / ((*sP).Nfreq - 1); // spatial coordinate
@@ -1607,7 +1607,7 @@ public:
 
 class updateKwithPlasmaKernelCylindric {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t spaceIndex = i / ((*sP).Nfreq - 1);
     int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
@@ -1637,7 +1637,7 @@ public:
 
 class biaxialRotationKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceComplex *x;
   bool backwards;
   deviceFunction void operator()(const int64_t gridIndex) const {
@@ -1663,7 +1663,7 @@ public:
 // but this has slightly better utilization.
 class rkKernel0 {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(int64_t gridIndex) const {
     const int64_t freqIndex =
         1 + gridIndex % ((*sP).Nfreq - 1); // frequency coordinate
@@ -1689,7 +1689,7 @@ public:
 
 class rkKernel1 {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1); // frequency coordinate
     const int64_t gridIndex =
@@ -1715,7 +1715,7 @@ public:
 
 class rkKernel2 {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1); // frequency coordinate
     const int64_t gridIndex =
@@ -1742,7 +1742,7 @@ public:
 
 class rkKernel3 {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1); // frequency coordinate
     const int64_t gridIndex =
@@ -1765,7 +1765,7 @@ public:
 // Laplacian instead of the nonlinear polarization
 class rkKernel0Cylindric {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
@@ -1790,7 +1790,7 @@ public:
 
 class rkKernel1Cylindric {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
@@ -1815,7 +1815,7 @@ public:
 
 class rkKernel2Cylindric {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
@@ -1841,7 +1841,7 @@ public:
 
 class rkKernel3Cylindric {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *sP;
+  const DeviceParameterSet<deviceFP, deviceComplex> *sP;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t freqIndex = 1 + i % ((*sP).Nfreq - 1);
     const int64_t gridIndex = freqIndex + (i / ((*sP).Nfreq - 1)) * (*sP).Nfreq;
@@ -1864,7 +1864,7 @@ public:
   const maxwell3D *s;
   const int64_t t;
   deviceFunction void operator()(const int64_t i) const {
-    maxwellKPoint<deviceFP> k =
+    MaxwellKPoint<deviceFP> k =
         maxwellDerivativeTerms(s, i, s->Egrid, s->Hgrid);
     maxwellCurrentTerms(s, i, t, false, s->Egrid, s->materialGrid, k, 0);
     s->EgridEstimate[i] = s->Egrid[i] + k.kE * (s->tStep * 0.5f);
@@ -1878,7 +1878,7 @@ public:
   const maxwell3D *s;
   const int64_t t;
   deviceFunction void operator()(const int64_t i) const {
-    maxwellKPoint<deviceFP> k =
+    MaxwellKPoint<deviceFP> k =
         maxwellDerivativeTerms(s, i, s->EgridEstimate, s->HgridEstimate);
     maxwellCurrentTerms(s, i, t, true, s->EgridEstimate,
                         s->materialGridEstimate, k, 1);
@@ -1893,7 +1893,7 @@ public:
   const maxwell3D *s;
   const int64_t t;
   deviceFunction void operator()(const int64_t i) const {
-    maxwellKPoint<deviceFP> k =
+    MaxwellKPoint<deviceFP> k =
         maxwellDerivativeTerms(s, i, s->EgridEstimate2, s->HgridEstimate2);
     maxwellCurrentTerms(s, i, t, true, s->EgridEstimate2,
                         s->materialGridEstimate2, k, 2);
@@ -1908,7 +1908,7 @@ public:
   const maxwell3D *s;
   const int64_t t;
   deviceFunction void operator()(const int64_t i) const {
-    maxwellKPoint<deviceFP> k =
+    MaxwellKPoint<deviceFP> k =
         maxwellDerivativeTerms(s, i, s->EgridEstimate, s->HgridEstimate);
     maxwellCurrentTerms(s, i, t + 1, false, s->EgridEstimate,
                         s->materialGridEstimate, k, 3);
@@ -1921,7 +1921,7 @@ public:
 class maxwellSampleGrid {
 public:
   maxwell3D *s;
-  maxwellPoint<deviceFP>* Egrid;
+  MaxwellPoint<deviceFP>* Egrid;
   deviceFP* Ex_out;
   deviceFP* Ey_out;
   int64_t time;
@@ -1935,7 +1935,7 @@ public:
 class maxwellSampleGridExEz {
 public:
   maxwell3D *s;
-  maxwellPoint<deviceFP>* Egrid;
+  MaxwellPoint<deviceFP>* Egrid;
   deviceFP* Ex_out;
   deviceFP* Ey_out;
   int64_t time;
@@ -1949,7 +1949,7 @@ public:
 class maxwellSampleGridEyEz {
 public:
     maxwell3D *s;
-    maxwellPoint<deviceFP>* Egrid;
+    MaxwellPoint<deviceFP>* Egrid;
     deviceFP* Ex_out;
     deviceFP* Ey_out;
     int64_t time;
@@ -1995,7 +1995,7 @@ public:
 
 class beamNormalizeKernel {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   const deviceFP *rawSum;
   deviceFP *field;
   const deviceFP pulseEnergy;
@@ -2022,7 +2022,7 @@ public:
   deviceComplex *field;
   const Pulse<deviceFP> *p;
   deviceFP *pulseSum;
-  deviceParameterSet<deviceFP, deviceComplex> *s;
+  DeviceParameterSet<deviceFP, deviceComplex> *s;
   const bool hasLoadedField;
   const deviceComplex *loadedField;
   const deviceFP *materialPhase;
@@ -2160,7 +2160,7 @@ public:
   deviceComplex *field;
   const Pulse<deviceFP> *p;
   deviceFP *pulseSum;
-  deviceParameterSet<deviceFP, deviceComplex> *s;
+  DeviceParameterSet<deviceFP, deviceComplex> *s;
   const bool hasLoadedField;
   const deviceComplex *loadedField;
   const deviceFP *materialPhase;
@@ -2320,7 +2320,7 @@ public:
   const deviceFP *A;
   const deviceComplex *B;
   deviceComplex *C;
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
   deviceFunction void operator()(const int64_t i) const {
     const int64_t h = i % (*s).Nfreq; // temporal coordinate
     C[i] = A[h] * B[i];
@@ -2343,7 +2343,7 @@ public:
 //  nonlinear terms.
 class expandCylindricalBeam {
 public:
-  const deviceParameterSet<deviceFP, deviceComplex> *s;
+  const DeviceParameterSet<deviceFP, deviceComplex> *s;
 
   deviceFunction void operator()(const int64_t i) const {
     const int64_t j = i / (*s).Ntime; // spatial coordinate

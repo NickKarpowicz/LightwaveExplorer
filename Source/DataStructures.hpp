@@ -36,7 +36,7 @@ enum class deviceFFT : int {
     D2Z_Polarization = 4
 };
 
-enum class runTypes : int {
+enum class RunTypes : int {
     counter = -1,
     normal = 0,
     cluster = 1
@@ -48,14 +48,14 @@ enum class runTypes : int {
 // ToHost: source is the device, destination is host
 // OnDevice: device is both source and destination
 // there is no on-host memory transfer to discourage memcpy-like operations where not required...
-enum class copyType : int {
+enum class CopyType : int {
     ToDevice = 1,
     ToHost =  2,
     OnDevice = 3
 };
 
 template <FPType T>
-class maxwellPoint {
+class MaxwellPoint {
 public:
     T x{};
     T y{};
@@ -69,25 +69,25 @@ public:
         }
     }
     hostOrDevice inline void operator+=(
-        const maxwellPoint<T>& other) {
+        const MaxwellPoint<T>& other) {
         x += other.x;
         y += other.y;
         z += other.z;
     }
     hostOrDevice inline void operator-=(
-        const maxwellPoint<T>& other) {
+        const MaxwellPoint<T>& other) {
         x -= other.x;
         y -= other.y;
         z -= other.z;
     }
     hostOrDevice inline void operator*=(
-        const maxwellPoint<T>& other) {
+        const MaxwellPoint<T>& other) {
         x *= other.x;
         y *= other.y;
         z *= other.z;
     }
     hostOrDevice inline void operator/=(
-        const maxwellPoint<T>& other) {
+        const MaxwellPoint<T>& other) {
         x /= other.x;
         y /= other.y;
         z /= other.z;
@@ -118,85 +118,85 @@ public:
         z /= other;
     }
 
-    hostOrDevice inline maxwellPoint<T> operator*(
-        const maxwellPoint<T>& other) const {
-        return maxwellPoint<T>{
+    hostOrDevice inline MaxwellPoint<T> operator*(
+        const MaxwellPoint<T>& other) const {
+        return MaxwellPoint<T>{
                 x * other.x,
                 y * other.y,
                 z * other.z};
     }
-    hostOrDevice inline maxwellPoint<T> operator*(
+    hostOrDevice inline MaxwellPoint<T> operator*(
         const T other) const {
-        return maxwellPoint<T>{
+        return MaxwellPoint<T>{
                 x * other,
                 y * other,
                 z * other};
     }
-    hostOrDevice inline friend maxwellPoint<T> operator*(const T a, const maxwellPoint<T>& b) {
-        return maxwellPoint<T>{
+    hostOrDevice inline friend MaxwellPoint<T> operator*(const T a, const MaxwellPoint<T>& b) {
+        return MaxwellPoint<T>{
                 a * b.x,
                 a * b.y,
                 a * b.z};
     }
 
-    hostOrDevice inline maxwellPoint<T> operator/(
-        const maxwellPoint<T>& other) const {
-        return maxwellPoint<T>{
+    hostOrDevice inline MaxwellPoint<T> operator/(
+        const MaxwellPoint<T>& other) const {
+        return MaxwellPoint<T>{
                 x / other.x,
                 y / other.y,
                 z / other.z};
     }
-    hostOrDevice inline maxwellPoint<T> operator/(
+    hostOrDevice inline MaxwellPoint<T> operator/(
         const T other) const {
-        return maxwellPoint<T>{
+        return MaxwellPoint<T>{
                 x / other,
                 y / other,
                 z / other};
     }
-    hostOrDevice inline friend maxwellPoint<T> operator/(const T a, const maxwellPoint<T>& b) {
-        return maxwellPoint<T>{
+    hostOrDevice inline friend MaxwellPoint<T> operator/(const T a, const MaxwellPoint<T>& b) {
+        return MaxwellPoint<T>{
                 a / b.x,
                 a / b.y,
                 a / b.z};
     }
 
-    hostOrDevice inline maxwellPoint<T> operator+(
-        const maxwellPoint<T>& other) const {
-        return maxwellPoint<T>{
+    hostOrDevice inline MaxwellPoint<T> operator+(
+        const MaxwellPoint<T>& other) const {
+        return MaxwellPoint<T>{
                 x + other.x,
                 y + other.y,
                 z + other.z};
     }
-    hostOrDevice inline maxwellPoint<T> operator+(
+    hostOrDevice inline MaxwellPoint<T> operator+(
         const T other) const {
-        return maxwellPoint<T>{
+        return MaxwellPoint<T>{
                 x + other,
                 y + other,
                 z + other};
     }
-    hostOrDevice inline friend maxwellPoint<T> operator+(const T a, const maxwellPoint<T>& b) {
-        return maxwellPoint<T>{
+    hostOrDevice inline friend MaxwellPoint<T> operator+(const T a, const MaxwellPoint<T>& b) {
+        return MaxwellPoint<T>{
                 a + b.x,
                 a + b.y,
                 a + b.z};
     }
 
-    hostOrDevice inline maxwellPoint<T> operator-(
-        const maxwellPoint<T>& other) const {
-        return maxwellPoint<T>{
+    hostOrDevice inline MaxwellPoint<T> operator-(
+        const MaxwellPoint<T>& other) const {
+        return MaxwellPoint<T>{
                 x - other.x,
                 y - other.y,
                 z - other.z};
     }
-    hostOrDevice inline maxwellPoint<T> operator-(
+    hostOrDevice inline MaxwellPoint<T> operator-(
         const T other) const {
-        return maxwellPoint<T>{
+        return MaxwellPoint<T>{
                 x - other,
                 y - other,
                 z - other};
     }
-    hostOrDevice inline friend maxwellPoint<T> operator-(const T a, const maxwellPoint<T>& b) {
-        return maxwellPoint<T>{
+    hostOrDevice inline friend MaxwellPoint<T> operator-(const T a, const MaxwellPoint<T>& b) {
+        return MaxwellPoint<T>{
                 a - b.x,
                 a - b.y,
                 a - b.z};
@@ -204,35 +204,35 @@ public:
 };
 
 template <typename T>
-class maxwellKPoint {
+class MaxwellKPoint {
 public:
-    maxwellPoint<T> kE;
-    maxwellPoint<T> kH;
+    MaxwellPoint<T> kE;
+    MaxwellPoint<T> kH;
 };
 
 template <typename T>
-class oscillator {
+class Oscillator {
 public:
-    maxwellPoint<T> J;
-    maxwellPoint<T> P;
+    MaxwellPoint<T> J;
+    MaxwellPoint<T> P;
 
     //note that I only defined the three operations I need rather than the
     //full set. Might be worth filling in everything later.
     hostOrDevice void operator+=(
-        const oscillator<T>& other) {
+        const Oscillator<T>& other) {
         J += other.J;
         P += other.P;
     }
-    hostOrDevice inline oscillator<T> operator*(
+    hostOrDevice inline Oscillator<T> operator*(
         const T other) const {
-        return oscillator<T>{
+        return Oscillator<T>{
                 J * other,
                 P * other,
         };
     }
-    hostOrDevice inline oscillator<T> operator+(
-        const oscillator<T>& other) const {
-        return oscillator<T>{
+    hostOrDevice inline Oscillator<T> operator+(
+        const Oscillator<T>& other) const {
+        return Oscillator<T>{
                 J + other.J,
                 P + other.P
         };
@@ -285,7 +285,7 @@ class LWEDevice{
 		void* dst,
 		const void* src,
 		size_t count,
-		copyType kind) = 0;
+		CopyType kind) = 0;
     virtual void deviceFree(void* block) = 0;
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
     virtual void reset(SimulationParameterSet* sCPU) = 0;
@@ -294,7 +294,7 @@ class LWEDevice{
 		void* dst,
 		const void* src,
 		size_t count,
-		copyType kind) {
+		CopyType kind) {
 			deviceMemcpyImplementation(dst, src, count, kind);
 	}
 
@@ -302,7 +302,7 @@ class LWEDevice{
 		void* dst,
 		void* src,
 		size_t count,
-		copyType kind) {
+		CopyType kind) {
             if(src==dst) return;
 			deviceMemcpyImplementation(dst, src, count, kind);
 	}
@@ -311,7 +311,7 @@ class LWEDevice{
 		double* dst,
 		const float* src,
 		size_t count,
-		copyType kind) {
+		CopyType kind) {
             float* copyBuffer = new float[count / sizeof(double)];
             deviceMemcpyImplementation(
                 static_cast<void*>(copyBuffer),
@@ -328,7 +328,7 @@ class LWEDevice{
 		float* dst,
 		const double* src,
 		size_t count,
-		copyType kind) {
+		CopyType kind) {
             float* copyBuffer = new float[count / sizeof(double)];
             for (size_t i = 0; i < count / sizeof(double); i++) {
                 copyBuffer[i] = (float)src[i];
@@ -345,7 +345,7 @@ class LWEDevice{
 		std::complex<double>* dst,
 		const std::complex<float>* src,
 		size_t count,
-		copyType kind) {
+		CopyType kind) {
 		std::complex<float>* copyBuffer =
 			new std::complex<float>[count / sizeof(std::complex<double>)];
 		deviceMemcpyImplementation(
@@ -363,7 +363,7 @@ class LWEDevice{
 		std::complex<float>* dst,
 		const std::complex<double>* src,
 		size_t count,
-		copyType kind) {
+		CopyType kind) {
 		std::complex<float>* copyBuffer =
 			new std::complex<float>[count / sizeof(std::complex<double>)];
 
@@ -409,7 +409,7 @@ public:
         if(error){
             throw std::runtime_error("Couldn't allocate enough memory.");
         }
-        d->deviceMemcpy(buffer, v.data(), count, copyType::ToDevice);
+        d->deviceMemcpy(buffer, v.data(), count, CopyType::ToDevice);
     }
 
     ~LWEBuffer(){
@@ -455,7 +455,7 @@ public:
 //to the device with a memcpy-like operation, so constructors
 //would not be called.
 template <FPType T, typename deviceComplex>
-class deviceParameterSet {
+class DeviceParameterSet {
 public:
     deviceComplex* workspace1 = 0;
     deviceComplex* workspace2 = 0;
@@ -535,7 +535,7 @@ public:
 };
 
 //Class which holds a single entry in the crystal database
-class crystalEntry {
+class CrystalEntry {
 public:
     std::string crystalName;
     int axisType = 0;
@@ -554,11 +554,11 @@ public:
 
 //Crystal database class; primarily holds a std::vector of crystalEntry elements
 //comprising the database, plus method for loading the database from the file
-class crystalDatabase {
+class CrystalDatabase {
 public:
-    std::vector<crystalEntry> db;
+    std::vector<CrystalEntry> db;
     std::string path = "CrystalDatabase.txt";
-    crystalDatabase() {
+    CrystalDatabase() {
 #ifdef __APPLE__
         #include <mach-o/dyld.h>
         uint32_t bufferSize = 1024;
@@ -603,7 +603,7 @@ public:
 #endif
         loadFromFilestream(fs);
     }
-    crystalDatabase(std::string customPath){
+    CrystalDatabase(std::string customPath){
         std::ifstream fs(customPath);
         loadFromFilestream(fs);
         path = customPath;
@@ -613,7 +613,7 @@ public:
         if (!fs.is_open())return;
         int tempInt = 0;
         while (!fs.eof() && fs.good()) {
-            crystalEntry newEntry;
+            CrystalEntry newEntry;
             std::getline(fs, line);//Name:
 
             std::getline(fs, line);

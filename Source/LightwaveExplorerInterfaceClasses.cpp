@@ -132,7 +132,7 @@ int SimulationParameterSet::loadReferenceSpectrum() {
 double SimulationParameterSet::saveSlurmScript(
     const std::string &gpuType, int gpuCount, bool useJobArray,
     int64_t totalSteps, std::vector<SimulationParameterSet> &params,
-    const class crystalDatabase &db) {
+    const class CrystalDatabase &db) {
   std::string scriptPath = getBasename(outputBasePath) + ".slurmScript";
   std::string Zpath = outputBasePath + ".zip";
   std::stringstream fs;
@@ -295,10 +295,10 @@ double SimulationParameterSet::saveSlurmScript(
         std::ostringstream oss;
         oss << std::setw(5) << std::setfill('0') << simIndex++;
         arraySim.outputBasePath.append(oss.str());
-        arraySim.runType = runTypes::cluster;
+        arraySim.runType = RunTypes::cluster;
         arraySim.batchIndex = 0;
         arraySim.batchIndex2 = 0;
-        arraySim.runType = runTypes::cluster;
+        arraySim.runType = RunTypes::cluster;
         arraySim.sequenceString = modifiedString;
         if (batchIndex == 37) {
           std::ostringstream oss;
@@ -329,7 +329,7 @@ double SimulationParameterSet::saveSlurmScript(
       }
     }
   } else {
-    runType = runTypes::cluster;
+    runType = RunTypes::cluster;
     std::string settings = settingsString();
     std::string mainSettings = getBasename(outputBasePath) + ".input";
     mz_zip_writer_add_mem(&zip, getBasename(mainSettings).c_str(),
@@ -455,7 +455,7 @@ std::string SimulationParameterSet::settingsString() {
   fs << "Fitting: " << fittingString << '\x0A';
   fs << "Fitting mode: " << fittingMode << '\x0A';
   if (runType ==
-      runTypes::cluster) { // don't include full path if making a cluster script
+      RunTypes::cluster) { // don't include full path if making a cluster script
     fs << "Output base path: " << baseName << '\x0A';
     fs << "Field 1 from file type: " << pulse1FileType << '\x0A';
     fs << "Field 2 from file type: " << pulse2FileType << '\x0A';
@@ -495,7 +495,7 @@ std::string SimulationParameterSet::settingsString() {
 
 int SimulationParameterSet::saveSettingsFile() {
   std::string outputPath(outputBasePath);
-  if (runType == runTypes::cluster) {
+  if (runType == RunTypes::cluster) {
     outputPath.append(".input");
   } else {
     outputPath.append(".txt");
@@ -635,7 +635,7 @@ void SimulationParameterSet::setByNumberWithMultiplier(const std::size_t index,
 }
 
 int SimulationParameterSet::readInputParametersFile(
-    crystalEntry *crystalDatabasePtr, const std::string filePath) {
+    CrystalEntry *crystalDatabasePtr, const std::string filePath) {
   std::string contents;
   if (filePath.length() >= 4 &&
       filePath.substr(filePath.length() - 4) == ".zip") {

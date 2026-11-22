@@ -308,7 +308,7 @@ public:
 // theSim contains all of the parameters of the current simulation including grid arrays
 // theDatabase is the database of crystal properties
     SimulationBatch theSim;
-    crystalDatabase theDatabase;
+    CrystalDatabase theDatabase;
 
 //Extra data structures
     LoadedInputData pulse1LoadedData;
@@ -639,7 +639,7 @@ public:
             theDatabase.db[sim.base().materialIndex].axisType;
         sim.base().progressCounter = &progressCounter;
 
-        sim.base().runType = runTypes::normal;
+        sim.base().runType = RunTypes::normal;
         sim.base().isFollowerInSequence = false;
         sim.base().crystalDatabase = theDatabase.db.data();
     }
@@ -1990,7 +1990,7 @@ public:
         QObject::connect(buttons["loadMaterial"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["LoadMaterial"],"Load crystal database","","ASCII data (*.*)").toStdString();
             if(path.empty()) return;
-            theDatabase = crystalDatabase(path);
+            theDatabase = CrystalDatabase(path);
             populateDatabasePulldown();
             messenger->passString(std::format("Loaded new crystal database:\n{}\n", path));
         });
@@ -2395,7 +2395,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
             totalSteps += 1;
             if (theSim.base().isInSequence) {
                 counterVector[j].progressCounter = &totalSteps;
-                counterVector[j].runType = runTypes::counter;
+                counterVector[j].runType = RunTypes::counter;
                 solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
             }
             else {
@@ -2581,7 +2581,7 @@ void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     theGui.messenger->requestSyncValues();
 }
 
-void readDefaultValues(SimulationBatch& sim, crystalDatabase& db){
+void readDefaultValues(SimulationBatch& sim, CrystalDatabase& db){
 
         //Linux search order:
         // ~/.LightwaveExplorer
@@ -3163,7 +3163,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 void createRunFile(LWEGui& theGui) {
     SimulationBatch& theSim = theGui.theSim;
     theGui.readParametersFromInterface(theSim);
-    theSim.base().runType = runTypes::normal;
+    theSim.base().runType = RunTypes::normal;
     theSim.base().isGridAllocated = false;
     theSim.base().isFollowerInSequence = false;
     theSim.base().crystalDatabase = theGui.theDatabase.db.data();
@@ -3173,7 +3173,7 @@ void createRunFile(LWEGui& theGui) {
     theGui.totalSteps = 0;
     for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         counterVector[j].progressCounter = &theGui.totalSteps;
-        counterVector[j].runType = runTypes::counter;
+        counterVector[j].runType = RunTypes::counter;
         if (theSim.base().isInSequence) {
             solveNonlinearWaveEquationSequenceCounter(&counterVector[j]);
         }

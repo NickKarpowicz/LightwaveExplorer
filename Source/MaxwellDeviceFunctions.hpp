@@ -4,17 +4,17 @@ namespace deviceFunctions{
 
 	//define math operators for maxwell grid points
 	deviceFunction static inline deviceFP dotProduct(
-		const maxwellPoint<deviceFP>& a,
-		const maxwellPoint<deviceFP>& b) {
+		const MaxwellPoint<deviceFP>& a,
+		const MaxwellPoint<deviceFP>& b) {
 		return a.x * b.x + a.y * b.y + a.z * b.z;
 	}
 
-	deviceFunction static maxwellPoint<deviceFP> rotateMaxwellPoint(
+	deviceFunction static MaxwellPoint<deviceFP> rotateMaxwellPoint(
 		const maxwell3D* s,
-		const maxwellPoint<deviceFP>& in,
+		const MaxwellPoint<deviceFP>& in,
 		const bool backwards) {
 		if (backwards) {
-			return maxwellPoint<deviceFP>{
+			return MaxwellPoint<deviceFP>{
 				(*s).rotateBackward[0][0] * in.x
 					+ (*s).rotateBackward[1][0] * in.y
 					+ (*s).rotateBackward[2][0] * in.z,
@@ -25,7 +25,7 @@ namespace deviceFunctions{
 					+ (*s).rotateBackward[7][0] * in.y
 					+ (*s).rotateBackward[8][0] * in.z};
 		}
-		return maxwellPoint<deviceFP>{
+		return MaxwellPoint<deviceFP>{
 			(*s).rotateForward[0][0] * in.x
 				+ (*s).rotateForward[1][0] * in.y
 				+ (*s).rotateForward[2][0] * in.z,
@@ -286,7 +286,7 @@ namespace deviceFunctions{
 		const int64_t dataSize,
 		const real_t dOmega,
 		const int64_t frequencyLimit,
-		maxwellKPoint<real_t>& k) {
+		MaxwellKPoint<real_t>& k) {
 
 		real_t Ex{};
 		real_t Ey{};
@@ -317,11 +317,11 @@ namespace deviceFunctions{
 		k.kH.z += normalizationFactor * Hz;
 	}
 
-	deviceFunction static maxwellKPoint<deviceFP> maxwellDerivativeTerms(
+	deviceFunction static MaxwellKPoint<deviceFP> maxwellDerivativeTerms(
 		const maxwell3D* s,
 		const int64_t i,
-		const maxwellPoint<deviceFP>* EgridIn,
-		const maxwellPoint<deviceFP>* HgridIn) {
+		const MaxwellPoint<deviceFP>* EgridIn,
+		const MaxwellPoint<deviceFP>* HgridIn) {
 
 		const int64_t zIndex = i % s->Nz;
 		const int64_t xIndex = (i / s->Nz) % s->Nx;
@@ -1370,12 +1370,12 @@ namespace deviceFunctions{
 		}
 		//return the compound result (structure of two field points, first one for the advancement of E,
 		//second for the advancement of H)
-		return maxwellKPoint<deviceFP>{
-			maxwellPoint<deviceFP>{
+		return MaxwellKPoint<deviceFP>{
+			MaxwellPoint<deviceFP>{
 				inverseEps0<deviceFP>()* (s->inverseZStep* dHyDz - s->inverseXyStep * dHzDy),
 					inverseEps0<deviceFP>()* (s->inverseXyStep* dHzDx - s->inverseZStep * dHxDz),
 					inverseEps0<deviceFP>()* s->inverseXyStep* (dHxDy - dHyDx)},
-				maxwellPoint<deviceFP>{
+				MaxwellPoint<deviceFP>{
 				inverseMu0<deviceFP>()* (s->inverseXyStep* dEzDy - s->inverseZStep * dEyDz),
 					inverseMu0<deviceFP>()* (-s->inverseXyStep * dEzDx + s->inverseZStep * dExDz),
 					inverseMu0<deviceFP>()* s->inverseXyStep* (dEyDx - dExDy)}
@@ -1387,9 +1387,9 @@ namespace deviceFunctions{
 		const int64_t i,
 		const int64_t t,
 		const bool isAtMidpoint,
-		const maxwellPoint<deviceFP>* gridIn,
-		const oscillator<deviceFP>* currentGridIn,
-		maxwellKPoint<deviceFP>& k,
+		const MaxwellPoint<deviceFP>* gridIn,
+		const Oscillator<deviceFP>* currentGridIn,
+		MaxwellKPoint<deviceFP>& k,
 		const int rkIndex) {
 		const int64_t xIndex = i / s->Nz;
 		const int64_t zIndex = i - s->Nz * xIndex;
@@ -1407,13 +1407,13 @@ namespace deviceFunctions{
 				: 0;
 
 			//rotate the field and the currently-active derivative term into the crystal coordinates
-			maxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
-			maxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
-			maxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][oscillatorType] - 1.0f;
+			MaxwellPoint<deviceFP> crystalField = rotateMaxwellPoint(s, gridIn[i], false);
+			MaxwellPoint<deviceFP> kE = rotateMaxwellPoint(s, k.kE, false);
+			MaxwellPoint<deviceFP> chiInstant = s->sellmeierEquations[0][oscillatorType] - 1.0f;
 
 			//get the total dipole current and polarization of the oscillators
-			maxwellPoint<deviceFP> J{};
-			maxwellPoint<deviceFP> P = chiInstant * crystalField;
+			MaxwellPoint<deviceFP> J{};
+			MaxwellPoint<deviceFP> P = chiInstant * crystalField;
 			for (int j = 0; j < (s->Noscillators - s->hasPlasma[oscillatorType]); j++) {
 				J += currentGridIn[oscillatorIndex + j].J;
 				P += currentGridIn[oscillatorIndex + j].P;
@@ -1424,7 +1424,7 @@ namespace deviceFunctions{
 			kE /= s->sellmeierEquations[0][oscillatorType];
 
 			//Use dEdt to calculate dPdt
-			maxwellPoint<deviceFP> dPdt = (kE * chiInstant) * eps0<deviceFP>();
+			MaxwellPoint<deviceFP> dPdt = (kE * chiInstant) * eps0<deviceFP>();
 			dPdt += J;
 			dPdt *= 2.0f;
 			P *= 2.0f;
@@ -1434,8 +1434,8 @@ namespace deviceFunctions{
 			//a nonlinear driver which gets added to the driving force
 			//of the oscillators. This allows the dispersion of the
 			//nonlinearities to follow Miller's rule
-			maxwellPoint<deviceFP> instNonlin{};
-			maxwellPoint<deviceFP> nonlinearDriver{};
+			MaxwellPoint<deviceFP> instNonlin{};
+			MaxwellPoint<deviceFP> nonlinearDriver{};
 
 			//calculate the chi2 nonlinearity
 			if (s->hasChi2[oscillatorType]) {
@@ -1492,7 +1492,7 @@ namespace deviceFunctions{
 					s->nonlinearAbsorptionOrder[oscillatorType])
 				: 0.0f;
 			if (s->hasPlasma[oscillatorType]) {
-				maxwellPoint<deviceFP> absorption = -0.25f * inverseEps0<deviceFP>() * absorptionCurrent * crystalField;
+				MaxwellPoint<deviceFP> absorption = -0.25f * inverseEps0<deviceFP>() * absorptionCurrent * crystalField;
 				absorption += currentGridIn[oscillatorIndex + s->Noscillators - 1].J * inverseEps0<deviceFP>();
 				absorption /= s->sellmeierEquations[0][oscillatorType];
 				kE += absorption;
@@ -1503,17 +1503,17 @@ namespace deviceFunctions{
 
 			//Update and advance the material oscillators
 			for (int j = 0; j < s->Noscillators; j++) {
-				oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[oscillatorType])) ?
-					oscillator<deviceFP>{
+				Oscillator<deviceFP> kOsc = (j < (s->Noscillators - s->hasPlasma[oscillatorType])) ?
+					Oscillator<deviceFP>{
 					(-eps0<deviceFP>() * kLorentzian<deviceFP>())*
 						s->sellmeierEquations[1 + j * 3][oscillatorType] * (crystalField+nonlinearDriver)
 						- s->sellmeierEquations[2 + j * 3][oscillatorType] * currentGridIn[oscillatorIndex+j].P
 						- s->sellmeierEquations[3 + j * 3][oscillatorType] * currentGridIn[oscillatorIndex+j].J,
 						currentGridIn[oscillatorIndex + j].J} :
-				oscillator<deviceFP>{
+				Oscillator<deviceFP>{
 					currentGridIn[oscillatorIndex + j].P.x * s->kDrude[oscillatorType] * crystalField
 					- s->gammaDrude[oscillatorType] * currentGridIn[oscillatorIndex + j].J,
-					maxwellPoint<deviceFP>{2.0f * absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[oscillatorType],
+					MaxwellPoint<deviceFP>{2.0f * absorptionCurrent* dotProduct(P,P)* s->kCarrierGeneration[oscillatorType],
 					deviceFP{},
 					deviceFP{} } };
 				//note that k.P.x is used to store the carrier density

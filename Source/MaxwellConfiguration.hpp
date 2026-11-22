@@ -3,7 +3,7 @@
 #include "LightwaveExplorerInterfaceClasses.hpp"
 constexpr int64_t NmaterialMax = 8;
 template <typename deviceFP, typename E, typename H, typename O>
-class maxwellCalculation {
+class MaxwellCalculation {
 public:
     E* Egrid{};
     E* EgridNext{};
@@ -23,9 +23,9 @@ public:
     deviceFP materialTheta[NmaterialMax]{};
     deviceFP materialPhi[NmaterialMax]{};
 
-    maxwellPoint<deviceFP> sellmeierEquations[22][NmaterialMax]{};
-    maxwellPoint<deviceFP> chi3[27][NmaterialMax]{};
-    maxwellPoint<deviceFP> chi2[6][NmaterialMax]{};
+    MaxwellPoint<deviceFP> sellmeierEquations[22][NmaterialMax]{};
+    MaxwellPoint<deviceFP> chi3[27][NmaterialMax]{};
+    MaxwellPoint<deviceFP> chi2[6][NmaterialMax]{};
     int nonlinearAbsorptionOrder[NmaterialMax]{};
     deviceFP kNonlinearAbsorption[NmaterialMax]{};
     deviceFP kDrude[NmaterialMax]{};
@@ -73,7 +73,7 @@ public:
     int64_t tGridFactor=1;
     int64_t materialStart{};
     int64_t materialStop{};
-    maxwellCalculation<deviceFP, E, H, O>* deviceCopy = nullptr;
+    MaxwellCalculation<deviceFP, E, H, O>* deviceCopy = nullptr;
 
     void fillRotationMatricies(double crystalTheta, double crystalPhi, int64_t crystalNumber) {
         double cosT = cos(crystalTheta);
@@ -96,7 +96,7 @@ public:
             rotateBackward[i][crystalNumber] = static_cast<deviceFP>(backward[i]);
         }
     }
-    maxwellCalculation(SimulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
+    MaxwellCalculation(SimulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
         frontBuffer = frontBuffer_in;
         backBuffer = backBuffer_in;
         crystalThickness = (*s).crystalThickness;
