@@ -90,7 +90,7 @@ namespace hostFunctions{
 		DeviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
-		d.fft((*sc).gridETime1, (*sc).workspace1, deviceFFT::D2Z_1D);
+		d.fft((*sc).gridETime1, (*sc).workspace1, DeviceFFT::D2Z_1D);
 		if ((*sc).is3D) {
 			d.deviceLaunch((unsigned int)(*sCPU).Nfreq, 1u, totalSpectrum3DKernel{ d.dParamsDevice });
 		}
@@ -135,12 +135,12 @@ namespace hostFunctions{
 				d.dParamsDevice,
 				in,
 				(deviceFP*)(*sc).workspace1 });
-		d.fft((*sc).workspace1, out, deviceFFT::D2Z_1D);
+		d.fft((*sc).workspace1, out, DeviceFFT::D2Z_1D);
 		return 0;
 	}
 	static int backwardHankel(ActiveDevice& d, deviceComplex* in, deviceFP* out) {
 		DeviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
-		d.fft(in, (*sc).workspace1, deviceFFT::Z2D_1D);
+		d.fft(in, (*sc).workspace1, DeviceFFT::Z2D_1D);
 		d.deviceLaunch(
 			(*sc).Nblock,
 			(*sc).Nthread,
@@ -248,7 +248,7 @@ namespace hostFunctions{
 					sellmeierPropagationMedium });
 		}
 
-		d.fft((*sc).workspace1, (*sc).gridPolarizationTime1, deviceFFT::Z2D_1D);
+		d.fft((*sc).workspace1, (*sc).gridPolarizationTime1, DeviceFFT::Z2D_1D);
 
 		d.deviceLaunch(
 			2 * (*sc).Nblock,
@@ -268,7 +268,7 @@ namespace hostFunctions{
 				(deviceFP*)(*sc).gridPolarizationTime1 });
 
 		//fft onto frequency grid
-		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
+		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, DeviceFFT::D2Z);
 
 		d.deviceFree(materialPhase);
 		d.deviceFree(materialCoefficients);
@@ -298,7 +298,7 @@ namespace hostFunctions{
 				(deviceFP*)(*sc).gridPolarizationTime1 });
 
 		//fft onto frequency grid
-		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
+		d.fft((*sc).gridETime1, (*sc).gridEFrequency1, DeviceFFT::D2Z);
 
 		return 0;
 	}
@@ -325,7 +325,7 @@ namespace hostFunctions{
 					(*s).ExtOut,
 					2 * (*s).Ngrid * sizeof(double),
 					CopyType::ToDevice);
-				d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
+				d.fft((*sc).gridETime1, (*sc).gridEFrequency1, DeviceFFT::D2Z);
 			}
 
 			if (d.cParams->pulse1FileType == 3) {
@@ -357,7 +357,7 @@ namespace hostFunctions{
 				(*s).ExtOut,
 				2 * (*s).Ngrid * sizeof(double),
 				CopyType::ToDevice);
-			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, deviceFFT::D2Z);
+			d.fft((*sc).gridETime1, (*sc).gridEFrequency1, DeviceFFT::D2Z);
 		}
 
 		if((*sc).axesNumber==2){
@@ -443,7 +443,7 @@ namespace hostFunctions{
 			CopyType::ToDevice);
 
 		//transform final result
-		d.fft(sc.gridEFrequency1, sc.gridETime1, deviceFFT::Z2D);
+		d.fft(sc.gridEFrequency1, sc.gridETime1, DeviceFFT::Z2D);
 		d.deviceLaunch(2 * sc.Nblock, sc.Nthread, multiplyByConstantKernelD{
 			sc.gridETime1, static_cast<deviceFP>(1.0 / sc.Ngrid) });
 		//copy the field arrays from the GPU to CPU memory
@@ -477,7 +477,7 @@ namespace hostFunctions{
 			(*sCPU).ExtOut,
 			2 * d.s->Ngrid * sizeof(double),
 			CopyType::ToDevice);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		DeviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(
 			d.s->Nblock / 2,
@@ -496,7 +496,7 @@ namespace hostFunctions{
 			2 * d.s->NgridC * sizeof(std::complex<double>),
 			CopyType::ToHost);
 
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D);
 
 		d.deviceLaunch(
 			(int)(d.s->Ngrid / minGridDimension),
@@ -526,7 +526,7 @@ namespace hostFunctions{
 			sCPU.ExtOut,
 			2 * d.s->Ngrid * sizeof(double),
 			CopyType::ToDevice);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z_1D);
 		std::vector<std::complex<deviceFP>> complexReflectivity =
 			sCPU.optics[index].to_complex_spectrum<deviceFP>(sCPU.Nfreq,sCPU.fStep);
 		d.deviceMemcpy(
@@ -540,8 +540,8 @@ namespace hostFunctions{
 			d.s->Nthread,
 			applyOpticKernel{d.dParamsDevice,d.s->gridPropagationFactor1, applyX, applyY}
 		);
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D_1D);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D_1D);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		d.deviceMemcpy(
 			sCPU.EkwOut,
 			d.s->gridEFrequency1,
@@ -570,7 +570,7 @@ namespace hostFunctions{
 			(*sCPU).ExtOut,
 			2 * d.s->Ngrid * sizeof(double),
 			CopyType::ToDevice);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z_1D);
 		DeviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.s->Nblock / 2, d.s->Nthread, lorentzianSpotKernel{
 			sDevice,
@@ -579,14 +579,14 @@ namespace hostFunctions{
 			(deviceFP)(1.0e12 * gamma),
 			(deviceFP)radius,
 			(deviceFP)order });
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D_1D);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D_1D);
 		d.deviceLaunch(
 			(int)(d.s->Ngrid / minGridDimension),
 			2 * minGridDimension,
 			multiplyByConstantKernelD{
 				d.s->gridETime1,
 				(deviceFP)(1.0 / d.s->Ntime) });
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		d.deviceMemcpy(
 			(*sCPU).EkwOut,
 			d.s->gridEFrequency1,
@@ -632,7 +632,7 @@ namespace hostFunctions{
 			d.s->gridETime1,
 			2 * (*sCPU).Ngrid * sizeof(double),
 			CopyType::ToHost);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		d.deviceMemcpy(
 			(*sCPU).EkwOut,
 			d.s->gridEFrequency1,
@@ -671,7 +671,7 @@ namespace hostFunctions{
 			d.s->gridETime1,
 			2 * (*sCPU).Ngrid * sizeof(double),
 			CopyType::ToHost);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		d.deviceMemcpy(
 			(*sCPU).EkwOut,
 			d.s->gridEFrequency1,
@@ -696,7 +696,7 @@ namespace hostFunctions{
 			(*sCPU).ExtOut,
 			2 * d.s->Ngrid * sizeof(double),
 			CopyType::ToDevice);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		DeviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.s->Nblock / 2, d.s->Nthread, apertureFarFieldKernel{
 			sDevice,
@@ -711,7 +711,7 @@ namespace hostFunctions{
 			2 * d.s->NgridC * sizeof(std::complex<double>),
 			CopyType::ToHost);
 
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D);
 
 		d.deviceLaunch(
 			(int)(d.s->Ngrid / minGridDimension),
@@ -744,7 +744,7 @@ namespace hostFunctions{
 			(*sCPU).ExtOut,
 			2 * d.s->Ngrid * sizeof(double),
 			CopyType::ToDevice);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		DeviceParameterSet<deviceFP, deviceComplex>* sDevice = d.dParamsDevice;
 		d.deviceLaunch(d.s->Nblock / 2, d.s->Nthread, inverseApertureFarFieldKernel{
 			sDevice,
@@ -759,7 +759,7 @@ namespace hostFunctions{
 			2 * d.s->NgridC * sizeof(std::complex<double>),
 			CopyType::ToHost);
 
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D);
 
 		d.deviceLaunch(
 			(int)(d.s->Ngrid / minGridDimension),
@@ -805,7 +805,7 @@ namespace hostFunctions{
 			d.s->gridETime1,
 			2 * d.s->Ngrid * sizeof(double),
 			CopyType::ToHost);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		d.deviceMemcpy(
 			(*sCPU).EkwOut,
 			d.s->gridEFrequency1,
@@ -833,19 +833,19 @@ namespace hostFunctions{
 			(*sCPU).ExtOut,
 			2 * d.s->Ngrid * sizeof(double),
 			CopyType::ToDevice);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z_1D);
 		d.deviceLaunch(
 			d.s->Nblock / 2,
 			d.s->Nthread,
 			sphericalMirrorKernel{ sDevice, (deviceFP)ROC });
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D_1D);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D_1D);
 		d.deviceLaunch(
 			2 * d.s->Nblock,
 			d.s->Nthread,
 			multiplyByConstantKernelD{
 				d.s->gridETime1,
 				(deviceFP)(1.0 / d.s->Ntime )});
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		d.deviceMemcpy(
 			(*sCPU).ExtOut,
 			d.s->gridETime1,
@@ -871,19 +871,19 @@ namespace hostFunctions{
 			(*sCPU).ExtOut,
 			2 * d.s->Ngrid * sizeof(double),
 			CopyType::ToDevice);
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z_1D);
 		d.deviceLaunch(
 			d.s->Nblock / 2,
 			d.s->Nthread,
 			parabolicMirrorKernel{ sDevice, (deviceFP)focus });
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D_1D);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D_1D);
 		d.deviceLaunch(
 			2 * d.s->Nblock,
 			d.s->Nthread,
 			multiplyByConstantKernelD {
 				d.s->gridETime1,
 				(deviceFP)(1.0 / d.s->Ntime) });
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 		d.deviceMemcpy(
 			(*sCPU).ExtOut,
 			d.s->gridETime1,
@@ -951,7 +951,7 @@ namespace hostFunctions{
 			d.s->gridEFrequency1,
 			d.s->NgridC * 2 * sizeof(std::complex<double>),
 			CopyType::ToHost);
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D);
 		d.deviceLaunch(
 			2 * d.s->Nblock,
 			d.s->Nthread,
@@ -1081,7 +1081,7 @@ namespace hostFunctions{
 			CopyType::ToHost);
 
 		//transform back to time
-		d.fft(Eout1, d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(Eout1, d.s->gridETime1, DeviceFFT::Z2D);
 		d.deviceLaunch(
 			2 * d.s->Nblock,
 			d.s->Nthread,
@@ -1130,7 +1130,7 @@ namespace hostFunctions{
 			CopyType::ToHost);
 
 		//transform back to time
-		d.fft(Eout1, d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(Eout1, d.s->gridETime1, DeviceFFT::Z2D);
 		d.deviceLaunch(
 			2 * d.s->Nblock,
 			d.s->Nthread,
@@ -1242,7 +1242,7 @@ namespace hostFunctions{
 		// two possible FFT shapes (radial Laplacian always performed)
 		if((*sH).isCylindric){
 			//ifft to time domain
-			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFT::Z2D);
+			d.fft((*sH).workspace1, (*sH).gridETime1, DeviceFFT::Z2D);
 
 			//Nonlinear polarization and plasma current are fft-ed in a batch
 			//from separate (de-interlaced) time-domain grids.
@@ -1276,14 +1276,14 @@ namespace hostFunctions{
 						(*sH).Nblock,
 						(*sH).Nthread,
 						expandCylindricalBeam{ sD });
-					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFT::D2Z_Polarization);
+					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, DeviceFFT::D2Z_Polarization);
 					d.deviceLaunch(
 						(*sH).Nblock / 2,
 						(*sH).Nthread,
 						updateKwithPlasmaKernelCylindric{ sD });
 				}
 				else{
-					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFT::D2Z_Polarization);
+					d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, DeviceFFT::D2Z_Polarization);
 					d.deviceLaunch(
 						(*sH).Nblock / 2,
 						(*sH).Nthread,
@@ -1294,7 +1294,7 @@ namespace hostFunctions{
 				(*sH).Nblock,
 				(*sH).Nthread,
 				radialLaplacianKernel{ sD });
-			d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, deviceFFT::D2Z);
+			d.fft((*sH).gridRadialLaplacian1, (*sH).workspace1, DeviceFFT::D2Z);
 
 			switch (stepNumber) {
 			case 0:
@@ -1340,7 +1340,7 @@ namespace hostFunctions{
 					biaxialRotationKernel {sD,(*sH).workspace1,false}
 				);
 			}
-			d.fft((*sH).workspace1, (*sH).gridETime1, deviceFFT::Z2D);
+			d.fft((*sH).workspace1, (*sH).gridETime1, DeviceFFT::Z2D);
 			//Plasma/multiphoton absorption
 			if ((*sH).hasPlasma) {
 				d.deviceLaunch(
@@ -1351,7 +1351,7 @@ namespace hostFunctions{
 					(unsigned int)(((*sH).Nspace2 * (*sH).Nspace) / minGridDimension),
 					minGridDimension,
 					plasmaCurrentKernel_twoStage_B_simultaneous{ sD });
-				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
+				d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, DeviceFFT::D2Z);
 				d.deviceLaunch(
 					(*sH).Nblock / 2,
 					(*sH).Nthread,
@@ -1362,7 +1362,7 @@ namespace hostFunctions{
 				(*sH).Nblock,
 				(*sH).Nthread,
 				nonlinearPolarizationKernel{ sD });
-			d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, deviceFFT::D2Z);
+			d.fft((*sH).gridPolarizationTime1, (*sH).workspace1, DeviceFFT::D2Z);
 			//rotate nonlinear polarization into the delta frame if biaxial
 			if((*sH).axesNumber==2){
 				d.deviceLaunch(
@@ -1450,7 +1450,7 @@ namespace hostFunctions{
 			d.s->gridEFrequency1,
 			2 * d.s->NgridC * sizeof(std::complex<double>),
 			CopyType::ToHost);
-		d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D);
+		d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D);
 		d.deviceLaunch(
 			(int)(d.s->Ngrid / minGridDimension),
 			2 * minGridDimension,
@@ -1800,7 +1800,7 @@ namespace hostFunctions{
 			CopyType::ToDevice);
 		maxCalc.inOutEx = d.s->gridETime1;
 		maxCalc.inOutEy = d.s->gridETime2;
-		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z);
+		d.fft(d.s->gridETime1, d.s->gridEFrequency1, DeviceFFT::D2Z);
 
 		//NOTE: Here is where I have to change in order to keep all field vector components
 		//Need kernel to calculate Exyz and Hxyz based on Fourier representation
@@ -1828,14 +1828,14 @@ namespace hostFunctions{
 			.Hy = reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT),
 			.Hz = reinterpret_cast<deviceComplex*>(maxCalc.inputHzFFT)});
 
-		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT), d.s->gridETime1, deviceFFT::Z2D);
-		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT), deviceFFT::D2Z_1D);
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT), d.s->gridETime1, DeviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputExFFT), DeviceFFT::D2Z_1D);
 
-		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT), d.s->gridETime1, deviceFFT::Z2D);
-		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT), deviceFFT::D2Z_1D);
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT), d.s->gridETime1, DeviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputEzFFT), DeviceFFT::D2Z_1D);
 
-		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT), d.s->gridETime1, deviceFFT::Z2D);
-		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT), deviceFFT::D2Z_1D);
+		d.fft(reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT), d.s->gridETime1, DeviceFFT::Z2D);
+		d.fft(d.s->gridETime1, reinterpret_cast<deviceComplex*>(maxCalc.inputHyFFT), DeviceFFT::D2Z_1D);
 
 		d.deviceMemset(maxCalc.inOutEx, 0, 2*(*sCPU).Ngrid * sizeof(deviceFP));
 
@@ -2009,7 +2009,7 @@ namespace hostFunctions{
 				maxCalc.inOutEx,
 				2*(*sCPU).Ngrid * sizeof(double),
 				CopyType::ToHost);
-			d.fft(maxCalc.inOutEx, d.s->gridEFrequency1, deviceFFT::D2Z);
+			d.fft(maxCalc.inOutEx, d.s->gridEFrequency1, DeviceFFT::D2Z);
 			d.deviceMemcpy(
 				(*sCPU).EkwOut,
 				d.s->gridEFrequency1,
@@ -2017,7 +2017,7 @@ namespace hostFunctions{
 				CopyType::ToHost);
 		}
 		else {
-			d.fft(maxCalc.inOutEx, d.s->gridEFrequency1, deviceFFT::D2Z);
+			d.fft(maxCalc.inOutEx, d.s->gridEFrequency1, DeviceFFT::D2Z);
 			if((*sCPU).is3D){
 				d.deviceLaunch(
 					d.s->Nblock / 2,
@@ -2035,7 +2035,7 @@ namespace hostFunctions{
 				d.s->gridEFrequency1,
 				2 * d.s->NgridC * sizeof(std::complex<double>),
 				CopyType::ToHost);
-			d.fft(d.s->gridEFrequency1, d.s->gridETime1, deviceFFT::Z2D);
+			d.fft(d.s->gridEFrequency1, d.s->gridETime1, DeviceFFT::Z2D);
 			//transfer result to CPU memory and take spectrum
 			d.deviceMemcpy(
 				(*sCPU).ExtOut,

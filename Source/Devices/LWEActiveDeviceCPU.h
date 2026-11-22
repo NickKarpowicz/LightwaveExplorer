@@ -277,9 +277,9 @@ public:
 		return isnan(*canaryPointer);
 	}
 
-	void fft(const void* input, void* output, deviceFFT type) override {
+	void fft(const void* input, void* output, DeviceFFT type) override {
 		switch (type){
-			case deviceFFT::D2Z:
+			case DeviceFFT::D2Z:
 			    deviceLaunch(2, 1,
     				[&](size_t i){
                         pocketfft::r2c(
@@ -293,7 +293,7 @@ public:
            					static_cast<deviceFP>(1));
                 });
 				break;
-			case deviceFFT::Z2D:
+			case DeviceFFT::Z2D:
 			    deviceLaunch(2,1,
                     [&](size_t i){
                        	pocketfft::c2r(
@@ -306,7 +306,7 @@ public:
                             (deviceFP*)output + i *s->Ngrid,
                       		static_cast<deviceFP>(1));});
 				break;
-			case deviceFFT::D2Z_1D:
+			case DeviceFFT::D2Z_1D:
 			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
     				[&](size_t i){
                         pocketfft::r2c(
@@ -318,7 +318,7 @@ public:
                             (deviceFP *)input + i * s->Ntime, (deviceComplex *)output + i * s->Nfreq,
                             static_cast<deviceFP>(1));});
 				break;
-			case deviceFFT::Z2D_1D:
+			case DeviceFFT::Z2D_1D:
 			    deviceLaunch(2 * (s->Nspace * s->Nspace2), 1,
     				[&](size_t i){
                         pocketfft::c2r(shape_1d,
@@ -330,7 +330,7 @@ public:
                             (deviceFP *)output + i * s->Ntime,
                             static_cast<deviceFP>(1));});
 				break;
-			case deviceFFT::D2Z_Polarization:
+			case DeviceFFT::D2Z_Polarization:
 			    deviceLaunch(2 + 2 * s->hasPlasma,1,
     				[&](size_t i){
              			pocketfft::r2c(

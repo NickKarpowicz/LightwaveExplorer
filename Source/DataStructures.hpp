@@ -28,7 +28,7 @@ class SimulationParameterSet;
 //                   representation. If plasma calculations are also being done, their FFT will
 //                   be included here as a batch. Thus, this is the most expensive operation
 //                   in such a propagation.
-enum class deviceFFT : int {
+enum class DeviceFFT : int {
     D2Z = 0,
     Z2D = 1,
     D2Z_1D = 2,
@@ -287,7 +287,7 @@ class LWEDevice{
 		size_t count,
 		CopyType kind) = 0;
     virtual void deviceFree(void* block) = 0;
-    virtual void fft(const void* input, void* output, deviceFFT type) = 0;
+    virtual void fft(const void* input, void* output, DeviceFFT type) = 0;
     virtual void reset(SimulationParameterSet* sCPU) = 0;
 
     void deviceMemcpy(

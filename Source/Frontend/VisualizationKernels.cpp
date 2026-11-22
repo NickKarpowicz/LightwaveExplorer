@@ -12,12 +12,12 @@ namespace deviceFunctions{
         return x.real() * x.real() + x.imag() * x.imag();
     }
 	deviceFunction static inline int64_t expandCylindricalBeamAtRadius(
-		const float r, 
+		const float r,
 		const int64_t Nspace) {
 
         //is remainder of r closer to 1/4 or 3/4
         bool negativeSide = fmodf(r,1.0f)-0.5 > 0.0f;
-        int64_t index = static_cast<int64_t>((negativeSide ? 
+        int64_t index = static_cast<int64_t>((negativeSide ?
             static_cast<float>(Nspace)/2.0f - r + 0.25f:
             static_cast<float>(Nspace)/2.0f + r + 0.25f));
 		return index;
@@ -91,7 +91,7 @@ namespace kernelNamespace{
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
-            
+
             int64_t dataSize = (config.Nt/2)*(config.Nx);
             float* red = workspace + i;
             float* green = red + dataSize;
@@ -101,7 +101,7 @@ namespace kernelNamespace{
             float* blue_centers = green_centers + config.Nt/2;
 
             for(int j{}; j<config.Nx; ++j){
-                float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf]) 
+                float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf])
                 + deviceNorm(Ef[(i+1) + j*config.Nf + config.Ngrid_complex]);
                 int offset = j * config.Nt/2;
                 red[offset] = filter_red * Ef2;
@@ -125,7 +125,7 @@ namespace kernelNamespace{
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
-            
+
             int64_t dataSize = (config.Nt/2)*(config.Nx);
             float* red = workspace + i;
             float* green = red + dataSize;
@@ -136,11 +136,11 @@ namespace kernelNamespace{
 
             for(int j{}; j<config.Nx; ++j){
                 const float theta = j*config.dTheta - config.maxAngle;
-                const int64_t k_x = config.Nx/2 + 
+                const int64_t k_x = config.Nx/2 +
                     static_cast<int64_t>(round(k0*deviceFPLib::sin(theta)));
                 if(k_x > 0 && k_x < config.Nx){
                     int64_t idx_k = indexShiftFFT(k_x, config.Nx);
-                    float Ef2 = deviceNorm(Ef[(i+1) + idx_k*config.Nf]) 
+                    float Ef2 = deviceNorm(Ef[(i+1) + idx_k*config.Nf])
                     + deviceNorm(Ef[(i+1) + idx_k*config.Nf + config.Ngrid_complex]);
                     int offset = j * config.Nt/2;
                     red[offset] = filter_red * Ef2;
@@ -165,10 +165,10 @@ namespace kernelNamespace{
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
-            
+
             float* red_line = workspace;
             float* green_line = red_line + config.Nx;
-            float* blue_line = green_line + config.Nx; 
+            float* blue_line = green_line + config.Nx;
 
             for(int j{}; j<config.Nx; ++j){
                 float Ef2 = deviceNorm(Ef[(i+1) + j*config.Nf])
@@ -191,14 +191,14 @@ namespace kernelNamespace{
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
             const float filter_blue = scale * config.blue_amplitude * expf(-(f-config.blue_f0)*(f-config.blue_f0)/(2*config.blue_sigma*config.blue_sigma));
-            
+
             float* red_line = workspace;
             float* green_line = red_line + config.Nx;
-            float* blue_line = green_line + config.Nx; 
+            float* blue_line = green_line + config.Nx;
 
             for(int j{}; j<config.Nx; ++j){
                 const float theta = j*config.dTheta - config.maxAngle;
-                const int64_t k_x = config.Nx/2 + 
+                const int64_t k_x = config.Nx/2 +
                     static_cast<int64_t>(round(k0*deviceFPLib::sin(theta)));
                 if(k_x > 0 && k_x < config.Nx){
                     int64_t idx_k = indexShiftFFT(k_x, config.Nx);
@@ -207,7 +207,7 @@ namespace kernelNamespace{
                     atomicAdd(&red_line[j], filter_red * Ef2);
                     atomicAdd(&green_line[j], filter_green * Ef2);
                     atomicAdd(&blue_line[j], filter_blue * Ef2);
-                }  
+                }
             }
         }
     };
@@ -260,13 +260,13 @@ namespace kernelNamespace{
             const float ky = deviceFPLib::sin(angle_y)*w/lightC<float>();
             const int64_t kx_index = round(kx/config.dk) + config.Nx/2;
             const int64_t ky_index = round(ky/config.dk) + config.Nx/2;
-            if(kx_index >= config.Nx 
+            if(kx_index >= config.Nx
                 || ky_index >= config.Nx
                 || kx_index<0
                 || ky_index<0) return;
             const int64_t field_index = f_index + (indexShiftFFT(kx_index, config.Nx) + indexShiftFFT(ky_index, config.Ny) * config.Nx) * config.Nf;
             const int64_t image_index = x_index + config.Nx * y_index;
-            
+
             const float scale = 1.0f / (deviceFPLib::pow(config.dk * 3e-5, 4)* config.Ngrid * config.Ngrid);
             const float filter_red = scale * config.red_amplitude * expf(-(f-config.red_f0)*(f-config.red_f0)/(2*config.red_sigma*config.red_sigma));
             const float filter_green = scale * config.green_amplitude * expf(-(f-config.green_f0)*(f-config.green_f0)/(2*config.green_sigma*config.green_sigma));
@@ -288,9 +288,9 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             //i range 0..Nx*Nx*Nt/2
             const float mid = static_cast<float>(config.Nx)/2.0f;
-            const int64_t Nf = config.Nt/2; 
+            const int64_t Nf = config.Nt/2;
             const int64_t f_ind = i % Nf; //not +1 because I skip 0
-            
+
             int64_t dataSize = Nf*(config.Nx);
             float* red_data = workspace;
             float* green_data = red_data + dataSize;
@@ -299,11 +299,11 @@ namespace kernelNamespace{
             float* green_centers = red_centers + config.Nt/2;
             float* blue_centers = green_centers + config.Nt/2;
             auto addPoint = [&](
-                float* channel, 
-                const float* data, 
-                const float* centers, 
-                const int x_ind, 
-                const float y, 
+                float* channel,
+                const float* data,
+                const float* centers,
+                const int x_ind,
+                const float y,
                 const int64_t img_ind){
                     const float center = centers[f_ind];
                     const float x = static_cast<float>(x_ind)-center;
@@ -311,10 +311,10 @@ namespace kernelNamespace{
                     const int64_t idx1 = static_cast<int64_t>((r+center));
                     const bool idx1Valid = (idx1 < config.Nx) && (idx1>=0);
                     if(idx1Valid){
-                        atomicAdd(&channel[img_ind], data[f_ind + idx1*(config.Nt/2)]); 
+                        atomicAdd(&channel[img_ind], data[f_ind + idx1*(config.Nt/2)]);
                     }
             };
-            
+
             for(int x_ind{}; x_ind<config.Nx; ++x_ind){
                 for(int y_ind{}; y_ind<config.Nx; ++y_ind){
                     const float y = static_cast<float>(y_ind)-mid;
@@ -336,12 +336,12 @@ namespace kernelNamespace{
         deviceFunction void operator()(const int64_t i) const {
             const int64_t Nf = config.Nt/2;
             const int64_t f_ind = i % Nf;
-            
+
             int64_t dataSize = Nf*(config.Nx);
             float* red_data = workspace;
             float* green_data = red_data + dataSize;
             float* blue_data = green_data + dataSize;
-        
+
             for(int x_ind{}; x_ind<config.Nx; ++x_ind){
                 for(int y_ind{}; y_ind<config.Nx; ++y_ind){
                     const int64_t img_ind = x_ind + y_ind * config.Nx;
@@ -466,9 +466,9 @@ using namespace kernelNamespace;
 
 namespace {
     static void floatImageToPixels(const VisualizationConfig config, float multiplier=1.0f){
-        d_vis->deviceLaunch((config.width * config.height)/64, 64, 
+        d_vis->deviceLaunch((config.width * config.height)/64, 64,
             floatImagesToPixelsKernel{
-                    d_vis->visualization->red.device_ptr(), 
+                    d_vis->visualization->red.device_ptr(),
                     d_vis->visualization->green.device_ptr(),
                     d_vis->visualization->blue.device_ptr(),
                     d_vis->visualization->imageGPU.device_ptr(),});
@@ -476,18 +476,18 @@ namespace {
     static void renderFalseColor(const VisualizationConfig config){
         d_vis->fft(d_vis->visualization->gridTimeSpace.device_ptr(),
             d_vis->visualization->gridFrequency.device_ptr(),
-            deviceFFT::D2Z_1D);
+            DeviceFFT::D2Z_1D);
         d_vis->visualization->gridTimeSpace.initialize_to_zero();
         switch(config.mode){
             case CoordinateMode::cartesian2D: [[fallthrough]];
             case CoordinateMode::FDTD2D:
-                d_vis->deviceLaunch(config.Nt/8, 4, 
+                d_vis->deviceLaunch(config.Nt/8, 4,
                     falseColorPrerenderKernel2D{
-                            d_vis->visualization->gridFrequency.device_ptr(), 
+                            d_vis->visualization->gridFrequency.device_ptr(),
                             d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
                 if(config.rotate2D){
-                    d_vis->deviceLaunch(config.Nt/8, 4, 
+                    d_vis->deviceLaunch(config.Nt/8, 4,
                         falseColorRender2DCartesianKernel{
                                 d_vis->visualization->red.device_ptr(),
                                 d_vis->visualization->green.device_ptr(),
@@ -496,7 +496,7 @@ namespace {
                                 config});
                 }
                 else{
-                    d_vis->deviceLaunch(config.Nt/8, 4, 
+                    d_vis->deviceLaunch(config.Nt/8, 4,
                         falseColorRender2DCartesianNoRotationKernel{
                                 d_vis->visualization->red.device_ptr(),
                                 d_vis->visualization->green.device_ptr(),
@@ -504,19 +504,19 @@ namespace {
                                 d_vis->visualization->gridTimeSpace.device_ptr(),
                                 config});
                 }
-                
+
                 floatImageToPixels(config, 1.0f);
                 d_vis->visualization->red.initialize_to_zero();
                 d_vis->visualization->green.initialize_to_zero();
                 d_vis->visualization->blue.initialize_to_zero();
                 break;
             case CoordinateMode::radialSymmetry:
-                d_vis->deviceLaunch(config.Nt/8, 4, 
+                d_vis->deviceLaunch(config.Nt/8, 4,
                     falseColorPrerenderKernelCylindrical{
-                            d_vis->visualization->gridFrequency.device_ptr(), 
+                            d_vis->visualization->gridFrequency.device_ptr(),
                             d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
-                d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
+                d_vis->deviceLaunch((config.width * config.height) / 64, 64,
                 floatLinetoImageKernel{
                     d_vis->visualization->gridTimeSpace.device_ptr(),
                     d_vis->visualization->gridTimeSpace.device_ptr() + config.Nx,
@@ -546,13 +546,13 @@ namespace {
         switch(config.mode){
             case CoordinateMode::cartesian2D: [[fallthrough]];
             case CoordinateMode::FDTD2D:
-                d_vis->deviceLaunch(config.Nt/8, 4, 
+                d_vis->deviceLaunch(config.Nt/8, 4,
                     falseColorFarfieldPrerenderKernel2D{
-                            d_vis->visualization->gridFrequency.device_ptr(), 
+                            d_vis->visualization->gridFrequency.device_ptr(),
                             d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
                 if(config.rotate2D){
-                    d_vis->deviceLaunch(config.Nt/8, 4, 
+                    d_vis->deviceLaunch(config.Nt/8, 4,
                         falseColorRender2DCartesianKernel{
                                 d_vis->visualization->red.device_ptr(),
                                 d_vis->visualization->green.device_ptr(),
@@ -561,7 +561,7 @@ namespace {
                                 config});
                 }
                 else{
-                    d_vis->deviceLaunch(config.Nt/8, 4, 
+                    d_vis->deviceLaunch(config.Nt/8, 4,
                         falseColorRender2DCartesianNoRotationKernel{
                                 d_vis->visualization->red.device_ptr(),
                                 d_vis->visualization->green.device_ptr(),
@@ -569,19 +569,19 @@ namespace {
                                 d_vis->visualization->gridTimeSpace.device_ptr(),
                                 config});
                 }
-                
+
                 floatImageToPixels(config, 1.0f);
                 d_vis->visualization->red.initialize_to_zero();
                 d_vis->visualization->green.initialize_to_zero();
                 d_vis->visualization->blue.initialize_to_zero();
                 break;
             case CoordinateMode::radialSymmetry:
-                d_vis->deviceLaunch(config.Nt/8, 4, 
+                d_vis->deviceLaunch(config.Nt/8, 4,
                     falseColorFarfieldPrerenderKernelCylindrical{
-                            d_vis->visualization->gridFrequency.device_ptr(), 
+                            d_vis->visualization->gridFrequency.device_ptr(),
                             d_vis->visualization->gridTimeSpace.device_ptr(),
                             config});
-                d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
+                d_vis->deviceLaunch((config.width * config.height) / 64, 64,
                 floatLinetoImageKernelCartesian{
                     d_vis->visualization->gridTimeSpace.device_ptr(),
                     d_vis->visualization->gridTimeSpace.device_ptr() + config.Nx,
@@ -611,14 +611,14 @@ namespace {
 
         switch(config.mode){
             case CoordinateMode::cartesian2D:
-                d_vis->deviceLaunch(config.Ngrid/64, 64, 
+                d_vis->deviceLaunch(config.Ngrid/64, 64,
                     beamPowerRenderKernel2D{
-                            d_vis->visualization->gridTimeSpace.device_ptr(), 
+                            d_vis->visualization->gridTimeSpace.device_ptr(),
                             d_vis->visualization->red.device_ptr(),
                             d_vis->visualization->green.device_ptr(),
                             d_vis->visualization->blue.device_ptr(),
                             config});
-                d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
+                d_vis->deviceLaunch((config.width * config.height) / 64, 64,
                     floatLinetoImageKernelCartesian{
                         d_vis->visualization->red.device_ptr(),
                         d_vis->visualization->green.device_ptr(),
@@ -627,14 +627,14 @@ namespace {
                         config});
                 break;
             case CoordinateMode::radialSymmetry:
-                d_vis->deviceLaunch(config.Ngrid/64, 64, 
+                d_vis->deviceLaunch(config.Ngrid/64, 64,
                     beamPowerRenderKernel2D{
-                            d_vis->visualization->gridTimeSpace.device_ptr(), 
+                            d_vis->visualization->gridTimeSpace.device_ptr(),
                             d_vis->visualization->red.device_ptr(),
                             d_vis->visualization->green.device_ptr(),
                             d_vis->visualization->blue.device_ptr(),
                             config});
-                d_vis->deviceLaunch((config.width * config.height) / 64, 64, 
+                d_vis->deviceLaunch((config.width * config.height) / 64, 64,
                         floatLinetoImageKernel{
                             d_vis->visualization->red.device_ptr(),
                             d_vis->visualization->green.device_ptr(),

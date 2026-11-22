@@ -83,7 +83,7 @@ public:
 	void deviceMemset(void* ptr, int value, size_t count) override {}
 	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, CopyType kind) override {}
 	void deviceFree(void* block) override {}
-	void fft(const void* input, void* output, deviceFFT type) override {}
+	void fft(const void* input, void* output, DeviceFFT type) override {}
 	bool isTheCanaryPixelNaN(const deviceFP* canaryPointer) {
 		return false;
 	}
