@@ -311,9 +311,9 @@ public:
     crystalDatabase theDatabase;
 
 //Extra data structures
-    loadedInputData pulse1LoadedData;
-    loadedInputData pulse2LoadedData;
-    loadedInputData fittingLoadedData;
+    LoadedInputData pulse1LoadedData;
+    LoadedInputData pulse2LoadedData;
+    LoadedInputData fittingLoadedData;
 
 //Counter atomics
     std::atomic_uint32_t progressCounter{};
@@ -1533,7 +1533,7 @@ public:
             "It should have the format: \nWavelength (nm) | Reflectivity (0.0 to 1.0) | Phase (rad)",[&](){
                 std::string path = QFileDialog::getOpenFileName(
                     buttons["loadOptic"],"Load mirror reflectivity and phase","","Plain text file (*.*)").toStdString();
-                loadedInputData loadedData(path);
+                LoadedInputData loadedData(path);
                 if(!loadedData.hasData) return;
                 theSim.optics.push_back(loadedData);
                 cPrint("Loaded {}\ninto index {}",path,theSim.optics.size()-1);
@@ -1969,22 +1969,22 @@ public:
         QObject::connect(buttons["loadPulse1"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["loadPulse1"],"Load field data","","ASCII data (*.*)").toStdString();
             if(path.empty()) return;
-            pulse1LoadedData = loadedInputData(path);
-            messenger->passString(std::format("Loaded new file into pulse 1 buffer:\n{}\n", pulse1LoadedData.filePath));
+            pulse1LoadedData = LoadedInputData(path);
+            messenger->passString(std::format("Loaded new file into pulse 1 buffer:\n{}\n", pulse1LoadedData.path_));
         });
 
         QObject::connect(buttons["loadPulse2"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["loadPulse2"],"Load field data","","ASCII data (*.*)").toStdString();
             if(path.empty()) return;
-            pulse2LoadedData = loadedInputData(path);
-            messenger->passString(std::format("Loaded new file into pulse 2 buffer:\n{}\n", pulse2LoadedData.filePath));
+            pulse2LoadedData = LoadedInputData(path);
+            messenger->passString(std::format("Loaded new file into pulse 2 buffer:\n{}\n", pulse2LoadedData.path_));
         });
 
         QObject::connect(buttons["loadFitting"], &QPushButton::clicked, [&](){
             std::string path = QFileDialog::getOpenFileName(buttons["loadFitting"],"Load spectral target data","","ASCII data (*.*)").toStdString();
             if(path.empty()) return;
-            fittingLoadedData = loadedInputData(path);
-            messenger->passString(std::format("Loaded new fitting spectral target:\n{}\n", fittingLoadedData.filePath));
+            fittingLoadedData = LoadedInputData(path);
+            messenger->passString(std::format("Loaded new fitting spectral target:\n{}\n", fittingLoadedData.path_));
         });
 
         QObject::connect(buttons["loadMaterial"], &QPushButton::clicked, [&](){

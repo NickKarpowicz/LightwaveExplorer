@@ -4,31 +4,31 @@
 #include <atomic>
 #include <string>
 
-class loadedInputData {
+class LoadedInputData {
     public:
-    std::string fileContents;
-    std::string filePath;
+    std::string contents_;
+    std::string path_;
     bool hasData = false;
-    loadedInputData(){}
-    loadedInputData(const std::string& path){
-        filePath = path;
-        std::ifstream file(filePath, std::ios::binary);
+    LoadedInputData(){}
+    LoadedInputData(const std::string& path){
+        path_ = path;
+        std::ifstream file(path_, std::ios::binary);
         if(file.fail()) return;
-        fileContents = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-        hasData = fileContents.size() > 1;
+        contents_ = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        hasData = contents_.size() > 1;
     }
 
 
     //method to output the saved data to a complex spectrum (e.g. reflectivity or transmission)
     //assuming the data format is: wavelength (nm) | R (0.0 to 1.0) | phase(rad)
     template<typename deviceFP>
-    std::vector<std::complex<deviceFP>> toComplexSpectrum(const int64_t Nfreq, const double fStep) {
+    std::vector<std::complex<deviceFP>> to_complex_spectrum(const int64_t Nfreq, const double fStep) {
         std::vector<std::complex<deviceFP>> complexReflectivity(Nfreq, std::complex<deviceFP>(0.0,0.0));
         if (!hasData) {
             return complexReflectivity;
         }
 
-        std::stringstream fs(fileContents);
+        std::stringstream fs(contents_);
         int64_t maxFileSize = 16384;
         int64_t currentRow = 0;
         constexpr double c = 1e9 * lightC<double>();
@@ -103,13 +103,13 @@ class loadedInputData {
         return complexReflectivity;
     }
 
-    loadedInputData(const std::string& zipPath, const std::string& filename){
+    LoadedInputData(const std::string& zipPath, const std::string& filename){
         if(zipContainsFile(zipPath, filename)){
             std::vector<char> data;
             zipIntoMemory(zipPath,filename,data);
             if(data.size()<1) return;
-            fileContents = std::string(data.begin(),data.end());
-            filePath = filename;
+            contents_ = std::string(data.begin(),data.end());
+            path_ = filename;
             hasData = true;
         }
     }
@@ -172,9 +172,9 @@ public:
     bool field2IsAllocated = 0;
     int pulse1FileType = 0;
     int pulse2FileType = 0;
-    loadedInputData pulse1LoadedData;
-    loadedInputData pulse2LoadedData;
-    loadedInputData fittingLoadedData;
+    LoadedInputData pulse1LoadedData;
+    LoadedInputData pulse2LoadedData;
+    LoadedInputData fittingLoadedData;
     int pulsetype = 0;
     double* ExtOut = 0;
     std::complex<double>* EkwOut = 0;
@@ -200,7 +200,7 @@ public:
     double i37 = 0.0;
     int64_t batchLoc1 = 0;
     int64_t batchLoc2 = 0;
-    std::vector<loadedInputData> optics{};
+    std::vector<LoadedInputData> optics{};
 
     //fitting
     bool isInFittingMode = false;
@@ -471,7 +471,7 @@ class simulationBatch {
     int64_t Ngrid = 0;
     int64_t NgridC = 0;
 public:
-    std::vector<loadedInputData> optics;
+    std::vector<LoadedInputData> optics;
     std::vector<simulationParameterSet> parameters;
     std::vector<std::shared_mutex> mutexes = std::vector<std::shared_mutex>(1);
 
@@ -830,7 +830,7 @@ struct VisualizationConfig{
         mode(static_cast<CoordinateMode>(sCPU->symmetryType)){}
 };
 
-int				loadFrogSpeck(const loadedInputData& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
-int             loadWaveformFile(const loadedInputData& waveformFile, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);
-int             loadSavedGridFile(const loadedInputData& file, std::vector<double>& outputGrid, int64_t Ngrid);
-int             loadSavedGridFileMultiple(const loadedInputData& file, std::vector<double>& outputGrid, int64_t Ngrid, int64_t Nsims);
+int				loadFrogSpeck(const LoadedInputData& frogFilePath, std::complex<double>* Egrid, const int64_t Ntime, const double fStep, const double gateLevel);
+int             loadWaveformFile(const LoadedInputData& waveformFile, std::complex<double>* outputGrid, const int64_t Ntime, const double fStep);
+int             loadSavedGridFile(const LoadedInputData& file, std::vector<double>& outputGrid, int64_t Ngrid);
+int             loadSavedGridFileMultiple(const LoadedInputData& file, std::vector<double>& outputGrid, int64_t Ngrid, int64_t Nsims);

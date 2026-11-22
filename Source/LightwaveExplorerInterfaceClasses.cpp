@@ -13,10 +13,10 @@ int simulationParameterSet::loadSavedFields(const std::string &outputBase,
                   2 * (Ngrid * Nsims * Nsims2) * sizeof(double));
     zipIntoMemory(zipPath, trueBase + "_spectrum.dat", totalSpectrum,
                   Nsims * Nsims2 * 3 * Nfreq * sizeof(double));
-    pulse1LoadedData = loadedInputData(zipPath, trueBase + "_pulse1.dat");
-    pulse2LoadedData = loadedInputData(zipPath, trueBase + "_pulse2.dat");
+    pulse1LoadedData = LoadedInputData(zipPath, trueBase + "_pulse1.dat");
+    pulse2LoadedData = LoadedInputData(zipPath, trueBase + "_pulse2.dat");
     fittingLoadedData =
-        loadedInputData(zipPath, trueBase + "_fittingTarget.dat");
+        LoadedInputData(zipPath, trueBase + "_fittingTarget.dat");
   } else {
     std::string Epath = outputBase;
     Epath.append("_Ext.dat");
@@ -66,7 +66,7 @@ int simulationParameterSet::loadReferenceSpectrum() {
   if (!fittingLoadedData.hasData) {
     return 1;
   }
-  std::stringstream fs(fittingLoadedData.fileContents);
+  std::stringstream fs(fittingLoadedData.contents_);
 
   int64_t maxFileSize = 16384;
   int64_t currentRow = 0;
@@ -254,13 +254,13 @@ double simulationParameterSet::saveSlurmScript(
   while (startPosition != std::string::npos) {
     workingString = workingString.substr(startPosition + 1);
     std::size_t endPosition = workingString.find_first_of('\"');
-    loadedInputData newData(workingString.substr(0, endPosition));
-    std::size_t pos = modifiedString.find(newData.filePath);
-    modifiedString.replace(pos, newData.filePath.length(),
-                           getBasename(newData.filePath));
-    mz_zip_writer_add_mem(&zip, getBasename(newData.filePath).c_str(),
-                          newData.fileContents.c_str(),
-                          newData.fileContents.size(), MZ_DEFAULT_COMPRESSION);
+    LoadedInputData newData(workingString.substr(0, endPosition));
+    std::size_t pos = modifiedString.find(newData.path_);
+    modifiedString.replace(pos, newData.path_.length(),
+                           getBasename(newData.path_));
+    mz_zip_writer_add_mem(&zip, getBasename(newData.path_).c_str(),
+                          newData.contents_.c_str(),
+                          newData.contents_.size(), MZ_DEFAULT_COMPRESSION);
     workingString = workingString.substr(endPosition + 1);
     startPosition = workingString.find_first_of('\"');
   }
@@ -336,29 +336,29 @@ double simulationParameterSet::saveSlurmScript(
                           settings.c_str(), settings.size(),
                           MZ_DEFAULT_COMPRESSION);
   }
-  loadedInputData dbData(db.path);
+  LoadedInputData dbData(db.path);
   mz_zip_writer_add_mem(&zip, "CrystalDatabase.txt",
-                        dbData.fileContents.c_str(), dbData.fileContents.size(),
+                        dbData.contents_.c_str(), dbData.contents_.size(),
                         MZ_DEFAULT_COMPRESSION);
   std::string FittingTargetPath = outputBasePath + "_fittingTarget.dat";
   std::string Pulse1Path = outputBasePath + "_pulse1.dat";
   std::string Pulse2Path = outputBasePath + "_pulse2.dat";
   if (pulse1LoadedData.hasData) {
     mz_zip_writer_add_mem(&zip, getBasename(Pulse1Path).c_str(),
-                          pulse1LoadedData.fileContents.c_str(),
-                          pulse1LoadedData.fileContents.size(),
+                          pulse1LoadedData.contents_.c_str(),
+                          pulse1LoadedData.contents_.size(),
                           MZ_DEFAULT_COMPRESSION);
   }
   if (pulse2LoadedData.hasData) {
     mz_zip_writer_add_mem(&zip, getBasename(Pulse2Path).c_str(),
-                          pulse2LoadedData.fileContents.c_str(),
-                          pulse2LoadedData.fileContents.size(),
+                          pulse2LoadedData.contents_.c_str(),
+                          pulse2LoadedData.contents_.size(),
                           MZ_DEFAULT_COMPRESSION);
   }
   if (fittingLoadedData.hasData) {
     mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(),
-                          fittingLoadedData.fileContents.c_str(),
-                          fittingLoadedData.fileContents.size(),
+                          fittingLoadedData.contents_.c_str(),
+                          fittingLoadedData.contents_.size(),
                           MZ_DEFAULT_COMPRESSION);
   }
   if (!optics.empty()) {
@@ -366,8 +366,8 @@ double simulationParameterSet::saveSlurmScript(
       std::string opticPath =
           outputBasePath + "_optic" + std::to_string(i) + ".txt";
       mz_zip_writer_add_mem(
-          &zip, getBasename(opticPath).c_str(), optics[i].fileContents.c_str(),
-          optics[i].fileContents.size(), MZ_DEFAULT_COMPRESSION);
+          &zip, getBasename(opticPath).c_str(), optics[i].contents_.c_str(),
+          optics[i].contents_.size(), MZ_DEFAULT_COMPRESSION);
     }
   }
 
@@ -379,9 +379,9 @@ double simulationParameterSet::saveSlurmScript(
 
 std::string simulationParameterSet::settingsString() {
   std::string baseName = getBasename(outputBasePath);
-  std::string referenceBaseName = getBasename(fittingLoadedData.filePath);
-  std::string pulse1BaseName = getBasename(pulse1LoadedData.filePath);
-  std::string pulse2BaseName = getBasename(pulse2LoadedData.filePath);
+  std::string referenceBaseName = getBasename(fittingLoadedData.path_);
+  std::string pulse1BaseName = getBasename(pulse1LoadedData.path_);
+  std::string pulse2BaseName = getBasename(pulse2LoadedData.path_);
   std::stringstream fs;
   fs.precision(15);
 
@@ -466,9 +466,9 @@ std::string simulationParameterSet::settingsString() {
     fs << "Output base path: " << outputBasePath << '\x0A';
     fs << "Field 1 from file type: " << pulse1FileType << '\x0A';
     fs << "Field 2 from file type: " << pulse2FileType << '\x0A';
-    fs << "Field 1 file path: " << pulse1LoadedData.filePath << '\x0A';
-    fs << "Field 2 file path: " << pulse2LoadedData.filePath << '\x0A';
-    fs << "Fitting reference file path: " << fittingLoadedData.filePath
+    fs << "Field 1 file path: " << pulse1LoadedData.path_ << '\x0A';
+    fs << "Field 2 file path: " << pulse2LoadedData.path_ << '\x0A';
+    fs << "Fitting reference file path: " << fittingLoadedData.path_
        << '\x0A';
   }
 
@@ -768,13 +768,13 @@ int simulationParameterSet::readInputParametersFile(
   pulse2FileType = static_cast<int>(find_label_get_double("Field 1 from file type"));
 
   std::string path = find_label_get_string("Field 1 file path");
-  pulse1LoadedData = loadedInputData(path);
+  pulse1LoadedData = LoadedInputData(path);
 
 
   path = find_label_get_string("Field 2 file path");
-  pulse2LoadedData = loadedInputData(path);
+  pulse2LoadedData = LoadedInputData(path);
   path = find_label_get_string("Fitting reference file path");
-  fittingLoadedData = loadedInputData(path);
+  fittingLoadedData = LoadedInputData(path);
 
   // derived parameters and cleanup:
   sellmeierType = 0;
@@ -1045,7 +1045,7 @@ void simulationBatch::loadOptics(const std::string &zipPath) {
       break;
     if (ind == 0)
       optics.clear();
-    loadedInputData file(zipPath, currentFile);
+    LoadedInputData file(zipPath, currentFile);
     optics.push_back(file);
     ind++;
   }
@@ -1075,20 +1075,20 @@ int simulationBatch::saveDataSet() {
                         MZ_DEFAULT_COMPRESSION);
   if (parameters[0].pulse1LoadedData.hasData) {
     mz_zip_writer_add_mem(&zip, getBasename(Pulse1Path).c_str(),
-                          parameters[0].pulse1LoadedData.fileContents.c_str(),
-                          parameters[0].pulse1LoadedData.fileContents.size(),
+                          parameters[0].pulse1LoadedData.contents_.c_str(),
+                          parameters[0].pulse1LoadedData.contents_.size(),
                           MZ_DEFAULT_COMPRESSION);
   }
   if (parameters[0].pulse2LoadedData.hasData) {
     mz_zip_writer_add_mem(&zip, getBasename(Pulse2Path).c_str(),
-                          parameters[0].pulse2LoadedData.fileContents.c_str(),
-                          parameters[0].pulse2LoadedData.fileContents.size(),
+                          parameters[0].pulse2LoadedData.contents_.c_str(),
+                          parameters[0].pulse2LoadedData.contents_.size(),
                           MZ_DEFAULT_COMPRESSION);
   }
   if (parameters[0].fittingLoadedData.hasData) {
     mz_zip_writer_add_mem(&zip, getBasename(FittingTargetPath).c_str(),
-                          parameters[0].fittingLoadedData.fileContents.c_str(),
-                          parameters[0].fittingLoadedData.fileContents.size(),
+                          parameters[0].fittingLoadedData.contents_.c_str(),
+                          parameters[0].fittingLoadedData.contents_.size(),
                           MZ_DEFAULT_COMPRESSION);
   }
   if (parameters[0].optics.size() > 0) {
@@ -1096,8 +1096,8 @@ int simulationBatch::saveDataSet() {
       std::string opticPath =
           parameters[0].outputBasePath + "_optic" + std::to_string(i) + ".txt";
       mz_zip_writer_add_mem(
-          &zip, getBasename(opticPath).c_str(), optics[i].fileContents.c_str(),
-          optics[i].fileContents.size(), MZ_DEFAULT_COMPRESSION);
+          &zip, getBasename(opticPath).c_str(), optics[i].contents_.c_str(),
+          optics[i].contents_.size(), MZ_DEFAULT_COMPRESSION);
     }
   }
   mz_zip_writer_finalize_archive(&zip);

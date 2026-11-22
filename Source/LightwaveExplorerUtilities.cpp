@@ -222,13 +222,13 @@ inline double cModulusSquared(const std::complex<double>& x) {
 }
 
 int loadFrogSpeck(
-	const loadedInputData& frogSpeckData,
+	const LoadedInputData& frogSpeckData,
 	std::complex<double>* Egrid,
 	const int64_t Ntime,
 	const double fStep,
 	const double gateLevel) {
 	std::string line;
-	std::stringstream fs(frogSpeckData.fileContents);
+	std::stringstream fs(frogSpeckData.contents_);
 	const int maxFileSize = 16384;
 	double wavelength, R, phi, complexX, complexY, f, f0, f1;
 	double fmax{};
@@ -294,13 +294,13 @@ int loadFrogSpeck(
 }
 
 int loadWaveformFile(
-	const loadedInputData& waveformFile,
+	const LoadedInputData& waveformFile,
 	std::complex<double>* outputGrid,
 	const int64_t Ntime,
 	const double fStep) {
 	std::vector<double> Ein;
 	Ein.reserve(8192);
-	std::stringstream fs(waveformFile.fileContents);
+	std::stringstream fs(waveformFile.contents_);
 	std::string line;
 
 	//read the waveform file: assumption is that the first column
@@ -375,12 +375,12 @@ int loadWaveformFile(
 }
 
 int loadSavedGridFile(
-	const loadedInputData& file,
+	const LoadedInputData& file,
 	std::vector<double>& outputGrid,
 	const int64_t Ngrid) {
 	outputGrid.resize(Ngrid);
 	if (file.hasData) {
-		std::stringstream Efile(file.fileContents);
+		std::stringstream Efile(file.contents_);
 		Efile.read(
 			reinterpret_cast<char*>(outputGrid.data()),
 			2 * Ngrid * sizeof(double));
@@ -390,13 +390,13 @@ int loadSavedGridFile(
 }
 
 int loadSavedGridFileMultiple(
-	const loadedInputData& file,
+	const LoadedInputData& file,
 	std::vector<double>& outputGrid,
 	const int64_t Ngrid,
 	const int64_t Nsims) {
 	outputGrid.resize(Ngrid * Nsims);
 	if (file.hasData) {
-		std::stringstream Efile(file.fileContents);
+		std::stringstream Efile(file.contents_);
 		Efile.read(reinterpret_cast<char*>(outputGrid.data()), 2 * Ngrid * Nsims * sizeof(double));
 		return 0;
 	}

@@ -528,7 +528,7 @@ namespace hostFunctions{
 			copyType::ToDevice);
 		d.fft(d.s->gridETime1, d.s->gridEFrequency1, deviceFFT::D2Z_1D);
 		std::vector<std::complex<deviceFP>> complexReflectivity =
-			sCPU.optics[index].toComplexSpectrum<deviceFP>(sCPU.Nfreq,sCPU.fStep);
+			sCPU.optics[index].to_complex_spectrum<deviceFP>(sCPU.Nfreq,sCPU.fStep);
 		d.deviceMemcpy(
 			d.s->gridPropagationFactor1,
 			complexReflectivity.data(),
@@ -1680,7 +1680,7 @@ namespace hostFunctions{
 			int64_t NmaterialPoints = 0;
 			std::vector<int8_t> materialMapCPU(maxCalc.Ngrid, 0);
 			std::vector<int64_t> oscillatorIndexMapCPU(maxCalc.Ngrid, 0);
-			std::stringstream fs(sCPU->optics[gridIndex].fileContents);
+			std::stringstream fs(sCPU->optics[gridIndex].contents_);
 
 			if (fs.good()) {
 				auto moveToColon = [&]() {
@@ -2494,7 +2494,7 @@ namespace hostFunctions{
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 		case functionID("loadOptic"):{
-				loadedInputData file(cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
+				LoadedInputData file(cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
 				if(file.hasData) (*sCPU).optics.push_back(file);
 				else throw std::runtime_error("loadOptic failed, check the file path. If you are using the Flatpak version, load the optic using the load optic button.");
 			}
