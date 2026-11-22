@@ -16,39 +16,39 @@ int hardwareCheck(int* CUDAdeviceCount) {
 
 
 [[maybe_unused]]static std::complex<double> operator+(
-	const float f, 
-	const std::complex<double> x) { 
-	return std::complex<double>(x.real() + f, x.imag()); 
+	const float f,
+	const std::complex<double> x) {
+	return std::complex<double>(x.real() + f, x.imag());
 }
 
 [[maybe_unused]] static std::complex<double> operator+(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() + f, x.imag()); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() + f, x.imag());
 }
 
 [[maybe_unused]] static std::complex<double> operator-(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() - f, x.imag()); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() - f, x.imag());
 }
 
 [[maybe_unused]] static std::complex<double> operator*(
-	const float f, 
-	const std::complex<double> x) { 
-	return std::complex<double>(x.real() * f, x.imag() * f); 
+	const float f,
+	const std::complex<double> x) {
+	return std::complex<double>(x.real() * f, x.imag() * f);
 }
 
 [[maybe_unused]] static std::complex<double> operator*(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() * f, x.imag() * f); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() * f, x.imag() * f);
 }
 
 [[maybe_unused]] static std::complex<double> operator/(
-	const std::complex<double> x, 
-	const float f) { 
-	return std::complex<double>(x.real() / f, x.imag() / f); 
+	const std::complex<double> x,
+	const float f) {
+	return std::complex<double>(x.real() / f, x.imag() / f);
 }
 
 
@@ -68,7 +68,7 @@ public:
 	deviceParameterSet<deviceFP, deviceComplex> deviceStruct;
 	deviceParameterSet<deviceFP, deviceComplex>* s;
 	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
-	counterDevice(simulationParameterSet* sCPU) {
+	counterDevice(SimulationParameterSet* sCPU) {
 		s = &deviceStruct;
 		memoryStatus = 0;
 		configuredFFT = true;
@@ -88,7 +88,7 @@ public:
 		return false;
 	}
 
-	void reset(simulationParameterSet* sCPU) override {
+	void reset(SimulationParameterSet* sCPU) override {
 	    cParams = sCPU;
 		sCPU->initializeDeviceParameters(s);
 	}

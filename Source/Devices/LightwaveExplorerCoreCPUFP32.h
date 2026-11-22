@@ -1,6 +1,6 @@
 #undef RUNONSYCL
 #include "../LightwaveExplorerUtilities.h"
-unsigned long	solveNonlinearWaveEquationCPU(simulationParameterSet* lpParam);
-unsigned long   solveNonlinearWaveEquationSequenceCPU(simulationParameterSet* lpParam);
+unsigned long	solveNonlinearWaveEquationCPU(SimulationParameterSet* lpParam);
+unsigned long   solveNonlinearWaveEquationSequenceCPU(SimulationParameterSet* lpParam);
 int             mainCPU(int argc, char* filepath);
-unsigned long	runDlibFittingCPU(simulationParameterSet* sCPU);
+unsigned long	runDlibFittingCPU(SimulationParameterSet* sCPU);

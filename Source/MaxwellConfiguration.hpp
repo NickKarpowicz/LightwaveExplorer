@@ -96,7 +96,7 @@ public:
             rotateBackward[i][crystalNumber] = static_cast<deviceFP>(backward[i]);
         }
     }
-    maxwellCalculation(simulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
+    maxwellCalculation(SimulationParameterSet* s, int64_t timeFactor, deviceFP zStep_in, deviceFP frontBuffer_in, deviceFP backBuffer_in) {
         frontBuffer = frontBuffer_in;
         backBuffer = backBuffer_in;
         crystalThickness = (*s).crystalThickness;

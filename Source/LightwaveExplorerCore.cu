@@ -9,13 +9,13 @@ enum class FDTD_output {
 	xy, xz, zy
 };
 namespace hostFunctions{
-	static simulationParameterSet* fittingSet;
+	static SimulationParameterSet* fittingSet;
 	static ActiveDevice* dFit;
 
 	//forward declarations when useful
 	static unsigned long int solveFDTD(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		int64_t tFactor,
 		deviceFP dz,
 		deviceFP frontBuffer,
@@ -86,7 +86,7 @@ namespace hostFunctions{
 		return std::complex<double>(1.0,0.0);
 	};
 	static int getTotalSpectrum(ActiveDevice& d) {
-		simulationParameterSet* sCPU = d.cParams;
+		SimulationParameterSet* sCPU = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 
 		d.deviceMemset((*sc).workspace1, 0, 2 * (*sc).NgridC * sizeof(deviceComplex));
@@ -157,7 +157,7 @@ namespace hostFunctions{
 		const bool useLoadedField,
 		const std::complex<double>* loadedFieldIn) {
 		if(pCPU.energy == 0.0) return 0;
-		simulationParameterSet* s = d.cParams;
+		SimulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 		deviceParameterSet<deviceFP, deviceComplex>* scDevice = d.dParamsDevice;
 		Pulse<deviceFP>* p;
@@ -305,7 +305,7 @@ namespace hostFunctions{
 
 	static int prepareElectricFieldArrays(ActiveDevice& d) {
 
-		simulationParameterSet* s = d.cParams;
+		SimulationParameterSet* s = d.cParams;
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
 
 		d.deviceMemcpy(
@@ -393,7 +393,7 @@ namespace hostFunctions{
 
 	static int applyFresnelLoss(
 		ActiveDevice& d,
-		simulationParameterSet* s,
+		SimulationParameterSet* s,
 		deviceParameterSet<deviceFP,
 		deviceComplex>& sc,
 		int materialIndex1,
@@ -465,7 +465,7 @@ namespace hostFunctions{
 	}
 
 	static int applyFilter(ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		const double f0,
 		const double bandwidth,
 		const double order,
@@ -517,7 +517,7 @@ namespace hostFunctions{
 
 	static int applyOptic(
 		ActiveDevice& d,
-		simulationParameterSet& sCPU,
+		SimulationParameterSet& sCPU,
 		const int index,
 		const bool applyX,
 		const bool applyY){
@@ -558,7 +558,7 @@ namespace hostFunctions{
 
 	static int applyLorenzian(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		const double amplitude,
 		const double f0,
 		const double gamma,
@@ -605,7 +605,7 @@ namespace hostFunctions{
 
 	static int applyAperatureFarFieldHankel(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		double diameter,
 		double activationParameter,
 		double xOffset,
@@ -644,7 +644,7 @@ namespace hostFunctions{
 
 	static int applyInverseAperatureFarFieldHankel(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		double diameter,
 		double activationParameter,
 		double xOffset,
@@ -683,7 +683,7 @@ namespace hostFunctions{
 
 	static int applyAperatureFarField(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		double diameter,
 		double activationParameter,
 		double xOffset,
@@ -731,7 +731,7 @@ namespace hostFunctions{
 
 	static int applyInverseAperatureFarField(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		double diameter,
 		double activationParameter,
 		double xOffset,
@@ -779,7 +779,7 @@ namespace hostFunctions{
 
 	static int applyAperature(
 		ActiveDevice& d,
-		const simulationParameterSet* sCPU,
+		const SimulationParameterSet* sCPU,
 		const double diameter,
 		const double activationParameter,
         const double x_offset=0.0,
@@ -817,7 +817,7 @@ namespace hostFunctions{
 
 	static int applySphericalMirror(
 		ActiveDevice& d,
-		const simulationParameterSet* sCPU,
+		const SimulationParameterSet* sCPU,
 		deviceParameterSet<deviceFP, deviceComplex>& s,
 		const double ROC) {
 
@@ -861,7 +861,7 @@ namespace hostFunctions{
 	}
 
 	static int applyParabolicMirror(ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		deviceParameterSet<deviceFP, deviceComplex>& s,
 		const double focus) {
 
@@ -900,12 +900,12 @@ namespace hostFunctions{
 
 	static int applyLinearPropagation(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		const int materialIndex,
 		const double thickness) {
 
 		if (d.s->hasPlasma) {
-			simulationParameterSet sCopy = *sCPU;
+			SimulationParameterSet sCopy = *sCPU;
 			sCopy.nonlinearAbsorptionStrength = 0.0;
 			d.reset(&sCopy);
 		}
@@ -973,7 +973,7 @@ namespace hostFunctions{
 		ActiveDevice& d) {
 
 		deviceParameterSet<deviceFP, deviceComplex>* sc = d.s;
-		simulationParameterSet* s = d.cParams;
+		SimulationParameterSet* s = d.cParams;
 		deviceFP* sellmeierCoefficients = (deviceFP*)(*sc).gridEFrequency1Next1;
 		//construct augmented sellmeier coefficients used in the kernel to find the walkoff angles
 		double sellmeierCoefficientsAugmentedCPU[79];
@@ -1041,7 +1041,7 @@ namespace hostFunctions{
 	// after simulations finish... and this only runs at the end of the simulation
 	static int rotateField(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		const double rotationAngle) {
 
 		deviceComplex* Ein1 = d.s->gridEFrequency1;
@@ -1102,7 +1102,7 @@ namespace hostFunctions{
 	//apply a polarizer to the field -- nearly same pattern as rotateField
 	static int applyPolarizer(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		const double rotationAngle) {
 
 		deviceComplex* Ein1 = d.s->gridEFrequency1;
@@ -1150,7 +1150,7 @@ namespace hostFunctions{
 
 	static void rotateBiaxial(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		int materialIndex,
 		double theta,
 		double phi,
@@ -1405,7 +1405,7 @@ namespace hostFunctions{
 
 	static unsigned long int solveNonlinearWaveEquationWithDevice(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU) {
+		SimulationParameterSet* sCPU) {
 
 		if (sCPU->isFDTD) {
 			return solveFDTD(d, sCPU, 5, 0, 1e-6, 1e-6);
@@ -1497,7 +1497,7 @@ namespace hostFunctions{
 
 	template<typename maxwellType>
 	static void calculateFDTDParameters(
-		const simulationParameterSet* sCPU,
+		const SimulationParameterSet* sCPU,
 		maxwellType& maxCalc,
 		int mapValue = 0){
 
@@ -1669,7 +1669,7 @@ namespace hostFunctions{
 
 	static void prepareFDTD(
 		ActiveDevice& d,
-		const simulationParameterSet* sCPU,
+		const SimulationParameterSet* sCPU,
 		maxwell3D& maxCalc,
 		const int gridIndex = -1) {
 
@@ -1885,7 +1885,7 @@ namespace hostFunctions{
 
 	static unsigned long int solveFDTD(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU,
+		SimulationParameterSet* sCPU,
 		int64_t tFactor,
 		deviceFP dz,
 		deviceFP frontBuffer,
@@ -1898,7 +1898,7 @@ namespace hostFunctions{
 
 		//initialize the grid if necessary
 		if (!sCPU->isFollowerInSequence) {
-			simulationParameterSet sCPUcopy = *sCPU;
+			SimulationParameterSet sCPUcopy = *sCPU;
 
 			sCPUcopy.materialIndex = 0;
 			sCPUcopy.crystalTheta = 0.0;
@@ -2067,7 +2067,7 @@ namespace hostFunctions{
 		const double* iBlock,
 		double* vBlock,
 		ActiveDevice& d,
-		simulationParameterSet *sCPU) {
+		SimulationParameterSet *sCPU) {
 		if (cc.size() == 0) return 0;
 		crystalEntry* db = (*sCPU).crystalDatabase;
 		int error = 0;
@@ -2563,7 +2563,7 @@ namespace hostFunctions{
 				std::string currentString = cc.substr(cc.find_first_of('{') + 1, std::string::npos);
 				std::string forStartString = currentString;
 				vBlock[targetVar] = 0.0;
-				simulationParameterSet backupSet = *sCPU;
+				SimulationParameterSet backupSet = *sCPU;
 				for (int i = 0; i < counter; i++) {
 
 					while (currentString.length() > 0 && currentString.at(0) != '}') {
@@ -2607,7 +2607,7 @@ namespace hostFunctions{
 
 	static int solveSequenceWithDevice(
 		ActiveDevice& d,
-		simulationParameterSet* sCPU) {
+		SimulationParameterSet* sCPU) {
 
 		int error = 0;
 		//if it starts with 0, it's an old sequence; quit
@@ -2624,7 +2624,7 @@ namespace hostFunctions{
 
 		double vBlock[100] = { 0.0 };
 		std::string currentString((*sCPU).sequenceString);
-		simulationParameterSet backupSet = *sCPU;
+		SimulationParameterSet backupSet = *sCPU;
 		//shortest command is for(), if there's only 4 characters left, it can only
 		//be whitespace or other trailing symbols, and even then something is wrong,
 		//since for should be followed by a loop... next shortest is init(), and that
@@ -2740,14 +2740,14 @@ using namespace hostFunctions;
 //Main (non sequence) solver. New device typeps should have a unique definition of the name
 // e.g. solveNonlinearWaveEquationSYCL so that the correct one may be called. That's why it's
 // a preprocessor definition here.
-unsigned long solveNonlinearWaveEquationX(simulationParameterSet* sCPU) {
+unsigned long solveNonlinearWaveEquationX(SimulationParameterSet* sCPU) {
 	ActiveDevice d(sCPU);
 	if (d.memoryStatus) return 1;
 	return solveNonlinearWaveEquationWithDevice(d, sCPU);
 }
 
 // Main function for running a sequence
-unsigned long solveNonlinearWaveEquationSequenceX(simulationParameterSet* sCPU) {
+unsigned long solveNonlinearWaveEquationSequenceX(SimulationParameterSet* sCPU) {
 	if ((*sCPU).batchIndex == 36 && (*sCPU).batchLoc1 != 0) return 0;
 	ActiveDevice d(sCPU);
 	if (d.memoryStatus) return 1;
@@ -2755,8 +2755,8 @@ unsigned long solveNonlinearWaveEquationSequenceX(simulationParameterSet* sCPU) 
 }
 
 //run in fitting mode
-unsigned long runDlibFittingX(simulationParameterSet* sCPU) {
-	simulationParameterSet sCPUcurrent = *sCPU;
+unsigned long runDlibFittingX(SimulationParameterSet* sCPU) {
+	SimulationParameterSet sCPUcurrent = *sCPU;
 	fittingSet = &sCPUcurrent;
 	ActiveDevice d(fittingSet);
 	dFit = &d;

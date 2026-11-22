@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
 	// read optics files if there are any
 	int opticCount = 0;
 	while(true){
-		loadedInputData newOptic(theSim.base().outputBasePath + "_optic" + std::to_string(opticCount) + ".txt");
+		LoadedInputData newOptic(theSim.base().outputBasePath + "_optic" + std::to_string(opticCount) + ".txt");
 		if(newOptic.hasData) theSim.optics.push_back(newOptic);
 		else break;
 		opticCount++;
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]){
 
 	if ((theSim.sCPU()->sequenceString[0] != 'N') && theSim.sCPU()->sequenceString[0] != 0) theSim.sCPU()->isInSequence = true;
 	theSim.configure();
-	simulationParameterSet* sCPU = theSim.sCPU();
+	SimulationParameterSet* sCPU = theSim.sCPU();
 	auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
 	if ((*sCPU).Nfitting != 0) {

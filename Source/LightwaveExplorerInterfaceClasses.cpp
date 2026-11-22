@@ -4,7 +4,7 @@
 #include "ExternalLibraries/pocketfft_hdronly.h"
 #include <algorithm>
 
-int simulationParameterSet::loadSavedFields(const std::string &outputBase,
+int SimulationParameterSet::loadSavedFields(const std::string &outputBase,
                                             bool isZipFile) {
   if (isZipFile) {
     std::string zipPath = outputBase + ".zip";
@@ -62,7 +62,7 @@ int simulationParameterSet::loadSavedFields(const std::string &outputBase,
   return 0;
 }
 
-int simulationParameterSet::loadReferenceSpectrum() {
+int SimulationParameterSet::loadReferenceSpectrum() {
   if (!fittingLoadedData.hasData) {
     return 1;
   }
@@ -129,9 +129,9 @@ int simulationParameterSet::loadReferenceSpectrum() {
   return 0;
 }
 
-double simulationParameterSet::saveSlurmScript(
+double SimulationParameterSet::saveSlurmScript(
     const std::string &gpuType, int gpuCount, bool useJobArray,
-    int64_t totalSteps, std::vector<simulationParameterSet> &params,
+    int64_t totalSteps, std::vector<SimulationParameterSet> &params,
     const class crystalDatabase &db) {
   std::string scriptPath = getBasename(outputBasePath) + ".slurmScript";
   std::string Zpath = outputBasePath + ".zip";
@@ -289,7 +289,7 @@ double simulationParameterSet::saveSlurmScript(
     }
     for (int64_t i = 0; i < loopNsims2; ++i) {
       for (int64_t j = 0; j < loopNsims; ++j) {
-        simulationParameterSet arraySim = params[i * loopNsims + j];
+        SimulationParameterSet arraySim = params[i * loopNsims + j];
         arraySim.Nsims = 1;
         arraySim.Nsims2 = 1;
         std::ostringstream oss;
@@ -377,7 +377,7 @@ double simulationParameterSet::saveSlurmScript(
   return timeEstimate / 3600.0;
 }
 
-std::string simulationParameterSet::settingsString() {
+std::string SimulationParameterSet::settingsString() {
   std::string baseName = getBasename(outputBasePath);
   std::string referenceBaseName = getBasename(fittingLoadedData.path_);
   std::string pulse1BaseName = getBasename(pulse1LoadedData.path_);
@@ -493,7 +493,7 @@ std::string simulationParameterSet::settingsString() {
   return fs.str();
 }
 
-int simulationParameterSet::saveSettingsFile() {
+int SimulationParameterSet::saveSettingsFile() {
   std::string outputPath(outputBasePath);
   if (runType == runTypes::cluster) {
     outputPath.append(".input");
@@ -507,7 +507,7 @@ int simulationParameterSet::saveSettingsFile() {
   return 0;
 }
 
-void simulationParameterSet::setByNumber(const int64_t index,
+void SimulationParameterSet::setByNumber(const int64_t index,
                                          const double value) {
   switch (index) {
   case 0:
@@ -627,14 +627,14 @@ void simulationParameterSet::setByNumber(const int64_t index,
   }
 }
 
-void simulationParameterSet::setByNumberWithMultiplier(const std::size_t index,
+void SimulationParameterSet::setByNumberWithMultiplier(const std::size_t index,
                                                        const double value) {
   if (index > multipliers.size())
     return;
   setByNumber(index, value * multipliers[index]);
 }
 
-int simulationParameterSet::readInputParametersFile(
+int SimulationParameterSet::readInputParametersFile(
     crystalEntry *crystalDatabasePtr, const std::string filePath) {
   std::string contents;
   if (filePath.length() >= 4 &&
@@ -844,7 +844,7 @@ void simulationBatch::configure(bool allocateFields) {
   Nsimstotal = Nsims * Nsims2;
   Ngrid = parameters[0].Ngrid;
   NgridC = parameters[0].NgridC;
-  simulationParameterSet base = parameters[0];
+  SimulationParameterSet base = parameters[0];
   parameters.resize(Nsimstotal, base);
   std::for_each(mutexes.begin(), mutexes.end(), [](std::shared_mutex &m) {
     std::lock_guard<std::shared_mutex> lock(m);
@@ -942,7 +942,7 @@ void simulationBatch::configureCounter() {
   Nsimstotal = Nsims * Nsims2;
   Ngrid = parameters[0].Ngrid;
   NgridC = parameters[0].NgridC;
-  simulationParameterSet base = parameters[0];
+  SimulationParameterSet base = parameters[0];
   parameters.resize(Nsimstotal, base);
   std::for_each(mutexes.begin(), mutexes.end(), [](std::shared_mutex &m) {
     std::lock_guard<std::shared_mutex> lock(m);
@@ -1108,7 +1108,7 @@ int simulationBatch::saveDataSet() {
   return 0;
 }
 
-int simulationParameterSet::readFittingString() {
+int SimulationParameterSet::readFittingString() {
   removeCharacterFromString(fittingString, '\r');
   removeCharacterFromString(fittingString, '\n');
   removeCharacterFromString(fittingString, '\t');

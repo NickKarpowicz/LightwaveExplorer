@@ -119,7 +119,7 @@ class LoadedInputData {
 //Simulation parameter class containing the complete description of the running simulation
 //intended only to be present on the CPU, as certain contents (std::array, std::string) can not
 //be assumed to be implemented on the device.
-class simulationParameterSet {
+class SimulationParameterSet {
 public:
     double rStep = 0;
     double tStep = 0;
@@ -335,7 +335,7 @@ public:
     int readInputParametersFile(crystalEntry* crystalDatabasePtr, const std::string filePath);
     std::string settingsString();
     int saveSettingsFile();
-    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<simulationParameterSet>& params, const class crystalDatabase& db);
+    double saveSlurmScript(const std::string& gpuType, int gpuCount, bool useJobArray, int64_t totalSteps, std::vector<SimulationParameterSet>& params, const class crystalDatabase& db);
     int readFittingString();
 
 
@@ -472,11 +472,11 @@ class simulationBatch {
     int64_t NgridC = 0;
 public:
     std::vector<LoadedInputData> optics;
-    std::vector<simulationParameterSet> parameters;
+    std::vector<SimulationParameterSet> parameters;
     std::vector<std::shared_mutex> mutexes = std::vector<std::shared_mutex>(1);
 
     simulationBatch() {
-        parameters = std::vector<simulationParameterSet>(1);
+        parameters = std::vector<SimulationParameterSet>(1);
     }
     ~simulationBatch() {
         std::for_each(mutexes.begin(), mutexes.end(),
@@ -496,14 +496,14 @@ public:
     [[nodiscard]] double* getTotalSpectrum(int64_t i) {
         return &totalSpectrum.data()[i * 3 * Nfreq];
     }
-    [[nodiscard]] std::vector<simulationParameterSet>& getParameterVector() {
+    [[nodiscard]] std::vector<SimulationParameterSet>& getParameterVector() {
         return parameters;
     }
-    [[nodiscard]] simulationParameterSet* sCPU() {
+    [[nodiscard]] SimulationParameterSet* sCPU() {
         return parameters.data();
     }
 
-    [[nodiscard]] simulationParameterSet& base() {
+    [[nodiscard]] SimulationParameterSet& base() {
         return parameters[0];
     }
 };
@@ -533,7 +533,7 @@ struct VisualizationAllocation{
     std::mutex memoryMutex;
     VisualizationAllocation(){}
 
-    VisualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, simulationParameterSet* sCPU) :
+    VisualizationAllocation(LWEDevice* d, int64_t init_width, int64_t init_height, SimulationParameterSet* sCPU) :
         parentDevice(d),
         width(init_width),
         height(init_height),
@@ -579,7 +579,7 @@ struct VisualizationAllocation{
 
 
 
-    void fetchSim(simulationParameterSet* sCPU, int64_t simIndex){
+    void fetchSim(SimulationParameterSet* sCPU, int64_t simIndex){
         parentDevice->deviceMemcpy(
             gridTimeSpace.device_ptr(),
             sCPU->ExtOut + 2*Ngrid*simIndex, 2 * Ngrid * sizeof(double),
@@ -605,7 +605,7 @@ struct VisualizationAllocation{
         width = new_width;
     }
 
-    void setSimulationDimensions(simulationParameterSet* sCPU){
+    void setSimulationDimensions(SimulationParameterSet* sCPU){
         if(Nt != sCPU->Ntime || Nx != sCPU->Nspace || Ny != sCPU->Nspace2){
             Nt = sCPU->Ntime;
             Nx = sCPU->Nspace;
@@ -652,7 +652,7 @@ struct UPPEAllocation{
 
     UPPEAllocation(){}
 
-    UPPEAllocation(LWEDevice* d, simulationParameterSet* sCPU) :
+    UPPEAllocation(LWEDevice* d, SimulationParameterSet* sCPU) :
     hasPlasma(sCPU->nonlinearAbsorptionStrength > 0.0 || sCPU->startingCarrierDensity > 0.0),
     isCylindric(sCPU->isCylindric),
     beamExpansionFactor(1 + isCylindric + 2 * isCylindric * hasPlasma),
@@ -730,7 +730,7 @@ struct UPPEAllocation{
         parameterSet.workspace1 = workspace.device_ptr();
         parameterSet.gridRadialLaplacian1 = gridRadialLaplacian.device_ptr();
     }
-    void useNewParameterSet(simulationParameterSet* sCPU){
+    void useNewParameterSet(SimulationParameterSet* sCPU){
         bool newSetHasPlasma = ((sCPU->nonlinearAbsorptionStrength != 0.0) || sCPU->startingCarrierDensity != 0.0);
         bool newSetIsCylindric = sCPU->isCylindric;
         bool plasmaMismatch = hasPlasma != newSetHasPlasma;
@@ -776,7 +776,7 @@ enum class CoordinateMode{
 };
 
 struct VisualizationConfig{
-    simulationParameterSet* sCPU;
+    SimulationParameterSet* sCPU;
     VisualizationType type;
     float amplification = 1.0f;
     float dt = 0.0f;
@@ -809,7 +809,7 @@ struct VisualizationConfig{
     float blue_amplitude = 1.0f;
     bool rotate2D = false;
     std::vector<uint8_t>* result_pixels = nullptr;
-    VisualizationConfig(simulationParameterSet* sCPU_in, VisualizationType type_in) :
+    VisualizationConfig(SimulationParameterSet* sCPU_in, VisualizationType type_in) :
         sCPU(sCPU_in),
         type(type_in),
         dt(sCPU->tStep),

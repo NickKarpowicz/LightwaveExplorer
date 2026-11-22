@@ -1997,7 +1997,7 @@ public:
 
         QObject::connect(buttons["stop"], &QPushButton::clicked, [&](){
             if (theSim.base().isRunning) {
-                for(simulationParameterSet& sim : theSim.parameters){
+                for(SimulationParameterSet& sim : theSim.parameters){
                     sim.cancellationCalled = true;
                 }
             }
@@ -2384,7 +2384,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     theSim.base().cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
-    std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
+    std::vector<SimulationParameterSet> counterVector = theSim.getParameterVector();
     std::atomic_uint32_t& totalSteps = theGui.totalSteps;
     std::atomic_uint32_t& progressCounter = theGui.progressCounter;
     totalSteps = 0;
@@ -3169,7 +3169,7 @@ void createRunFile(LWEGui& theGui) {
     theSim.base().crystalDatabase = theGui.theDatabase.db.data();
     theSim.configureCounter();
 
-    std::vector<simulationParameterSet> counterVector = theSim.getParameterVector();
+    std::vector<SimulationParameterSet> counterVector = theSim.getParameterVector();
     theGui.totalSteps = 0;
     for (int64_t j = 0; j < theSim.base().Nsims * theSim.base().Nsims2; j++) {
         counterVector[j].progressCounter = &theGui.totalSteps;

@@ -18,7 +18,7 @@ template<typename T>
 concept FPType = std::same_as<T, float> || std::same_as<T, double>;
 
 //Forward declarations of interface classes
-class simulationParameterSet;
+class SimulationParameterSet;
 //Enum for determining the FFT type:
 // D2Z: real to complex (time to frequency)
 // Z2D: complex to real (f to t)
@@ -275,7 +275,7 @@ class NonlinearPropertyFlags{
 
 class LWEDevice{
     public:
-    simulationParameterSet* cParams;
+    SimulationParameterSet* cParams;
 	int memoryStatus = -1;
 	bool configuredFFT = false;
     bool visualizationOnly = false;
@@ -288,7 +288,7 @@ class LWEDevice{
 		copyType kind) = 0;
     virtual void deviceFree(void* block) = 0;
     virtual void fft(const void* input, void* output, deviceFFT type) = 0;
-    virtual void reset(simulationParameterSet* sCPU) = 0;
+    virtual void reset(SimulationParameterSet* sCPU) = 0;
 
     void deviceMemcpy(
 		void* dst,

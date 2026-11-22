@@ -110,9 +110,9 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui);
 void drawBeamThread(LWEGui& theGui, VisualizationConfig config);
 class simulationRun {
 public:
-    std::function<unsigned long(simulationParameterSet*)> normalFunction;
-    std::function<unsigned long(simulationParameterSet*)> sequenceFunction;
-    std::function<unsigned long(simulationParameterSet*)> fittingFunction;
+    std::function<unsigned long(SimulationParameterSet*)> normalFunction;
+    std::function<unsigned long(SimulationParameterSet*)> sequenceFunction;
+    std::function<unsigned long(SimulationParameterSet*)> fittingFunction;
     int assignedGPU{};
     bool forceCPU = false;
     bool useOpenMP = false;

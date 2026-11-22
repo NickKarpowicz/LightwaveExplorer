@@ -171,7 +171,7 @@ public:
 	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
 	std::unique_ptr<VisualizationAllocation<deviceComplex>> visualization;
 	using LWEDevice::deviceMemcpy;
-	CPUDevice(simulationParameterSet* sCPU) {
+	CPUDevice(SimulationParameterSet* sCPU) {
 		memoryStatus = allocateSet(sCPU);
 		s = &(allocation->parameterSet);
 	#ifdef __APPLE__
@@ -179,7 +179,7 @@ public:
 	#endif
 	}
 
-	CPUDevice(int64_t width, int64_t height, simulationParameterSet* sCPU){
+	CPUDevice(int64_t width, int64_t height, SimulationParameterSet* sCPU){
 		cParams = sCPU;
 		visualizationOnly = true;
 		visualization = std::make_unique<VisualizationAllocation<deviceComplex>>(this, width, height, sCPU);
@@ -375,7 +375,7 @@ public:
 		configuredFFT = true;
 	}
 
-	void reset(simulationParameterSet* sCPU) override {
+	void reset(SimulationParameterSet* sCPU) override {
 		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
 		cParams = sCPU;
 		if(visualizationOnly){
@@ -411,7 +411,7 @@ public:
 	#endif
 	}
 
-	int allocateSet(simulationParameterSet* sCPU) {
+	int allocateSet(SimulationParameterSet* sCPU) {
 		cParams = sCPU;
 		if(memoryStatus == 0) allocation = nullptr;
 		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
