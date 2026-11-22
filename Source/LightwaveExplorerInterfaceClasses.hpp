@@ -455,7 +455,7 @@ public:
     }
 };
 
-class simulationBatch {
+class SimulationBatch {
     std::vector<double> Ext;
     std::vector<std::complex<double>> Ekw;
     std::vector<std::complex<double>> loadedField1;
@@ -475,10 +475,10 @@ public:
     std::vector<SimulationParameterSet> parameters;
     std::vector<std::shared_mutex> mutexes = std::vector<std::shared_mutex>(1);
 
-    simulationBatch() {
+    SimulationBatch() {
         parameters = std::vector<SimulationParameterSet>(1);
     }
-    ~simulationBatch() {
+    ~SimulationBatch() {
         std::for_each(mutexes.begin(), mutexes.end(),
             [](std::shared_mutex& m) {std::lock_guard<std::shared_mutex> lock(m); });
     }

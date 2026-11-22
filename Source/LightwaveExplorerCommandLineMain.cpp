@@ -29,7 +29,7 @@ int main(int argc, char* argv[]){
 	}
 
 	// allocate databases, main structs
-	simulationBatch theSim;
+	SimulationBatch theSim;
 	crystalDatabase db;
 	theSim.base().crystalDatabase = db.db.data();
 	theSim.base().progressCounter = &progressCounter;

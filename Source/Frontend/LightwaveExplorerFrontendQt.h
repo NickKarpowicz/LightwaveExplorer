@@ -89,12 +89,12 @@ using CairoFunction = std::function<void(cairo_t*,int,int,LWEGui&)>;
 
 
 
-std::string checkLibraryAvailability(simulationBatch& theSim);
+std::string checkLibraryAvailability(SimulationBatch& theSim);
 void setInterfaceValuesToActiveValues();
 int insertAfterCharacter(std::string& s, char target, std::string appended);
 int insertAfterCharacterExcept(std::string& s, char target, std::string appended, std::string exclude);
 int formatSequence(std::string& s);
-void readDefaultValues(simulationBatch& sim, crystalDatabase& db);
+void readDefaultValues(SimulationBatch& sim, crystalDatabase& db);
 void loadFromPath(const std::string path);
 void saveThread();
 bool updateDisplay();
@@ -116,7 +116,7 @@ public:
     int assignedGPU{};
     bool forceCPU = false;
     bool useOpenMP = false;
-    simulationRun(int pulldownSelection, bool use64bitFloatingPoint, simulationBatch& theSim){
+    simulationRun(int pulldownSelection, bool use64bitFloatingPoint, SimulationBatch& theSim){
         sequenceFunction = use64bitFloatingPoint ?
             &solveNonlinearWaveEquationSequenceCPU : &solveNonlinearWaveEquationSequenceCPUFP32;
         normalFunction = use64bitFloatingPoint ?

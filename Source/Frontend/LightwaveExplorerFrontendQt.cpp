@@ -307,7 +307,7 @@ public:
 //Main data structures:
 // theSim contains all of the parameters of the current simulation including grid arrays
 // theDatabase is the database of crystal properties
-    simulationBatch theSim;
+    SimulationBatch theSim;
     crystalDatabase theDatabase;
 
 //Extra data structures
@@ -349,7 +349,7 @@ public:
         sequence->insertPlainText(s.c_str());
     }
 
-    void readParametersFromInterface(simulationBatch& sim) {
+    void readParametersFromInterface(SimulationBatch& sim) {
         auto setToDoubleMultiplier = [](QLineEdit* box, const double multiplier, double& value){;
             value = (box->text()).toDouble()/multiplier;
         };
@@ -644,7 +644,7 @@ public:
         sim.base().crystalDatabase = theDatabase.db.data();
     }
 
-    void setInterfaceValuesToActiveValues(simulationBatch& sim){
+    void setInterfaceValuesToActiveValues(SimulationBatch& sim){
         auto setToDouble = [](QLineEdit* box, const double value){
             QString s(std::format(std::string_view("{:g}"), value).c_str());
             box->setText(s);
@@ -2296,7 +2296,7 @@ void setSYCLvars(std::string& s) {
 }
 
 //ifdef guards are in place to only include CUDA/SYCL when they are being used
-std::string checkLibraryAvailability(simulationBatch& theSim) {
+std::string checkLibraryAvailability(SimulationBatch& theSim) {
     std::string s;
 #if defined CPUONLY
     theSim.base().CUDAavailable = false;
@@ -2379,7 +2379,7 @@ std::string checkLibraryAvailability(simulationBatch& theSim) {
 
 void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloadRun) {
 
-    simulationBatch& theSim = theGui.theSim;
+    SimulationBatch& theSim = theGui.theSim;
     int error = 0;
     theSim.base().cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
@@ -2521,7 +2521,7 @@ void mainSimThread(LWEGui& theGui, simulationRun theRun, simulationRun theOffloa
     theGui.messenger->passBeamViewRender();
 }
 void fittingThread(LWEGui& theGui,  simulationRun theRun) {
-    simulationBatch& theSim = theGui.theSim;
+    SimulationBatch& theSim = theGui.theSim;
     theSim.base().cancellationCalled = false;
     auto simulationTimerBegin = std::chrono::high_resolution_clock::now();
 
@@ -2581,7 +2581,7 @@ void fittingThread(LWEGui& theGui,  simulationRun theRun) {
     theGui.messenger->requestSyncValues();
 }
 
-void readDefaultValues(simulationBatch& sim, crystalDatabase& db){
+void readDefaultValues(SimulationBatch& sim, crystalDatabase& db){
 
         //Linux search order:
         // ~/.LightwaveExplorer
@@ -3161,7 +3161,7 @@ void drawFourierImage2(cairo_t* cr, int width, int height, LWEGui& theGui) {
 
 
 void createRunFile(LWEGui& theGui) {
-    simulationBatch& theSim = theGui.theSim;
+    SimulationBatch& theSim = theGui.theSim;
     theGui.readParametersFromInterface(theSim);
     theSim.base().runType = runTypes::normal;
     theSim.base().isGridAllocated = false;

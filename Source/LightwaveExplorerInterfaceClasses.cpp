@@ -837,7 +837,7 @@ int SimulationParameterSet::readInputParametersFile(
   return 61;
 }
 
-void simulationBatch::configure(bool allocateFields) {
+void SimulationBatch::configure(bool allocateFields) {
   Nfreq = parameters[0].Nfreq;
   Nsims = parameters[0].Nsims;
   Nsims2 = parameters[0].Nsims2;
@@ -935,7 +935,7 @@ void simulationBatch::configure(bool allocateFields) {
   }
 }
 
-void simulationBatch::configureCounter() {
+void SimulationBatch::configureCounter() {
   Nfreq = parameters[0].Nfreq;
   Nsims = parameters[0].Nsims;
   Nsims2 = parameters[0].Nsims2;
@@ -994,7 +994,7 @@ void simulationBatch::configureCounter() {
   }
 }
 
-void simulationBatch::loadPulseFiles() {
+void SimulationBatch::loadPulseFiles() {
   // pulse type specifies if something has to be loaded to describe the pulses,
   // or if they should be synthesized later. 1: FROG .speck format; 2:
   // Time-domain waveform; 3: Previous LWE result
@@ -1034,7 +1034,7 @@ void simulationBatch::loadPulseFiles() {
         parameters[0].pulse2LoadedData, loadedFullGrid2, parameters[0].Ngrid);
   }
 }
-void simulationBatch::loadOptics(const std::string &zipPath) {
+void SimulationBatch::loadOptics(const std::string &zipPath) {
   bool keepLoading = true;
   std::string base = zipGetBasename(zipPath) + "_optic";
   int ind = 0;
@@ -1051,7 +1051,7 @@ void simulationBatch::loadOptics(const std::string &zipPath) {
   }
 }
 
-int simulationBatch::saveDataSet() {
+int SimulationBatch::saveDataSet() {
   std::for_each(mutexes.begin(), mutexes.end(),
                 [&](std::shared_mutex &m) { m.lock(); });
 
