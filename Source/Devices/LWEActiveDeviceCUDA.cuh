@@ -170,12 +170,12 @@ private:
 
 public:
 	cudaStream_t stream;
-	deviceParameterSet<deviceFP, deviceComplex>* s;
-	deviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
+	DeviceParameterSet<deviceFP, deviceComplex>* s;
+	DeviceParameterSet<deviceFP, deviceComplex>* dParamsDevice;
 	std::unique_ptr<UPPEAllocation<deviceFP, deviceComplex>> allocation;
 	deviceFP canaryPixel = 0.0;
 	using LWEDevice::deviceMemcpy;
-	CUDADevice(simulationParameterSet* sCPU) :
+	CUDADevice(SimulationParameterSet* sCPU) :
 		deviceSetError(cudaSetDevice(sCPU->assignedGPU)),
 		streamGenerationError(cudaStreamCreate(&stream))
 	{
@@ -208,7 +208,7 @@ public:
 	void deviceMemset(void* ptr, int value, size_t count) override {
 		cudaMemset(ptr, value, count);
 	}
-	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, copyType kind) override {
+	void deviceMemcpyImplementation(void* dst, const void* src, size_t count, CopyType kind) override {
 		cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(static_cast<int>(kind)));
 	}
 
@@ -216,7 +216,7 @@ public:
 		thrust::complex<float>* dst,
 		const std::complex<double>* src,
 		size_t count,
-		copyType kind) {
+		CopyType kind) {
 			deviceMemcpy(reinterpret_cast<std::complex<float>*>(dst), src, count, kind);
 		}
 
@@ -224,7 +224,7 @@ public:
 		std::complex<double>* dst,
 		const thrust::complex<float>* src,
 		size_t count,
-		copyType kind) {
+		CopyType kind) {
 			deviceMemcpy(dst, reinterpret_cast<const std::complex<float>*>(src), count, kind);
 		}
 
@@ -280,48 +280,48 @@ public:
 		configuredFFT = true;
 	}
 
-	void fft(const void* input, void* output, deviceFFT type) override {
+	void fft(const void* input, void* output, DeviceFFT type) override {
 		if(sizeof(deviceFP) == sizeof(double)){
 			switch (type){
-			case deviceFFT::D2Z:
+			case DeviceFFT::D2Z:
 				cufftExecD2Z(fftPlanD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
 				break;
-			case deviceFFT::Z2D:
+			case DeviceFFT::Z2D:
 				cufftExecZ2D(fftPlanZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
 				break;
-			case deviceFFT::D2Z_1D:
+			case DeviceFFT::D2Z_1D:
 				cufftExecD2Z(fftPlan1DD2Z, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
 				break;
-			case deviceFFT::Z2D_1D:
+			case DeviceFFT::Z2D_1D:
 				cufftExecZ2D(fftPlan1DZ2D, (cufftDoubleComplex*)input, (cufftDoubleReal*)output);
 				break;
-			case deviceFFT::D2Z_Polarization:
+			case DeviceFFT::D2Z_Polarization:
 				cufftExecD2Z(doublePolfftPlan, (cufftDoubleReal*)input, (cufftDoubleComplex*)output);
 				break;
 			}
 		}
 		else{
 			switch(type){
-			case deviceFFT::D2Z:
+			case DeviceFFT::D2Z:
 				cufftExecR2C(fftPlanD2Z, (cufftReal*)input, (cufftComplex*)output);
 				break;
-			case deviceFFT::Z2D:
+			case DeviceFFT::Z2D:
 				cufftExecC2R(fftPlanZ2D, (cufftComplex*)input, (cufftReal*)output);
 				break;
-			case deviceFFT::D2Z_1D:
+			case DeviceFFT::D2Z_1D:
 				cufftExecR2C(fftPlan1DD2Z, (cufftReal*)input, (cufftComplex*)output);
 				break;
-			case deviceFFT::Z2D_1D:
+			case DeviceFFT::Z2D_1D:
 				cufftExecC2R(fftPlan1DZ2D, (cufftComplex*)input, (cufftReal*)output);
 				break;
-			case deviceFFT::D2Z_Polarization:
+			case DeviceFFT::D2Z_Polarization:
 				cufftExecR2C(doublePolfftPlan, (cufftReal*)input, (cufftComplex*)output);
 				break;
 			}
 		}
 	}
 
-	void reset(simulationParameterSet* sCPU) override {
+	void reset(SimulationParameterSet* sCPU) override {
 		bool resetFFT = (s->hasPlasma != sCPU->hasPlasma());
 		cParams = sCPU;
 		allocation->useNewParameterSet(sCPU);
@@ -329,7 +329,7 @@ public:
 			fftInitialize();
 		}
 	}
-	int allocateSet(simulationParameterSet* sCPU) {
+	int allocateSet(SimulationParameterSet* sCPU) {
 		cParams = sCPU;
 		if(memoryStatus == 0) allocation = nullptr;
 		allocation = std::make_unique<UPPEAllocation<deviceFP, deviceComplex>>(this, sCPU);
