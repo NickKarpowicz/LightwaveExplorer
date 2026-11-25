@@ -3,8 +3,9 @@
 #include <iostream>
 #include <vector>
 #include <complex>
+#include <concepts>
 
-template <typename T>
+template <std::floating_point T>
 void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_length, const size_t y_length, const size_t pages, const float factor){
     for(size_t p = 0; p<pages;p++){
         size_t offset = p * y_length * x_length;
@@ -46,7 +47,6 @@ int main(){
     uint32_t ky_dim = y_dim;
 
     std::vector<float> data_local(x_dim*y_dim,0.0f);
-
     data_local[10] = 1.0f;
     data_local[192] = 1.0f;
 

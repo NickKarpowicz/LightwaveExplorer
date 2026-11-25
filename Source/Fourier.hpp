@@ -3,9 +3,10 @@
 #include <cstddef>
 #include <vpp/vpp.hpp>
 #include <iostream>
+#include <concepts>
 enum class FourierKind{R2C,C2C};
 
-template <typename Backend, typename F>
+template <typename Backend, std::floating_point F>
 struct Fourier {
     void forward(void* in, void* out){
         static_cast<Backend*>(this)->forward_impl(in, out);
@@ -15,7 +16,7 @@ struct Fourier {
     }
 };
 
-template <typename F>
+template <std::floating_point F>
 struct CpuFourier : public Fourier<CpuFourier<F>, F>{
     const ptrdiff_t fp_size;
     const ptrdiff_t complex_size;
@@ -128,7 +129,7 @@ struct CpuFourier : public Fourier<CpuFourier<F>, F>{
 	}
 };
 
-template <typename F>
+template <std::floating_point F>
 struct VulkanFourier : public Fourier<VulkanFourier<F>, F>{
     uint64_t buffer_size;
     uint64_t result_buffer_size;
