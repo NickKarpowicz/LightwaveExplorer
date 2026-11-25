@@ -7,7 +7,7 @@
 enum class FourierKind{R2C,C2C};
 
 template <typename Backend, std::floating_point F>
-struct Fourier {
+struct FourierBase {
     void forward(void* in, void* out){
         static_cast<Backend*>(this)->forward_impl(in, out);
     }
@@ -16,8 +16,13 @@ struct Fourier {
     }
 };
 
+template<class T, typename F>
+concept Fourier =
+    std::is_floating_point_v<F> &&
+    std::is_base_of_v<FourierBase<T, F>,T>;
+
 template <std::floating_point F>
-struct CpuFourier : public Fourier<CpuFourier<F>, F>{
+struct CpuFourier : public FourierBase<CpuFourier<F>, F>{
     const ptrdiff_t fp_size;
     const ptrdiff_t complex_size;
     FourierKind fft_kind;
@@ -130,7 +135,7 @@ struct CpuFourier : public Fourier<CpuFourier<F>, F>{
 };
 
 template <std::floating_point F>
-struct VulkanFourier : public Fourier<VulkanFourier<F>, F>{
+struct VulkanFourier : public FourierBase<VulkanFourier<F>, F>{
     uint64_t buffer_size;
     uint64_t result_buffer_size;
     vpp::VulkanDevice& device;
