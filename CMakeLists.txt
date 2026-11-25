@@ -20,6 +20,8 @@ find_path(GLSLANG_C_INTERFACE_INCLUDE_DIR
 )
 
 add_library(vkfft INTERFACE)
+target_compile_definitions(vkfft INTERFACE
+  -DVKFFT_BACKEND=0)
 target_include_directories(vkfft INTERFACE
   ${CMAKE_CURRENT_SOURCE_DIR}/ExternalLibraries/vkFFT
   ${GLSLANG_C_INTERFACE_INCLUDE_DIR}
