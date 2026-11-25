@@ -1,15 +1,8 @@
 #include "Fourier.hpp"
-#include "vkFFT/vkFFT_AppManagement/vkFFT_DeleteApp.h"
-#include "vkFFT/vkFFT_AppManagement/vkFFT_InitializeApp.h"
-#include "vkFFT/vkFFT_Structs/vkFFT_Structs.h"
-#include "pocketfft_hdronly.h"
 #include "vpp/vpp.hpp"
 #include <iostream>
 #include <vector>
 #include <complex>
-#include <print>
-#include <vpp/device_vulkan.hpp>
-#include <vulkan/vulkan_core.h>
 
 template <typename T>
 void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_length, const size_t y_length, const size_t pages, const float factor){
@@ -28,63 +21,21 @@ void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_lengt
     }
 }
 
-std::vector<std::complex<float>> forward_pocketfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim, uint32_t kx_dim, uint32_t ky_dim){
-    const ptrdiff_t psizeFP = static_cast<ptrdiff_t>(sizeof(float));
-    const ptrdiff_t psizeCP = static_cast<ptrdiff_t>(sizeof(std::complex<float>));
-   	pocketfft::shape_t shape = pocketfft::shape_t{y_dim,x_dim};
-	pocketfft::shape_t axes = pocketfft::shape_t{0, 1};
-	pocketfft::stride_t stride_time = pocketfft::stride_t{psizeFP * x_dim, psizeFP};
-	pocketfft::stride_t stride_freq = pocketfft::stride_t{psizeCP * kx_dim, psizeCP};
-	std::vector<std::complex<float>> result_cpu(kx_dim*ky_dim,0.0f);
-	pocketfft::r2c(
-                            shape,
-                            stride_time,
-                            stride_freq,
-                            axes,
-                            pocketfft::FORWARD,
-           					data_local.data(),
-           					result_cpu.data(),
-           					1.0f);
-	return result_cpu;
+std::vector<std::complex<float>> forward_pocketfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim){
+    CpuFourier<float> fft(x_dim,y_dim,1,1,FourierKind::R2C);
+    std::vector<std::complex<float>> result(y_dim * (x_dim/2u + 1u));
+    fft.forward(data_local.data(), result.data());
+	return result;
 }
 
-std::vector<std::complex<float>> test_vkfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim, uint32_t kx_dim, uint32_t ky_dim){
-    uint64_t buffer_size = x_dim*y_dim*sizeof(float);
-    uint64_t result_buffer_size = kx_dim * ky_dim * 2 * sizeof(float);
+std::vector<std::complex<float>> test_vkfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim){
     vpp::VulkanDevice device;
-    auto fence = static_cast<VkFence>(device.context->device.createFence({}));
-    VkPhysicalDevice vkfft_physical_device = static_cast<VkPhysicalDevice>(device.context->physical_device);
-    VkDevice vkfft_device = static_cast<VkDevice>(device.context->device);
-    VkQueue vkfft_queue = static_cast<VkQueue>(device.context->queue);
-    VkCommandPool vkfft_pool = static_cast<VkCommandPool>(device.context->command_pool);
+    VulkanFourier<float> fft(device,x_dim,y_dim,1,1,FourierKind::R2C);
     auto data_vk = device.create_buffer_from_vec(data_local);
-    auto result_vk = device.create_buffer(result_buffer_size);
-    VkFFTConfiguration configuration = {};
-    configuration.physicalDevice=&vkfft_physical_device;
-    configuration.device = &vkfft_device;
-    configuration.queue = &vkfft_queue;
-    configuration.commandPool = &vkfft_pool;
-    configuration.fence = &fence;
-    configuration.FFTdim=2;
-    configuration.size[0] = x_dim;
-    configuration.size[1] = y_dim;
-    configuration.bufferSize = &result_buffer_size;
-    configuration.inputBufferSize = &buffer_size;
-    configuration.performR2C=1;
-    configuration.isInputFormatted=1;
-    VkFFTApplication app = {};
-    VkFFTResult res = initializeVkFFT(&app, configuration);
-    std::cout << "create result: " << getVkFFTErrorString(res) << '\n';
-
-    VkFFTLaunchParams launch = {};
-    launch.inputBuffer = reinterpret_cast<VkBuffer*>(&(data_vk.buffer));
-    launch.buffer = reinterpret_cast<VkBuffer*>(&(result_vk.buffer));
-    launch.commandBuffer = device.get_raw_active_command_buffer();
-    auto result_fft = VkFFTAppend(&app,-1,&launch);
+    auto result_vk = device.create_buffer(fft.result_buffer_size);
+    fft.forward(&(data_vk.buffer), &(result_vk.buffer));
     device.go();
     device.wait();
-    std::cout << "fft result: " << getVkFFTErrorString(result_fft) << '\n';
-    deleteVkFFT(&app);
     return result_vk.to_vec<std::complex<float>>();
 }
 
@@ -99,11 +50,8 @@ int main(){
     data_local[10] = 1.0f;
     data_local[192] = 1.0f;
 
-    auto result = test_vkfft(data_local, x_dim, y_dim, kx_dim, ky_dim);
-    auto result_pocket = forward_pocketfft(data_local, x_dim, y_dim, kx_dim, ky_dim);
+    auto result = test_vkfft(data_local, x_dim, y_dim);
+    auto result_pocket = forward_pocketfft(data_local, x_dim, y_dim);
     print_matrix(result_pocket, kx_dim, ky_dim, 1, 1);
     print_matrix(result, kx_dim, ky_dim, 1, 1);
-
-
-
 }
