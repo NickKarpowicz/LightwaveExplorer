@@ -28,6 +28,26 @@ void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_lengt
     }
 }
 
+std::vector<std::complex<float>> forward_pocketfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim, uint32_t kx_dim, uint32_t ky_dim){
+    const ptrdiff_t psizeFP = static_cast<ptrdiff_t>(sizeof(float));
+    const ptrdiff_t psizeCP = static_cast<ptrdiff_t>(sizeof(std::complex<float>));
+   	pocketfft::shape_t shape = pocketfft::shape_t{y_dim,x_dim};
+	pocketfft::shape_t axes = pocketfft::shape_t{0, 1};
+	pocketfft::stride_t stride_time = pocketfft::stride_t{psizeFP * x_dim, psizeFP};
+	pocketfft::stride_t stride_freq = pocketfft::stride_t{psizeCP * kx_dim, psizeCP};
+	std::vector<std::complex<float>> result_cpu(kx_dim*ky_dim,0.0f);
+	pocketfft::r2c(
+                            shape,
+                            stride_time,
+                            stride_freq,
+                            axes,
+                            pocketfft::FORWARD,
+           					data_local.data(),
+           					result_cpu.data(),
+           					1.0f);
+	return result_cpu;
+}
+
 std::vector<std::complex<float>> test_vkfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim, uint32_t kx_dim, uint32_t ky_dim){
     uint64_t buffer_size = x_dim*y_dim*sizeof(float);
     uint64_t result_buffer_size = kx_dim * ky_dim * 2 * sizeof(float);
@@ -75,12 +95,15 @@ int main(){
     uint32_t ky_dim = y_dim;
 
     std::vector<float> data_local(x_dim*y_dim,0.0f);
-    std::vector<std::complex<float>> result_cpu(kx_dim*ky_dim,0.0f);
+
     data_local[10] = 1.0f;
     data_local[192] = 1.0f;
 
     auto result = test_vkfft(data_local, x_dim, y_dim, kx_dim, ky_dim);
-    print_matrix(result, kx_dim, ky_dim, 1, 3);
+    auto result_pocket = forward_pocketfft(data_local, x_dim, y_dim, kx_dim, ky_dim);
+    print_matrix(result_pocket, kx_dim, ky_dim, 1, 1);
+    print_matrix(result, kx_dim, ky_dim, 1, 1);
+
 
 
 }
