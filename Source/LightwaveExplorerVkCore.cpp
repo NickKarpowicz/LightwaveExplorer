@@ -36,8 +36,8 @@ int main(){
     VkQueue vkfft_queue = static_cast<VkQueue>(device.context->queue);
     VkCommandPool vkfft_pool = static_cast<VkCommandPool>(device.context->command_pool);
 
-    uint32_t x_dim = 16;
-    uint32_t y_dim = 4;
+    uint32_t x_dim = 24;
+    uint32_t y_dim = 10;
     uint64_t buffer_size = x_dim*y_dim*sizeof(float);
 
     uint32_t kx_dim = x_dim/2 + 1;
@@ -47,7 +47,7 @@ int main(){
     std::vector<float> data_local(x_dim*y_dim,0.0f);
     std::vector<std::complex<float>> result_cpu(result_buffer_size,0.0f);
     data_local[10] = 1.0f;
-    data_local[27] = 1.0f;
+    data_local[192] = 1.0f;
     auto data_vk = device.create_buffer_from_vec(data_local);
     auto result_vk = device.create_buffer_from_vec(result_cpu);
 
@@ -78,7 +78,7 @@ int main(){
     device.wait();
     std::cout << "fft result: " << getVkFFTErrorString(result_fft) << '\n';
     auto result = result_vk.to_vec<std::complex<float>>();
-    print_matrix(result, kx_dim, ky_dim, 1, 1);
+    print_matrix(result, kx_dim, ky_dim, 1, 3);
     deleteVkFFT(&app);
     return res;
 }
