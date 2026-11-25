@@ -1,15 +1,18 @@
 cmake_minimum_required(VERSION 3.23.0)
 project(LightwaveExplorer LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Vulkan REQUIRED)
 find_package(glslang CONFIG REQUIRED)
+find_package(vpp CONFIG REQUIRED)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/ExternalLibraries)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/ExternalLibraries/vkFFT)
 
 if(TARGET glslang::glslang)
-  get_target_property(_glslang_incs glslang::glslang INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(
+    _glslang_incs glslang::glslang
+    INTERFACE_INCLUDE_DIRECTORIES)
 endif()
 
 find_path(GLSLANG_C_INTERFACE_INCLUDE_DIR
@@ -33,7 +36,7 @@ endif()
 if(LWE_VULKAN)
     add_executable(${EXECUTABLE_NAME} Source/LightwaveExplorerVkCore.cpp)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE
-      glslang::SPIRV glslang::glslang Vulkan::Vulkan vkfft)
+      glslang::SPIRV glslang::glslang Vulkan::Vulkan vkfft vpp::vpp)
 elseif(UNIX AND NOT APPLE)
     if(FLATPAK)
         include(Source/BuildResources/cmake/flatpak.cmake)
