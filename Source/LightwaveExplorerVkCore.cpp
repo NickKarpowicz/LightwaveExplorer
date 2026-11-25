@@ -2,6 +2,7 @@
 #include "vkFFT/vkFFT_AppManagement/vkFFT_DeleteApp.h"
 #include "vkFFT/vkFFT_AppManagement/vkFFT_InitializeApp.h"
 #include "vkFFT/vkFFT_Structs/vkFFT_Structs.h"
+#include "pocketfft_hdronly.h"
 #include "vpp/vpp.hpp"
 #include <iostream>
 #include <vector>
@@ -12,7 +13,6 @@
 
 template <typename T>
 void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_length, const size_t y_length, const size_t pages, const float factor){
-
     for(size_t p = 0; p<pages;p++){
         size_t offset = p * y_length * x_length;
         for(size_t y = 0; y<y_length; y++){
@@ -28,30 +28,17 @@ void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_lengt
     }
 }
 
-int main(){
+std::vector<std::complex<float>> test_vkfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim, uint32_t kx_dim, uint32_t ky_dim){
+    uint64_t buffer_size = x_dim*y_dim*sizeof(float);
+    uint64_t result_buffer_size = kx_dim * ky_dim * 2 * sizeof(float);
     vpp::VulkanDevice device;
     auto fence = static_cast<VkFence>(device.context->device.createFence({}));
     VkPhysicalDevice vkfft_physical_device = static_cast<VkPhysicalDevice>(device.context->physical_device);
     VkDevice vkfft_device = static_cast<VkDevice>(device.context->device);
     VkQueue vkfft_queue = static_cast<VkQueue>(device.context->queue);
     VkCommandPool vkfft_pool = static_cast<VkCommandPool>(device.context->command_pool);
-
-    uint32_t x_dim = 24;
-    uint32_t y_dim = 10;
-    uint64_t buffer_size = x_dim*y_dim*sizeof(float);
-
-    uint32_t kx_dim = x_dim/2 + 1;
-    uint32_t ky_dim = y_dim;
-    uint64_t result_buffer_size = kx_dim * ky_dim * 2 * sizeof(float);
-
-    std::vector<float> data_local(x_dim*y_dim,0.0f);
-    std::vector<std::complex<float>> result_cpu(result_buffer_size,0.0f);
-    data_local[10] = 1.0f;
-    data_local[192] = 1.0f;
     auto data_vk = device.create_buffer_from_vec(data_local);
-    auto result_vk = device.create_buffer_from_vec(result_cpu);
-
-    std::cout << "testing Fourier\n";
+    auto result_vk = device.create_buffer(result_buffer_size);
     VkFFTConfiguration configuration = {};
     configuration.physicalDevice=&vkfft_physical_device;
     configuration.device = &vkfft_device;
@@ -77,8 +64,23 @@ int main(){
     device.go();
     device.wait();
     std::cout << "fft result: " << getVkFFTErrorString(result_fft) << '\n';
-    auto result = result_vk.to_vec<std::complex<float>>();
-    print_matrix(result, kx_dim, ky_dim, 1, 3);
     deleteVkFFT(&app);
-    return res;
+    return result_vk.to_vec<std::complex<float>>();
+}
+
+int main(){
+    uint32_t x_dim = 24;
+    uint32_t y_dim = 10;
+    uint32_t kx_dim = x_dim/2 + 1;
+    uint32_t ky_dim = y_dim;
+
+    std::vector<float> data_local(x_dim*y_dim,0.0f);
+    std::vector<std::complex<float>> result_cpu(kx_dim*ky_dim,0.0f);
+    data_local[10] = 1.0f;
+    data_local[192] = 1.0f;
+
+    auto result = test_vkfft(data_local, x_dim, y_dim, kx_dim, ky_dim);
+    print_matrix(result, kx_dim, ky_dim, 1, 3);
+
+
 }
