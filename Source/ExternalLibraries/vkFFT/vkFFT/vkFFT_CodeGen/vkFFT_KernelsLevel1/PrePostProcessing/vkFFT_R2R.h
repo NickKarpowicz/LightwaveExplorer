@@ -79,7 +79,7 @@ static inline void appendDCTI_read_get_inoutID (VkFFTSpecializationConstantsLayo
 			PfIf_end(sc);
 		}
 		PfSwapContainers(sc, tempInt, inoutID);
-		
+
 	}
 	return;
 }
@@ -154,7 +154,7 @@ static inline void appendDCTI_write_get_inoutID (VkFFTSpecializationConstantsLay
 			temp_int.data.i = 1;
 			PfSub(sc, tempInt, inoutID, &temp_int);
 			PfSwapContainers(sc, tempInt, inoutID);
-		}		
+		}
 	}
 	return;
 }
@@ -222,7 +222,7 @@ static inline void appendDCTII_read_III_write_get_inoutID (VkFFTSpecializationCo
 		temp_int.data.i = 2*fftDim.data.i - 1;
 		PfSub(sc, tempInt, &temp_int, tempInt);
 		PfIf_end(sc);
-		
+
 		PfSwapContainers(sc, tempInt, inoutID);
 	}
 	return;
@@ -274,7 +274,7 @@ static inline void appendDCTII_write_III_read_get_inoutID (VkFFTSpecializationCo
 	else {
 		fftDim.data.i = sc->fft_dim_full.data.i;
 	}
-	
+
 	if ((readWrite == 1) && (((sc->performDST == 2) && (sc->actualInverse == 0)) || ((sc->performDST == 3) && (sc->actualInverse == 1)))) {
 		temp_int.data.i = fftDim.data.i;
 		PfIf_lt_start(sc, inoutID, &temp_int);
@@ -316,7 +316,7 @@ static inline void appendDCTII_write_III_read_get_inoutID (VkFFTSpecializationCo
 	if ((readWrite == 0) && (((sc->performDCT == 2) && (sc->actualInverse == 1)) || ((sc->performDCT == 3) && (sc->actualInverse == 0)))) {
 		temp_int.data.i = fftDim.data.i;
 		PfIf_lt_start(sc, inoutID, &temp_int);
-		
+
 		if (sc->axis_id > 0) {
 			PfSub(sc, &sc->inoutID2, &fftDim, inoutID);
 			PfIf_eq_start(sc, &sc->inoutID2, &fftDim);
@@ -437,11 +437,11 @@ static inline void appendDCTIV_odd_read_get_inoutID (VkFFTSpecializationConstant
 
 		temp_int.data.i = fftDim.data.i / 2;
 		PfAdd(sc, &sc->inoutID2, &sc->inoutID2, &temp_int);
-		
+
 		PfIf_lt_start(sc, &sc->inoutID2, &fftDim);
 		PfMov(sc, tempInt, &sc->inoutID2);
 		PfIf_end(sc);
-		
+
 		temp_int.data.i = fftDim.data.i * 2;
 		PfIf_lt_start(sc, &sc->inoutID2, &temp_int);
 		PfIf_ge_start(sc, &sc->inoutID2, &fftDim);
@@ -523,7 +523,7 @@ static inline void appendDCTIV_even_write_get_inoutID (VkFFTSpecializationConsta
 		temp_int.data.i = 2*fftDim.data.i - 1;
 		PfSub(sc, tempInt, &temp_int, tempInt);
 		PfIf_end(sc);
-		
+
 		if (sc->performDST) {
 			temp_int.data.i = 2*fftDim.data.i - 1;
 			PfSub(sc, tempInt, &temp_int, tempInt);
@@ -615,7 +615,7 @@ static inline void appendDCTIV_odd_write_get_inoutID (VkFFTSpecializationConstan
 		PfSub(sc, tempInt, &temp_int, inoutID);
 		temp_int.data.i = 2;
 		PfDiv(sc, tempInt, tempInt, &temp_int);
-		
+
 		PfIf_else(sc);
 
 		temp_int.data.i = fftDim.data.i - 1;
@@ -631,7 +631,7 @@ static inline void appendDCTIV_odd_write_get_inoutID (VkFFTSpecializationConstan
 		temp_int.data.i = 2;
 		PfMul(sc, tempInt, inoutID, &temp_int, 0);
 		PfInc(sc, tempInt);
-		
+
 		PfIf_eq_start(sc, tempInt, &fftDim);
 		PfSetToZero(sc, tempInt);
 		PfIf_end(sc);
@@ -816,7 +816,7 @@ static inline void appendDCTII_write_III_read_processing (VkFFTSpecializationCon
 			PfIf_end(sc);
 			PfAdd(sc, &sc->tempInt, &sc->tempInt, &sc->startDCT3LUT);
 			appendGlobalToRegisters(sc, &sc->mult, &sc->LUTStruct, &sc->tempInt);
-			
+
 			PfIf_ge_start(sc, inoutID, &temp_int);
 			PfMov(sc, &sc->w.data.c[0], &sc->mult.data.c[1]);
 			PfMov(sc, &sc->mult.data.c[1], &sc->mult.data.c[0]);
@@ -895,7 +895,7 @@ static inline void appendDCTIV_even_read_processing (VkFFTSpecializationConstant
 			PfIf_end(sc);
 			PfAdd(sc, &sc->tempInt, &sc->tempInt, &sc->startDCT3LUT);
 			appendGlobalToRegisters(sc, &sc->mult, &sc->LUTStruct, &sc->tempInt);
-			
+
 			temp_int.data.i = 2*(fftDim.data.i/2 + 1);
 			PfIf_ge_start(sc, inoutID, &temp_int);
 			PfMov(sc, &sc->w.data.c[0], &sc->mult.data.c[1]);
@@ -1017,7 +1017,7 @@ static inline void appendDCTIV_even_write_processing (VkFFTSpecializationConstan
 			PfMul(sc, &sc->w.data.c[0], &sc->tempInt, &temp_double, 0);
 			PfSinCos(sc, &sc->mult, &sc->w.data.c[0]);
 		}
-			
+
 		PfMovNeg(sc, &regID->data.c[1], &regID->data.c[1]);
 		PfMul(sc, regID, regID, &sc->mult, &sc->w);
 		PfMovNeg(sc, &regID->data.c[1], &regID->data.c[1]);
@@ -1061,7 +1061,7 @@ static inline void appendDCTIV_odd_write_processing (VkFFTSpecializationConstant
 		temp_int.data.i = (3*fftDim.data.i) / 4;
 		if(((fftDim.data.i-1) % 4) == 0)
 			PfIf_le_start(sc, inoutID, &temp_int);
-		else 
+		else
 			PfIf_lt_start(sc, inoutID, &temp_int);
 		PfMovNeg(sc, &regID->data.c[1], &regID->data.c[1]);
 		PfIf_end(sc);
@@ -1089,177 +1089,6 @@ static inline void appendDCTIV_odd_write_processing (VkFFTSpecializationConstant
 		PfAdd(sc, &regID->data.c[0], &regID->data.c[0], &regID->data.c[1]);
 		PfIf_end(sc);
 
-		/*
-		temp_int.data.i = 2;
-		PfMod(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-
-		temp_int.data.i = 1;
-		PfIf_eq_start(sc, &sc->tempInt, &temp_int);
-
-		temp_int.data.i = (fftDim.data.i+1) / 2;
-		PfIf_lt_start(sc, &sc->stageInvocationID, &temp_int);
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		temp_int.data.i = 4;
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-
-		temp_int.data.i = 0;
-		PfIf_eq_start(sc, &sc->tempInt, &temp_int);
-		PfSub(sc, &regID->data.c[0], &regID->data.c[0], &regID->data.c[1]);
-		PfIf_end(sc);
-		temp_int.data.i = 1;
-		PfIf_eq_start(sc, &sc->tempInt, &temp_int);
-		PfMovNeg(sc, &regID->data.c[0], &regID->data.c[0]);
-		PfSub(sc, &regID->data.c[0], &regID->data.c[0], &regID->data.c[1]);
-		PfIf_end(sc);
-		temp_int.data.i = 2;
-		PfIf_eq_start(sc, &sc->tempInt, &temp_int);
-		PfSub(sc, &regID->data.c[0], &regID->data.c[1], &regID->data.c[0]);
-		PfIf_end(sc);
-		temp_int.data.i = 3;
-		PfIf_eq_start(sc, &sc->tempInt, &temp_int);
-		PfAdd(sc, &regID->data.c[0], &regID->data.c[0], &regID->data.c[1]);
-		PfIf_end(sc);
-
-		PfIf_else(sc);
-		PfSetToZero(sc, regID);
-		//PfSub(sc, &regID->data.c[0], &regID->data.c[0], &regID->data.c[1]);
-		
-		PfIf_end(sc);
-		PfIf_else(sc);
-
-		temp_int.data.i = (fftDim.data.i+1) / 2;
-		PfIf_lt_start(sc, &sc->stageInvocationID, &temp_int);
-		PfSetToZero(sc, regID);
-		//PfSub(sc, &regID->data.c[0], &regID->data.c[0], &regID->data.c[1]);
-		
-		PfIf_else(sc);
-		PfSetToZero(sc, regID);
-		//PfAdd(sc, &regID->data.c[0], &regID->data.c[0], &regID->data.c[1]);
-		
-		PfIf_end(sc);
-		PfIf_end(sc);
-		
-		temp_double.data.d = pfFPinit("1.41421356237309504880168872420969807856967");
-		PfMul(sc, &regID->data.c[0], &regID->data.c[0], &temp_double, 0);
-		/*temp_int.data.i = fftDim.data.i / 4;
-		PfIf_lt_start(sc, &sc->stageInvocationID, &temp_int);
-
-		temp_int.data.i = 1;
-		PfAdd(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		temp_int.data.i = 0;
-		PfIf_gt_start(sc, &sc->tempInt, &temp_int);
-		PfMovNeg(sc, &sc->w.data.c[0], &regID->data.c[0]);
-		PfIf_else(sc);
-		PfMov(sc, &sc->w.data.c[0], &regID->data.c[0]);
-		PfIf_end(sc);
-
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		temp_int.data.i = 0;
-		PfIf_gt_start(sc, &sc->tempInt, &temp_int);
-		PfAdd(sc, &sc->w.data.c[0], &sc->w.data.c[0], &regID->data.c[1]);
-		PfIf_else(sc);
-		PfSub(sc, &sc->w.data.c[0], &sc->w.data.c[0], &regID->data.c[1]);
-		PfIf_end(sc);
-
-		PfIf_end(sc);
-
-
-		temp_int.data.i = fftDim.data.i / 2;
-		PfIf_lt_start(sc, &sc->stageInvocationID, &temp_int);
-		temp_int.data.i = fftDim.data.i / 4;
-		PfIf_ge_start(sc, &sc->stageInvocationID, &temp_int);
-
-		temp_int.data.i = 1;
-		PfAdd(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		temp_int.data.i = 0;
-		PfIf_gt_start(sc, &sc->tempInt, &temp_int);
-		PfMovNeg(sc, &sc->w.data.c[0], &regID->data.c[0]);
-		PfIf_else(sc);
-		PfMov(sc, &sc->w.data.c[0], &regID->data.c[0]);
-		PfIf_end(sc);
-
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		temp_int.data.i = 0;
-		PfIf_gt_start(sc, &sc->tempInt, &temp_int);
-		PfSub(sc, &sc->w.data.c[0], &sc->w.data.c[0], &regID->data.c[1]);
-		PfIf_else(sc);
-		PfAdd(sc, &sc->w.data.c[0], &sc->w.data.c[0], &regID->data.c[1]);
-		PfIf_end(sc);
-
-		PfIf_end(sc);
-		PfIf_end(sc);
-
-
-		temp_int.data.i = 3 * fftDim.data.i / 4;
-		PfIf_lt_start(sc, &sc->stageInvocationID, &temp_int);
-		temp_int.data.i = fftDim.data.i / 2;
-		PfIf_ge_start(sc, &sc->stageInvocationID, &temp_int);
-		
-		temp_int.data.i = 1;
-		PfAdd(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		temp_int.data.i = 0;
-		PfIf_gt_start(sc, &sc->tempInt, &temp_int);
-		PfMovNeg(sc, &sc->w.data.c[0], &regID->data.c[0]);
-
-		PfIf_else(sc);
-		PfMov(sc, &sc->w.data.c[0], &regID->data.c[0]);
-		PfIf_end(sc);
-
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		temp_int.data.i = 0;
-		PfIf_gt_start(sc, &sc->tempInt, &temp_int);
-		PfAdd(sc, &sc->w.data.c[0], &sc->w.data.c[0], &regID->data.c[1]);
-		PfIf_else(sc);
-		PfSub(sc, &sc->w.data.c[0], &sc->w.data.c[0], &regID->data.c[1]);
-		PfIf_end(sc);
-
-		PfIf_end(sc);
-		PfIf_end(sc);
-
-
-		temp_int.data.i = 3 * fftDim.data.i / 4;
-		PfIf_ge_start(sc, &sc->stageInvocationID, &temp_int);
-		
-		temp_int.data.i = 1;
-		PfAdd(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		temp_int.data.i = 0;
-		PfIf_gt_start(sc, &sc->tempInt, &temp_int);
-		PfMovNeg(sc, &sc->w.data.c[0], &regID->data.c[0]);
-		PfIf_else(sc);
-		PfMov(sc, &sc->w.data.c[0], &regID->data.c[0]);
-		PfIf_end(sc);
-
-		temp_int.data.i = 2;
-		PfDiv(sc, &sc->tempInt, &sc->stageInvocationID, &temp_int);
-		PfMod(sc, &sc->tempInt, &sc->tempInt, &temp_int);
-		temp_int.data.i = 0;
-		PfIf_gt_start(sc, &sc->tempInt, &temp_int);
-		PfSub(sc, &sc->w.data.c[0], &sc->w.data.c[0], &regID->data.c[1]);
-		PfIf_else(sc);
-		PfAdd(sc, &sc->w.data.c[0], &sc->w.data.c[0], &regID->data.c[1]);
-		PfIf_end(sc);
-
-		PfIf_end(sc);
-		*/
 		temp_double.data.d = pfFPinit("1.41421356237309504880168872420969807856967");
 		PfMul(sc, &regID->data.c[0], &regID->data.c[0], &temp_double, 0);
 		if (sc->performDST) {
@@ -1347,7 +1176,7 @@ static inline void appendDCTI_read(VkFFTSpecializationConstantsLayout* sc, int t
 
 	PfContainer used_registers = VKFFT_ZERO_INIT;
 	used_registers.type = 31;
-	
+
 	PfContainer fftDim = VKFFT_ZERO_INIT;
 	fftDim.type = 31;
 
@@ -1662,7 +1491,7 @@ static inline void appendDCTII_read_III_write(VkFFTSpecializationConstantsLayout
 			PfDiv(sc, &sc->tempInt, &sc->tempInt, &temp_int);
 		}
 		PfMul(sc, &sc->blockInvocationID, &sc->blockInvocationID, &sc->tempInt, 0);
-		
+
 		temp_int.data.i = fftDim.data.i - 1;
 		PfMul(sc, &sc->sdataID, &sc->sdataID, &temp_int, 0);
 		PfAdd(sc, &sc->sdataID, &sc->sdataID, &sc->tempInt);
@@ -1866,7 +1695,7 @@ static inline void appendDCTII_write_III_read(VkFFTSpecializationConstantsLayout
 			PfIf_end(sc);
 		}
 		appendBarrierVkFFT(sc);
-		
+
 		if (sc->useDisableThreads) {
 			temp_int.data.i = 0;
 			PfIf_gt_start(sc, &sc->disableThreads, &temp_int);
@@ -1914,7 +1743,7 @@ static inline void appendDCTII_write_III_read(VkFFTSpecializationConstantsLayout
 			}
 			else {
 				PfMod(sc, &sc->sdataID, &sc->combinedID, &fftDim);
-				
+
 				PfDiv(sc, &sc->tempInt, &sc->combinedID, &fftDim);
 				PfMul(sc, &sc->tempInt, &sc->tempInt, &sc->sharedStride, 0);
 
@@ -2238,7 +2067,7 @@ static inline void appendDCTII_write_III_read(VkFFTSpecializationConstantsLayout
 			PfIf_end(sc);
 		}
 		appendBarrierVkFFT(sc);
-		
+
 		if (sc->useDisableThreads) {
 			temp_int.data.i = 0;
 			PfIf_gt_start(sc, &sc->disableThreads, &temp_int);
@@ -2286,7 +2115,7 @@ static inline void appendDCTII_write_III_read(VkFFTSpecializationConstantsLayout
 			}
 			else {
 				PfMod(sc, &sc->sdataID, &sc->combinedID, &fftDim);
-				
+
 				PfDiv(sc, &sc->tempInt, &sc->combinedID, &fftDim);
 				PfMul(sc, &sc->tempInt, &sc->tempInt, &sc->sharedStride, 0);
 
@@ -2368,7 +2197,7 @@ static inline void appendDCTIV_even_read(VkFFTSpecializationConstantsLayout* sc,
 	else
 		fftDim.data.i = sc->fftDim.data.i;
 
-	fftDim.data.i = 2 * fftDim.data.i;	
+	fftDim.data.i = 2 * fftDim.data.i;
 
 	if (sc->stridedSharedLayout) {
 		PfDivCeil(sc, &used_registers, &fftDim, &sc->localSize[1]);
@@ -2698,11 +2527,11 @@ static inline void appendDCTIV_even_read(VkFFTSpecializationConstantsLayout* sc,
 		}
 
 		appendSharedToRegisters_x_x(sc, &sc->w, &sc->sdataID);
-		
+
 		PfMov(sc, &sc->regIDs[i].data.c[0], &sc->w.data.c[1]);
 		PfMovNeg(sc, &sc->regIDs[i].data.c[1], &sc->w.data.c[0]);
 		PfAdd(sc, &sc->regIDs[i], &sc->regIDs[i], &sc->w);
-		
+
 		PfIf_else(sc);
 
 		appendSharedToRegisters_x_x(sc, &sc->regIDs[i], &sc->sdataID);
@@ -2717,7 +2546,7 @@ static inline void appendDCTIV_even_read(VkFFTSpecializationConstantsLayout* sc,
 		appendSharedToRegisters_y_y(sc, &sc->regIDs[i], &sc->sdataID);
 		temp_double.data.d = pfFPinit("2.0");
 		PfMul(sc, &sc->regIDs[i], &sc->regIDs[i], &temp_double, 0);
-		
+
 		PfIf_end(sc);
 		if (sc->stridedSharedLayout) {
 			temp_int.data.i = (i + 1) * sc->localSize[1].data.i;
@@ -2819,7 +2648,7 @@ static inline void appendDCTIV_even_read(VkFFTSpecializationConstantsLayout* sc,
 
 		appendRegistersToShared_y_y(sc, &sc->sdataID, &sc->regIDs[i]);
 #endif
-		
+
 		PfIf_else(sc);
 
 		appendRegistersToShared(sc, &sc->sdataID, &sc->regIDs[i]);
@@ -2907,7 +2736,7 @@ static inline void appendDCTIV_even_read(VkFFTSpecializationConstantsLayout* sc,
 			PfDiv(sc, &sc->tempInt, &sc->combinedID, &fftDim);
 			PfMul(sc, &sc->tempInt, &sc->tempInt, &sc->sharedStride, 0);
 			PfAdd(sc, &sc->sdataID, &sc->sdataID, &sc->tempInt);
-			
+
 			PfMod(sc, &sc->tempInt, &sc->combinedID, &fftDim);
 			temp_int.data.i = 0;
 			PfIf_gt_start(sc, &sc->tempInt, &temp_int);
@@ -3103,7 +2932,7 @@ static inline void appendDCTIV_even_write(VkFFTSpecializationConstantsLayout* sc
 				temp_int.data.i = (fftDim.data.i-1);
 				PfSub(sc, &sc->sdataID, &temp_int, &sc->tempInt);
 				PfMul(sc, &sc->sdataID, &sc->sdataID, &sc->sharedStride, 0);
-				
+
 				PfDiv(sc, &sc->tempInt, &sc->combinedID, &fftDim);
 				PfAdd(sc, &sc->sdataID, &sc->sdataID, &sc->tempInt);
 			}
@@ -3116,7 +2945,7 @@ static inline void appendDCTIV_even_write(VkFFTSpecializationConstantsLayout* sc
 				PfSub(sc, &sc->sdataID, &sc->sdataID, &sc->tempInt);
 			}
 		}
-		if (sc->performDST) 
+		if (sc->performDST)
 			appendRegistersToShared(sc, &sc->sdataID, &sc->regIDs[i]);
 		else
 			appendRegistersToShared_y_y(sc, &sc->sdataID, &sc->regIDs[i]);
@@ -3367,11 +3196,11 @@ static inline void appendDCTIV_odd_read(VkFFTSpecializationConstantsLayout* sc, 
 		}
 		temp_int.data.i = fftDim.data.i / 2;
 		PfAdd(sc, &sc->inoutID, &sc->inoutID, &temp_int);
-		
+
 		PfIf_lt_start(sc, &sc->inoutID, &fftDim);
 		PfMov(sc, &sc->sdataID, &sc->inoutID);
 		PfIf_end(sc);
-		
+
 		temp_int.data.i = fftDim.data.i * 2;
 		PfIf_lt_start(sc, &sc->inoutID, &temp_int);
 		PfIf_ge_start(sc, &sc->inoutID, &fftDim);
@@ -3512,7 +3341,7 @@ static inline void appendDCTIV_odd_read(VkFFTSpecializationConstantsLayout* sc, 
 					PfIf_lt_start(sc, &sc->combinedID, &temp_int1);
 				}
 			}
-			
+
 			if (sc->stridedSharedLayout) {
 				PfMul(sc, &sc->tempInt, &sc->combinedID, &sc->sharedStride, 0);
 				PfAdd(sc, &sc->sdataID, &sc->gl_LocalInvocationID_x, &sc->tempInt);
@@ -3784,7 +3613,7 @@ static inline void appendDCTIV_odd_write(VkFFTSpecializationConstantsLayout* sc,
 			PfMov(sc, &sc->temp.data.c[0], &sc->w.data.c[1]);
 			PfMov(sc, &sc->temp.data.c[1], &sc->w.data.c[0]);
 		}
-		
+
 		temp_int.data.i = fftDim.data.i / 4;
 		PfIf_lt_start(sc, &sc->sdataID, &temp_int);
 
@@ -3896,7 +3725,7 @@ static inline void appendDCTIV_odd_write(VkFFTSpecializationConstantsLayout* sc,
 		PfIf_lt_start(sc, &sc->sdataID, &temp_int);
 		temp_int.data.i = fftDim.data.i / 2;
 		PfIf_ge_start(sc, &sc->sdataID, &temp_int);
-		
+
 		temp_int.data.i = 1;
 		PfAdd(sc, &sc->tempInt, &sc->sdataID, &temp_int);
 		temp_int.data.i = 2;
@@ -3949,7 +3778,7 @@ static inline void appendDCTIV_odd_write(VkFFTSpecializationConstantsLayout* sc,
 
 		temp_int.data.i = 3 * fftDim.data.i / 4;
 		PfIf_ge_start(sc, &sc->sdataID, &temp_int);
-		
+
 		temp_int.data.i = 1;
 		PfAdd(sc, &sc->tempInt, &sc->sdataID, &temp_int);
 		temp_int.data.i = 2;
@@ -4087,7 +3916,7 @@ static inline void appendDCTIV_odd_write(VkFFTSpecializationConstantsLayout* sc,
 					PfMul(sc, &sc->sdataID, &sc->sdataID, &sc->sharedStride, 0);
 
 					PfDiv(sc, &sc->tempInt, &sc->combinedID, &fftDim);
-					
+
 					PfAdd(sc, &sc->sdataID, &sc->sdataID, &sc->tempInt);
 				}
 				else {
@@ -4121,7 +3950,7 @@ static inline void appendDCTIV_odd_write(VkFFTSpecializationConstantsLayout* sc,
 			PfIf_end(sc);
 		}
 		appendBarrierVkFFT(sc);
-		
+
 		if (sc->useDisableThreads) {
 			temp_int.data.i = 0;
 			PfIf_gt_start(sc, &sc->disableThreads, &temp_int);
@@ -4173,12 +4002,12 @@ static inline void appendDCTIV_odd_write(VkFFTSpecializationConstantsLayout* sc,
 					PfMul(sc, &sc->sdataID, &sc->sdataID, &sc->sharedStride, 0);
 
 					PfDiv(sc, &sc->tempInt, &sc->combinedID, &fftDim);
-					
+
 					PfAdd(sc, &sc->sdataID, &sc->sdataID, &sc->tempInt);
 				}
 				else {
 					PfMod(sc, &sc->sdataID, &sc->combinedID, &fftDim);
-					
+
 					PfDiv(sc, &sc->tempInt, &sc->combinedID, &fftDim);
 					PfMul(sc, &sc->tempInt, &sc->tempInt, &sc->sharedStride, 0);
 
@@ -4206,7 +4035,7 @@ static inline void appendDCTIV_odd_write(VkFFTSpecializationConstantsLayout* sc,
 		}
 	}
 	sc->writeFromRegisters = 1;
-	
+
 	return;
 }
 
