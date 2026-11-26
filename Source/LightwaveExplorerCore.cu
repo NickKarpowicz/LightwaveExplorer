@@ -2050,10 +2050,10 @@ namespace hostFunctions{
 		return freeFDTD(d, maxCalc);
 	}
 
-	static constexpr unsigned int functionID(const char* s) {
+	static constexpr unsigned int function_id(const std::string_view s) {
 		unsigned int result = 0;
-		for (int i = 0; s[i]; ++i) {
-			result += s[i];
+		for (const char c : s) {
+			result += c;
 		}
 		return result;
 	}
@@ -2075,20 +2075,20 @@ namespace hostFunctions{
 		bool defaultMask[32] = {};
 		auto functionNameEnd = cc.find_first_of('(');
 		if (functionNameEnd ==std::string::npos) throw std::runtime_error(std::string("Didn't find opening parenthesis in\n").append(cc));
-		switch (functionID(cc.substr(0, functionNameEnd).c_str())) {
-		case functionID("rotate"):
+		switch (function_id(cc.substr(0, functionNameEnd).c_str())) {
+		case function_id("rotate"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			rotateField(d, sCPU, deg2Rad<deviceFP>() * parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("polarizer"):
+		case function_id("polarizer"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyPolarizer(d, sCPU, deg2Rad<deviceFP>() * parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("rotateIntoBiaxial"):
+		case function_id("rotateIntoBiaxial"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			rotateBiaxial(
 				d,
@@ -2099,7 +2099,7 @@ namespace hostFunctions{
 				defaultMask[3] ? (*sCPU).pulse1.frequency : 1e12 * parameters[3],
 				true);
 			break;
-		case functionID("rotateFromBiaxial"):
+		case function_id("rotateFromBiaxial"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			rotateBiaxial(
 				d,
@@ -2110,17 +2110,17 @@ namespace hostFunctions{
 				defaultMask[3] ? (*sCPU).pulse1.frequency : 1e12 * parameters[3],
 				false);
 			break;
-		case functionID("set"):
+		case function_id("set"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			if(parameters[0]<100 && parameters[0] >= 0){
 				vBlock[static_cast<int>(parameters[0])] = parameters[1];
 			}
 			else throw std::runtime_error("set() index must be less than 100\n");
 			break;
-		case functionID("plasmaReinject"):
+		case function_id("plasmaReinject"):
 			(*sCPU).isReinjecting = true;
 			[[fallthrough]];
-		case functionID("plasma"):
+		case function_id("plasma"):
 		{
 			interpretParameters(cc, 9, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
@@ -2143,7 +2143,7 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 		}
 			break;
-		case functionID("nonlinear"):
+		case function_id("nonlinear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*sCPU).crystalTheta = deg2Rad<deviceFP>() * parameters[1];
@@ -2163,7 +2163,7 @@ namespace hostFunctions{
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
 			(*sCPU).isFollowerInSequence = true;
 			break;
-		case functionID("fdtd"):
+		case function_id("fdtd"):
 			interpretParameters(cc, 8, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t timeFactor = 5;
@@ -2204,7 +2204,7 @@ namespace hostFunctions{
 					waitFrames);
 			}
 			break;
-		case functionID("fdtdReflection"):
+		case function_id("fdtdReflection"):
     		interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
     		{
 				int64_t timeFactor = 5;
@@ -2236,11 +2236,11 @@ namespace hostFunctions{
                 waitFrames);
             }
             break;
-		case functionID("default"):
+		case function_id("default"):
 			d.reset(sCPU);
 			error = solveNonlinearWaveEquationWithDevice(d, sCPU);
 			break;
-		case functionID("save"):
+		case function_id("save"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
@@ -2265,7 +2265,7 @@ namespace hostFunctions{
 				}
 			}
 			break;
-		case functionID("savePlasma"):
+		case function_id("savePlasma"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			{
 				int64_t saveLoc = (int64_t)parameters[0];
@@ -2284,7 +2284,7 @@ namespace hostFunctions{
 				}
 			}
 			break;
-		case functionID("init"):
+		case function_id("init"):
 			(*sCPU).materialIndex = 0;
 			(*sCPU).crystalTheta = 0.0;
 			(*sCPU).crystalPhi = 0.0;
@@ -2305,7 +2305,7 @@ namespace hostFunctions{
 			(*sCPU).isFollowerInSequence = true;
 			break;
 
-		case functionID("linear"):
+		case function_id("linear"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if ((*sCPU).isCylindric) {
 				if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
@@ -2344,7 +2344,7 @@ namespace hostFunctions{
 			}
 
 			break;
-		case functionID("fresnelLoss"):
+		case function_id("fresnelLoss"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			if (!defaultMask[0])(*sCPU).materialIndex = (int)parameters[0];
 			if (!defaultMask[1])(*sCPU).crystalTheta = deg2Rad<deviceFP>() * parameters[1];
@@ -2354,19 +2354,19 @@ namespace hostFunctions{
 				(int)parameters[4],
 				(int)parameters[5]);
 			break;
-		case functionID("sphericalMirror"):
+		case function_id("sphericalMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applySphericalMirror(d, sCPU, *d.s, parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("parabolicMirror"):
+		case function_id("parabolicMirror"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyParabolicMirror(d, sCPU, *d.s, parameters[0]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("aperture"):
+		case function_id("aperture"):
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyAperature(d, sCPU,
@@ -2374,7 +2374,7 @@ namespace hostFunctions{
 				parameters[1]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("offsetAperture"):
+		case function_id("offsetAperture"):
     		interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
     		d.reset(sCPU);
     		applyAperature(d, sCPU,
@@ -2384,7 +2384,7 @@ namespace hostFunctions{
                 parameters[3]);
     		if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
     		break;
-		case functionID("farFieldAperture"):
+		case function_id("farFieldAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			(*sCPU).materialIndex = 0;
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
@@ -2398,7 +2398,7 @@ namespace hostFunctions{
 				parameters[3]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("farFieldInverseAperture"):
+		case function_id("farFieldInverseAperture"):
 			interpretParameters(cc, 4, iBlock, vBlock, parameters, defaultMask);
 			(*sCPU).materialIndex = 0;
 			(*sCPU).sellmeierCoefficients = db[(*sCPU).materialIndex].sellmeierCoefficients.data();
@@ -2412,7 +2412,7 @@ namespace hostFunctions{
 				parameters[3]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("energy"):
+		case function_id("energy"):
 			{
 			if ((*sCPU).runType == RunTypes::counter) break;
 			interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
@@ -2427,7 +2427,7 @@ namespace hostFunctions{
 			}
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("filter"):
+		case function_id("filter"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyFilter(d, sCPU,
@@ -2438,7 +2438,7 @@ namespace hostFunctions{
 				parameters[4]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("lorentzian"):
+		case function_id("lorentzian"):
 			interpretParameters(cc, 5, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			applyLorenzian(
@@ -2451,7 +2451,7 @@ namespace hostFunctions{
 				parameters[4]);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("applyOptic"):
+		case function_id("applyOptic"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			if((*sCPU).optics.size() < static_cast<std::size_t>(parameters[0])+1){
@@ -2465,7 +2465,7 @@ namespace hostFunctions{
 				true);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("applyOpticX"):
+		case function_id("applyOpticX"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			if((*sCPU).optics.size() < static_cast<std::size_t>(parameters[0])+1){
@@ -2479,7 +2479,7 @@ namespace hostFunctions{
 				false);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("applyOpticY"):
+		case function_id("applyOpticY"):
 			interpretParameters(cc, 1, iBlock, vBlock, parameters, defaultMask);
 			d.reset(sCPU);
 			if((*sCPU).optics.size() < static_cast<std::size_t>(parameters[0])+1){
@@ -2493,13 +2493,13 @@ namespace hostFunctions{
 				true);
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
-		case functionID("loadOptic"):{
+		case function_id("loadOptic"):{
 				LoadedInputData file(cc.substr(cc.find('"')+1, cc.find('"', cc.find('"') + 1) - cc.find('"') - 1));
 				if(file.hasData) (*sCPU).optics.push_back(file);
 				else throw std::runtime_error("loadOptic failed, check the file path. If you are using the Flatpak version, load the optic using the load optic button.");
 			}
 			break;
-		case functionID("addPulse"):
+		case function_id("addPulse"):
 			if ((*sCPU).runType == RunTypes::counter) break;
 		{
 			interpretParameters(cc, 21, iBlock, vBlock, parameters, defaultMask);
@@ -2556,7 +2556,7 @@ namespace hostFunctions{
 			if (!(*sCPU).isInFittingMode)(*(*sCPU).progressCounter)++;
 			break;
 
-		case functionID("for"): {
+		case function_id("for"): {
 				interpretParameters(cc, 2, iBlock, vBlock, parameters, defaultMask);
 				int counter = (int)parameters[0];
 				int targetVar = (int)parameters[1];
