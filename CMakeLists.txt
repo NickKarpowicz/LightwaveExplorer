@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.23.0)
-project(LightwaveExplorer LANGUAGES CXX)
+project(LightwaveExplorer LANGUAGES C CXX)
 if(LWE_VULKAN)
   set(CMAKE_CXX_STANDARD 23)
 else()
@@ -16,6 +16,8 @@ if(LWE_VULKAN)
     find_package(Vulkan REQUIRED)
     find_package(glslang CONFIG REQUIRED)
     find_package(vpp CONFIG REQUIRED)
+    include(Source/BuildResources/cmake/linux_macros.cmake)
+    conditionally_fetch_dependencies()
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Source/ExternalLibraries)
     include_directories(
       ${CMAKE_CURRENT_SOURCE_DIR}/Source/ExternalLibraries/vkFFT)
@@ -42,7 +44,12 @@ if(LWE_VULKAN)
     )
     add_executable(${EXECUTABLE_NAME} Source/Core.cpp)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE
-      glslang::SPIRV glslang::glslang Vulkan::Vulkan vkfft vpp::vpp)
+      glslang::SPIRV
+      glslang::glslang
+      Vulkan::Vulkan
+      vkfft
+      vpp::vpp
+      miniz)
 elseif(UNIX AND NOT APPLE)
     if(FLATPAK)
         include(Source/BuildResources/cmake/flatpak.cmake)

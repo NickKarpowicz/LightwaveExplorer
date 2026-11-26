@@ -1,9 +1,16 @@
 #include "Fourier.hpp"
+#include "LightwaveExplorerInterfaceClasses.hpp"
 #include "vpp/vpp.hpp"
 #include <iostream>
 #include <vector>
 #include <complex>
 #include <concepts>
+#include <vpp/kernel.hpp>
+
+template <std::floating_point F>
+uint32_t run_fitting(const SimulationParameterSet& launch_parameters){
+    return 0u;
+}
 
 template <std::floating_point T>
 void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_length, const size_t y_length, const size_t pages, const float factor){
@@ -22,6 +29,13 @@ void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_lengt
     }
 }
 
+template <std::floating_point F>
+struct TestKernel : public vpp::VppKernel<TestKernel<F>>{
+    F* buffer;
+    void main(const uint32_t i) const {
+        buffer[i] *= 2.0f;
+    }
+};
 std::vector<std::complex<float>> forward_pocketfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim){
     CpuFourier<float> fft(x_dim,y_dim,1,1,FourierKind::R2C);
     std::vector<std::complex<float>> result(y_dim * (x_dim/2u + 1u));
@@ -35,6 +49,7 @@ std::vector<std::complex<float>> test_vkfft(std::vector<float>& data_local, uint
     auto data_vk = device.create_buffer_from_vec(data_local);
     auto result_vk = device.create_buffer(fft.result_buffer_size);
     fft.forward(&(data_vk.buffer), &(result_vk.buffer));
+    device.launch_kernel<24>(TestKernel<float>{.buffer=data_vk.as<float>()},10);
     device.go();
     device.wait();
     return result_vk.to_vec<std::complex<float>>();
