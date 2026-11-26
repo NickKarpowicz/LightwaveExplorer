@@ -40,7 +40,7 @@ if(LWE_VULKAN)
       ${CMAKE_CURRENT_SOURCE_DIR}/ExternalLibraries/vkFFT
       ${GLSLANG_C_INTERFACE_INCLUDE_DIR}
     )
-    add_executable(${EXECUTABLE_NAME} Source/LightwaveExplorerVkCore.cpp)
+    add_executable(${EXECUTABLE_NAME} Source/Core.cpp)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE
       glslang::SPIRV glslang::glslang Vulkan::Vulkan vkfft vpp::vpp)
 elseif(UNIX AND NOT APPLE)
