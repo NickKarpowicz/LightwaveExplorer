@@ -57,17 +57,37 @@ std::vector<std::complex<float>> test_vkfft(std::vector<float>& data_local, uint
 }
 
 int main(){
-    uint32_t x_dim = 24;
-    uint32_t y_dim = 10;
-    uint32_t kx_dim = x_dim/2 + 1;
-    uint32_t ky_dim = y_dim;
+    // allocate databases, main structs
+	SimulationBatch theSim;
+	CrystalDatabase db;
+	std::atomic_uint32_t progressCounter = 0;
+	theSim.base().crystalDatabase = db.db.data();
+	theSim.base().progressCounter = &progressCounter;
+	// read crystal database
+	if (db.db.size() == 0) {
+		std::cout << "Could not read crystal database." << std::endl;
+		return 12;
+	}
+	// std::cout << "Read " << db.db.size() << " crystal database entries:" << std::endl;
+	// for (int j = 0; j < db.db.size(); ++j) {
+	// 	std::cout << "Material " << j << " name: " << db.db[j].crystalName << std::endl;
+	// }
 
-    std::vector<float> data_local(x_dim*y_dim,0.0f);
-    data_local[10] = 1.0f;
-    data_local[192] = 1.0f;
+	// read from settings file
+	if (theSim.sCPU()->readInputParametersFile(db.db.data(), "DefaultValues.ini") == 1) {
+		std::cout << "Could not read input file." << std::endl;
+		return 13;
+	}
 
-    auto result = test_vkfft(data_local, x_dim, y_dim);
-    auto result_pocket = forward_pocketfft(data_local, x_dim, y_dim);
-    print_matrix(result_pocket, kx_dim, ky_dim, 1, 1);
-    print_matrix(result, kx_dim, ky_dim, 1, 1);
+	// read optics files if there are any
+	int opticCount = 0;
+	while(true){
+		LoadedInputData newOptic(theSim.base().outputBasePath + "_optic" + std::to_string(opticCount) + ".txt");
+		if(newOptic.hasData) theSim.optics.push_back(newOptic);
+		else break;
+		opticCount++;
+	}
+
+	if ((theSim.sCPU()->sequenceString[0] != 'N') && theSim.sCPU()->sequenceString[0] != 0) theSim.sCPU()->isInSequence = true;
+	theSim.configure();
 }
