@@ -5,7 +5,6 @@
 #include <vector>
 #include <complex>
 #include <concepts>
-#include <vpp/kernel.hpp>
 
 template <std::floating_point F>
 uint32_t run_fitting(const SimulationParameterSet& launch_parameters){
