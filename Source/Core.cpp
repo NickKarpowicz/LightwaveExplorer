@@ -29,13 +29,15 @@ void print_matrix(const std::vector<std::complex<T>>& data, const size_t x_lengt
     }
 }
 
-template <std::floating_point F>
+template <typename F>
 struct TestKernel : public vpp::VppKernel<TestKernel<F>>{
-    F* buffer;
+    F* b;
     void main(const uint32_t i) const {
-        buffer[i] *= 2.0f;
+        b[i] *= 2.0f;
     }
 };
+template struct TestKernel<float>;
+
 std::vector<std::complex<float>> forward_pocketfft(std::vector<float>& data_local, uint32_t x_dim, uint32_t y_dim){
     CpuFourier<float> fft(x_dim,y_dim,1,1,FourierKind::R2C);
     std::vector<std::complex<float>> result(y_dim * (x_dim/2u + 1u));
@@ -49,7 +51,7 @@ std::vector<std::complex<float>> test_vkfft(std::vector<float>& data_local, uint
     auto data_vk = device.create_buffer_from_vec(data_local);
     auto result_vk = device.create_buffer(fft.result_buffer_size);
     fft.forward(&(data_vk.buffer), &(result_vk.buffer));
-    device.launch_kernel<24>(TestKernel<float>{.buffer=data_vk.as<float>()},10);
+    device.launch_kernel<24>(TestKernel<float>{.b=data_vk.as<float>()},10);
     device.go();
     device.wait();
     return result_vk.to_vec<std::complex<float>>();
